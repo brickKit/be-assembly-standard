@@ -269,19 +269,32 @@ Traefik 还多一条：平台的 Manifest **没有 volumes 字段**，网关的�
 |---|---|---|---|---|---|---|---|
 | 1 | PostgreSQL | **A** `kind: database` | postgres:16-alpine | 5432 | ✅ 默认 | 所有组件 | 共享单一 Database + 每组件独立 Schema |
 | 2 | NATS | **A** `kind: mq` | nats:2.10-alpine | 4222 / 8222 | ✅ 默认 | 所有需要事件的组件 | 组件读 `MQ_HOST` / `MQ_PORT` |
-| 3 | Traefik | **B** 带外 | traefik:v3.0 | 80 / 443 / 8080 | ✅ 默认 | 所有外部流量 | 平台没有 `gateway` 这个 kind，也挂不了配置文件 |
+| 3 | Traefik | **B** 带外 | traefik:v3.0 | 80 / 443 / **18080** | ✅ 默认 | 所有外部流量 | 平台没有 `gateway` 这个 kind，也挂不了配置文件。⚠️ Dashboard 端口从 8080 挪到 18080，理由见本表下方 |
 | 4 | Casdoor | **B** 带外 | casbin/casdoor:latest | 8000 | ✅ 默认 | 浏览器（OIDC 直连） | 平台没有 `iam` 这个 kind。适配层 `infra-iam-casdoor` 是形态 C |
 | 5 | RustFS | **A** `kind: storage` | rustfs/rustfs:latest | 9000 | ✅ 默认 | infra-attachment / infra-storage | 组件读 `STORAGE_ENDPOINT`（含端口） |
 | 6 | MinIO | **A** `engine: minio` | minio/minio:latest | 9000 / 9001 | ❌ 可选 | 同上 | 替换 RustFS，改 `engine` 一个字段 |
-| 7 | Keycloak | **B** 带外 | quay.io/keycloak/keycloak:latest | 8080 | ❌ 可选 | 同上 | 替换 Casdoor，同时换 `slot:iam` 适配层组件 |
-| 8 | Kafka | **A** `engine: kafka` | confluentinc/cp-kafka:latest | 9092 | ❌ 可选 | 同上 | 替换 NATS，改 `engine` 一个字段 |
+| 7 | Keycloak | **B** 带外 | quay.io/keycloak/keycloak:latest | **18081** | ❌ 可选 | 同上 | 替换 Casdoor，同时换 `slot:iam` 适配层组件。⚠️ 从 8080 挪开，理由见本表下方 |
+| 8 | Kafka | **A** `engine: kafka` | confluentinc/cp-kafka:latest | **19092** | ❌ 可选 | 同上 | 替换 NATS，改 `engine` 一个字段。⚠️ 从 9092 挪开，理由见本表下方 |
 | 9 | RabbitMQ | **A** `engine: rabbitmq` | rabbitmq:3.13-management | 5672 / 15672 | ❌ 可选 | 同上 | 同上。RabbitMQ 才有 `MQ_VHOST`，NATS/Kafka 不写这一格 |
 | 10 | Nginx | **B** 带外 | nginx:1.25-alpine | 80 / 443 | ❌ 可选 | 同上 | 替换 Traefik |
 | 11 | OTel Collector | **B** 带外 | otel/opentelemetry-collector-contrib:latest | 4317 / 4318 | ❌ 可选 | 所有组件（可观测性） | 平台没有 `telemetry` 这个 kind；且它要挂 `config.yaml`。不装时组件走 Blackhole Exporter |
-| 12 | Prometheus | **B** 带外 | prom/prometheus:latest | 9090 | ❌ 可选 | OTel Collector | 同上，指标后端 |
+| 12 | Prometheus | **B** 带外 | prom/prometheus:latest | **19090** | ❌ 可选 | OTel Collector | 同上，指标后端。⚠️ 从 9090 挪开，理由见本表下方 |
 | 13 | Loki | **B** 带外 | grafana/loki:latest | 3100 | ❌ 可选 | OTel Collector | 同上，日志后端 |
 | 14 | Tempo | **B** 带外 | grafana/tempo:latest | 3200 | ❌ 可选 | OTel Collector | 同上，链路追踪后端 |
 | 15 | Grafana | **B** 带外 | grafana/grafana:latest | 3000 | ❌ 可选 | 运维人员 | 同上，可观测性展示 |
+
+⚠️ **上表里 Traefik / Keycloak / Kafka / Prometheus 四行的端口，是从各自的官方默认值挪开的。**
+
+原因是**合并部署**：外壳必须把端口发布到宿主机（`extra_hosts` 指向 `host-gateway`，§13.1），于是组件端口与带外容器端口活在**同一个宿主机端口空间**里。按官方默认值会撞四处：
+
+| 官方默认 | 撞谁 | 挪到 |
+| --- | --- | --- |
+| Traefik Dashboard `8080` | 外壳一 `mdm-customer` 的 HTTP | **18080** |
+| Keycloak `8080` | 同上 | **18081** |
+| Prometheus `9090` | 外壳一 `mdm-customer` 的 gRPC | **19090** |
+| Kafka `9092` | 外壳一 `mdm-product` 的 gRPC | **19092** |
+
+⚠️ **连带结论：`be-ops` 的全局端口册（§5.10 产出 6）必须把带外容器的端口一起纳进来**，不能只管 61 个组件。只管组件的端口册发现不了这四处——而它们要到第一次把外壳端口发布到宿主机的那一刻才炸，那时 gRPC 端口已经写进 61 份 `component.yaml`、改不动了（§3.5.1.1）。
 
 ⚠️ **第 11~15 行全部是形态 B，一个组件都没有。** 它们和网关同一个理由：纯官方镜像 + 必须挂配置文件。按 §5.11 的判据（这一层有没有我们自己的代码），答案是没有——所以旧版里的 `infra-otel-collector` 与 `infra-grafana-stack` 两个组件仓库**已删除**，见 5.1 表下的说明。可观测性在 `brickkit.yaml` 里一个字都不写。
 
@@ -318,7 +331,7 @@ Traefik 还多一条：平台的 Manifest **没有 volumes 字段**，网关的�
 | 项目 | 说明 |
 |---|---|
 | 镜像 | traefik:v3.0 |
-| 端口 | 80（HTTP）/ 443（HTTPS）/ 8080（Dashboard） |
+| 端口 | 80（HTTP）/ 443（HTTPS）/ **18080**（Dashboard，从 8080 挪开，见 2.7.1） |
 | 用途 | PC 端与移动端流量的唯一入口。统一验签（401）；组件管鉴权（403）；多端分流（移动端 → BFF，PC 端 → 后端组件） |
 | 路由从哪来 | ⚠️ **不是 `brickkit up` 生成的**（平台不做 path 路由）。由 `be-ops` 在生成期聚合各组件 `assembly.yaml` 的 `edge_routes`，产出成容器 labels，Traefik 的 Docker Provider 读取。两个出口见 6.3 |
 | 配置要点 | 启用 Docker Provider（读取容器 Labels）；配置 `ForwardAuth` 中间件对接 Casdoor；启用 Dashboard（开发环境）。⚠️ Traefik 自身作为**带外容器**运行，不进 `brickkit.yaml` |
@@ -431,7 +444,7 @@ services:
     ports:
       - "80:80"
       - "443:443"
-      - "8080:8080"
+      - "18080:18080"      # Dashboard。原 8080 撞外壳一的 mdm-customer，见 2.7.1
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
       - ./traefik/traefik.yml:/etc/traefik/traefik.yml:ro
@@ -671,6 +684,10 @@ healthCheck:
 
 `deployment.port` 与 `extraPorts[].port` **在全部 61 个组件里必须两两不重复**，由 `be-ops` 维护一张全局端口册（§5.10 产出 6）。原因是合并部署：一个进程不能监听两个 8080。
 
+⚠️ **端口册还必须纳入带外容器的宿主机端口**（Traefik / Casdoor / Prometheus / Kafka…）。外壳要把端口发布到宿主机（§13.1），于是组件端口与带外容器端口活在**同一个宿主机端口空间**里。§2.7.1 那四处撞车就是这么发现的——只管 61 个组件的端口册看不见它们。
+
+**唯一的复用例外是 `slot:frontend` 族共用 80**：4 个前端组件槽位互斥、永不共存，且各自是独立 Nginx 容器不进外壳。这一条要写进端口册的校验逻辑，否则校验会误报。
+
 但两类端口的**事后可挽回程度差得很远**，这一点旧版没写清楚：
 
 | 端口 | 装配期能不能改 | 怎么改 |
@@ -790,7 +807,24 @@ menus: []
 
 ### 3.7 统一命名法
 
-事件/权限键/路由前缀共用 `{domain}.{aggregate}.{action}` 模式。
+事件/权限键/路由前缀共用 `{domain}.{aggregate}.{action}` 模式，事件再加版本后缀 `.v{n}`。
+
+**第一段恒为九域之一**（`infra` / `integration` / `mdm` / `crm` / `erp` / `hrm` / `prj` / `ana` / `frontend`）**或组件的短名**，三段一个不少。本书用到的全部事件名如下，`be-ops` 拿它当校验基准：
+
+| 事件 | 生产者 |
+| --- | --- |
+| `mdm.customer.created.v1` / `.updated.v1` / `.disabled.v1` | `mdm-customer` |
+| `mdm.product.created.v1` / `.updated.v1` / `.disabled.v1` | `mdm-product` |
+| `mdm.supplier.created.v1` / `.updated.v1` / `.disabled.v1` | `mdm-supplier` |
+| `crm.opportunity.won.v1` / `.lost.v1` / `.stage_changed.v1` | `crm-opportunity` |
+| `sales.order.created.v1` / `.confirmed.v1` / `.cancelled.v1` / `.shipped.v1` | `erp-sales` |
+| `erp.inventory.reserved.v1` / `.adjusted.v1` / `.transferred.v1` | `erp-inventory` |
+| `finance.voucher.created.v1` / `finance.credit.rejected.v1` / `finance.period.closed.v1` | `erp-finance` |
+| `workflow.task.created.v1` / `.completed.v1` / `.rejected.v1` | `infra-workflow` |
+
+⚠️ **`crm.opportunity.won.v1` 曾经写作 `opportunity.won.v1`（只有两段）。** 已统一。之所以专门记一笔：它在附录 E 的沙盘和 §4.3 的事件图里都出现，改名会打断 `erp-sales` 的消费者——**改名的时机只有"还没有消费者"这一个**。
+
+⚠️ **`erp-sales` 与 `erp-finance` 的事件第一段用的是组件短名（`sales` / `finance`）而不是域名（`erp`）**，与 `erp-inventory` 的 `erp.inventory.*` 不同。这是**已知的不一致**，记在这里是为了防止有人"顺手统一"——事件 Schema 演进铁律是只增不删不改（决策 19），改名等于删掉旧 subject，所有消费者当场断掉。要统一就必须在第一个消费者出现之前做完。
 
 ### 3.8 数据消费范式（强制）
 
@@ -872,8 +906,8 @@ flowchart TD
 ```mermaid
 flowchart LR
     BUS((event-bus))
-    CRM_OPP[crm-opportunity] -->|opportunity.won.v1| BUS
-    BUS -->|opportunity.won.v1| ERP_SALES[erp-sales]
+    CRM_OPP[crm-opportunity] -->|crm.opportunity.won.v1| BUS
+    BUS -->|crm.opportunity.won.v1| ERP_SALES[erp-sales]
     ERP_SALES -->|sales.order.created.v1| BUS
     BUS -->|sales.order.created.v1| ERP_INV[erp-inventory]
     BUS -->|sales.order.created.v1| ERP_FIN[erp-finance]
@@ -1135,9 +1169,32 @@ flowchart LR
 | brickKit | 平台本身 |
 | be-assembly-standard | 产品根（标准装配模板） |
 | be-assembly-{customer} | 客户后端装配清单（`brickkit.yaml`） |
-| be-sdk-events-go | reserve，Go 事件 SDK |
+| **be-sdk-go**<br>**be-sdk-python**<br>**be-sdk-ts** | **必需（交付关键路径）**，三种语言各一份的**横切基础库**。见下方说明 |
 | **be-acceptance** | **必需（交付关键路径）**，验收测试：平台验收清单（9.6.2）+ 业务闭环用例 + §13.7 拆回门禁 + 铁律六 import 扫描 |
 | **be-ops** | **必需（交付关键路径）**，装配生成器。见下 |
+
+**`be-sdk-*`：三个"最难查的雷"只许在一个地方处理**
+
+这一层原本设想成 `be-sdk-events-go`（reserve、只管事件）。实际不够——本书点名"最难查"的几处，事件只占一部分：
+
+| 能力 | 不放基础库会怎样 |
+| --- | --- |
+| `endpoint()` 读 `*_ENDPOINT` 并**剥掉 scheme** | `grpc.Dial("http://host:9094")` 连不上，而报错指向名称解析，极难联想（§2.1） |
+| `withTx()` 用 **`SET LOCAL`** 切 ROLE 与 search_path | 用不带 `LOCAL` 的 `SET` 之后连接还回共享池，**下一个借用者原样继承——跨组件串数据且不报错**（决策 3、§13.3 铁律二） |
+| OTel 初始化：`otelBaseUrl` 为空 → Blackhole Exporter | 连不上时阻塞业务线程或抛异常，把"监控是锦上添花"变成单点故障（§7.5） |
+| Outbox 写入 + 推送线程 | §3.10 |
+| 事件 Header 注入/提取 + `hop_count > 5` 防环丢弃 | 决策 42 |
+| 消费幂等 + `version` 单调校验 | 决策 43 |
+| List 自动注入时间窗口（默认 90 天）+ Cursor 分页 | §11.4，业务代码里永远只写 `SELECT * FROM sales_orders` |
+| `batchGet` 冷热自动路由（热表 → `{schema}_archive`） | §11.6.1、决策 56，业务代码里不写 `if archived` |
+| 结构化 JSON 日志 + trace 上下文 + PII 脱敏 + 2KB 截断 | §7.3 |
+| RED 指标自动暴露，采集间隔 15s | §7.4 |
+
+**每个组件各写一遍，必然有人写错；而写错的前两处恰好是本书自己点名的"最难查的雷"。**
+
+⚠️ **它不是"公共 model 包"**（§13.3 铁律六禁的那个）：**零业务逻辑、零组件 model、零组件间引用**。`be-acceptance` 的 import 扫描把 `be-sdk-*` 显式列入白名单，其他一律红。
+
+⚠️ **`be-sdk-ts` 只有一半**：`infra-bff-mobile` 严禁直连 DB（§6.5），`frontend-*` 更没有库，所以 TS 版没有 `withTx` / 冷热路由，多一条 GraphQL 侧的深度与复杂度限制（§11.4.3）。
 
 **`be-ops`：平台明确不做、而活又不会消失的那些，全在这里**
 
@@ -1150,7 +1207,7 @@ brickKit 是刻意极简的：不做网关、不做路由聚合、不建库建 s
 | 3 | **Feature 清单**：装配结果 → 写进 IAM 适配层的 `config`，供 `/api/tenant/features` 下发 | 平台不给组件"当前装配了什么"的视图（6.1） |
 | 4 | **外壳合并配置**：哪些组件进哪个外壳、端口分配、迁移执行顺序 | 平台不提供合并部署支持（13.6） |
 | 5 | **`brickkit.yaml` 生成**：含 `assembly.yaml` 的 schema 校验、`slot` 互斥校验、`channel` 多选校验 | 平台没有装配角色的概念（3.3） |
-| 6 | **全局端口册**：61 个组件的 HTTP + gRPC 端口两两不重复，`component.yaml` 由它校验 | 平台只在 `local: true` 撞车时报错，不给全局视图（3.5.1.1） |
+| 6 | **全局端口册**：61 个组件的 HTTP + gRPC 端口**外加全部带外容器的宿主机端口**，两两不重复，`component.yaml` 由它校验 | 平台只在 `local: true` 撞车时报错，不给全局视图（3.5.1.1）。带外容器平台根本不知道它存在，更不会管（2.7.1） |
 | 7 | **每外壳的环境变量表**：外壳里每个模块的完整 env，跨外壳的 `*_ENDPOINT` 指向宿主机网关 | **平台只往它自己生成的容器里注入。合并后没有那些容器**（13.8） |
 | 8 | **shell-compose 的 `depends_on`**：外壳之间的启动顺序 | 平台只排它生成的那些；外壳之间它一个都不排（13.8） |
 
@@ -1546,13 +1603,26 @@ erp-sales/
 | --- | --- | --- | --- |
 | **档 0**<br>单砖 | 一块砖能独立活 | `mdm/customer` 一个组件 | 单独 `brickkit up` 起来；`curl` 打通 HTTP；**`grpcurl` 打通 gRPC 的 `Get` / `List` / `batchGet`**；迁移能被平台单独调起且可重跑；`/healthz` 只查本进程；镜像里有 shell + wget |
 | **档 1**<br>验平台 | brickKit 的每条承诺都真的成立 | 加 `mdm/product`、`erp/inventory`、`erp/finance`、`erp/sales` 共 5 个 | 见 §9.6.2 的平台验收清单，逐条打勾 |
-| **档 2**<br>闭环 | 一条业务链真的跑通 | 加 `crm/opportunity`、`infra-iam-casdoor`、`infra-workflow`、`infra-notification`、1 个 IM 通道、**`infra-print`（Python，档 3 要靠它验 Python 外壳）**、`infra-bff-mobile`、`frontend-standard`（只做这几个模块的页面），**共 13 个组件**（= 附录 H 里「切片」列打勾的那些） | 「CRM 赢单 → 建单 → 锁库存 → 生成应收 → 审批 → 钉钉通知 → 打印送货单 PDF」全链路跑通（附录 E）；Saga 补偿与超时查询走一遍；DLQ 进得去出得来 |
+| **档 2**<br>闭环 | 一条业务链真的跑通 | 加 `crm/opportunity`、`infra-iam-casdoor`、`infra-workflow`、`infra-notification`、1 个 IM 通道、**`infra-print`（Python，档 3 要靠它验 Python 外壳）**、`infra-bff-mobile`、`frontend-standard`（只做这几个模块的页面），**共 13 个组件**（= 附录 H 里「切片」列打勾的那些） | 「CRM 赢单 → 建单 → 锁库存 → 生成应收 → 审批 → 钉钉通知 → 打印送货单 PDF」全链路跑通（附录 E）；Saga 补偿与超时查询走一遍；DLQ 进得去出得来（⚠️ `infra-dlq-monitor` 在档 4a，不在这 13 个里——**档 2 验的是平台 SDK 层的死信通道本身**：重试耗尽后消息进 DLQ、`hop_count > 5` 被丢弃、能被重新投递。管理界面与积压告警留到档 4a） |
 | **档 3**<br>做外壳 | 验"合并不磨掉组件性" | 把档 2 的 13 个组件合成 **2 个外壳**：Go 外壳装 10 个模块，Python 外壳装 `infra-print`；TS 的 `infra-bff-mobile` 与 `frontend-standard` 保持独立容器（§13.5：跨语言合不进来，Nginx 也合不进来） | 合并态业务闭环全绿；**§13.7 的拆回门禁全绿**；铁律六的 import 扫描全绿；13.8 那三份 compose 一条命令启停 |
-| **档 4**<br>铺货 | 军火库补齐 | 其余组件按客户订单优先级排队 | 每加一个组件，档 0 的六项 + 拆回门禁重跑 |
+| **档 4a**<br>补齐 default | 凑齐最小可交付形态 | `infra-storage`、`infra-attachment`、`infra-dlq-monitor`、`mdm-supplier`、`mdm-org` 共 5 个 | 每加一个组件，档 0 的六项 + 拆回门禁重跑 |
+| **档 4b**<br>铺货 | 军火库补齐 | 其余组件按客户订单优先级排队 | 同上 |
 
 ⚠️ **档 3 必须在档 4 之前。** 外壳的坑（环境变量表、跨外壳顺序、端口册、import 边界）是**结构性**的，13 个组件时踩到只要改 `be-ops`；61 个组件时踩到，要改 61 份 `component.yaml` 的端口，还要拆开一堆已经互相 import 了的代码。
 
-⚠️ **附录 H 里那 61 个"✅ 开发"是军火库的最终形态，不是开工令。** 按第 1 章的**选配测试**（客户愿单独付钱才独立成砖），5 个 IM、4 个支付、3 个电子签、2 套 IAM、3 套额外前端里，绝大多数应当停在档 4 的队列里，等第一个客户点名再动。现在就全开工，等于用选配测试的反面在花钱。
+⚠️ **档 4a 不等客户点名。** 那 5 个组件的装配角色都是 `default`——按 §3.3 的定义，`default` 是"系统运行的基石，默认必选"，任何一次真实交付都必须有它们。它们没进档 2 的切片，是因为**切片只为验平台**，不是因为它们可选：
+
+| 组件 | 谁需要它 |
+| --- | --- |
+| `infra-storage` | `infra-attachment` 的底座 |
+| `infra-attachment` | ERP 单据的附件上传下载 |
+| `infra-dlq-monitor` | 决策 40：DLQ 必须配套告警与人工介入，否则变成"坟墓" |
+| `mdm-supplier` | `erp-purchase` 的强依赖 |
+| `mdm-org` | `infra-workflow` 审批人路由的组织数据来源 |
+
+顺序上 `infra-storage` 必须排在 `infra-attachment` 前面（后者强依赖前者）。
+
+⚠️ **附录 H 里那 61 个"✅ 开发"是军火库的最终形态，不是开工令。** 按第 1 章的**选配测试**（客户愿单独付钱才独立成砖），5 个 IM、4 个支付、3 个电子签、2 套 IAM、3 套额外前端里，绝大多数应当停在档 4b 的队列里，等第一个客户点名再动。现在就全开工，等于用选配测试的反面在花钱。
 
 #### 9.6.2 档 1 的平台验收清单（`be-acceptance` 的第一批用例）
 
@@ -1687,6 +1757,9 @@ erp-sales/
 | 96 | **`be-acceptance` 升为必需件**，第一批用例的被测对象是 **brickKit 本身**（§9.6.2） | 我们既是平台作者又是它第一个真实用户；平台升级后重跑这批用例就是回归测试 | 平台某条断言悄悄变了，而 61 个组件已经照旧版写完了 |
 | 97 | **可观测性全家桶降为带外容器**，`infra-otel-collector` / `infra-grafana-stack` 两个组件仓库删除（§2.7.3、§7.5） | 与网关同一个判据（§5.11）：纯官方镜像 + 必须挂 `config.yaml`，而 Manifest 没有 volumes。这一层没有我们的代码 | infra 域凭空多出两个只有壳的仓库；以及旧版 §7.5 那三个不存在的 `slot:*-backend` |
 | 98 | **聚合型组件（BFF / notification）的依赖全部 `optional: true`；客户没买的组件整条不写进 `brickkit.yaml`，而不是 `enabled: false`** | 一条写成强依赖，客户没买那个组件时整个 BFF 起不来；`enabled: false` 会把下游主数据一起级联关掉 | "客户只买 5 个组件"在物理上做不到，或者关掉 hrm 顺带把 mdm 关了 |
+| 99 | **全局端口册纳入带外容器的宿主机端口**，不只管 61 个组件（§2.7.1、§3.5.1.1、§5.10 产出 6） | 外壳要把端口发布到宿主机（§13.1），组件端口与带外容器端口活在同一个宿主机端口空间里。按官方默认值有四处真撞：Traefik Dashboard 8080 ⚔ `mdm-customer` HTTP、Keycloak 8080 ⚔ 同上、Prometheus 9090 ⚔ `mdm-customer` gRPC、Kafka 9092 ⚔ `mdm-product` gRPC。已分别挪到 18080 / 18081 / 19090 / 19092 | 只管组件的端口册看不见这四处，而它们要到第一次把外壳端口发布到宿主机才炸——那时 gRPC 端口已写进 61 份 Manifest、改不动了 |
+| 100 | **`be-sdk-{go,python,ts}` 是必需件**，不是 `reserve`，也不只管事件（§5.10） | 本书点名"最难查"的两处——`grpc.Dial("http://…")` 连不上、不带 `LOCAL` 的 `SET` 跨组件串数据——都是**每个组件各写一遍就必然有人写错**的那种。它不是公共 model 包：零业务逻辑、零组件 model，是 import 扫描的唯一白名单 | 58 个组件里只要有一个把 `SET LOCAL` 写成 `SET`，就会悄悄读写别人的数据，不报错不崩 |
+| 101 | **档 4 拆成 4a / 4b：`default` 角色的 5 个组件不等客户点名**（§9.6.1） | `infra-storage` / `infra-attachment` / `infra-dlq-monitor` / `mdm-supplier` / `mdm-org` 的装配角色都是 `default`——"系统运行的基石，默认必选"（§3.3）。它们没进档 2 切片是因为切片只为验平台，不是因为它们可选 | 把 `default` 组件排进"等客户点名"的队列，交付时才发现附件传不了、DLQ 没人看、采购没有供应商主数据 |
 
 ## 第 11 章 · 数据生命周期与冷热分层治理
 
@@ -2020,18 +2093,22 @@ components:
 
 | 项目 | 说明 |
 |---|---|
-| 包含组件 (14个) | `crm-lead`, `crm-customer`, `crm-opportunity`, `crm-activity`, `crm-campaign`, `crm-case`, `hrm-attendance`, `hrm-leave`, `hrm-expense`, `prj-project`, `prj-timesheet`, `erp-asset`, `erp-quality`, `erp-maintenance` |
+| 包含组件 (16个) | `crm-lead`, `crm-customer`, `crm-opportunity`, `crm-activity`, `crm-campaign`, `crm-case`, `hrm-attendance`, `hrm-leave`, `hrm-expense`, `hrm-recruitment`, `hrm-appraisal`, `prj-project`, `prj-timesheet`, `erp-asset`, `erp-quality`, `erp-maintenance` |
 | 合并理由 | 这些组件属于 "旁路业务 "，极少与核心交易发生强同步依赖。合并为一个 "大后方单体 "，极大节省资源 |
-| 端口规划 | HTTP 8100~8113 / gRPC 9100~9113 |
+| 端口规划 | HTTP 8100~8115 / gRPC 9100~9115 |
+
+⚠️ `hrm-recruitment` 与 `hrm-appraisal` 是 `reserve` 组件，但**端口必须现在就分配**——gRPC 端口没有事后补救手段（§3.5.1.1）。等它们激活时再挤进这个区间，前面 14 个的 Manifest 就要全改。
 
 #### 🟢 外壳三：Go 基建与外部通道 (The Infra & Integration Shell)
 将所有"协议翻译官"和后台任务合并。
 
 | 项目 | 说明 |
 |---|---|
-| 包含组件 (21个) | `infra-workflow`, `infra-notification`, `infra-dlq-monitor`, `infra-attachment`, `infra-storage`, `infra-audit` + 15个 `integration-*` 适配器 |
+| 包含组件 (21个) | `infra-iam-casdoor`, `infra-workflow`, `infra-notification`, `infra-dlq-monitor`, `infra-attachment`, `infra-storage`, `infra-audit`（7 个 infra）+ **14 个** `integration-*` 适配器（15 个里 `integration-edi` 是 Python，归外壳五） |
 | 合并理由 | 集成适配器全是 "调外部 API + 发回调事件 "的 I/O 密集型任务。将它们与通知中心、工作流合并，形成一个统一的 "系统总线与外部网关 " |
-| 端口规划 | HTTP 8200+ |
+| 端口规划 | HTTP 8200~8220 / gRPC 9200~9220（`infra-iam-keycloak` 作为 `slot:iam` 替换件另占 8221/9221） |
+
+⚠️ **`infra-iam-casdoor` 属于本外壳，容易被漏掉。** 它是 Go 写的 ~500 行薄适配层（§6.1），Casdoor 官方镜像才是带外容器。§9.6.1 档 3 说「Go 外壳装 10 个模块」时算的就是含它的那 10 个。7 个 infra + 14 个 integration = 21，这个数字才对得上。
 
 #### 🔵 外壳四：Python 复杂大脑 (The Brain & AI Shell)
 将烧脑的、需要强大生态库的组件合并。
@@ -2054,11 +2131,11 @@ components:
 
 | 容器         | 理由                                               |
 | ---------- | ------------------------------------------------ |
-| PostgreSQL | 基础资源，官方镜像                                        |
-| NATS       | 基础资源，官方镜像                                        |
-| Traefik    | 基础资源，官方镜像                                        |
-| Casdoor    | 基础资源，官方镜像                                        |
-| RustFS     | 基础资源，官方镜像                                        |
+| PostgreSQL | **形态 A** brickKit 基础资源（`kind: database`），官方镜像       |
+| NATS       | **形态 A** brickKit 基础资源（`kind: mq`），官方镜像             |
+| Traefik    | **形态 B** 带外容器 —— 平台没有 `gateway` 这个 kind（§2.7.0）    |
+| Casdoor    | **形态 B** 带外容器 —— 平台没有 `iam` 这个 kind（§2.7.0）        |
+| RustFS     | **形态 A** brickKit 基础资源（`kind: storage`），官方镜像        |
 | BFF-Mobile | Node.js GraphQL 聚合层，作为移动端唯一入口，建议独立以便未来针对弱网环境单独调优 |
 | Frontend   | Nginx 静态资源容器                                     |
 
@@ -2350,8 +2427,8 @@ flowchart TD
 ```mermaid
 flowchart LR
     BUS((event-bus))
-    CRM_OPP[crm-opportunity] -->|opportunity.won.v1| BUS
-    BUS -->|opportunity.won.v1| ERP_SALES[erp-sales]
+    CRM_OPP[crm-opportunity] -->|crm.opportunity.won.v1| BUS
+    BUS -->|crm.opportunity.won.v1| ERP_SALES[erp-sales]
     ERP_SALES -->|sales.order.created.v1| BUS
     BUS -->|sales.order.created.v1| ERP_INV[erp-inventory]
     BUS -->|sales.order.created.v1| ERP_FIN[erp-finance]
@@ -2401,7 +2478,7 @@ sequenceDiagram
     participant FIN as erp-finance
     User->>CRM: 标记商机赢单
     CRM->>CRM: 更新状态，写入 Outbox
-    CRM->>BUS: 发布 opportunity.won.v1
+    CRM->>BUS: 发布 crm.opportunity.won.v1
     BUS->>SALES: 消费事件
     SALES->>MDM: 同步调用 batchGet 获取最新客户/产品数据
     MDM-->>SALES: 返回数据
@@ -2467,16 +2544,16 @@ flowchart TB
 |---|---|---|---|---|---|---|---|---|
 | 1 | PostgreSQL | **A** | `kind: database, engine: postgresql` | postgres:16-alpine | 5432 | ✅ | pg_isready | pg_data:/var/lib/postgresql/data |
 | 2 | NATS | **A** | `kind: mq, engine: nats` | nats:2.10-alpine | 4222, 8222 | ✅ | curl :8222/healthz | nats_data:/data |
-| 3 | Traefik | **B** | —（带外） | traefik:v3.0 | 80, 443, 8080 | ✅ | traefik healthcheck --ping | 无（配置挂载） |
+| 3 | Traefik | **B** | —（带外） | traefik:v3.0 | 80, 443, **18080** | ✅ | traefik healthcheck --ping | 无（配置挂载） |
 | 4 | Casdoor | **B** | —（带外） | casbin/casdoor:latest | 8000 | ✅ | curl :8000/api/health | 配置挂载 |
 | 5 | RustFS | **A** | `kind: storage, engine: minio`（S3 兼容） | rustfs/rustfs:latest | 9000 | ✅ | curl :9000/health/live | rustfs_data:/data |
 | 6 | MinIO | **A** | 同上，换 `engine` | minio/minio:latest | 9000, 9001 | ❌ | curl :9000/minio/health/live | minio_data:/data |
-| 7 | Keycloak | **B** | —（带外） | quay.io/keycloak/keycloak:latest | 8080 | ❌ | curl :8080/health/ready | 配置挂载 |
-| 8 | Kafka | **A** | `kind: mq, engine: kafka` | confluentinc/cp-kafka:latest | 9092 | ❌ | kafka-topics --list | kafka_data |
+| 7 | Keycloak | **B** | —（带外） | quay.io/keycloak/keycloak:latest | **18081** | ❌ | curl :9000/health/ready | 配置挂载 |
+| 8 | Kafka | **A** | `kind: mq, engine: kafka` | confluentinc/cp-kafka:latest | **19092** | ❌ | kafka-topics --list | kafka_data |
 | 9 | RabbitMQ | **A** | `kind: mq, engine: rabbitmq` | rabbitmq:3.13-management | 5672, 15672 | ❌ | rabbitmq-diagnostics -q ping | rmq_data |
 | 10 | Nginx | **B** | —（带外） | nginx:1.25-alpine | 80, 443 | ❌ | curl -f :80 | 配置挂载 |
 | 11 | OTel Collector | **B** | —（带外） | otel/opentelemetry-collector-contrib:latest | 4317, 4318 | ❌ | curl :13133/ | 无 |
-| 12 | Prometheus | **B** | —（带外） | prom/prometheus:latest | 9090 | ❌ | curl :9090/-/healthy | prom_data:/prometheus |
+| 12 | Prometheus | **B** | —（带外） | prom/prometheus:latest | **19090** | ❌ | curl :9090/-/healthy | prom_data:/prometheus |
 | 13 | Loki | **B** | —（带外） | grafana/loki:latest | 3100 | ❌ | curl :3100/ready | loki_data |
 | 14 | Tempo | **B** | —（带外） | grafana/tempo:latest | 3200 | ❌ | curl :3200/ready | tempo_data |
 | 15 | Grafana | **B** | —（带外） | grafana/grafana:latest | 3000 | ❌ | curl :3000/api/health | grafana_data:/var/lib/grafana |
@@ -2564,7 +2641,7 @@ flowchart TB
 | 69  | brickKit               | 平台本身              |
 | 70  | be-assembly-standard   | 产品根（标准装配模板）       |
 | 71  | be-assembly-{customer} | 客户后端装配清单          |
-| 72  | be-sdk-events-go       | reserve，Go 事件 SDK |
+| 72  | **be-sdk-go**<br>**be-sdk-python**<br>**be-sdk-ts** | **必需（交付关键路径）**，三种语言各一份的横切基础库（endpoint 剥 scheme / `SET LOCAL` / Outbox / 事件防环 / OTel 降级 / 查询窗口 / 冷热路由 / 日志 / 指标）。零业务逻辑、零组件 model，是 import 扫描的唯一白名单（5.10） |
 | 73  | be-acceptance          | **必需（交付关键路径）**，验收测试：平台验收清单（9.6.2）+ 业务闭环 + 拆回门禁 + import 扫描 |
 | 74  | **be-ops**             | **必需（交付关键路径）**，装配生成器：路由表 / 建库脚本 / feature 清单 / 外壳配置 / `brickkit.yaml` 生成（5.10） |
 
@@ -2647,7 +2724,7 @@ flowchart TB
 | 两条不可让渡的原则 | ① 每个组件以纯 brickKit 组件形态开发、gRPC 一个不省、能单独 `brickkit up` 起来；② 合并只发生在部署形态上，组件完整性一步不让。全书唯二不能改的东西（§1.5） |
 | 铁律六 | 组件模块之间绝不互相 `import`。外壳 `main` 可以引每个模块的 `NewServer()`，模块之间只能走 gRPC/HTTP。由 `be-acceptance` 的 import 扫描守（§13.3） |
 | 拆回门禁 | 检验"合并有没有磨掉组件性"的唯一动作：把全部 `local: true` 去掉、`brickkit up` 全拆一次、业务闭环全绿。每周一次（§13.7） |
-| 全局端口册 | `be-ops` 维护的 61 个组件的 HTTP + gRPC 端口分配表。**gRPC 端口没有事后补救手段**，必须一次写对（§3.5.1.1） |
+| 全局端口册 | `be-ops` 维护的 61 个组件的 HTTP + gRPC 端口分配表，**外加全部带外容器的宿主机端口**（外壳要把端口发布到宿主机，两边活在同一个端口空间里）。**gRPC 端口没有事后补救手段**，必须一次写对（§3.5.1.1、§2.7.1） |
 | 每外壳的环境变量表 | `be-ops` 产出 7。平台只往它自己生成的容器里注入，合并后那些容器不存在；同外壳的依赖指 `127.0.0.1`，**跨外壳的指宿主机**（§13.8） |
 | 三份 compose | 带外基础资源（我们手写）+ 平台产物（`brickkit up`）+ 外壳（`be-ops`）。三份必须挂同一个 external network，`brickkit down` 只停中间那份（§13.8.3） |
 | 档 0~4 | 推进顺序：单砖 → 验平台 → 业务闭环 → **做外壳验拆回** → 铺满军火库。档 3 必须早于档 4（§9.6） |

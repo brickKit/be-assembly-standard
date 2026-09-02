@@ -247,9 +247,11 @@ COMMIT;   -- SET LOCAL 自动还原，连接干净地回池
 | **Zookeeper** | NATS 不需要；Kafka 3.x 已有 KRaft |
 | **Elasticsearch** | 当前无全文检索需求；审计日志走 PG 分区表 |
 
-### 1.2 ⚠️ 端口冲突与本计划的修正决定
+### 1.2 ⚠️ 端口冲突与修正（已回写设计书）
 
-设计书附录 G 给的带外容器端口，与 §13.2 的外壳端口区间**有四处物理撞车**。因为外壳必须把端口发布到宿主机（`extra_hosts` 指向 `host-gateway`，§13.1），所以这些是真撞，不是逻辑撞。**本计划钉死如下修正：**
+设计书附录 G 原本给的是各镜像的官方默认端口，与 §13.2 的外壳端口区间**有四处物理撞车**。因为外壳必须把端口发布到宿主机（`extra_hosts` 指向 `host-gateway`，§13.1），所以这些是真撞，不是逻辑撞。
+
+**修正已回写设计书**（§2.7.1 表格 + 表下新增的说明段、§2.7.2 ③、§2.7.5 的 compose 示例、附录 G、决策 99）：
 
 | 撞的端口 | 谁和谁 | 修正 |
 |---|---|---|
@@ -258,7 +260,7 @@ COMMIT;   -- SET LOCAL 自动还原，连接干净地回池
 | **9090** | Prometheus ⚔ `mdm-customer` 的 gRPC | **Prometheus → 19090** |
 | **9092** | Kafka ⚔ `mdm-product` 的 gRPC | **Kafka → 19092** |
 
-**连带结论（设计书漏的一处，本计划补上）：`be-ops` 的全局端口册（产出 6）必须把带外容器的端口一起纳进来**，不能只管 61 个组件。否则这四处撞车会在档 3 第一次把外壳端口发布到宿主机的那一刻才炸，而那时 gRPC 端口已经写进 61 份 `component.yaml`、改不动了（§3.5.1.1）。
+**连带结论：`be-ops` 的全局端口册（产出 6）必须把带外容器的端口一起纳进来**，不能只管 61 个组件。否则这四处撞车会在档 3 第一次把外壳端口发布到宿主机的那一刻才炸，而那时 gRPC 端口已经写进 61 份 `component.yaml`、改不动了（§3.5.1.1）。**这一条已回写设计书 §3.5.1.1、§5.10 产出 6、附录 I 与决策 99。**
 
 **本机现状（2026-09-02 实测）与你的处理方式：**
 
@@ -352,7 +354,7 @@ Compose 项目名统一 `be-infra`，所有容器都接同一个 external networ
 | 15 | `hrm-recruitment` | `hrm/recruitment` | 8114 | 9114 |
 | 16 | `hrm-appraisal` | `hrm/appraisal` | 8115 | 9115 |
 
-⚠️ **本计划的修正 1**：设计书 §13.2 外壳二只列了 14 个，漏了 `hrm-recruitment` 与 `hrm-appraisal`（两个都是 Go、都是常规 CRUD、都是 `reserve`）。它们必须有端口，否则档 4b 做到它们时无处可放。本计划把外壳二的区间从 8100–8113 扩到 **8100–8115**。
+⚠️ **修正 1（已回写设计书 §13.2）**：外壳二原本只列了 14 个，漏了 `hrm-recruitment` 与 `hrm-appraisal`（两个都是 Go、都是常规 CRUD、都是 `reserve`）。它们必须有端口，否则档 4b 做到它们时无处可放。区间已从 8100–8113 扩到 **8100–8115**。
 
 #### 外壳三 · Go 基建与外部通道（21 个，HTTP 8200–8220 / gRPC 9200–9220）
 
@@ -380,7 +382,7 @@ Compose 项目名统一 `be-infra`，所有容器都接同一个 external networ
 | 20 | `integration-email` | `integration/email` | 8219 | 9219 |
 | 21 | `integration-sms` | `integration/sms` | 8220 | 9220 |
 
-⚠️ **本计划的修正 2**：设计书 §13.2 外壳三的组件列表写的是「`infra-workflow`, `infra-notification`, `infra-dlq-monitor`, `infra-attachment`, `infra-storage`, `infra-audit` + 15 个 `integration-*`」，但 `integration-edi` 是 Python、在外壳五，所以 integration 只剩 14 个 → 6 + 14 = 20，与它自己写的「21 个」差 1。差的那一个是 **`infra-iam-casdoor` 适配层**——它是 Go、~500 行、没被任何外壳列表收录，但 §9.6.1 档 3 明确说「Go 外壳装 10 个模块」，而档 2 的 13 个里 Go 的正好是 `mdm-customer`/`mdm-product`/`erp-sales`/`erp-inventory`/`erp-finance`/`crm-opportunity`/`infra-iam-casdoor`/`infra-workflow`/`infra-notification`/`integration-im-dingtalk` = 10 个，含它。所以本计划把 `infra-iam-casdoor` 归入外壳三，21 这个数字就对上了。
+⚠️ **修正 2（已回写设计书 §13.2）**：外壳三的组件列表原本写的是「6 个 infra + 15 个 `integration-*`」，但 `integration-edi` 是 Python、在外壳五，所以 integration 只剩 14 个 → 6 + 14 = 20，与它自己写的「21 个」差 1。差的那一个是 **`infra-iam-casdoor` 适配层**——它是 Go、~500 行、没被任何外壳列表收录，但 §9.6.1 档 3 明确说「Go 外壳装 10 个模块」，而档 2 的 13 个里 Go 的正好是 `mdm-customer`/`mdm-product`/`erp-sales`/`erp-inventory`/`erp-finance`/`crm-opportunity`/`infra-iam-casdoor`/`infra-workflow`/`infra-notification`/`integration-im-dingtalk` = 10 个，含它。补上后 21 这个数字就对上了。
 
 #### 外壳四 · Python 复杂大脑（5 个，HTTP 8300–8304 / gRPC 9300–9304）
 
@@ -1932,10 +1934,10 @@ prj-timesheet	prj/timesheet	8110	9110	go-backoffice	-
 erp-asset	erp/asset	8111	9111	go-backoffice	-
 erp-quality	erp/quality	8112	9112	go-backoffice	-
 erp-maintenance	erp/maintenance	8113	9113	go-backoffice	-
-hrm-recruitment	hrm/recruitment	8114	9114	go-backoffice	本计划修正1：设计书§13.2漏列
-hrm-appraisal	hrm/appraisal	8115	9115	go-backoffice	本计划修正1：设计书§13.2漏列
+hrm-recruitment	hrm/recruitment	8114	9114	go-backoffice	设计书§13.2原漏列，已回写
+hrm-appraisal	hrm/appraisal	8115	9115	go-backoffice	设计书§13.2原漏列，已回写
 # ===== 外壳三 Go-Infra =====
-infra-iam-casdoor	infra/iam-casdoor	8200	9200	go-infra	本计划修正2：设计书§13.2漏列
+infra-iam-casdoor	infra/iam-casdoor	8200	9200	go-infra	设计书§13.2原漏列，已回写
 infra-workflow	infra/workflow	8201	9201	go-infra	-
 infra-notification	infra/notification	8202	9202	go-infra	-
 infra-dlq-monitor	infra/dlq-monitor	8203	9203	go-infra	-
@@ -1975,19 +1977,19 @@ frontend-standard	frontend/standard	80	-	standalone	slot:frontend族共用80，�
 frontend-advanced	frontend/advanced	80	-	standalone	同上，槽位互斥永不共存
 frontend-industry	frontend/{industry}	80	-	standalone	同上
 frontend-customer	frontend/{customer}	80	-	standalone	同上，Fork件
-# ===== 带外容器与基础资源（本计划补：设计书的端口册只管61个组件）=====
+# ===== 带外容器与基础资源（设计书的端口册原本只管61个组件，已回写补入）=====
 _infra-postgres	-	5432	-	out-of-band	-
 _infra-nats	-	4222	-	out-of-band	监控口8222
-_infra-traefik	-	80	-	out-of-band	443；Dashboard18080（原8080撞mdm-customer）
+_infra-traefik	-	80	-	out-of-band	443；Dashboard18080（原8080撞mdm-customer，已回写设计书）
 _infra-casdoor	-	8000	-	out-of-band	-
 _infra-rustfs	-	9000	-	out-of-band	-
 _infra-minio	-	9000	-	out-of-band	9001；与rustfs互斥
-_infra-keycloak	-	18081	-	out-of-band	原8080撞mdm-customer
-_infra-kafka	-	19092	-	out-of-band	原9092撞mdm-product的gRPC
+_infra-keycloak	-	18081	-	out-of-band	原8080撞mdm-customer，已回写设计书
+_infra-kafka	-	19092	-	out-of-band	原9092撞mdm-product的gRPC，已回写设计书
 _infra-rabbitmq	-	5672	-	out-of-band	15672
 _infra-nginx	-	80	-	out-of-band	443；与traefik互斥
 _infra-otel	-	4317	-	out-of-band	4318、13133
-_infra-prometheus	-	19090	-	out-of-band	原9090撞mdm-customer的gRPC
+_infra-prometheus	-	19090	-	out-of-band	原9090撞mdm-customer的gRPC，已回写设计书
 _infra-loki	-	3100	-	out-of-band	-
 _infra-tempo	-	3200	-	out-of-band	-
 _infra-grafana	-	3000	-	out-of-band	-
@@ -6776,25 +6778,30 @@ make gates && make tier0 && make closedloop && make split-back-gate
 
 ---
 
-## 第 12 部分 · 本计划对设计书的四处修正与两处扩展
+## 第 12 部分 · 对设计书的五处修正与两处扩展（**已全部回写设计书**）
 
-**这一节是给半年后接手的人看的**：本计划有几处与设计书字面不一致，全部是有意的，理由写在这里。**发现设计书更新了、而这些理由不再成立时，回来改本计划。**
+**这一节是给半年后接手的人看的**：以下是本计划制定过程中在设计书里发现的不自洽，**全部已经改进设计书本体**，本节只留一份变更记录。设计书与本计划现在是一致的——**两边冲突时以设计书为准，并回来改本计划**。
 
-### 修正（4 处）
+### 修正（5 处，已回写）
 
-| # | 设计书写的 | 本计划改成 | 为什么 |
-|---|---|---|---|
-| 1 | 附录 G：Traefik Dashboard 8080 | **18080** | 撞外壳一 `mdm-customer` 的 HTTP 8080，而外壳必须把端口发布到宿主机（§13.1），是真撞 |
-| 2 | 附录 G：Keycloak 8080 / Prometheus 9090 / Kafka 9092 | **18081 / 19090 / 19092** | 同上，分别撞 `mdm-customer` 的 HTTP、`mdm-customer` 的 gRPC、`mdm-product` 的 gRPC |
-| 3 | §13.2 外壳二列 14 个组件 | **16 个**（加 `hrm-recruitment`、`hrm-appraisal`），区间 8100–8113 → **8100–8115** | 那两个是 Go、常规 CRUD、`reserve`，设计书漏列。它们必须有端口，否则档 4b 做到时无处可放 |
-| 4 | §13.2 外壳三列「6 个 infra + 15 个 integration = 21 个」 | **7 个 infra**（加 `infra-iam-casdoor`）**+ 14 个 integration = 21 个** | `integration-edi` 是 Python、在外壳五，所以 integration 只有 14 个；差的那一个是 `infra-iam-casdoor`（它是 Go、~500 行、没被任何外壳列表收录，但 §9.6.1 档 3 说「Go 外壳装 10 个模块」时把它算进去了）。补上后 21 这个数字才对得上 |
+| # | 设计书原本写的 | 已改成 | 为什么 | 回写到设计书哪里 |
+|---|---|---|---|---|
+| 1 | 附录 G / §2.7.1：Traefik Dashboard 8080 | **18080** | 撞外壳一 `mdm-customer` 的 HTTP 8080，而外壳必须把端口发布到宿主机（§13.1），是真撞 | §2.7.1 表 + 表下新增说明段、§2.7.2 ③、§2.7.5 compose、附录 G |
+| 2 | 附录 G：Keycloak 8080 / Prometheus 9090 / Kafka 9092 | **18081 / 19090 / 19092** | 同上，分别撞 `mdm-customer` 的 HTTP、`mdm-customer` 的 gRPC、`mdm-product` 的 gRPC | 同上 |
+| 3 | §13.2 外壳二列 14 个组件 | **16 个**（加 `hrm-recruitment`、`hrm-appraisal`），区间 8100–8113 → **8100–8115** | 那两个是 Go、常规 CRUD、`reserve`，原文漏列。它们必须有端口，否则档 4b 做到时无处可放 | §13.2 外壳二表 + 表下新增说明 |
+| 4 | §13.2 外壳三列「6 个 infra + 15 个 integration = 21 个」 | **7 个 infra**（加 `infra-iam-casdoor`）**+ 14 个 integration = 21 个**，端口区间写明 8200~8220 | `integration-edi` 是 Python、在外壳五，所以 integration 只有 14 个；差的那一个是 `infra-iam-casdoor`（Go、~500 行、没被任何外壳列表收录，但 §9.6.1 档 3 说「Go 外壳装 10 个模块」时把它算进去了）。补上后 21 才对得上 | §13.2 外壳三表 + 表下新增说明；顺带修正「钉子户」表把 Traefik/Casdoor 说成「基础资源」的口径（它们是形态 B 带外容器） |
+| 5 | `opportunity.won.v1` 只有**两段**，全书其余事件都是三段 | **`crm.opportunity.won.v1`** | §3.7 的命名法是 `{domain}.{aggregate}.{action}`。改名的时机只有「还没有消费者」这一个——一旦 `erp-sales` 开始消费，改名等于删掉旧 subject（决策 19：只增不删不改） | §3.7（补了完整事件名表与两条 ⚠️）、§4.3 事件图、附录 E 沙盘 |
 
-### 扩展（2 处）
+### 扩展（2 处，已回写）
 
-| # | 设计书写的 | 本计划扩成 | 为什么 |
-|---|---|---|---|
-| 1 | §5.10：`be-sdk-events-go`（reserve，Go 事件 SDK） | **`be-sdk-go` / `be-sdk-python` / `be-sdk-ts`，必需件，SOP-L 十项横切能力** | 事件只占 10 项里的 3 项。`Endpoint` 剥 scheme、`WithTx` 的 `SET LOCAL`、OTel 的 Blackhole 降级这几项，每个组件各写一遍必然有人写错——**而写错的那两处恰好是设计书自己点名的「最难查的雷」**。它不是「公共 model 包」：零业务逻辑、零组件 model、零组件间引用，已加进 import 扫描白名单 |
-| 2 | §5.10 / §2.4：`be-ops` 的端口册（产出 6）只管 61 个组件 | **端口册纳入带外容器端口** | 外壳把端口发布到宿主机后，组件端口与带外容器端口在**同一个宿主机端口空间**里，两边会真撞（修正 1、2 就是这么发现的）。只管 61 个组件的端口册发现不了这四处 |
+| # | 设计书原本写的 | 已扩成 | 为什么 | 回写到设计书哪里 |
+|---|---|---|---|---|
+| 1 | §5.10：`be-sdk-events-go`（reserve，Go 事件 SDK） | **`be-sdk-go` / `be-sdk-python` / `be-sdk-ts`，必需件，SOP-L 十项横切能力** | 事件只占 10 项里的 3 项。`Endpoint` 剥 scheme、`WithTx` 的 `SET LOCAL`、OTel 的 Blackhole 降级这几项，每个组件各写一遍必然有人写错——**而写错的那两处恰好是设计书自己点名的「最难查的雷」**。它不是「公共 model 包」：零业务逻辑、零组件 model、零组件间引用，已加进 import 扫描白名单 | §5.10 新增「`be-sdk-*`」小节（含十项能力表）、附录 H 第 72 行、决策 100 |
+| 2 | §5.10 / §2.4：`be-ops` 的端口册（产出 6）只管 61 个组件 | **端口册纳入带外容器的宿主机端口** | 外壳把端口发布到宿主机后，组件端口与带外容器端口在**同一个宿主机端口空间**里，两边会真撞（修正 1、2 就是这么发现的）。只管 61 个组件的端口册发现不了这四处 | §3.5.1.1（含 `slot:frontend` 族共用 80 的唯一例外）、§5.10 产出 6、附录 I「全局端口册」、决策 99 |
+
+### 另外补进设计书的一处（不是修正，是原本缺的一档）
+
+**§9.6.1 的「档 4」拆成「档 4a 补齐 default」与「档 4b 铺货」**，并补了一张表说明那 5 个 `default` 组件（`infra-storage` / `infra-attachment` / `infra-dlq-monitor` / `mdm-supplier` / `mdm-org`）为什么不能等客户点名。同时把档 2 出档条件里的「DLQ 进得去出得来」标注清楚——`infra-dlq-monitor` 在档 4a，档 2 验的是**平台 SDK 层的死信通道本身**，管理界面留到 4a。对应新增**决策 101**。
 
 ---
 
