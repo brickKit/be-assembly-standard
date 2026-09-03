@@ -281,8 +281,8 @@ Traefik 还多一条：平台的 Manifest **没有 volumes 字段**，网关的�
 | 2 | NATS | **A** `kind: mq` | nats:2.10-alpine | 4222 / 8222 | ✅ 默认 | 所有需要事件的组件 | 组件读 `MQ_HOST` / `MQ_PORT` |
 | 3 | Traefik | **B** 带外 | traefik:v3.0 | 80 / 443 / **28080** | ✅ 默认 | 所有外部流量 | 平台没有 `gateway` 这个 kind，也挂不了配置文件。⚠️ Dashboard 端口从 8080 挪到 28080，理由见本表下方 |
 | 4 | Casdoor | **B** 带外 | casbin/casdoor:latest | 8000 | ✅ 默认 | 浏览器（OIDC 直连） | 平台没有 `iam` 这个 kind。适配层 `infra-iam-casdoor` 是形态 C |
-| 5 | RustFS | **A** `kind: storage` | rustfs/rustfs:latest | 9000 | ✅ 默认 | infra-attachment / infra-storage | 组件读 `STORAGE_ENDPOINT`（含端口） |
-| 6 | MinIO | **A** `engine: minio` | minio/minio:latest | 9000 / 9001 | ❌ 可选 | 同上 | 替换 RustFS。两边都写 `engine: minio`（S3 兼容），**只改 host/port/凭据，真正零改动**（§2.7.3.1） |
+| 5 | RustFS | **A** `kind: storage, engine: s3` | rustfs/rustfs:latest | 9000 | ✅ **默认** | infra-attachment / infra-storage | 组件读 `STORAGE_ENDPOINT`（裸 `host:port`，**没有 scheme**，§2.1） |
+| 6 | MinIO | **A** 同上（`engine: s3`） | minio/minio:latest | 9000 / 9001 | ❌ 可选 | 同上 | 替换 RustFS。`engine` 两边都是 `s3`，**只改 host/port/凭据，真正零改动**（§2.7.3.1） |
 | 7 | Keycloak | **B** 带外 | quay.io/keycloak/keycloak:latest | **28081** | ❌ 可选 | 同上 | 替换 Casdoor，同时换 `slot:iam` 适配层组件。⚠️ 从 8080 挪开，理由见本表下方 |
 | 8 | Kafka | **A** `engine: kafka` | confluentinc/cp-kafka:latest | **29092** | ❌ 可选 | 同上 | 替换 NATS。⚠️ **不是「改一个字段」**：`engine` 逐字参与匹配，58 份 `component.yaml` 都要改，且客户端库不同（§2.7.3.1）。端口从 9092 挪开，理由见本表下方 |
 | 9 | RabbitMQ | **A** `engine: rabbitmq` | rabbitmq:3.13-management | 5672 / 15672 | ❌ 可选 | 同上 | 同上。RabbitMQ 才有 `MQ_VHOST`，NATS/Kafka 不写这一格 |
@@ -428,11 +428,36 @@ hostPortOffset = 10000  // 首选端口 = 10000 + 容器端口（5432 → 15432�
 
 **这道闸门是平台有意留的**：项目里同时有 postgres 与 mysql 时，它是平台唯一能看出「组件要的和管理员绑的不是同一样东西」的依据。代价是那个词要在**两个人写的两份文件**里逐字相同。
 
+#### `engine` 该写能力名还是产品名：看协议兼容不兼容
+
+既然 `engine` 是自由字符串、平台只做逐字比对，那**这个词写什么就成了一个设计决定**：
+
+| 情形 | `engine` 写什么 | 为什么 |
+| --- | --- | --- |
+| **协议兼容，换实现代码零改动** | **能力名** | 写能力名，换实现就真的只改 `host`/`port`/凭据，Manifest 一个字不动 |
+| **协议不兼容，换实现是一次迁移** | **产品名** | 写产品名，换实现时**平台会主动阻断**——那正是我们要的：它逼人走 runbook，而不是改完配置以为完事、到运行时才发现客户端库连不上 |
+
+**照这条判据，本项目的三个资源分别是：**
+
+| 资源 | `engine` | 默认实现 | 替换件 | 换实现的代价 |
+| --- | --- | --- | --- | --- |
+| `kind: storage` | **`s3`**（能力名） | **RustFS** | MinIO / AWS S3 / 阿里云 OSS | **零改动**：全都 S3 兼容，`infra-storage` 走 S3 SDK。只改 `host`/`port`/凭据 |
+| `kind: mq` | **`nats`**（产品名） | NATS (JetStream) | Kafka / RabbitMQ | 一次迁移。**平台会阻断，这是刻意的** |
+| `kind: database` | **`postgresql`**（产品名） | PostgreSQL 16 | 无 | 不在支持范围（决策 3 依赖 PG 特性） |
+
+⚠️ **storage 的 `engine` 写 `s3`，不写 `rustfs` 也不写 `minio`。**
+
+- 写 `rustfs` → 换 MinIO 要改 `brickkit.yaml` **加**所有声明了 storage 的组件，而这两个东西的协议完全一样，那次改动纯属自找
+- 写 `minio` → 我们默认跑的是 RustFS，声明里却写着另一个产品的名字，读的人会以为装错了
+- 写 `s3` → 名副其实：**我们要的就是「一个 S3 兼容的对象存储」**，RustFS 只是当前选的那一个（决策 73）
+
+（brickKit `006` §2.1 给 storage 举的常见 engine 正是 `minio、s3`，`s3` 是它认得的写法。）
+
 **所以「换实现」的真实代价分三档，差别很大：**
 
 | 换什么 | 真实代价 |
 | --- | --- |
-| **对象存储**（RustFS ↔ MinIO ↔ S3 ↔ OSS） | **真正零改动。** 因为它们全都 S3 兼容，所以两边**统一写 `engine: minio`**（附录 G 第 5 行就是这么定的），换实现只改 `host` / `port` / 凭据。`infra-storage` 用 S3 SDK，代码一行不动 |
+| **对象存储**（RustFS ↔ MinIO ↔ S3 ↔ OSS） | **真正零改动。** 两边统一写 **`engine: s3`**（能力名，见上一小节），换实现只改 `host` / `port` / 凭据。`infra-storage` 用 S3 SDK，代码一行不动。**默认实现是 RustFS**（决策 73：Rust 实现、内存占用更低，适合本地化部署） |
 | **事件总线**（NATS → Kafka / RabbitMQ） | **要改两处，还要换 driver。** ① `brickkit.yaml` 的 `resources[].engine`；② **所有声明了 `kind: mq` 的组件的 `component.yaml`**（约 50 份）；③ **客户端库不同**（`nats.go` 连不上 Kafka），所以 `be-sdk-{go,python,ts}` 里要有一个 MQ driver 抽象，换引擎 = 换 driver 实现。**这不是配置变更，是一次带 runbook 的迁移** |
 | **数据库**（PostgreSQL → 其他） | **不在支持范围内。** 决策 3 已经把「共享单一 Database + 每组件独立 schema + `SET LOCAL ROLE`」钉死，那套写法依赖 PG 的特性（schema、`SET LOCAL`、分区表、`DETACH CONCURRENTLY`）。换库等于重做数据层 |
 
@@ -647,7 +672,7 @@ brickkit up
 ### 3.4 业务组件的"可替换"铁律
 
 - **基础资源级替换**：事件总线（NATS / Kafka / RabbitMQ）、对象存储（RustFS / MinIO / S3）在 brickKit 里是**基础资源**，不是组件。组件通过平台注入的 `MQ_*` / `STORAGE_*` 连接。
-  ⚠️ **但换实现的代价分两种，差别很大**：对象存储换实现**真正零改动**（都 S3 兼容，两边都写 `engine: minio`，只改 host/port/凭据）；事件总线换实现要改**所有组件的 `component.yaml`**（`engine` 逐字参与匹配）**加换 SDK driver**（客户端库不同）。完整说明见 §2.7.3.1。
+  ⚠️ **但换实现的代价分两种，差别很大**：对象存储换实现**真正零改动**（`engine` 写能力名 `s3`，默认实现 RustFS，只改 host/port/凭据）；事件总线换实现要改**所有组件的 `component.yaml`**（`engine` 写产品名 `nats`，逐字参与匹配）**加换 SDK driver**（客户端库不同）。判据与完整说明见 §2.7.3.1。
 - **基础设施（强 Slot，代码级替换）**：如 IAM，Casdoor 和 Keycloak 代码完全不同，但都实现了 OIDC 协议。装配时互斥选一，换砖走 runbook。
   ⚠️ **前提是业务组件不能对它有依赖边。** 平台的依赖只能写精确组件 ID，注入的变量名由 ID 推导（依赖 `infra/iam-casdoor` 拿到的是 `INFRA_IAM_CASDOOR_ENDPOINT`）——变量名里带着实现的名字。所以业务组件一律走 **JWT 本地验签**（公钥从 `configSchema` 进来），对 IAM **不声明任何依赖**。这不是将就，这正是决策 16「JWT 携带权限 Claims，本地鉴权」本来就要的形状。
 - **外部集成（Channel，多选并存）**：如 IM、支付、电子签。一个系统完全可以同时装配钉钉+企微、支付宝+微信+Stripe、e签宝+DocuSign。它们不是互斥关系，而是并行通道，由 `infra-notification`（IM 场景）或业务组件（支付/电子签场景）按场景调度。
@@ -1438,15 +1463,46 @@ NATS/Kafka/RabbitMQ 三选一。按聚合根划分通道，避免 Topic 爆炸�
 
    ⚠️ **更正旧版说法**：两个组件写同一个 `hostname` **不是**静默打架，CLI 在生成阶段就硬报错（`checkHostnameUnique`），`expose: true` 却漏写 `hostname` 也一样报错。平台在这件事上守得很紧——它拒绝的不是"发现冲突"，而是"按路径分流"这个语义本身。所以结论不变：网关当不了组件，路由表归 `be-ops`。
 
-#### 6.3.1 路由表的两个出口
+#### 6.3.1 路由表的**三个**出口
 
-`be-ops` 读各组件 `assembly.yaml` 的 `edge_routes`，按**组件是否进外壳**分流：
+> ⚠️ **本节旧版写的是「两个出口」，其中「独立容器 → `brickkit.yaml` 的 `components[].labels`，平台透传进 compose service」这一条是行不通的。** 原因见下方 ⚠️⚠️。
 
-| 组件形态 | 产出到哪 | 阶段一/二的量 |
-| --- | --- | --- |
-| 被合并进外壳（`local: true`） | **我们那份 shell-compose 的 service `labels`** | 约 45 个组件 |
-| 独立容器 | `brickkit.yaml` 的 `components[].labels`，平台透传进 compose service | 约 7~8 个组件 |
-| K8s 全拆（阶段三） | **带外 Traefik Ingress / IngressRoute 清单** | 全部 |
+`be-ops` 读各组件 `assembly.yaml` 的 `edge_routes`，按**组件跑在哪一份 compose 里**分流：
+
+| 组件形态 | 在哪一份 compose | 产出到哪 | Traefik 怎么发现它 |
+| --- | --- | --- | --- |
+| 被合并进外壳（`local: true`） | 第 3 份 `shell-compose.yml`（我们的） | shell-compose 的 service **`labels`** | **Docker Provider**（同在 `be-net` 上） |
+| **平台生成的独立容器**（`infra-bff-mobile`、`frontend-standard`） | 第 2 份 `.brickkit/` 下的 compose（**平台的**） | **Traefik 的 file provider 动态配置**，`url` 指向 `http://<宿主机地址>:<exposePort>` | **File Provider**（Docker Provider 看不到它，见下） |
+| K8s 全拆（阶段三） | —— | **带外 Traefik Ingress / IngressRoute 清单** | Kubernetes Provider |
+
+⚠️⚠️ **为什么第二行不能用 `components[].labels`：平台生成的 compose 自己建一个 bridge 网络，而且没有任何配置项能让它接进外部网络。**
+
+实测 brickKit `internal/compose/compose.go`：
+
+```go
+networks := map[string]any{
+    networkAlias: map[string]any{           // networkAlias = "brickkit-net"
+        "name":   networkName(cfg.Project),  // 项目名派生，非 external
+        "driver": "bridge",
+    },
+}
+```
+
+`brickkit.yaml` 里**没有** `networks` / `externalNetworks` 这类字段（`config.Config` 只有 `project` / `deploy` / `sources` / `components` / `resources` / `installer`）。所以：
+
+- Traefik 在第 1 份 compose 里、挂 `be-net`；平台生成的容器在它自己的 `brickkit_<项目名>` 网络上
+- **Traefik 的 Docker Provider 只能看到与它同网络的容器** → 平台生成的容器上挂 labels，Traefik **一条都读不到**
+- 症状：**容器全 healthy，网关 404**。而 `components[].labels` 明明写对了、`docker inspect` 也看得见——最难查的一类
+
+**正确做法（三步）：**
+
+1. 那两个组件在 `brickkit.yaml` 里写 **`expose: true` + `exposePort`**，平台把 `<exposePort>:<deployment.port>` 发布到宿主机（实测 `internal/compose/local.go` 的 `hostPortsOf`）
+2. `be-ops` 产出一份 **Traefik file provider 的动态配置**（不是 labels），`service.loadBalancer.servers[].url` 写 `http://<宿主机地址>:<exposePort>`
+3. Traefik 的静态配置里**同时**启用 `docker` 与 `file` 两个 provider
+
+**`exposePort` 因此必须进全局端口册**（§3.5.1.1）：它是宿主机端口，和外壳发布的端口、带外容器的端口活在同一个空间里。
+
+⚠️ **这一条应当作为平台改进请求提给 brickKit**：`deploy.docker` 下加一个 `externalNetworks: [be-net]`，让生成的 compose 能接进已有网络。那样第二行就能回退成简单的 `components[].labels`。**按 §9.6.2 的纪律，先在 `be-acceptance` 记一条用例（现在是红的），再回 brickKit 仓库提。**
 
 ⚠️ **`local: true` 的组件不生成容器，没有可以挂标签的对象**——产出到那些条目上的 labels 一行都不会出现在生成物里。平台会警告并点名那几个键（不是静默失效），但 `be-ops` 不能靠这个警告过日子，必须自己分流。
 
@@ -1848,7 +1904,7 @@ erp-sales/
 | 70 | 会计期间控制（Period Lock）是 `erp-finance` 的核心职责 | 已关账期间严禁修改历史单据，这是 ERP 区别于普通进销存的灵魂 | 月结后数据被篡改，财务报表不可信 |
 | 71 | 不引入 Redis：JWT 无状态 + 本地摘要副本 + PG 行级锁 + 网关限流已覆盖所有场景 | 减少运维复杂度，本地化部署资源有限 | 引入 Redis 增加一个必须维护的基础资源，违背克制哲学 |
 | 72 | 不引入 Consul/etcd/Zookeeper：路由表生成期聚合，不需要运行时服务发现 | 静态可审计，无额外依赖 | 引入服务发现增加运维复杂度 |
-| 73 | 对象存储底座默认使用 RustFS（Rust 实现，内存占用更低），可通过部署配置替换为 MinIO，`infra-storage` 代码零改动 | 两者均兼容 S3 API，底层替换对上层透明；本地化部署资源有限，RustFS 更轻量 | 为换存储而改业务代码 |
+| 73 | 对象存储底座默认使用 **RustFS**（Rust 实现，内存占用更低），可替换为 MinIO / S3 / OSS，`infra-storage` 代码零改动。**`engine` 一律写能力名 `s3`，不写产品名**（§2.7.3.1） | 两者均兼容 S3 API，底层替换对上层透明；本地化部署资源有限，RustFS 更轻量。`engine` 参与逐字匹配，写产品名会让「换实现」白白多改几十份 Manifest | 为换存储而改业务代码；以及把 `engine` 写成 `rustfs`/`minio`，换实现时才发现要改 58 份 `component.yaml` |
 | 74 | 前端是可替换的组件，参与 `brickkit.yaml` 装配，装配角色为 `slot:frontend` | 前端由平台方开发，客户提需求我们修改；可以提供多套前端让客户选择 | 前端由客户从零开始写，重复劳动且质量不一致 |
 | 75 | 【已修改】核心商业逻辑归后端，表单交互归前端 | 价格/库存等核心资产校验必须在后端防资损；表单联动在前端保体验 | 前端硬编码算钱导致资损，或所有联动都发请求导致网络延迟与后端接口爆炸 |
 | 76 | 多端分流采用"默认策略 + 例外规则"：移动端默认走 BFF/GraphQL，PC 端默认走 REST；但允许移动端简单页面走 REST，PC 端复杂聚合页走 BFF/GraphQL | 按"简单资源访问/复杂聚合视图"划分，而非按"PC/移动端"绝对划分 | 一刀切导致简单页面也走 BFF 增加复杂度 |
@@ -1880,8 +1936,9 @@ erp-sales/
 | 102 | **参考实现三步法**：先自己按四把尺子设计一版 → 理不清的地方才去看现实 ERP 怎么实现 → 回来自己想清楚再写（§3.2.1）。闭源产品看不到源码，但它们「哪些功能客户天天用、哪些从来不点」的信息在选配测试上比源码更有价值 | 凭空设计的领域模型漏掉的边界情形，要到客户上线三个月后才暴露。但顺序反了也不行——空着脑袋去读别人的实现只会照搬，而我们的技术栈（Go vs Java/Python/PHP）与组件边界（独立进程独立 schema vs 同进程同库）都完全不同，照搬既不可能也不该 | ① 自己发明一套订单状态机，半年后发现漏了「部分发货 + 部分退货」；② 反过来，照着 Odoo 的模块划分抄一遍，把「所有模块同进程同库」这个我们要避开的通病一起搬进来 |
 | 103 | **设计模式不强制、但适合就必须用**；判据是「让这段逻辑更容易被读懂和扩展，还是更难」。已确定要用的九处（定价链、订单状态表、单据类型策略、凭证翻译器、通道注册表、渲染后端、薪资项拓扑、Saga 命令、`be-ops` 产出）见总纲 §4 SOP-P | 一个长文件变成结构化的多个短文件之后，只要有设计模式基础就能快速理解并扩展——对人如此，对每次新开会话的 AI 更是如此 | ① 一条 `if-elif` 链长到 20 个分支，加一种折扣要改一个 800 行的函数；② 反过来，纯 CRUD 也套三层抽象，读的人要多翻四个文件才看到一句 `INSERT` |
 | 104 | **组件清单是活的**：本书是"在还没实现任何组件的情况下"尽力做出的划分，实现反馈会新增组件、改组件边界、甚至改组件结构。**发现"多个成熟 ERP 各给一种实现且都合理、只是适配客户不同"时，那是新槽位族的信号——先回本书新增族，再实现**（§5.11.1） | 最终目标是"我们自己有一套默认 ERP，但每个功能组件都可以有多种实现，客户按需选择，甚至基于最接近的那个做闭源二次开发"。族越贴合真实分歧，客户 Fork 的起点越接近他要的东西，我们后期二次开发的时间越少 | ① 把四种成本核算法塞进一个组件写 `if costingMethod ==`，最后每个客户的需求在同一份代码里互相牵制；② 反过来，把"单据编号规则"这种本该是配置项的东西也做成族，凭空多出三个仓库 |
-| 105 | **`resources[].engine` 逐字参与匹配**，所以「换基础资源实现」不是「改一个字段」：对象存储真正零改动（都 S3 兼容，两边统一写 `engine: minio`），事件总线要改 ~50 份 `component.yaml` + 换 SDK driver，数据库不在支持范围内（§2.7.3.1） | 平台靠 `kind` 决定注入哪组变量，靠 `engine` 逐字相等判断「组件要的和管理员绑的是不是同一样东西」。它不认别名——`postgres` 与 `postgresql` 是两个不同的值 | 照旧版那句「改一个字段、组件代码与 Manifest 零改动」去换 Kafka，`brickkit up` 当场阻断；而报错说的是「engine 写的不一样」，与「零改动」的预期完全对不上 |
+| 105 | **`resources[].engine` 逐字参与匹配**，所以这个词写什么是个设计决定：**协议兼容的写能力名**（storage → `s3`，换 RustFS↔MinIO↔S3 零改动），**协议不兼容的写产品名**（mq → `nats`，换 Kafka 时让平台主动阻断，因为那本来就是一次迁移）。数据库写 `postgresql`，不在替换范围（§2.7.3.1） | 平台靠 `kind` 决定注入哪组变量，靠 `engine` 逐字相等判断「组件要的和管理员绑的是不是同一样东西」。它不认别名——`postgres` 与 `postgresql` 是两个不同的值 | 照旧版那句「改一个字段、组件代码与 Manifest 零改动」去换 Kafka，`brickkit up` 当场阻断；而报错说的是「engine 写的不一样」，与「零改动」的预期完全对不上 |
 | 106 | **带外容器的宿主机端口一律用 `2xxxx` 段**，`1xxxx` 整段留给平台（§2.7.1） | brickKit 给 `local: true` 组件及其依赖做宿主机映射时首选 `10000 + 容器端口`、fallback 从 `28080` 起递增扫描。我们的组件端口 8080/8081/9090/9092 恰好对应 28080/28081/29090/29092，而那正是带外容器官方默认端口挪开后最自然的落点 | 把 Traefik Dashboard 放 28080，等到第一次给 local 组件做调试映射时才发现平台也要这个端口——那时报的是 `CodePortConflict`，而两边配置看上去都没毛病 |
+| 107 | **平台生成的 compose 接不进外部网络**，所以路由表有**三个**出口：进外壳的走 shell-compose 的 `labels`（Docker Provider）、**平台生成的独立容器走 `expose: true` + `exposePort` + Traefik file provider**、K8s 走带外 Ingress（§6.3.1） | 平台生成的 compose 自建一个非 external 的 bridge 网络，`brickkit.yaml` 里没有任何字段能改。Traefik 的 Docker Provider 只看得见同网络的容器，所以 `components[].labels` 上的路由标签它一条都读不到 | 照旧版「独立容器 → `components[].labels`」去做：labels 写对了、`docker inspect` 也看得见，而**网关 404、容器全 healthy**——最难查的一类。连带：`exposePort` 必须进全局端口册；`resources[].host` 只能写 `host.docker.internal` |
 
 ## 第 11 章 · 数据生命周期与冷热分层治理
 
@@ -2460,7 +2517,13 @@ PG 的连接绑死两样东西：**一个 database、一个认证角色**。所�
 
 外壳一必须最先起：主数据在里面，其余四个外壳的模块启动时要对它做校准对账（`batchGet`）。这层顺序**平台一个字都不会排**——它不认识外壳。
 
-⚠️ **三份 compose 必须挂同一个 external network。** Traefik 的 Docker Provider 只能看到与它同网络的容器；外壳在第 3 份文件里、Traefik 在第 1 份里，不显式声明共享网络的话，`be-ops` 产出的路由 labels **Traefik 一条都读不到**——症状是网关返回 404 而容器全是 healthy。做法：在第 1 份里 `docker network create be-net` 并声明 `external: true`，另两份都接进来。
+⚠️ **第 1 份与第 3 份必须挂同一个 external network `be-net`；第 2 份（平台产物）做不到。**
+
+Traefik 的 Docker Provider 只能看到与它同网络的容器。外壳在第 3 份、Traefik 在第 1 份，不显式声明共享网络的话，`be-ops` 产出的路由 labels **Traefik 一条都读不到**——症状是网关返回 404 而容器全是 healthy。做法：`docker network create be-net`，第 1、3 份都声明 `external: true` 接进来。
+
+⚠️ **但第 2 份接不进来：平台生成的 compose 自己建一个非 external 的 bridge 网络，`brickkit.yaml` 里没有任何字段能改这件事**（实测 `internal/compose/compose.go`）。所以第 2 份里那两个容器（`infra-bff-mobile`、`frontend-standard`）只能靠 **`expose: true` + `exposePort` 把端口发布到宿主机**，再由 `be-ops` 产出一份 **Traefik file provider 动态配置**指向 `http://<宿主机地址>:<exposePort>`。完整说明见 §6.3.1。
+
+⚠️ **同理，`brickkit.yaml` 的 `resources[].host` 只能写 `host.docker.internal`**（而不是 `be-postgres` 这种容器名）——平台生成的容器不在 `be-net` 上，解析不到我们那些容器的名字。这也正是 brickKit `006` §10.4 的建议。
 
 ---
 
@@ -2668,8 +2731,8 @@ flowchart TB
 | 2 | NATS | **A** | `kind: mq, engine: nats` | nats:2.10-alpine | 4222, 8222 | ✅ | curl :8222/healthz | nats_data:/data |
 | 3 | Traefik | **B** | —（带外） | traefik:v3.0 | 80, 443, **28080** | ✅ | traefik healthcheck --ping | 无（配置挂载） |
 | 4 | Casdoor | **B** | —（带外） | casbin/casdoor:latest | 8000 | ✅ | curl :8000/api/health | 配置挂载 |
-| 5 | RustFS | **A** | `kind: storage, engine: minio`（S3 兼容） | rustfs/rustfs:latest | 9000 | ✅ | curl :9000/health/live | rustfs_data:/data |
-| 6 | MinIO | **A** | 同上，换 `engine` | minio/minio:latest | 9000, 9001 | ❌ | curl :9000/minio/health/live | minio_data:/data |
+| 5 | RustFS | **A** | `kind: storage, engine: s3` | rustfs/rustfs:latest | 9000 | ✅ **默认** | curl :9000/health/live | rustfs_data:/data |
+| 6 | MinIO | **A** | 同上（`engine: s3` 不变） | minio/minio:latest | 9000, 9001 | ❌ | curl :9000/minio/health/live | minio_data:/data |
 | 7 | Keycloak | **B** | —（带外） | quay.io/keycloak/keycloak:latest | **28081** | ❌ | curl :9000/health/ready | 配置挂载 |
 | 8 | Kafka | **A** | `kind: mq, engine: kafka` | confluentinc/cp-kafka:latest | **29092** | ❌ | kafka-topics --list | kafka_data |
 | 9 | RabbitMQ | **A** | `kind: mq, engine: rabbitmq` | rabbitmq:3.13-management | 5672, 15672 | ❌ | rabbitmq-diagnostics -q ping | rmq_data |
