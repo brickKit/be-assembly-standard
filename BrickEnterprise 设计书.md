@@ -115,6 +115,16 @@ ERP_SALES_GRPC_ENDPOINT=http://erp-sales-1-0-0:9090   # extraPorts 里那个 nam
 
 额外端口的变量名是 `{组件ID推导的前缀}_{额外端口名大写}_ENDPOINT`。**gRPC 客户端拿到这个值必须自己剥掉 scheme**（`strings.TrimPrefix(v, "http://")`）——`grpc.Dial("http://host:9090")` 连不上，而报错信息指向名称解析，非常难联想到是这里。这一条写进每个组件的 SDK/基础库，只做一次。
 
+⚠️⚠️ **但「恒为 `http://` 开头」只对「组件依赖的地址」成立，资源变量不是这样。** 平台注入资源连接信息时用的是另一套值（brickKit `internal/inject`）：
+
+| 变量 | 值的格式 | 例 |
+| --- | --- | --- |
+| `{组件前缀}_ENDPOINT` / `{组件前缀}_{端口名}_ENDPOINT` | **带 scheme** `http://<版本化服务名>:<端口>` | `http://mdm-customer-1-0-0:9090` |
+| **`STORAGE_ENDPOINT`** | **裸 `host:port`，没有 scheme** | `host.docker.internal:9000` |
+| `DATABASE_HOST` / `DATABASE_PORT` / `MQ_HOST` / `MQ_PORT` / `SEARCH_HOST` / `SMTP_HOST` … | 主机与端口**分开两个变量** | —— |
+
+**`STORAGE_ENDPOINT` 是唯一一个名字里带 `ENDPOINT`、却不带 scheme 的**。S3 SDK 通常要一个完整 URL，所以基础库里对它的处理与组件地址**正好相反：要加 scheme，不是剥**。两个函数必须分开，不能共用一个（§附录 I「地址格式」）。
+
 **多端分流原则（默认策略 + 例外规则）：**
 
 默认情况下：
@@ -255,7 +265,7 @@ frontend-standard/                      # 默认前端组件（平台方开发�
 
 | 形态 | 平台怎么看它 | 怎么声明 | 换实现的动作 | 本节里的例子 |
 | --- | --- | --- | --- | --- |
-| **A. brickKit 基础资源** | 认识它，注入连接变量 | `brickkit.yaml` 的 `resources` | 改 `engine` 一个字段 | PostgreSQL、NATS/Kafka/RabbitMQ、RustFS/MinIO |
+| **A. brickKit 基础资源** | 认识它，注入连接变量 | `brickkit.yaml` 的 `resources` | 见 §2.7.3.1（⚠️ **不是「改一个字段」**） | PostgreSQL、NATS/Kafka/RabbitMQ、RustFS/MinIO |
 | **B. 带外容器** | **完全不知道它存在** | 我们自己的 `docker-compose.infra.yml` | 改我们那份 compose | Traefik/Nginx、Casdoor/Keycloak、Grafana 全家桶 |
 | **C. 组件** | 普通组件 | `brickkit.yaml` 的 `components` | 改装哪一个 | `infra-storage`、`infra-attachment`、`infra-iam-casdoor` 适配层 |
 
@@ -269,32 +279,46 @@ Traefik 还多一条：平台的 Manifest **没有 volumes 字段**，网关的�
 |---|---|---|---|---|---|---|---|
 | 1 | PostgreSQL | **A** `kind: database` | postgres:16-alpine | 5432 | ✅ 默认 | 所有组件 | 共享单一 Database + 每组件独立 Schema |
 | 2 | NATS | **A** `kind: mq` | nats:2.10-alpine | 4222 / 8222 | ✅ 默认 | 所有需要事件的组件 | 组件读 `MQ_HOST` / `MQ_PORT` |
-| 3 | Traefik | **B** 带外 | traefik:v3.0 | 80 / 443 / **18080** | ✅ 默认 | 所有外部流量 | 平台没有 `gateway` 这个 kind，也挂不了配置文件。⚠️ Dashboard 端口从 8080 挪到 18080，理由见本表下方 |
+| 3 | Traefik | **B** 带外 | traefik:v3.0 | 80 / 443 / **28080** | ✅ 默认 | 所有外部流量 | 平台没有 `gateway` 这个 kind，也挂不了配置文件。⚠️ Dashboard 端口从 8080 挪到 28080，理由见本表下方 |
 | 4 | Casdoor | **B** 带外 | casbin/casdoor:latest | 8000 | ✅ 默认 | 浏览器（OIDC 直连） | 平台没有 `iam` 这个 kind。适配层 `infra-iam-casdoor` 是形态 C |
 | 5 | RustFS | **A** `kind: storage` | rustfs/rustfs:latest | 9000 | ✅ 默认 | infra-attachment / infra-storage | 组件读 `STORAGE_ENDPOINT`（含端口） |
-| 6 | MinIO | **A** `engine: minio` | minio/minio:latest | 9000 / 9001 | ❌ 可选 | 同上 | 替换 RustFS，改 `engine` 一个字段 |
-| 7 | Keycloak | **B** 带外 | quay.io/keycloak/keycloak:latest | **18081** | ❌ 可选 | 同上 | 替换 Casdoor，同时换 `slot:iam` 适配层组件。⚠️ 从 8080 挪开，理由见本表下方 |
-| 8 | Kafka | **A** `engine: kafka` | confluentinc/cp-kafka:latest | **19092** | ❌ 可选 | 同上 | 替换 NATS，改 `engine` 一个字段。⚠️ 从 9092 挪开，理由见本表下方 |
+| 6 | MinIO | **A** `engine: minio` | minio/minio:latest | 9000 / 9001 | ❌ 可选 | 同上 | 替换 RustFS。两边都写 `engine: minio`（S3 兼容），**只改 host/port/凭据，真正零改动**（§2.7.3.1） |
+| 7 | Keycloak | **B** 带外 | quay.io/keycloak/keycloak:latest | **28081** | ❌ 可选 | 同上 | 替换 Casdoor，同时换 `slot:iam` 适配层组件。⚠️ 从 8080 挪开，理由见本表下方 |
+| 8 | Kafka | **A** `engine: kafka` | confluentinc/cp-kafka:latest | **29092** | ❌ 可选 | 同上 | 替换 NATS。⚠️ **不是「改一个字段」**：`engine` 逐字参与匹配，58 份 `component.yaml` 都要改，且客户端库不同（§2.7.3.1）。端口从 9092 挪开，理由见本表下方 |
 | 9 | RabbitMQ | **A** `engine: rabbitmq` | rabbitmq:3.13-management | 5672 / 15672 | ❌ 可选 | 同上 | 同上。RabbitMQ 才有 `MQ_VHOST`，NATS/Kafka 不写这一格 |
 | 10 | Nginx | **B** 带外 | nginx:1.25-alpine | 80 / 443 | ❌ 可选 | 同上 | 替换 Traefik |
 | 11 | OTel Collector | **B** 带外 | otel/opentelemetry-collector-contrib:latest | 4317 / 4318 | ❌ 可选 | 所有组件（可观测性） | 平台没有 `telemetry` 这个 kind；且它要挂 `config.yaml`。不装时组件走 Blackhole Exporter |
-| 12 | Prometheus | **B** 带外 | prom/prometheus:latest | **19090** | ❌ 可选 | OTel Collector | 同上，指标后端。⚠️ 从 9090 挪开，理由见本表下方 |
+| 12 | Prometheus | **B** 带外 | prom/prometheus:latest | **29090** | ❌ 可选 | OTel Collector | 同上，指标后端。⚠️ 从 9090 挪开，理由见本表下方 |
 | 13 | Loki | **B** 带外 | grafana/loki:latest | 3100 | ❌ 可选 | OTel Collector | 同上，日志后端 |
 | 14 | Tempo | **B** 带外 | grafana/tempo:latest | 3200 | ❌ 可选 | OTel Collector | 同上，链路追踪后端 |
 | 15 | Grafana | **B** 带外 | grafana/grafana:latest | 3000 | ❌ 可选 | 运维人员 | 同上，可观测性展示 |
 
 ⚠️ **上表里 Traefik / Keycloak / Kafka / Prometheus 四行的端口，是从各自的官方默认值挪开的。**
 
-原因是**合并部署**：外壳必须把端口发布到宿主机（`extra_hosts` 指向 `host-gateway`，§13.1），于是组件端口与带外容器端口活在**同一个宿主机端口空间**里。按官方默认值会撞四处：
+原因有两层，**第二层只有读平台代码才能发现**：
+
+**第一层 · 撞组件端口。** 外壳必须把端口发布到宿主机（`extra_hosts` 指向 `host-gateway`，§13.1），于是组件端口与带外容器端口活在**同一个宿主机端口空间**里：Traefik Dashboard 与 Keycloak 的官方默认 `8080` 撞外壳一 `mdm-customer` 的 HTTP；Prometheus 的 `9090` 撞它的 gRPC；Kafka 的 `9092` 撞 `mdm-product` 的 gRPC。
+
+**第二层 · `1xxxx` 整段归平台。** brickKit 给 `local: true` 组件与它们的依赖做宿主机端口映射时，用的是一套固定约定（`internal/compose/local.go`）：
+
+```go
+localPortBase  = 8081   // local 组件自己监听端口的起点
+hostPortBase   = 18080  // 映射到宿主机时的 fallback 扫描起点
+hostPortOffset = 10000  // 首选端口 = 10000 + 容器端口（5432 → 15432、8080 → 18080）
+```
+
+所以**我们的组件端口全都对应一个平台会去占的 `1xxxx` 端口**：8080 → **18080**、8081 → **18081**、9090 → **19090**、9092 → **19092**。而那四个数，**恰好就是把带外容器从官方默认端口挪开时最自然的落点**——我第一版就是这么选的，然后正撞在平台头上。撞上时平台报 `CodePortConflict`，或退回从 18080 起递增扫描。
+
+**结论：带外容器一律用 `2xxxx` 段**，既高于 `10000 + 组件端口` 的上界（组件端口最大 9221 → 19221），也远离 `18080` 起的实际扫描范围：
 
 | 官方默认 | 撞谁 | 挪到 |
 | --- | --- | --- |
-| Traefik Dashboard `8080` | 外壳一 `mdm-customer` 的 HTTP | **18080** |
-| Keycloak `8080` | 同上 | **18081** |
-| Prometheus `9090` | 外壳一 `mdm-customer` 的 gRPC | **19090** |
-| Kafka `9092` | 外壳一 `mdm-product` 的 gRPC | **19092** |
+| Traefik Dashboard `8080` | `mdm-customer` HTTP，且 `18080` 是平台给 8080 的首选映射 | **28080** |
+| Keycloak `8080` | 同上，且 `18081` 是平台给 8081（`mdm-supplier`）的首选映射 | **28081** |
+| Prometheus `9090` | `mdm-customer` gRPC，且 `19090` 是平台给 9090 的首选映射 | **29090** |
+| Kafka `9092` | `mdm-product` gRPC，且 `19092` 是平台给 9092 的首选映射 | **29092** |
 
-⚠️ **连带结论：`be-ops` 的全局端口册（§5.10 产出 6）必须把带外容器的端口一起纳进来**，不能只管 61 个组件。只管组件的端口册发现不了这四处——而它们要到第一次把外壳端口发布到宿主机的那一刻才炸，那时 gRPC 端口已经写进 61 份 `component.yaml`、改不动了（§3.5.1.1）。
+⚠️ **连带结论：`be-ops` 的全局端口册（§5.10 产出 6）必须同时纳入带外容器端口，并把 `1xxxx` 整段标为平台保留。** 只管 61 个组件的端口册发现不了这些——而它们要到第一次把外壳端口发布到宿主机、或第一次给 local 组件做调试映射的那一刻才炸，那时 gRPC 端口已经写进 61 份 `component.yaml`、改不动了（§3.5.1.1）。
 
 ⚠️ **第 11~15 行全部是形态 B，一个组件都没有。** 它们和网关同一个理由：纯官方镜像 + 必须挂配置文件。按 §5.11 的判据（这一层有没有我们自己的代码），答案是没有——所以旧版里的 `infra-otel-collector` 与 `infra-grafana-stack` 两个组件仓库**已删除**，见 5.1 表下的说明。可观测性在 `brickkit.yaml` 里一个字都不写。
 
@@ -312,7 +336,7 @@ Traefik 还多一条：平台的 Manifest **没有 volumes 字段**，网关的�
 | 连接与切换 | ⚠️ **必须用 `SET LOCAL`，不能用 `SET`**：<br>`BEGIN; SET LOCAL ROLE {组件角色}; SET LOCAL search_path TO {组件schema}; … COMMIT;`<br>`SET LOCAL` 在事务结束时自动还原，连接干净地回到池里。用不带 `LOCAL` 的 `SET` 之后把连接还回共享池，**下一个借用者会原样继承它——A 组件的查询打在 B 组件的表上，不报错、不崩，只是悄悄读写了别人的数据**。这是这套写法唯一的雷，也是最难查的一个 |
 | 配置要点 | 设置 `POSTGRES_PASSWORD`；每个外壳一个共享登录角色、进程内一个全局连接池，5 大外壳共 5 个池，`max_connections=300` 足够支撑全量组件；数据目录挂载持久卷 |
 | 健康检查 | `pg_isready -h localhost -p 5432` |
-| 初始化 | ⚠️ **平台不建库、不建 schema、不建 role**（`006` §9.5：建库要 `CREATEDB` 权限，让每个组件的运行期账号都有它是全平台提权；且 PG 不能在一个库内部创建它自己）。`brickkit up` 只会**打印**出本次需要预先创建的库和建库语句。<br>实际动作：由 `be-ops` 产出建置脚本（`CREATE DATABASE brickkit_db` + 每组件 `CREATE SCHEMA` / `CREATE ROLE` / 授权 + 5 个外壳登录角色），运维**执行一次** |
+| 初始化 | ⚠️ **平台不建库、不建 schema、不建 role**（`006` §9.5：建库要 `CREATEDB` 权限，让每个组件的运行期账号都有它是全平台提权；且 PG 不能在一个库内部创建它自己）。`brickkit up` 只会**打印**出本次需要预先创建的库和建库语句。<br>实际动作：由 `be-ops` 产出建置脚本（`CREATE DATABASE brickkit_db` + 每组件 `CREATE SCHEMA` / `CREATE ROLE` / 授权 + 5 个外壳登录角色），运维**执行一次**。<br>⚠️ **另有一件容易漏的**：`brickkit.yaml` 里每个资源的 `bindings` **必须逐组件列出 `componentId`**——声明了资源依赖却没绑定，`up` 会阻断（`006` §4.4）。合并态下这意味着 **5 条 PostgreSQL 资源条目**（同 host、5 个外壳登录角色的不同凭据），每条带着该外壳内组件的 bindings。`DATABASE_NAME` 注入的是 binding 上的 `database` 字段，全系统都写 `brickkit_db`；**schema 不走 binding**，走组件自己 `configSchema` 的 `pgSchema` |
 | ⏰ 时序性 | **这个决定必须在建库之前做完。** 库一旦按"一组件一 database"建好、数据进去了，再改成一库多 schema 就是一次数据迁移（brickKit `006` §9.5） |
 
 **② NATS — 事件总线（默认）**
@@ -324,14 +348,14 @@ Traefik 还多一条：平台的 Manifest **没有 volumes 字段**，网关的�
 | 用途 | 所有异步事件的发布/订阅通道。在 brickKit 里是 `kind: mq, engine: nats` **基础资源**，不是组件——我们一行代码都不写 |
 | 配置要点 | 启用 JetStream（`--jetstream`）；数据目录挂载持久卷；设置 `max_payload=8MB` |
 | 健康检查 | `curl http://localhost:8222/healthz` |
-| 替换件 | 改 `brickkit.yaml` 里 `resources[].engine` 为 `kafka` / `rabbitmq`，**组件代码与 Manifest 零改动**，见 2.7.3 |
+| 替换件 | 换 Kafka / RabbitMQ **不是「改一个字段」**：`engine` 逐字参与匹配，两边必须同时改；且客户端库不同。完整代价见 §2.7.3.1 |
 
 **③ Traefik — API 网关（默认）**
 
 | 项目 | 说明 |
 |---|---|
 | 镜像 | traefik:v3.0 |
-| 端口 | 80（HTTP）/ 443（HTTPS）/ **18080**（Dashboard，从 8080 挪开，见 2.7.1） |
+| 端口 | 80（HTTP）/ 443（HTTPS）/ **28080**（Dashboard，从 8080 挪开，见 2.7.1） |
 | 用途 | PC 端与移动端流量的唯一入口。统一验签（401）；组件管鉴权（403）；多端分流（移动端 → BFF，PC 端 → 后端组件） |
 | 路由从哪来 | ⚠️ **不是 `brickkit up` 生成的**（平台不做 path 路由）。由 `be-ops` 在生成期聚合各组件 `assembly.yaml` 的 `edge_routes`，产出成容器 labels，Traefik 的 Docker Provider 读取。两个出口见 6.3 |
 | 配置要点 | 启用 Docker Provider（读取容器 Labels）；配置 `ForwardAuth` 中间件对接 Casdoor；启用 Dashboard（开发环境）。⚠️ Traefik 自身作为**带外容器**运行，不进 `brickkit.yaml` |
@@ -391,6 +415,35 @@ Traefik 还多一条：平台的 Manifest **没有 volumes 字段**，网关的�
 
 ⚠️ **这个配置项不能叫 `otelEndpoint`。** 它会变成环境变量 `OTEL_ENDPOINT`，命中平台保留后缀 `*_ENDPOINT`，被**跳过并只给一条警告**（`004` §5.6.1）——组件拿不到地址，而 `up` 一路绿灯。`_ENDPOINT` 结尾这个坑对所有组件都成立，不只是这一个。
 
+#### 2.7.3.1 ⚠️ 「换实现改一个字段」是错的：`engine` 逐字参与匹配
+
+本书旧版在多处写着「换事件总线只改 `brickkit.yaml` 里 `resources[].engine` 一个字段，组件代码与 Manifest 零改动」。**那句话与平台实现直接矛盾，实现按的是逐字匹配**（brickKit `006` §2.2、§4.4）：
+
+| | 决定注入哪组变量 | 参与匹配 |
+| --- | --- | --- |
+| `kind` | ✅ `database` → `DATABASE_*`、`mq` → `MQ_*` | ✅ |
+| `engine` | ❌ 平台不认识 rabbitmq 与 kafka 有什么不同 | ✅ **逐字相等** |
+
+组件在 `dependencies.resources` 里写 `engine: nats`，项目在 `resources` 里写 `engine: kafka`，平台认为**这不是同一样东西**，`brickkit up` 直接阻断。它不认别名、不做归一化——`postgres` 与 `postgresql` 在它眼里就是两个不同的值。
+
+**这道闸门是平台有意留的**：项目里同时有 postgres 与 mysql 时，它是平台唯一能看出「组件要的和管理员绑的不是同一样东西」的依据。代价是那个词要在**两个人写的两份文件**里逐字相同。
+
+**所以「换实现」的真实代价分三档，差别很大：**
+
+| 换什么 | 真实代价 |
+| --- | --- |
+| **对象存储**（RustFS ↔ MinIO ↔ S3 ↔ OSS） | **真正零改动。** 因为它们全都 S3 兼容，所以两边**统一写 `engine: minio`**（附录 G 第 5 行就是这么定的），换实现只改 `host` / `port` / 凭据。`infra-storage` 用 S3 SDK，代码一行不动 |
+| **事件总线**（NATS → Kafka / RabbitMQ） | **要改两处，还要换 driver。** ① `brickkit.yaml` 的 `resources[].engine`；② **所有声明了 `kind: mq` 的组件的 `component.yaml`**（约 50 份）；③ **客户端库不同**（`nats.go` 连不上 Kafka），所以 `be-sdk-{go,python,ts}` 里要有一个 MQ driver 抽象，换引擎 = 换 driver 实现。**这不是配置变更，是一次带 runbook 的迁移** |
+| **数据库**（PostgreSQL → 其他） | **不在支持范围内。** 决策 3 已经把「共享单一 Database + 每组件独立 schema + `SET LOCAL ROLE`」钉死，那套写法依赖 PG 的特性（schema、`SET LOCAL`、分区表、`DETACH CONCURRENTLY`）。换库等于重做数据层 |
+
+**连带的三条设计要求：**
+
+1. **`be-sdk-*` 必须有一个 MQ driver 抽象**（`Publish` / `Consume` 接口 + 一个 NATS 实现）。这正是总纲 §4 SOP-P 的策略模式场景：一种引擎一个文件。**默认只实现 NATS**——按选配测试，Kafka 与 RabbitMQ 等第一个客户点名再写（§9.6.1 阶段六）。
+2. **`be-ops` 生成 `brickkit.yaml` 时，必须校验「项目 `resources[].engine` 与每个绑定组件声明的 `engine` 逐字相等」**，并在不等时报错点名两个词。平台会拦，但那时已经到 `up` 了；生成期拦掉更早。
+3. **换引擎的 runbook 要写进交付文档**，与 `slot` 换砖的 runbook（§5.11）并列。
+
+⚠️ **不要因为这一条就把事件总线包成组件。** 决策 86 的理由仍然成立：那一层我们零代码，包成组件只会让「换实现」从「改两处 + 换 driver」变成「改两处 + 换 driver + 多维护一个空壳仓库」。
+
 #### 2.7.4 明确排除的基础资源（不需要部署）
 
 | 资源 | 为什么不需要 | 替代方案 |
@@ -444,7 +497,7 @@ services:
     ports:
       - "80:80"
       - "443:443"
-      - "18080:18080"      # Dashboard。原 8080 撞外壳一的 mdm-customer，见 2.7.1
+      - "28080:28080"      # Dashboard。原 8080 撞外壳一的 mdm-customer，见 2.7.1
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
       - ./traefik/traefik.yml:/etc/traefik/traefik.yml:ro
@@ -589,11 +642,12 @@ brickkit up
 
 ⚠️ **装配角色是我们的概念，不是 brickKit 的概念。** 平台的 Manifest 里没有 `assembly_role` 这类字段，也不会为它做任何事——它记在组件的 `assembly.yaml` 里（见 3.5），由 `be-ops` 在生成 `brickkit.yaml` 时消费：`default` 全装、`optional` 按勾选、`slot` 做互斥校验、`channel` 允许多选、`reserve` / `blueprint` 不进装配。
 
-⚠️ **不是所有"可替换"都是 `slot`。** 事件总线、对象存储这类**没有我们自己代码**的东西，在 brickKit 里是**基础资源**（`resources[].engine`），换实现只改一个字段，根本不进组件清单。判据见 5.11。
+⚠️ **不是所有"可替换"都是 `slot`。** 事件总线、对象存储这类**没有我们自己代码**的东西，在 brickKit 里是**基础资源**（`resources[].engine`），根本不进组件清单。⚠️ 但「换实现」并不像字面那么便宜——`engine` 逐字参与匹配，代价见 §2.7.3.1。判据见 5.11。
 
 ### 3.4 业务组件的"可替换"铁律
 
-- **基础资源级替换（改一个字段）**：事件总线（NATS / Kafka / RabbitMQ）、对象存储（RustFS / MinIO / S3）在 brickKit 里是**基础资源**，不是组件。组件通过平台注入的 `MQ_*` / `STORAGE_*` 连接，换实现只改 `brickkit.yaml` 里 `resources[].engine` 一个字段，**组件代码与 Manifest 零改动**。
+- **基础资源级替换**：事件总线（NATS / Kafka / RabbitMQ）、对象存储（RustFS / MinIO / S3）在 brickKit 里是**基础资源**，不是组件。组件通过平台注入的 `MQ_*` / `STORAGE_*` 连接。
+  ⚠️ **但换实现的代价分两种，差别很大**：对象存储换实现**真正零改动**（都 S3 兼容，两边都写 `engine: minio`，只改 host/port/凭据）；事件总线换实现要改**所有组件的 `component.yaml`**（`engine` 逐字参与匹配）**加换 SDK driver**（客户端库不同）。完整说明见 §2.7.3.1。
 - **基础设施（强 Slot，代码级替换）**：如 IAM，Casdoor 和 Keycloak 代码完全不同，但都实现了 OIDC 协议。装配时互斥选一，换砖走 runbook。
   ⚠️ **前提是业务组件不能对它有依赖边。** 平台的依赖只能写精确组件 ID，注入的变量名由 ID 推导（依赖 `infra/iam-casdoor` 拿到的是 `INFRA_IAM_CASDOOR_ENDPOINT`）——变量名里带着实现的名字。所以业务组件一律走 **JWT 本地验签**（公钥从 `configSchema` 进来），对 IAM **不声明任何依赖**。这不是将就，这正是决策 16「JWT 携带权限 Claims，本地鉴权」本来就要的形状。
 - **外部集成（Channel，多选并存）**：如 IM、支付、电子签。一个系统完全可以同时装配钉钉+企微、支付宝+微信+Stripe、e签宝+DocuSign。它们不是互斥关系，而是并行通道，由 `infra-notification`（IM 场景）或业务组件（支付/电子签场景）按场景调度。
@@ -1233,6 +1287,16 @@ brickKit 是刻意极简的：不做网关、不做路由聚合、不建库建 s
 
 ⚠️ **生成器铁律一：`labels` 的值必须是字符串。** Docker labels 与 K8s annotations 两边都只收字符串，平台**不做自动转换**。布尔与数字一律带引号产出：`"true"` / `"8080"`。
 
+⚠️ **连带一条：有三组 label 键归平台所有，写了当场报错**（不是静默丢弃，brickKit `internal/manifest/labels.go`）：
+
+| 键 | 为什么不能碰 |
+| --- | --- |
+| `brickkit.io/*` | 平台自己的命名空间（组件 ID、版本、项目名都记在这里） |
+| `com.docker.compose.*` | docker compose 自己写的标签，覆盖后 compose 认不出自己生成的容器 |
+| `app` | K8s 下 Deployment 找到自己 Pod 的唯一依据，也是 NetworkPolicy 的匹配依据 |
+
+我们实际要产出的 `prometheus.io/*`（第 7 章）与 `traefik.http.*`（6.3.2）都不在这三组里，安全。**但 `be-ops` 的生成器要显式拦住这三组**——将来有人想加一条 `app: erp-sales` 时，报错来自平台会比来自我们晚一步。
+
 ⚠️ **生成器铁律二：没买的组件要从 `brickkit.yaml` 里整条删掉，不能写 `enabled: false`。** 两者不等价：
 
 | 写法 | 平台行为 |
@@ -1252,7 +1316,7 @@ brickKit 是刻意极简的：不做网关、不做路由聚合、不建库建 s
 
 | 情形 | 形态 | 换实现的动作 | 例子 |
 | --- | --- | --- | --- |
-| 纯官方镜像，我们零代码 | **基础资源** | 改 `brickkit.yaml` 的 `resources[].engine` | 事件总线、对象存储底座 |
+| 纯官方镜像，我们零代码 | **基础资源** | 改 `brickkit.yaml` 的 `resources[].engine`，**并同步改所有组件 `component.yaml` 里的同一个词**（§2.7.3.1） | 事件总线、对象存储底座 |
 | 需要挂配置文件 / 需要 path 路由 | **带外容器** | 改 `docker-compose.infra.yml` | 网关（Traefik / Nginx） |
 | 有我们的代码，且**没有任何组件依赖它** | **组件 · slot** | 改 `brickkit.yaml` 里装哪一个 | `slot:iam`、`slot:frontend`、`slot:payroll` |
 | 有我们的代码，且**有组件依赖它** | 不允许做成 slot | —— | 见下 |
@@ -1353,7 +1417,9 @@ NATS/Kafka/RabbitMQ 三选一。按聚合根划分通道，避免 Topic 爆炸�
 
 **实现方式：纯官方镜像，零代码——因此它是基础资源，不是组件。**
 
-组件在 `component.yaml` 里声明 `dependencies.resources: [{ kind: mq, engine: nats }]`，平台注入 `MQ_HOST` / `MQ_PORT` / `MQ_USER` / `MQ_PASSWORD`。换 Kafka 或 RabbitMQ 只改 `brickkit.yaml` 里 `resources[].engine` 一个字段，**组件代码与 Manifest 零改动**。
+组件在 `component.yaml` 里声明 `dependencies.resources: [{ kind: mq, engine: nats }]`，平台注入 `MQ_HOST` / `MQ_PORT` / `MQ_USER` / `MQ_PASSWORD`。
+
+⚠️ **换 Kafka 或 RabbitMQ 不是「改一个字段」**——`engine` 在平台里**逐字参与匹配**，组件写 `nats` 而项目写 `kafka` 时 `up` 直接阻断。完整代价与 runbook 见 §2.7.3.1。
 
 ⚠️ `MQ_VHOST` 是 RabbitMQ 的概念，NATS 与 Kafka 没有 vhost——绑定里不写这一格即可（空值不注入）。
 
@@ -1795,7 +1861,7 @@ erp-sales/
 | 83 | **已并入决策 3** | — | — |
 | 84 | 组件的两份 yaml：`component.yaml` 只写平台认识的字段，装配语义全部放 `assembly.yaml`，靠 `artifacts: type: metadata` 随组件分发 | 平台的 Manifest 没有扩展字段机制，未知键**当场报错**；而平台永远不读的字段放在平台文件里也校验不了，放我们自己的文件里 `be-ops` 能严格卡 | 照旧版 §3.5 写出来的 `component.yaml` 一个都跑不起来 |
 | 85 | Fork 件的 `metadata.id` 与 `version` **必须与标准件一致**，靠 `sources` 声明顺序遮蔽 | 平台注入的变量名由组件 ID 推导。改 id = 所有依赖方的 `*_ENDPOINT` 整个消失 | 改 id 导致整条 Fork 机制垮掉，每个依赖方都要改 Manifest 和源码 |
-| 86 | 事件总线与对象存储底座降级为**基础资源**（`kind: mq` / `kind: storage`），网关降级为**带外容器** | 我们零代码的东西不该包成组件：包了之后"换实现"从改一个字段变成改几十个 Manifest。网关另有物理限制（无 volumes、无 path 路由） | infra 域凭空多出 5 个只有壳的仓库，而且换实现极贵 |
+| 86 | 事件总线与对象存储底座降级为**基础资源**（`kind: mq` / `kind: storage`），网关降级为**带外容器** | 我们零代码的东西不该包成组件：包了之后除了原本的代价还要多维护一个空壳仓库。网关另有物理限制（无 volumes、无 path 路由） | infra 域凭空多出 5 个只有壳的仓库。⚠️ **本条旧版的理由写的是「换实现从改一个字段变成改几十个 Manifest」，那句话是错的**——`engine` 逐字参与匹配，换事件总线本来就要改所有组件的 Manifest（§2.7.3.1）。结论不变，理由要按新的那条说 |
 | 87 | 业务组件对 `slot:iam` **不建依赖边**，一律 JWT 本地验签 | 平台的依赖变量名带着实现的名字（`INFRA_IAM_CASDOOR_ENDPOINT`）。一旦建了依赖边，slot 就名存实亡 | 换 IAM 要改几十个仓库的 Manifest 加源码 |
 | 88 | 合并部署只用于 Docker 单机交付，**上 K8s 就是全拆** | `local: true` 只能配 `deploy.target: docker`，K8s 目标下 CLI 在生成阶段直接报错；K8s 上做部分合并就用不了 `brickkit up` | 承诺一条不存在的中间态，交付现场才发现 |
 | 89 | `be-ops` 是交付关键路径上的必需件，不是 `reserve` | 平台不做的那**八**件事（路由聚合、建库脚本、features 清单、外壳编排、`brickkit.yaml` 生成、全局端口册、每外壳环境变量表、外壳间启动顺序）活不会消失，只是没人认领 | 设计书把这些活默认成"brickKit 会做"，到现场没人干 |
@@ -1808,12 +1874,14 @@ erp-sales/
 | 96 | **`be-acceptance` 升为必需件**，第一批用例的被测对象是 **brickKit 本身**（§9.6.2） | 我们既是平台作者又是它第一个真实用户；平台升级后重跑这批用例就是回归测试 | 平台某条断言悄悄变了，而 61 个组件已经照旧版写完了 |
 | 97 | **可观测性全家桶降为带外容器**，`infra-otel-collector` / `infra-grafana-stack` 两个组件仓库删除（§2.7.3、§7.5） | 与网关同一个判据（§5.11）：纯官方镜像 + 必须挂 `config.yaml`，而 Manifest 没有 volumes。这一层没有我们的代码 | infra 域凭空多出两个只有壳的仓库；以及旧版 §7.5 那三个不存在的 `slot:*-backend` |
 | 98 | **聚合型组件（BFF / notification）的依赖全部 `optional: true`；客户没买的组件整条不写进 `brickkit.yaml`，而不是 `enabled: false`** | 一条写成强依赖，客户没买那个组件时整个 BFF 起不来；`enabled: false` 会把下游主数据一起级联关掉 | "客户只买 5 个组件"在物理上做不到，或者关掉 hrm 顺带把 mdm 关了 |
-| 99 | **全局端口册纳入带外容器的宿主机端口**，不只管 61 个组件（§2.7.1、§3.5.1.1、§5.10 产出 6） | 外壳要把端口发布到宿主机（§13.1），组件端口与带外容器端口活在同一个宿主机端口空间里。按官方默认值有四处真撞：Traefik Dashboard 8080 ⚔ `mdm-customer` HTTP、Keycloak 8080 ⚔ 同上、Prometheus 9090 ⚔ `mdm-customer` gRPC、Kafka 9092 ⚔ `mdm-product` gRPC。已分别挪到 18080 / 18081 / 19090 / 19092 | 只管组件的端口册看不见这四处，而它们要到第一次把外壳端口发布到宿主机才炸——那时 gRPC 端口已写进 61 份 Manifest、改不动了 |
+| 99 | **全局端口册纳入带外容器的宿主机端口**，不只管 61 个组件（§2.7.1、§3.5.1.1、§5.10 产出 6） | 外壳要把端口发布到宿主机（§13.1），组件端口与带外容器端口活在同一个宿主机端口空间里。按官方默认值有四处真撞：Traefik Dashboard 8080 ⚔ `mdm-customer` HTTP、Keycloak 8080 ⚔ 同上、Prometheus 9090 ⚔ `mdm-customer` gRPC、Kafka 9092 ⚔ `mdm-product` gRPC。已分别挪到 28080 / 28081 / 29090 / 29092 | 只管组件的端口册看不见这四处，而它们要到第一次把外壳端口发布到宿主机才炸——那时 gRPC 端口已写进 61 份 Manifest、改不动了 |
 | 100 | **`be-sdk-{go,python,ts}` 是必需件**，不是 `reserve`，也不只管事件（§5.10） | 本书点名"最难查"的两处——`grpc.Dial("http://…")` 连不上、不带 `LOCAL` 的 `SET` 跨组件串数据——都是**每个组件各写一遍就必然有人写错**的那种。它不是公共 model 包：零业务逻辑、零组件 model，是 import 扫描的唯一白名单 | 58 个组件里只要有一个把 `SET LOCAL` 写成 `SET`，就会悄悄读写别人的数据，不报错不崩 |
 | 101 | **档 4 拆成 4a / 4b：`default` 角色的 5 个组件不等客户点名**（§9.6.1） | `infra-storage` / `infra-attachment` / `infra-dlq-monitor` / `mdm-supplier` / `mdm-org` 的装配角色都是 `default`——"系统运行的基石，默认必选"（§3.3）。它们没进档 2 切片是因为切片只为验平台，不是因为它们可选 | 把 `default` 组件排进"等客户点名"的队列，交付时才发现附件传不了、DLQ 没人看、采购没有供应商主数据 |
 | 102 | **参考实现三步法**：先自己按四把尺子设计一版 → 理不清的地方才去看现实 ERP 怎么实现 → 回来自己想清楚再写（§3.2.1）。闭源产品看不到源码，但它们「哪些功能客户天天用、哪些从来不点」的信息在选配测试上比源码更有价值 | 凭空设计的领域模型漏掉的边界情形，要到客户上线三个月后才暴露。但顺序反了也不行——空着脑袋去读别人的实现只会照搬，而我们的技术栈（Go vs Java/Python/PHP）与组件边界（独立进程独立 schema vs 同进程同库）都完全不同，照搬既不可能也不该 | ① 自己发明一套订单状态机，半年后发现漏了「部分发货 + 部分退货」；② 反过来，照着 Odoo 的模块划分抄一遍，把「所有模块同进程同库」这个我们要避开的通病一起搬进来 |
 | 103 | **设计模式不强制、但适合就必须用**；判据是「让这段逻辑更容易被读懂和扩展，还是更难」。已确定要用的九处（定价链、订单状态表、单据类型策略、凭证翻译器、通道注册表、渲染后端、薪资项拓扑、Saga 命令、`be-ops` 产出）见总纲 §4 SOP-P | 一个长文件变成结构化的多个短文件之后，只要有设计模式基础就能快速理解并扩展——对人如此，对每次新开会话的 AI 更是如此 | ① 一条 `if-elif` 链长到 20 个分支，加一种折扣要改一个 800 行的函数；② 反过来，纯 CRUD 也套三层抽象，读的人要多翻四个文件才看到一句 `INSERT` |
 | 104 | **组件清单是活的**：本书是"在还没实现任何组件的情况下"尽力做出的划分，实现反馈会新增组件、改组件边界、甚至改组件结构。**发现"多个成熟 ERP 各给一种实现且都合理、只是适配客户不同"时，那是新槽位族的信号——先回本书新增族，再实现**（§5.11.1） | 最终目标是"我们自己有一套默认 ERP，但每个功能组件都可以有多种实现，客户按需选择，甚至基于最接近的那个做闭源二次开发"。族越贴合真实分歧，客户 Fork 的起点越接近他要的东西，我们后期二次开发的时间越少 | ① 把四种成本核算法塞进一个组件写 `if costingMethod ==`，最后每个客户的需求在同一份代码里互相牵制；② 反过来，把"单据编号规则"这种本该是配置项的东西也做成族，凭空多出三个仓库 |
+| 105 | **`resources[].engine` 逐字参与匹配**，所以「换基础资源实现」不是「改一个字段」：对象存储真正零改动（都 S3 兼容，两边统一写 `engine: minio`），事件总线要改 ~50 份 `component.yaml` + 换 SDK driver，数据库不在支持范围内（§2.7.3.1） | 平台靠 `kind` 决定注入哪组变量，靠 `engine` 逐字相等判断「组件要的和管理员绑的是不是同一样东西」。它不认别名——`postgres` 与 `postgresql` 是两个不同的值 | 照旧版那句「改一个字段、组件代码与 Manifest 零改动」去换 Kafka，`brickkit up` 当场阻断；而报错说的是「engine 写的不一样」，与「零改动」的预期完全对不上 |
+| 106 | **带外容器的宿主机端口一律用 `2xxxx` 段**，`1xxxx` 整段留给平台（§2.7.1） | brickKit 给 `local: true` 组件及其依赖做宿主机映射时首选 `10000 + 容器端口`、fallback 从 `28080` 起递增扫描。我们的组件端口 8080/8081/9090/9092 恰好对应 28080/28081/29090/29092，而那正是带外容器官方默认端口挪开后最自然的落点 | 把 Traefik Dashboard 放 28080，等到第一次给 local 组件做调试映射时才发现平台也要这个端口——那时报的是 `CodePortConflict`，而两边配置看上去都没毛病 |
 
 ## 第 11 章 · 数据生命周期与冷热分层治理
 
@@ -2598,16 +2666,16 @@ flowchart TB
 |---|---|---|---|---|---|---|---|---|
 | 1 | PostgreSQL | **A** | `kind: database, engine: postgresql` | postgres:16-alpine | 5432 | ✅ | pg_isready | pg_data:/var/lib/postgresql/data |
 | 2 | NATS | **A** | `kind: mq, engine: nats` | nats:2.10-alpine | 4222, 8222 | ✅ | curl :8222/healthz | nats_data:/data |
-| 3 | Traefik | **B** | —（带外） | traefik:v3.0 | 80, 443, **18080** | ✅ | traefik healthcheck --ping | 无（配置挂载） |
+| 3 | Traefik | **B** | —（带外） | traefik:v3.0 | 80, 443, **28080** | ✅ | traefik healthcheck --ping | 无（配置挂载） |
 | 4 | Casdoor | **B** | —（带外） | casbin/casdoor:latest | 8000 | ✅ | curl :8000/api/health | 配置挂载 |
 | 5 | RustFS | **A** | `kind: storage, engine: minio`（S3 兼容） | rustfs/rustfs:latest | 9000 | ✅ | curl :9000/health/live | rustfs_data:/data |
 | 6 | MinIO | **A** | 同上，换 `engine` | minio/minio:latest | 9000, 9001 | ❌ | curl :9000/minio/health/live | minio_data:/data |
-| 7 | Keycloak | **B** | —（带外） | quay.io/keycloak/keycloak:latest | **18081** | ❌ | curl :9000/health/ready | 配置挂载 |
-| 8 | Kafka | **A** | `kind: mq, engine: kafka` | confluentinc/cp-kafka:latest | **19092** | ❌ | kafka-topics --list | kafka_data |
+| 7 | Keycloak | **B** | —（带外） | quay.io/keycloak/keycloak:latest | **28081** | ❌ | curl :9000/health/ready | 配置挂载 |
+| 8 | Kafka | **A** | `kind: mq, engine: kafka` | confluentinc/cp-kafka:latest | **29092** | ❌ | kafka-topics --list | kafka_data |
 | 9 | RabbitMQ | **A** | `kind: mq, engine: rabbitmq` | rabbitmq:3.13-management | 5672, 15672 | ❌ | rabbitmq-diagnostics -q ping | rmq_data |
 | 10 | Nginx | **B** | —（带外） | nginx:1.25-alpine | 80, 443 | ❌ | curl -f :80 | 配置挂载 |
 | 11 | OTel Collector | **B** | —（带外） | otel/opentelemetry-collector-contrib:latest | 4317, 4318 | ❌ | curl :13133/ | 无 |
-| 12 | Prometheus | **B** | —（带外） | prom/prometheus:latest | **19090** | ❌ | curl :9090/-/healthy | prom_data:/prometheus |
+| 12 | Prometheus | **B** | —（带外） | prom/prometheus:latest | **29090** | ❌ | curl :9090/-/healthy | prom_data:/prometheus |
 | 13 | Loki | **B** | —（带外） | grafana/loki:latest | 3100 | ❌ | curl :3100/ready | loki_data |
 | 14 | Tempo | **B** | —（带外） | grafana/tempo:latest | 3200 | ❌ | curl :3200/ready | tempo_data |
 | 15 | Grafana | **B** | —（带外） | grafana/grafana:latest | 3000 | ❌ | curl :3000/api/health | grafana_data:/var/lib/grafana |
@@ -2765,7 +2833,7 @@ flowchart TB
 | `component.yaml` | brickKit 的 Manifest，**平台读的那一份**。字段是封闭的，未知键当场报错。见 3.5.1 |
 | `assembly.yaml` | 我们的装配元数据，**只有 `be-ops` 读**。靠 `artifacts: type: metadata` 随组件分发，平台只搬运不打开 |
 | `be-ops` | 装配生成器。认领平台明确不做的四件事：路由表聚合、数据库建置脚本、features 清单、外壳合并配置。交付关键路径（5.10） |
-| 形态 A / B / C | 基础设施的三种形态：A = brickKit 基础资源（`resources`，改 `engine` 换实现）、B = 带外容器（平台完全不知道它存在）、C = 组件。判据见 2.7.0 与 5.11 |
+| 形态 A / B / C | 基础设施的三种形态：A = brickKit 基础资源（写在 `resources` 里，平台注入连接变量）、B = 带外容器（平台完全不知道它存在）、C = 组件。判据见 2.7.0 与 5.11。⚠️ A 类「换实现」的真实代价见 2.7.3.1 |
 | 带外容器 | 不在 `brickkit.yaml` 里、由我们自己的 `docker-compose.infra.yml` 拉起的容器。网关与 IAM 官方镜像属于此类——平台的资源 kind 是封闭清单，没有 `gateway` / `iam` |
 | labels 透传 | 平台把 `deployment.labels` / `components[].labels` 原样搬进生成物（Docker → service labels，K8s → Deployment 与 Pod 的 annotations），**不解释键值**。网关路由与 Prometheus 抓取靠它落地。值必须是字符串 |
 | 版本化服务名 | 组件 ID 转换 + 精确版本：`/` 和 `.` → `-`、全小写、接版本号。`erp/sales@1.0.0` → `erp-sales-1-0-0`。Docker 与 K8s 完全一样 |
