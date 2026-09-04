@@ -938,7 +938,7 @@ menus: []
 摒弃跨组件共享 UI 组件的幻想，前后端边界只传递数据契约。
 
 - **真相源封装**：后端组件维护 `contracts/` 目录（Protobuf 或 OpenAPI）。
-- **代码生成/编写**：通过现有工具链（如 Go 的 `protoc`、`sqlc`；TypeScript 的 `openapi-typescript`）或 AI，根据契约变更生成/编写 TypeScript Interface、React Query Hooks，并提交至前端组件仓库的 `packages/` 下。严禁为了代码生成而自研工具链。
+- **代码生成/编写**：通过现有工具链（如 Go 的 `protoc`、`sqlc`；TypeScript 的 `openapi-typescript`）或 AI，根据契约变更生成/编写 TypeScript Interface 与 **Vue Query（`@tanstack/vue-query`）** 的 Hooks，并提交至前端组件仓库的 `packages/` 下。（⚠️ 旧版这里写的是「React Query Hooks」，与决策 79「坚决排除 React」冲突，已更正。）严禁为了代码生成而自研工具链。
 - **消费约束**：前端开发者严禁手写 `fetch('/api/sales')`，必须使用生成的 SDK。
 
 ### 3.10 事件纪律
@@ -964,8 +964,11 @@ menus: []
 | 6 | **契约向后兼容** | `make contract-check` → `buf breaking` / `oasdiff` | 平台**不内置**契约校验命令（决策 47）。严禁破坏性变更，放行兼容性追加 |
 | 7 | **组件间无 import**（铁律六） | `make import-check` | Go 用 `go list -deps` / Python 用 `grimp`，发现任何一条指向**另一个组件仓库**的边就红。这是阶段三还拆得回去的唯一保障（§13.3 铁律六） |
 | 8 | **单砖能独立起来**（原则一） | `make smoke` | 只装这一个组件（连同强依赖树）`brickkit up`，然后 `curl` 打 HTTP、**`grpcurl` 打 gRPC**、`/healthz` 转 healthy。跑不通就不是一块砖（§1.5 原则一、§9.6 档 0） |
+| 9 | **模块能被合进来**（铁律七） | `make module-check` | ① `module.New` 的签名与 §12.5.1 逐字一致；② `cmd/` 之外零 `os.Getenv` / `os.environ`；③ 零 `log.Fatal` / `os.Exit` / `sys.exit`；④ 零 `SetTracerProvider` / `basicConfig` / 信号处理器 / 默认 Prometheus registry；⑤ 依赖里没有 §12.4 为**本组件这门语言**禁掉的库（Go：echo/fiber/chi、gorm、lib/pq；Python：flask/django、同步 `grpc`、sqlalchemy、alembic、gunicorn）。全是 grep 级的检查（§12.4、§12.5、§13.3 铁律七） |
 
 第 7、8 条是这一版新增的，也是两条不可让渡原则（§1.5）在机器上的落点——**没有它们，那两条原则只是口号**。
+
+第 9 条守的是铁律七。它和第 7 条对称：**第 7 条守「拆得回去」，第 9 条守「合得进来」**，而它拦的那几样东西在单跑形态下全都是正确的——只有进外壳才错，那时已经有 21 份代码照旧版写完了（§12.5.2）。
 
 
 ## 第 4 章 · 交通规则：同步与事件
@@ -1271,6 +1274,7 @@ flowchart LR
 | **be-sdk-go**<br>**be-sdk-python**<br>**be-sdk-ts** | **必需（交付关键路径）**，三种语言各一份的**横切基础库**。见下方说明 |
 | **be-acceptance** | **必需（交付关键路径）**，验收测试：平台验收清单（9.6.2）+ 业务闭环用例 + §13.7 拆回门禁 + 铁律六 import 扫描 |
 | **be-ops** | **必需（交付关键路径）**，装配生成器。见下 |
+| **be-shell-go**<br>**be-shell-python** | **必需（交付关键路径）**，两个外壳启动器。它们**不是组件**（不进 `brickkit.yaml`、不在 61 里），但**是独立仓库**——外壳镜像是交付物，要能独立打 tag 与回滚。做的事只有一件：把 N 个模块的 `module.New`（§12.5.1）挂进一个进程，按拓扑序跑迁移、按各模块 `component.yaml` 的端口 `Listen`、持有进程内那些只能有一份的东西（§12.5.2）。**里面不许有任何业务逻辑**（§1.5 原则二） |
 
 **`be-sdk-*`：三个"最难查的雷"只许在一个地方处理**
 
@@ -1939,6 +1943,9 @@ erp-sales/
 | 105 | **`resources[].engine` 逐字参与匹配**，所以这个词写什么是个设计决定：**协议兼容的写能力名**（storage → `s3`，换 RustFS↔MinIO↔S3 零改动），**协议不兼容的写产品名**（mq → `nats`，换 Kafka 时让平台主动阻断，因为那本来就是一次迁移）。数据库写 `postgresql`，不在替换范围（§2.7.3.1） | 平台靠 `kind` 决定注入哪组变量，靠 `engine` 逐字相等判断「组件要的和管理员绑的是不是同一样东西」。它不认别名——`postgres` 与 `postgresql` 是两个不同的值 | 照旧版那句「改一个字段、组件代码与 Manifest 零改动」去换 Kafka，`brickkit up` 当场阻断；而报错说的是「engine 写的不一样」，与「零改动」的预期完全对不上 |
 | 106 | **带外容器的宿主机端口一律用 `2xxxx` 段**，`1xxxx` 整段留给平台（§2.7.1） | brickKit 给 `local: true` 组件及其依赖做宿主机映射时首选 `10000 + 容器端口`、fallback 从 `28080` 起递增扫描。我们的组件端口 8080/8081/9090/9092 恰好对应 28080/28081/29090/29092，而那正是带外容器官方默认端口挪开后最自然的落点 | 把 Traefik Dashboard 放 28080，等到第一次给 local 组件做调试映射时才发现平台也要这个端口——那时报的是 `CodePortConflict`，而两边配置看上去都没毛病 |
 | 107 | **平台生成的 compose 接不进外部网络**，所以路由表有**三个**出口：进外壳的走 shell-compose 的 `labels`（Docker Provider）、**平台生成的独立容器走 `expose: true` + `exposePort` + Traefik file provider**、K8s 走带外 Ingress（§6.3.1） | 平台生成的 compose 自建一个非 external 的 bridge 网络，`brickkit.yaml` 里没有任何字段能改。Traefik 的 Docker Provider 只看得见同网络的容器，所以 `components[].labels` 上的路由标签它一条都读不到 | 照旧版「独立容器 → `components[].labels`」去做：labels 写对了、`docker inspect` 也看得见，而**网关 404、容器全 healthy**——最难查的一类。连带：`exposePort` 必须进全局端口册；`resources[].host` 只能写 `host.docker.internal` |
+| 108 | **每种语言的技术栈逐格锁定**（§12.4）：Go = Gin + `database/sql`/`pgx stdlib` + `sqlc` + `golang-migrate`；Python = FastAPI + uvicorn 单进程 + **`grpc.aio`** + `asyncpg` + 手写 SQL + `yoyo-migrations`；指标一律**每模块一个 registry**。⚠️ **迁移那一格是「语言内统一」，其余是「全项目统一」**——外壳不跨语言，所以每个外壳的启动器只需认识自己那门语言的迁移工具 | §13.5 那句「只能合并同语言**同框架**的组件」以前没有任何地方展开过。展开之后发现分歧分三层：ASGI/WSGI、同步 gRPC、DB 驱动、迁移工具、默认 registry 这五格是**物理合不进去**；OTel/日志/信号/环境变量那几格是**起得来然后悄悄错**；只有 Gin 那一格是纪律锁（`gin.Engine` 就是个 `http.Handler`，混用能编译）。**理由要分清，否则将来有人以为 FastAPI 也只是偏好** | ① 用 Flask 写一个 Python 组件，做外壳那天才发现 WSGI 的同步 handler 拿不到共享的 asyncpg 池；② 两个模块都往默认 Prometheus registry 注册 `http_requests_total`，单跑 100% 正常，进外壳第二个模块起来就崩；③ **同一个外壳里**一个组件用 alembic、其余用裸 `.sql`，那个外壳的启动器要写两套迁移编排（跨外壳不同则无妨——这一格只在语言内是硬的） |
+| 109 | **模块入口契约**（§12.5、§13.3 铁律七）：每个后端组件导出唯一入口 `module.New(ctx, rt) (*besdk.Module, error)`（Python `create_module(rt)`），`main` 塌成 `besdk.RunStandalone(module.New)` 一行。**单跑与合并调同一个函数** | §1.5 原则二「合并只发生在部署形态上」如果单跑走 `main` 的一套装配、合并走外壳的另一套装配，就只是口号。**同一个入口是原则二唯一能被机器守住的形态**，也是 `be-ops` 产出 4（外壳合并配置）的生成对象。外壳只收 `http.Handler`，所以决策 108 的框架锁不会漏进外壳代码 | ① 61 个组件各自发明一个 `main`，合并那天 61 份装配代码全要重写；② §13.7 的拆回门禁半年后第一次真跑时全红，而当时已分不清是哪一处磨掉了组件性 |
+| 110 | **配置只能由调用方注入，模块代码里零 `os.Getenv`**（§12.5.3）；进程内单例（OTel provider、日志根、信号处理器、Prometheus registry、连接池）一律归外壳，模块**不许 `log.Fatal` / `os.Exit`** | §13.8.2 已经要求「外壳按模块持有各自的 env map」，可一个进程只有一份 `environ`——那句要求**只有在模块不碰 `os.Getenv` 时才成立**。撞的恰好都是不带 `_ENDPOINT` 的那些：`COMPONENT_ID`、`PG_SCHEMA`、以及每份 `configSchema` 里的每一项（`pgSchema`/`batchSize`/`otelBaseUrl` 同名很常见）。**本条更正旧版 §13.3 铁律一与总纲 SOP-B 的 B-8**——不许硬编码地址的意图没变，改的是「谁去读」 | ① 21 个模块的 `PG_SCHEMA` 互相顶掉，**不报错**，模块按别人的 schema 建表写数据——决策 3 那个「悄悄读写别人的数据」的第二条路径；② 一个模块启动时踩到可恢复的错就 `log.Fatal`，**整组 21 个组件一起没了**；③ 21 个模块的 trace 全挂在最后一个 `SetTracerProvider` 的 `service.name` 上，而一路全绿 |
 
 ## 第 11 章 · 数据生命周期与冷热分层治理
 
@@ -1994,7 +2001,7 @@ CREATE TABLE sales_orders_2026_02 PARTITION OF sales_orders
 
 两条都要做：
 
-1. 迁移工具显式配置目标 schema（golang-migrate 的 `x-migrations-table` + `search_path`，Alembic 的 `version_table_schema`）
+1. 迁移工具显式配置目标 schema（Go 侧 `golang-migrate` 的 `x-migrations-table` + `search_path`；Python 侧 `yoyo-migrations` 的 `--schema` / 连接串里的 `schema` 参数。工具按语言分，见 §12.4）
 2. 迁移状态表的**主键或表名必须含组件标识**（brickKit `002` §8.11 对"两个组件共用一个库"的硬性要求）
 
 ⚠️ 合并部署时这条更要紧：平台不为 `local: true` 的组件生成迁移容器，迁移由外壳启动器自己跑（13.3 铁律五），没有平台兜底。
@@ -2108,7 +2115,7 @@ CREATE TABLE sales_orders_2026_02 PARTITION OF sales_orders
 
 | 组件 | 推荐语言 | 核心理由 |
 |---|---|---|
-| `mdm-*` (customer/product 等) | Go | "只读枢纽 "，面临极高并发的读取请求。Go 配合 `sqlc` 或 `GORM`，性能极高，完美支撑全系统调用。 |
+| `mdm-*` (customer/product 等) | Go | "只读枢纽 "，面临极高并发的读取请求。Go 配合 `sqlc`（**§12.4 已锁定，不用 GORM**——ORM 要自己管连接与会话生命周期，和外壳的单一全局池打架），性能极高，完美支撑全系统调用。 |
 | `erp-sales` / `purchase` / `inventory` / `finance` | Go | "严谨强一致 "，涉及防超卖物理锁、Saga 补偿、高精度 Decimal 计算。需要强类型和极致的执行效率。 |
 | `erp-asset` / `quality` / `maintenance` | Go | 常规 CRUD 与状态机流转，保持与主系统技术栈一致。 |
 | `erp-manufacturing` (MRP 运算) | Python 🌟 | MRP 涉及复杂的树形 BOM 遍历和矩阵运算，Python (借助 NumPy/Pandas) 能让算法逻辑更清晰，AI 生成代码的准确率远高于 Go。 |
@@ -2211,6 +2218,142 @@ CREATE TABLE sales_orders_2026_02 PARTITION OF sales_orders
    | `healthCheck: { type: none }` | 平台不生成健康检查，依赖方的 `depends_on` 退化成"容器起来就算好"，启动顺序失去保障。**只在实在没办法时用** |
 
    症状长什么样：**组件日志写着"已就绪"，而平台说它不健康**，依赖方永远等不到它。
+
+---
+
+### 12.4 每种语言的统一技术栈（合并部署的前置条件）
+
+§13.5 那张代价表第一行写的是「**只能合并同语言同框架的组件**」。这一节把「同框架」展开成一张可以逐格核对的表——因为**框架名只是最表层的一格，真正卡死的是「一个进程里只能有一份」的那些东西**。
+
+#### 12.4.1 判据：把两个组件塞进一个进程，什么会坏
+
+按严重程度分三层：
+
+| 层 | 什么 | 例 |
+| --- | --- | --- |
+| **① 物理合不进去** | 编译不过，或第二个模块起来就崩 | ASGI 与 WSGI 不能共享一个事件循环；两个模块都往默认 registry 注册同名指标，Go `MustRegister` **panic**、Python 抛 `Duplicated timeseries` |
+| **② 起得来然后悄悄错** | 单跑 100% 正确，进外壳才错，**且没有报错** | 进程内单例被 21 个模块抢着初始化，**最后一个 init 的赢**；模块读进程环境变量，`PG_SCHEMA` 互相顶掉 |
+| **③ 纪律** | 物理上能混，混了之后有人要付账 | Gin 与 Echo 混用：编译得过、跑得起来，但 `be-sdk-go` 的中间件要写两遍，而第二遍那份必然烂 |
+
+**第②层是本项目最贵的一类**——它和决策 3 的「不带 `LOCAL` 的 `SET`」、§2.1 的「`grpc.Dial("http://…")`」是同一个家族：代码看起来完全正确，测试也能过。
+
+#### 12.4.2 锁定表（**不许自选**，建骨架时逐格抄）
+
+⚠️ **先说「统一」的粒度：这张表一列就是一门语言，所以默认粒度是「语言内统一」。** 一格只有在**必须跨语言相同**时才该写「同左」——而**本表现在没有这样的格**。判据是外壳：外壳不跨语言（§13.5），一个 Go 外壳的启动器只会面对 Go 模块，所以凡是「外壳启动器要认识的东西」（迁移工具、池的类型、handler 的类型），语言内统一就够了。**旧版把迁移那一格写成了跨语言统一（Python 镜像里也装 `golang-migrate`），那是过度约束，已改。**
+
+| 层 | Go（外壳一/二/三） | Python（外壳四/五） | TypeScript | 混用会怎样 |
+| --- | --- | --- | --- | --- |
+| HTTP 框架 | **Gin**（`gin.Engine` 只以 `http.Handler` 形态交给外壳） | **FastAPI** | Apollo Server 4 | Go：第③层；**Python：第①层**（见本节末的两条 ⚠️） |
+| HTTP / ASGI server | `net/http.Server` | **uvicorn 编程式 `Server`；单进程单事件循环，禁 gunicorn、禁 `workers > 1`** | Node 20 | 多 worker = 多进程：Outbox 推送线程跑 N 遍，而外壳形态只有一个进程——**两种形态行为不同，拆回门禁（§13.7）就白跑了** |
+| gRPC | `grpc-go` | **`grpc.aio`**（禁同步 `grpc`） | 不提供 gRPC（§6.5） | 第①层：混用等于一个进程里同时跑线程池与事件循环两套运行时，同步 handler 拿不到共享的 async 池，每个方法都得 `run_coroutine_threadsafe` 桥一次 |
+| DB 驱动 | **`database/sql` + `pgx/v5/stdlib`** | **`asyncpg`** | 严禁直连 DB（§6.5） | 第①层：外壳只有一个池（铁律二），`*sql.DB` 与 `*pgxpool.Pool` 互相递不进去，池就合不掉 |
+| SQL 层 | **`sqlc`**（`database/sql` 模式），手写 SQL | **手写 SQL + Pydantic 行映射**（由 `be-sdk-python` 提供），**不用 ORM** | — | GORM / SQLAlchemy ORM 都要自己管连接与会话生命周期，和「外壳一个全局池 + `SET LOCAL` 事务」（铁律二）正面打架 |
+| 迁移 | **`golang-migrate`**，文件是裸 `.sql`（`NNN_x.up.sql` / `.down.sql`） | **`yoyo-migrations`**（`pip install`，Python 原生），文件同样是裸 `.sql` | — | **第①层，但只在语言内**：外壳不跨语言（§13.5），所以 Go 外壳的启动器只需认识 `golang-migrate`、Python 外壳只需认识 `yoyo`。**语言内混用**才是第①层——一个外壳的启动器要为 21 个模块写两套迁移编排（铁律五）。⚠️ 不用 alembic：见本节末的 ⚠️ |
+| 校验 | `go-playground/validator`（Gin 内置） | Pydantic v2 | — | 第③层 |
+| 指标 | **每模块一个 `prometheus.Registry`**（由 SDK 发），进程级只 gather 一次 | 同左（每模块一个 `CollectorRegistry`） | — | **第①层**：用默认全局 registry，第二个模块注册同名指标就崩。单跑时 100% 正常 |
+| 日志 | SDK 的结构化 logger（§7.3） | 同左，**禁 `logging.basicConfig()`** | — | 第②层：`basicConfig` 是进程级，谁先调谁赢，其余 20 个模块的日志格式被顶掉 |
+| OTel | SDK 的 `Bootstrap`（进程级只一次） | 同左 | 同左 | 第②层：`otel.SetTracerProvider()` **最后一个赢**，21 个模块的 trace 全挂在同一个 `service.name` 上 |
+| 测试 | `testing` + `testify` + `rapid`（属性测试，§8.0） | `pytest` + `pytest-asyncio` + `hypothesis` | vitest | 第③层 |
+| 镜像基底 | `alpine` + `wget`（§12.3.7） | `python:3.11-slim` + `wget` | `node:20-slim` + `wget` | §12.3.7 |
+
+⚠️ **`database/sql` 而不是 `pgxpool`，这一格是想过的。** `pgxpool.Pool` 的原生 API 更强（COPY、批量、原生类型映射），但外壳要把**同一个池**递给 8~21 个模块，那个类型就成了模块入口契约的一部分（§12.5）——而 `database/sql` 是标准库类型、`sqlc` 直接支持、`be-sdk-go` 的 `WithTx` / `PublishOutbox` 签名本来就写在它上面。用 `pgx/v5/stdlib` 当驱动，底下还是 pgx。
+
+⚠️ **Gin 这一格是纪律锁（第③层），不是物理锁——必须说清楚**，否则将来有人以为它和 FastAPI 一样是硬约束，或者反过来以为 FastAPI 也只是偏好。`gin.Engine` 本身就是 `http.Handler`，Gin + Echo + chi 塞进一个 Go 进程能编译能跑。锁它的理由是三条：① `be-sdk-go` 的中间件（OTel、request-id、error → gRPC status、PII 脱敏日志、RED 指标）只写一遍——写第二遍那份必然烂；② 外壳的 `go.work` 不用同时拖两套框架；③ **新开会话的 AI 读两个组件看到两套写法，跨组件抄一段就编译不过**（SOP-P 的 P-0：帮 AI 的是一致与显式）。
+
+⚠️ **FastAPI 那一格相反，是第①层的物理锁。** 外壳是**一个 asyncio 事件循环托 N 个 app**：FastAPI / Starlette 是 ASGI，天然共享循环；Flask / Django 是 WSGI，必须另起线程 + WSGI server，而那个同步 handler **拿不到共享的 asyncpg 池**。所以 FastAPI 不是偏好，是唯一能共享循环的选项。
+
+⚠️ **迁移工具是「语言内统一」，不是「全项目统一」——这一格比其他格松一档。** 理由是外壳本来就不跨语言（§13.5），Go 外壳的启动器只会跑 Go 模块的迁移，Python 外壳只会跑 Python 模块的；而「迁移状态表必须落各自 schema」（§13.3 铁律五、§11.2.3）已经保证没有任何组件会去读别人的迁移表，**两种表结构在同一个库里共存不冲突**。要付的账只有一处、且不在关键路径：`be-acceptance` 将来做「全部组件的迁移都应用到位了吗」这类巡检时，要认识两种表结构。
+
+⚠️ **Python 侧不用 alembic，理由不是「跨语言不统一」，而是它对我们没有价值。** alembic 的两个核心能力——**从 SQLAlchemy 模型 autogenerate**、`batch_alter_table`——我们**一个都用不上**（本节已定：asyncpg + 手写 SQL，零 ORM）。而我们的迁移是相当硬的 PG DDL（`PARTITION BY RANGE`、`DETACH CONCURRENTLY`、`CREATE ROLE` 授权），用 alembic 写出来每一条都是 `op.execute("""…""")`——**套了一层 `.py` 的壳，而壳里什么都没有**。`yoyo` 保留裸 `.sql`，与 Go 侧的迁移文件几乎同构，AI 写的是纯 SQL 而不是框架代码。
+
+#### 12.4.3 TypeScript 侧为什么只有一行
+
+`infra-bff-mobile`（独立容器，§6.5）与 `frontend-*`（Nginx 静态资源）**都不进任何外壳**（§13.5）。TS 侧没有「进程内共存」这个问题，栈锁定只为一致性，不为合并。前端的栈由决策 79 与总纲 §4 SOP-F 铁律六定死（Vue3 + Uni-app，坚决排除 React）。
+
+---
+
+### 12.5 模块入口契约与「进程内只能有一份」的那些东西
+
+上一节锁的是**用什么库**，这一节锁的是**外壳怎么把一个组件挂进来**。这是旧版整块缺失的一节——缺了它，`be-ops` 产出 4（外壳合并配置，§5.10）没有生成对象，61 个组件会各自发明一个 `main`，而那些 `main` 里的装配在合并那天全都要重写。
+
+#### 12.5.1 唯一入口：单跑与合并走同一个函数
+
+每个后端组件必须导出一个函数，**签名一个字都不许改**：
+
+```go
+// Go —— backend/module/module.go
+package module
+
+// New 构造本组件的模块实例。rt 由调用方注入：单跑时是自己的 main，
+// 合并时是外壳启动器。两种形态调的是同一个函数（§1.5 原则二）。
+func New(ctx context.Context, rt *besdk.Runtime) (*besdk.Module, error)
+```
+
+```python
+# Python —— app/module.py
+async def create_module(rt: Runtime) -> Module: ...
+```
+
+`Runtime` 是**调用方交进来的一切**，模块自己不去取：
+
+| 字段 | 单跑形态从哪来 | 合并形态从哪来 |
+| --- | --- | --- |
+| `Config` | `RunStandalone` 读进程环境变量 | **外壳持有的、属于本模块的那一份 env map**（§13.8.2） |
+| `DB`（`*sql.DB` / asyncpg pool） | `RunStandalone` 开一个池 | 外壳的**唯一**全局池（§13.3 铁律二） |
+| `NATS` | `RunStandalone` 连一次 | 外壳连一次，全部模块共用 |
+| Tracer / Meter / Logger / Registry | SDK `Bootstrap` 一次 | 外壳 `Bootstrap` 一次，按模块派生带 `component_id` 的作用域 |
+| `HTTPPort` / `ExtraPorts` | Manifest 的默认值 | 外壳从各模块的 `component.yaml` 读（§13.8.1：**外壳里不许另写一份端口表**） |
+
+`Module` 是**模块交回去的一切**，模块自己不监听、不注册全局、不启动进程级的东西：
+
+| 字段 | 说明 |
+| --- | --- |
+| `HTTPHandler` | `http.Handler` / ASGI app。**外壳对 Gin 与 FastAPI 完全无感**——它只 `Serve` 一个 handler，所以 §12.4 的框架锁不会漏进外壳代码 |
+| `RegisterGRPC` | `func(*grpc.Server)` / `func(grpc.aio.Server)`。谁在哪个端口 `Listen` 由调用方决定 |
+| `Migrations` | 迁移文件的 `fs.FS` / 目录路径。外壳按拓扑顺序跑（铁律五） |
+| `Start` / `Stop` | 后台循环（分区维护、对账、消费者…）的启停。**必须接 `ctx` 并在 cancel 时返回** |
+
+于是 `backend/cmd/server/main.go` 塌成一行：
+
+```go
+func main() { besdk.RunStandalone(module.New) }   // Python: besdk.run_standalone(create_module)
+```
+
+**这一条的全部价值在于「两种形态走同一个入口」。** §1.5 原则二说「合并只发生在部署形态上」——如果单跑走 `main` 里的一套装配、合并走外壳里的另一套装配，那句话就只是口号，而 §13.7 的拆回门禁会在半年后第一次真跑时全红。**同一个 `module.New` 是原则二唯一能被机器守住的形态。**
+
+#### 12.5.2 进程内只能有一份的东西（归调用方，模块一律不许碰）
+
+| 东西 | 模块自己做会怎样 |
+| --- | --- |
+| `otel.SetTracerProvider()` / `logging.basicConfig()` | **最后一个 init 的赢。** 21 个模块的 trace 全挂在最后那个的 `service.name` 上、日志格式被某个模块顶掉。**全部 healthy、没有任何报错** |
+| Prometheus 默认 registry | Go `MustRegister` **panic**、Python 抛 `Duplicated timeseries in CollectorRegistry`。单跑 100% 正常，进外壳第二个模块起来就崩 |
+| 信号处理器（`signal.NotifyContext` / uvicorn 的 `install_signal_handlers`） | 5 个 `uvicorn.Server` 在一个进程里抢 SIGTERM，`docker stop` 关不干净、要等超时被 kill |
+| **框架自己的包级全局**：`gin.SetMode()`、`gin.DefaultWriter` / `DefaultErrorWriter` | 它们是 Gin 的**包级变量**，不是 engine 的字段。一个模块写 `gin.SetMode(gin.DebugMode)`，**另外 20 个模块的 engine 一起进 debug 模式**（每个请求多打一行日志、panic 堆栈直接吐给客户端）。这一条最容易漏，因为它长得像「设置我自己的 engine」。归 `Bootstrap`，模块一律不许调 |
+| **进程环境变量** | 见 §12.5.3 |
+| `os.Exit` / `log.Fatal` / `sys.exit` | 一个模块启动时踩到一个**可恢复**的错，**整组 21 个组件一起没了**。一律返回 error 交给调用方 |
+| 数据库连接池 | §13.3 铁律二：模块私自 `sql.Open()` 那条路已经被否掉了 |
+
+#### 12.5.3 ⚠️ 配置只能注入，不能读进程环境——这是 §13.8.2 能成立的最后一环
+
+§13.8.2 要求「外壳启动器必须**按模块持有各自的 env map**」。可是一个进程只有一份 `environ`，所以那句要求**只有在模块代码不碰 `os.Getenv` 的前提下才成立**。
+
+哪些会撞、哪些不会，要分清——**撞的那些恰好都不带 `_ENDPOINT`**：
+
+| 变量 | 同一外壳里 21 个模块 | 结论 |
+| --- | --- | --- |
+| `*_ENDPOINT`（依赖地址） | **值相同**（同一个目标组件，谁调都是那个地址） | 拍平也不会错。但仍然必须走 `besdk.Endpoint()`，因为要剥 scheme（§2.1） |
+| `DATABASE_*` / `MQ_*` / `STORAGE_*` | **值相同**（每外壳一个登录角色，决策 3） | 拍平也不会错 |
+| `COMPONENT_ID` / `COMPONENT_VERSION` | **各不相同** | 拍平就互相顶掉 |
+| `PG_SCHEMA` 以及**每个组件 `configSchema` 里的每一项** | **各不相同**，而且 21 份 `configSchema` 里同名项很常见（`pgSchema`、`batchSize`、`otelBaseUrl`…） | **拍平就互相顶掉，而且不报错**——模块拿到的是别人的 schema 名，然后按别人的 schema 建表、读写数据。这是决策 3 那个「悄悄读写别人的数据」的第二条路径 |
+
+所以规矩是：
+
+- ✅ 依赖地址：`besdk.Endpoint("mdm/customer", "grpc")`
+- ✅ 其余全部配置：`rt.Config.String("pgSchema", "mdm_customer")`——`Config` 由调用方填好，取值器带默认值
+- ❌ 模块代码里**任何一处** `os.Getenv` / `os.environ` / `os.environ.get`
+- 唯一允许读进程环境的地方是 `besdk.RunStandalone`（单跑形态的装配），它在基础库里、只有一份
+
+⚠️ **这条更正了旧版的写法。** 旧版 §13.3 铁律一与总纲 SOP-B 的 B-8 写的是「配置只从环境变量来、`*_ENDPOINT` 用 `os.Getenv()` 读」。**前半句的意图没有变**（不许硬编码地址，铁律一的反例 `http_client.get("http://localhost:8081/...")` 依然是错的），改的是**谁去读**：读的人从模块变成了调用方。
 
 ---
 
@@ -2322,7 +2465,7 @@ components:
 
 ### 13.3 前期规范：为未来"无缝拆分"锁死铁律
 
-为了让客户未来购买 K8s 集群后，能一键拆分回 60 个微服务，开发时必须死守以下 4 条铁律：
+为了让客户未来购买 K8s 集群后，能一键拆分回 60 个微服务，开发时必须死守以下 **7 条**铁律（旧版这里写「4 条」，而下面列了 6 条；本版新增铁律七）。前六条守的是「**拆得回去**」，铁律七守的是「**合得进来**」：
 
 **铁律一：严禁硬编码地址（环境变量铁律）**
 - ❌ 错误写法：`http_client.get("http://localhost:8081/api/v1/customers")`
@@ -2384,6 +2527,20 @@ PG 的连接绑死两样东西：**一个 database、一个认证角色**。所�
 
 **为什么它值得单列一条铁律**：前五条铁律破了，症状是当场起不来（端口撞、迁移不跑、地址连不上），改起来是一小时的事。第六条破了没有任何症状——系统跑得更快了，直到某天要上 K8s 全拆，才发现拆不动。那时的代价是重写。
 
+**铁律七：模块只交回零件，进程级的事一律归外壳（细则见 §12.5）**
+
+外壳要把 8~21 个模块挂进**一个进程**，所以每个组件必须导出**唯一入口** `module.New(ctx, rt) (*besdk.Module, error)`（Python：`create_module(rt)`），**单跑与合并走同一个函数**。三条禁令：
+
+| 不许 | 症状 |
+| --- | --- |
+| 模块代码里读进程环境变量（`os.Getenv` / `os.environ`） | 一个进程只有一份 `environ`：`PG_SCHEMA` 与全部 `configSchema` 项在 21 个模块之间互相顶掉，**不报错**，模块按别人的 schema 建表写数据（§12.5.3）。这也是 §13.8.2「按模块持有各自的 env map」能成立的前提 |
+| 模块自己 `SetTracerProvider` / `basicConfig` / 装信号处理器 / 用默认 Prometheus registry | 前两个**最后一个 init 的赢**且一路全绿；第三个让 `docker stop` 关不干净；第四个让**第二个模块起来时直接崩**（§12.5.2） |
+| 模块 `log.Fatal` / `os.Exit` / `sys.exit` | 一个模块踩到一个**可恢复**的错，**整组 21 个组件一起没了**。一律返回 error 交给调用方 |
+
+连带一条：**能不能合，先由 §12.4 的技术栈锁定表决定。** 那张表里 Python 的 ASGI/WSGI、gRPC 的同步/异步、DB 驱动、迁移工具、指标 registry 五格是**物理合不进去**——混了就编译不过，或第二个模块起来就崩。
+
+**为什么它排在铁律六之后**：铁律六守的是「**拆得回去**」，铁律七守的是「**合得进来**」。两条都属于**没有立刻症状**的那一类——铁律七的前两条在单跑形态下 100% 正确，只有进外壳才错，而那时已经有 21 份代码照旧版写完了。
+
 ### 13.4 演进路线：从"省钱单体"到"K8s 完全体"
 
 这套方案最迷人的地方在于它的可逆性与渐进性：
@@ -2412,7 +2569,7 @@ PG 的连接绑死两样东西：**一个 database、一个认证角色**。所�
 
 | 代价 | 说明 |
 |---|---|
-| 只能合并同语言同框架的组件 | 一个 Go 进程装不进 Python 模块。前端组件（Nginx 静态资源）也进不来 |
+| 只能合并**同语言同框架**的组件 | 一个 Go 进程装不进 Python 模块。前端组件（Nginx 静态资源）也进不来。⚠️ **「同框架」不是一句泛泛的话**，它展开成 §12.4 那张逐格锁定表——其中 Python 的 ASGI/WSGI、gRPC 的同步/异步、DB 驱动、迁移工具、指标 registry 五格是**物理合不进去**（混了就编译不过或第二个模块起来就崩），Gin 那一格是纪律锁 |
 | 一起升级 | 合并那一组从此是一个发布单元，不能独立发布回滚 |
 | 不能独立扩缩容 | 8 个组件共享一个进程的 CPU/内存，无法单独给 `erp-sales` 加资源 |
 | 故障域扩大 | 外壳进程崩溃 = 8 个组件同时不可用（但 Go 进程极稳定，实际风险很低） |
@@ -2829,6 +2986,8 @@ flowchart TB
 | 72  | **be-sdk-go**<br>**be-sdk-python**<br>**be-sdk-ts** | **必需（交付关键路径）**，三种语言各一份的横切基础库（endpoint 剥 scheme / `SET LOCAL` / Outbox / 事件防环 / OTel 降级 / 查询窗口 / 冷热路由 / 日志 / 指标）。零业务逻辑、零组件 model，是 import 扫描的唯一白名单（5.10） |
 | 73  | be-acceptance          | **必需（交付关键路径）**，验收测试：平台验收清单（9.6.2）+ 业务闭环 + 拆回门禁 + import 扫描 |
 | 74  | **be-ops**             | **必需（交付关键路径）**，装配生成器：路由表 / 建库脚本 / feature 清单 / 外壳配置 / `brickkit.yaml` 生成（5.10） |
+| 75  | **be-shell-go**        | **必需（交付关键路径）**，Go 外壳启动器（外壳一/二/三共用一份代码，靠合并清单区分）。不是组件，但是独立仓库——外壳镜像是交付物，要能独立打 tag 与回滚（5.10、13.1、12.5） |
+| 76  | **be-shell-python**    | **必需（交付关键路径）**，Python 外壳启动器（外壳四/五）。同上 |
 
 ### 附录 I · 术语表
 
