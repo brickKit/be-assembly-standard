@@ -45,7 +45,7 @@
 | 写一个新组件 | 总纲 §4 SOP-D（四份文档）→ SOP-R（查参考）→ SOP-B（后端）/ SOP-F（前端） |
 | **测试该写在哪一层** | 总纲 §4 SOP-W 的 **W-2**：判据是「把实现删掉用另一种语言重写，这条测试还该成立吗」 |
 | **卡住了**（同一循环三轮不绿） | 总纲 §4 SOP-W 的 **W-5** 三条出路。⚠️ **绝不许注掉测试 / 加 `t.Skip` / 放宽断言** |
-| 写前端 | 总纲 §4 SOP-F；设计书 §5.9 七条前端铁律、§12.2 |
+| 写前端 | 总纲 §4 **SOP-F**（十二条前端铁律）；设计书 **§12.6**（UI 层逐格锁定：AntDV + vxe-table / wot-design-uni / ECharts / 骨架自研 / 视觉方向）、§5.9、§12.2 |
 | 改契约 | 设计书 §3.4 铁律 3、§8.5；组件仓库 `make contract-check` |
 | 加迁移 / 分区表 | 设计书 §11.2；**§11.2.3 迁移状态表必须落各自 schema** |
 | 事件 / Outbox / 幂等 / 补偿 | 设计书 §3.10、§4.4、§4.5、§4.6 |
@@ -173,6 +173,10 @@ brickkit up --dry-run            # 只算不启动，看这次会跑哪些、什
 | 把事件总线 / 对象存储包成组件 | 我们零代码的东西不该包成组件——包了之后「换实现」从改一个字段变成改几十个 Manifest（决策 86） |
 | 让网关或可观测性当组件 | 平台的资源 `kind` 是封闭清单（无 `gateway` / `iam` / `telemetry`），且 Manifest **没有 volumes 字段**，配置文件挂不进去 |
 | 前端用 React | 决策 79：ToB 表单双向绑定、多端统一、AI 生成代码结构清晰、国内生态。锁定 Vue3 + Uni-app |
+| PC 端换 Element Plus / Naive UI；或在移动端用 Ant Design Vue | 决策 111：PC 锁 **AntDV v4 + vxe-table**。移动端那一格是**物理的**——AntDV 依赖 DOM，Uni-app 编到小程序 / App 时没有 DOM，只能用 **wot-design-uni** |
+| 在业务页面里直接 `import` 第三方 UI 组件 | 决策 111：第三方只许出现在 `packages/ui-kit`，对外暴露我们自己的组件名。与 `be-sdk-*` 同一个道理——换实现改一个文件，而不是改 40 个页面 |
+| 为了「更好看」再混一个 UI 库进来 | 决策 111：混搭的**唯一**理由是 AntDV 确实没有这个能力（甘特图、审批流设计器、富文本、代码编辑器、大屏）。**两个库的 token 体系对不齐，混得越多越不好看**；而真正毁观感的是「这一页间距 16、下一页 20」（§12.6.5） |
+| 把 vue-vben-admin / antdv-pro 当依赖引进来做骨架 | 决策 112：它的路由+权限层由「后端菜单表 / 静态路由 + 角色码」驱动，我们是 `/api/tenant/features` 的 feature-flag 驱动——换掉那一层就只剩一个 layout，而依赖树全留着。**读它的 layout / router+access / request 三块，不装它**（SOP-R 的 R-2） |
 | Go 侧换 Echo / Fiber / chi / 裸 `ServeMux`；或用 GORM | 决策 108：栈逐格锁定。中间件在 `be-sdk-go` 里只写一遍，写第二遍那份必然烂；GORM 要自己管连接与会话，和外壳的单一全局池打架 |
 | Python 侧用 Flask / Django；或同步 `grpc`；或 gunicorn 多 worker | 决策 108：**这几条是物理的**。WSGI 的同步 handler 拿不到共享 asyncpg 池；同步 gRPC 要在每个方法里 `run_coroutine_threadsafe` 桥一次；多 worker = 多进程，Outbox 推送线程跑 N 遍，而外壳形态只有一个进程 |
 | Python 侧用 alembic 管迁移 | 决策 108：**理由不是「跨语言不统一」**（迁移工具本来就按语言分，Go 用 `golang-migrate`、Python 用 `yoyo-migrations`，因为外壳不跨语言），而是**它对我们没价值**——零 ORM 让 autogenerate 完全用不上，而我们的硬 DDL（`PARTITION BY`、`DETACH CONCURRENTLY`）在 alembic 里只能包在 `op.execute("""…""")` 里，套了一层 `.py` 的壳而壳里什么都没有。**但语言内必须统一**：同一个外壳里两种迁移工具，那个启动器要写两套编排 |
