@@ -173,8 +173,8 @@ brickkit up --dry-run            # 只算不启动，看这次会跑哪些、什
 | 把事件总线 / 对象存储包成组件 | 我们零代码的东西不该包成组件——包了之后「换实现」从改一个字段变成改几十个 Manifest（决策 86） |
 | 让网关或可观测性当组件 | 平台的资源 `kind` 是封闭清单（无 `gateway` / `iam` / `telemetry`），且 Manifest **没有 volumes 字段**，配置文件挂不进去 |
 | 前端用 React | 决策 79：ToB 表单双向绑定、多端统一、AI 生成代码结构清晰、国内生态。锁定 Vue3 + Uni-app |
-| PC 端换 Element Plus / Naive UI；或在移动端用 Ant Design Vue | 决策 111：PC 锁 **AntDV v4 + vxe-table**。移动端那一格是**物理的**——AntDV 依赖 DOM，Uni-app 编到小程序 / App 时没有 DOM，只能用 **wot-design-uni** |
-| 在业务页面里直接 `import` 第三方 UI 组件 | 决策 111：第三方只许出现在 `packages/ui-kit`，对外暴露我们自己的组件名。与 `be-sdk-*` 同一个道理——换实现改一个文件，而不是改 40 个页面 |
+| PC 端换 Element Plus / Naive UI；或想「统一两端的组件库」 | 决策 111：PC 锁 **AntDV v4 + vxe-table**，移动端 **wot-design-uni**。**两端不同是设计使然**——移动端是卡片列表/扫码/两个审批按钮，PC 是密集表格/多级联动长表单，共用组件的收益接近零（AntDV 依赖 DOM 只是顺便封死这条路）。两端唯一共享的是 `packages/design-tokens`：**共享 token，不共享组件** |
+| 在业务页面里直接 `import` 第三方 UI 组件（含 `<vxe-grid>`） | 决策 111：第三方只许出现在 `packages/ui-kit-pc` / `ui-kit-mobile`，对外暴露我们自己的组件名。与 `be-sdk-*` 同一个道理——换实现改一个文件，而不是改 40 个页面。表格尤其要紧：**vxe 是「默认选择，待核」**（部分能力属于商业版），页面一律用 `<BeTable>`，逃生口每个都要在 `ui-kit-pc/README.md` 记一行（§12.6.6） |
 | 为了「更好看」再混一个 UI 库进来 | 决策 111：混搭的**唯一**理由是 AntDV 确实没有这个能力（甘特图、审批流设计器、富文本、代码编辑器、大屏）。**两个库的 token 体系对不齐，混得越多越不好看**；而真正毁观感的是「这一页间距 16、下一页 20」（§12.6.5） |
 | 把 vue-vben-admin / antdv-pro 当依赖引进来做骨架 | 决策 112：它的路由+权限层由「后端菜单表 / 静态路由 + 角色码」驱动，我们是 `/api/tenant/features` 的 feature-flag 驱动——换掉那一层就只剩一个 layout，而依赖树全留着。**读它的 layout / router+access / request 三块，不装它**（SOP-R 的 R-2） |
 | Go 侧换 Echo / Fiber / chi / 裸 `ServeMux`；或用 GORM | 决策 108：栈逐格锁定。中间件在 `be-sdk-go` 里只写一遍，写第二遍那份必然烂；GORM 要自己管连接与会话，和外壳的单一全局池打架 |
