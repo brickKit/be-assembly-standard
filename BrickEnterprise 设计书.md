@@ -205,7 +205,11 @@ frontend-standard/                      # 默认前端组件（平台方开发�
   ├── packages/
   │   ├── shared-types/                   # TypeScript 接口（由契约生成）
   │   ├── api-client/                     # 请求管线（由契约生成）
-  │   ├── ui-kit/                         # 基础 UI 组件（按钮、表格、表单）
+  │   ├── design-tokens/                  # 两端唯一共享的 UI 资产（纯数据，运行时 CSS 变量）
+  │   ├── ui-kit-pc/                      # PC 侧第三方组件的唯一出口（AntDV + vxe-table）
+  │   │                                   #   另出页面级模板 <BeListPage>/<BeDetailPage>/…
+  │   ├── ui-kit-mobile/                  # 移动端唯一出口（wot-design-uni）
+  │   ├── shell/                          # 应用骨架（服务选择器 / 收藏栏 / 标签页 / ⌘K）
   │   └── feature-flags/                  # 动态特性路由
   ├── docker/
   │   └── Dockerfile                      # 构建产物打包为 Nginx 镜像
@@ -318,7 +322,7 @@ hostPortOffset = 10000  // 首选端口 = 10000 + 容器端口（5432 → 15432�
 | Prometheus `9090` | `mdm-customer` gRPC，且 `19090` 是平台给 9090 的首选映射 | **29090** |
 | Kafka `9092` | `mdm-product` gRPC，且 `19092` 是平台给 9092 的首选映射 | **29092** |
 
-⚠️ **连带结论：`be-ops` 的全局端口册（§5.10 产出 6）必须同时纳入带外容器端口，并把 `1xxxx` 整段标为平台保留。** 只管 61 个组件的端口册发现不了这些——而它们要到第一次把外壳端口发布到宿主机、或第一次给 local 组件做调试映射的那一刻才炸，那时 gRPC 端口已经写进 61 份 `component.yaml`、改不动了（§3.5.1.1）。
+⚠️ **连带结论：`be-ops` 的全局端口册（§5.10 产出 6）必须同时纳入带外容器端口，并把 `1xxxx` 整段标为平台保留。** 只管 62 个组件的端口册发现不了这些——而它们要到第一次把外壳端口发布到宿主机、或第一次给 local 组件做调试映射的那一刻才炸，那时 gRPC 端口已经写进 61 份 `component.yaml`、改不动了（§3.5.1.1）。
 
 ⚠️ **第 11~15 行全部是形态 B，一个组件都没有。** 它们和网关同一个理由：纯官方镜像 + 必须挂配置文件。按 §5.11 的判据（这一层有没有我们自己的代码），答案是没有——所以旧版里的 `infra-otel-collector` 与 `infra-grafana-stack` 两个组件仓库**已删除**，见 5.1 表下的说明。可观测性在 `brickkit.yaml` 里一个字都不写。
 
@@ -781,9 +785,9 @@ healthCheck:
 
 ##### 3.5.1.1 ⚠️ 端口全局唯一——而且 HTTP 与 gRPC 的可挽回程度完全不同
 
-`deployment.port` 与 `extraPorts[].port` **在全部 61 个组件里必须两两不重复**，由 `be-ops` 维护一张全局端口册（§5.10 产出 6）。原因是合并部署：一个进程不能监听两个 8080。
+`deployment.port` 与 `extraPorts[].port` **在全部 62 个组件里必须两两不重复**，由 `be-ops` 维护一张全局端口册（§5.10 产出 6）。原因是合并部署：一个进程不能监听两个 8080。
 
-⚠️ **端口册还必须纳入带外容器的宿主机端口**（Traefik / Casdoor / Prometheus / Kafka…）。外壳要把端口发布到宿主机（§13.1），于是组件端口与带外容器端口活在**同一个宿主机端口空间**里。§2.7.1 那四处撞车就是这么发现的——只管 61 个组件的端口册看不见它们。
+⚠️ **端口册还必须纳入带外容器的宿主机端口**（Traefik / Casdoor / Prometheus / Kafka…）。外壳要把端口发布到宿主机（§13.1），于是组件端口与带外容器端口活在**同一个宿主机端口空间**里。§2.7.1 那四处撞车就是这么发现的——只管 62 个组件的端口册看不见它们。
 
 **唯一的复用例外是 `slot:frontend` 族共用 80**：4 个前端组件槽位互斥、永不共存，且各自是独立 Nginx 容器不进外壳。这一条要写进端口册的校验逻辑，否则校验会误报。
 
@@ -824,6 +828,17 @@ edge_routes:                         # be-ops 聚合成网关路由，两个出�
 
 menus:                               # 前端动态菜单，经 /api/tenant/features 下发
   - { key: erp.sales, title: 销售订单, permission: erp.sales.view }
+
+permissions:                         # 功能权限键，be-ops 聚合成 registry/permissions.tsv（第 14 章）
+  - { key: erp.sales.view,    title: 查看销售订单, type: page   }
+  - { key: erp.sales.create,  title: 新建销售订单, type: action }
+  - { key: erp.sales.approve, title: 审批销售订单, type: action }
+
+data_scopes:                         # 行级数据权限维度（§14.2）。⚠️ 必填——
+  - { dimension: org,   column: dept_path, mode: prefix, tables: [sales_orders] }
+  - { dimension: owner, column: owner_id,  mode: equals, tables: [sales_orders] }
+                                     #    不需要的组件要显式写 `data_scopes: none`，
+                                     #    省略会被 be-ops 拦下（fail-closed）
 
 data:
   schema: erp_sales                  # 本组件独占的 PG schema
@@ -888,6 +903,7 @@ menus: []
 | 网关路由、监控抓取（键值形态） | `component.yaml` 的 `deployment.labels` | ⚠️ **只搬运，不解释** |
 | `asset` / `assembly_role` / `slot_name` / `contract_lock` | `assembly.yaml` | ❌ 平台永不打开 |
 | `edge_routes` / `menus` / `domain` / `tier` / `shell` | `assembly.yaml` | ❌ 同上 |
+| `permissions`（功能权限键）/ `data_scopes`（行级维度，**必填**） | `assembly.yaml` | ❌ 同上；由 `be-ops` 聚合成 `registry/permissions.tsv` 与 `data-scopes.tsv`（第 14 章） |
 | 组件的 schema / 角色名 | `assembly.yaml`（真相源）+ `configSchema.pgSchema`（注入给组件自己） | ❌ / ✅ |
 | 强依赖 / 弱依赖 | `component.yaml` 的 `dependencies.components`（弱依赖写 `optional: true`） | ✅ |
 | 资源需求（库、消息队列、对象存储） | `component.yaml` 的 `dependencies.resources` | ✅ |
@@ -1092,6 +1108,7 @@ flowchart LR
 | 组件 | 仓库名 | 资产属性 / 装配角色 | 职责简述与替换逻辑 |
 |---|---|---|---|
 | IAM (Casdoor) | infra-iam-casdoor | `open_standard` / `slot:iam` (Default) | 发牌官（轻量）。统一身份认证与权限分配。全系统只说 OIDC，JWT 携带权限 Claims。自带美观登录页，适合中小型或 SaaS 化交付。提供 `/api/tenant/features` 供前端拉取启用的组件清单。依赖基础资源：Casdoor 官方镜像 + PostgreSQL。 |
+| Authz (权限账房) | infra-authz | `open_standard` / default | 权限的账房：权限键册、角色定义与分配、策略下发（`/authz/bundle`）、为 iam 算 JWT claims。**不在请求热路径上**。与 `slot:iam` 刻意分开，换 IAM 实现时角色数据不用迁。详见第 14 章、§6.12。 |
 | IAM (Keycloak) | infra-iam-keycloak | `slot_impl` / `slot:iam` (替换件) | 发牌官（重型）。企业级老牌 IAM。适合需要对接极其复杂的老旧 LDAP/AD 域、或需要极细粒度 RBAC/ABAC 模型的大型传统集团。可替换 Casdoor，两者契约面一致（均暴露 OIDC 端点）。依赖基础资源：Keycloak 官方镜像 + PostgreSQL。 |
 | BFF Mobile | infra-bff-mobile | `open_standard` / default | 复杂展示聚合层。GraphQL 实现，默认服务移动端，也服务 PC 端复杂聚合页面（如经营驾驶舱、客户 360° 视图）。严禁业务逻辑，严禁直连 DB。强制使用 DataLoader 绑定后端 `batchGet` 防 N+1。强制启用 Persisted Queries 优化弱网体验。 |
 | Workflow | infra-workflow | `open_standard` / default | 轻量级审批任务聚合与分发中心。⚠️ 不含业务流转规则。只负责：全局待办聚合、统一审批历史、任务状态流转、异常任务处理。复杂的业务审批路由由业务组件在标准代码或 Fork 中实现。详见 6.6 节。 |
@@ -1311,7 +1328,7 @@ brickKit 是刻意极简的：不做网关、不做路由聚合、不建库建 s
 | 3 | **Feature 清单**：装配结果 → 写进 IAM 适配层的 `config`，供 `/api/tenant/features` 下发 | 平台不给组件"当前装配了什么"的视图（6.1） |
 | 4 | **外壳合并配置**：哪些组件进哪个外壳、端口分配、迁移执行顺序 | 平台不提供合并部署支持（13.6） |
 | 5 | **`brickkit.yaml` 生成**：含 `assembly.yaml` 的 schema 校验、`slot` 互斥校验、`channel` 多选校验 | 平台没有装配角色的概念（3.3） |
-| 6 | **全局端口册**：61 个组件的 HTTP + gRPC 端口**外加全部带外容器的宿主机端口**，两两不重复，`component.yaml` 由它校验 | 平台只在 `local: true` 撞车时报错，不给全局视图（3.5.1.1）。带外容器平台根本不知道它存在，更不会管（2.7.1） |
+| 6 | **全局端口册**：62 个组件的 HTTP + gRPC 端口**外加全部带外容器的宿主机端口**，两两不重复，`component.yaml` 由它校验 | 平台只在 `local: true` 撞车时报错，不给全局视图（3.5.1.1）。带外容器平台根本不知道它存在，更不会管（2.7.1） |
 | 7 | **每外壳的环境变量表**：外壳里每个模块的完整 env，跨外壳的 `*_ENDPOINT` 指向宿主机网关 | **平台只往它自己生成的容器里注入。合并后没有那些容器**（13.8） |
 | 8 | **shell-compose 的 `depends_on`**：外壳之间的启动顺序 | 平台只排它生成的那些；外壳之间它一个都不排（13.8） |
 
@@ -1400,7 +1417,7 @@ brickKit 是刻意极简的：不做网关、不做路由聚合、不建库建 s
 
 | 域 | 数量 | 需构建 | 蓝图 | 其中在档 0~2 的垂直切片里 |
 |---|---|---|---|---|
-| infra | 10 | 10 | 0 | 5（iam-casdoor / workflow / notification / print / bff-mobile） |
+| infra | 11 | 11 | 0 | 6（iam-casdoor / **authz** / workflow / notification / print / bff-mobile） |
 | integration | 15 | 15 | 0 | 1（任选一个 IM 通道） |
 | mdm | 4 | 4 | 0 | 2（customer / product） |
 | crm | 7 | 7 | 0 | 1（opportunity） |
@@ -1409,13 +1426,13 @@ brickKit 是刻意极简的：不做网关、不做路由聚合、不建库建 s
 | prj | 2 | 2 | 0 | 0 |
 | ana | 2 | 2 | 0 | 0 |
 | frontend | 4 | 4 | 0 | 1（standard，只做上面这些模块的页面） |
-| **总计** | **61** | **58** | **3** | **13** |
+| **总计** | **62** | **59** | **3** | **14** |
 
 注 1：前端域中 `frontend-advanced` 和 `frontend-{industry}` 标记为"🔜 未来开发"，当前只开发 `frontend-standard`。但为了保持组件清单的完整性，此处将 4 个前端组件全部计入总数。
 
 注 2：infra 域从 17 降到 10——**事件总线 3 个、网关 2 个、可观测性 2 个都不再是组件**（5.1 表下的说明）。**这不是砍功能，是把它们放回正确的形态**：事件总线与对象存储成了基础资源，换实现从"改几十个 Manifest"变成"改一个字段"；网关与可观测性全家桶成了带外容器，因为它们要挂配置文件而平台的 Manifest 没有 volumes。判据统一在 §5.11：**这一层有没有我们自己的代码。**
 
-注 3：`be-ops` 与 `be-acceptance` 不在这 61 个里——它们不是 brickKit 组件，但两个都在交付关键路径上（5.10）。
+注 3：`be-ops` 与 `be-acceptance` 不在这 62 个里——它们不是 brickKit 组件，但两个都在交付关键路径上（5.10）。
 
 ⚠️ **注 4：这张表是军火库的最终形态，不是开工令。** 最后一列才是现在要做的东西。开工顺序与出档条件见 §9.6——**档 3（做外壳、验拆回）必须排在档 4（铺满军火库）之前**。
 
@@ -1515,7 +1532,7 @@ networks := map[string]any{
 
 #### 6.3.2 外壳侧的两个坑（`be-ops` 必须处理）
 
-1. **router 名全局唯一**：Traefik 的 router name 跨 provider 全局。外壳三那个 service 上要挂 21 组规则，名字必须带组件前缀去重（`erp-sales` 而不是 `sales`）。
+1. **router 名全局唯一**：Traefik 的 router name 跨 provider 全局。外壳三那个 service 上要挂 22 组规则，名字必须带组件前缀去重（`erp-sales` 而不是 `sales`）。
 2. **必须显式声明 service 端口**：外壳容器同时监听 8080~8087 等多个端口，**Traefik 猜不出该转发到哪个，会直接放弃**。每个模块要成套产出三条标签：
 
 ```yaml
@@ -1583,6 +1600,20 @@ Traefik 使用 `ForwardAuth` 中间件对接 Casdoor 实现统一验签。
 - 提供渲染接口：业务组件传入 `template_id` + 数据（JSON），返回 PDF 文件流或打印机指令流。
 - 模板版本管理：支持模板的上传、预览、版本回滚。
 - **严禁**：包含任何业务逻辑（如"订单金额大于 10 万才打印"之类的判断）。业务组件自己决定是否调用打印，`infra-print` 只管渲染。
+
+### 6.12 authz（权限的账房）
+
+**完整规范在第 14 章，本节只给定位。**
+
+`iam` 回答「你是谁」，`infra-authz` 回答「每个角色能做什么」。两者刻意分开：`slot:iam` 换成 Keycloak 那天，角色与权限分配数据一行都不用迁——**唯一的连接点是 OIDC 的 `sub`**。
+
+**职责**：权限键册（由 `be-ops` 经 `config.permissionCatalog` 灌入）、角色定义与分配界面、`GET /authz/bundle`（策略下发）、`GET /api/me/permissions`（前端拉本人权限）、登录时为 `iam` 计算 JWT claims。
+
+**它不在请求热路径上。** 业务组件不调它做单次鉴权，只每 15 秒条件拉一次 bundle；判定在各进程内存里完成（§14.1.4）。
+
+⚠️ **业务组件对它不声明依赖**，地址从各组件 `configSchema` 的 `authzBundleUrl` 注入——与 §6.1 的 `iamJwksUrl` 完全同一个做法，理由也一样：61 条依赖边既没必要，也会把启动顺序绑死，而 §14.1.9 的 fail-static 降级让顺序无关紧要。
+
+⚠️ **严禁把 authz 的可达性写进 `/healthz`**（§12.3.6）：它一抖动会让整组 22 个模块一起重启。
 
 ---
 
@@ -1775,7 +1806,7 @@ erp-sales/
 
 #### 9.6.0 为什么不能一上来就铺满军火库
 
-我们既是 brickKit 的作者，也是它的第一个真实用户。61 个组件同时开工时，任何一条平台假设出错，代价就要乘以 61。而平台的全部假设**可以被一条垂直切片打穿**——那才是先做切片的理由。
+我们既是 brickKit 的作者，也是它的第一个真实用户。62 个组件同时开工时，任何一条平台假设出错，代价就要乘以 61。而平台的全部假设**可以被一条垂直切片打穿**——那才是先做切片的理由。
 
 #### 9.6.1 档位
 
@@ -1788,7 +1819,7 @@ erp-sales/
 | **档 4a**<br>补齐 default | 凑齐最小可交付形态 | `infra-storage`、`infra-attachment`、`infra-dlq-monitor`、`mdm-supplier`、`mdm-org` 共 5 个 | 每加一个组件，档 0 的六项 + 拆回门禁重跑 |
 | **档 4b**<br>铺货 | 军火库补齐 | 其余组件按客户订单优先级排队 | 同上 |
 
-⚠️ **档 3 必须在档 4 之前。** 外壳的坑（环境变量表、跨外壳顺序、端口册、import 边界）是**结构性**的，13 个组件时踩到只要改 `be-ops`；61 个组件时踩到，要改 61 份 `component.yaml` 的端口，还要拆开一堆已经互相 import 了的代码。
+⚠️ **档 3 必须在档 4 之前。** 外壳的坑（环境变量表、跨外壳顺序、端口册、import 边界）是**结构性**的，13 个组件时踩到只要改 `be-ops`；62 个组件时踩到，要改 61 份 `component.yaml` 的端口，还要拆开一堆已经互相 import 了的代码。
 
 ⚠️ **档 4a 不等客户点名。** 那 5 个组件的装配角色都是 `default`——按 §3.3 的定义，`default` 是"系统运行的基石，默认必选"，任何一次真实交付都必须有它们。它们没进档 2 的切片，是因为**切片只为验平台**，不是因为它们可选：
 
@@ -1802,7 +1833,7 @@ erp-sales/
 
 顺序上 `infra-storage` 必须排在 `infra-attachment` 前面（后者强依赖前者）。
 
-⚠️ **附录 H 里那 61 个"✅ 开发"是军火库的最终形态，不是开工令。** 按第 1 章的**选配测试**（客户愿单独付钱才独立成砖），5 个 IM、4 个支付、3 个电子签、2 套 IAM、3 套额外前端里，绝大多数应当停在档 4b 的队列里，等第一个客户点名再动。现在就全开工，等于用选配测试的反面在花钱。
+⚠️ **附录 H 里那 62 个"✅ 开发"是军火库的最终形态，不是开工令。** 按第 1 章的**选配测试**（客户愿单独付钱才独立成砖），5 个 IM、4 个支付、3 个电子签、2 套 IAM、3 套额外前端里，绝大多数应当停在档 4b 的队列里，等第一个客户点名再动。现在就全开工，等于用选配测试的反面在花钱。
 
 #### 9.6.2 档 1 的平台验收清单（`be-acceptance` 的第一批用例）
 
@@ -1831,7 +1862,7 @@ erp-sales/
 | 19 | 精确版本 | 写 `^1.2`，断言报错 | 四条铁律之一 |
 | 20 | 本地源不受签名约束 | 开 `requireSignature: true`，断言本地源组件照装 | §9.4.1 |
 
-**发现平台真有问题时的动作**：先在这里记一条用例（哪怕是红的），再回 brickKit 仓库修——**不许在业务侧绕过去**。绕过去的那一条，会在 61 个组件时变成 61 处绕法。
+**发现平台真有问题时的动作**：先在这里记一条用例（哪怕是红的），再回 brickKit 仓库修——**不许在业务侧绕过去**。绕过去的那一条，会在 62 个组件时变成 61 处绕法。
 
 ---
 
@@ -1933,11 +1964,11 @@ erp-sales/
 | 92 | **拆回门禁**：每周把 `local: true` 全去掉、`brickkit up` 全拆一次、业务闭环全绿（§13.7） | 原则二如果不能被机器检验，半年后一定不成立。磨掉组件性的改动在合并态下**全都是正确的**，只有全拆才让它们变成错误 | "先把全拆用例注掉，回头再修"——那等于宣布阶段三不做了 |
 | 93 | **`be-ops` 还要产出：全局端口册、每外壳的环境变量表、外壳之间的 `depends_on`**（产出 6/7/8） | 平台只往它自己生成的容器里注入，合并后那些容器不存在；平台也不排它不认识的外壳之间的顺序 | 交付现场外壳里的模块拿着 `http://localhost:8080` 去调另一个外壳的组件，打到自己身上——而两边配置看上去都没毛病 |
 | 94 | **gRPC 等额外端口必须在 `component.yaml` 里一次写对**，没有 `localPort` 那种事后补救（§3.5.1.1） | 平台改写地址时明确跳过额外端口；两个 `local: true` 组件撞同一额外端口直接硬报错 | 以为 gRPC 端口也能在装配期挪，写到第 30 个组件才发现要回头改前 29 份 Manifest |
-| 95 | **推进顺序档 0→4，档 3（做外壳、验拆回）必须早于档 4（铺满军火库）**（§9.6） | 外壳的坑是结构性的，13 个组件时踩到改 `be-ops` 就行，61 个组件时踩到要改 61 份 Manifest 加拆代码 | 先铺 61 个组件再合并，等于把最贵的重构留到最后 |
-| 96 | **`be-acceptance` 升为必需件**，第一批用例的被测对象是 **brickKit 本身**（§9.6.2） | 我们既是平台作者又是它第一个真实用户；平台升级后重跑这批用例就是回归测试 | 平台某条断言悄悄变了，而 61 个组件已经照旧版写完了 |
+| 95 | **推进顺序档 0→4，档 3（做外壳、验拆回）必须早于档 4（铺满军火库）**（§9.6） | 外壳的坑是结构性的，13 个组件时踩到改 `be-ops` 就行，62 个组件时踩到要改 61 份 Manifest 加拆代码 | 先铺 62 个组件再合并，等于把最贵的重构留到最后 |
+| 96 | **`be-acceptance` 升为必需件**，第一批用例的被测对象是 **brickKit 本身**（§9.6.2） | 我们既是平台作者又是它第一个真实用户；平台升级后重跑这批用例就是回归测试 | 平台某条断言悄悄变了，而 62 个组件已经照旧版写完了 |
 | 97 | **可观测性全家桶降为带外容器**，`infra-otel-collector` / `infra-grafana-stack` 两个组件仓库删除（§2.7.3、§7.5） | 与网关同一个判据（§5.11）：纯官方镜像 + 必须挂 `config.yaml`，而 Manifest 没有 volumes。这一层没有我们的代码 | infra 域凭空多出两个只有壳的仓库；以及旧版 §7.5 那三个不存在的 `slot:*-backend` |
 | 98 | **聚合型组件（BFF / notification）的依赖全部 `optional: true`；客户没买的组件整条不写进 `brickkit.yaml`，而不是 `enabled: false`** | 一条写成强依赖，客户没买那个组件时整个 BFF 起不来；`enabled: false` 会把下游主数据一起级联关掉 | "客户只买 5 个组件"在物理上做不到，或者关掉 hrm 顺带把 mdm 关了 |
-| 99 | **全局端口册纳入带外容器的宿主机端口**，不只管 61 个组件（§2.7.1、§3.5.1.1、§5.10 产出 6） | 外壳要把端口发布到宿主机（§13.1），组件端口与带外容器端口活在同一个宿主机端口空间里。按官方默认值有四处真撞：Traefik Dashboard 8080 ⚔ `mdm-customer` HTTP、Keycloak 8080 ⚔ 同上、Prometheus 9090 ⚔ `mdm-customer` gRPC、Kafka 9092 ⚔ `mdm-product` gRPC。已分别挪到 28080 / 28081 / 29090 / 29092 | 只管组件的端口册看不见这四处，而它们要到第一次把外壳端口发布到宿主机才炸——那时 gRPC 端口已写进 61 份 Manifest、改不动了 |
+| 99 | **全局端口册纳入带外容器的宿主机端口**，不只管 62 个组件（§2.7.1、§3.5.1.1、§5.10 产出 6） | 外壳要把端口发布到宿主机（§13.1），组件端口与带外容器端口活在同一个宿主机端口空间里。按官方默认值有四处真撞：Traefik Dashboard 8080 ⚔ `mdm-customer` HTTP、Keycloak 8080 ⚔ 同上、Prometheus 9090 ⚔ `mdm-customer` gRPC、Kafka 9092 ⚔ `mdm-product` gRPC。已分别挪到 28080 / 28081 / 29090 / 29092 | 只管组件的端口册看不见这四处，而它们要到第一次把外壳端口发布到宿主机才炸——那时 gRPC 端口已写进 61 份 Manifest、改不动了 |
 | 100 | **`be-sdk-{go,python,ts}` 是必需件**，不是 `reserve`，也不只管事件（§5.10） | 本书点名"最难查"的两处——`grpc.Dial("http://…")` 连不上、不带 `LOCAL` 的 `SET` 跨组件串数据——都是**每个组件各写一遍就必然有人写错**的那种。它不是公共 model 包：零业务逻辑、零组件 model，是 import 扫描的唯一白名单 | 58 个组件里只要有一个把 `SET LOCAL` 写成 `SET`，就会悄悄读写别人的数据，不报错不崩 |
 | 101 | **档 4 拆成 4a / 4b：`default` 角色的 5 个组件不等客户点名**（§9.6.1） | `infra-storage` / `infra-attachment` / `infra-dlq-monitor` / `mdm-supplier` / `mdm-org` 的装配角色都是 `default`——"系统运行的基石，默认必选"（§3.3）。它们没进档 2 切片是因为切片只为验平台，不是因为它们可选 | 把 `default` 组件排进"等客户点名"的队列，交付时才发现附件传不了、DLQ 没人看、采购没有供应商主数据 |
 | 102 | **参考实现三步法**：先自己按四把尺子设计一版 → 理不清的地方才去看现实 ERP 怎么实现 → 回来自己想清楚再写（§3.2.1）。闭源产品看不到源码，但它们「哪些功能客户天天用、哪些从来不点」的信息在选配测试上比源码更有价值 | 凭空设计的领域模型漏掉的边界情形，要到客户上线三个月后才暴露。但顺序反了也不行——空着脑袋去读别人的实现只会照搬，而我们的技术栈（Go vs Java/Python/PHP）与组件边界（独立进程独立 schema vs 同进程同库）都完全不同，照搬既不可能也不该 | ① 自己发明一套订单状态机，半年后发现漏了「部分发货 + 部分退货」；② 反过来，照着 Odoo 的模块划分抄一遍，把「所有模块同进程同库」这个我们要避开的通病一起搬进来 |
@@ -1947,10 +1978,16 @@ erp-sales/
 | 106 | **带外容器的宿主机端口一律用 `2xxxx` 段**，`1xxxx` 整段留给平台（§2.7.1） | brickKit 给 `local: true` 组件及其依赖做宿主机映射时首选 `10000 + 容器端口`、fallback 从 `28080` 起递增扫描。我们的组件端口 8080/8081/9090/9092 恰好对应 28080/28081/29090/29092，而那正是带外容器官方默认端口挪开后最自然的落点 | 把 Traefik Dashboard 放 28080，等到第一次给 local 组件做调试映射时才发现平台也要这个端口——那时报的是 `CodePortConflict`，而两边配置看上去都没毛病 |
 | 107 | **平台生成的 compose 接不进外部网络**，所以路由表有**三个**出口：进外壳的走 shell-compose 的 `labels`（Docker Provider）、**平台生成的独立容器走 `expose: true` + `exposePort` + Traefik file provider**、K8s 走带外 Ingress（§6.3.1） | 平台生成的 compose 自建一个非 external 的 bridge 网络，`brickkit.yaml` 里没有任何字段能改。Traefik 的 Docker Provider 只看得见同网络的容器，所以 `components[].labels` 上的路由标签它一条都读不到 | 照旧版「独立容器 → `components[].labels`」去做：labels 写对了、`docker inspect` 也看得见，而**网关 404、容器全 healthy**——最难查的一类。连带：`exposePort` 必须进全局端口册；`resources[].host` 只能写 `host.docker.internal` |
 | 108 | **每种语言的技术栈逐格锁定**（§12.4）：Go = Gin + `database/sql`/`pgx stdlib` + `sqlc` + `golang-migrate`；Python = FastAPI + uvicorn 单进程 + **`grpc.aio`** + `asyncpg` + 手写 SQL + `yoyo-migrations`；指标一律**每模块一个 registry**。⚠️ **迁移那一格是「语言内统一」，其余是「全项目统一」**——外壳不跨语言，所以每个外壳的启动器只需认识自己那门语言的迁移工具 | §13.5 那句「只能合并同语言**同框架**的组件」以前没有任何地方展开过。展开之后发现分歧分三层：ASGI/WSGI、同步 gRPC、DB 驱动、迁移工具、默认 registry 这五格是**物理合不进去**；OTel/日志/信号/环境变量那几格是**起得来然后悄悄错**；只有 Gin 那一格是纪律锁（`gin.Engine` 就是个 `http.Handler`，混用能编译）。**理由要分清，否则将来有人以为 FastAPI 也只是偏好** | ① 用 Flask 写一个 Python 组件，做外壳那天才发现 WSGI 的同步 handler 拿不到共享的 asyncpg 池；② 两个模块都往默认 Prometheus registry 注册 `http_requests_total`，单跑 100% 正常，进外壳第二个模块起来就崩；③ **同一个外壳里**一个组件用 alembic、其余用裸 `.sql`，那个外壳的启动器要写两套迁移编排（跨外壳不同则无妨——这一格只在语言内是硬的） |
-| 109 | **模块入口契约**（§12.5、§13.3 铁律七）：每个后端组件导出唯一入口 `module.New(ctx, rt) (*besdk.Module, error)`（Python `create_module(rt)`），`main` 塌成 `besdk.RunStandalone(module.New)` 一行。**单跑与合并调同一个函数** | §1.5 原则二「合并只发生在部署形态上」如果单跑走 `main` 的一套装配、合并走外壳的另一套装配，就只是口号。**同一个入口是原则二唯一能被机器守住的形态**，也是 `be-ops` 产出 4（外壳合并配置）的生成对象。外壳只收 `http.Handler`，所以决策 108 的框架锁不会漏进外壳代码 | ① 61 个组件各自发明一个 `main`，合并那天 61 份装配代码全要重写；② §13.7 的拆回门禁半年后第一次真跑时全红，而当时已分不清是哪一处磨掉了组件性 |
-| 110 | **配置只能由调用方注入，模块代码里零 `os.Getenv`**（§12.5.3）；进程内单例（OTel provider、日志根、信号处理器、Prometheus registry、连接池）一律归外壳，模块**不许 `log.Fatal` / `os.Exit`** | §13.8.2 已经要求「外壳按模块持有各自的 env map」，可一个进程只有一份 `environ`——那句要求**只有在模块不碰 `os.Getenv` 时才成立**。撞的恰好都是不带 `_ENDPOINT` 的那些：`COMPONENT_ID`、`PG_SCHEMA`、以及每份 `configSchema` 里的每一项（`pgSchema`/`batchSize`/`otelBaseUrl` 同名很常见）。**本条更正旧版 §13.3 铁律一与总纲 SOP-B 的 B-8**——不许硬编码地址的意图没变，改的是「谁去读」 | ① 21 个模块的 `PG_SCHEMA` 互相顶掉，**不报错**，模块按别人的 schema 建表写数据——决策 3 那个「悄悄读写别人的数据」的第二条路径；② 一个模块启动时踩到可恢复的错就 `log.Fatal`，**整组 21 个组件一起没了**；③ 21 个模块的 trace 全挂在最后一个 `SetTracerProvider` 的 `service.name` 上，而一路全绿 |
+| 109 | **模块入口契约**（§12.5、§13.3 铁律七）：每个后端组件导出唯一入口 `module.New(ctx, rt) (*besdk.Module, error)`（Python `create_module(rt)`），`main` 塌成 `besdk.RunStandalone(module.New)` 一行。**单跑与合并调同一个函数** | §1.5 原则二「合并只发生在部署形态上」如果单跑走 `main` 的一套装配、合并走外壳的另一套装配，就只是口号。**同一个入口是原则二唯一能被机器守住的形态**，也是 `be-ops` 产出 4（外壳合并配置）的生成对象。外壳只收 `http.Handler`，所以决策 108 的框架锁不会漏进外壳代码 | ① 62 个组件各自发明一个 `main`，合并那天 61 份装配代码全要重写；② §13.7 的拆回门禁半年后第一次真跑时全红，而当时已分不清是哪一处磨掉了组件性 |
+| 110 | **配置只能由调用方注入，模块代码里零 `os.Getenv`**（§12.5.3）；进程内单例（OTel provider、日志根、信号处理器、Prometheus registry、连接池）一律归外壳，模块**不许 `log.Fatal` / `os.Exit`** | §13.8.2 已经要求「外壳按模块持有各自的 env map」，可一个进程只有一份 `environ`——那句要求**只有在模块不碰 `os.Getenv` 时才成立**。撞的恰好都是不带 `_ENDPOINT` 的那些：`COMPONENT_ID`、`PG_SCHEMA`、以及每份 `configSchema` 里的每一项（`pgSchema`/`batchSize`/`otelBaseUrl` 同名很常见）。**本条更正旧版 §13.3 铁律一与总纲 SOP-B 的 B-8**——不许硬编码地址的意图没变，改的是「谁去读」 | ① 22 个模块的 `PG_SCHEMA` 互相顶掉，**不报错**，模块按别人的 schema 建表写数据——决策 3 那个「悄悄读写别人的数据」的第二条路径；② 一个模块启动时踩到可恢复的错就 `log.Fatal`，**整组 22 个组件一起没了**；③ 22 个模块的 trace 全挂在最后一个 `SetTracerProvider` 的 `service.name` 上，而一路全绿 |
 | 111 | **前端 UI 层逐格锁定**（§12.6）：PC = **Ant Design Vue v4 + vxe-table**，移动端 = **wot-design-uni**，图表 = **ECharts**；第三方组件**只许出现在 `packages/ui-kit`**，业务页面严禁直接 `import`；混搭的唯一理由是**能力缺口**，不是观感 | AntDV 与 vxe-table 是**两套主题系统**（一套 design token、一套 CSS 变量），不在 `ui-kit` 里接起来就会「每张表格像贴进去的」——而这一条不报错、能跑。移动端用另一套是**设计使然**（移动端界面形态本来就完全不同：卡片列表 / 扫码 / 两个审批按钮 vs 密集表格 / 多级联动长表单，共用组件的收益接近零），AntDV 依赖 DOM 这件事只是顺便把「偷懒复用」物理封死。连带：`ui-kit` 拆成 `design-tokens`（两端唯一共享，纯数据）+ `ui-kit-pc` + `ui-kit-mobile`——**共享 token，不共享组件**。`ui-kit` 唯一出口那一条与 `be-sdk-*` 同一个道理：换实现改一个文件，而不是改 40 个页面 | ① 一年后一个页面里五个 UI 库，token 体系两两对不齐，**混得越多越不好看**；② 为了「好看」去换组件库，而真正毁观感的是「这一页间距 16、下一页 20」；③ 页面设计完了才发现 vxe 的某个能力属于商业版（§12.6.6 是一个四步闭环：核 → 判定 → 换的候选 → 用 `<BeTable>` 提前压低换的代价）；④ 为了「两端一致」去共用组件，同时得到一个难用的移动端和一个被移动端限制住的 PC 端 |
 | 112 | **前端应用骨架自研**，不采用现成 admin 模板（vue-vben-admin / antdv-pro 等）作为依赖；但**照 §3.2.1 三步法去读 `vue-vben-admin` 的 layout / router+access / request 三块** | 我们有两条约束恰好落在模板最难改的那一层：**动态特性路由**（启动时调 `/api/tenant/features` 动态注册路由与菜单，而模板的路由+权限+菜单由后端菜单表或静态路由驱动，改它等于重写模板的主要价值）与 **Uni-app 共享层**（没有任何 admin 模板覆盖它）。次要两条：离线装包 vs 模板的大依赖树；决策 4 的「一仓库一前端组件 + 内部 monorepo」与模板目录约定打架 | ① 把模板当依赖引进来，然后为了 feature-flag 路由把它的 router/access 层整个换掉——留下的只是一个 layout，而依赖树全留着；② 反过来，「自研」被理解成「从零发明」，把 vben 已经踩平的 layout / 请求封装的坑再踩一遍 |
+| 113 | **PC 端应用骨架采用「全局服务选择器 + 服务内扁平导航」（AWS Console 式两级导航）**，加三处必须的改造：**应用内标签页**、**服务内菜单强制扁平**、**Region 切换器换成组织/法人上下文切换器**；`ui-kit-pc` 另出**页面级模板** `<BeListPage>`/`<BeDetailPage>`/`<BeFormPage>`/`<BeSettingsPage>`，业务页面选模板填插槽（§12.6.7） | 菜单来自 62 份 `assembly.yaml` 的生成期聚合，没有中心菜单表可以重排；加上按需装配，导航天然是「域→组件→页面」三层，而**每个客户装的组件不同，那棵树家家形状不同**——AI 生成页面时无法预设它落在哪一层。两级导航映射到组件边界后，结构对每个客户都一样。这正是云控制台面对「200+ 独立服务」时给出的同一个答案 | ① 照 vben 铺一棵三层树，62 个组件 / 200+ 页面在侧栏里滚不完，且每家客户的树都不同；② 照抄 AWS 连「没有应用内标签页」一起抄——ERP 用户一张未保存的出库单被浏览器刷新吃掉；③ 学了 AWS 的结构也学了它的病：每个页面各做各的，62 个组件看起来像 61 个产品（防线就是页面级模板）；④ 以为服务下拉里不显示就等于安全——它只是体验，鉴权在后端（决策 8） |
+| 114 | **偏好设置三层归属**（§12.6.8）：归用户的只有**收藏的组件、亮/暗、密度、语言**四项（外加表格列态，纯本地不同步）；**主色 / logo / 水印 / 灰度是装配期配置**；**布局模式不做**。连带一条硬要求：**`packages/design-tokens` 必须是运行时可写的 CSS 变量，不是编译进 bundle 的 TS 常量** | 亮/暗与紧凑都要求**运行时切 token**，写成常量在运行时换不了；而发现这件事时页面已经写了几十个，改的是每一个页面——**这是整套前端设计里唯一有时间压力的一条**。反过来，把布局模式这类展示性开关也给用户，等于要求 62 个组件的页面在三种布局下各测一遍，换来的是真实客户根本不会点的一个下拉框 | ① `design-tokens` 写成 TS 常量导出，第一个页面写完就把运行时换肤这条路锁死了；② 照 admin 模板抄三十项偏好，大半没人用，却把测试矩阵乘了三；③ 反过来漏掉**收藏的组件列表**与**表格列宽/列序**——那两项才是 ERP 用户天天在用的，比主题色重要一个量级 |
+| 115 | **功能权限与数据权限是两套机制，彻底分开**（第 14 章）：功能权限**运行时可改**（`infra-authz` 有界面），数据权限**随版本上线**（代码 + `assembly.yaml`）。新增组件 `infra-authz`（#62，Go，外壳三，8222/9222），与 `slot:iam` 刻意分开——`iam` 只回答「你是谁」 | 这个分法是主流：AWS IAM 是 `Action` vs `Resource+Condition`，K8s RBAC 是 `verbs` vs `resources`（**官方明确不做行级**），Salesforce 是 Permission Set vs Sharing Rules（两个独立子系统），Odoo 是 `ir.model.access` vs `ir.rule`。**唯一把两者塞进同一个模型的是 SAP 的 Authorization Object，而那正是它出名难用的主因之一**。分开放还有一个白捡的好处：换 Keycloak 那天角色数据一行不用迁，唯一连接点是 `sub` | ① 用一套 RBAC 同时表达「能不能审批」与「能看哪些单据」，最后每加一个部门都要动权限模型；② 把角色表放进 `infra-iam-casdoor` 那个「~500 行薄适配层」，换 IAM 实现时整套授权模型要在另一个仓库重写 |
+| 116 | **功能权限走本地 PDP**（§14.1.4）：`infra-authz` 出 `GET /authz/bundle`，`be-sdk` 每 15s 条件拉进**进程内存 map**；**JWT 只带身份**（`sub`/`roles[]`/`dept_path`/`org_id`），权限键一个都不进 token；**纯并集、无 Deny**；靠 bundle 里有界的 `stale_since` 列表把「人的角色变更」与「踢人」也拉到 ~15 秒 | 三种架构里只有这一种适配「客户本地一台电脑」：**集中式 PDP**（Zanzibar / SpiceDB / OpenFGA）的 p95<10ms 是几万台机器换来的；**Token 内嵌**（Auth0/Okta 默认）会让管理员的权限键全集顶爆 8KB header，且生效只能等 TTL。本地 PDP 是 **OPA / Istio 的标准形态**，判定是纳秒级 map 查找，**组件里零表零迁移零事件**。无 Deny 抄的是 K8s 的立场：AWS 的 Deny/Allow 求值顺序正是它难用的主因，而纯并集下「他为什么能看到这个」永远只有一个答案 | ① 为了「几秒生效」给 62 个组件各建一张权限副本表 + 事件消费 + 强依赖边——把一个 map 查找做成了分布式缓存失效问题；② 把权限键塞进 JWT，普通用户没事、**超级管理员登录成功后所有请求 431**；③ 只做 bundle 不做 `stale_since`，于是最日常的操作（入职/调岗/临时授权到期）反而是最慢的那一档 |
+| 117 | **鉴权的执行靠类型系统，不靠纪律**（§14.1.7/§14.1.8）：`be-sdk` 只暴露带权限键参数的路由注册函数，**漏写编译不过**；`make gates` 禁止业务代码裸用 `gin.Engine` 的 `GET/POST`。前端三层（`features ∩ permissions ∩ 登录态`）**只是体验，从来不是安全边界** | 62 个组件的代码由 AI 分批生成，**「记得加中间件」是不可依赖的**——而漏掉一个接口不会报错，只会无人鉴权。前端那半边则必须讲反过来：用户改本地代码一定能让隐藏菜单显示出来并路由过去，**正确的目标不是防止他看见画面，而是让他看见了也拿不到数据**（决策 8 的完整含义） | ① 用「中间件 + 约定」代替签名强制，第 40 个组件上漏一个写接口，**没有任何症状**；② 以为服务下拉不显示就等于安全，于是后端某些只读接口没判权限；③ 把全量组件清单下发给前端让它自己过滤，泄露「这家公司买了哪些模块」 |
+| 118 | **数据权限随版本上线**（§14.2）：`assembly.yaml` 的 `data_scopes` **必填**（不需要也要显式写 `none`，`be-ops` 校验）；`org` 维用**物化路径 `dept_path` 前缀匹配**（零组织树副本）；过滤条件**静态写进 `.sql`、运行时传参**（`sqlc` 原生支持），**不用 RLS**；跨组件调用分 `besdk.UserClient` / `besdk.SystemClient` 两个构造 | SAP（ABAP 里 `AUTHORITY-CHECK`，随 transport）、Odoo（`ir.rule` 随模块）、PG RLS（policy 是 DDL）**全都是随版本走**；唯一的例外 Salesforce 的运行时 Sharing Rules，代价是一张物化 Sharing Table，**改一条规则大组织要后台重算几小时**——那是物化视图重算问题，不是配置写入。而「`sqlc` 拼不动动态 WHERE 所以只能上 RLS」这个前提本身是错的：条件写死在 `.sql` 里传参即可，前提一垮 RLS 就不划算（它还带着「表 owner 默认 bypass RLS」这个静默陷阱） | ① 在调用方拿到结果后过滤——**分页当场错**，返回 20 条滤掉 12 条，用户以为只有 8 条，而决策 53 已经没有 offset 可以补救；② 给 62 个组件全都加 `dept_path` 强制列，AI 生成时不知道产品分类表该填什么，填错不报错；③ 反过来省略 `data_scopes` 段——**省略必须等于报错，不能等于 `none`**，安全机制的默认值只能 fail-closed；④ 用户请求路径上误用 `SystemClient`，数据权限整条被绕过且不报错 |
 
 ## 第 11 章 · 数据生命周期与冷热分层治理
 
@@ -1978,6 +2015,16 @@ version    BIGINT      NOT NULL DEFAULT 1,
 status     TEXT        NOT NULL
 ```
 
+**另有三列是条件强制的**：只有 `assembly.yaml` 里 `data_scopes` 不为 `none` 的组件、且在 `tables` 列出的那些表上才加（§14.2.5）：
+
+```sql
+dept_id   TEXT NOT NULL,   -- 叶子部门 ID，稳定身份
+dept_path TEXT NOT NULL,   -- 物化路径，数据权限过滤用，可重写
+owner_id  TEXT NOT NULL,   -- 归属人
+```
+
+⚠️ **建表时就要判定要不要它们。** 分区表回头加列的代价比建表时多两个数量级，所以 SOP-D 的组件设计计划第 1 节必须回答「本组件要不要行级数据权限」。⚠️ 这两个 `dept_*` 是**创建时快照**，不是「查 owner 现在在哪个部门」——否则销售换部门后他去年的订单会在报表里集体漂移，**不报错，数字就是变了**。
+
 #### 11.2.2 分区表建表规范（在 migration 中完成）
 
 ```sql
@@ -2002,7 +2049,7 @@ CREATE TABLE sales_orders_2026_02 PARTITION OF sales_orders
 
 #### 11.2.3 ⚠️ 迁移状态表必须落在各自的 schema 里
 
-全系统共用一个 database，而**迁移工具默认把 `schema_migrations` 建在 `public` 里**。61 个组件全挤在同一张表上，迁移记录会互相顶掉——症状是"某个组件的迁移莫名其妙不跑了"或"跑了两遍"。
+全系统共用一个 database，而**迁移工具默认把 `schema_migrations` 建在 `public` 里**。62 个组件全挤在同一张表上，迁移记录会互相顶掉——症状是"某个组件的迁移莫名其妙不跑了"或"跑了两遍"。
 
 两条都要做：
 
@@ -2194,7 +2241,7 @@ CREATE TABLE sales_orders_2026_02 PARTITION OF sales_orders
    | Docker | 判 `unhealthy` → `up -d --wait` 失败；依赖方卡在 `service_healthy` |
    | K8s | Pod 被 kill 重启 → 再走一遍同样的宽限期 → **永久 CrashLoopBackOff，而容器日志一路正常** |
 
-   我们三种语言里**两种在射程内**：Python（`WeasyPrint` / `NumPy` / `Pandas` 的 import 本身就要好几秒，`hrm-payroll-es`、`infra-print`、`ana-*` 全都要预加载）、Node（BFF 的 GraphQL schema 构建 + Persisted Queries 预热）。Go 通常几百毫秒，**但外壳启动器要串行跑完 8~21 个模块的迁移再启动，必然超**。
+   我们三种语言里**两种在射程内**：Python（`WeasyPrint` / `NumPy` / `Pandas` 的 import 本身就要好几秒，`hrm-payroll-es`、`infra-print`、`ana-*` 全都要预加载）、Node（BFF 的 GraphQL schema 构建 + Persisted Queries 预热）。Go 通常几百毫秒，**但外壳启动器要串行跑完 8~22 个模块的迁移再启动，必然超**。
 
    `startPeriodSeconds` **只推迟"判死"，不推迟"判活"**——两秒就绪的组件照样两秒转 healthy。所以**写大一点没有代价**：
 
@@ -2203,9 +2250,9 @@ CREATE TABLE sales_orders_2026_02 PARTITION OF sales_orders
    | Python 组件（`hrm-payroll-es`、`infra-print`、`ana-*`） | `120` |
    | Node 组件（`infra-bff-mobile`） | `90` |
    | Go 单体组件 | 不写（默认 60 够用） |
-   | **外壳镜像**（在我们自己那份 shell-compose 里，不经平台） | `300`：21 个模块的迁移串行跑，60 秒远远不够 |
+   | **外壳镜像**（在我们自己那份 shell-compose 里，不经平台） | `300`：22 个模块的迁移串行跑，60 秒远远不够 |
 
-6. **健康检查禁令（三种语言一视同仁）**：`/healthz` **只检查本进程存活**，严禁在里面查数据库、查依赖组件、查 NATS。一个下游抖动会让所有上游同时被判不健康并重启——合并部署下更狠：一个模块把探针拖挂，**整组 21 个组件一起重启**。
+6. **健康检查禁令（三种语言一视同仁）**：`/healthz` **只检查本进程存活**，严禁在里面查数据库、查依赖组件、查 NATS。一个下游抖动会让所有上游同时被判不健康并重启——合并部署下更狠：一个模块把探针拖挂，**整组 22 个组件一起重启**。
 
 7. **镜像里必须有 `/bin/sh` 加 `wget` 或 `curl`。**
 
@@ -2239,7 +2286,7 @@ CREATE TABLE sales_orders_2026_02 PARTITION OF sales_orders
 | 层 | 什么 | 例 |
 | --- | --- | --- |
 | **① 物理合不进去** | 编译不过，或第二个模块起来就崩 | ASGI 与 WSGI 不能共享一个事件循环；两个模块都往默认 registry 注册同名指标，Go `MustRegister` **panic**、Python 抛 `Duplicated timeseries` |
-| **② 起得来然后悄悄错** | 单跑 100% 正确，进外壳才错，**且没有报错** | 进程内单例被 21 个模块抢着初始化，**最后一个 init 的赢**；模块读进程环境变量，`PG_SCHEMA` 互相顶掉 |
+| **② 起得来然后悄悄错** | 单跑 100% 正确，进外壳才错，**且没有报错** | 进程内单例被 22 个模块抢着初始化，**最后一个 init 的赢**；模块读进程环境变量，`PG_SCHEMA` 互相顶掉 |
 | **③ 纪律** | 物理上能混，混了之后有人要付账 | Gin 与 Echo 混用：编译得过、跑得起来，但 `be-sdk-go` 的中间件要写两遍，而第二遍那份必然烂 |
 
 **第②层是本项目最贵的一类**——它和决策 3 的「不带 `LOCAL` 的 `SET`」、§2.1 的「`grpc.Dial("http://…")`」是同一个家族：代码看起来完全正确，测试也能过。
@@ -2255,15 +2302,15 @@ CREATE TABLE sales_orders_2026_02 PARTITION OF sales_orders
 | gRPC | `grpc-go` | **`grpc.aio`**（禁同步 `grpc`） | 不提供 gRPC（§6.5） | 第①层：混用等于一个进程里同时跑线程池与事件循环两套运行时，同步 handler 拿不到共享的 async 池，每个方法都得 `run_coroutine_threadsafe` 桥一次 |
 | DB 驱动 | **`database/sql` + `pgx/v5/stdlib`** | **`asyncpg`** | 严禁直连 DB（§6.5） | 第①层：外壳只有一个池（铁律二），`*sql.DB` 与 `*pgxpool.Pool` 互相递不进去，池就合不掉 |
 | SQL 层 | **`sqlc`**（`database/sql` 模式），手写 SQL | **手写 SQL + Pydantic 行映射**（由 `be-sdk-python` 提供），**不用 ORM** | — | GORM / SQLAlchemy ORM 都要自己管连接与会话生命周期，和「外壳一个全局池 + `SET LOCAL` 事务」（铁律二）正面打架 |
-| 迁移 | **`golang-migrate`**，文件是裸 `.sql`（`NNN_x.up.sql` / `.down.sql`） | **`yoyo-migrations`**（`pip install`，Python 原生），文件同样是裸 `.sql` | — | **第①层，但只在语言内**：外壳不跨语言（§13.5），所以 Go 外壳的启动器只需认识 `golang-migrate`、Python 外壳只需认识 `yoyo`。**语言内混用**才是第①层——一个外壳的启动器要为 21 个模块写两套迁移编排（铁律五）。⚠️ 不用 alembic：见本节末的 ⚠️ |
+| 迁移 | **`golang-migrate`**，文件是裸 `.sql`（`NNN_x.up.sql` / `.down.sql`） | **`yoyo-migrations`**（`pip install`，Python 原生），文件同样是裸 `.sql` | — | **第①层，但只在语言内**：外壳不跨语言（§13.5），所以 Go 外壳的启动器只需认识 `golang-migrate`、Python 外壳只需认识 `yoyo`。**语言内混用**才是第①层——一个外壳的启动器要为 22 个模块写两套迁移编排（铁律五）。⚠️ 不用 alembic：见本节末的 ⚠️ |
 | 校验 | `go-playground/validator`（Gin 内置） | Pydantic v2 | — | 第③层 |
 | 指标 | **每模块一个 `prometheus.Registry`**（由 SDK 发），进程级只 gather 一次 | 同左（每模块一个 `CollectorRegistry`） | — | **第①层**：用默认全局 registry，第二个模块注册同名指标就崩。单跑时 100% 正常 |
 | 日志 | SDK 的结构化 logger（§7.3） | 同左，**禁 `logging.basicConfig()`** | — | 第②层：`basicConfig` 是进程级，谁先调谁赢，其余 20 个模块的日志格式被顶掉 |
-| OTel | SDK 的 `Bootstrap`（进程级只一次） | 同左 | 同左 | 第②层：`otel.SetTracerProvider()` **最后一个赢**，21 个模块的 trace 全挂在同一个 `service.name` 上 |
+| OTel | SDK 的 `Bootstrap`（进程级只一次） | 同左 | 同左 | 第②层：`otel.SetTracerProvider()` **最后一个赢**，22 个模块的 trace 全挂在同一个 `service.name` 上 |
 | 测试 | `testing` + `testify` + `rapid`（属性测试，§8.0） | `pytest` + `pytest-asyncio` + `hypothesis` | vitest | 第③层 |
 | 镜像基底 | `alpine` + `wget`（§12.3.7） | `python:3.11-slim` + `wget` | `node:20-slim` + `wget` | §12.3.7 |
 
-⚠️ **`database/sql` 而不是 `pgxpool`，这一格是想过的。** `pgxpool.Pool` 的原生 API 更强（COPY、批量、原生类型映射），但外壳要把**同一个池**递给 8~21 个模块，那个类型就成了模块入口契约的一部分（§12.5）——而 `database/sql` 是标准库类型、`sqlc` 直接支持、`be-sdk-go` 的 `WithTx` / `PublishOutbox` 签名本来就写在它上面。用 `pgx/v5/stdlib` 当驱动，底下还是 pgx。
+⚠️ **`database/sql` 而不是 `pgxpool`，这一格是想过的。** `pgxpool.Pool` 的原生 API 更强（COPY、批量、原生类型映射），但外壳要把**同一个池**递给 8~22 个模块，那个类型就成了模块入口契约的一部分（§12.5）——而 `database/sql` 是标准库类型、`sqlc` 直接支持、`be-sdk-go` 的 `WithTx` / `PublishOutbox` 签名本来就写在它上面。用 `pgx/v5/stdlib` 当驱动，底下还是 pgx。
 
 ⚠️ **Gin 这一格是纪律锁（第③层），不是物理锁——必须说清楚**，否则将来有人以为它和 FastAPI 一样是硬约束，或者反过来以为 FastAPI 也只是偏好。`gin.Engine` 本身就是 `http.Handler`，Gin + Echo + chi 塞进一个 Go 进程能编译能跑。锁它的理由是三条：① `be-sdk-go` 的中间件（OTel、request-id、error → gRPC status、PII 脱敏日志、RED 指标）只写一遍——写第二遍那份必然烂；② 外壳的 `go.work` 不用同时拖两套框架；③ **新开会话的 AI 读两个组件看到两套写法，跨组件抄一段就编译不过**（SOP-P 的 P-0：帮 AI 的是一致与显式）。
 
@@ -2281,7 +2328,7 @@ CREATE TABLE sales_orders_2026_02 PARTITION OF sales_orders
 
 ### 12.5 模块入口契约与「进程内只能有一份」的那些东西
 
-上一节锁的是**用什么库**，这一节锁的是**外壳怎么把一个组件挂进来**。这是旧版整块缺失的一节——缺了它，`be-ops` 产出 4（外壳合并配置，§5.10）没有生成对象，61 个组件会各自发明一个 `main`，而那些 `main` 里的装配在合并那天全都要重写。
+上一节锁的是**用什么库**，这一节锁的是**外壳怎么把一个组件挂进来**。这是旧版整块缺失的一节——缺了它，`be-ops` 产出 4（外壳合并配置，§5.10）没有生成对象，62 个组件会各自发明一个 `main`，而那些 `main` 里的装配在合并那天全都要重写。
 
 #### 12.5.1 唯一入口：单跑与合并走同一个函数
 
@@ -2332,12 +2379,12 @@ func main() { besdk.RunStandalone(module.New) }   // Python: besdk.run_standalon
 
 | 东西 | 模块自己做会怎样 |
 | --- | --- |
-| `otel.SetTracerProvider()` / `logging.basicConfig()` | **最后一个 init 的赢。** 21 个模块的 trace 全挂在最后那个的 `service.name` 上、日志格式被某个模块顶掉。**全部 healthy、没有任何报错** |
+| `otel.SetTracerProvider()` / `logging.basicConfig()` | **最后一个 init 的赢。** 22 个模块的 trace 全挂在最后那个的 `service.name` 上、日志格式被某个模块顶掉。**全部 healthy、没有任何报错** |
 | Prometheus 默认 registry | Go `MustRegister` **panic**、Python 抛 `Duplicated timeseries in CollectorRegistry`。单跑 100% 正常，进外壳第二个模块起来就崩 |
 | 信号处理器（`signal.NotifyContext` / uvicorn 的 `install_signal_handlers`） | 5 个 `uvicorn.Server` 在一个进程里抢 SIGTERM，`docker stop` 关不干净、要等超时被 kill |
-| **框架自己的包级全局**：`gin.SetMode()`、`gin.DefaultWriter` / `DefaultErrorWriter` | 它们是 Gin 的**包级变量**，不是 engine 的字段。一个模块写 `gin.SetMode(gin.DebugMode)`，**另外 20 个模块的 engine 一起进 debug 模式**（每个请求多打一行日志、panic 堆栈直接吐给客户端）。这一条最容易漏，因为它长得像「设置我自己的 engine」。归 `Bootstrap`，模块一律不许调 |
+| **框架自己的包级全局**：`gin.SetMode()`、`gin.DefaultWriter` / `DefaultErrorWriter` | 它们是 Gin 的**包级变量**，不是 engine 的字段。一个模块写 `gin.SetMode(gin.DebugMode)`，**另外 21 个模块的 engine 一起进 debug 模式**（每个请求多打一行日志、panic 堆栈直接吐给客户端）。这一条最容易漏，因为它长得像「设置我自己的 engine」。归 `Bootstrap`，模块一律不许调 |
 | **进程环境变量** | 见 §12.5.3 |
-| `os.Exit` / `log.Fatal` / `sys.exit` | 一个模块启动时踩到一个**可恢复**的错，**整组 21 个组件一起没了**。一律返回 error 交给调用方 |
+| `os.Exit` / `log.Fatal` / `sys.exit` | 一个模块启动时踩到一个**可恢复**的错，**整组 22 个组件一起没了**。一律返回 error 交给调用方 |
 | 数据库连接池 | §13.3 铁律二：模块私自 `sql.Open()` 那条路已经被否掉了 |
 
 #### 12.5.3 ⚠️ 配置只能注入，不能读进程环境——这是 §13.8.2 能成立的最后一环
@@ -2346,7 +2393,7 @@ func main() { besdk.RunStandalone(module.New) }   // Python: besdk.run_standalon
 
 哪些会撞、哪些不会，要分清——**撞的那些恰好都不带 `_ENDPOINT`**：
 
-| 变量 | 同一外壳里 21 个模块 | 结论 |
+| 变量 | 同一外壳里 22 个模块 | 结论 |
 | --- | --- | --- |
 | `*_ENDPOINT`（依赖地址） | **值相同**（同一个目标组件，谁调都是那个地址） | 拍平也不会错。但仍然必须走 `besdk.Endpoint()`，因为要剥 scheme（§2.1） |
 | `DATABASE_*` / `MQ_*` / `STORAGE_*` | **值相同**（每外壳一个登录角色，决策 3） | 拍平也不会错 |
@@ -2364,7 +2411,7 @@ func main() { besdk.RunStandalone(module.New) }   // Python: besdk.run_standalon
 
 ---
 
-### 12.6 前端 UI 层锁定（组件库 / 图表 / 应用骨架 / 视觉方向）
+### 12.6 前端 UI 层锁定（组件库 / 图表 / 应用骨架 / 视觉方向 / 偏好归属）
 
 §12.2 定的是**语言与框架**（Vue3 + Uni-app，坚决排除 React）。这一节定的是**它上面那一层**。它单独成节、不并进 §12.4，是因为前端组件**不进任何外壳**（§13.5）——所以这一层的约束不来自「进程内共存」，而来自另外三条：
 
@@ -2372,7 +2419,7 @@ func main() { besdk.RunStandalone(module.New) }   // Python: besdk.run_standalon
 | --- | --- |
 | **一个页面里只能有一套设计系统** | 用户不关心我们用了几个库，他只会看出「这张表格像贴进去的」 |
 | **换实现时改一处，不是改 40 个页面** | 与后端 `be-sdk-*` 同一个道理（§5.10）：第三方组件只许在 `packages/ui-kit-*` 里出现 |
-| **AI 生成页面时不能猜** | 一个能力只有一个官方答案，否则 61 个组件的页面会长出 N 种写法 |
+| **AI 生成页面时不能猜** | 一个能力只有一个官方答案，否则 62 个组件的页面会长出 N 种写法 |
 
 #### 12.6.1 锁定表
 
@@ -2446,6 +2493,8 @@ func main() { besdk.RunStandalone(module.New) }   // Python: besdk.run_standalon
 
 次要两条：本地化部署要离线装包，而模板的依赖树都很大；决策 4 是「一个前端组件一个仓库、内部 monorepo」，模板的目录约定会打架。
 
+⚠️ **骨架长什么样，在 §12.6.7 定死**（AWS Console 式两级导航）。本节只回答「为什么自己写」，不回答「写成什么样」。
+
 ⚠️ **但「自研」不等于「从零发明」。** 前端同样走 §3.2.1 的参考实现三步法：先自己按需求设计一版 → 理不清的地方去读 **`vue-vben-admin`**（Vue3 + Ant Design Vue + TS、MIT，**正好同栈**）的 **layout / router+access / request 封装**三块 → 回来自己写。该看哪几块见总纲 §4 SOP-R 的 R-2 表。
 
 #### 12.6.5 视觉方向：克制专业型
@@ -2460,7 +2509,7 @@ ERP 用户要的是**熟悉感与信息密度**，不是惊喜。方向定为「
 | 字体 | 系统字体栈。**不引入需要联网或内嵌的自选字体**（本地化部署 + 离线，一个字体文件几 MB 且首屏会闪） |
 | 表格 | 无斑马纹、只留横线、hover 高亮；固定表头 + 冻结列 + 虚拟滚动是**默认**而不是可选 |
 
-⚠️ **「好看」在这个项目里的具体含义是「一致」。** 61 个组件的页面由 AI 分批生成，最容易毁掉观感的不是配色不够大胆，而是**这一页的间距是 16、下一页是 20**。所以 **`packages/design-tokens` 必须是间距 / 字号 / 行高的唯一真相源**，两端的 ui-kit 都从它取，而页面只许引用它们。**这一条比选哪个组件库重要。**
+⚠️ **「好看」在这个项目里的具体含义是「一致」。** 62 个组件的页面由 AI 分批生成，最容易毁掉观感的不是配色不够大胆，而是**这一页的间距是 16、下一页是 20**。所以 **`packages/design-tokens` 必须是间距 / 字号 / 行高的唯一真相源**，两端的 ui-kit 都从它取，而页面只许引用它们。**这一条比选哪个组件库重要。**
 
 #### 12.6.6 ⚠️ 表格引擎的选型闭环：开工前核一遍，不合适就换
 
@@ -2511,6 +2560,67 @@ vxe 的文档里带 `enterprise-version` / `enterprise-link` 这类标记，说�
 2. 剩下 20% 允许「逃生口」（直接用底层 API），但**每个逃生口必须在 `ui-kit-pc/README.md` 里记一行**。判据是：**这份清单必须可数**——它有多长，就是换引擎那天要改多少处。清单长到自己都不想看的时候，说明封装已经失效，要么补进 `<BeTable>`，要么承认这个引擎换不掉了。
 
 **为什么整节值得写这么细**：这与端口册那条时序性是同一类风险——**发现得越晚越改不动**。等 40 个页面围着某个付费能力设计完了，换掉它就是重画，而不是换一个 import。
+
+---
+
+#### 12.6.7 PC 端应用骨架：AWS Console 式两级导航
+
+**形态定为「全局服务选择器 + 服务内扁平导航」**——AWS Console / Azure Portal / 各家云控制台那一挂，**不是** `vue-vben-admin` 那种左侧多级树。
+
+**为什么不是多级树，这不是审美问题，是数据结构问题。** 菜单来自 62 份 `assembly.yaml` 的 `menus` 段，**生成期聚合，没有中心菜单表可以任意重排**（决策 112）。加上按需装配，导航的形状天然是三层：
+
+> 域（9） → 组件（62） → 页面（3–5） ≈ 200–300 个页面
+
+多级树要求把这三层铺成一棵**可自由编排**的树，而每个客户装的组件不同，**那棵树家家形状不同**——AI 生成一个页面时无法预设它落在树的哪一层。两级导航映射到组件边界之后，结构对每个客户都一样。
+
+云控制台之所以长成这样，正是因为它们面对同一个问题：200+ 个彼此独立的服务塞不进一棵树，于是把导航切成两段——**先选服务，再在服务内导航，全局导航的长度不随服务数增长。** 这与我们「61 个独立组件」的形状同构。
+
+**骨架六件套：**
+
+| 位置 | 内容 |
+| --- | --- |
+| 顶栏左 | 「▾服务」下拉，**覆盖层，不离开当前页**：搜索框 + 最近访问 + 按九域分组的组件清单，可加星标 |
+| 顶栏中 | **收藏栏**：星标过的组件横向常驻，一次点击直达（这是 AWS 对「跨服务跳转重」的解，不能省） |
+| 顶栏右 | ⌘K 命令面板（搜全部页面 + 单据号直达）、**组织 / 法人上下文切换器**、通知、用户菜单 |
+| 顶栏下 | **应用内标签页**，跨组件，可关闭 |
+| 主体左 | 该组件自己的 3–5 个页面，**扁平、不折叠**；底部固定「组件设置」入口 |
+| 主体右 | 面包屑 + 页面内容 |
+
+**三处必须改造 AWS 的地方（照抄会错）：**
+
+| # | AWS 的做法 | 我们必须改成 | 理由 |
+| --- | --- | --- | --- |
+| 1 | **没有应用内标签页**，靠浏览器标签页 | **加应用内标签页** | AWS 的页面基本无表单状态，刷新没损失；ERP 一张未保存的出库单，浏览器一刷就没了。而 ERP 用户的浏览器标签页早就开了二十个。金蝶 / 用友 / SAP Fiori 全都是应用内标签页 |
+| 2 | 服务内菜单深度不统一（EC2 多级折叠、S3 扁平） | **强制扁平、3–5 项、不折叠** | 一个组件本来就只有 3–5 页。允许折叠，62 个组件会长出 61 种不同的侧栏 |
+| 3 | 顶栏有 **Region 切换器** | 换成**组织 / 法人上下文切换器** | 集团客户是多法人的，SAP 与 Odoo（company switcher）都有这个全局上下文。它同时是数据可见范围的输入之一 |
+
+⚠️ **必须避开 AWS 最被诟病的那一点：视觉不统一。** AWS 每个服务团队各做各的页面，二十个服务看起来像二十个产品。**我们的病因一模一样——62 个组件的页面由 AI 分批生成。**
+
+所以 §12.6.5 那条「禁止硬编码颜色与间距」要再强一层：**`ui-kit-pc` 不只出控件，还要出页面级模板**——`<BeListPage>` / `<BeDetailPage>` / `<BeFormPage>` / `<BeSettingsPage>`。业务页面**选模板、填插槽，不从空白 `<div>` 开始摆布局**。这样「这一页间距 16、下一页 20」在物理上发生不了。
+
+⚠️ **前端可见性不是安全边界。** 服务下拉里不出现未装配的组件，但这只是体验：用户改本地代码一定能让隐藏项显示出来并路由过去，那时他会看到一个**空壳**——每个数据请求都被后端拒绝（决策 8「菜单不等于安全」）。与此配套的一条纪律：**下发给前端的组件清单只包含该用户可见的部分**，不要下发全量让前端自己过滤——那泄露的是「这家公司买了哪些模块」这类商业信息。
+
+#### 12.6.8 偏好设置：三层归属，归用户的只有四项
+
+照 admin 模板抄三十项偏好是错的。按 §12.6.7 的骨架逐项核过之后：
+
+| 项 | 归属 | 理由 |
+| --- | --- | --- |
+| **收藏的组件列表与顺序** | ✅ 用户级 | ⭐ 仓管天天只用三个组件，销售用另外四个，这份清单必须跟人走。**它比主题色有价值得多** |
+| 亮色 / 暗色 / 跟随系统 | ✅ 用户级 | 车间、仓库、夜班的屏幕环境差别是真的 |
+| 标准 / 紧凑密度 | ✅ 用户级 | 14 寸笔记本与 27 寸屏的 ERP 表格密度差别很大 |
+| 语言 | ✅ 用户级 | —— |
+| **表格列宽 / 列序 / 隐藏列 / 筛选器** | ✅ 用户级（纯本地，不同步） | ⭐ **这才是 ERP 用户天天在调的东西**，比主题色重要一个量级。admin 模板不管这个，vxe-table 管 |
+| 主色 / logo / 产品名 | 🔧 装配期配置 | 一家公司一个色，不是用户偏好 |
+| 水印 / 灰度模式 | 🔧 装配期配置 | 防截图泄密、国殇日置灰，都是公司级策略 |
+| **布局模式（侧栏 / 顶栏 / 混合）** | ❌ **不做** | admin 模板的展示性功能，真实客户没人切；而它让 62 个组件的页面要在三种布局下各测一遍。**AWS 也不给你切布局** |
+| 圆角 / 动画 / 页脚 / 面包屑开关 | ❌ 不做 | 纯噪音 |
+
+⚠️ **由此得出一条对 `packages/design-tokens` 的硬要求：它必须是运行时可写的 CSS 变量，不能是编译进 bundle 的 TS 常量。**
+
+亮/暗与紧凑两项都要求**运行时切 token**；写成常量的话运行时换肤在物理上不可能，而**发现这件事的时候页面已经写了几十个，改的是每一个页面**。这一条必须在写第一个前端页面之前落实——它是整套偏好设计里唯一有时间压力的部分。
+
+**存储**：先纯 `localStorage`（本地化部署，用户基本固定一台机器）。出现跨设备需求时再挪到后端一张 `user_preferences` 表（`sub → jsonb`），**不为四个字段新建一个仓库**。
 
 ---
 
@@ -2583,11 +2693,11 @@ components:
 
 | 项目 | 说明 |
 |---|---|
-| 包含组件 (21个) | `infra-iam-casdoor`, `infra-workflow`, `infra-notification`, `infra-dlq-monitor`, `infra-attachment`, `infra-storage`, `infra-audit`（7 个 infra）+ **14 个** `integration-*` 适配器（15 个里 `integration-edi` 是 Python，归外壳五） |
+| 包含组件 (22个) | `infra-iam-casdoor`, `infra-authz`, `infra-workflow`, `infra-notification`, `infra-dlq-monitor`, `infra-attachment`, `infra-storage`, `infra-audit`（8 个 infra）+ **14 个** `integration-*` 适配器（15 个里 `integration-edi` 是 Python，归外壳五） |
 | 合并理由 | 集成适配器全是 "调外部 API + 发回调事件 "的 I/O 密集型任务。将它们与通知中心、工作流合并，形成一个统一的 "系统总线与外部网关 " |
-| 端口规划 | HTTP 8200~8220 / gRPC 9200~9220（`infra-iam-keycloak` 作为 `slot:iam` 替换件另占 8221/9221） |
+| 端口规划 | HTTP 8200~8222 / gRPC 9200~9222（`infra-iam-keycloak` 作为 `slot:iam` 替换件占 8221/9221，`infra-authz` 占 8222/9222） |
 
-⚠️ **`infra-iam-casdoor` 属于本外壳，容易被漏掉。** 它是 Go 写的 ~500 行薄适配层（§6.1），Casdoor 官方镜像才是带外容器。§9.6.1 档 3 说「Go 外壳装 10 个模块」时算的就是含它的那 10 个。7 个 infra + 14 个 integration = 21，这个数字才对得上。
+⚠️ **`infra-iam-casdoor` 属于本外壳，容易被漏掉。** 它是 Go 写的 ~500 行薄适配层（§6.1），Casdoor 官方镜像才是带外容器。§9.6.1 档 3 说「Go 外壳装 10 个模块」时算的就是含它的那 10 个。8 个 infra（含 `infra-authz`，见第 14 章）+ 14 个 integration = 22，这个数字才对得上。
 
 #### 🔵 外壳四：Python 复杂大脑 (The Brain & AI Shell)
 将烧脑的、需要强大生态库的组件合并。
@@ -2670,7 +2780,7 @@ PG 的连接绑死两样东西：**一个 database、一个认证角色**。所�
 
 **铁律六：组件模块之间绝不互相 `import`（这是最贵的一条）**
 
-外壳工程会把 8~21 个组件的模块引进同一个 `go.work` / 同一个 Python 包空间。那一刻，"组件之间不共享代码"从物理隔离退化成**纪律**——而纪律会烂。brickKit 自己的《组件合并部署.md》把这一条列为合并部署代价里最贵的：
+外壳工程会把 8~22 个组件的模块引进同一个 `go.work` / 同一个 Python 包空间。那一刻，"组件之间不共享代码"从物理隔离退化成**纪律**——而纪律会烂。brickKit 自己的《组件合并部署.md》把这一条列为合并部署代价里最贵的：
 
 > **外壳工程里可以引各个组件的模块，但组件之间绝不能互相 import——一旦破了，你就再也拆不回微服务态了。**
 
@@ -2686,13 +2796,13 @@ PG 的连接绑死两样东西：**一个 database、一个认证角色**。所�
 
 **铁律七：模块只交回零件，进程级的事一律归外壳（细则见 §12.5）**
 
-外壳要把 8~21 个模块挂进**一个进程**，所以每个组件必须导出**唯一入口** `module.New(ctx, rt) (*besdk.Module, error)`（Python：`create_module(rt)`），**单跑与合并走同一个函数**。三条禁令：
+外壳要把 8~22 个模块挂进**一个进程**，所以每个组件必须导出**唯一入口** `module.New(ctx, rt) (*besdk.Module, error)`（Python：`create_module(rt)`），**单跑与合并走同一个函数**。三条禁令：
 
 | 不许 | 症状 |
 | --- | --- |
-| 模块代码里读进程环境变量（`os.Getenv` / `os.environ`） | 一个进程只有一份 `environ`：`PG_SCHEMA` 与全部 `configSchema` 项在 21 个模块之间互相顶掉，**不报错**，模块按别人的 schema 建表写数据（§12.5.3）。这也是 §13.8.2「按模块持有各自的 env map」能成立的前提 |
+| 模块代码里读进程环境变量（`os.Getenv` / `os.environ`） | 一个进程只有一份 `environ`：`PG_SCHEMA` 与全部 `configSchema` 项在 22 个模块之间互相顶掉，**不报错**，模块按别人的 schema 建表写数据（§12.5.3）。这也是 §13.8.2「按模块持有各自的 env map」能成立的前提 |
 | 模块自己 `SetTracerProvider` / `basicConfig` / 装信号处理器 / 用默认 Prometheus registry | 前两个**最后一个 init 的赢**且一路全绿；第三个让 `docker stop` 关不干净；第四个让**第二个模块起来时直接崩**（§12.5.2） |
-| 模块 `log.Fatal` / `os.Exit` / `sys.exit` | 一个模块踩到一个**可恢复**的错，**整组 21 个组件一起没了**。一律返回 error 交给调用方 |
+| 模块 `log.Fatal` / `os.Exit` / `sys.exit` | 一个模块踩到一个**可恢复**的错，**整组 22 个组件一起没了**。一律返回 error 交给调用方 |
 
 连带一条：**能不能合，先由 §12.4 的技术栈锁定表决定。** 那张表里 Python 的 ASGI/WSGI、gRPC 的同步/异步、DB 驱动、迁移工具、指标 registry 五格是**物理合不进去**——混了就编译不过，或第二个模块起来就崩。
 
@@ -2802,7 +2912,7 @@ PG 的连接绑死两样东西：**一个 database、一个认证角色**。所�
 | 组件自身 config | 照各自 `configSchema` 的默认值 + `brickkit.yaml` 的覆盖 |
 | `COMPONENT_ID` / `COMPONENT_VERSION` | 每个模块一份，外壳启动器按模块设进各自的上下文 |
 
-⚠️ **这些变量不能拍平成一份 `.env` 给整个外壳进程。** 21 个模块各有一份 `DATABASE_*`、各有一个 `COMPONENT_ID`，拍平就互相顶掉。外壳启动器必须**按模块持有各自的 env map**，模块代码读的是它自己那一份——这是"合并不改代码"能成立的最后一环。
+⚠️ **这些变量不能拍平成一份 `.env` 给整个外壳进程。** 22 个模块各有一份 `DATABASE_*`、各有一个 `COMPONENT_ID`，拍平就互相顶掉。外壳启动器必须**按模块持有各自的 env map**，模块代码读的是它自己那一份——这是"合并不改代码"能成立的最后一环。
 
 ⚠️ **`be-ops` 应当把平台的注入结果当输入，而不是自己另算一遍。** `brickkit up --dry-run` 会把每个 local 组件的完整变量表写进 `local-debug.*.env`；`be-ops` 读它、只重写依赖地址那几行（按上表），其余原样。自己另算的那份，早晚和平台的算法分叉。
 
@@ -2841,6 +2951,369 @@ Traefik 的 Docker Provider 只能看到与它同网络的容器。外壳在第 
 
 ---
 
+## 第 14 章 · 权限体系（功能权限 + 数据权限）
+
+> 本章是权限的**唯一规范源**。§6.12（`infra-authz`）、§3.5（`assembly.yaml` 字段）、§11.2.1（条件强制字段）、§12.6.7（前端骨架）都只是它的落点，冲突时以本章为准。
+
+### 14.0 两个概念必须彻底分开
+
+| | **功能权限**（能不能做这个动作） | **数据权限**（能看到哪些行） |
+| --- | --- | --- |
+| 输入 | (用户, 动作) | (用户, 资源类型) |
+| 输出 | 布尔值 | **一个过滤条件，必须进 SQL** |
+| 数据量 | 角色数 × 权限键数，**小** | 规则少，展开后的结果集可能极大 |
+| 变更频率 | **每天**（入职、调岗、临时授权） | **很少**（制度级） |
+| 我们怎么定 | **运行时可改**，`infra-authz` 有界面 | **随版本上线**，代码 + `assembly.yaml` |
+
+**这个分法是主流，合在一起的那家是反面教材：**
+
+| 参照 | 功能权限 | 数据权限 |
+| --- | --- | --- |
+| AWS IAM | `Action` | `Resource` ARN + `Condition` |
+| Kubernetes RBAC | `verbs` | `resources` + `namespace`（**官方明确不做行级**） |
+| Salesforce | Profile / Permission Set | OWD + Role Hierarchy + Sharing Rules（**完全独立的子系统**） |
+| Odoo | `ir.model.access` | `ir.rule`（record rules） |
+| SAP | Authorization Object 的 Activity | **同一个对象里**的 Organizational Level ← 公认难用的主因之一 |
+
+⚠️ **不许把两者塞进同一个模型。** 一旦合并，「这个人能不能审批」与「他能看到哪些单据」会互相污染——SAP 的授权对象就是这么变成一门专门手艺的。
+
+---
+
+### 14.1 功能权限
+
+#### 14.1.1 权限键：谁定义、写在哪
+
+沿用 §3.7 的命名 `{domain}.{aggregate}.{action}`。定义在**组件的 `assembly.yaml`**——**不是 `component.yaml`**（平台不认识的键当场报错，§3.5）：
+
+```yaml
+permissions:
+  - { key: erp.sales.view,       title: 查看销售订单, type: page   }
+  - { key: erp.sales.create,     title: 新建销售订单, type: action }
+  - { key: erp.sales.approve,    title: 审批销售订单, type: action }
+  - { key: erp.sales.field.cost, title: 查看成本价,   type: field  }
+menus:                                    # 已有字段，permission 必须在上面的清单里
+  - { key: erp.sales, title: 销售订单, permission: erp.sales.view }
+```
+
+`type` 三值：
+
+| type | 用在哪 | 谁声明 |
+| --- | --- | --- |
+| `page` | 路由与菜单可见性 | 所有组件 |
+| `action` | 按钮 + 后端写接口 | 所有组件 |
+| `field` | DTO 字段掩码（只读 / 隐藏） | **只有真正需要的组件**：`hrm-payroll-*` 的薪资、`erp-finance` 的金额、`mdm-product` 的成本价。其余组件不写 |
+
+`be-ops` 三条校验：① `menus[].permission` 必须存在于本组件 `permissions[]`；② **权限键前缀必须等于本组件的 `domain`**（防止 crm 组件偷偷定义 `erp.*` 的键）；③ 全局不重复。
+
+#### 14.1.2 `registry/permissions.tsv`：第四张「只增不改」的表
+
+`be-ops` **产出 9**：聚合全部 `assembly.yaml` 的 `permissions` 段，产出 `key / title / type / owner_component / deprecated`。
+
+> ⚠️ **规矩同 `ports.tsv`：只增不改。** 改一个已发布的键名，所有已分配它的角色**当场失权，而且不报错**——症状是「客户升级后某几个人突然点不动某个按钮」，与 §13.3 铁律二那条一个量级。废弃走 `deprecated` 墓碑列，**键名永不回收**。
+
+`be-ops` 把它喂进 `infra-authz` 的 `config.permissionCatalog`，形状抄 §6.1 的 `enabledComponents`——**逗号分隔字符串，不能写 YAML 数组**（平台把数组渲染成 `[a b c]`，组件解析不出来）。
+
+#### 14.1.3 角色模型：纯并集，无 Deny，个人 = 单人角色
+
+```
+用户的有效权限 = ⋃ ( 他每个未过期角色的权限键集合 )
+```
+
+`infra-authz` 三张表：`roles`、`role_permissions`、`user_roles`（后者带 `expires_at`）。
+
+界面上有三种操作，**底层只有一个机制**：
+
+| 管理员做的事 | 底层 | 例子 |
+| --- | --- | --- |
+| 给**角色**加权限 | `role_permissions` 加一行 | 「销售经理」+ `erp.sales.approve` |
+| 给**人**加角色 | `user_roles` 加一行，可带 `expires_at` | 张三 + 「销售经理」，到 2026-12-31 |
+| 给**人**单独加一个权限 | 自动建专属角色 `u:<sub>`，再走上面两步 | 张三 + `erp.finance.export`（临时例外） |
+
+第三种在界面上就是「给这个人单独加一个权限」，`u:<sub>` 是实现细节，管理员看不到。**所以扩展授予主体不需要新机制。**
+
+⚠️ **不做 Deny（显式拒绝），只做并集。**
+
+- **AWS IAM 有 Deny，而 Deny 与 Allow 的求值顺序正是它出名难用的主因**——它的策略求值需要一张流程图才讲得清
+- **Kubernetes RBAC 明确不做 Deny**，官方给的理由就是可推理性
+- ERP 也不需要：「除了 X 什么都能做」的正确表达是**给他一个不含 X 的角色**
+
+纯并集下，「他为什么能看到这个」永远只有一个答案：**某个角色给了他**。这对客户安全评审、对排障、对 AI 推理是同一个好处。
+
+#### 14.1.4 下发方式：本地 PDP（bundle 轮询），不是集中式，也不是全塞 JWT
+
+三种主流架构，我们选第三种：
+
+| 架构 | 谁在用 | 为什么我们不选 / 选 |
+| --- | --- | --- |
+| **A · Token 内嵌** | Auth0 / Okta / Keycloak 的默认玩法 | 生效时延 = token TTL；且管理员的权限键全集会把 JWT 顶到 8KB header 上限（**症状是登录成功、随后所有请求 431**） |
+| **B · 集中式 PDP** | Google Zanzibar（Drive / Cloud IAM 的底座）、SpiceDB、OpenFGA、Cerbos | 论文公布的 p95 < 10ms 是**几万台机器 + 专门团队**换来的。⚠️ **对「客户本地一台电脑」的形态根本不成立** |
+| **C · 本地 PDP（策略下发，本地决策）** ✅ | **OPA（CNCF 毕业）的标准部署形态**、Istio 的 RBAC、AWS Cedar 的 SDK 模式 | 判定在进程内内存完成，**零网络、零表**。生效时延 = 下发间隔 |
+
+具体形态：
+
+```
+infra-authz  ──  GET /authz/bundle   (几十 KB JSON + ETag)
+                        │
+                        │  be-sdk 每 15s 条件拉一次（没变返回 304）
+                        ▼
+每个进程一份内存 map：role → [permission keys]
+                        │
+                        ▼
+   besdk.RequirePermission 判定 = map 查找，纳秒级
+```
+
+⚠️ **组件里没有任何一张权限表。** 零 PG 表、零迁移、零事件、零 NATS 依赖。只有一个内存 map 和一个后台轮询循环，**两者都由 `be-sdk` 提供，业务代码看不见**。
+
+**负载**：合并部署形态下是 **5 个外壳进程各一份 bundle**（`be-sdk` 做成 per-process 单例），每 15 秒一次条件 GET ≈ **0.3 QPS，且大多返回 304**。K8s 全拆形态下 61 个 Pod ≈ 4 QPS。**不需要 Redis，也不需要多实例**——在中间加一层 Redis 只会比进程内 map 更慢。
+
+**`infra-authz` 的地址从 `configSchema` 的 `authzBundleUrl` 注入，业务组件对它不声明依赖**——与 §6.1 的 `iamJwksUrl` 完全同一个做法。这样 62 个组件的 Manifest 里不会多出 61 条依赖边，启动顺序也不需要平台编排（降级见 14.1.8）。
+
+#### 14.1.5 分界线：Token 说「你是谁」，Bundle 说「每个角色能做什么」
+
+这条线是本章最要紧的一句话，它同时是 **OIDC + OPA 的标准分工**：
+
+| | 内容 | 为什么在这边 |
+| --- | --- | --- |
+| **JWT** | `sub` / `roles[]` / `dept_path` / `org_id` | 这些是**身份**。人→角色的映射随用户数增长（2000 人 × 5 角色 = 上万条），放进 bundle 就是让每个组件都持有全公司的人事映射，既大又没必要 |
+| **Bundle** | `role → [permission keys]` + `stale_since`（见下） | 这些是**策略**。它只随角色数增长（几十），恒小 |
+
+⚠️ **权限键一个都不进 JWT。** 于是 JWT 恒小，8KB header 那条路彻底封死，也不需要任何通配符压缩技巧。
+
+#### 14.1.6 生效时延：全部 ~15 秒，靠一个有界列表
+
+朴素做法会得到两档时延——角色内容变更走 bundle（15 秒），而人的角色变更在 JWT 里、只能等 token 刷新（TTL 级）。**而后者恰恰是日常操作**（入职、调岗、临时授权到期），这个分配是反的。
+
+解法是让 bundle 多带一个**有界**的列表：
+
+```jsonc
+{
+  "roles":       { "sales_manager": ["erp.sales.view", "erp.sales.approve"], ... },
+  "stale_since": { "u_zhangsan": 1757145600, "u_lisi": 1757145830 }
+}
+```
+
+`stale_since` 只保留「最近 **2 × TTL** 时间窗内角色发生过变更或被撤销的 `sub`」——超过 TTL 他们手上的 token 本来就失效了，所以**这个列表永远只有个位数到几十条**。
+
+`be-sdk` 的判定链：
+
+1. 验签 JWT（本地，JWKS 从 `iamJwksUrl` 来）
+2. **若 `jwt.iat < stale_since[sub]`** → 返回 `401` + `WWW-Authenticate: Bearer error="token_stale"`
+3. 否则取 `jwt.roles[]`，在内存 map 里并集展开，判权限键 → 通过 / `403`
+
+前端的 `packages/api-client` 拦截那个 `401`：**静默 refresh → 用新 token 重试原请求一次**（只重试一次，防死循环）。这段逻辑本来就要写——access token 正常过期时也是这条路。
+
+于是三类变更统一到一档：
+
+| 变更 | 走哪条 | 生效 |
+| --- | --- | --- |
+| 角色的权限内容变了（销售经理现在能审批了） | bundle 的 `roles` | **~15 秒** |
+| 人的角色变了（升职 / 调岗 / 临时授权到期） | bundle 的 `stale_since` → 401 → 静默刷新 | **~15 秒**（+ 一次刷新往返） |
+| 踢人（离职、误授权） | 同上，但 refresh token 已撤销 → 刷新失败 → **登出** | **~15 秒** |
+
+⚠️ **唯一的例外要说清楚**：不走前端、直接拿 token `curl` 的调用方（脚本、集成），收到 `token_stale` 的 401 后如果自己不刷新，就会**一直 401 直到他换 token**。这是正确行为，不是缺陷。
+
+⚠️ **时钟偏差**：`jwt.iat` 与 `stale_since` 的比较要留几秒余量，否则跨机器的毫秒级偏差会造成一次多余的刷新（无害，但会在日志里刷屏）。
+
+**建议 TTL：access token 10 分钟，refresh token 按客户策略。** TTL 在这套设计里只是 `stale_since` 窗口大小的依据与最终兜底，不再是主要的生效路径。
+
+> 顺带一个值得知道的事实：**AWS IAM 自己就是最终一致的**——官方文档写着策略变更「通常几秒内生效，但可能更久」。「几秒级最终一致」是行业常态，不是妥协。
+
+#### 14.1.7 后端判定：用函数签名强制，不靠自觉
+
+「每一个 API 都判了」不能靠「记得加中间件」。**`be-sdk` 只暴露带权限键参数的注册函数**：
+
+```go
+besdk.GET (r, "/orders",             "erp.sales.view",    h.List)
+besdk.POST(r, "/orders/:id/approve", "erp.sales.approve", h.Approve)
+besdk.GET (r, "/healthz",            besdk.Public,        h.Health)  // 显式公开
+```
+
+**漏写权限键 = 编译不过。** 配一条 `make gates`：扫描全部路由注册，**禁止业务代码裸用 `gin.Engine` 的 `GET/POST`**（Python 侧同理，禁止裸用 `@app.get`）。
+
+⚠️ 对「62 个组件的代码由 AI 分批生成」这个前提，**「记得」是不可依赖的**——所以这一格必须由类型系统守，而不是由纪律守。
+
+#### 14.1.8 前端判定：三层，且它从来不是安全边界
+
+```
+可见路由 = features（这个环境装了没有）
+         ∩ permissions（这个人能不能）
+         ∩ 登录态
+```
+
+层 1 是已有的 `GET /api/tenant/features`；层 2 是 `GET /api/me/permissions`（由 `infra-authz` 提供，返回该用户的 `page` + `action` 键集合）。按钮走 `v-be-auth="'erp.sales.approve'"` 指令，出自 `packages/ui-kit-pc`（§12.6 铁律 9）。
+
+⚠️ **前端可见性永远可绕过，这是物理事实，防线只有后端。**
+
+| 用户干什么 | 结果 | 可接受吗 |
+| --- | --- | --- |
+| 改浏览器内存 / `localStorage`，让隐藏菜单显示出来 | 页面骨架渲染出来，**所有数据请求 403，看到空壳** | ✅ 可接受，且无法防止 |
+| 直接敲前端路由 URL | 同上 | ✅ 同上 |
+| **直接 `curl` 后端 API** | **必须 403** | ⚠️ **这才是唯一真正的边界**，由 14.1.7 的签名强制守住 |
+
+配套纪律：**`/api/tenant/features` 与 `/api/me/permissions` 只返回该用户可见的那部分**，不要下发全量清单让前端自己过滤——那泄露的是「这家公司买了哪些模块」这类商业信息。
+
+#### 14.1.9 降级：authz 挂了怎么办
+
+| 情形 | 行为 | 依据 |
+| --- | --- | --- |
+| 运行中 authz 不可达 | **fail-static**：继续用内存里最后一份 bundle。这是 OPA 的标准做法 | 一个授权服务抖动不该让 62 个组件同时拒绝所有请求 |
+| **启动时**始终拿不到第一份 bundle | 业务请求返 **`503`**（不是 403，语义更准），后台持续重试 | —— |
+| 同上，`/healthz` 怎么报 | **照常 healthy** | ⚠️ §12.3.6：**健康检查里严禁查依赖**。写进去会让 authz 一抖动、整组 22 个模块一起重启 |
+| bundle 太旧（超过 N 倍轮询间隔） | 打 WARN 日志 + 一个 `authz_bundle_age_seconds` 指标，**不改变判定行为** | 让运维看得见，而不是让业务突然全挂 |
+
+---
+
+### 14.2 数据权限
+
+#### 14.2.1 为什么它走另一条路：随版本上线
+
+| 参照 | 数据权限规则住在哪 | 改一条的代价 |
+| --- | --- | --- |
+| **SAP** | ABAP 代码里显式 `AUTHORITY-CHECK`，授权对象随 transport 走 | **= 版本更新** |
+| **Odoo** | `ir.rule` 存在库里可改，但规则随模块安装而来，管理员很少动 | 理论上运行时，实践上随版本 |
+| **PostgreSQL / Oracle RLS** | policy 是 DDL | **= 迁移 = 版本更新** |
+| **Salesforce** | Sharing Rules 运行时可改 ← **唯一的例外** | ⚠️ 见下 |
+
+⚠️ **Salesforce 那条路的真实代价必须说清楚**：它维护一张巨大的 **Sharing Table**（物化的「谁能看哪条记录」），改一条 sharing rule 会触发**后台重算**，大组织**可能跑几小时**。这就是「数据权限运行时可改」的物理本质——**它是一个物化视图重算问题**，不是一次配置写入。
+
+**所以我们随版本走**，与 SAP / Odoo 同路。这不是省事，是这一格本来就该这样：「销售只能看自己名下的客户」是这家公司的**制度**，不是 admin 每天要动的开关。定死在代码与装配配置里，还顺带让它**可 diff、可 review、可回滚**——admin 点错一个下拉框导致全公司看见彼此薪资，这条路直接封死。
+
+**还有一个必须区分的东西：**
+
+> **「规则」（本部门 / 本人 / 自定义）随版本走；「实例级授权」（把这一条单据分享给某人）是运行时的。**
+
+ERP 里的实例级需求是真的（客户临时转给另一个销售、单据授权给外部审计），但**它是业务功能，不是权限功能**——`crm_customer.owner_id` 改一下就完了，由业务组件自己的表与接口表达。⚠️ **不要为它造一套通用共享引擎**（那就是在造 Zanzibar，而 §14.1.4 已经说明那条路对本地化部署不成立）。
+
+#### 14.2.2 维度声明：`data_scopes`，且「不需要」也必须显式写
+
+数据权限不是一维。ERP 真实需要至少四维：
+
+| 维度 | 谁要 |
+| --- | --- |
+| `org` 部门 | CRM 全域、`erp-sales` / `erp-purchase`、`prj-*` |
+| `owner` 归属人 | CRM 私海、HRM 本人、「我的订单」 |
+| `warehouse` 仓库 | `erp-inventory` / `erp-purchase` |
+| `legal_entity` 法人 | 多公司集团的 `erp-finance`（由 §12.6.7 顶栏的组织切换器给当前值） |
+
+组件在 `assembly.yaml` 声明：
+
+```yaml
+data_scopes:
+  - { dimension: org,   column: dept_path, mode: prefix, tables: [sales_orders] }
+  - { dimension: owner, column: owner_id,  mode: equals, tables: [sales_orders] }
+```
+
+不需要行级权限的组件**必须显式写**，不能省略：
+
+```yaml
+data_scopes: none    # 理由：产品主数据全员可见
+```
+
+⚠️ **`be-ops` 校验：没写 `data_scopes` 段 → 报错。** 这样「漏了」变成「起不来」，而不是「静默泄露」——安全机制的默认值必须是 fail-closed。
+
+`be-ops` **产出 10**：扫描全部组件产出 `registry/data-scopes.tsv`。**这就是「一张全系统数据权限总表」**，交付验收与客户安全评审直接拿它，不用一个组件一个组件去巡查。
+
+实际需要行级过滤的大约 **15–20 个组件**（CRM 全域、HRM 全域、`erp-sales` / `erp-purchase`、`prj-*`、`infra-workflow` 待办）；**mdm 4 个与 integration 15 个全部 `none`**。
+
+#### 14.2.3 物化路径：五档求解，零组织树
+
+朴素做法要求每个组件持一份组织树副本，只为了把「本部门及下级」展开成部门 ID 集合。**换成路径前缀匹配，这份副本整个不需要。**
+
+`dept_path` 存 `/root/china/east/sh-sales`，「本部门及下级」就是一次前缀匹配。五档退化成一个纯函数，输入只有 JWT 里的两个字段：
+
+| 档位 | `be-sdk` 求出什么 | 谓词形态 |
+| --- | --- | --- |
+| `all` | `scope_prefix = ""` | 前缀为空 = 全部（与 §11.4 的 90 天时间窗共同兜底） |
+| `dept_and_below` | `scope_prefix = jwt.dept_path` | `dept_path LIKE prefix \|\| '%'` |
+| `self_dept` | `scope_exact = jwt.dept_path` | `dept_path = exact` |
+| `self` | `scope_owner = jwt.sub` | `owner_id = owner` |
+| `custom` | `scope_in = 配置里写死的 path 列表` | `dept_path LIKE ANY(...)` |
+
+⭐ **组织树因此不是运行时依赖，只是登录时的一个字符串。** 谁给这个字符串，62 个组件完全不关心——阶段三由 `infra-authz` 自带一张极简部门表给，阶段五 `mdm-org` 上线后换成它，**组件一行不改**。（这也是为什么 `mdm-org` 可以安心留在阶段五。）
+
+索引：`CREATE INDEX ... ON <表> (dept_path text_pattern_ops)`——前缀 `LIKE 'x%'` 能走 B-tree，且在分区表上会下推到每个分区。
+
+#### 14.2.4 落到 SQL：`sqlc` 参数化谓词，不用 RLS
+
+scope 条件**静态写进 `.sql` 文件，运行时只传参数**：
+
+```sql
+-- name: ListSalesOrders :many
+SELECT * FROM sales_orders
+WHERE created_at >= @from_time
+  AND dept_path LIKE @scope_prefix::text || '%'          -- '' 表示不限
+  AND (@scope_owner::text = '' OR owner_id = @scope_owner)
+ORDER BY created_at DESC, id DESC
+LIMIT @page_size;
+```
+
+⚠️ **曾经的误判要记下来，免得有人再走一遍**：早期版本认为「`sqlc` 生成静态 SQL、拼不动动态 `WHERE`，所以只能靠 PostgreSQL RLS」。**这个前提是错的**——scope 条件不需要拼，直接写死在 `.sql` 里、运行时传参即可。前提一垮，RLS 的性价比就不成立了。
+
+两条备选记录在案，将来实测可再比：
+
+| 方案 | 为什么没选 |
+| --- | --- |
+| **PostgreSQL RLS** | 换来的只是「业务代码不用写这两行」，代价是 policy 维护、查询计划多一层 barrier，以及一个静默陷阱：**表 owner 默认 bypass RLS**——policy 写了、`\d+` 看得见、**一条都没过滤**。另有 `current_setting(..., true)` 第二参必须为 `true`，否则迁移与对账脚本一碰这张表就报 `unrecognized configuration parameter` |
+| **安全视图** | 本质是 RLS 的手工版；写操作还得回表，分区表上的执行计划要逐个验 |
+
+**过滤必须发生在数据宿主组件自己的 `WHERE` 里，永远不能在调用方拿到结果后过滤。** 理由是分页：`erp-sales` 返回 20 条、调用方滤掉 12 条，用户看到 8 条以为只有 8 条，越翻越错——而决策 53 已经把 offset 从契约里去掉了，补都补不回来。
+
+**用什么「设计模式」**：中间件把 JWT 的字段与 `data_scopes` 配置算成一个 `ScopeFilter` 值对象放进 `ctx`，仓储方法取用。⚠️ **不要引入策略类层级**——按 SOP-P，逻辑本身简单却硬套模式是更糟的结果。
+
+#### 14.2.5 表字段：条件强制三列
+
+**只有声明了 `data_scopes`（非 `none`）的组件的相关表**才加这三列，其余组件不加：
+
+```sql
+dept_id   TEXT NOT NULL,   -- 叶子部门 ID，稳定身份
+dept_path TEXT NOT NULL,   -- 物化路径，数据权限过滤用，可重写
+owner_id  TEXT NOT NULL,   -- 归属人
+```
+
+⚠️ **`dept_path` 与 `dept_id` 都是单据创建时的快照，不是「查 owner 现在在哪个部门」。** 这是真实 ERP 的通病：销售换部门后，他去年的订单在报表里集体漂移到新部门，**不报错、数字就是变了**，财务对不上账才发现。
+
+⚠️ **代价是部门在树上被移动后，历史单据仍带旧路径**——新管理者按「本部门及下级」查不到它们，**不报错，只是少了几行**。所以两列都要有：`dept_id` 是稳定身份，`dept_path` 是**可重写的派生列**。组织调整时由 `be-sdk` 提供的批量重写器跑一次（一年几次，可离线批处理），而不是每次查询去 JOIN 一棵树。**这一项随 `mdm-org` 在阶段五做**。
+
+⚠️ **建表时就要判定。** `sales_orders` 这类是分区表，**回头给分区表加列的代价比建表时多两个数量级**。所以 SOP-D 的组件设计计划第 1 节必须回答「本组件要不要行级数据权限」。
+
+#### 14.2.6 ⚠️ 跨组件调用的两种身份：第三条「悄悄读到别人数据」的路径
+
+gRPC / HTTP 调用有两种身份，**必须在 `be-sdk` 里长成两个名字明确不同的构造**：
+
+| 构造 | 用在哪 | 行为 |
+| --- | --- | --- |
+| `besdk.UserClient(ctx, dep)` | **用户请求链路上** | 透传 JWT，下游按**同一个用户**的范围过滤 |
+| `besdk.SystemClient(dep)` | `Start()` 后台循环、事件消费者、Outbox 推送、定时对账 | 组件自己的身份，**绕过数据权限** |
+
+> ⚠️ **在用户请求路径上误用 `SystemClient`——数据权限整条被绕过，不报错，返回的数据只是「多了一些」。**
+> 这是全项目第三条「悄悄读写别人数据」的路径（第一条：`SET` 不带 `LOCAL`，§13.3 铁律二；第二条：模块里 `os.Getenv` 读串 schema，§12.5.3）。
+> `make gates` 加一条扫描：**`SystemClient` 只许出现在 `Start()` 与事件 handler 里**。
+
+顺带补上一个旧版的洞：§6.3 只说了「BFF 透传用户 JWT」，**组件之间的 gRPC 要不要透传全书没写**。答案是要，由 `be-sdk` 统一做。
+
+---
+
+### 14.3 阶段落点
+
+| 阶段 | 功能权限 | 数据权限 |
+| --- | --- | --- |
+| **一** | `assembly.yaml` 的 `permissions` 段 schema + `be-ops` 校验；`registry/permissions.tsv`（先建空表 + 校验）；`be-sdk-go` 的 `besdk.GET/POST(..., permKey, ...)` 签名与 `RequirePermission`（实现先是 fail-closed stub） | `data_scopes` 段 schema + **必填校验**；`registry/data-scopes.tsv`；SOP-D 加「要不要行级数据权限」判定项 |
+| **三** | `infra-authz` 组件本体（角色 / 分配界面 / bundle / `stale_since`）；`be-sdk` 的 bundle 轮询与内存 map；前端三层守卫 + `v-be-auth` + `401 token_stale` 静默刷新 | 15–20 个组件的 `.sql` 谓词；`ScopeFilter` 中间件；`UserClient` / `SystemClient` 分家 + gates 扫描 |
+| **五** | —— | `mdm-org` 接管 `dept_path` 来源 + 组织调整批量重写器 |
+
+### 14.4 本章新增的坑（已进导读的禁令表）
+
+| 不许 | 症状 |
+| --- | --- |
+| 改 `registry/permissions.tsv` 里已发布的键名 | 所有已分配该权限的角色**静默失权**。客户升级后某些人突然点不动按钮 |
+| 前端只判了 feature 没判 permission | **菜单看得见、点进去整页 403**。features 是装配级、permission 是用户级 |
+| 用户请求路径上用 `besdk.SystemClient` | 数据权限整条被绕过，**不报错**，返回的数据只是「多了一些」 |
+| 省略 `assembly.yaml` 的 `data_scopes` 段 | 被 `be-ops` 拦下（这是刻意的）——省略不等于 `none`，`none` 必须显式写 |
+| 把 authz 的可达性写进 `/healthz` | authz 一抖动，**整组 22 个模块一起重启**（§12.3.6） |
+| 业务代码裸用 `gin.Engine` 的 `GET/POST` | 绕开了 14.1.7 的权限键强制，**那个接口从此无人鉴权且不报错** |
+
+---
+
 ## 附录
 
 ### 附录 A · 全量组件货架全景图
@@ -2855,8 +3328,9 @@ flowchart TB
         R5["Casdoor / Keycloak 官方镜像（带外）"]
         R6["OTel + Prom + Loki + Tempo + Grafana（带外）"]
     end
-    subgraph I["infra 基础域（组件，10 个）"]
+    subgraph I["infra 基础域（组件，11 个）"]
         A1["slot:iam 适配层: iam-casdoor(D) / iam-keycloak"]
+        A2["authz 权限账房（不在请求热路径上）"]
         A4["bff-mobile / workflow / notification / dlq-monitor / print"]
         A5["attachment / storage / audit(储备)"]
     end
@@ -3061,7 +3535,7 @@ flowchart TB
 
 ### 附录 H · 仓库名称速查表（用于创建 Git 仓库）
 
-> **61 个组件仓库。** 事件总线（NATS/Kafka/RabbitMQ）、网关（Traefik/Nginx）、可观测性全家桶
+> **62 个组件仓库。** 事件总线（NATS/Kafka/RabbitMQ）、网关（Traefik/Nginx）、可观测性全家桶
 > （OTel Collector / Prometheus / Loki / Tempo / Grafana）都已从本表移出——它们不是组件：
 > 事件总线是 `kind: mq` 基础资源，另两类是带外容器。判据见 §5.11，理由见 5.1 表下的说明。
 >
@@ -3081,57 +3555,58 @@ flowchart TB
 | 8 | infra-print | infra | default | ✅ 开发 | ✅ |
 | 9 | infra-audit | infra | reserve | ✅ 开发 |  |
 | 10 | infra-dlq-monitor | infra | default | ✅ 开发 |  |
-| 11 | integration-im-dingtalk | integration | channel:im | ✅ 开发 | ✅ |
-| 12 | integration-im-wechat-work | integration | channel:im | ✅ 开发 |  |
-| 13 | integration-im-feishu | integration | channel:im | ✅ 开发 |  |
-| 14 | integration-im-slack | integration | channel:im | ✅ 开发 |  |
-| 15 | integration-im-teams | integration | channel:im | ✅ 开发 |  |
-| 16 | integration-payment-stripe | integration | channel:payment | ✅ 开发 |  |
-| 17 | integration-payment-paypal | integration | channel:payment | ✅ 开发 |  |
-| 18 | integration-payment-alipay | integration | channel:payment | ✅ 开发 |  |
-| 19 | integration-payment-wechat-pay | integration | channel:payment | ✅ 开发 |  |
-| 20 | integration-esign-docusign | integration | channel:esign | ✅ 开发 |  |
-| 21 | integration-esign-pandadoc | integration | channel:esign | ✅ 开发 |  |
-| 22 | integration-esign-esign | integration | channel:esign | ✅ 开发 |  |
-| 23 | integration-email | integration | channel:email | ✅ 开发 |  |
-| 24 | integration-sms | integration | channel:sms | ✅ 开发 |  |
-| 25 | integration-edi | integration | reserve | ✅ 开发 |  |
-| 26 | mdm-customer | mdm | default | ✅ 开发 | ✅ |
-| 27 | mdm-supplier | mdm | default | ✅ 开发 |  |
-| 28 | mdm-product | mdm | default | ✅ 开发 | ✅ |
-| 29 | mdm-org | mdm | default | ✅ 开发 |  |
-| 30 | crm-lead | crm | optional | ✅ 开发 |  |
-| 31 | crm-customer | crm | optional | ✅ 开发 |  |
-| 32 | crm-opportunity | crm | optional | ✅ 开发 | ✅ |
-| 33 | crm-activity | crm | optional | ✅ 开发 |  |
-| 34 | crm-campaign | crm | optional | ✅ 开发 |  |
-| 35 | crm-case | crm | optional | ✅ 开发 |  |
-| 36 | crm-commission | crm | reserve | ✅ 开发 |  |
-| 37 | erp-sales | erp | optional | ✅ 开发 | ✅ |
-| 38 | erp-purchase | erp | optional | ✅ 开发 |  |
-| 39 | erp-inventory | erp | optional | ✅ 开发 | ✅ |
-| 40 | erp-finance | erp | optional | ✅ 开发 | ✅ |
-| 41 | erp-manufacturing | erp | optional | ✅ 开发 |  |
-| 42 | erp-asset | erp | optional | ✅ 开发 |  |
-| 43 | erp-quality | erp | optional | ✅ 开发 |  |
-| 44 | erp-maintenance | erp | optional | ✅ 开发 |  |
-| 45 | hrm-attendance | hrm | optional | ✅ 开发 |  |
-| 46 | hrm-leave | hrm | optional | ✅ 开发 |  |
-| 47 | hrm-expense | hrm | optional | ✅ 开发 |  |
-| 48 | hrm-recruitment | hrm | reserve | ✅ 开发 |  |
-| 49 | hrm-appraisal | hrm | reserve | ✅ 开发 |  |
-| 50 | hrm-payroll-core | hrm | blueprint | ❌ 不开发 |  |
-| 51 | hrm-payroll-cn | hrm | blueprint | ❌ 不开发 |  |
-| 52 | hrm-payroll-us | hrm | blueprint | ❌ 不开发 |  |
-| 53 | hrm-payroll-es | hrm | optional | ✅ 开发 |  |
-| 54 | prj-project | prj | optional | ✅ 开发 |  |
-| 55 | prj-timesheet | prj | optional | ✅ 开发 |  |
-| 56 | ana-bi | ana | reserve | ✅ 开发 |  |
-| 57 | ana-ai | ana | reserve | ✅ 开发 |  |
-| 58 | frontend-standard | frontend | slot:frontend (Default) | ✅ 开发 | ✅ |
-| 59 | frontend-advanced | frontend | slot:frontend (替换件) | 🔜 未来 |  |
-| 60 | frontend-{industry} | frontend | slot:frontend (替换件) | 🔜 未来 |  |
-| 61 | frontend-{customer} | frontend | slot:frontend (Fork) | 📋 按需 |  |
+| 11 | infra-authz | infra | default | ✅ 开发 | ✅ |
+| 12 | integration-im-dingtalk | integration | channel:im | ✅ 开发 | ✅ |
+| 13 | integration-im-wechat-work | integration | channel:im | ✅ 开发 |  |
+| 14 | integration-im-feishu | integration | channel:im | ✅ 开发 |  |
+| 15 | integration-im-slack | integration | channel:im | ✅ 开发 |  |
+| 16 | integration-im-teams | integration | channel:im | ✅ 开发 |  |
+| 17 | integration-payment-stripe | integration | channel:payment | ✅ 开发 |  |
+| 18 | integration-payment-paypal | integration | channel:payment | ✅ 开发 |  |
+| 19 | integration-payment-alipay | integration | channel:payment | ✅ 开发 |  |
+| 20 | integration-payment-wechat-pay | integration | channel:payment | ✅ 开发 |  |
+| 21 | integration-esign-docusign | integration | channel:esign | ✅ 开发 |  |
+| 22 | integration-esign-pandadoc | integration | channel:esign | ✅ 开发 |  |
+| 23 | integration-esign-esign | integration | channel:esign | ✅ 开发 |  |
+| 24 | integration-email | integration | channel:email | ✅ 开发 |  |
+| 25 | integration-sms | integration | channel:sms | ✅ 开发 |  |
+| 26 | integration-edi | integration | reserve | ✅ 开发 |  |
+| 27 | mdm-customer | mdm | default | ✅ 开发 | ✅ |
+| 28 | mdm-supplier | mdm | default | ✅ 开发 |  |
+| 29 | mdm-product | mdm | default | ✅ 开发 | ✅ |
+| 30 | mdm-org | mdm | default | ✅ 开发 |  |
+| 31 | crm-lead | crm | optional | ✅ 开发 |  |
+| 32 | crm-customer | crm | optional | ✅ 开发 |  |
+| 33 | crm-opportunity | crm | optional | ✅ 开发 | ✅ |
+| 34 | crm-activity | crm | optional | ✅ 开发 |  |
+| 35 | crm-campaign | crm | optional | ✅ 开发 |  |
+| 36 | crm-case | crm | optional | ✅ 开发 |  |
+| 37 | crm-commission | crm | reserve | ✅ 开发 |  |
+| 38 | erp-sales | erp | optional | ✅ 开发 | ✅ |
+| 39 | erp-purchase | erp | optional | ✅ 开发 |  |
+| 40 | erp-inventory | erp | optional | ✅ 开发 | ✅ |
+| 41 | erp-finance | erp | optional | ✅ 开发 | ✅ |
+| 42 | erp-manufacturing | erp | optional | ✅ 开发 |  |
+| 43 | erp-asset | erp | optional | ✅ 开发 |  |
+| 44 | erp-quality | erp | optional | ✅ 开发 |  |
+| 45 | erp-maintenance | erp | optional | ✅ 开发 |  |
+| 46 | hrm-attendance | hrm | optional | ✅ 开发 |  |
+| 47 | hrm-leave | hrm | optional | ✅ 开发 |  |
+| 48 | hrm-expense | hrm | optional | ✅ 开发 |  |
+| 49 | hrm-recruitment | hrm | reserve | ✅ 开发 |  |
+| 50 | hrm-appraisal | hrm | reserve | ✅ 开发 |  |
+| 51 | hrm-payroll-core | hrm | blueprint | ❌ 不开发 |  |
+| 52 | hrm-payroll-cn | hrm | blueprint | ❌ 不开发 |  |
+| 53 | hrm-payroll-us | hrm | blueprint | ❌ 不开发 |  |
+| 54 | hrm-payroll-es | hrm | optional | ✅ 开发 |  |
+| 55 | prj-project | prj | optional | ✅ 开发 |  |
+| 56 | prj-timesheet | prj | optional | ✅ 开发 |  |
+| 57 | ana-bi | ana | reserve | ✅ 开发 |  |
+| 58 | ana-ai | ana | reserve | ✅ 开发 |  |
+| 59 | frontend-standard | frontend | slot:frontend (Default) | ✅ 开发 | ✅ |
+| 60 | frontend-advanced | frontend | slot:frontend (替换件) | 🔜 未来 |  |
+| 61 | frontend-{industry} | frontend | slot:frontend (替换件) | 🔜 未来 |  |
+| 62 | frontend-{customer} | frontend | slot:frontend (Fork) | 📋 按需 |  |
 
 **非组件资产仓库：**
 
@@ -3225,7 +3700,7 @@ flowchart TB
 | 两条不可让渡的原则 | ① 每个组件以纯 brickKit 组件形态开发、gRPC 一个不省、能单独 `brickkit up` 起来；② 合并只发生在部署形态上，组件完整性一步不让。全书唯二不能改的东西（§1.5） |
 | 铁律六 | 组件模块之间绝不互相 `import`。外壳 `main` 可以引每个模块的 `NewServer()`，模块之间只能走 gRPC/HTTP。由 `be-acceptance` 的 import 扫描守（§13.3） |
 | 拆回门禁 | 检验"合并有没有磨掉组件性"的唯一动作：把全部 `local: true` 去掉、`brickkit up` 全拆一次、业务闭环全绿。每周一次（§13.7） |
-| 全局端口册 | `be-ops` 维护的 61 个组件的 HTTP + gRPC 端口分配表，**外加全部带外容器的宿主机端口**（外壳要把端口发布到宿主机，两边活在同一个端口空间里）。**gRPC 端口没有事后补救手段**，必须一次写对（§3.5.1.1、§2.7.1） |
+| 全局端口册 | `be-ops` 维护的 62 个组件的 HTTP + gRPC 端口分配表，**外加全部带外容器的宿主机端口**（外壳要把端口发布到宿主机，两边活在同一个端口空间里）。**gRPC 端口没有事后补救手段**，必须一次写对（§3.5.1.1、§2.7.1） |
 | 每外壳的环境变量表 | `be-ops` 产出 7。平台只往它自己生成的容器里注入，合并后那些容器不存在；同外壳的依赖指 `127.0.0.1`，**跨外壳的指宿主机**（§13.8） |
 | 三份 compose | 带外基础资源（我们手写）+ 平台产物（`brickkit up`）+ 外壳（`be-ops`）。三份必须挂同一个 external network，`brickkit down` 只停中间那份（§13.8.3） |
 | 档 0~4 | 推进顺序：单砖 → 验平台 → 业务闭环 → **做外壳验拆回** → 铺满军火库。档 3 必须早于档 4（§9.6） |

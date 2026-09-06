@@ -38,5 +38,6 @@
 | 组件 | 阶段 | 设计计划 | 状态 |
 |---|---|---|---|
 | `mdm-customer` | 一 | [mdm-customer.md](./mdm-customer.md) | 📋 待写（阶段一 Task 10） |
+| `infra-authz` | 三 | [infra-authz.md](./infra-authz.md) | ✅ 已写（规范源是设计书第 14 章） |
 
 > 随开发进度逐条添加。**不要预先把 61 行都列出来**——那会让「还没写」和「写了但空着」混成一团。
