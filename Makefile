@@ -66,3 +66,11 @@ obs-down:     ; @bash $(S)/optional.sh obs down      ## 关闭可观测性 5 件
 registry-check:  ## 校验端口册与 schema 册自洽
 	@bash $(S)/registry-check.sh
 .PHONY: registry-check
+
+##@ 军火库
+arsenal-check:  ## 检查 submodule 结构与 brickkit.yaml 是否自洽
+	@bash $(S)/arsenal.sh check
+
+arsenal-restore:  ## 把 enabled 与目录结构还原到与 brickkit.yaml 一致
+	@bash $(S)/arsenal.sh restore
+.PHONY: arsenal-check arsenal-restore

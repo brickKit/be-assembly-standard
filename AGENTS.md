@@ -26,7 +26,7 @@
 | 阶段 | **阶段一 · 地基与第一块砖**（未开工 / 见 [`01-阶段一`](docs/plans/01-阶段一-地基与第一块砖.md)） |
 | 已建组件 | **0 个**（`components/` 还是空的） |
 | 已钉死不许改的 | `registry/ports.tsv`、`registry/schemas.tsv`、`registry/permissions.tsv`（**只增不改**，见下）；**每种语言的技术栈与模块入口签名**（设计书 §12.4 / §12.5）；**PC 端骨架形态**（§12.6.7）；**权限体系**（第 14 章） |
-| 平台 CLI | 已装。`brickkit restore` / `init --hooks` **尚未实现**（实测报「未知命令」） |
+| 平台 CLI | 已装。`brickkit restore`（含 `--check`）与 `init --hooks` **已实现并在用**（阶段一 Task 5 实测确认，`.git/hooks` 已切到 `.githooks`） |
 
 ⚠️ **改了阶段就回来改这张表。** 它是 AI 判断「现在该做什么、什么已经定死」的唯一依据。
 

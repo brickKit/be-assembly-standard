@@ -1,0 +1,6 @@
+#!/usr/bin/env bash
+# BrickEnterprise pre-commit：军火库结构自洽闸门。
+# 与 brickkit init --hooks 装的官方 hook 是同一件事的两种实现——
+# 本 hook 检测到 brickkit restore 可用时会直接委派给它（见 arsenal.sh），
+# 额外多了几层短路（components/ 未跟踪 / 合并冲突中 / brickkit 缺失）。
+exec bash "$(git rev-parse --show-toplevel)/infra/scripts/arsenal.sh" check
