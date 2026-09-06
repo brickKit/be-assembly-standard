@@ -3,17 +3,36 @@
 project: be-assembly-standard
 
 deploy:
-  target: docker          # docker | k8s
+  target: docker # docker | k8s
 
 # 安装源：按声明顺序依次尝试，前一个找不到就试下一个（003 §6.5）
 sources:
   - id: local-dev
     type: local
-    path: ./components      # brickkit init 已经建好这个目录
-  # 组件市场按需取消注释并填上地址：
-  # - id: brickkit-market
-  #   type: market
-  #   url: https://market.example.com/api/v1
+    path: ./components # brickkit init 已经建好这个目录
+# 组件市场按需取消注释并填上地址：
+# - id: brickkit-market
+#   type: market
+#   url: https://market.example.com/api/v1
 
-components: []
-resources: []
+components:
+  - id: mdm/customer
+    version: 1.0.0
+resources:
+  - id: postgres-shared
+    kind: database
+    engine: postgresql
+    host: host.docker.internal
+    port: 5432
+    username: postgres
+    password: ${POSTGRES_PASSWORD}
+    bindings:
+      - componentId: mdm/customer
+        database: brickkit_db
+  - id: nats-shared
+    kind: mq
+    engine: nats
+    host: host.docker.internal
+    port: 4222
+    bindings:
+      - componentId: mdm/customer
