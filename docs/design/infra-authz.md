@@ -4,7 +4,7 @@
 |---|---|
 | 组件 ID | `infra/authz` |
 | 仓库名 | `infra-authz` |
-| 端口 | HTTP `8222` / gRPC `9222` ← 抄 `registry/ports.tsv` |
+| 端口 | HTTP `8223` / gRPC `9223` ← 抄 `registry/ports.tsv`（**跳过 8222：那是 NATS 的监控端口**） |
 | schema / role | `infra_authz` / `infra_authz_rw`（归档 `infra_authz_archive`） |
 | 语言 | Go |
 | 框架栈 | Gin + `database/sql`+`pgx stdlib` + `sqlc` + `golang-migrate`（设计书 §12.4） |
