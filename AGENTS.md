@@ -141,7 +141,7 @@ docs/design/                 组件设计计划，一个组件一份
 | **`brickkit remove` 前必须先 commit & push** | 它**连同已归档的源码目录一起删除**。submodule 里有未 push 的改动时这是数据丢失（§9.4.2） |
 | **提交前跑 `make arsenal-restore`** | `brickkit sync` 整目录搬家会在本仓库的 diff 里留下「整棵树搬家」。pre-commit hook 会拦，但先跑一次省事（总纲 §3.3） |
 | **Fork 件的 `metadata.id` 与 `version` 一个字都不能改** | 改了之后所有依赖方拿到的 `*_ENDPOINT` **整个消失**——平台注入的变量名是从组件 ID 推导的，整条 Fork 机制当场垮掉（§3.4.1） |
-| ⚠️ **`brickkit sync`/`remove` 对已登记为 submodule 的组件目前不安全**（一旦 `brickkit.yaml` 真的声明了要归档/删除某个组件） | 两者都用纯文件系统操作（`os.Rename`/`os.RemoveAll`）搬/删目录，**不会同步更新 `.gitmodules`**——已用最小复现验证：归档后 `.gitmodules` 指向的旧路径与实际磁盘位置错位，此后一次不经意的 `git add -A` 会把子模块内容当普通文件收进本仓库，历史当场与组件仓库脱钩且**没有任何报错**。已反馈给 brickKit（`brickKit` 仓库 `docs/superpowers/specs/2026-09-06-submodule-tracked-components-gap-report.md`），修复前需要归档/删除就手动核对 `.gitmodules` 与 `git submodule status`，别全信 `sync`/`remove` 的输出 |
+| **`brickkit sync`/`remove` 遇到已登记为 submodule 的组件会阻断，不会自动帮你搬/删** | v0.2.0 曾经用纯文件系统操作（`os.Rename`/`os.RemoveAll`）静默搬删，会打断 `.gitmodules` 且不报错（已反馈并在 v0.2.1 修复，见 brickKit 仓库 `docs/superpowers/specs/2026-09-06-submodule-tracked-components-gap-report.md`）。**现在**遇到这种情况会报 `SUBMODULE_GUARD` 错误并打印等价的手工命令（`git mv` / `git submodule deinit` + `git rm`），照着做完再重跑一次即可——这是预期行为，不是 bug |
 
 **找不到源码时先看 `components/.archived/`。**
 
