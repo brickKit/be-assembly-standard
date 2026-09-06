@@ -74,3 +74,18 @@ arsenal-check:  ## 检查 submodule 结构与 brickkit.yaml 是否自洽
 arsenal-restore:  ## 把 enabled 与目录结构还原到与 brickkit.yaml 一致
 	@bash $(S)/arsenal.sh restore
 .PHONY: arsenal-check arsenal-restore
+
+##@ 数据库
+db-init:  ## 执行 be-ops 产出的建库脚本（幂等，可重跑）
+	@cd tools/be-ops && go build -o build/be-ops ./cmd/be-ops
+	@tools/be-ops/build/be-ops db-script --root . --out build/db-init.sql
+	@set -a; . ./.env; set +a; \
+	docker exec -i be-postgres psql -v ON_ERROR_STOP=1 -U postgres \
+	  -v pw_shell_go_core="$$SHELL_GO_CORE_PASSWORD" \
+	  -v pw_shell_go_backoffice="$$SHELL_GO_BACKOFFICE_PASSWORD" \
+	  -v pw_shell_go_infra="$$SHELL_GO_INFRA_PASSWORD" \
+	  -v pw_shell_py_brain="$$SHELL_PY_BRAIN_PASSWORD" \
+	  -v pw_shell_py_render="$$SHELL_PY_RENDER_PASSWORD" \
+	  -f - < build/db-init.sql
+	@echo "✓ 建库脚本已执行（幂等，可重跑）"
+.PHONY: db-init
