@@ -1,0 +1,27 @@
+global:
+  scrape_interval: 15s      # §7.4：本地部署的资源克制，15s 不许再调小
+  evaluation_interval: 15s
+
+storage:
+  tsdb:
+    out_of_order_time_window: 5m
+
+scrape_configs:
+  # §7.5.1 被动抓取：靠平台的 labels 透传（prometheus.io/scrape 等）
+  - job_name: docker-containers
+    docker_sd_configs:
+      - host: unix:///var/run/docker.sock
+        refresh_interval: 30s
+    relabel_configs:
+      - source_labels: [__meta_docker_container_label_prometheus_io_scrape]
+        regex: "true"
+        action: keep
+      - source_labels: [__address__, __meta_docker_container_label_prometheus_io_port]
+        regex: "([^:]+)(?::\\d+)?;(\\d+)"
+        replacement: "$1:$2"
+        target_label: __address__
+      - source_labels: [__meta_docker_container_label_prometheus_io_path]
+        regex: "(.+)"
+        target_label: __metrics_path__
+      - source_labels: [__meta_docker_container_name]
+        target_label: container

@@ -1,0 +1,19 @@
+# name	project	compose_file	service	container	image	host_ports	default	profile	mutex
+# --- 默认必须部署（5 个）---
+postgres	be-infra	infra/docker-compose.infra.yml	postgres	be-postgres	postgres:16-alpine	5432	yes	-	-
+nats	be-infra	infra/docker-compose.infra.yml	nats	be-nats	nats:2.10-alpine	4222,8222	yes	-	mq
+traefik	be-infra	infra/docker-compose.infra.yml	traefik	be-traefik	traefik:v3.0	80,443,28080	yes	-	gateway
+casdoor	be-infra	infra/docker-compose.infra.yml	casdoor	be-casdoor	casbin/casdoor:latest	8000	yes	-	iam
+rustfs	be-infra	infra/docker-compose.infra.yml	rustfs	be-rustfs	rustfs/rustfs:latest	9000	yes	-	storage
+# --- 可选替换件（与默认互斥）---
+minio	be-infra	infra/docker-compose.infra.yml	minio	be-minio	minio/minio:latest	9000,9001	no	minio	storage
+keycloak	be-infra	infra/docker-compose.infra.yml	keycloak	be-keycloak	quay.io/keycloak/keycloak:latest	28081	no	keycloak	iam
+kafka	be-infra	infra/docker-compose.infra.yml	kafka	be-kafka	confluentinc/cp-kafka:latest	29092	no	kafka	mq
+rabbitmq	be-infra	infra/docker-compose.infra.yml	rabbitmq	be-rabbitmq	rabbitmq:3.13-management	5672,15672	no	rabbitmq	mq
+nginx	be-infra	infra/docker-compose.infra.yml	nginx	be-nginx	nginx:1.25-alpine	80,443	no	nginx	gateway
+# --- 可观测性五件套（要就整套，不要就整套不要）---
+otel-collector	be-obs	infra/docker-compose.observability.yml	otel-collector	be-otel	otel/opentelemetry-collector-contrib:latest	4317,4318,13133	no	obs	-
+prometheus	be-obs	infra/docker-compose.observability.yml	prometheus	be-prometheus	prom/prometheus:latest	29090	no	obs	-
+loki	be-obs	infra/docker-compose.observability.yml	loki	be-loki	grafana/loki:latest	3100	no	obs	-
+tempo	be-obs	infra/docker-compose.observability.yml	tempo	be-tempo	grafana/tempo:latest	3200	no	obs	-
+grafana	be-obs	infra/docker-compose.observability.yml	grafana	be-grafana	grafana/grafana:latest	3000	no	obs	-

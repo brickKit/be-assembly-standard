@@ -1,0 +1,42 @@
+# Traefik v3 静态配置。路由 labels 由 be-ops 产出到容器上，Docker Provider 读取（§6.3）
+global:
+  checkNewVersion: false
+  sendAnonymousUsage: false
+
+api:
+  dashboard: true
+  insecure: true      # 仅开发环境。生产用 ForwardAuth 保护
+
+ping:
+  entryPoint: traefik  # `traefik healthcheck --ping` 靠这个
+
+entryPoints:
+  web:
+    address: ":80"
+  websecure:
+    address: ":443"
+  traefik:
+    address: ":28080"   # 总纲 §1.2：8080 让给 mdm-customer；1xxxx 归平台，所以走 2xxxx
+
+providers:
+  # ① Docker Provider —— 只看得见与 Traefik 同网络（be-net）的容器：
+  #    带外容器 + 第 3 份 compose 里的外壳
+  docker:
+    endpoint: "unix:///var/run/docker.sock"
+    exposedByDefault: false
+    network: be-net
+
+  # ② File Provider —— 平台生成的那两个容器（infra-bff-mobile / frontend-standard）
+  #    ⚠️ 必须有这一个：平台生成的 compose 自建一个非 external 的 bridge 网络，
+  #    brickkit.yaml 里没有任何字段能让它接进 be-net，所以 Docker Provider
+  #    看不见它们。它们靠 expose: true + exposePort 发布到宿主机，
+  #    由 be-ops 产出这份动态配置指过来（设计书 §6.3.1、决策 107）。
+  #    症状提醒：少了这一个，那两个容器全 healthy 而网关 404。
+  file:
+    directory: /etc/traefik/dynamic
+    watch: true
+
+log:
+  level: INFO
+
+accessLog: {}
