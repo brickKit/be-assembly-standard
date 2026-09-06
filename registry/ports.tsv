@@ -1,0 +1,85 @@
+# repo	component_id	http_port	grpc_port	shell	note
+# ===== 外壳一 Go-Core =====
+mdm-customer	mdm/customer	8080	9090	go-core	-
+mdm-supplier	mdm/supplier	8081	9091	go-core	-
+mdm-product	mdm/product	8082	9092	go-core	-
+mdm-org	mdm/org	8083	9093	go-core	-
+erp-sales	erp/sales	8084	9094	go-core	-
+erp-purchase	erp/purchase	8085	9095	go-core	-
+erp-inventory	erp/inventory	8086	9096	go-core	-
+erp-finance	erp/finance	8087	9097	go-core	-
+# ===== 外壳二 Go-Backoffice =====
+crm-lead	crm/lead	8100	9100	go-backoffice	-
+crm-customer	crm/customer	8101	9101	go-backoffice	-
+crm-opportunity	crm/opportunity	8102	9102	go-backoffice	-
+crm-activity	crm/activity	8103	9103	go-backoffice	-
+crm-campaign	crm/campaign	8104	9104	go-backoffice	-
+crm-case	crm/case	8105	9105	go-backoffice	-
+hrm-attendance	hrm/attendance	8106	9106	go-backoffice	-
+hrm-leave	hrm/leave	8107	9107	go-backoffice	-
+hrm-expense	hrm/expense	8108	9108	go-backoffice	-
+prj-project	prj/project	8109	9109	go-backoffice	-
+prj-timesheet	prj/timesheet	8110	9110	go-backoffice	-
+erp-asset	erp/asset	8111	9111	go-backoffice	-
+erp-quality	erp/quality	8112	9112	go-backoffice	-
+erp-maintenance	erp/maintenance	8113	9113	go-backoffice	-
+hrm-recruitment	hrm/recruitment	8114	9114	go-backoffice	设计书§13.2原漏列，已回写
+hrm-appraisal	hrm/appraisal	8115	9115	go-backoffice	设计书§13.2原漏列，已回写
+# ===== 外壳三 Go-Infra =====
+infra-iam-casdoor	infra/iam-casdoor	8200	9200	go-infra	设计书§13.2原漏列，已回写
+infra-workflow	infra/workflow	8201	9201	go-infra	-
+infra-notification	infra/notification	8202	9202	go-infra	-
+infra-dlq-monitor	infra/dlq-monitor	8203	9203	go-infra	-
+infra-attachment	infra/attachment	8204	9204	go-infra	-
+infra-storage	infra/storage	8205	9205	go-infra	-
+infra-audit	infra/audit	8206	9206	go-infra	-
+integration-im-dingtalk	integration/im-dingtalk	8207	9207	go-infra	-
+integration-im-wechat-work	integration/im-wechat-work	8208	9208	go-infra	-
+integration-im-feishu	integration/im-feishu	8209	9209	go-infra	-
+integration-im-slack	integration/im-slack	8210	9210	go-infra	-
+integration-im-teams	integration/im-teams	8211	9211	go-infra	-
+integration-payment-stripe	integration/payment-stripe	8212	9212	go-infra	-
+integration-payment-paypal	integration/payment-paypal	8213	9213	go-infra	-
+integration-payment-alipay	integration/payment-alipay	8214	9214	go-infra	-
+integration-payment-wechat-pay	integration/payment-wechat-pay	8215	9215	go-infra	-
+integration-esign-docusign	integration/esign-docusign	8216	9216	go-infra	-
+integration-esign-pandadoc	integration/esign-pandadoc	8217	9217	go-infra	-
+integration-esign-esign	integration/esign-esign	8218	9218	go-infra	-
+integration-email	integration/email	8219	9219	go-infra	-
+integration-sms	integration/sms	8220	9220	go-infra	-
+infra-authz	infra/authz	8223	9223	go-infra	决策115新增（#62）；8222被NATS监控口占用故跳到8223（决策99）
+infra-iam-keycloak	infra/iam-keycloak	8221	9221	go-infra	slot:iam替换件，与casdoor互斥
+# ===== 外壳四 Py-Brain =====
+hrm-payroll-es	hrm/payroll-es	8300	9300	py-brain	-
+crm-commission	crm/commission	8301	9301	py-brain	-
+erp-manufacturing	erp/manufacturing	8302	9302	py-brain	-
+ana-bi	ana/bi	8303	9303	py-brain	-
+ana-ai	ana/ai	8304	9304	py-brain	-
+hrm-payroll-core	hrm/payroll-core	8305	9305	py-brain	blueprint不开发，端口预留
+hrm-payroll-cn	hrm/payroll-cn	8306	9306	py-brain	blueprint不开发，端口预留
+hrm-payroll-us	hrm/payroll-us	8307	9307	py-brain	blueprint不开发，端口预留
+# ===== 外壳五 Py-Render =====
+infra-print	infra/print	8400	9400	py-render	-
+integration-edi	integration/edi	8401	9401	py-render	-
+# ===== 独立容器 =====
+infra-bff-mobile	infra/bff-mobile	8500	-	standalone	GraphQL over HTTP，不暴露gRPC；exposePort=28500（决策107）
+frontend-standard	frontend/standard	80	-	standalone	slot:frontend族共用80；exposePort=28090（决策107）
+frontend-advanced	frontend/advanced	80	-	standalone	同上，槽位互斥永不共存
+frontend-industry	frontend/{industry}	80	-	standalone	同上
+frontend-customer	frontend/{customer}	80	-	standalone	同上，Fork件
+# ===== 带外容器与基础资源（设计书的端口册原本只管61个组件，已回写补入）=====
+_infra-postgres	-	5432	-	out-of-band	-
+_infra-nats	-	4222	-	out-of-band	监控口8222
+_infra-traefik	-	80	-	out-of-band	443；Dashboard28080（8080撞mdm-customer、18080撞平台自动映射）
+_infra-casdoor	-	8000	-	out-of-band	-
+_infra-rustfs	-	9000	-	out-of-band	-
+_infra-minio	-	9000	-	out-of-band	9001；与rustfs互斥
+_infra-keycloak	-	28081	-	out-of-band	8080撞mdm-customer、18081撞平台自动映射
+_infra-kafka	-	29092	-	out-of-band	9092撞mdm-product的gRPC、19092撞平台自动映射
+_infra-rabbitmq	-	5672	-	out-of-band	15672
+_infra-nginx	-	80	-	out-of-band	443；与traefik互斥
+_infra-otel	-	4317	-	out-of-band	4318、13133
+_infra-prometheus	-	29090	-	out-of-band	9090撞mdm-customer的gRPC、19090撞平台自动映射
+_infra-loki	-	3100	-	out-of-band	-
+_infra-tempo	-	3200	-	out-of-band	-
+_infra-grafana	-	3000	-	out-of-band	-

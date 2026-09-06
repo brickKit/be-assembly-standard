@@ -61,3 +61,8 @@ obs-down:     ; @bash $(S)/optional.sh obs down      ## 关闭可观测性 5 件
 .PHONY: up down status logs nuke \
         minio-up minio-down keycloak-up keycloak-down kafka-up kafka-down \
         rabbitmq-up rabbitmq-down nginx-up nginx-down obs-up obs-down
+
+##@ 全局册子
+registry-check:  ## 校验端口册与 schema 册自洽
+	@bash $(S)/registry-check.sh
+.PHONY: registry-check
