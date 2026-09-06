@@ -19,11 +19,16 @@ services:
     command: ["--config=/etc/otel/config.yaml"]
     volumes:
       - ./otel/config.yaml:/etc/otel/config.yaml:ro
-    healthcheck:
-      test: ["CMD-SHELL", "wget -q --spider http://localhost:13133/ || exit 1"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
+    # ⚠️ 实测发现：这个镜像没有 shell（/bin/sh 都不存在），也没有 wget/curl，
+    # otelcol-contrib 二进制本身也没有 healthcheck 子命令——容器内自检
+    # physically 做不到。CMD-SHELL 形态的健康检查在这种镜像上必然失败，
+    # 症状是 unhealthy、日志是 "exec: /bin/sh: stat /bin/sh: no such file
+    # or directory"（十八条第 8 条 FROM scratch/distroless 的同一类坑，
+    # 只是这次踩在带外镜像上，不是我们自己的组件）。
+    # 正解：不给这个 service 定义 healthcheck。compose --wait 对没有
+    # healthcheck 的服务只等到 running 就放行，不会卡在 180 秒超时上。
+    # 想确认它真的活着，从宿主机侧查（它监听在 13133，宿主机有 curl）：
+    #   curl -fsS http://localhost:13133/   → {"status":"Server available",...}
 
   prometheus:
     image: prom/prometheus:latest
@@ -54,12 +59,14 @@ services:
     networks: [be-net]
     ports: ["3100:3100"]
     volumes: [loki_data:/loki]
-    healthcheck:
-      test: ["CMD-SHELL", "wget -q --spider http://localhost:3100/ready || exit 1"]
-      interval: 10s
-      timeout: 5s
-      retries: 10
-      start_period: 30s
+    # ⚠️ 实测发现：这个镜像同样没有 shell（同 otel-collector 那条注释），
+    # CMD-SHELL 形态的健康检查必然失败。不给它定义 healthcheck。
+    # 另外顺带记一件不是 bug 的事：单体模式的 Loki 在 ingester 加入 ring
+    # 之后会**再等一段 grace period（约 15 秒）才报 ready**——这是 Loki
+    # 自己的正常行为（single-binary 模式的 min_ready_duration），不是我们
+    # 配置的问题。启动后短时间内 curl /ready 得到 503（"Ingester not ready:
+    # waiting for 15s after being ready"）属于预期。
+    #   curl -fsS http://localhost:3100/ready   → 一段时间后变成 "ready"
 
   tempo:
     image: grafana/tempo:latest
@@ -70,12 +77,8 @@ services:
     volumes:
       - ./tempo/tempo.yaml:/etc/tempo/tempo.yaml:ro
       - tempo_data:/var/tempo
-    healthcheck:
-      test: ["CMD-SHELL", "wget -q --spider http://localhost:3200/ready || exit 1"]
-      interval: 10s
-      timeout: 5s
-      retries: 10
-      start_period: 30s
+    # ⚠️ 实测发现：这个镜像也没有 shell，同 otel-collector/loki 那条注释。
+    #   curl -fsS http://localhost:3200/ready   → "ready"
 
   grafana:
     image: grafana/grafana:latest
