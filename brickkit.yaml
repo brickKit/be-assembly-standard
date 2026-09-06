@@ -18,6 +18,13 @@ sources:
 components:
   - id: mdm/customer
     version: 1.0.0
+    expose: true # 档 0 验收要用 curl 从宿主机直接打 HTTP（Task 17 步骤 2）。
+                 # ⚠️ 只映射主端口（8080），额外端口（gRPC 9090）expose 与否
+                 # 都不会映射到宿主机（brickKit internal/compose/local.go
+                 # 的 mapDependencyToHost 注释原话："额外端口一个都不在里面"，
+                 # 且那整套映射只在"被某个 local:true 组件依赖"时才生效——
+                 # mdm-customer 没有被任何 local 组件依赖，gRPC 端口验收
+                 # 只能走容器的 Docker 网络 IP，见 Task 17 步骤 3。
 resources:
   - id: postgres-shared
     kind: database
