@@ -31,6 +31,9 @@ components:
   - id: erp/inventory
     version: 1.0.0
     expose: true # 同上：curl 打 HTTP 需要，gRPC 只能走容器 IP
+  - id: erp/finance
+    version: 1.0.0
+    expose: true # 同上：curl 打 HTTP 需要，gRPC 只能走容器 IP
 resources:
   - id: postgres-shared
     kind: database
@@ -46,6 +49,8 @@ resources:
         database: brickkit_db
       - componentId: erp/inventory
         database: brickkit_db
+      - componentId: erp/finance
+        database: brickkit_db
   - id: nats-shared
     kind: mq
     engine: nats
@@ -55,3 +60,4 @@ resources:
       - componentId: mdm/customer
       - componentId: mdm/product
       - componentId: erp/inventory
+      - componentId: erp/finance
