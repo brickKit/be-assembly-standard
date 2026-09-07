@@ -23,9 +23,9 @@
 
 | 项 | 值 |
 |---|---|
-| 阶段 | **阶段一已出档** ✅（18 个任务全完成，六项验收 + 八项检查全绿）。**阶段二 · 验平台已排好计划，Task 1 已完成**（见 [`02-阶段二`](docs/plans/02-阶段二-验平台.md)），Task 2 起未开工 |
-| 已建组件 | **1 个**：`mdm-customer@1.0.0`（只读枢纽，HTTP 8080 / gRPC 9090，九门禁全绿，六条 REST 路由已用 `besdk.GET/POST/PATCH(perm)` 注册，全部标 `Public` 待阶段三换真键）。阶段二再加 4 个：`mdm-product`、`erp-inventory`、`erp-finance`、`erp-sales`（四份设计计划已写完，见 `docs/design/`） |
-| 工具仓库 | `be-sdk-go@v0.1.7`、`be-ops@v0.1.2`、`be-acceptance@v0.1.1`（三个都已 tag 并被装配仓库的 submodule 指针跟踪） |
+| 阶段 | **阶段一已出档** ✅。**阶段二 · 验平台进行中**（见 [`02-阶段二`](docs/plans/02-阶段二-验平台.md)）：Task 1–4 已完成（还账三笔 + `mdm-product` 建仓库），Task 5 起未开工 |
+| 已建组件 | **2 个**：`mdm-customer@1.0.0`（只读枢纽，九门禁全绿，六条 REST 路由已用 `besdk.GET/POST/PATCH(perm)` 注册，全部标 `Public` 待阶段三换真键）；`mdm-product`（仓库骨架已建，四份文档已写，`component.yaml`/契约/实现待 Task 5–6）。阶段二再加 3 个：`erp-inventory`、`erp-finance`、`erp-sales`（四份设计计划已写完，见 `docs/design/`） |
+| 工具仓库 | `be-sdk-go@v0.1.7`、`be-ops@v0.1.2`、`be-acceptance@v0.1.2`（三个都已 tag 并被装配仓库的 submodule 指针跟踪） |
 | 已钉死不许改的 | `registry/ports.tsv`、`registry/schemas.tsv`、`registry/permissions.tsv`（**只增不改**，见下）；**每种语言的技术栈与模块入口签名**（设计书 §12.4 / §12.5）；**PC 端骨架形态**（§12.6.7）；**权限体系**（第 14 章） |
 | 平台 CLI | 已装 **v0.2.1**。`brickkit restore`（含 `--check`）与 `init --hooks` 已实现并在用；`sync`/`remove` 对已登记 submodule 的守卫（`SUBMODULE_GUARD`）已修复并实测 |
 | 常用验收 | `make tier0`（档 0 六项验收，**每加一个组件都要重跑**）、`make docs-check REPO=<仓库名>`、`make gates` |
