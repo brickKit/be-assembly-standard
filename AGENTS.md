@@ -23,8 +23,8 @@
 
 | 项 | 值 |
 |---|---|
-| 阶段 | **阶段一已出档** ✅。**阶段二 · 验平台进行中**（见 [`02-阶段二`](docs/plans/02-阶段二-验平台.md)）：Task 1–14 已完成（还账三笔 + `mdm-product`/`erp-inventory`/`erp-finance` 三块砖全部建成），Task 15 起未开工 |
-| 已建组件 | **4 个建完**：`mdm-customer@1.0.0`、`mdm-product@1.0.0`（只读枢纽，九门禁全绿）、`erp-inventory@1.0.0`（物理命令枢纽，TCC 三件套 + claim-first 幂等 + 条件更新防超卖，`besdk.Consume` 第一个真实调用方）、**`erp-finance@1.0.0`**（事件汇枢纽，九门禁全绿，`FinanceService` 11 rpc；消费三个不同来源的事件——本阶段消费面最重的组件；幂等过账两层防护、期间权威判定与 `post_no` 生成搭同一把锁、红字冲销；核心并发测试真机验证过 15 并发过账 `post_no` 连续无缺口）。四者的 REST 路由都已用 `besdk.GET/POST/PATCH(perm)` 注册，全部标 `Public` 待阶段三换真键。阶段二再加 1 个未开工：`erp-sales`（设计计划已写完，见 `docs/design/`）——是唯一的链上一环，四条强依赖边全在它身上 |
+| 阶段 | **阶段一已出档** ✅。**阶段二 · 验平台进行中**（见 [`02-阶段二`](docs/plans/02-阶段二-验平台.md)）：Task 1–15 已完成（还账三笔 + `mdm-product`/`erp-inventory`/`erp-finance` 三块砖全部建成 + `erp-sales` 建仓库/CP-6），Task 16 起未开工 |
+| 已建组件 | **4 个建完**：`mdm-customer@1.0.0`、`mdm-product@1.0.0`（只读枢纽，九门禁全绿）、`erp-inventory@1.0.0`（物理命令枢纽，TCC 三件套 + claim-first 幂等 + 条件更新防超卖，`besdk.Consume` 第一个真实调用方）、`erp-finance@1.0.0`（事件汇枢纽，九门禁全绿，`FinanceService` 11 rpc；消费三个不同来源的事件——本阶段消费面最重的组件；幂等过账两层防护、期间权威判定与 `post_no` 生成搭同一把锁、红字冲销；核心并发测试真机验证过 15 并发过账 `post_no` 连续无缺口）。四者的 REST 路由都已用 `besdk.GET/POST/PATCH(perm)` 注册，全部标 `Public` 待阶段三换真键。**`erp-sales` 仓库骨架已建**（四份文档，submodule 已接入）——**唯一的链上一环**，四条强依赖边全在它身上，契约/迁移/实现留给 Task 16–18 |
 | 工具仓库 | `be-sdk-go@v0.1.8`、`be-ops@v0.1.2`、`be-acceptance@v0.1.2`（三个都已 tag 并被装配仓库的 submodule 指针跟踪） |
 | 已钉死不许改的 | `registry/ports.tsv`、`registry/schemas.tsv`、`registry/permissions.tsv`（**只增不改**，见下）；**每种语言的技术栈与模块入口签名**（设计书 §12.4 / §12.5）；**PC 端骨架形态**（§12.6.7）；**权限体系**（第 14 章） |
 | 平台 CLI | 已装 **v0.2.1**。`brickkit restore`（含 `--check`）与 `init --hooks` 已实现并在用；`sync`/`remove` 对已登记 submodule 的守卫（`SUBMODULE_GUARD`）已修复并实测 |
