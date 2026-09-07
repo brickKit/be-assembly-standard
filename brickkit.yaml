@@ -25,6 +25,8 @@ components:
                  # 且那整套映射只在"被某个 local:true 组件依赖"时才生效——
                  # mdm-customer 没有被任何 local 组件依赖，gRPC 端口验收
                  # 只能走容器的 Docker 网络 IP，见 Task 17 步骤 3。
+  - id: mdm/product
+    version: 1.0.0
 resources:
   - id: postgres-shared
     kind: database
@@ -36,6 +38,8 @@ resources:
     bindings:
       - componentId: mdm/customer
         database: brickkit_db
+      - componentId: mdm/product
+        database: brickkit_db
   - id: nats-shared
     kind: mq
     engine: nats
@@ -43,3 +47,4 @@ resources:
     port: 4222
     bindings:
       - componentId: mdm/customer
+      - componentId: mdm/product
