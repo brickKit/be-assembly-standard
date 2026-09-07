@@ -37,7 +37,18 @@
 
 | 组件 | 阶段 | 设计计划 | 状态 |
 |---|---|---|---|
-| `mdm-customer` | 一 | [mdm-customer.md](./mdm-customer.md) | 📋 待写（阶段一 Task 10） |
+| `mdm-customer` | 一 | [mdm-customer.md](./mdm-customer.md) | ✅ 已建成（`v1.0.0`，九门禁全绿） |
+| `mdm-product` | 二 | [mdm-product.md](./mdm-product.md) | 📋 已写，未开工 |
+| `erp-inventory` | 二 | [erp-inventory.md](./erp-inventory.md) | 📋 已写，未开工 |
+| `erp-finance` | 二 | [erp-finance.md](./erp-finance.md) | 📋 已写，未开工 |
+| `erp-sales` | 二 | [erp-sales.md](./erp-sales.md) | 📋 已写，未开工 |
 | `infra-authz` | 三 | [infra-authz.md](./infra-authz.md) | ✅ 已写（规范源是设计书第 14 章） |
 
 > 随开发进度逐条添加。**不要预先把 61 行都列出来**——那会让「还没写」和「写了但空着」混成一团。
+
+## 另一份不是逐组件的：可替换性地图
+
+[`_可替换性地图.md`](./_可替换性地图.md) 是**跨组件**的参考——哪些组件的哪部分能换、换了牵连谁、怎么换。
+单个组件的设计计划里那张"参考实现"表（§8）已经记了它自己的 Fork 点，这份文档是把**已建成的几个组件**的 Fork 点
+画在一张依赖图上，回答"这个 Fork 点会不会牵连到依赖它的组件"这个跨组件问题——单份设计计划回答不了这个，因为
+它只看得到自己。随每个新组件设计计划写完同步补一行。
