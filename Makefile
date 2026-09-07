@@ -95,3 +95,14 @@ gates:  ## 跑全部验收门禁（本阶段只有铁律六 import 扫描；拆�
 	@cd tools/be-acceptance && go build -o build/be-acceptance ./cmd/be-acceptance
 	@tools/be-acceptance/build/be-acceptance gate import-scan --root .
 .PHONY: gates
+
+docs-check:  ## 检查某个组件的四份文档：make docs-check REPO=mdm-customer
+	@test -n "$(REPO)" || { echo "用法：make docs-check REPO=<仓库名>"; exit 1; }
+	@bash $(S)/docs-check.sh "$(REPO)"
+.PHONY: docs-check
+
+##@ 验收
+# ⚠️ 会真的临时停掉 postgres、跑一次 brickkit down/up——先确认没有别人在用。
+tier0:  ## 档 0 六项验收，每加一个组件都要重跑（§9.6.1 档 4）
+	@$(MAKE) -C tools/be-acceptance tier0
+.PHONY: tier0
