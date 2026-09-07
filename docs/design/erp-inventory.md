@@ -155,6 +155,8 @@ UPDATE inventory_balances
 
 ## 8. 参考实现
 
+> 完整调研过程（含函数级细节、来源链接、意外发现清单）见 [`_调研记录/02-阶段二.md`](./_调研记录/02-阶段二.md#erp-inventory库存流水与预留)。下表是精炼版。
+
 | 项目 | 版本/commit | 看的模块 | 借鉴了什么 | 许可证（已复核） | 用法 |
 |---|---|---|---|---|---|
 | ERPNext | v15 | `erpnext/stock/stock_ledger.py`、`doctype/stock_ledger_entry/` | "流水 + 余额缓存（`Bin`）"的两层结构；**以及它 repost 机制的代价**——这是我们决定不支持补录的直接依据 | GPL-3 | 借鉴逻辑 |
