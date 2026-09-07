@@ -33,8 +33,19 @@ components:
                    # 查询路径（erp-sales Task 17 发现的契约缺口），无破坏性变更
     expose: true # 同上：curl 打 HTTP 需要，gRPC 只能走容器 IP
   - id: erp/finance
-    version: 1.0.0
+    version: 1.0.1 # v1.0.1：消费 sales.order.created.v1 的字段名对齐
+                   # erp-sales 真实契约（amount → total_amount），无破坏性变更
     expose: true # 同上：curl 打 HTTP 需要，gRPC 只能走容器 IP
+  - id: erp/sales
+    version: 1.0.1 # v1.0.1：依赖版本跟进 erp/finance@1.0.1
+    expose: true # 同上：curl 打 HTTP 需要，gRPC 只能走容器 IP。
+                 # Task 18：五组件一起 up，跑通 CreateOrder → 预留库存 →
+                 # 生成应收这条最短链路（docs/plans/02-阶段二-验平台.md）。
+    config:
+      # ConfirmOrder 发起 Reserve 时统一用这一个仓库（设计计划 §9 第 9 条：
+      # 阶段二没有多仓选货逻辑）。"1" 是 erp-inventory 迁移播种的 WH-EAST
+      # 的真实 id（003_seed_warehouses.up.sql，真机查过 warehouses 表）。
+      defaultWarehouseId: "1"
 resources:
   - id: postgres-shared
     kind: database
@@ -52,6 +63,8 @@ resources:
         database: brickkit_db
       - componentId: erp/finance
         database: brickkit_db
+      - componentId: erp/sales
+        database: brickkit_db
   - id: nats-shared
     kind: mq
     engine: nats
@@ -62,3 +75,4 @@ resources:
       - componentId: mdm/product
       - componentId: erp/inventory
       - componentId: erp/finance
+      - componentId: erp/sales
