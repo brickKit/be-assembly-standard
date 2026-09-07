@@ -91,9 +91,11 @@ db-init:  ## 执行 be-ops 产出的建库脚本（幂等，可重跑）
 .PHONY: db-init
 
 ##@ 门禁
-gates:  ## 跑全部验收门禁（本阶段只有铁律六 import 扫描；拆回门禁见阶段四）
+gates:  ## 跑全部验收门禁：铁律六 import 扫描 + SystemClient 误用 + 裸 gin 路由（拆回门禁见阶段四）
 	@cd tools/be-acceptance && go build -o build/be-acceptance ./cmd/be-acceptance
 	@tools/be-acceptance/build/be-acceptance gate import-scan --root .
+	@tools/be-acceptance/build/be-acceptance gate system-client-scan --root .
+	@tools/be-acceptance/build/be-acceptance gate bare-gin-scan --root .
 .PHONY: gates
 
 docs-check:  ## 检查某个组件的四份文档：make docs-check REPO=mdm-customer
