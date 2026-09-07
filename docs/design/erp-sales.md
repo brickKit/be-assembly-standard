@@ -156,8 +156,9 @@ Reserve 超时
 |---|---|---|
 | `finance.credit.rejected.v1` | `erp-finance` | 权威额度判定超限 → 订单转 `SUSPENDED` 并告警（§5 三方分工的第二次判定） |
 | `mdm.customer.created.v1` / `.updated.v1` | `mdm-customer` | 维护 `customer_snapshots.credit_limit` |
-| `finance.voucher.posted.v1` | `erp-finance` | 维护 `customer_snapshots.credit_exposure` |
 | `crm.opportunity.won.v1` | `crm-opportunity`（**阶段三**） | 赢单自动转订单（附录 E）。阶段二 subject 先在事件清单占位，不实现 handler |
+
+⚠️ **本行是 Task 16 实现前修正的一处契约缺口**：本设计计划原文这里还写着"消费 `finance.voucher.posted.v1` 维护 `customer_snapshots.credit_exposure`"——写契约时对照 `erp-finance` 已经真实存在的事件清单（`erp-finance` Task 12，`contracts/events/finance.events.json`）才发现 `finance.voucher.posted.v1` 的 payload 只有 `entry_id`/`entry_no`/`post_no`/`period`/`amount`，**没有 `customer_id`**——它是"旁路分析事件"（grade: peripheral），设计成一般性的"有凭证过账了"广播，不是 AR 专用的客户额度变更信号，字段形状回答不了"是哪个客户"。**改法：不消费它**。`customer_snapshots.credit_exposure` 的新鲜度完全交给 §9 第 4 条已经写好的定时对账（`BatchGetCreditExposure`）来做——那条本来就是为处理漂移设计的兜底机制，恰好覆盖了这里，不需要再叠加一条事件消费。给 `finance.voucher.posted.v1` 加 `customer_id` 字段技术上可行（纯追加，向后兼容），但会把一个通用广播事件的语义拉向 AR 专用，本阶段判定不值得为此改一个已经打了 v1.0.0 标签的组件。
 
 ## 5. 依赖
 
@@ -257,3 +258,4 @@ Reserve 超时
 | 3 | 订单号 `order_no` 允许有缺口吗？（草稿单删了会留洞） | 阶段二契约定稿时 | **允许有缺口**。查证 Odoo 也是建单时就取号，报价单不转订单就白白消耗一个号。销售单号有缺口不是审计问题——**有缺口不许出现的是会计的 `post_no`**（见 `erp-finance` 设计计划 §2.1），两者不要混 |
 | 4 | `customer_snapshots` 与权威值漂移了怎么办？ | 阶段二实现定时对账时 | 与库存余额、财务已用额度同理：**以权威源为准**，快照是缓存。定时对账（§4.4.3）调 `BatchGetCreditExposure` + `mdm-customer` 的 `BatchGet` 比对并修正 |
 | 5 | 阶段二要不要做发票（开票）？ | —— | **不做。** 本阶段目标是验平台，`ShipOrder` 之后直接 `COMPLETED`。开票涉及 `invoice_policy` 这个族候选（§8），且会把 `erp-finance` 的契约面撑大一倍——留到阶段五补齐 default 时做 |
+| 6 | §4 原文写"消费 `finance.voucher.posted.v1` 维护 `customer_snapshots.credit_exposure`"，但该事件的真实 payload（`erp-finance` 已经建好的契约）没有 `customer_id` | Task 16 写契约时发现 | **改成不消费它**，`customer_exposure` 的新鲜度完全交给已经写好的定时对账（本表第 4 条）。理由见 §4 的行内说明：给事件加字段技术上可行，但会把一个通用广播事件的语义拉向 AR 专用，不值得为此改一个已经打了 v1.0.0 标签的组件 |
