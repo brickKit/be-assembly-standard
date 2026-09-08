@@ -47,15 +47,15 @@
 | `infra-workflow` | 三 | [infra-workflow.md](./infra-workflow.md) | 📋 已写，未开工 |
 | `infra-notification` | 三 | [infra-notification.md](./infra-notification.md) | 📋 已写，未开工 |
 | `integration-im-dingtalk` | 三 | [integration-im-dingtalk.md](./integration-im-dingtalk.md) | 📋 已写，未开工 |
+| `infra-print` | 三 | [infra-print.md](./infra-print.md) | 📋 已写，未开工（**第一个 Python 组件**） |
+| `infra-bff-mobile` | 三 | [infra-bff-mobile.md](./infra-bff-mobile.md) | 📋 已写，未开工（**第一个 TS 组件**） |
+| `frontend-standard` | 三 | [frontend-standard.md](./frontend-standard.md) | 📋 已写，未开工 |
+| `crm-opportunity` | 三 | [crm-opportunity.md](./crm-opportunity.md) | 📋 已写，未开工 |
 
 > 随开发进度逐条添加。**不要预先把 61 行都列出来**——那会让「还没写」和「写了但空着」混成一团。
 >
-> 阶段三还有 4 份待写：`infra-print`、`infra-bff-mobile`、`frontend-standard`、`crm-opportunity`
-> （清单与顺序见 [`03-阶段三`](../plans/03-阶段三-业务闭环.md)）。
->
-> ⚠️ **`_可替换性地图.md` 等阶段三 8 份全部写完后一次性更新**（不是每写一份补一次）：它是**跨组件**的
-> 综合视图，两张 mermaid 图要随新增组件重画——增量更新等于把同一张图重画 8 遍。这是对本文档
-> 上方"随每个新组件同步补一行"那句话的一次有意偏离，理由记在这里。
+> ✅ **阶段三的 9 份设计计划已全部齐备**（`infra-authz` 在阶段二随第 14 章写好，其余 8 份阶段三补齐），
+> 可以按 [`03-阶段三`](../plans/03-阶段三-业务闭环.md) 开工。
 
 ## 另外两类不是逐组件的文档
 
