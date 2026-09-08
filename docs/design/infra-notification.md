@@ -48,15 +48,47 @@ data_scopes:
 
 | 表 | 分区键 | 粒度 | 说明 |
 |---|---|---|---|
-| `notification_records` | `created_at` | **月** | 每条通知一行：收件人、通道、内容快照、投递状态、重试次数。**§11.2.5 分区清单里点名的表** |
-| `notification_preferences` | 不分区 | — | `sub` × 通知类别 → 开/关哪些通道。按用户数有界 |
+| `notification_records` | `created_at` | **月** | 每条通知一行：收件人、通道、内容快照、投递状态、重试次数、⭐ 适配器返回的 `external_task_id` |
+| `notification_preferences` | 不分区 | — | **两层**（见 §2.1）：全局通道开关 + 分类通道开关。按用户数有界 |
 | `user_contacts` | 不分区 | — | `sub` → 手机号/邮箱/显示名 + `version`。**iam 事件的快照**，按用户数有界 |
 | `command_idempotency` | 不分区 | — | 幂等声明（claim-first，同 `erp-inventory` 先例） |
 | `event_outbox` / `event_inbox` | `created_at` | 周 | 标准两张 |
 
 强制字段全部符合 §11.2.1。
 
-**终态列表**：`notification_records` 的 `SENT` / `FAILED_PERMANENT` / `SUPPRESSED`（被用户偏好挡掉）。活跃态：`PENDING` / `RETRYING`。
+**终态列表**：`notification_records` 的 `SENT` / `FAILED_PERMANENT` / `SUPPRESSED`（被用户偏好挡掉）。
+活跃态：`PENDING` / **`ACCEPTED`** / `RETRYING`。
+
+⚠️ ⭐ **`ACCEPTED`（已受理待确认）这个中间态不能省。** 查证钉钉文档后确认：它的工作通知接口
+（`asyncsend_v2`）返回的是**任务 id**，只代表"钉钉受理了"，真实投递结果要再调 `getsendresult` 查
+（详见 `integration-im-dingtalk` 设计计划 §4.2）。**从 `PENDING` 直接跳 `SENT` 就是把"已提交"当成"已送达"**——
+症状是我这边记着"已发送"、用户说"没收到"，两边都有"证据"，最难查的一类。
+
+所以状态机是：`PENDING` → `ACCEPTED`（收到 `phase=ACCEPTED` 的结果事件）→ `SENT` / `FAILED_*`
+（收到 `phase=CONFIRMED`）。⚠️ **停在 `ACCEPTED` 超过阈值的记录要能被查出来**——那说明适配器的回查断了。
+
+### 2.1 ⭐ 偏好是两层的，且有一类通知**用户关不掉**
+
+**这两条都来自查证 Novu 的偏好模型**（来源见 §8），初版设计里两条都没有：
+
+| | 说明 |
+|---|---|
+| **两层偏好** | **全局通道开关**（"我不要短信"）+ **分类通道开关**（"审批用钉钉、日报用邮件"）。**全局覆盖分类**——Novu 的口径是 global preference overrides workflow-specific，这个优先级不能反 |
+| ⭐ **critical 类不可关闭** | Novu 有 `critical` 概念：标记为 critical 的通知**根本不出现在用户偏好界面里**，用户无从关掉 |
+
+⚠️ **`critical` 这一条对我们不是锦上添花，是必需的**：审批待办通知如果能被用户关掉，
+**业务链路就断了**——"我没收到审批通知所以没审"会变成常见投诉，而系统看起来一切正常
+（通知被 `SUPPRESSED` 了，是"按用户意愿"）。
+
+**本阶段的分类与是否 critical：**
+
+| 通知类别 | critical | 理由 |
+|---|---|---|
+| 审批待办（`infra-workflow` 来的） | ✅ **是** | 关掉它业务就断 |
+| 站内信/系统公告 | 否 | 用户可关 |
+
+⚠️ **critical 是"类别"的属性，不是"通道"的属性**：用户仍然可以选择审批通知走钉钉还是走邮件，
+**但不能选择一个都不走**。
 
 ⚠️ **`notification_records` 是本组件唯一会无限增长的表**，也是它出现在 §11.2.5 而 `infra-workflow` 不在的原因：**一条待办可能触发多条通知**（多通道 × 多次提醒），量级是待办的几倍。按月分区、超期归档。
 
@@ -116,7 +148,7 @@ data_scopes:
 |---|---|---|---|
 | `infra.workflow.task.created.v1` | `infra-workflow` | ⭐ 本阶段唯一的通知来源：取 `assignee` → 查偏好 → 建 `notification_records` → 发 dispatch | 幂等键 = 事件 id；inbox 去重 + `command_idempotency` 两层（同 `erp-finance` 先例） |
 | `infra.iam.user.created.v1` / `.updated.v1` / `.disabled.v1` | `infra-iam-casdoor` | 维护 `user_contacts` 快照（手机号/邮箱/显示名） | 按 `version` 单调比较，旧的丢弃 |
-| `integration.im.result.v1` | 任一 `channel:im` 适配器 | 更新 `notification_records` 的投递状态；失败且 `retryable=true` 才安排重试 | 幂等键 `record_id + adapter + attempt` |
+| `integration.im.result.v1` | 任一 `channel:im` 适配器 | 按 `phase` 更新状态：`ACCEPTED` → 记 `external_task_id` 转中间态；`CONFIRMED` → 转终态，失败且 `retryable=true` 才安排重试 | 幂等键 `record_id + adapter + phase + attempt` |
 
 ⚠️ **最后一条是族级 subject（`integration.im.result.v1`），不是每个适配器一条。** 具体是谁发的放在 payload 的 `adapter` 字段里。这样**装第二、第三个 IM 通道时我一行都不用改**——否则每加一个适配器都要来改我的消费列表，`channel:im` 这个族就白分了。
 

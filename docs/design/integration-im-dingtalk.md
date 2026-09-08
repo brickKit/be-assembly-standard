@@ -51,7 +51,7 @@
 |---|---|---|---|
 | `dingtalk_user_map` | 不分区 | — | 手机号 → 钉钉 `userid` 的缓存 + `resolved_at`。**钉钉那个查询接口有频控，不能每发一条查一次** |
 | `dingtalk_token` | 不分区 | — | access_token 与 `expires_at`。**单行**。落库而不是只放内存，是因为重启后重新申请会撞频控 |
-| `delivery_attempts` | `attempted_at` | 月 | 每次真实调用的结果（请求 id、错误码、耗时）。纯排障用 |
+| `delivery_attempts` | `attempted_at` | 月 | 每次调用的结果 + ⭐ **钉钉返回的 `task_id`**、当前阶段（`ACCEPTED`/`CONFIRMED`/`FAILED`）。`task_id` 不是排障用的，是 §4.2 那条回查链路的钥匙 |
 | `command_idempotency` | 不分区 | — | 按 `record_id` 幂等，防重复发同一条消息 |
 | `event_outbox` / `event_inbox` | `created_at` | 周 | 标准两张 |
 
@@ -99,9 +99,40 @@
 
 | subject | 分级 | 何时发 | payload 要点 |
 |---|---|---|---|
-| `integration.im.result.v1` | 核心 | 一次投递尝试结束（成功或失败） | `record_id`、`adapter: "dingtalk"`、`success`、`error_code`、`retryable` |
+| `integration.im.result.v1` | 核心 | **每个阶段各发一次**（见 §4.2） | `record_id`、`adapter: "dingtalk"`、⭐ **`phase`（`ACCEPTED`/`CONFIRMED`）**、`success`、`error_code`、`retryable` |
 
 ⚠️ **subject 是族级 `integration.im.result.v1`，不是 `integration.im.dingtalk.result.v1`**，`adapter` 放进 payload。理由：`infra-notification` 只消费**一条** subject 就能处理全部 IM 通道，**加一个适配器不需要改它**。如果按实现名分 subject，每加一个通道都要去改通知中心的消费列表——族就白分了。
+
+### 4.2 ⭐⭐ 钉钉的"发送"是异步的：拿到 `task_id` ≠ 已送达
+
+**这条是查证钉钉文档后改掉的设计，初版写错了。**
+
+查证结果（来源见 §8）：
+
+| 事实 | 出处 |
+|---|---|
+| 工作通知接口叫 **`asyncsend_v2`**，返回的是**任务 id（`task_id`）** | 钉钉开放平台 |
+| 另有两个独立接口查真实结果：**`getsendprogress`**（进度）、**`getsendresult`**（结果） | 同上 |
+| `agent_id`（微应用 id）与 `msg_body` **必填**；`userid_list`/`dept_id_list`/`to_all_user` 三选一 | 同上 |
+
+**所以"调用成功"只意味着钉钉受理了这个任务，不代表任何一个人真的收到了。** 初版设计里我在提交成功时就
+发 `success: true`——**那是谎报送达**，而症状极其难查：通知中心记着"已发送"，用户说"我没收到"，两边都有"证据"。
+
+**改成两阶段：**
+
+```
+① 调 asyncsend_v2 成功 → 拿到 task_id → 发 phase=ACCEPTED 的结果事件
+      （通知中心记为"已受理"，不是"已送达"）
+② 稍后调 getsendresult(task_id) → 拿到每个收件人的真实结果
+      → 发 phase=CONFIRMED 的结果事件（带真正的成功/失败与失败原因）
+```
+
+⚠️ **第 ② 步的触发方式**：本阶段用**延迟回查**（提交后隔几秒查一次，未出结果则退避重试几轮），
+不引入定时任务框架。⚠️ **不能省掉第 ② 步只发 ACCEPTED**——那样"用户不在企业里"这类**最常见的失败**
+永远不会被发现，`dingtalk_user_map` 里的失效映射也永远不会被清理（§2 那条过期策略靠的就是这个信号）。
+
+⚠️ **这条连带影响 `infra-notification`**：它的 `notification_records` 状态机必须有一个
+**`ACCEPTED`（已受理待确认）中间态**，不能从 `PENDING` 直接跳 `SENT`。已同步改它的设计计划。
 
 ### 4.1 ⭐ `retryable` 这个字段是适配器与通知中心的分工线
 

@@ -58,7 +58,7 @@
 
 | 表 | 分区键 | 粒度 | 说明 |
 |---|---|---|---|
-| `workflow_tasks` | 不分区 | — | 待办主体。含来源四元组、`assignee`、状态、**展示快照 JSONB** |
+| `workflow_tasks` | 不分区 | — | 待办主体。含来源四元组、`assignee`、状态、**展示快照 JSONB**、⭐ **`due_at`（截止时间，可空）** |
 | `workflow_task_actions` | 不分区 | — | 审批历史，**只增不改**：谁、什么动作、附言、时间 |
 | `command_idempotency` | 不分区 | — | 跨组件写命令的幂等声明（claim-first，见 §3.1） |
 | `event_outbox` / `event_inbox` | `created_at` | 周 | 标准两张（§3.10、§11.2.5） |
@@ -76,6 +76,14 @@ data_scopes:
 ⚠️ **`assignee_dept_path` 是"被指派人的部门"，不是"单据所属部门"**——待办的可见性跟着**人**走，不跟着单据走。写错成后者的症状是：部门主管看不到自己下属手上那张跨部门单据的待办。
 
 **终态列表**（归档扫描靠它，§11.5.2）：`APPROVED` / `REJECTED` / `RESOLVED` / `CANCELLED`。活跃态只有 `PENDING`。
+
+⚠️ ⭐ **`due_at` 是查证 Odoo `mail.activity` 之后补的，初版漏了。** 它的模型是
+`res_model` + `res_id` + `user_id` + **`date_deadline`** + `summary`——**截止时间是待办的一等字段**，
+不是可选装饰。漏掉它的后果不是少个字段，是**"超期未审批"这个 ERP 里最常见的待办诉求整个无从表达**
+（列表排序、超期提醒、超期报表全部落空），而补它要改表结构。
+
+⚠️ **但"超期了要怎样"不归我**（铁律一）：升级、催办、自动通过都是业务规则。我只存这个时间、
+支持按它排序过滤，**并在超期时发一条事件**让别人决定怎么办（§4）。
 
 ⚠️ **`workflow_tasks` 不分区**——跟随设计书 §11.2.5 的清单（那张表里有 `infra-notification`，**没有** `infra-workflow`）。理由是待办只在"需要人介入"时产生，量级远低于交易流水。⚠️ **但这条判断有前提**：如果客户把审批开到"每张单都要审"，量级会逼近订单量。记进 §9 第 2 条，实现后按真实数据复核。
 
@@ -128,6 +136,7 @@ GetTaskStatus(task_id) 或 GetTaskStatus(idempotency_key) → PENDING | APPROVED
 | `infra.workflow.task.created.v1` | 核心 | 待办登记成功 | `task_id`、`assignee`、`title`、来源四元组、任务类型。**`infra-notification` 靠它触发通知** |
 | `infra.workflow.task.completed.v1` | 核心 | 审批完成（同意/驳回）或 `exception` 被关闭 | `task_id`、来源四元组、`action`、`actor`、附言。⭐ **这是我回话给业务组件的唯一通道**（设计书 §4.3 事件图里的那条边） |
 | `infra.workflow.task.cancelled.v1` | 核心 | 待办作废 | `task_id`、来源四元组、原因 |
+| `infra.workflow.task.overdue.v1` | 旁路 | ⭐ `due_at` 到点仍是 `PENDING` | `task_id`、`assignee`、`due_at`。**我只报告"超期了"，怎么处理归业务组件/通知中心**（铁律一） |
 
 ⚠️ **三条全部标核心**：漏一条 `completed` 的后果是**业务单据永远停在"审批中"，而没有任何报错**——审批的人明明点了同意，单子就是不动。这是典型的"不报错、无症状"故障，必须走 Outbox + 至少一次投递。
 
@@ -180,7 +189,7 @@ GetTaskStatus(task_id) 或 GetTaskStatus(idempotency_key) → PENDING | APPROVED
 
 | 项目 | 版本/commit | 看的模块 | 借鉴了什么 | 许可证（已复核） | 用法 |
 |---|---|---|---|---|---|
-| Odoo | 📋 开工前填 | `mail.activity`（待办模型）与它和业务单据的关联方式 | **轻量待办箱的形状**：一条 activity 挂在任意单据上，只有"谁、什么时候、做什么"，不含流程定义。与我们要的形态最接近 | LGPL-3 | 借鉴逻辑 |
+| Odoo | 📋 开工前填 | `mail.activity` 的字段构成 | ✅ **已查证**：`res_model_id` + `res_id`（多态挂到任意单据）、`user_id`（负责人）、**`date_deadline`**、`summary`、`activity_type_id`。**轻量待办箱的形状**，不含流程定义，与我们要的形态最接近。⭐ **`date_deadline` 是查它才发现我漏了的**（§2 那条 ⚠️） | LGPL-3 | 借鉴逻辑 |
 | ERPNext | 📋 开工前填 | `ToDo` doctype + `Workflow` doctype 的分工 | **反面参考**：它把"待办"和"状态机流转规则"放进了同一层，于是 Workflow 里塞满了业务条件（`condition` 字段存 Python 表达式）——正是 §6.6 铁律一要禁的东西 | GPL-3 | 借鉴逻辑 |
 | Camunda / Flowable | — | BPMN 引擎的定位与代价 | **明确不走这条路**：BPMN 引擎的价值在于"流程可视化编排 + 长事务状态持久化"，而我们的长事务补偿在发起方自己手里（`erp-sales` 的 TCC 链）。引进来会多一套流程定义语言、一个新的运行时状态源 | Apache-2.0 | 借鉴实际应用 |
 | 钉钉审批 / 飞书审批 | — | 它们的审批单形态、审批人配置界面 | **选配测试的素材**：客户天天用的是"谁审、能不能加签、能不能撤回"，几乎没人用复杂的分支条件——佐证轻量形态够用 | 闭源 | 借鉴实际应用 |

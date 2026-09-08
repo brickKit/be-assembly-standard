@@ -49,7 +49,7 @@ data_scopes:
 
 | 表 | 分区键 | 粒度 | 说明 |
 |---|---|---|---|
-| `opportunities` | 不分区 | — | 商机主体。含 `customer_id`、`owner_id`、`dept_path`、`stage_id`、`amount`、`probability`、`expected_close_date`、`status` |
+| `opportunities` | 不分区 | — | 商机主体。含 `customer_id`、`owner_id`、`dept_path`、`stage_id`、**`expected_amount`**、**`probability`(0–100)**、`expected_close_date`、`status`。⭐ 加权金额 = `expected_amount × probability`，**算出来不存**（派生值存了就会漂移） |
 | `opportunity_items` | 不分区 | — | 商机行：产品、数量、报价快照 |
 | `opportunity_stage_history` | 不分区 | — | 阶段流转历史，**只增不改**：从哪个阶段到哪个阶段、谁改的、什么时候 |
 | `opportunity_stages` | 不分区 | — | 阶段定义（名称、顺序、默认概率、是否终态）。**迁移播种**，见 §2.2 |
@@ -240,7 +240,7 @@ buf.yaml 拆两个 module                          本组件契约 STANDARD lint
 
 | 项目 | 版本/commit | 看的模块 | 借鉴了什么 | 许可证（已复核） | 用法 |
 |---|---|---|---|---|---|
-| Odoo | 📋 开工前填 | `crm.lead`（线索与商机同表 + `type` 区分）、`crm.stage`、赢单转报价的动作 | **阶段存表不写死**（§2.2）；以及**它的赢单转订单是一个手工按钮**，不是自动——见下方 R-4 | LGPL-3 | 借鉴逻辑 |
+| Odoo | 📋 开工前填 | `crm.lead` 字段构成、`crm.stage`、赢单转报价的动作 | ✅ **已查证**：`probability`(0–100，**可由阶段自动带出、也可手工覆盖**——直接回答了本文件 §9 第 4 条)、`expected_revenue`（赢单预期金额）、加权 = 两者相乘、失单必须记 `loss reason`。**阶段存表不写死**（§2.2）；**它的赢单转订单是手工按钮**不是自动——见下方 R-4。⚠️ 另注意它 `probability=100` 即视为赢单自动关闭，**我们不学**：赢单是显式的 `MarkWon` 动作（它会触发建单，不能被一个百分比数字顺手触发） | LGPL-3 | 借鉴逻辑 |
 | ERPNext | 📋 开工前填 | `Opportunity` doctype、`opportunity_from`、转 Quotation 的流程 | 商机行的快照字段构成 | GPL-3 | 借鉴逻辑 |
 | SuiteCRM / Salesforce | — | 商机的概率加权预测、漏斗阶段模型 | `probability` 与阶段绑定的默认值（§2.2）；**闭源产品的选配测试素材**：销售天天用的是"改阶段、改金额、看漏斗"，复杂的预测模型很少有人碰 | 闭源 | 借鉴实际应用 |
 
@@ -278,4 +278,4 @@ buf.yaml 拆两个 module                          本组件契约 STANDARD lint
 | 1 | 赢单时客户还不是正式客户怎么办？（CRM 里常见：先有商机、赢了才建档） | 阶段三实现时 | 📋 本阶段**要求客户必须已在 `mdm-customer` 存在**（`CreateOpportunity` 就校验）。⚠️ "潜在客户"是 `crm-customer`（阶段六）的概念，不在本阶段 |
 | 2 | `erp-sales` 消费赢单事件建单失败时（如库存不足），要不要通知回 CRM？ | 阶段三 Task 14 实测后 | 📋 **不通过事件回传**（会让 CRM 依赖 ERP 状态）。正确路径是 `erp-sales` 自己建 `infra-workflow` 异常待办通知销售——**待办的 `assignee` 用事件里带的 `owner_id`**，正好是 §4.1 那个字段的第二个用途 |
 | 3 | 漏斗分析要不要在本组件做，还是留给 `ana-bi`（阶段六）？ | 阶段六 | 📋 本阶段只做**最简单的按阶段分组统计**（一个 `ListOpportunities` 的聚合查询）。⚠️ 复杂的转化率/预测留给 `ana-bi`，**不要在业务组件里长出 BI** |
-| 4 | `probability` 是跟着阶段自动带出，还是允许手工覆盖？ | 阶段三定契约时 | 📋 倾向**阶段带默认值 + 允许手工覆盖**（Odoo 的做法）。两者都存，`ListOpportunities` 的加权金额用实际值 |
+| 4 | ~~`probability` 是跟着阶段自动带出，还是允许手工覆盖？~~ | ~~阶段三定契约时~~ | ✅ **已定（查证 Odoo 后）**：**阶段带默认值 + 允许手工覆盖**，两者都存，加权金额用实际值。这正是 Odoo 的做法，且它把 `probability` 与 `expected_revenue` 分开存、加权值即时算不落库——我们照做 |

@@ -15,8 +15,8 @@
 > 规范源是设计书 **§6.1**（iam 的形态）与**第 14 章**（权限体系）。
 > ⚠️ **两处冲突，一律以第 14 章为准**（它出自决策 115/116，晚于 §6.1）：
 > ① §6.1 写"JWT 携带权限 Claims"——**错**，§14.1.5 明确"权限键一个都不进 JWT"，JWT 只带 `sub`/`roles[]`/`dept_path`/`org_id`；
-> ② §6.1 写"权限定义在业务组件，分配在 iam"——**分配那半错了**，角色模型与分配归 `infra-authz`（见它的设计计划 §1），
-> 本组件只是把 authz 算出来的 claims 搬进 Casdoor。已回写设计书 §6.1。
+> ② §6.1 写"权限定义在业务组件，分配在 iam"——**分配那半错了**，角色模型与分配归 `infra-authz`（见它的设计计划 §1）。
+> **两处连同附录 D 的登录时序图已一并回写订正。** 本组件真正的核心职责是 §3.2 的**应用 token 签发**。
 
 ## 1. 边界
 
@@ -100,7 +100,7 @@
 | `POST /api/iam/logout` | 仅需登录 | 作废当前 refresh token |
 | `GET /.well-known/jwks.json` | `besdk.Public` | 应用 token 的公钥。**各组件的 `iamJwksUrl` 指向这里**（不是指向 Casdoor） |
 | `GET /api/tenant/features` | `besdk.Public` | 前端启动时拉。**Public 是刻意的**：还没登录就要用它决定渲染什么 |
-| `POST /api/iam/webhooks/casdoor` | `besdk.Public` + 签名校验 | Casdoor 回调。**Public 指的是"不走权限键"，不是"不校验"**——用 Casdoor 的 webhook 签名验，这条必须在 `AGENTS.md` 里写死 |
+| `POST /api/iam/webhooks/casdoor` | `besdk.Public` + **共享密钥校验** | Casdoor 回调。**Public 指的是"不走权限键"，不是"不校验"**。⚠️ 查证确认 Casdoor **没有内置 webhook 签名**，但配置里**可以加自定义 header**——所以校验方式是"比对一个共享密钥 header"（`configSchema` 注入）。这条必须在 `AGENTS.md` 里写死：**漏了校验就等于开了一个任何人都能伪造用户事件的口子** |
 
 ⚠️ **账密校验、MFA、扫码、社交登录一条都不在这张表里**——那些是浏览器 ↔ Casdoor 的标准 OIDC 流，本组件既不代理也不转发（§6.1）。我只在**认证成功之后**接手。
 
@@ -230,7 +230,7 @@
 
 | 项目 | 版本/commit | 看的模块 | 借鉴了什么 | 许可证（已复核） | 用法 |
 |---|---|---|---|---|---|
-| Casdoor | 📋 开工前填 | OIDC 端点与 JWKS、身份 token 的字段构成、webhook 触发点与签名 | **本组件的对接面。** ⚠️ 改成两个 token 之后**不再需要往 Casdoor 写任何东西**，只要读得懂它签的身份 token、验得了它的签名即可——对接面比初版设计小了一大截 | Apache-2.0 | 借鉴逻辑 |
+| Casdoor | 📋 开工前填 | OIDC 端点与 JWKS、身份 token 字段、Webhook 配置、`User.Properties` | ✅ **已查证三件事**：① Webhook 在 Settings > Webhooks 配 URL + 选事件，**没有内置签名，但可以加自定义 header**（用共享密钥认证，解决了本文件 §9 第 2 条）；② `User.Properties` 是 `map[string]string` 自定义属性；③ ⭐ **它其实支持自定义 claims**（token format 选 `JWT-Custom` 时可把 `Properties.<key>` 放进 token）。**第 ③ 条值得记一笔**：说明初版那个"把角色镜像进 Casdoor"的方案**技术上是可行的**——我们否决它纯粹是架构理由（§3.2 那三个否决点），不是因为做不到 | Apache-2.0 | 借鉴逻辑 |
 | OAuth 2.0 Token Exchange（RFC 8693） | — | `urn:ietf:params:oauth:grant-type:token-exchange` 的请求/响应形状 | §3.2 第 ② 步"拿一个 token 换另一个 token"**是有标准的**，不要自创请求格式。即使不完整实现整个 RFC，入参出参也照它的字段名 | 标准文本 | 借鉴逻辑 |
 | Keycloak | 📋 开工前填 | Protocol Mapper（把用户属性映射进 token 的机制） | **对照用**：Keycloak 的 mapper 是声明式的、Casdoor 是字段固定的。族内契约要按**两边都能实现**的最小交集设计（§3 的族级包名就是这么定的） | Apache-2.0 | 借鉴实际应用 |
 | Dex | 📋 开工前填 | connector 抽象 | 反面参考：它把"对接多个上游 IdP"做成了核心抽象。**我们不需要**——`slot:iam` 是装配期二选一，不是运行时多路复用 | Apache-2.0 | 借鉴逻辑 |
@@ -256,7 +256,7 @@
 |---|---|---|---|
 | 1 | ~~Casdoor 的自定义 claims 写哪里~~ | ~~开工前读源码~~ | ✅ **问题不存在了**：改成两个 token 之后（§3.2），我不往 Casdoor 写任何东西，只验它签的身份 token。**这一条是被用户的一个提问推翻的**——初版设计让 Casdoor 直接签带角色的 token、由本组件镜像 claims 进去，被问了一句"登录完不是就不该管 Casdoor 了吗"才发现它同时违背了踢人链路、会造死循环、还把角色数据焊回 Casdoor（三条见 §3.2） |
 | 1b | 应用 token 的签名密钥怎么给：`configSchema` 明文注入 PEM、还是挂文件？平台 Manifest **没有 volumes 字段**（§6.3），所以大概率只能走配置项 | 开工实现时 | 📋 倾向配置项注入 PEM；`brickkit.yaml` 那一格算敏感值，与 `.env` 里的数据库密码同级对待 |
-| 2 | Casdoor 的 webhook 有没有投递保证与签名机制？没有的话 `webhook_deliveries` 的去重键取什么、要不要改成轮询兜底 | 同上 | 📋 |
+| 2 | Casdoor 的 webhook 有没有投递保证与签名机制？ | 同上 | ✅ **部分已答（已查证）**：Webhook 支持配 URL + 选事件 + **自定义 header**，所以认证走"共享密钥放 header"。🔍 **仍待核**：有没有稳定的投递 ID 与失败重投——没有的话 `webhook_deliveries` 的去重键要改用"事件内容哈希 + 时间窗"，或退化成轮询对账（退化路径见 `_调研记录/03-阶段三.md`） |
 | 3 | 系统用户 → 钉钉用户怎么对上？**登录方式里没有钉钉**（§1.1），所以拿不到 unionid | 阶段三 Task 9 与 `integration-im-dingtalk` 一起定 | ✅ **方向已定：走手机号匹配，不靠登录。** 用户资料里有手机号（注册时填或管理员录），`integration-im-dingtalk` 用钉钉开放平台的"手机号查 userid"接口换。**本组件只负责把手机号放进 `infra.iam.user.*.v1` 事件**，映射本身归它。🔍 待核实：钉钉那个接口的权限要求与频率限制 |
 | 4 | `infra-iam-keycloak` 什么时候建？族内契约一致要求它能原样实现 §3 那份 proto，但阶段三只建 Casdoor 一个——**契约设计得对不对，要到真建第二个成员时才验得到** | 阶段六（按客户订单排队，§9.6 档 4b） | 📋 现在的对策：§3 的契约按 Casdoor/Keycloak 两边能力的**最小交集**设计，并在 `AGENTS.md` 记一条"加 rpc 前先问 Keycloak 能不能实现" |
 | 5 | 首次初始化要不要做成幂等的"每次启动都对账"，还是只跑一次？前者更安全但每次启动多几个 Casdoor API 调用 | 开工实现时 | 📋 倾向前者（`bootstrap_state` 逐步记录、每步幂等），理由同 `erp-inventory` 的 claim-first：单机测试测不出"跑了一半挂了"的中间态 |

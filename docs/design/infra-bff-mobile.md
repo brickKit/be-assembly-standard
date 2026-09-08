@@ -178,7 +178,8 @@ GraphQL 天然有 mutation，但本阶段**我只提供 query**。理由：
 
 | 项目 | 版本/commit | 看的模块 | 借鉴了什么 | 许可证（已复核） | 用法 |
 |---|---|---|---|---|---|
-| GraphQL Yoga | 📋 开工前填 | 插件机制（depth/complexity 限制、persisted queries 的挂载点） | 选它做服务端：比 Apollo Server 轻、插件形态直接对得上 §11.4.3 那三条限制 | MIT | 借鉴逻辑 |
+| GraphQL Yoga | 📋 开工前填 | Persisted Operations 插件、depth/complexity 插件 | ✅ **已查证，且验证了 §3.4 的设计**：Yoga 内置 Persisted Operations 插件，**明确支持"构建期注册表 + 拒绝未知哈希"这种 safelisting 形态**（与 APQ 那种运行时注册是两回事）——正是我们要的。⚠️ 官方口径：同时存在 Yoga 版与 Envelop 版插件时**优先用 Yoga 版**（走 HTTP 层 hook，能跳过昂贵的执行步骤） | MIT | 借鉴逻辑 |
+| `graphql-armor` | 📋 开工前填 | depth / complexity / alias 等一组防护插件 | ✅ **已查证**：depth 与 complexity 限制有现成的组合包，**不用自己写**（另有 `@envelop/depth-limit` 等单点方案）。§3.4 那三条硬限制落地时优先用它 | MIT | 借鉴逻辑 |
 | DataLoader | 📋 开工前填 | 批处理与 per-request 缓存的用法约定 | **§7 那条"必须 per-request"的出处**——它的 README 自己就强调这一点 | MIT | 借鉴逻辑 |
 | Netflix / SoundCloud 的 BFF 实践 | — | BFF 模式的原始定义（一个前端一个 BFF） | **确认了"BFF 要按前端裁剪"是这个模式的题中之义**，直接支撑 §3.1 手写 schema 的决定 | 闭源/文章 | 借鉴实际应用 |
 
