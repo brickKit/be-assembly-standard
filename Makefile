@@ -91,12 +91,16 @@ db-init:  ## 执行 be-ops 产出的建库脚本（幂等，可重跑）
 .PHONY: db-init
 
 ##@ 门禁
-gates:  ## 跑全部验收门禁：铁律六 import 扫描 + SystemClient 误用 + 裸 gin 路由（拆回门禁见阶段四）
+gates:  ## 跑全部验收门禁：铁律六 import 扫描 + SystemClient 误用 + 裸路由/裸 resolver（拆回门禁见阶段四）
 	@cd tools/be-acceptance && go build -o build/be-acceptance ./cmd/be-acceptance
 	@tools/be-acceptance/build/be-acceptance gate import-scan --root .
 	@tools/be-acceptance/build/be-acceptance gate system-client-scan --root .
-	@tools/be-acceptance/build/be-acceptance gate bare-gin-scan --root .
+	@tools/be-acceptance/build/be-acceptance gate bare-route-scan --root .
 .PHONY: gates
+
+version-check:  ## 扫全部 submodule：HEAD 是否领先最新 tag（阶段三 Task 3，阶段二复盘 §4 第 1 条）
+	@bash infra/scripts/version-check.sh
+.PHONY: version-check
 
 docs-check:  ## 检查某个组件的四份文档：make docs-check REPO=mdm-customer
 	@test -n "$(REPO)" || { echo "用法：make docs-check REPO=<仓库名>"; exit 1; }

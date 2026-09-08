@@ -173,6 +173,10 @@
 所以本组件的 `module.py` 入口签名、`be-sdk-python` 的 `Runtime` 形状对不对，**要到阶段四合外壳时才真正被验**——
 本阶段先按 §12.5 的模块入口契约写对，别留"反正现在单跑没问题"的东西（§13.3 铁律七）。
 
+⚠️ **本组件也是全项目第一个真的落地 `backend/app/http`/`backend/app/grpc` 目录约定的组件**（总纲 SOP-B、阶段三
+Task 3 补记）——REST handler 放 `backend/app/http/`，这是 `make gates` 的 `SystemClient` 误用扫描与裸路由扫描
+认的目录，写渲染接口的 handler 时直接落在这里，不要另起别的名字。
+
 ## 7. 分区与归档策略
 
 | 数据 | 热 | 归档条件 | 归档去哪 |

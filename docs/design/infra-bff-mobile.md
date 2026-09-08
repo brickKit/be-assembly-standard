@@ -206,7 +206,7 @@ GraphQL 天然有 mutation，但本阶段**我只提供 query**。理由：
 
 | # | 问题 | 什么时候能有答案 | 答案 |
 |---|---|---|---|
-| 1 | `be-sdk-ts` 里 GraphQL resolver 的权限键怎么强制？Go 侧靠 `besdk.GET(r, path, perm, h)` 的签名，TS 侧没有"路由注册"这个动作 | 阶段三 Task 2（写 `be-sdk-ts`）时 | 📋 方向：resolver 必须用 `besdk.resolver(permKey, fn)` 包一层，配一条 `make gates` 扫描"有没有裸 resolver"。⚠️ **这条不是照抄 Go 版能过的**，阶段三计划 Task 3 已经点명要重新设计判据 |
+| 1 | `be-sdk-ts` 里 GraphQL resolver 的权限键怎么强制？Go 侧靠 `besdk.GET(r, path, perm, h)` 的签名，TS 侧没有"路由注册"这个动作 | 阶段三 Task 2（写 `be-sdk-ts`）时 | ✅ **已了结**：真实函数名是 `requirePermission(perm, resolver)`（`be-sdk-ts` 的 `src/authz.ts`），返回同类型的新 resolver；本组件的 resolver map 一律放 `src/resolvers/` 下（Task 3 新拍板、总纲 SOP-B 补记），这个目录不放别的东西。`make gates` 的裸 resolver 扫描（`bare-route-scan`）判据：字段值不是以 `requirePermission(` 开头、又长得像函数（箭头函数/`function` 关键字）就判违规——同一目录也是 `SystemClient` 误用扫描的危险目录 |
 | 2 | mutation 什么时候开？开的话怎么防止它变成编排层 | 阶段五按前端需求定 | 📋 本阶段只做 query（§3.2）。开的判据已写死：**必须是纯转发，一出现"先调 A 再调 B"就退回业务组件** |
 | 3 | Persisted Query 清单是构建期产物，意味着前端与本组件要配套发布——版本怎么对齐？ | 阶段三 Task 11/12 联调时 | 📋 🔍 方向：清单文件由前端仓库构建产出、本组件构建时拉进镜像。**两个仓库的版本耦合要写进部署手册**，否则"前端更新了、BFF 没更新 → 新查询全部被拒" |
 | 4 | 移动端弱网下 GraphQL 单请求变大（一个查询喂满一个页面），会不会反而更慢？ | 阶段三真机联调时 | 📋 待实测。⚠️ 判据是**端到端首屏时间**，不是请求数——请求数少但单个大，弱网下不一定赢 |
