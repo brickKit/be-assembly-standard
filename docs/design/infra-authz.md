@@ -87,7 +87,12 @@
 
 | subject | 来自 | 做什么 | 幂等与乱序怎么处理 |
 |---|---|---|---|
+| `infra.iam.claims.synced.v1` | `infra-iam-casdoor` | ⭐ **这才把该用户写进 `stale_since`**——确认新 claims 已经镜像进 Casdoor 之后 | 幂等键 `sub + authz_revision`；比已记录的 revision 更旧的丢弃 |
 | `mdm.org.department.changed.v1` | `mdm-org`（**阶段五才有**） | 更新 `departments` 的 `dept_path` | 按 `version` 单调校验（§H） |
+
+⚠️ **第一条是阶段三写 `infra-iam-casdoor` 设计计划时补的，它堵的是一个真实的死循环**：`roles[]` 在 Casdoor 签的 token 里，而角色数据在我这里。如果我改完角色就立刻写 `stale_since`，组件会返回 `401 token_stale`、前端去 Casdoor 刷新——**但那时 Casdoor 可能还没拿到新角色，刷回来的还是旧的，于是再 401、再刷新，转不出去**。把 `stale_since` 的写入推迟到收到这条确认事件之后，循环就不可能发生。完整推导见 `infra-iam-casdoor` 设计计划 §3.2。
+
+⚠️ 这与上面"策略下发刻意不走事件总线"不矛盾：那句说的是 **bundle 内容**（`role → [permissions]`）不走事件；这条走事件的是**一次同步完成的信号**，不是策略本身。
 
 ## 5. 依赖
 

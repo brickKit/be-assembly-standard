@@ -43,8 +43,12 @@
 | `erp-finance` | 二 | [erp-finance.md](./erp-finance.md) | 📋 已写，未开工 |
 | `erp-sales` | 二 | [erp-sales.md](./erp-sales.md) | 📋 已写，未开工 |
 | `infra-authz` | 三 | [infra-authz.md](./infra-authz.md) | ✅ 已写（规范源是设计书第 14 章） |
+| `infra-iam-casdoor` | 三 | [infra-iam-casdoor.md](./infra-iam-casdoor.md) | 📋 已写，未开工 |
 
 > 随开发进度逐条添加。**不要预先把 61 行都列出来**——那会让「还没写」和「写了但空着」混成一团。
+>
+> 阶段三还有 7 份待写：`infra-workflow`、`infra-notification`、`integration-im-dingtalk`、`infra-print`、
+> `infra-bff-mobile`、`frontend-standard`、`crm-opportunity`（清单与顺序见 [`03-阶段三`](../plans/03-阶段三-业务闭环.md)）。
 
 ## 另外两类不是逐组件的文档
 

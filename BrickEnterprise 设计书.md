@@ -1468,7 +1468,16 @@ brickKit 是刻意极简的：不做网关、不做路由聚合、不建库建 s
 
 ### 6.1 iam（发牌官）
 
-全系统只说 OIDC；JWT 携带权限 Claims；提供 `/api/tenant/features` 接口供前端拉取当前环境启用的组件清单。权限定义在业务组件，分配在 iam。JWT 本地鉴权，消除同步网络调用。
+全系统只说 OIDC；提供 `/api/tenant/features` 接口供前端拉取当前环境启用的组件清单。JWT 本地验签，消除同步网络调用。
+
+⚠️ **本节旧版有两句话被第 14 章推翻了**（决策 115/116 晚于本节，阶段三写 `infra-iam-casdoor` 设计计划时核对出来）：
+
+| 旧版写的 | 实际是 | 出处 |
+| --- | --- | --- |
+| "JWT 携带权限 Claims" | **权限键一个都不进 JWT。** JWT 只带身份：`sub` / `roles[]` / `dept_path` / `org_id`；权限键走 bundle 轮询进各进程的内存 map。塞进 JWT 的后果是超级管理员的全集顶爆 8KB header——**症状是登录成功、随后所有请求 431** | §14.1.5 |
+| "权限定义在业务组件，分配在 iam" | **定义那半对，分配那半错。** 角色模型（`roles`/`role_permissions`/`user_roles`）与分配界面都归 `infra-authz`，iam 只管身份。这条切分是 `slot:iam` 换 Keycloak 时**角色数据一行都不用迁**的前提 | §14.1.1、§14.1.3 |
+
+⚠️ **由此引出一条不直观的推论**（`infra-iam-casdoor` 设计计划 §3.2 展开）：`roles[]` 既然要进 Casdoor 签的 token，而角色数据又在 `infra-authz` 里，**就必须由适配层把 claims 提前镜像进 Casdoor**；且 `infra-authz` 的 `stale_since` 必须等镜像落地确认后才写，否则"401 token_stale → 刷新 → 拿到的还是旧角色 → 再 401"会转成**死循环**。
 
 实现方式：官方镜像（Casdoor/Keycloak）作为**带外容器** + 薄适配层**组件**（~500 行代码，这一层才是 `slot:iam`）。适配层负责 `/api/tenant/features`、Webhook 事件桥接、首次部署初始化。日常认证流（用户登录）不经过适配层，浏览器直接走 OIDC 标准协议与官方镜像通信。
 
