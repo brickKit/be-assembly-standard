@@ -24,7 +24,7 @@
 
 - **官方镜像的适配层**：Casdoor 官方镜像是**带外容器**（形态 B，不进 `brickkit.yaml`），本组件是它前面那 ~500 行 Go 代码，**只有这一层是 `slot:iam`**。
 - **`/api/tenant/features`**：把 `be-ops` 灌进来的"本次装配启用了哪些组件"原样下发给前端。
-- **claims 镜像同步**：把 `infra-authz` 的 `roles[]`/`dept_path`/`org_id` 写进 Casdoor 的用户属性，**让 Casdoor 自己签出带角色的 token**（§3.2 是这条的全部理由）。
+- **应用 token 的签发与刷新**：拿 Casdoor 的身份 token 换我们自己的应用 token（带 `roles[]`/`dept_path`/`org_id`，claims 现问 `infra-authz`），并持有 refresh token。**这是本组件的核心职责**，理由见 §3.2。
 - **Webhook 事件桥接**：Casdoor 的用户增删改事件 → 我们的 `infra.iam.user.*.v1`，走 Outbox。
 - **首次部署初始化**：建组织/应用/管理员、配好 OIDC 客户端，幂等可重跑。
 
@@ -45,16 +45,19 @@
 
 | 表 | 分区键 | 粒度 | 说明 |
 |---|---|---|---|
-| `claim_sync_state` | 不分区 | — | `sub` → 已同步的 claims 指纹 + `authz_revision` + `synced_at`。**§3.2 那条顺序保证的落点**，恒小（按用户数） |
+| `refresh_tokens` | 不分区 | — | 应用 token 的刷新凭据：`jti`/`sub`/`expires_at`/`revoked_at`/`rotated_from`。**每次刷新轮换**（§14.1.6）。按在线人数有界 |
+| `signing_keys` | 不分区 | — | 当前与上一把签名密钥的**元数据**（`kid`/`alg`/`not_before`/`not_after`）。⚠️ **私钥本身不进库**，从配置注入（§3.3） |
 | `webhook_deliveries` | `received_at` | 月 | Casdoor webhook 的投递去重（它会重投）。只留最近窗口，其余归档 |
 | `bootstrap_state` | 不分区 | — | 首次初始化的幂等标记：哪一步做过了。单行到个位数行 |
 | `event_outbox` / `event_inbox` | `created_at` | 周 | 标准两张（§3.10、§11.2.5） |
 
 强制字段全部符合 §11.2.1。
 
-**终态列表**：`webhook_deliveries` 写入即终态；`claim_sync_state` 无终态（长期存活的当前态镜像）。
+**终态列表**：`refresh_tokens` 的 `revoked` 与 `expired`；`webhook_deliveries` 写入即终态。
 
-⚠️ **本组件不存用户表。** 用户主数据在 Casdoor 里，我只存"我给它同步过什么"。想查用户属性走 §3 的 `BatchGetUsers`（回源 Casdoor），**不许在这里建一张 users 影子表**——那等于把 `slot:iam` 的可替换性又焊死一次。
+⚠️ **本组件不存用户表。** 用户主数据在 Casdoor 里，我只存"我签发过什么"。想查用户属性走 §3 的 `BatchGetUsers`（回源 Casdoor），**不许在这里建一张 users 影子表**——那等于把 `slot:iam` 的可替换性又焊死一次。
+
+⚠️ **也不存角色。** 角色在 `infra-authz`，我每次签发时现问（§3.2）。**存一份"上次拿到的角色"当缓存，就是把死循环重新引进来**——那份缓存过期时签出的 token 带着旧角色，而 `stale_since` 已经把这个人标记为需要刷新。
 
 ## 3. 契约面
 
@@ -66,16 +69,19 @@
 |---|---|---|---|
 | `BatchGetUsers` | 读 | — | §3.8 强制的 `batchGet`：`sub[]` → `display_name`/`email`/`phone`/`im_accounts`。**回源 Casdoor，不落本地表** |
 | `GetTenantFeatures` | 读 | — | gRPC 版的 features 清单，给 BFF 用 |
-| `SyncClaims` | 命令 | `sub` + `authz_revision` | 给 `infra-authz` 兜底重放用的对账入口（正常路径走事件，见 §4） |
 
 **对外 REST 路径前缀：** `/infra/iam/**`（同样是**族级**前缀，不带 casdoor）
 
 | 路径 | 权限键 | 说明 |
 |---|---|---|
+| `POST /api/iam/token` | `besdk.Public` | ⭐ **换应用 token**：入参是 Casdoor 的身份 token，出参是应用 token + refresh token（§3.2 第 ② 步）。Public 是必然的——这一步的目的就是把"还没有应用身份"变成"有" |
+| `POST /api/iam/token/refresh` | `besdk.Public` | ⭐ 刷新。**重新调 `ResolveClaims`**，所以角色天然最新；refresh token 轮换 |
+| `POST /api/iam/logout` | 仅需登录 | 作废当前 refresh token |
+| `GET /.well-known/jwks.json` | `besdk.Public` | 应用 token 的公钥。**各组件的 `iamJwksUrl` 指向这里**（不是指向 Casdoor） |
 | `GET /api/tenant/features` | `besdk.Public` | 前端启动时拉。**Public 是刻意的**：还没登录就要用它决定渲染什么 |
 | `POST /api/iam/webhooks/casdoor` | `besdk.Public` + 签名校验 | Casdoor 回调。**Public 指的是"不走权限键"，不是"不校验"**——用 Casdoor 的 webhook 签名验，这条必须在 `AGENTS.md` 里写死 |
 
-⚠️ **登录、登出、刷新 token 三条路径都不在这张表里**，它们是浏览器 ↔ Casdoor 的标准 OIDC 流，本组件既不代理也不转发（§6.1）。
+⚠️ **账密校验、MFA、扫码、社交登录一条都不在这张表里**——那些是浏览器 ↔ Casdoor 的标准 OIDC 流，本组件既不代理也不转发（§6.1）。我只在**认证成功之后**接手。
 
 ### 3.1 `/api/tenant/features` 的数据从哪来
 
@@ -83,40 +89,52 @@
 
 ⚠️ **必须是逗号分隔字符串，不能写 YAML 数组**——数组会被平台渲染成 `[a b c]`（导读第 7 条、阶段二平台断言用例 7 已经真机验过）。⚠️ 平台**不校验值**，喂错内容不会有任何运行时失败，只会让前端少几个菜单，所以**校验是 `be-ops` 自己的责任**。
 
-### 3.2 ⭐ 角色怎么进 JWT：镜像同步 + 一条顺序保证
+### 3.2 ⭐ 两种 token：Casdoor 只证明"你是谁"，应用 token 由我签
 
-**这是本组件唯一有设计难度的地方。** 两个约束互相顶：
+**这是本组件唯一有设计难度的地方，也是全书最容易设计错的一处。** 先把两个约束摆出来：
 
 | 约束 | 出处 | 说的是 |
 |---|---|---|
-| 登录流不经过适配层 | §6.1 | 浏览器直连 Casdoor 走标准 OIDC，我不在中间 |
-| JWT 必须带 `roles[]`/`dept_path`/`org_id` | §14.1.5 | 而这些数据在 `infra-authz` 里，不在 Casdoor 里 |
+| 认证流不经过适配层 | §6.1 | 账密/MFA/扫码这些**认证**动作，浏览器直连 Casdoor 走标准 OIDC |
+| JWT 必须带 `roles[]`/`dept_path`/`org_id` | §14.1.5 | 而这些数据在 `infra-authz` 的表里，Casdoor 完全不知道 |
 
-**只有一条路同时满足两者：把 claims 提前镜像进 Casdoor，让 Casdoor 用自己的签名密钥签出带角色的 token。** 本组件负责这次镜像。
-
-**但朴素做法会造出一个真实的死循环**，必须在设计阶段就堵掉：
+**分成两个 token，两条约束就都成立了：**
 
 ```
-authz 改了张三的角色
-  → bundle 的 stale_since[张三] = now        ← §14.1.6
-  → 组件看到张三的 token 早于 stale_since，返回 401 token_stale
-  → 前端静默刷新 → 找 Casdoor 换新 token
-  → ⚠️ 如果这时候镜像还没同步到 Casdoor，换回来的还是旧角色
-  → 再次 401 token_stale → 再刷新 → 死循环，且用户侧表现为"页面转圈转不完"
+① 浏览器 ↔ Casdoor          纯 OIDC。认证 100% 归它，我不在中间（§6.1 满足）
+     ↓ 身份 token（只有 sub 等身份字段，没有角色）
+② 前端 → 本组件 换一次      我验 Casdoor 的签名 → 调 authz 的 ResolveClaims
+     ↓                       → 用我自己的密钥签出**应用 token**（带 roles[]/dept_path/org_id）
+③ 业务组件                   验的是**我的** JWKS（各组件的 iamJwksUrl 指向我，不是指向 Casdoor）
+④ 刷新也走我                 刷新时重新调一次 ResolveClaims，角色天然是最新的
 ```
 
-**解法是把 `stale_since` 的写入时机往后挪一格**——不是 authz 改完就写，而是等镜像落地确认：
+**"登录完就不该再管 Casdoor 了"——这条形态就是这个意思**：第 ① 步之后 Casdoor 完全退出，业务请求路径上没有它，刷新路径上也没有它。
 
-```
-authz 改角色 → 发 infra.authz.user_role.changed.v1
-  → 本组件消费，把新 claims 写进 Casdoor（幂等，带 authz_revision）
-  → 本组件发 infra.iam.claims.synced.v1
-  → authz 消费它，这时才把张三写进 stale_since
-```
+⚠️ **这解释了 `infra-authz` 设计计划 §3 那句 `ResolveClaims` "登录与刷新时各调一次"**——只有本组件站在签发路径上，才存在"登录时"这个时刻。那份计划早就是按这个形态写的。
 
-于是**任何组件看到 `stale_since[张三]` 的那一刻，Casdoor 一定已经能签出新角色**，循环不可能发生。代价是多一跳事件（毫秒级），而生效时延的大头本来就是 bundle 的 15 秒轮询（§14.1.6），**总时延不变**。
+**为什么不让 Casdoor 直接签带角色的 token（把 authz 的角色镜像进 Casdoor）**——这条路看起来更省事，但有三个各自独立的致命问题，任何一个都足以否决它：
 
-⚠️ **这条要求 `infra-authz` 消费 `infra.iam.claims.synced.v1`**，与它设计计划 §4 现在写的"策略下发刻意不走事件总线"不冲突——那句说的是 **bundle 内容**不走事件；这里走事件的是**一次同步完成的确认信号**，不是策略本身。已在 `infra-authz` 设计计划 §4 补了这条消费边。
+| 问题 | 说明 |
+|---|---|
+| **踢人链路断掉** | §14.1.6 要求"踢人 → refresh token 已撤销 → 刷新失败 → 登出"，而 `infra-authz` 设计计划 §3 把撤 refresh token 列为 **authz 自己的接口**。token 若是 Casdoor 签的，authz 撤不了它，除非反过来调 Casdoor——直接违反 authz 设计计划 §5 的"不依赖 iam，方向是反的" |
+| **一个不报错的死循环** | 镜像必然是异步的：authz 改完角色写 `stale_since` → 组件 401 `token_stale` → 前端刷新 → **Casdoor 还没同步到，刷回来还是旧角色** → 再 401 → 转不出去。而服务端**每条日志都正常**（401 与刷新都是预期行为），用户侧只看到页面一直转圈 |
+| **把角色数据焊回 Casdoor** | §14 把角色放进 `infra-authz`，图的就是换 Keycloak 时**角色数据一行不迁**。往 Casdoor 里镜像一份，等于把刚拆开的东西又粘回去 |
+
+⚠️ **设计书里有两处仍按"Casdoor 直接签带 claims 的 token"写**（§6.1 的一句、附录 D 的时序图），**都是决策 115/116 把角色挪进 authz 之前的残留**，已一并回写订正。
+
+### 3.3 签发方要承担什么（这是本组件真正的复杂度所在）
+
+成为签发方不是白来的，四件事必须做对：
+
+| 事项 | 怎么做 | 出错的症状 |
+|---|---|---|
+| 签名密钥 | 启动时从配置读私钥（`appTokenSigningKey`），**不自己生成**——合并部署时 11 个模块同进程，自己生成会让每次重启都换密钥 | 重启后所有 token 突然验不过，而日志只说"签名无效" |
+| `GET /.well-known/jwks.json` | 暴露公钥。各组件的 `iamJwksUrl` 指到这里 | —— |
+| 密钥轮换 | JWKS 同时挂新旧两把公钥、`kid` 区分；换私钥后旧 token 在 TTL（10 分钟）内仍可验 | 不做双挂就是一次"全员被登出" |
+| refresh token 存储 | `refresh_tokens` 表，**每次刷新轮换**（§14.1.6：rotation，不滑动续期）；`infra-authz` 的踢人接口通过事件通知我作废 | —— |
+
+⚠️ **验 Casdoor 身份 token 用的是 Casdoor 的 JWKS**（`casdoorBaseUrl` 拼出来），与我自己签应用 token 用的密钥**是两把完全不同的钥匙**，不要在实现里混用同一个 verifier。
 
 ## 4. 事件
 
@@ -127,8 +145,7 @@ authz 改角色 → 发 infra.authz.user_role.changed.v1
 | `infra.iam.user.created.v1` | 核心 | Casdoor webhook 报告新用户 | `sub`、`display_name`、`email`、`phone`、`im_accounts`（含钉钉 unionid，若已绑定） |
 | `infra.iam.user.updated.v1` | 核心 | 用户属性变更 | 同上 + `version` 单调递增 |
 | `infra.iam.user.disabled.v1` | 核心 | 停用/删除 | `sub`。⚠️ **删除也发这条，不发 deleted** ——下游要的是"别再给他发消息了"，不是"把历史记录删了" |
-| `infra.iam.claims.synced.v1` | 核心 | claims 已写进 Casdoor | `sub`、`authz_revision`。**§3.2 那条顺序保证的信号**，唯一消费者是 `infra-authz` |
-| `infra.iam.login.v1` | 旁路 | 登录成功 | `sub`、时间、IP。仅供 `infra-audit`（阶段五）落审计 |
+| `infra.iam.login.v1` | 旁路 | 换到应用 token（即登录完成） | `sub`、时间、IP。仅供 `infra-audit`（阶段五）落审计 |
 
 ⚠️ **`user.*` 三条标核心不标旁路**：`infra-notification` 靠它们维护"给谁发、发到哪"的快照（见 §5），漏一条的后果是**审批通知发不出去且没有报错**——那不是分析类事件能接受的可靠性。
 
@@ -136,7 +153,9 @@ authz 改角色 → 发 infra.authz.user_role.changed.v1
 
 | subject | 来自 | 做什么 | 幂等与乱序怎么处理 |
 |---|---|---|---|
-| `infra.authz.user_role.changed.v1` | `infra-authz` | 把新 claims 镜像进 Casdoor（§3.2） | 幂等键 `sub + authz_revision`；**乱序靠 `authz_revision` 单调比较**，收到比已同步的更旧的直接丢弃 |
+| `infra.authz.user_role.changed.v1` | `infra-authz` | **踢人时作废该用户的 refresh token**（§14.1.6 的"刷新失败 → 登出"靠这条落地）。普通的角色增减不需要动 refresh token——下次刷新自然拿到新角色 | 幂等键 `sub + authz_revision`；重复投递是幂等的（作废已作废的行是空操作） |
+
+⚠️ **只有"撤销/停用"这一类变更才作废 refresh token**，普通调岗不作废——否则每次人事调整都把人踢下线，而 §14.1.6 设计的路径是"401 `token_stale` → 静默刷新"，用户无感。
 
 ## 5. 依赖
 
@@ -144,7 +163,9 @@ authz 改角色 → 发 infra.authz.user_role.changed.v1
 
 | 组件 | 调它的什么 | 为什么必须同步 |
 |---|---|---|
-| `infra-authz` | `ResolveClaims`（首次初始化、以及事件丢失后的对账重放） | 正常路径走事件；但**冷启动时没有事件可听**——第一次部署要把已有用户的 claims 全量刷进 Casdoor，只能同步拉。这条边的方向与 `infra-authz` 设计计划 §5 记的完全一致（"是 iam 调我"） |
+| `infra-authz` | `ResolveClaims`：**每次签发应用 token 时调一次**（登录一次、每次刷新一次） | 签 token 那一刻必须拿到**当下**的角色，缓存就是把死循环引回来（§2 末尾）。这条边的方向与 `infra-authz` 设计计划 §5 记的完全一致（"是 iam 调我算 claims"），它的 §3 也早就写了"登录与刷新时各调一次" |
+
+⚠️ **这条边的可用性代价要写明**：`infra-authz` 挂掉时，**已登录的人做业务不受影响**（§14.1.9 的 fail-static：组件用内存里最后一份 bundle），但**新登录与刷新会失败**。这是把 claims 做成"现问"而不是"缓存"必然付的账——换来的是角色变更零延迟、且不可能签出旧角色的 token。TTL 取 10 分钟（§14.1.6）意味着 authz 中断超过 10 分钟时，在线用户会陆续被挡在刷新这一步。
 
 **弱依赖**（`optional: true`）：无。
 
@@ -170,12 +191,13 @@ authz 改角色 → 发 infra.authz.user_role.changed.v1
 
 | 数据 | 热 | 归档条件 | 归档去哪 |
 |---|---|---|---|
-| `claim_sync_state` | 永远热 | 不归档（用户停用后也留着，供审计追溯"他当时被同步过什么"） | — |
+| `refresh_tokens` | 未过期未撤销的 | 过期/撤销满 30 天后**直接删** | 不归档（过程数据，`infra.iam.login.v1` 事件里有痕迹） |
+| `signing_keys` | 当前 + 上一把 | 更早的密钥元数据满 90 天后删 | 不归档 |
 | `bootstrap_state` | 永远热 | 不归档 | — |
 | `webhook_deliveries` | 最近 30 天 | 超过 30 天的整月分区 | `infra_iam_casdoor_archive` |
 | `event_outbox` / `event_inbox` | 已发布 30 天内 | 超过 30 天 | 清理（§11.7 全组件通则） |
 
-⚠️ **`claim_sync_state` 永不归档也永不分区**：它是按用户数有界的当前态镜像（几百到几千行），分区只会让 §3.2 的幂等查询变慢。
+⚠️ **`refresh_tokens` 永不分区**：它按"当前在线人数 × 12 小时窗口"有界（几百到几千行），而每次刷新都要按 `jti` 精确查它——分区只会让这条热路径查询跨分区找行，与 `inventory_balances` 不分区是同一个理由（§11.2.5 注）。
 
 ## 8. 参考实现
 
@@ -185,7 +207,8 @@ authz 改角色 → 发 infra.authz.user_role.changed.v1
 
 | 项目 | 版本/commit | 看的模块 | 借鉴了什么 | 许可证（已复核） | 用法 |
 |---|---|---|---|---|---|
-| Casdoor | 📋 开工前填 | `object/token_jwt.go`（token 里带哪些字段）、`object/user.go` 的 `Properties`、webhook 触发点 | **本组件全部的对接面。** 尤其要确认：自定义 claims 到底是走 `User.Properties` 还是 Casdoor 的角色对象——这决定 §3.2 镜像同步写哪个字段（§9 第 1 条） | Apache-2.0 | 借鉴逻辑 |
+| Casdoor | 📋 开工前填 | OIDC 端点与 JWKS、身份 token 的字段构成、webhook 触发点与签名 | **本组件的对接面。** ⚠️ 改成两个 token 之后**不再需要往 Casdoor 写任何东西**，只要读得懂它签的身份 token、验得了它的签名即可——对接面比初版设计小了一大截 | Apache-2.0 | 借鉴逻辑 |
+| OAuth 2.0 Token Exchange（RFC 8693） | — | `urn:ietf:params:oauth:grant-type:token-exchange` 的请求/响应形状 | §3.2 第 ② 步"拿一个 token 换另一个 token"**是有标准的**，不要自创请求格式。即使不完整实现整个 RFC，入参出参也照它的字段名 | 标准文本 | 借鉴逻辑 |
 | Keycloak | 📋 开工前填 | Protocol Mapper（把用户属性映射进 token 的机制） | **对照用**：Keycloak 的 mapper 是声明式的、Casdoor 是字段固定的。族内契约要按**两边都能实现**的最小交集设计（§3 的族级包名就是这么定的） | Apache-2.0 | 借鉴实际应用 |
 | Dex | 📋 开工前填 | connector 抽象 | 反面参考：它把"对接多个上游 IdP"做成了核心抽象。**我们不需要**——`slot:iam` 是装配期二选一，不是运行时多路复用 | Apache-2.0 | 借鉴逻辑 |
 | Grafana | — | 它的 OIDC 集成与"角色从 token 的哪个 claim 读"的配置项 | 佐证"角色放进 token 由 IdP 签"是主流做法，不是我们的独创 | AGPL-3（**只读文档与使用体验，不看源码**） | 借鉴实际应用 |
@@ -208,7 +231,8 @@ authz 改角色 → 发 infra.authz.user_role.changed.v1
 
 | # | 问题 | 什么时候能有答案 | 答案 |
 |---|---|---|---|
-| 1 | Casdoor 的自定义 claims 到底写哪里——`User.Properties`、原生 role 对象、还是 application 级的 token 字段配置？这决定 §3.2 镜像同步的具体写法 | 开工前读 Casdoor 源码（§8 第一行）时 | 📋 |
+| 1 | ~~Casdoor 的自定义 claims 写哪里~~ | ~~开工前读源码~~ | ✅ **问题不存在了**：改成两个 token 之后（§3.2），我不往 Casdoor 写任何东西，只验它签的身份 token。**这一条是被用户的一个提问推翻的**——初版设计让 Casdoor 直接签带角色的 token、由本组件镜像 claims 进去，被问了一句"登录完不是就不该管 Casdoor 了吗"才发现它同时违背了踢人链路、会造死循环、还把角色数据焊回 Casdoor（三条见 §3.2） |
+| 1b | 应用 token 的签名密钥怎么给：`configSchema` 明文注入 PEM、还是挂文件？平台 Manifest **没有 volumes 字段**（§6.3），所以大概率只能走配置项 | 开工实现时 | 📋 倾向配置项注入 PEM；`brickkit.yaml` 那一格算敏感值，与 `.env` 里的数据库密码同级对待 |
 | 2 | Casdoor 的 webhook 有没有投递保证与签名机制？没有的话 `webhook_deliveries` 的去重键取什么、要不要改成轮询兜底 | 同上 | 📋 |
 | 3 | 钉钉 unionid 从哪来：Casdoor 的 DingTalk 第三方登录会把 unionid 存进用户属性吗？拿不到的话 `infra-notification` 就得靠人工维护映射（会牵连它的设计） | 阶段三 Task 7 实现时，与 `integration-im-dingtalk` 一起验 | 📋 |
 | 4 | `infra-iam-keycloak` 什么时候建？族内契约一致要求它能原样实现 §3 那份 proto，但阶段三只建 Casdoor 一个——**契约设计得对不对，要到真建第二个成员时才验得到** | 阶段六（按客户订单排队，§9.6 档 4b） | 📋 现在的对策：§3 的契约按 Casdoor/Keycloak 两边能力的**最小交集**设计，并在 `AGENTS.md` 记一条"加 rpc 前先问 Keycloak 能不能实现" |

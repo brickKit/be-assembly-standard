@@ -1479,7 +1479,11 @@ brickKit 是刻意极简的：不做网关、不做路由聚合、不建库建 s
 
 ⚠️ **由此引出一条不直观的推论**（`infra-iam-casdoor` 设计计划 §3.2 展开）：`roles[]` 既然要进 Casdoor 签的 token，而角色数据又在 `infra-authz` 里，**就必须由适配层把 claims 提前镜像进 Casdoor**；且 `infra-authz` 的 `stale_since` 必须等镜像落地确认后才写，否则"401 token_stale → 刷新 → 拿到的还是旧角色 → 再 401"会转成**死循环**。
 
-实现方式：官方镜像（Casdoor/Keycloak）作为**带外容器** + 薄适配层**组件**（~500 行代码，这一层才是 `slot:iam`）。适配层负责 `/api/tenant/features`、Webhook 事件桥接、首次部署初始化。日常认证流（用户登录）不经过适配层，浏览器直接走 OIDC 标准协议与官方镜像通信。
+实现方式：官方镜像（Casdoor/Keycloak）作为**带外容器** + 薄适配层**组件**（这一层才是 `slot:iam`）。适配层负责 `/api/tenant/features`、Webhook 事件桥接、首次部署初始化，以及**把官方镜像签的身份 token 换成我们自己的应用 token**（附录 D 的时序图）。
+
+⚠️ **"不经过适配层"指的是认证，不是整条登录链路**（旧版这句话没说清，阶段三写 `infra-iam-casdoor` 设计计划时订正）：账密校验、MFA、扫码、社交登录**一律由官方镜像直接与浏览器完成**，适配层不代理不转发；但认证成功之后，**换应用 token 这一步必须经过适配层**——因为 `roles[]`/`dept_path`/`org_id` 在 `infra-authz` 里，官方镜像不知道。换完之后 Casdoor 就退出了，**业务请求路径与刷新路径上都没有它**。
+
+⚠️ 由此，各组件 `configSchema` 里的 `iamJwksUrl` **指向适配层的 `/.well-known/jwks.json`，不是指向 Casdoor**——业务组件验的是应用 token。
 
 **⚠️ `/api/tenant/features` 的数据从哪来**
 
@@ -3494,26 +3498,43 @@ flowchart LR
 
 ### 附录 D · 登录流（OIDC 示例）
 
+⚠️ **本图旧版画的是「IAM 直接返回含权限 Claims 的 JWT」，那是决策 115/116 之前的形态，已订正。**
+角色数据自那以后归 `infra-authz`，Casdoor 并不知道；所以**认证与应用 token 的签发是两步**（详见
+`infra-iam-casdoor` 设计计划 §3.2）——**Casdoor 只证明"你是谁"，登录完成之后它就退出，不在业务请求路径上，
+也不在刷新路径上。**
+
 ```mermaid
 sequenceDiagram
     participant User as 用户/浏览器
     participant FE as 前端 Nginx
     participant GW as API Gateway
-    participant IAM as IAM (Casdoor/Keycloak)
+    participant CAS as Casdoor 官方镜像（带外容器）
+    participant ADP as infra-iam-casdoor（适配层 · slot:iam）
+    participant AUTHZ as infra-authz
     participant Biz as 业务组件
     User->>FE: 访问系统
     FE->>GW: 请求受保护资源
     GW-->>FE: 401 Unauthorized
-    FE->>IAM: 重定向至 IAM 登录页
-    User->>IAM: 输入账密认证
-    IAM-->>FE: 回调携带 Auth Code
-    FE->>IAM: 用 Code 换取 JWT (OIDC 标准流程)
-    IAM-->>FE: 返回 JWT (含权限 Claims)
-    FE->>GW: 携带 JWT 请求业务 API
-    GW->>Biz: 透传 JWT
-    Biz->>Biz: 本地校验 JWT 签名与权限
+    FE->>CAS: 重定向至登录页
+    User->>CAS: 输入账密认证（MFA / 扫码同理）
+    CAS-->>FE: 回调携带 Auth Code
+    FE->>CAS: 用 Code 换身份 token（OIDC 标准流程）
+    CAS-->>FE: 身份 token（只有 sub 等身份字段，无角色）
+    Note over FE,CAS: ↑ 到这里 Casdoor 的职责结束
+    FE->>ADP: POST /api/iam/token（带身份 token）
+    ADP->>CAS: 验签（拉 Casdoor 的 JWKS）
+    ADP->>AUTHZ: ResolveClaims(sub)
+    AUTHZ-->>ADP: roles[] / dept_path / org_id
+    ADP-->>FE: 应用 token（适配层自己的密钥签）+ refresh token
+    FE->>GW: 携带应用 token 请求业务 API
+    GW->>Biz: 透传
+    Biz->>Biz: 本地验签（JWKS 来自适配层）+ 查内存 map 判权限
     Biz-->>FE: 返回业务数据
 ```
+
+**刷新走同一条路的后半段**：`FE → ADP /api/iam/token/refresh → AUTHZ ResolveClaims → 新应用 token`。
+因为每次签发都现问 `infra-authz`，所以 §14.1.6 的 `stale_since` 一写下去、下一次刷新就必然拿到新角色——
+**不存在"刷新回来还是旧角色"这个状态**。
 
 ### 附录 E · 事件沙盘（CRM 赢单转 ERP 订单）
 

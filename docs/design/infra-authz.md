@@ -87,12 +87,10 @@
 
 | subject | 来自 | 做什么 | 幂等与乱序怎么处理 |
 |---|---|---|---|
-| `infra.iam.claims.synced.v1` | `infra-iam-casdoor` | ⭐ **这才把该用户写进 `stale_since`**——确认新 claims 已经镜像进 Casdoor 之后 | 幂等键 `sub + authz_revision`；比已记录的 revision 更旧的丢弃 |
 | `mdm.org.department.changed.v1` | `mdm-org`（**阶段五才有**） | 更新 `departments` 的 `dept_path` | 按 `version` 单调校验（§H） |
 
-⚠️ **第一条是阶段三写 `infra-iam-casdoor` 设计计划时补的，它堵的是一个真实的死循环**：`roles[]` 在 Casdoor 签的 token 里，而角色数据在我这里。如果我改完角色就立刻写 `stale_since`，组件会返回 `401 token_stale`、前端去 Casdoor 刷新——**但那时 Casdoor 可能还没拿到新角色，刷回来的还是旧的，于是再 401、再刷新，转不出去**。把 `stale_since` 的写入推迟到收到这条确认事件之后，循环就不可能发生。完整推导见 `infra-iam-casdoor` 设计计划 §3.2。
-
-⚠️ 这与上面"策略下发刻意不走事件总线"不矛盾：那句说的是 **bundle 内容**（`role → [permissions]`）不走事件；这条走事件的是**一次同步完成的信号**，不是策略本身。
+⚠️ **`stale_since` 写完就能立刻生效，不需要等任何人确认**——因为应用 token 由 `infra-iam-casdoor` 签发、且它每次签发都现调我的 `ResolveClaims`（本文件 §3）。前端收到 `401 token_stale` 去刷新时，拿到的必然是最新角色。
+> 📌 这里曾经差点走错：阶段三初版设计让 Casdoor 直接签带角色的 token、由适配层把角色镜像进 Casdoor，那样 `stale_since` 就必须等镜像落地确认才能写，否则"401 → 刷新 → 还是旧角色 → 再 401"会转不出去。改成两个 token 之后这个问题整个消失。完整推导见 `infra-iam-casdoor` 设计计划 §3.2。
 
 ## 5. 依赖
 
