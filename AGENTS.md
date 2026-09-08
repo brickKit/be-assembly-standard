@@ -27,7 +27,7 @@
 | 已建组件 | **5 个建完**：`mdm-customer@1.0.0`、`mdm-product@1.0.0`（只读枢纽，九门禁全绿）、`erp-inventory@1.0.2`（物理命令枢纽，TCC 三件套 + claim-first 幂等 + 条件更新防超卖，`besdk.Consume` 第一个真实调用方；v1.0.1/v1.0.2 补了 `GetReservationStatus` 按 `idempotency_key` 查询的路径——`erp-sales` 实现时发现的契约缺口，纯新增字段不破坏兼容）、`erp-finance@1.0.0`（事件汇枢纽，九门禁全绿，`FinanceService` 11 rpc；消费三个不同来源的事件；幂等过账两层防护、期间权威判定与 `post_no` 生成搭同一把锁、红字冲销）、**`erp-sales@1.0.0`（本阶段唯一的链上一环，四条强依赖边全部真实 gRPC 调用；`ConfirmOrder` 的 TCC 补偿链——`contracts/vendor/` 只读镜像 + 本地生成客户端 stub 是本项目第一次跨组件调用立的先例，记在设计计划 §9；真故障注入测试打真实网络请求到真实运行的三个依赖容器，覆盖真实库存不足/真实超时状态内省/真实补偿三条路径）**。五者的 REST 路由都已用 `besdk.GET/POST/PATCH(perm)` 注册，全部标 `Public` 待阶段三换真键 |
 | 工具仓库 | `be-sdk-go@v0.1.9`（`erp-sales` 实现时发现并修复：`Config` 从 v0.1.0 起就没有把 camelCase 配置键转成平台真实注入的 SCREAMING_SNAKE_CASE，四个已发布组件因默认值恰好等于真实值而未暴露）、`be-ops@v0.1.2`、`be-acceptance@v0.1.2`（三个都已 tag 并被装配仓库的 submodule 指针跟踪） |
 | 已钉死不许改的 | `registry/ports.tsv`、`registry/schemas.tsv`、`registry/permissions.tsv`（**只增不改**，见下）；**每种语言的技术栈与模块入口签名**（设计书 §12.4 / §12.5）；**PC 端骨架形态**（§12.6.7）；**权限体系**（第 14 章） |
-| 平台 CLI | 已装 **v0.2.1**。`brickkit restore`（含 `--check`）与 `init --hooks` 已实现并在用；`sync`/`remove` 对已登记 submodule 的守卫（`SUBMODULE_GUARD`）已修复并实测 |
+| 平台 CLI | 已装 **v0.2.2**。`brickkit restore`（含 `--check`）与 `init --hooks` 已实现并在用；`sync`/`remove` 对已登记 submodule 的守卫（`SUBMODULE_GUARD`）已修复并实测；v0.2.2 修了本地源组件 `metadata.id` 改错后 `Manifest()`/`DownloadArtifacts()` 仍沿用改名前缓存的问题（阶段二 Task 19 用例 9 发现，`brickKit` 仓库 `docs/superpowers/specs/2026-09-08-local-source-manifest-cache-masks-metadata-id-mismatch.md`，已双向验证：`be-acceptance` 的 `TestPlatform09b` 与 `brickKit` 自己新增的单测均绿） |
 | 常用验收 | `make tier0`（档 0 六项验收，**每加一个组件都要重跑**）、`make docs-check REPO=<仓库名>`、`make gates` |
 
 ⚠️ **改了阶段就回来改这张表。** 它是 AI 判断「现在该做什么、什么已经定死」的唯一依据。
