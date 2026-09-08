@@ -1843,8 +1843,8 @@ erp-sales/
 | --- | --- | --- | --- |
 | **档 0**<br>单砖 | 一块砖能独立活 | `mdm/customer` 一个组件 | 单独 `brickkit up` 起来；`curl` 打通 HTTP；**`grpcurl` 打通 gRPC 的 `Get` / `List` / `batchGet`**；迁移能被平台单独调起且可重跑；`/healthz` 只查本进程；镜像里有 shell + wget |
 | **档 1**<br>验平台 | brickKit 的每条承诺都真的成立 | 加 `mdm/product`、`erp/inventory`、`erp/finance`、`erp/sales` 共 5 个 | 见 §9.6.2 的平台验收清单，逐条打勾 |
-| **档 2**<br>闭环 | 一条业务链真的跑通 | 加 `crm/opportunity`、`infra-iam-casdoor`、`infra-workflow`、`infra-notification`、1 个 IM 通道、**`infra-print`（Python，档 3 要靠它验 Python 外壳）**、`infra-bff-mobile`、`frontend-standard`（只做这几个模块的页面），**共 13 个组件**（= 附录 H 里「切片」列打勾的那些） | 「CRM 赢单 → 建单 → 锁库存 → 生成应收 → 审批 → 钉钉通知 → 打印送货单 PDF」全链路跑通（附录 E）；Saga 补偿与超时查询走一遍；DLQ 进得去出得来（⚠️ `infra-dlq-monitor` 在档 4a，不在这 13 个里——**档 2 验的是平台 SDK 层的死信通道本身**：重试耗尽后消息进 DLQ、`hop_count > 5` 被丢弃、能被重新投递。管理界面与积压告警留到档 4a） |
-| **档 3**<br>做外壳 | 验"合并不磨掉组件性" | 把档 2 的 13 个组件合成 **2 个外壳**：Go 外壳装 10 个模块，Python 外壳装 `infra-print`；TS 的 `infra-bff-mobile` 与 `frontend-standard` 保持独立容器（§13.5：跨语言合不进来，Nginx 也合不进来） | 合并态业务闭环全绿；**§13.7 的拆回门禁全绿**；铁律六的 import 扫描全绿；13.8 那三份 compose 一条命令启停 |
+| **档 2**<br>闭环 | 一条业务链真的跑通 | 加 `crm/opportunity`、`infra-iam-casdoor`、**`infra-authz`**、`infra-workflow`、`infra-notification`、1 个 IM 通道、**`infra-print`（Python，档 3 要靠它验 Python 外壳）**、`infra-bff-mobile`、`frontend-standard`（只做这几个模块的页面），**共 14 个组件**（= 附录 H 里「切片」列打勾的那些） | 「CRM 赢单 → 建单 → 锁库存 → 生成应收 → 审批 → 钉钉通知 → 打印送货单 PDF」全链路跑通（附录 E）；Saga 补偿与超时查询走一遍；DLQ 进得去出得来（⚠️ `infra-dlq-monitor` 在档 4a，不在这 14 个里——**档 2 验的是平台 SDK 层的死信通道本身**：重试耗尽后消息进 DLQ、`hop_count > 5` 被丢弃、能被重新投递。管理界面与积压告警留到档 4a）；**权限判定从 fail-closed stub 换成真实的 `infra-authz` bundle 轮询**，阶段二标 `Public` 的接口这一档要换回真实权限键（§14.3：`infra-authz` 组件本体、`.sql` 数据权限谓词、`SystemClient`/`UserClient` 分家扫描，全部落在这一档） |
+| **档 3**<br>做外壳 | 验"合并不磨掉组件性" | 把档 2 的 14 个组件合成 **2 个外壳**：Go 外壳装 **11** 个模块（含 `infra-iam-casdoor`、`infra-authz`），Python 外壳装 `infra-print`；TS 的 `infra-bff-mobile` 与 `frontend-standard` 保持独立容器（§13.5：跨语言合不进来，Nginx 也合不进来） | 合并态业务闭环全绿；**§13.7 的拆回门禁全绿**；铁律六的 import 扫描全绿；13.8 那三份 compose 一条命令启停 |
 | **档 4a**<br>补齐 default | 凑齐最小可交付形态 | `infra-storage`、`infra-attachment`、`infra-dlq-monitor`、`mdm-supplier`、`mdm-org` 共 5 个 | 每加一个组件，档 0 的六项 + 拆回门禁重跑 |
 | **档 4b**<br>铺货 | 军火库补齐 | 其余组件按客户订单优先级排队 | 同上 |
 
@@ -2731,7 +2731,7 @@ components:
 | 合并理由 | 集成适配器全是 "调外部 API + 发回调事件 "的 I/O 密集型任务。将它们与通知中心、工作流合并，形成一个统一的 "系统总线与外部网关 " |
 | 端口规划 | HTTP 8200~8223 / gRPC 9200~9223（`infra-iam-keycloak` 作为 `slot:iam` 替换件占 8221/9221，`infra-authz` 占 **8223/9223**——⚠️ **8222 跳过，那是 NATS 的监控端口**） |
 
-⚠️ **`infra-iam-casdoor` 属于本外壳，容易被漏掉。** 它是 Go 写的 ~500 行薄适配层（§6.1），Casdoor 官方镜像才是带外容器。§9.6.1 档 3 说「Go 外壳装 10 个模块」时算的就是含它的那 10 个。8 个 infra（含 `infra-authz`，见第 14 章）+ 14 个 integration = 22，这个数字才对得上。
+⚠️ **`infra-iam-casdoor` 与 `infra-authz` 都属于本外壳，容易被漏掉。** 前者是 Go 写的 ~500 行薄适配层（§6.1），Casdoor 官方镜像才是带外容器；后者是权限判定的本体（第 14 章）。§9.6.1 档 3 说「Go 外壳装 11 个模块」时算的就是含这两个的那 11 个。8 个 infra + 14 个 integration = 22，这个数字才对得上——这里的 22 是**档 4b 铺满军火库后**外壳三的最终形态，不是档 3 最初进外壳的那 11 个。
 
 #### 🔵 外壳四：Python 复杂大脑 (The Brain & AI Shell)
 将烧脑的、需要强大生态库的组件合并。
