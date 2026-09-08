@@ -1702,7 +1702,8 @@ deployment:
 - 拥有：`sales_orders` / `sales_order_items`。
 - 命令：`CreateOrder` / `ConfirmOrder` / `CancelOrder` / `ShipOrder`。
 - 强依赖：`mdm/customer`、`mdm/product`、`erp/inventory`、`erp/finance`。
-- 同步调用链：校验客户与产品 → 预留库存 → 本地缓存校验信用额度 → 创建订单 + Outbox 发布事件。任一步失败同步调用 Cancel API。
+- 同步调用链：校验客户与产品 → 本地缓存校验信用额度 → 预留库存 → 创建订单 + Outbox 发布事件。任一步失败同步调用 Cancel API。
+  ⚠️ **信用额度校验排在预留库存之前，不是之后**（阶段二 `erp-sales` 实现时回填，见其设计计划 §9 第 1 条）：前者是零成本的本地缓存读取，后者是一次真实 gRPC 调用；顺序反了会让信用不足的订单先白白占一次库存、再触发一次补偿——两次网络往返换来一个本该在进程内就能拒绝的结果。
 
 ### 8.3 AI 生成文件清单（后端组件）
 
@@ -2067,13 +2068,15 @@ CREATE TABLE sales_orders_2026_02 PARTITION OF sales_orders
 
 主表与子表必须一起归档，不能只归档主表不归档明细表。
 
+⚠️ **例外：`erp-finance` 是头不归档、明细归档**（阶段二 `erp-finance` 实现时回填，见其设计计划 §9 第 1 条）。凭证头（`finance_journal_entries`）承载幂等过账的唯一约束——PostgreSQL 分区表建不出"不含分区键"的唯一约束，所以这条约束只能落在不分区的头表上；这条约束必须永远有效，一旦头也跟着明细一起归档，一张三年前的源单重投事件时会重新过一遍账。归档明细、留下头，是这条铁律唯一被论证过接受的不对称例外（机制细节见 `erp-finance` 设计计划 §2.3），别的组件不要照搬这个不对称，除非同样存在"某个约束必须落在不分区的头表上"这个前提。
+
 #### 11.2.5 需要分区的典型大表
 
 | 组件 | 表 | 分区键 | 分区粒度 |
 |---|---|---|---|
 | erp-sales | `sales_orders` / `sales_order_items` | `created_at` | 月 |
 | erp-inventory | `inventory_movements`（库存流水） | `created_at` | 月 |
-| erp-finance | `finance_journal_entries`（分录明细） | `accounting_period` | 会计期间 |
+| erp-finance | `finance_journal_entry_lines`（分录明细，凭证头 `finance_journal_entries` 按 §11.2.4 的例外不分区） | `accounting_period` | 会计期间 |
 | crm-activity | `crm_activities` | `created_at` | 月 |
 | infra-audit | `audit_logs` | `created_at` | 月 |
 | infra-notification | `notification_records` | `created_at` | 月 |
@@ -3231,7 +3234,7 @@ ERP 里的实例级需求是真的（客户临时转给另一个销售、单据�
 | 维度 | 谁要 |
 | --- | --- |
 | `org` 部门 | CRM 全域、`erp-sales` / `erp-purchase`、`prj-*` |
-| `owner` 归属人 | CRM 私海、HRM 本人、「我的订单」 |
+| `owner` 归属人 | CRM 私海、HRM 本人、「我的订单」（`erp-sales`） |
 | `warehouse` 仓库 | `erp-inventory` / `erp-purchase` |
 | `legal_entity` 法人 | 多公司集团的 `erp-finance`（由 §12.6.7 顶栏的组织切换器给当前值） |
 
