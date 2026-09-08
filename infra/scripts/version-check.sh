@@ -9,6 +9,17 @@
 #
 # 完全没有 tag（`git describe` 直接 fatal）也算漂移——阶段三写这个脚本时
 # 真的抓到过 be-sdk-python/be-sdk-ts 建仓库后忘了打 v0.1.0 的情况。
+#
+# 顺带守一条相邻的坑：HEAD 上的 tag 必须是**带注解的**（`git tag -a`），
+# 不能是轻量 tag（`git tag vX.Y.Z`）。`git submodule status` 内部用不带
+# `--tags` 的 `git describe`，只认带注解的 tag——如果 HEAD 是轻量 tag、
+# 而历史上更早处恰好有一个带注解的 tag，`git submodule status` 会静默
+# 报出那个更早的 tag 加一截 `-N-g<hash>`（这条脚本自己用 `--tags` 所以
+# 看不出异常，只有 `git submodule status` 会显得像是"漂移"）——infra-authz
+# 建仓库时用 `git submodule add` 挂载已有仓库，核对 `git submodule status`
+# 才真的撞见 tools/be-sdk-go 卡在这个状态（v0.1.8/v0.1.9 当时打成了轻量
+# tag）。带注解的 tag 用 `git cat-file -t <tag>` 会返回 `tag`，轻量 tag
+# 返回 `commit`。
 set -uo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 cd "$ROOT"
@@ -44,6 +55,12 @@ for p in "${paths[@]}"; do
   fi
   if [[ "$desc" =~ -[0-9]+-g[0-9a-f]+$ ]]; then
     echo "${C_RED}✗ $p：HEAD 领先最新 tag（$desc）——有已提交但没打 tag 的改动${C_OFF}"
+    bad=1
+    continue
+  fi
+  tagtype="$(git -C "$p" cat-file -t "$desc" 2>&1)"
+  if [[ "$tagtype" != "tag" ]]; then
+    echo "${C_RED}✗ $p：$desc 是轻量 tag（应为带注解的 \`git tag -a\`）——git submodule status 会显得像是漂移${C_OFF}"
     bad=1
   else
     echo "${C_GRN}✓ $p：$desc${C_OFF}"
