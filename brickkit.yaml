@@ -179,6 +179,17 @@ components:
       dingtalkAppKey: "${DINGTALK_APP_KEY}"
       dingtalkAppSecret: "${DINGTALK_APP_SECRET}"
       dingtalkAgentId: "${DINGTALK_AGENT_ID}"
+  - id: infra/print
+    version: 1.0.2 # 阶段三 Task 10：全系统第一个 Python 组件，纯函数打印
+                   # 渲染中心，零依赖零出边（erp/sales 等业务组件强依赖
+                   # Render，本组件反过来不依赖任何人）。真机验证过完整
+                   # 链路：真实 Postgres 迁移 → gRPC/HTTP 起服务 → 真实
+                   # WeasyPrint 渲染一张带中文的 A4 PDF，pdftotext/pdftoppm
+                   # 人工核对内容与模板对得上（03-阶段三 Task 10 小节）
+    expose: true # curl/grpcurl 打通需要（主端口 8400），gRPC（9400）只能走容器 IP，同其余组件先例
+    config:
+      authzBundleUrl: "http://infra-authz-1-0-2:8223/authz/bundle"
+      iamJwksUrl: "http://infra-iam-casdoor-1-0-2:8200/.well-known/jwks.json"
 resources:
   - id: postgres-shared
     kind: database
@@ -208,6 +219,8 @@ resources:
         database: brickkit_db
       - componentId: integration/im-dingtalk
         database: brickkit_db
+      - componentId: infra/print
+        database: brickkit_db
   - id: nats-shared
     kind: mq
     engine: nats
@@ -224,3 +237,4 @@ resources:
       - componentId: infra/workflow
       - componentId: infra/notification
       - componentId: integration/im-dingtalk
+      - componentId: infra/print

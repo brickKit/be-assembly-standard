@@ -232,7 +232,7 @@ Task 3 补记）——REST handler 放 `backend/app/http/`，这是 `make gates`
 
 | # | 问题 | 什么时候能有答案 | 答案 |
 |---|---|---|---|
-| 1 | WeasyPrint 在容器里的中文字体怎么装？镜像要不要打进字体包（体积 vs 缺字变方框） | 阶段三 Task 10 实现时 | 📋 🔍 **纯 Python 方案最容易翻车的地方**。⚠️ 症状是"开发机上好好的，客户机器上全是方框"——本地有系统字体，容器里没有 |
+| 1 | WeasyPrint 在容器里的中文字体怎么装？镜像要不要打进字体包（体积 vs 缺字变方框） | 阶段三 Task 10 实现时 | ✅ **真机实测过，比预想的更严重**：只装 `libpango`/`libcairo`/`libgdk-pixbuf` 不装字体时，中文 PDF 并不是"变方框"，而是嵌入 `DejaVu-Serif` 后 `pdftotext` 提取出来**乱码且重复**（如"测试送货单 Test测试送货单 Delivery测试送货单 Note"）。补 `fonts-noto-cjk` + `fontconfig` + `fc-cache -f` 之后完全正常（真容器 + `pdftotext` 双重验证）。残留细节：fontconfig 无 `lang` hint 时默认选 Noto CJK 的 **JP** 变体而非 **SC**，模板要显式写 `font-family: "Noto Sans CJK SC"` |
 | 2 | 大批量渲染（如 200 张标签）撞 gRPC 4MB 上限怎么办 | 阶段五 `infra-storage` 建成后 | 📋 本阶段：**调用方分批**。长期：渲染结果落 `infra-storage`、只返回一个下载 URL |
-| 3 | 模板里要不要支持"取数表达式"（如 `{{ order.total * 0.13 }}`）？ | 阶段三定契约时 | 📋 **倾向只做纯变量替换 + 格式化，不做计算**。⚠️ 一旦支持表达式，模板就成了"业务逻辑的藏身处"，直接违反 §6.11；且金额计算必须在后端（§8.4） |
-| 4 | 本组件是全系统第一个 Python 组件，`be-sdk-python` 的哪些能力是它第一次真用？ | 阶段三 Task 1 与 Task 10 之间 | 📋 至少这几项要真跑过：`Config`（camelCase 转换）、`WithTx`（模板版本写入）、健康检查、`RunStandalone` 等价物。⚠️ **`besdk.Consume` 本组件用不上**（不消费事件），所以它的 Python 版第一次真实调用要等别的组件——记一笔免得以为验过了 |
+| 3 | 模板里要不要支持"取数表达式"（如 `{{ order.total * 0.13 }}`）？ | 阶段三定契约时 | ⚠️ **实现时改判为完整 Jinja2，不是"纯变量替换"**——真实的送货单/发票需要 `{% for item in items %}` 循环，纯变量替换做不到这一点。"模板不许有业务逻辑"这条边界改用代码审查守，不用语法沙箱强制，同本项目"很多规则靠 review 而不是纯技术手段"的既有模式。这是实现阶段的判断，未回头找用户确认，写在 `backend/app/render/pdf.py` 的注释与 `infra-print` 的 `AGENTS.md` 里 |
+| 4 | 本组件是全系统第一个 Python 组件，`be-sdk-python` 的哪些能力是它第一次真用？ | 阶段三 Task 1 与 Task 10 之间 | ✅ 真跑过：`Config`（camelCase 转换）、`with_tx`（模板版本写入、job+outbox 同事务）、`publish_outbox`/`start_outbox_pump`、`new_fastapi_app`（含中间件与 `/healthz`/`/metrics`）、`require_permission`/`scope_of`（真实 JWT + bundle 轮询）、`run_standalone`（真机跑通 gRPC+HTTP 双端口）。同时发现并修复了 `be-sdk-python` 自身四个模块（`otel.py`/`logging.py`/`metrics.py`/`outbox.py`）此前只是 `NotImplementedError` 占位——本组件是第一个真正触发这个缺口的 Python 组件，详见 `be-sdk-python@v0.3.0` 变更记录。**`besdk.consume` 本组件确实用不上**（不消费事件），它的 Python 版第一次真实调用仍要等别的组件 |
