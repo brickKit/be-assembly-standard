@@ -46,9 +46,11 @@ components:
       authzBundleUrl: "http://infra-authz-1-0-2:8223/authz/bundle"
       iamJwksUrl: "http://infra-iam-casdoor-1-0-2:8200/.well-known/jwks.json"
   - id: erp/inventory
-    version: 1.0.5 # v1.0.5：阶段三 Task 6，权限键换成真实键 + warehouse 维
+    version: 1.0.6 # v1.0.5：阶段三 Task 6，权限键换成真实键 + warehouse 维
                    # 数据权限真正生效（新增 warehouse_access 分配表 + 管理
-                   # 接口），无破坏性变更（新表、新增可选字段）
+                   # 接口），无破坏性变更（新表、新增可选字段）；v1.0.6：
+                   # 升级 be-sdk-go 到 v0.2.4，修 gRPC handler panic 会崩
+                   # 容器的严重问题（实测踩坑记录 C11），无破坏性变更
     expose: true # 同上：curl 打 HTTP 需要，gRPC 只能走容器 IP
     config:
       authzBundleUrl: "http://infra-authz-1-0-2:8223/authz/bundle"
@@ -62,9 +64,11 @@ components:
       authzBundleUrl: "http://infra-authz-1-0-2:8223/authz/bundle"
       iamJwksUrl: "http://infra-iam-casdoor-1-0-2:8200/.well-known/jwks.json"
   - id: erp/sales
-    version: 1.0.6 # v1.0.6：阶段三 Task 8 收尾，弱依赖 infra/workflow 真正接通——
+    version: 1.0.7 # v1.0.6：阶段三 Task 8 收尾，弱依赖 infra/workflow 真正接通——
                    # 补偿连续失败 3 次调 CreateTask 建异常待办，消费
-                   # task.completed.v1 恢复订单（设计计划 §4.4.4），无破坏性变更
+                   # task.completed.v1 恢复订单（设计计划 §4.4.4），无破坏性变更；
+                   # v1.0.7：依赖版本号同步 erp/inventory@1.0.6 + 升级 be-sdk-go
+                   # 到 v0.2.4（修 gRPC handler panic 崩容器问题），无破坏性变更
     expose: true # 同上：curl 打 HTTP 需要，gRPC 只能走容器 IP。
                  # Task 18：五组件一起 up，跑通 CreateOrder → 预留库存 →
                  # 生成应收这条最短链路（docs/plans/02-阶段二-验平台.md）。
