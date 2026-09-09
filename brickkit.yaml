@@ -147,11 +147,35 @@ components:
       iamJwksUrl: "http://infra-iam-casdoor-1-0-2:8200/.well-known/jwks.json"
   - id: infra/workflow
     version: 1.0.0 # 阶段三 Task 8 首次出档：审批待办中心，零依赖（§6.6 铁律三：
-                   # 只有入边，erp/sales 弱依赖它但本次装配还未接通那条调用）
+                   # 只有入边）。erp/sales@1.0.6 起已真的接通这条弱依赖调用
+                   # （CreateTask 建异常待办，见 03-阶段三 Task 8 小节）
     expose: true # curl 打 HTTP 需要（主端口 8201），gRPC（9201）只能走容器 IP，同其余组件先例
     config:
       authzBundleUrl: "http://infra-authz-1-0-2:8223/authz/bundle"
       iamJwksUrl: "http://infra-iam-casdoor-1-0-2:8200/.well-known/jwks.json"
+  - id: infra/notification
+    version: 1.0.0 # 阶段三 Task 9 首次出档：统一通知中心，零依赖零入边，
+                   # 完全活在事件图上（消费 infra.workflow.task.created.v1
+                   # 等，发 dispatch 事件；见 03-阶段三 Task 9 小节）
+    expose: true # curl 打 HTTP 需要（主端口 8202），gRPC（9202）只能走容器 IP，同其余组件先例
+    config:
+      authzBundleUrl: "http://infra-authz-1-0-2:8223/authz/bundle"
+      iamJwksUrl: "http://infra-iam-casdoor-1-0-2:8200/.well-known/jwks.json"
+  - id: integration/im-dingtalk
+    version: 1.0.0 # 阶段三 Task 9：channel:im 族第一个成员，零依赖零入边
+                   # （消费 infra.notification.dispatch.im.v1，发
+                   # integration.im.result.v1）。⚠️ 本次装配用的是占位测试
+                   # 凭据（见 .env 的 DINGTALK_* 三项注释）——阶段三计划要求
+                   # 真调钉钉沙盒验证，本次未落实真实测试企业，用户已明确
+                   # 选择本任务只做到能编译/部署的程度，真机钉钉验证推迟到
+                   # 有真实凭据时再做（03-阶段三 Task 9 小节有完整记录）
+    expose: true # curl 打 HTTP 需要（主端口 8207），gRPC（9207）只能走容器 IP，同其余组件先例
+    config:
+      authzBundleUrl: "http://infra-authz-1-0-2:8223/authz/bundle"
+      iamJwksUrl: "http://infra-iam-casdoor-1-0-2:8200/.well-known/jwks.json"
+      dingtalkAppKey: "${DINGTALK_APP_KEY}"
+      dingtalkAppSecret: "${DINGTALK_APP_SECRET}"
+      dingtalkAgentId: "${DINGTALK_AGENT_ID}"
 resources:
   - id: postgres-shared
     kind: database
@@ -177,6 +201,10 @@ resources:
         database: brickkit_db
       - componentId: infra/workflow
         database: brickkit_db
+      - componentId: infra/notification
+        database: brickkit_db
+      - componentId: integration/im-dingtalk
+        database: brickkit_db
   - id: nats-shared
     kind: mq
     engine: nats
@@ -191,3 +219,5 @@ resources:
       - componentId: infra/authz
       - componentId: infra/iam-casdoor
       - componentId: infra/workflow
+      - componentId: infra/notification
+      - componentId: integration/im-dingtalk
