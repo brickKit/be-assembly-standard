@@ -98,7 +98,7 @@ data_scopes:
 | `CancelTask` | 命令 | ✅ `idempotency_key` | 来源单据作废，待办跟着作废 |
 | `GetTaskStatus` | 读 | — | ⭐ **必须支持按 `idempotency_key` 查，不只按 `task_id`**——见 §3.1 |
 | `BatchGetTasks` | 读 | — | §3.8 强制的 `batchGet` |
-| `ListTasks` | 读 | — | 按 `assignee`/状态/来源筛，**走 `ScopeFilter`** |
+| `ListTasks` | 读 | — | 按状态/类型/来源筛。同 `BatchGetTasks`——组件间协议，不做数据权限过滤；数据权限两维只在下表的 REST 面生效 |
 
 **对外 REST 路径前缀：** `/infra/workflow/**`
 
