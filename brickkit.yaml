@@ -162,13 +162,16 @@ components:
       authzBundleUrl: "http://infra-authz-1-0-2:8223/authz/bundle"
       iamJwksUrl: "http://infra-iam-casdoor-1-0-2:8200/.well-known/jwks.json"
   - id: integration/im-dingtalk
-    version: 1.0.0 # 阶段三 Task 9：channel:im 族第一个成员，零依赖零入边
+    version: 1.0.2 # 阶段三 Task 9：channel:im 族第一个成员，零依赖零入边
                    # （消费 infra.notification.dispatch.im.v1，发
-                   # integration.im.result.v1）。⚠️ 本次装配用的是占位测试
-                   # 凭据（见 .env 的 DINGTALK_* 三项注释）——阶段三计划要求
-                   # 真调钉钉沙盒验证，本次未落实真实测试企业，用户已明确
-                   # 选择本任务只做到能编译/部署的程度，真机钉钉验证推迟到
-                   # 有真实凭据时再做（03-阶段三 Task 9 小节有完整记录）
+                   # integration.im.result.v1）。⚠️ 2026-09-09 更新：建仓库
+                   # 时用的是占位测试凭据，用户随后提供了真实钉钉个人团队
+                   # 凭据（见 .env 的 DINGTALK_* 三项——不提交，已在
+                   # .gitignore），真机验证过完整链路：CreateTask →
+                   # infra-notification 路由 → 真实调钉钉 API → 真实收到
+                   # 工作通知，notification_records 状态到 SENT。1.0.1/
+                   # 1.0.2 是这次真机验证发现并修的两个真实 bug（03-阶段三
+                   # Task 9 小节有完整记录）
     expose: true # curl 打 HTTP 需要（主端口 8207），gRPC（9207）只能走容器 IP，同其余组件先例
     config:
       authzBundleUrl: "http://infra-authz-1-0-2:8223/authz/bundle"
