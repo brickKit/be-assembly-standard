@@ -190,6 +190,21 @@ components:
     config:
       authzBundleUrl: "http://infra-authz-1-0-2:8223/authz/bundle"
       iamJwksUrl: "http://infra-iam-casdoor-1-0-2:8200/.well-known/jwks.json"
+  - id: infra/bff-mobile
+    version: 1.0.1 # 阶段三 Task 11：全系统第一个 TypeScript 组件，GraphQL
+                   # BFF，手写 schema 按前端页面裁剪，零强依赖零数据库
+                   # （五条弱依赖：mdm/customer、mdm/product、erp/sales、
+                   # erp/inventory、infra/workflow）。真机验证过完整链路：
+                   # gRPC BatchGet（客户/产品）+ REST 转发（订单/库存/
+                   # 待办，真项目 gRPC 组件间协议不做数据权限过滤，这三类
+                   # 字段改走 REST 让下游各自的 REST 面去判）+ 401/403/200
+                   # 三态 + Docker 镜像内 Node 20 真机跑通（03-阶段三
+                   # Task 11 小节）
+    expose: true
+    exposePort: 28500 # registry/ports.tsv 的既有登记（决策 107：独立容器 exposePort 一律走 2xxxx 段）
+    config:
+      authzBundleUrl: "http://infra-authz-1-0-2:8223/authz/bundle"
+      iamJwksUrl: "http://infra-iam-casdoor-1-0-2:8200/.well-known/jwks.json"
 resources:
   - id: postgres-shared
     kind: database

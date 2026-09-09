@@ -178,9 +178,9 @@ GraphQL 天然有 mutation，但本阶段**我只提供 query**。理由：
 
 | 项目 | 版本/commit | 看的模块 | 借鉴了什么 | 许可证（已复核） | 用法 |
 |---|---|---|---|---|---|
-| GraphQL Yoga | 📋 开工前填 | Persisted Operations 插件、depth/complexity 插件 | ✅ **已查证，且验证了 §3.4 的设计**：Yoga 内置 Persisted Operations 插件，**明确支持"构建期注册表 + 拒绝未知哈希"这种 safelisting 形态**（与 APQ 那种运行时注册是两回事）——正是我们要的。⚠️ 官方口径：同时存在 Yoga 版与 Envelop 版插件时**优先用 Yoga 版**（走 HTTP 层 hook，能跳过昂贵的执行步骤） | MIT | 借鉴逻辑 |
-| `graphql-armor` | 📋 开工前填 | depth / complexity / alias 等一组防护插件 | ✅ **已查证**：depth 与 complexity 限制有现成的组合包，**不用自己写**（另有 `@envelop/depth-limit` 等单点方案）。§3.4 那三条硬限制落地时优先用它 | MIT | 借鉴逻辑 |
-| DataLoader | 📋 开工前填 | 批处理与 per-request 缓存的用法约定 | **§7 那条"必须 per-request"的出处**——它的 README 自己就强调这一点 | MIT | 借鉴逻辑 |
+| GraphQL Yoga | `graphql-yoga@5.22.0`（`be-sdk-ts` 的依赖） | Persisted Operations 插件、depth/complexity 插件 | ✅ **已查证，且验证了 §3.4 的设计**：Yoga 内置 Persisted Operations 插件，**明确支持"构建期注册表 + 拒绝未知哈希"这种 safelisting 形态**（与 APQ 那种运行时注册是两回事）——正是我们要的。⚠️ 官方口径：同时存在 Yoga 版与 Envelop 版插件时**优先用 Yoga 版**（走 HTTP 层 hook，能跳过昂贵的执行步骤） | MIT | 借鉴逻辑 |
+| `graphql-armor` | `@escape.tech/graphql-armor@3.2.0`（`be-sdk-ts` 的依赖） | depth / complexity / alias 等一组防护插件 | ✅ **已查证**：depth 与 complexity 限制有现成的组合包，**不用自己写**（另有 `@envelop/depth-limit` 等单点方案）。§3.4 那三条硬限制落地时优先用它 | MIT | 借鉴逻辑 |
+| DataLoader | `dataloader@2.2.3` | 批处理与 per-request 缓存的用法约定 | **§7 那条"必须 per-request"的出处**——它的 README 自己就强调这一点 | MIT | 借鉴逻辑 |
 | Netflix / SoundCloud 的 BFF 实践 | — | BFF 模式的原始定义（一个前端一个 BFF） | **确认了"BFF 要按前端裁剪"是这个模式的题中之义**，直接支撑 §3.1 手写 schema 的决定 | 闭源/文章 | 借鉴实际应用 |
 
 **明确没有参考的**：Apollo Federation / GraphQL Mesh 这类**联邦网关**。**不是没查，是前提不成立**——
@@ -210,3 +210,4 @@ GraphQL 天然有 mutation，但本阶段**我只提供 query**。理由：
 | 2 | mutation 什么时候开？开的话怎么防止它变成编排层 | 阶段五按前端需求定 | 📋 本阶段只做 query（§3.2）。开的判据已写死：**必须是纯转发，一出现"先调 A 再调 B"就退回业务组件** |
 | 3 | Persisted Query 清单是构建期产物，意味着前端与本组件要配套发布——版本怎么对齐？ | 阶段三 Task 11/12 联调时 | 📋 🔍 方向：清单文件由前端仓库构建产出、本组件构建时拉进镜像。**两个仓库的版本耦合要写进部署手册**，否则"前端更新了、BFF 没更新 → 新查询全部被拒" |
 | 4 | 移动端弱网下 GraphQL 单请求变大（一个查询喂满一个页面），会不会反而更慢？ | 阶段三真机联调时 | 📋 待实测。⚠️ 判据是**端到端首屏时间**，不是请求数——请求数少但单个大，弱网下不一定赢 |
+| 5 | §1"不归我"表说"下游按调用者身份做数据权限过滤"——但全项目哪些组件的 gRPC 面真的会检查转发的身份？ | 阶段三 Task 11 实现时（真实发现，不是设计阶段预判到的） | ⚠️ **零个**——全项目目前没有任何组件的 gRPC 层转发/验证身份，"组件间协议不做数据权限过滤"是整个平台的既有约定，不是某几个组件的疏漏。这意味着 §1 原文"下游按调用者身份做数据权限过滤"这句话，对 `data_scopes: none` 的组件（`mdm-customer`/`mdm-product`）成立，但对 `erp-sales`（org/owner）/`erp-inventory`（warehouse）/`infra-workflow`（org/owner）这三个有真实数据权限的组件**不成立**——它们的数据权限只在各自 REST 面生效。**实现时的真实决策**（用户明确拍板）：这三类字段的 resolver 改走裸 `fetch()` 转发 `Authorization` 头去打 REST 端点，不走 `besdk.userClient` 的 gRPC 路径。`erp-inventory` 的 REST 面（`GET /balances`）只有单条查询没有批量端点，`inventoryBalance` 因此没有 DataLoader 批量版本——同 `order(id)` 一样按"给定已知 id 查一条"处理，不强求防 N+1。见 `contracts/schema.graphql` 顶部注释与 `infra-bff-mobile` 自己的 `AGENTS.md`|
