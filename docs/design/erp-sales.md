@@ -121,6 +121,30 @@ Reserve 超时
 
 ⚠️ **补偿连续失败 3 次 → 订单标 `SUSPENDED` + 告警**（§4.4.4）。阶段三接 `infra-workflow` 建一条 `type: exception` 待办；**阶段二只标状态 + 打日志，绝不无限重试**——"补偿的补偿"死循环比不补偿更糟。
 
+**§4.4.4 落地细节**（阶段三 Task 8，`infra-workflow` 建成后补齐——阶段二写下这条时它还不存在，只留了占位）：
+
+```
+attempts >= 3 → SuspendOrderTx（DRAFT → SUSPENDED）
+             → CreateTask(type: EXCEPTION, assignee_sub: exceptionAssigneeSub,
+                           source: erp/sales/sales_order/<order_id>,
+                           deep_link: /erp/sales/orders/<order_id>)
+人在 infra-workflow 的"我的待办"里调查后点"同意"（= 确认已人工处理完毕）
+             → infra.workflow.task.completed.v1（action: APPROVED）
+             → 本组件消费者 ResumeFromExceptionTx（SUSPENDED → DRAFT，
+                compensation_attempts 清零）
+             → 订单回到可以被重新 ConfirmOrder 的起点
+```
+
+⚠️ 三个关键判据：
+
+1. **恢复目标是 `DRAFT`，不是"当作已确认"**——`FinalizeConfirm` 从未提交成功过（正是它失败才触发补偿），订单本来就没有一个可恢复的"已确认"状态；`DRAFT` 是 `ConfirmOrder` 本身要求的起点，恢复到这里就能被重新调用，不需要发明新状态。是否自动重试不在本组件职责内——阶段二的铁律"绝不无限重试"同样适用于这里，重新确认由人或调用方显式发起。
+2. **本组件从不调 `infra-workflow` 的 `CloseTask`**——那是组件间协议（人代表业务组件创建/关闭待办等于绕过业务规则，见 `infra-workflow` 的 REST 契约警告）。exception 任务由**人**通过 `infra-workflow` 通用的"我的待办"UI 点"同意"来关闭，本组件只是这条事件的**消费者**，不是发起方。因此本组件永远不会收到 `action: RESOLVED`，只处理 `APPROVED`；收到 `REJECTED` 时不做任何自动动作（语义不明确，交给人后续另行处理，不猜测）。
+3. **`ResumeFromExceptionTx` 用 `suspended_reason` 精确匹配，不是只判 `status == SUSPENDED`**——避免一张后来又被权威额度判定（`finance.credit.rejected.v1`）覆盖过 `suspended_reason` 的订单被这条事件误恢复：两条 `SUSPENDED` 来源共用同一个 `status` 值但语义不同，只有 `reason` 能区分。
+
+**幂等键**：`CreateTask` 用 `ConfirmOrder` 命令自己的 `idempotency_key + ":exception-task"` 派生——同一个确认命令的重放（网络重试）应该拿到同一条待办；订单从 `SUSPENDED` 恢复后如果再次补偿失败 3 次，调用方必须带一个全新的 `idempotency_key` 发起新的 `ConfirmOrder`，天然产生一条新的待办，不会撞上旧的 `command_idempotency` 记录（`infra-workflow` 的 `command_idempotency` 永不过期，这条设计前提必须成立，否则第二次挂起会静默复用第一次的旧任务）。
+
+**审批人**：本阶段没有 `mdm-org`（阶段五才建），`assignee_sub` 来自新增配置项 `exceptionAssigneeSub`（留空 = 跳过建待办，只打日志，同 `infra/workflow` 弱依赖缺失的判据——两个独立的"跳过"开关）；`assignee_dept_path` 留空（站在部门树根节点的人天然看得到全部，阶段五 `mdm-org` 上线后再补真实部门路径）。
+
 ⚠️ **③ 与 §8.2 的顺序不同，是刻意的。** 设计书 §8.2 写的是"校验客户与产品 → 预留库存 → 校验信用额度"。我们把零成本的本地信用校验**提到网络调用之前**：按原顺序，一张明显超额度的单会先占住库存再被拒、再补偿释放，白白产生一次预留 + 一次补偿。**这属于实现顺序而非边界变更，出档时回填设计书 §8.2**（见 §9 第 1 条）。
 
 ⚠️ **四条边全部用 `besdk.UserClient`（透传 JWT），不许用 `SystemClient`。** 这是用户请求路径，用 `SystemClient` 会绕过下游的数据权限——导读第 21 条，**不报错，返回的数据只是"多了一些"**。`make gates` 有扫描守着（阶段二 Task 2）。
@@ -156,6 +180,7 @@ Reserve 超时
 |---|---|---|
 | `finance.credit.rejected.v1` | `erp-finance` | 权威额度判定超限 → 订单转 `SUSPENDED` 并告警（§5 三方分工的第二次判定） |
 | `mdm.customer.created.v1` / `.updated.v1` | `mdm-customer` | 维护 `customer_snapshots.credit_limit` |
+| `infra.workflow.task.completed.v1` | `infra-workflow`（**阶段三**，弱依赖） | 补偿异常待办被人工确认（`action: APPROVED`）→ 订单从 `SUSPENDED` 恢复回 `DRAFT`（§3.1、§4.4.4）。只处理 `source_component=="erp/sales" && source_aggregate=="sales_order"` 且 `action=="APPROVED"` 的记录，其余原样忽略——同一个 subject 是全平台共用的，不能假设每一条都是自己的 |
 | `crm.opportunity.won.v1` | `crm-opportunity`（**阶段三**） | 赢单自动转订单（附录 E）。阶段二 subject 先在事件清单占位，不实现 handler |
 
 ⚠️ **本行是 Task 16 实现前修正的一处契约缺口**：本设计计划原文这里还写着"消费 `finance.voucher.posted.v1` 维护 `customer_snapshots.credit_exposure`"——写契约时对照 `erp-finance` 已经真实存在的事件清单（`erp-finance` Task 12，`contracts/events/finance.events.json`）才发现 `finance.voucher.posted.v1` 的 payload 只有 `entry_id`/`entry_no`/`post_no`/`period`/`amount`，**没有 `customer_id`**——它是"旁路分析事件"（grade: peripheral），设计成一般性的"有凭证过账了"广播，不是 AR 专用的客户额度变更信号，字段形状回答不了"是哪个客户"。**改法：不消费它**。`customer_snapshots.credit_exposure` 的新鲜度完全交给 §9 第 4 条已经写好的定时对账（`BatchGetCreditExposure`）来做——那条本来就是为处理漂移设计的兜底机制，恰好覆盖了这里，不需要再叠加一条事件消费。给 `finance.voucher.posted.v1` 加 `customer_id` 字段技术上可行（纯追加，向后兼容），但会把一个通用广播事件的语义拉向 AR 专用，本阶段判定不值得为此改一个已经打了 v1.0.0 标签的组件。
@@ -175,7 +200,7 @@ Reserve 超时
 
 | 依赖 | 用它做什么 | 缺失时怎么办 |
 |---|---|---|
-| `infra/workflow` | 订单审批待办、补偿失败的 `type: exception` 待办（§4.4.4） | ⚠️ **阶段二它根本不存在**（阶段三才建）。缺失时**不注入 `INFRA_WORKFLOW_ENDPOINT` 这个变量**——不是空串，是键根本不存在（§3.6）。本组件必须用 `besdk.Endpoint()` 的**二值返回**判断，`ok == false` 就跳过建待办、只打日志 |
+| `infra/workflow` | 补偿失败的 `type: exception` 待办 + 消费其完成事件恢复订单（§3.1、§4.4.4，阶段三 Task 8 已接通） | 缺失时**不注入 `INFRA_WORKFLOW_ENDPOINT` 这个变量**——不是空串，是键根本不存在（§3.6）。本组件必须用 `besdk.Endpoint()` 的**二值返回**判断，`ok == false` 就跳过建待办、只打日志 |
 
 ⚠️ **这条弱依赖同时是平台验收用例 5 的天然测试场景**——阶段一验不了它（没有任何弱依赖），本阶段第一次具备验证前提。**所以它不是"顺便写上的"，是本阶段出档条件的一部分。**
 

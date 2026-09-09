@@ -62,12 +62,9 @@ components:
       authzBundleUrl: "http://infra-authz-1-0-2:8223/authz/bundle"
       iamJwksUrl: "http://infra-iam-casdoor-1-0-2:8200/.well-known/jwks.json"
   - id: erp/sales
-    version: 1.0.5 # v1.0.5：阶段三 Task 6，权限键换成真实键 + org/owner 两维
-                   # 数据权限真正生效（dept_id/dept_path/owner_id 从
-                   # besdk.ScopeOf(ctx) 取真实值，不再是创建时的空字符串
-                   # 占位）；依赖版本号同步跟进上游四个组件的最新版本
-                   # （mdm/customer@1.0.3、mdm/product@1.0.3、
-                   # erp/inventory@1.0.5、erp/finance@1.0.3），均无破坏性变更
+    version: 1.0.6 # v1.0.6：阶段三 Task 8 收尾，弱依赖 infra/workflow 真正接通——
+                   # 补偿连续失败 3 次调 CreateTask 建异常待办，消费
+                   # task.completed.v1 恢复订单（设计计划 §4.4.4），无破坏性变更
     expose: true # 同上：curl 打 HTTP 需要，gRPC 只能走容器 IP。
                  # Task 18：五组件一起 up，跑通 CreateOrder → 预留库存 →
                  # 生成应收这条最短链路（docs/plans/02-阶段二-验平台.md）。
@@ -78,6 +75,9 @@ components:
       defaultWarehouseId: "1"
       authzBundleUrl: "http://infra-authz-1-0-2:8223/authz/bundle"
       iamJwksUrl: "http://infra-iam-casdoor-1-0-2:8200/.well-known/jwks.json"
+      # 补偿连续失败 3 次时建的 infra-workflow exception 待办分配给谁——
+      # 本阶段没有 mdm-org，先固定指派给这个占位 sub（设计计划 §4.4.4）。
+      exceptionAssigneeSub: "u_ops_reviewer"
   - id: infra/authz
     version: 1.0.2 # v1.0.2：阶段三 Task 6，权限键换成真实键（/api/me/permissions
                    # 换 besdk.Authenticated，/api/admin/** 换 infra.authz.admin）+
