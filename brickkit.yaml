@@ -31,16 +31,20 @@ components:
       # 阶段三 Task 6：bundle 轮询指向真实跑着的 infra-authz（内部 Docker
       # 网络地址，服务名带版本号——没有依赖边，brickKit 不会帮忙注入，
       # 只能手写字面量，infra/authz 升版本时这几处要跟着改）。
-      # iamJwksUrl 暂时留空：infra-iam-casdoor（真实签发方）要到阶段三
-      # Task 7 才建仓库，在此之前配了也没有真实 JWKS 可拉，RequirePermission
-      # 会继续走"没配 iamJwksUrl"这条 fail-closed 分支——这是阶段性的真实
-      # 状态，不是漏配置（be-sdk-go authz.go 的 setupAuthzRuntime 注释）。
       authzBundleUrl: "http://infra-authz-1-0-2:8223/authz/bundle"
+      # 阶段三 Task 7：infra-iam-casdoor 建成，真实签发方第一次存在——
+      # 同样是手写字面量的内部服务名，不是依赖边注入（这个组件对
+      # infra-iam-casdoor 没有、也不该有依赖边，见它自己的 AGENTS.md
+      # "零入边是 slot:iam 的物理前提"）。配上这一项之后 RequirePermission
+      # 才第一次真正走到"验签 + 查 bundle"这条路径，不再是 fail-closed
+      # stub。
+      iamJwksUrl: "http://infra-iam-casdoor-1-0-2:8200/.well-known/jwks.json"
   - id: mdm/product
     version: 1.0.3 # v1.0.3：同 mdm-customer，权限键从 besdk.Public 换成真实键
     expose: true # 同 mdm-customer：curl 打 HTTP 需要，gRPC 只能走容器 IP
     config:
       authzBundleUrl: "http://infra-authz-1-0-2:8223/authz/bundle"
+      iamJwksUrl: "http://infra-iam-casdoor-1-0-2:8200/.well-known/jwks.json"
   - id: erp/inventory
     version: 1.0.5 # v1.0.5：阶段三 Task 6，权限键换成真实键 + warehouse 维
                    # 数据权限真正生效（新增 warehouse_access 分配表 + 管理
@@ -48,6 +52,7 @@ components:
     expose: true # 同上：curl 打 HTTP 需要，gRPC 只能走容器 IP
     config:
       authzBundleUrl: "http://infra-authz-1-0-2:8223/authz/bundle"
+      iamJwksUrl: "http://infra-iam-casdoor-1-0-2:8200/.well-known/jwks.json"
   - id: erp/finance
     version: 1.0.3 # v1.0.3：阶段三 Task 6，权限键换成真实键 + legal_entity 维
                    # 数据权限真正生效（新增 legal_entity_access 分配表 + 管理
@@ -55,6 +60,7 @@ components:
     expose: true # 同上：curl 打 HTTP 需要，gRPC 只能走容器 IP
     config:
       authzBundleUrl: "http://infra-authz-1-0-2:8223/authz/bundle"
+      iamJwksUrl: "http://infra-iam-casdoor-1-0-2:8200/.well-known/jwks.json"
   - id: erp/sales
     version: 1.0.5 # v1.0.5：阶段三 Task 6，权限键换成真实键 + org/owner 两维
                    # 数据权限真正生效（dept_id/dept_path/owner_id 从
@@ -71,6 +77,7 @@ components:
       # 的真实 id（003_seed_warehouses.up.sql，真机查过 warehouses 表）。
       defaultWarehouseId: "1"
       authzBundleUrl: "http://infra-authz-1-0-2:8223/authz/bundle"
+      iamJwksUrl: "http://infra-iam-casdoor-1-0-2:8200/.well-known/jwks.json"
   - id: infra/authz
     version: 1.0.2 # v1.0.2：阶段三 Task 6，权限键换成真实键（/api/me/permissions
                    # 换 besdk.Authenticated，/api/admin/** 换 infra.authz.admin）+
@@ -84,6 +91,56 @@ components:
       # 本组件自吃自己下发的 bundle（README「自我鉴权」一节）——地址
       # 指向自己，同其余五个组件一样是手写字面量，不是依赖边注入。
       authzBundleUrl: "http://infra-authz-1-0-2:8223/authz/bundle"
+      iamJwksUrl: "http://infra-iam-casdoor-1-0-2:8200/.well-known/jwks.json"
+  - id: infra/iam-casdoor
+    version: 1.0.2 # 阶段三 Task 7：Casdoor 适配层建成，全系统第一次有真实
+                   # 签发方能发出验签通过的 JWT——这一条上线之前，以上
+                   # 六个组件配的 iamJwksUrl 都指向一个还不存在的地址。
+                   # v1.0.1：真机部署+curl 验收时发现并修了 be-sdk-go 的
+                   # RED 指标/访问日志中间件顺序 bug（升级到 v0.2.3）。
+                   # v1.0.2：真机换真实 Casdoor id_token 时发现 OIDC 发现
+                   # 文档给出的 jwks_uri 从容器内部连不通，加了 rebaseHost。
+    expose: true # curl 打 HTTP 需要（主端口 8200），gRPC（9200）只能走容器 IP，同其余组件先例。
+                 # 同时也是 Casdoor（带外容器，与本组件不在同一个 Docker 网络）
+                 # 回调 webhook 用的落地端口——见 webhookCallbackUrl 注释。
+    config:
+      # Casdoor 是带外容器（infra/docker-compose.infra.yml 起的，不进
+      # brickkit.yaml）——brickkit 管理的容器要用 host.docker.internal
+      # 才能连到宿主机上跑的带外容器（同 postgres-shared/nats-shared 两个
+      # 基础资源的既有先例）。Casdoor 的宿主机映射端口是 8000
+      # （docker-compose.infra.yml 的 ports: ["8000:8000"]）。
+      casdoorBaseUrl: "http://host.docker.internal:8000"
+      # Casdoor 官方镜像内置组织 built-in 下的默认管理员，真机核对过
+      # admin/123 在这个环境里能登录——本地开发密码，与其余组件密码
+      # 同级对待，走 .env（见 CASDOOR_ADMIN_PASSWORD 定义处的注释）。
+      casdoorAdminPassword: "${CASDOOR_ADMIN_PASSWORD}"
+      # Casdoor 的 webhook 没有内置签名，本组件与 Casdoor 之间约定一个
+      # 共享密钥放在自定义 header 里（真机核对过 Casdoor Webhook 对象
+      # 支持自定义 header）。
+      webhookSharedSecret: "${WEBHOOK_SHARED_SECRET}"
+      # Casdoor（挂在带外的 be-net 网络）回调本组件用的地址：本组件是
+      # brickkit 管理的容器，与 be-net 不是同一个 Docker 网络，Casdoor
+      # 那一侧够不到 host.docker.internal（真机核对过，见 AGENTS.md/
+      # 实测踩坑记录的网络拓扑记录）。正确路径是 be-net 桥接网络的网关 IP
+      # （172.18.0.1，从 Casdoor 容器视角看就是"宿主机"）+ 本组件
+      # expose 出来的宿主机端口（8200，与 component.yaml 的 deployment.port
+      # 相同——expose: true 是端口对端口直映射，不走 10000+ 偏移那一套，
+      # 那一套只用于 local:true 组件的依赖方地址映射，见导读第 14 条）。
+      webhookCallbackUrl: "http://172.18.0.1:8200/api/iam/webhooks/casdoor"
+      # 应用 token 的签名私钥（RSA，PEM）——本地开发自签，走 .env（同
+      # 上面两项）。真实部署时这把钥匙需要和数据库密码同级对待，永远
+      # 不进 git（.env 已在 .gitignore）。
+      appTokenSigningKeyPem: "${APP_TOKEN_SIGNING_KEY_PEM}"
+      # 必须与 infra-authz 的 accessTokenTtlSeconds（默认 600）一致——
+      # 两边都没有显式配置，各自吃 component.yaml 的默认值，天生对齐，
+      # 这里不需要重复写。
+      # /api/tenant/features 的数据来源：本次装配启用的全部组件。
+      enabledComponents: "mdm/customer,mdm/product,erp/inventory,erp/finance,erp/sales,infra/authz,infra/iam-casdoor"
+      # 自引用：/api/iam/logout 用 besdk.Authenticated，全系统验应用
+      # token 唯一的 JWKS 来源就是本组件自己（组件自己的 README/AGENTS.md
+      # 已经解释过这是"真正意义上的自引用"，同 infra-authz 的
+      # authzBundleUrl 自引用是同一个道理）。
+      iamJwksUrl: "http://infra-iam-casdoor-1-0-2:8200/.well-known/jwks.json"
 resources:
   - id: postgres-shared
     kind: database
@@ -105,6 +162,8 @@ resources:
         database: brickkit_db
       - componentId: infra/authz
         database: brickkit_db
+      - componentId: infra/iam-casdoor
+        database: brickkit_db
   - id: nats-shared
     kind: mq
     engine: nats
@@ -117,3 +176,4 @@ resources:
       - componentId: erp/finance
       - componentId: erp/sales
       - componentId: infra/authz
+      - componentId: infra/iam-casdoor
