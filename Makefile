@@ -107,6 +107,15 @@ docs-check:  ## 检查某个组件的四份文档：make docs-check REPO=mdm-cus
 	@bash $(S)/docs-check.sh "$(REPO)"
 .PHONY: docs-check
 
+##@ 本地开发数据（见 infra/seed-data/README.md——只给本地用，不用于生产/CI）
+seed-data:  ## 灌本地开发/测试用的示例数据（用户+角色+客户+产品+库存+商机），可重复跑
+	@bash infra/seed-data/seed.sh
+.PHONY: seed-data
+
+seed-data-clean:  ## 清空 seed-data 灌的全部数据
+	@bash infra/seed-data/clean.sh
+.PHONY: seed-data-clean
+
 ##@ 验收
 # ⚠️ 会真的临时停掉 postgres、跑一次 brickkit down/up——先确认没有别人在用。
 tier0:  ## 档 0 六项验收，每加一个组件都要重跑（§9.6.1 档 4）
