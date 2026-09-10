@@ -64,11 +64,13 @@ components:
       authzBundleUrl: "http://infra-authz-1-0-2:8223/authz/bundle"
       iamJwksUrl: "http://infra-iam-casdoor-1-0-2:8200/.well-known/jwks.json"
   - id: erp/sales
-    version: 1.0.7 # v1.0.6：阶段三 Task 8 收尾，弱依赖 infra/workflow 真正接通——
+    version: 1.0.8 # v1.0.6：阶段三 Task 8 收尾，弱依赖 infra/workflow 真正接通——
                    # 补偿连续失败 3 次调 CreateTask 建异常待办，消费
                    # task.completed.v1 恢复订单（设计计划 §4.4.4），无破坏性变更；
                    # v1.0.7：依赖版本号同步 erp/inventory@1.0.6 + 升级 be-sdk-go
-                   # 到 v0.2.4（修 gRPC handler panic 崩容器问题），无破坏性变更
+                   # 到 v0.2.4（修 gRPC handler panic 崩容器问题），无破坏性变更；
+                   # v1.0.8：弱依赖版本号同步跟进 infra/workflow@1.0.1（补
+                   # event_outbox 周分区维护循环，实测踩坑记录 C12），无破坏性变更
     expose: true # 同上：curl 打 HTTP 需要，gRPC 只能走容器 IP。
                  # Task 18：五组件一起 up，跑通 CreateOrder → 预留库存 →
                  # 生成应收这条最短链路（docs/plans/02-阶段二-验平台.md）。
@@ -146,9 +148,11 @@ components:
       # authzBundleUrl 自引用是同一个道理）。
       iamJwksUrl: "http://infra-iam-casdoor-1-0-2:8200/.well-known/jwks.json"
   - id: infra/workflow
-    version: 1.0.0 # 阶段三 Task 8 首次出档：审批待办中心，零依赖（§6.6 铁律三：
+    version: 1.0.1 # 阶段三 Task 8 首次出档：审批待办中心，零依赖（§6.6 铁律三：
                    # 只有入边）。erp/sales@1.0.6 起已真的接通这条弱依赖调用
-                   # （CreateTask 建异常待办，见 03-阶段三 Task 8 小节）
+                   # （CreateTask 建异常待办，见 03-阶段三 Task 8 小节）。
+                   # v1.0.1：Task 13 旁路发现并修复 event_outbox 缺周分区
+                   # 维护循环的真实缺口（根 docs/dev/实测踩坑记录.md C12）
     expose: true # curl 打 HTTP 需要（主端口 8201），gRPC（9201）只能走容器 IP，同其余组件先例
     config:
       authzBundleUrl: "http://infra-authz-1-0-2:8223/authz/bundle"
@@ -191,7 +195,7 @@ components:
       authzBundleUrl: "http://infra-authz-1-0-2:8223/authz/bundle"
       iamJwksUrl: "http://infra-iam-casdoor-1-0-2:8200/.well-known/jwks.json"
   - id: infra/bff-mobile
-    version: 1.0.1 # 阶段三 Task 11：全系统第一个 TypeScript 组件，GraphQL
+    version: 1.0.2 # 阶段三 Task 11：全系统第一个 TypeScript 组件，GraphQL
                    # BFF，手写 schema 按前端页面裁剪，零强依赖零数据库
                    # （五条弱依赖：mdm/customer、mdm/product、erp/sales、
                    # erp/inventory、infra/workflow）。真机验证过完整链路：
@@ -199,7 +203,9 @@ components:
                    # 待办，真项目 gRPC 组件间协议不做数据权限过滤，这三类
                    # 字段改走 REST 让下游各自的 REST 面去判）+ 401/403/200
                    # 三态 + Docker 镜像内 Node 20 真机跑通（03-阶段三
-                   # Task 11 小节）
+                   # Task 11 小节）；v1.0.2：弱依赖版本号同步跟进
+                   # erp/sales@1.0.8、infra/workflow@1.0.1（实测踩坑记录
+                   # C12），无破坏性变更
     expose: true
     exposePort: 28500 # registry/ports.tsv 的既有登记（决策 107：独立容器 exposePort 一律走 2xxxx 段）
     config:

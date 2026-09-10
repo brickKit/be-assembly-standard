@@ -1,0 +1,28 @@
+apiVersion: brickkit/v1
+kind: Component
+metadata:
+  id: frontend/standard
+  name: 标准前端
+  version: 1.0.0
+  description: PC（Vue3 SPA）+ 移动端（Uni-app）标准前端，动态特性路由（features ∩ permissions）
+artifacts:
+  - { type: metadata, files: [assembly.yaml] }
+dependencies:
+  components: []                     # 前端不依赖任何后端组件：它只认网关（design.md §5）
+  resources: []
+configSchema:
+  type: object
+  properties:
+    gatewayBaseUrl: { type: string, default: "/" }
+    iamIssuerUrl:   { type: string }
+    # ⚠️ 设计书 §3.5.2 的示例只给了以上两项。真机核实 Casdoor 的标准 OIDC
+    # 流程（浏览器直连 /login/oauth/authorize）后发现光有 issuer 地址不够，
+    # public client 的 authorize 请求还需要一个 client_id（公开值，本身
+    # 不是密钥，PKCE 保护授权码本身）——这是设计书示例遗漏的一项，不是
+    # 本组件自己引入的复杂度。见 docs/design/frontend-standard.md §9 第 5 条。
+    casdoorClientId: { type: string }
+deployment:
+  type: container
+  image: brickenterprise/frontend-standard:1.0.0
+  port: 80
+healthCheck: { type: http, path: / }
