@@ -64,13 +64,15 @@ components:
       authzBundleUrl: "http://infra-authz-1-0-2:8223/authz/bundle"
       iamJwksUrl: "http://infra-iam-casdoor-1-0-2:8200/.well-known/jwks.json"
   - id: erp/sales
-    version: 1.0.8 # v1.0.6：阶段三 Task 8 收尾，弱依赖 infra/workflow 真正接通——
+    version: 1.0.9 # v1.0.6：阶段三 Task 8 收尾，弱依赖 infra/workflow 真正接通——
                    # 补偿连续失败 3 次调 CreateTask 建异常待办，消费
                    # task.completed.v1 恢复订单（设计计划 §4.4.4），无破坏性变更；
                    # v1.0.7：依赖版本号同步 erp/inventory@1.0.6 + 升级 be-sdk-go
                    # 到 v0.2.4（修 gRPC handler panic 崩容器问题），无破坏性变更；
                    # v1.0.8：弱依赖版本号同步跟进 infra/workflow@1.0.1（补
-                   # event_outbox 周分区维护循环，实测踩坑记录 C12），无破坏性变更
+                   # event_outbox 周分区维护循环，实测踩坑记录 C12），无破坏性变更；
+                   # v1.0.9：阶段三 Task 14，真正消费 crm.opportunity.won.v1，
+                   # 赢单自动转订单（附录 E 链路），无破坏性变更
     expose: true # 同上：curl 打 HTTP 需要，gRPC 只能走容器 IP。
                  # Task 18：五组件一起 up，跑通 CreateOrder → 预留库存 →
                  # 生成应收这条最短链路（docs/plans/02-阶段二-验平台.md）。
@@ -98,6 +100,21 @@ components:
       # 指向自己，同其余五个组件一样是手写字面量，不是依赖边注入。
       authzBundleUrl: "http://infra-authz-1-0-2:8223/authz/bundle"
       iamJwksUrl: "http://infra-iam-casdoor-1-0-2:8200/.well-known/jwks.json"
+      # ⚠️ Task 14 真机测试时发现的系统性缺口：这一项从建仓库起就从未被
+      # 填过——be-ops 的 permissions 子命令只写 registry/permissions.tsv，
+      # 从没把结果灌回这里，role_permissions 的 FK 约束因此让"正向权限
+      # 路径"（真的授予一个键、真的放行）在全项目历史上从未被真机验证过，
+      # 只验证过 fail-closed 的拒绝路径。现在从 registry/permissions.tsv
+      # 补齐（42 条，一条都不缺）——**改了 registry/permissions.tsv 之后
+      # 要重新生成这一行**，命令：
+      #   python3 -c "
+      #   import csv
+      #   with open('registry/permissions.tsv') as f:
+      #       rows = [r for r in csv.DictReader(f, delimiter='\t') if not r['deprecated'].strip()]
+      #   print(','.join(f\"{r['key']}|{r['title']}|{r['type']}|{r['owner_component']}\" for r in rows))"
+      # 格式见 component.yaml 的字段注释：key|title|type|owner_component，
+      # 条目间逗号分隔（阶段三 Task 4 设计决策）。
+      permissionCatalog: "crm.opportunity.edit|编辑商机|action|crm/opportunity,crm.opportunity.view|查看商机|page|crm/opportunity,crm.opportunity.win|商机赢单|action|crm/opportunity,erp.finance.close|关账/反关账/锁定期间|action|erp/finance,erp.finance.manage_access|分配法人访问权限|action|erp/finance,erp.finance.post|手工过账/冲销|action|erp/finance,erp.finance.view|查看财务数据|page|erp/finance,erp.inventory.adjust|盘盈盘亏调整|action|erp/inventory,erp.inventory.issue|确认出库|action|erp/inventory,erp.inventory.manage_access|分配仓库访问权限|action|erp/inventory,erp.inventory.receive|入库|action|erp/inventory,erp.inventory.reserve|预留库存|action|erp/inventory,erp.inventory.view|查看库存|page|erp/inventory,erp.sales.cancel|取消订单|action|erp/sales,erp.sales.confirm|确认订单|action|erp/sales,erp.sales.create|建立报价/订单|action|erp/sales,erp.sales.ship|发货|action|erp/sales,erp.sales.view|查看销售订单|page|erp/sales,infra.authz.admin|权限与角色管理|page|infra/authz,infra.bff-mobile.customer.view|查询客户（移动端）|action|infra/bff-mobile,infra.bff-mobile.inventory.view|查询库存余量（移动端）|action|infra/bff-mobile,infra.bff-mobile.order.view|查询销售订单（移动端）|action|infra/bff-mobile,infra.bff-mobile.product.view|查询产品（移动端）|action|infra/bff-mobile,infra.bff-mobile.task.view|查询我的待办（移动端）|action|infra/bff-mobile,infra.notification.admin|通知排障视图|page|infra/notification,infra.notification.preference.edit|编辑通知偏好|action|infra/notification,infra.notification.view|查看我的通知|page|infra/notification,infra.print.render|调用渲染|action|infra/print,infra.print.template.edit|编辑打印模板|action|infra/print,infra.print.template.view|查看打印模板|page|infra/print,infra.workflow.admin|待办全局视图|page|infra/workflow,infra.workflow.task.act|处理待办（同意/驳回）|action|infra/workflow,infra.workflow.task.view|查看我的待办|page|infra/workflow,integration.im.admin|钉钉投递排障|page|integration/im-dingtalk,mdm.customer.add_contact|新增客户联系人|action|mdm/customer,mdm.customer.create|新建客户|action|mdm/customer,mdm.customer.set_status|启用/停用客户|action|mdm/customer,mdm.customer.update|编辑客户|action|mdm/customer,mdm.customer.view|查看客户主数据|page|mdm/customer,mdm.product.create|新建产品|action|mdm/product,mdm.product.edit|编辑产品|action|mdm/product,mdm.product.view|查看产品主数据|page|mdm/product"
   - id: infra/iam-casdoor
     version: 1.0.2 # 阶段三 Task 7：Casdoor 适配层建成，全系统第一次有真实
                    # 签发方能发出验签通过的 JWT——这一条上线之前，以上
@@ -195,7 +212,7 @@ components:
       authzBundleUrl: "http://infra-authz-1-0-2:8223/authz/bundle"
       iamJwksUrl: "http://infra-iam-casdoor-1-0-2:8200/.well-known/jwks.json"
   - id: infra/bff-mobile
-    version: 1.0.2 # 阶段三 Task 11：全系统第一个 TypeScript 组件，GraphQL
+    version: 1.0.3 # 阶段三 Task 11：全系统第一个 TypeScript 组件，GraphQL
                    # BFF，手写 schema 按前端页面裁剪，零强依赖零数据库
                    # （五条弱依赖：mdm/customer、mdm/product、erp/sales、
                    # erp/inventory、infra/workflow）。真机验证过完整链路：
@@ -205,7 +222,8 @@ components:
                    # 三态 + Docker 镜像内 Node 20 真机跑通（03-阶段三
                    # Task 11 小节）；v1.0.2：弱依赖版本号同步跟进
                    # erp/sales@1.0.8、infra/workflow@1.0.1（实测踩坑记录
-                   # C12），无破坏性变更
+                   # C12），无破坏性变更；v1.0.3：弱依赖版本号同步跟进
+                   # erp/sales@1.0.9（阶段三 Task 14），无破坏性变更
     expose: true
     exposePort: 28500 # registry/ports.tsv 的既有登记（决策 107：独立容器 exposePort 一律走 2xxxx 段）
     config:
