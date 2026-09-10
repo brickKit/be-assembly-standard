@@ -49,6 +49,7 @@
 | **配置怎么读 / 日志与 OTel 怎么初始化 / 指标注册到哪** | 设计书 **§12.5.2 / §12.5.3** + 总纲 SOP-L 的 **L-1/L-2**。一律从 `rt` 拿，**模块代码里零 `os.Getenv`**、零进程级 init |
 | 写一个新组件 | 总纲 §4 SOP-D（四份文档）→ SOP-R（查参考）→ SOP-B（后端）/ SOP-F（前端） |
 | **测试该写在哪一层** | 总纲 §4 SOP-W 的 **W-2**：判据是「把实现删掉用另一种语言重写，这条测试还该成立吗」 |
+| **想真跑某个组件的跨组件 L4 测试**（平时 `make test` 里被 `t.Skip` 掉的那些） | `make test-cross REPO=<仓库名>`——只跑这一个组件，强依赖 gRPC 指向真实在跑的依赖容器（要求强依赖树在跑）。总纲 §4 SOP-W 的 **W-7** |
 | **卡住了**（同一循环三轮不绿） | 总纲 §4 SOP-W 的 **W-5** 三条出路。⚠️ **绝不许注掉测试 / 加 `t.Skip` / 放宽断言** |
 | 写前端 | 总纲 §4 **SOP-F**（十五条前端铁律）；设计书 **§12.6**（UI 层逐格锁定：AntDV + vxe-table / wot-design-uni / ECharts）、**§12.6.7**（PC 骨架 = AWS Console 式两级导航）、**§12.6.8**（偏好三层归属）、§12.6.5（视觉方向）、§5.9、§12.2 |
 | **加一个接口 / 判「谁能调它」** | 设计书 **第 14 章 §14.1**。权限键写在 `assembly.yaml` 的 `permissions` 段；注册用 `besdk.GET(r, path, permKey, h)`——**漏写权限键编译不过**；判定是进程内 map 查找，**组件里没有权限表** |
@@ -161,6 +162,7 @@ make <res>-up / <res>-down       # 单个可选资源：minio/keycloak/kafka/rab
 make registry-check              # 端口册与 schema 册自洽
 make gates                       # 铁律六 import 扫描 + SystemClient 误用 + 裸路由 + 事件契约破坏性变更
 make docs-check REPO=<仓库名>     # 某个组件的四份文档结构检查
+make test-cross REPO=<仓库名>     # 局部跑一个组件的跨组件 L4 测试（强依赖树要在跑）
 make arsenal-check / -restore    # 军火库结构与 brickkit.yaml 是否自洽
 brickkit up --dry-run            # 只算不启动，看这次会跑哪些、什么顺序
 ```

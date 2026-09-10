@@ -108,6 +108,11 @@ docs-check:  ## 检查某个组件的四份文档：make docs-check REPO=mdm-cus
 	@bash $(S)/docs-check.sh "$(REPO)"
 .PHONY: docs-check
 
+test-cross:  ## 组件局部测试：只跑 REPO 一个组件，强依赖 gRPC 指向真实在跑的依赖容器（要求强依赖树在跑）。make test-cross REPO=crm-opportunity；带过滤直接 bash infra/scripts/test-cross.sh <repo> -run <名>
+	@test -n "$(REPO)" || { echo "用法：make test-cross REPO=<仓库名>"; exit 1; }
+	@bash $(S)/test-cross.sh "$(REPO)"
+.PHONY: test-cross
+
 ##@ 本地开发数据（见 infra/seed-data/README.md——只给本地用，不用于生产/CI）
 seed-data:  ## 灌本地开发/测试用的示例数据（用户+角色+客户+产品+库存+商机），可重复跑
 	@bash infra/seed-data/seed.sh
