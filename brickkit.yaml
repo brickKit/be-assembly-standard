@@ -227,6 +227,17 @@ components:
                              # 用真实网关地址重新走一遍登录+业务页面全链路
       iamIssuerUrl: "http://localhost:8000" # Casdoor 浏览器直连地址，随部署环境的真实公网域名替换
       casdoorClientId: "" # 部署时用 Casdoor 管理 API 现查 brickkit-app 的 client_id 填入，不提交真实值
+  - id: crm/opportunity
+    version: 1.0.0 # 阶段三 Task 13：阶段三第一个业务组件、CRM 域第一个组件。
+                   # 商机全生命周期，两条强依赖（mdm/customer、mdm/product 的
+                   # BatchGet），明确不依赖任何 erp-*/infra-workflow（§1.4 铁律：
+                   # CRM 与 ERP 零同步边，仅事件握手）。MarkWon 真机验证过
+                   # 完整链路：状态转 WON + Outbox 记录 + 事件真的发布到 NATS
+                   # 总线（03-阶段三 Task 13 小节）。
+    expose: true # curl 打 HTTP 需要，gRPC 只能走容器 IP
+    config:
+      authzBundleUrl: "http://infra-authz-1-0-2:8223/authz/bundle"
+      iamJwksUrl: "http://infra-iam-casdoor-1-0-2:8200/.well-known/jwks.json"
 resources:
   - id: postgres-shared
     kind: database
@@ -258,6 +269,8 @@ resources:
         database: brickkit_db
       - componentId: infra/print
         database: brickkit_db
+      - componentId: crm/opportunity
+        database: brickkit_db
   - id: nats-shared
     kind: mq
     engine: nats
@@ -275,3 +288,4 @@ resources:
       - componentId: infra/notification
       - componentId: integration/im-dingtalk
       - componentId: infra/print
+      - componentId: crm/opportunity
