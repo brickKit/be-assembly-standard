@@ -205,6 +205,22 @@ components:
     config:
       authzBundleUrl: "http://infra-authz-1-0-2:8223/authz/bundle"
       iamJwksUrl: "http://infra-iam-casdoor-1-0-2:8200/.well-known/jwks.json"
+  - id: frontend/standard
+    version: 1.0.0 # 阶段三 Task 12：PC 独立 Vite SPA + 移动端 Uni-app H5，
+                   # 共享 packages/design-tokens，唯一没有后端形态的组件
+                   # （data_scopes: none，零依赖零数据库）。真机验证过完整
+                   # OIDC+PKCE 登录链路、features ∩ permissions 动态路由、
+                   # "前端判定不是安全边界"这条设计原则（03-阶段三 Task 12
+                   # 小节）。PC 与移动端合用一个 Nginx 容器（PC 在 /，
+                   # 移动端在 /m/）。
+    expose: true
+    exposePort: 28090 # registry/ports.tsv 的既有登记（slot:frontend 族共用 80，独立容器 exposePort 走 2xxxx 段）
+    config:
+      gatewayBaseUrl: "/api" # ⚠️ 本阶段真机验证走的是各组件直连端口（Vite 开发期代理），
+                             # 没有实际验证过经 Traefik 网关这条真实路径——上线前需要
+                             # 用真实网关地址重新走一遍登录+业务页面全链路
+      iamIssuerUrl: "http://localhost:8000" # Casdoor 浏览器直连地址，随部署环境的真实公网域名替换
+      casdoorClientId: "" # 部署时用 Casdoor 管理 API 现查 brickkit-app 的 client_id 填入，不提交真实值
 resources:
   - id: postgres-shared
     kind: database
