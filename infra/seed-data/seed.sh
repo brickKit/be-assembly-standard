@@ -18,7 +18,6 @@ CRM_REST="http://localhost:8102"
 SEED_USER="dev.superuser"
 SEED_PASSWORD="DevSeed123!"
 SEED_APP="local-dev-seed-app"
-SEED_ROLE="dev_superuser"
 COOKIE_JAR="$(mktemp)"
 trap 'rm -f "$COOKIE_JAR"' EXIT
 
@@ -38,69 +37,29 @@ curl -sf -o /dev/null "$IAM_URL/.well-known/jwks.json" || warn "infra-iam-casdoo
 curl -sf -o /dev/null "$CRM_REST/healthz" || die "crm-opportunity（$CRM_REST）连不上，先 brickkit up"
 ok "关键组件可达"
 
-echo "── ① Casdoor：登录 admin、建测试用户、建 ROPC 测试应用 ──"
+echo "── ① infra-iam-casdoor：调它自己的 make seed（建测试用户 + ROPC 测试应用）──"
+# 身份数据的内容归 infra-iam-casdoor 自己的 scripts/seed.sh 所有（总纲
+# SOP-W-7）——本脚本不再重复实现"怎么建 Casdoor 用户/应用"，单独
+# `make -C components/infra/iam-casdoor seed` 也能独立跑通。这里还是
+# 要重新查一遍 CLIENT_ID/CLIENT_SECRET/SEED_SUB——那边的 make seed 不
+# 经过本脚本的变量作用域，两次查询用的是同一个只读、幂等的 Casdoor
+# API，重复查不产生副作用。
+( cd "$ROOT/components/infra/iam-casdoor" && make seed )
+
 curl -c "$COOKIE_JAR" -s -o /dev/null -X POST "$CASDOOR_URL/api/login" \
   -H "Content-Type: application/json" \
   -d '{"application":"app-built-in","organization":"built-in","username":"admin","password":"123","autoSignin":true,"type":"login"}'
-
-# add-user 对已存在的用户会报错但不影响后续——用 get-user 先判断存在与否，
-# 幂等地跳过创建（不能靠 add-user 的返回码，Casdoor 对"已存在"和"真的
-# 失败"用同一种 HTTP 200 + status:error 形状回，靠 msg 文本分辨不可靠）。
-EXISTING_USER="$(curl -b "$COOKIE_JAR" -s "$CASDOOR_URL/api/get-user?id=brickkit/$SEED_USER" | python3 -c 'import json,sys; d=json.load(sys.stdin); print("yes" if d.get("data") else "no")')"
-if [ "$EXISTING_USER" = "no" ]; then
-  curl -b "$COOKIE_JAR" -s -X POST "$CASDOOR_URL/api/add-user" \
-    -H "Content-Type: application/json" \
-    -d "{\"owner\":\"brickkit\",\"name\":\"$SEED_USER\",\"password\":\"$SEED_PASSWORD\",\"email\":\"$SEED_USER@example.com\",\"displayName\":\"「本地测试」超级测试用户\",\"type\":\"normal-user\",\"isAdmin\":false,\"countryCode\":\"CN\"}" \
-    | python3 -c 'import json,sys; d=json.load(sys.stdin); assert d.get("status")=="ok", d' \
-    || die "创建 Casdoor 用户失败"
-  ok "已创建 Casdoor 用户 $SEED_USER"
-else
-  ok "Casdoor 用户 $SEED_USER 已存在，跳过创建"
-fi
-
-EXISTING_APP="$(curl -b "$COOKIE_JAR" -s "$CASDOOR_URL/api/get-application?id=admin/$SEED_APP" | python3 -c 'import json,sys; d=json.load(sys.stdin); print("yes" if d.get("data") else "no")')"
-if [ "$EXISTING_APP" = "no" ]; then
-  curl -b "$COOKIE_JAR" -s -X POST "$CASDOOR_URL/api/add-application" \
-    -H "Content-Type: application/json" \
-    -d "{\"owner\":\"admin\",\"name\":\"$SEED_APP\",\"displayName\":\"$SEED_APP\",\"organization\":\"brickkit\",\"cert\":\"cert-built-in\",\"enablePassword\":true,\"enableSignUp\":false,\"redirectUris\":[\"http://localhost:3000/callback\"],\"grantTypes\":[\"authorization_code\",\"password\",\"refresh_token\"],\"tokenFormat\":\"JWT\",\"expireInHours\":24,\"refreshExpireInHours\":168}" \
-    | python3 -c 'import json,sys; d=json.load(sys.stdin); assert d.get("status")=="ok", d' \
-    || die "创建 Casdoor ROPC 测试应用失败"
-  ok "已创建 Casdoor ROPC 测试应用 $SEED_APP（⚠️ 只应该存在于本地环境，见 README）"
-else
-  ok "Casdoor ROPC 测试应用 $SEED_APP 已存在，跳过创建"
-fi
-
 APP_JSON="$(curl -b "$COOKIE_JAR" -s "$CASDOOR_URL/api/get-application?id=admin/$SEED_APP")"
 CLIENT_ID="$(echo "$APP_JSON" | python3 -c 'import json,sys; print(json.load(sys.stdin)["data"]["clientId"])')"
 CLIENT_SECRET="$(echo "$APP_JSON" | python3 -c 'import json,sys; print(json.load(sys.stdin)["data"]["clientSecret"])')"
-
 USER_JSON="$(curl -b "$COOKIE_JAR" -s "$CASDOOR_URL/api/get-user?id=brickkit/$SEED_USER")"
 SEED_SUB="$(echo "$USER_JSON" | python3 -c 'import json,sys; print(json.load(sys.stdin)["data"]["id"])')"
 [ -n "$SEED_SUB" ] || die "拿不到 $SEED_USER 的 sub"
-ok "$SEED_USER 的 sub = $SEED_SUB"
 
-echo "── ② infra-authz：直接建角色 + 灌全部权限键 + 授予测试用户 ──"
-# ⚠️ 这批全是灌进真实共享数据库的假数据（用户已明确同意），role_permissions
-# 按 registry/permissions.tsv 现读现灌，不依赖 permissions 表里可能混着的
-# 其它测试残留数据。
-PERM_KEYS="$(python3 -c "
-import csv
-with open('registry/permissions.tsv') as f:
-    rows = [r for r in csv.DictReader(f, delimiter='\t') if not r['deprecated'].strip()]
-for r in rows:
-    print(r['key'])
-")"
-
-{
-  echo "SET search_path TO infra_authz;"
-  echo "INSERT INTO roles (code, name, is_system) VALUES ('$SEED_ROLE', '「本地测试」超级测试角色', false) ON CONFLICT (code) DO NOTHING;"
-  while IFS= read -r key; do
-    [ -n "$key" ] || continue
-    echo "INSERT INTO role_permissions (role_code, permission_key) VALUES ('$SEED_ROLE', '$key') ON CONFLICT DO NOTHING;"
-  done <<< "$PERM_KEYS"
-  echo "INSERT INTO user_roles (sub, role_code) VALUES ('$SEED_SUB', '$SEED_ROLE') ON CONFLICT DO NOTHING;"
-} | psqlx -q
-ok "已授予 $SEED_USER 角色 $SEED_ROLE（$(echo "$PERM_KEYS" | grep -c .) 个权限键）"
+echo "── ② infra-authz：调它自己的 make seed（建角色 + 灌全部权限键 + 授予测试用户）──"
+# 授权数据的内容归 infra-authz 自己的 scripts/seed.sh 所有（同上）——它
+# 自己会独立向 Casdoor 查一遍 sub，不吃本脚本的变量。
+( cd "$ROOT/components/infra/authz" && make seed )
 
 # infra-authz 的 bundle 是各组件每 ~15s 轮询一次拉进内存的（README「自我
 # 鉴权」一节），刚写完 SQL 立刻拿 JWT 去调 crm-opportunity 有真实的竞态

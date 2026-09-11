@@ -10,13 +10,6 @@ C_RED=$'\033[31m'; C_GRN=$'\033[32m'; C_OFF=$'\033[0m'
 ok()   { echo "${C_GRN}✓${C_OFF} $*"; }
 die()  { echo "${C_RED}✗${C_OFF} $*" >&2; exit 1; }
 
-CASDOOR_URL="http://localhost:8000"
-SEED_USER="dev.superuser"
-SEED_APP="local-dev-seed-app"
-SEED_ROLE="dev_superuser"
-COOKIE_JAR="$(mktemp)"
-trap 'rm -f "$COOKIE_JAR"' EXIT
-
 psqlx() { docker exec -i be-postgres psql -U postgres -d brickkit_db -v ON_ERROR_STOP=1 "$@"; }
 
 echo "── ① crm-opportunity + 联带的 erp-sales 自动建单 ──"
@@ -106,32 +99,11 @@ echo "── ④ mdm-customer / mdm-product：调各自组件自己的 make seed
 ( cd "$ROOT/components/mdm/product" && make seed-clean )
 ok "已清理 mdm-customer/mdm-product 的种子主数据"
 
-echo "── ⑤ infra-authz：撤销测试角色 ──"
-psqlx -q <<SQL
-SET search_path TO infra_authz;
-DELETE FROM user_roles WHERE role_code = '$SEED_ROLE';
-DELETE FROM role_permissions WHERE role_code = '$SEED_ROLE';
-DELETE FROM roles WHERE code = '$SEED_ROLE';
-SQL
-ok "已撤销 infra-authz 的 $SEED_ROLE 角色（权限键本身不删——只增不改）"
+echo "── ⑤ infra-authz：调它自己的 make seed-clean（撤销测试角色）──"
+( cd "$ROOT/components/infra/authz" && make seed-clean )
 
-echo "── ⑥ Casdoor：删测试应用 + 测试用户 ──"
-curl -c "$COOKIE_JAR" -s -o /dev/null -X POST "$CASDOOR_URL/api/login" \
-  -H "Content-Type: application/json" \
-  -d '{"application":"app-built-in","organization":"built-in","username":"admin","password":"123","autoSignin":true,"type":"login"}'
-# ⚠️ delete-application 真机测试过：只传 {owner,name} 会返回
-# "Unaffected"（静默不删，不报错）——Casdoor 这个接口要传完整对象，
-# 不是"给 id 就够"。delete-user 反而只要 {owner,name} 就行，两个接口
-# 的要求不对称，真机验证过才发现，不是猜的。
-APP_JSON="$(curl -b "$COOKIE_JAR" -s "$CASDOOR_URL/api/get-application?id=admin/$SEED_APP")"
-if echo "$APP_JSON" | python3 -c 'import json,sys; sys.exit(0 if json.load(sys.stdin).get("data") else 1)' 2>/dev/null; then
-  echo "$APP_JSON" | python3 -c 'import json,sys; print(json.dumps(json.load(sys.stdin)["data"]))' \
-    | curl -b "$COOKIE_JAR" -s -X POST "$CASDOOR_URL/api/delete-application" \
-      -H "Content-Type: application/json" --data-binary @- >/dev/null
-fi
-curl -b "$COOKIE_JAR" -s -X POST "$CASDOOR_URL/api/delete-user" \
-  -H "Content-Type: application/json" -d "{\"owner\":\"brickkit\",\"name\":\"$SEED_USER\"}" >/dev/null || true
-ok "已删除 Casdoor 测试应用/用户"
+echo "── ⑥ infra-iam-casdoor：调它自己的 make seed-clean（删测试应用 + 测试用户）──"
+( cd "$ROOT/components/infra/iam-casdoor" && make seed-clean )
 
 echo ""
 ok "种子数据已全部清空"

@@ -48,7 +48,8 @@ components:
       authzBundleUrl: "http://infra-authz-1-0-2:8223/authz/bundle"
       iamJwksUrl: "http://infra-iam-casdoor-1-0-2:8200/.well-known/jwks.json"
   - id: erp/inventory
-    version: 1.0.6 # v1.0.5：阶段三 Task 6，权限键换成真实键 + warehouse 维
+    version: 1.0.7 # v1.0.7：docs/手册.md 的 TEST_PG_DSN 示例改指向 brickkit_test_db，无破坏性变更。
+    # v1.0.5：阶段三 Task 6，权限键换成真实键 + warehouse 维
                    # 数据权限真正生效（新增 warehouse_access 分配表 + 管理
                    # 接口），无破坏性变更（新表、新增可选字段）；v1.0.6：
                    # 升级 be-sdk-go 到 v0.2.4，修 gRPC handler panic 会崩
@@ -58,7 +59,8 @@ components:
       authzBundleUrl: "http://infra-authz-1-0-2:8223/authz/bundle"
       iamJwksUrl: "http://infra-iam-casdoor-1-0-2:8200/.well-known/jwks.json"
   - id: erp/finance
-    version: 1.0.4 # v1.0.4：补 ListEntries 真实跨法人排除测试，无破坏性变更。
+    version: 1.0.5 # v1.0.5：docs/手册.md 的 TEST_PG_DSN 示例改指向 brickkit_test_db，无破坏性变更。
+    # v1.0.4：补 ListEntries 真实跨法人排除测试，无破坏性变更。
     # v1.0.3：阶段三 Task 6，权限键换成真实键 + legal_entity 维
                    # 数据权限真正生效（新增 legal_entity_access 分配表 + 管理
                    # 接口），无破坏性变更
@@ -67,7 +69,8 @@ components:
       authzBundleUrl: "http://infra-authz-1-0-2:8223/authz/bundle"
       iamJwksUrl: "http://infra-iam-casdoor-1-0-2:8200/.well-known/jwks.json"
   - id: erp/sales
-    version: 1.0.11 # v1.0.11：强依赖版本号同步跟进 erp/finance@1.0.4，无破坏性变更。
+    version: 1.0.12 # v1.0.12：依赖版本号同步跟进 erp/inventory@1.0.7、erp/finance@1.0.5、infra/workflow@1.0.2，无破坏性变更。
+    # v1.0.11：强依赖版本号同步跟进 erp/finance@1.0.4，无破坏性变更。
     # v1.0.10：弱依赖版本号同步跟进 mdm/customer@1.0.4、mdm/product@1.0.4。
     # v1.0.6：阶段三 Task 8 收尾，弱依赖 infra/workflow 真正接通——
                    # 补偿连续失败 3 次调 CreateTask 建异常待办，消费
@@ -92,7 +95,8 @@ components:
       # 本阶段没有 mdm-org，先固定指派给这个占位 sub（设计计划 §4.4.4）。
       exceptionAssigneeSub: "u_ops_reviewer"
   - id: infra/authz
-    version: 1.0.2 # v1.0.2：阶段三 Task 6，权限键换成真实键（/api/me/permissions
+    version: 1.0.3 # v1.0.3：新增 make seed/seed-clean，种子授权归本组件自己持有，无破坏性变更。
+    # v1.0.2：阶段三 Task 6，权限键换成真实键（/api/me/permissions
                    # 换 besdk.Authenticated，/api/admin/** 换 infra.authz.admin）+
                    # 临时的 X-Authz-Debug-Sub header 退役、改用真实验签后的
                    # Claims 取 sub，无破坏性变更
@@ -121,7 +125,8 @@ components:
       # 条目间逗号分隔（阶段三 Task 4 设计决策）。
       permissionCatalog: "crm.opportunity.edit|编辑商机|action|crm/opportunity,crm.opportunity.view|查看商机|page|crm/opportunity,crm.opportunity.win|商机赢单|action|crm/opportunity,erp.finance.close|关账/反关账/锁定期间|action|erp/finance,erp.finance.manage_access|分配法人访问权限|action|erp/finance,erp.finance.post|手工过账/冲销|action|erp/finance,erp.finance.view|查看财务数据|page|erp/finance,erp.inventory.adjust|盘盈盘亏调整|action|erp/inventory,erp.inventory.issue|确认出库|action|erp/inventory,erp.inventory.manage_access|分配仓库访问权限|action|erp/inventory,erp.inventory.receive|入库|action|erp/inventory,erp.inventory.reserve|预留库存|action|erp/inventory,erp.inventory.view|查看库存|page|erp/inventory,erp.sales.cancel|取消订单|action|erp/sales,erp.sales.confirm|确认订单|action|erp/sales,erp.sales.create|建立报价/订单|action|erp/sales,erp.sales.ship|发货|action|erp/sales,erp.sales.view|查看销售订单|page|erp/sales,infra.authz.admin|权限与角色管理|page|infra/authz,infra.bff-mobile.customer.view|查询客户（移动端）|action|infra/bff-mobile,infra.bff-mobile.inventory.view|查询库存余量（移动端）|action|infra/bff-mobile,infra.bff-mobile.order.view|查询销售订单（移动端）|action|infra/bff-mobile,infra.bff-mobile.product.view|查询产品（移动端）|action|infra/bff-mobile,infra.bff-mobile.task.view|查询我的待办（移动端）|action|infra/bff-mobile,infra.notification.admin|通知排障视图|page|infra/notification,infra.notification.preference.edit|编辑通知偏好|action|infra/notification,infra.notification.view|查看我的通知|page|infra/notification,infra.print.render|调用渲染|action|infra/print,infra.print.template.edit|编辑打印模板|action|infra/print,infra.print.template.view|查看打印模板|page|infra/print,infra.workflow.admin|待办全局视图|page|infra/workflow,infra.workflow.task.act|处理待办（同意/驳回）|action|infra/workflow,infra.workflow.task.view|查看我的待办|page|infra/workflow,integration.im.admin|钉钉投递排障|page|integration/im-dingtalk,mdm.customer.add_contact|新增客户联系人|action|mdm/customer,mdm.customer.create|新建客户|action|mdm/customer,mdm.customer.set_status|启用/停用客户|action|mdm/customer,mdm.customer.update|编辑客户|action|mdm/customer,mdm.customer.view|查看客户主数据|page|mdm/customer,mdm.product.create|新建产品|action|mdm/product,mdm.product.edit|编辑产品|action|mdm/product,mdm.product.view|查看产品主数据|page|mdm/product"
   - id: infra/iam-casdoor
-    version: 1.0.2 # 阶段三 Task 7：Casdoor 适配层建成，全系统第一次有真实
+    version: 1.0.4 # v1.0.4：新增 make seed/seed-clean + 同步 infra/authz@1.0.3 依赖引用，无破坏性变更。
+    # 阶段三 Task 7：Casdoor 适配层建成，全系统第一次有真实
                    # 签发方能发出验签通过的 JWT——这一条上线之前，以上
                    # 六个组件配的 iamJwksUrl 都指向一个还不存在的地址。
                    # v1.0.1：真机部署+curl 验收时发现并修了 be-sdk-go 的
@@ -170,7 +175,8 @@ components:
       # authzBundleUrl 自引用是同一个道理）。
       iamJwksUrl: "http://infra-iam-casdoor-1-0-2:8200/.well-known/jwks.json"
   - id: infra/workflow
-    version: 1.0.1 # 阶段三 Task 8 首次出档：审批待办中心，零依赖（§6.6 铁律三：
+    version: 1.0.2 # v1.0.2：docs/手册.md 的 TEST_PG_DSN 示例改指向 brickkit_test_db，无破坏性变更。
+    # 阶段三 Task 8 首次出档：审批待办中心，零依赖（§6.6 铁律三：
                    # 只有入边）。erp/sales@1.0.6 起已真的接通这条弱依赖调用
                    # （CreateTask 建异常待办，见 03-阶段三 Task 8 小节）。
                    # v1.0.1：Task 13 旁路发现并修复 event_outbox 缺周分区
@@ -180,7 +186,8 @@ components:
       authzBundleUrl: "http://infra-authz-1-0-2:8223/authz/bundle"
       iamJwksUrl: "http://infra-iam-casdoor-1-0-2:8200/.well-known/jwks.json"
   - id: infra/notification
-    version: 1.0.2 # 阶段三 Task 9 首次出档：统一通知中心，零依赖零入边，
+    version: 1.0.3 # v1.0.3：docs/手册.md 的 TEST_PG_DSN 示例改指向 brickkit_test_db，无破坏性变更。
+    # 阶段三 Task 9 首次出档：统一通知中心，零依赖零入边，
                    # 完全活在事件图上（消费 infra.workflow.task.created.v1
                    # 等，发 dispatch 事件；见 03-阶段三 Task 9 小节）
                    # v1.0.1：补数据权限边界测试（data-scope-test-scan 门禁发现零覆盖）。
@@ -190,7 +197,8 @@ components:
       authzBundleUrl: "http://infra-authz-1-0-2:8223/authz/bundle"
       iamJwksUrl: "http://infra-iam-casdoor-1-0-2:8200/.well-known/jwks.json"
   - id: integration/im-dingtalk
-    version: 1.0.2 # 阶段三 Task 9：channel:im 族第一个成员，零依赖零入边
+    version: 1.0.3 # v1.0.3：docs/手册.md 的 TEST_PG_DSN 示例改指向 brickkit_test_db，无破坏性变更。
+    # 阶段三 Task 9：channel:im 族第一个成员，零依赖零入边
                    # （消费 infra.notification.dispatch.im.v1，发
                    # integration.im.result.v1）。⚠️ 2026-09-09 更新：建仓库
                    # 时用的是占位测试凭据，用户随后提供了真实钉钉个人团队
@@ -208,7 +216,8 @@ components:
       dingtalkAppSecret: "${DINGTALK_APP_SECRET}"
       dingtalkAgentId: "${DINGTALK_AGENT_ID}"
   - id: infra/print
-    version: 1.0.2 # 阶段三 Task 10：全系统第一个 Python 组件，纯函数打印
+    version: 1.0.3 # v1.0.3：docs/手册.md 的 TEST_PG_DSN/DATABASE_NAME 示例改指向 brickkit_test_db，无破坏性变更。
+    # 阶段三 Task 10：全系统第一个 Python 组件，纯函数打印
                    # 渲染中心，零依赖零出边（erp/sales 等业务组件强依赖
                    # Render，本组件反过来不依赖任何人）。真机验证过完整
                    # 链路：真实 Postgres 迁移 → gRPC/HTTP 起服务 → 真实
@@ -219,7 +228,8 @@ components:
       authzBundleUrl: "http://infra-authz-1-0-2:8223/authz/bundle"
       iamJwksUrl: "http://infra-iam-casdoor-1-0-2:8200/.well-known/jwks.json"
   - id: infra/bff-mobile
-    version: 1.0.5 # v1.0.5：弱依赖版本号同步跟进 erp/sales@1.0.11，无破坏性变更。
+    version: 1.0.6 # v1.0.6：弱依赖版本号同步跟进 erp/sales@1.0.12、erp/inventory@1.0.7、infra/workflow@1.0.2，无破坏性变更。
+    # v1.0.5：弱依赖版本号同步跟进 erp/sales@1.0.11，无破坏性变更。
     # v1.0.4：弱依赖版本号同步跟进 mdm/customer@1.0.4、mdm/product@1.0.4、erp/sales@1.0.10。
     # 阶段三 Task 11：全系统第一个 TypeScript 组件，GraphQL
                    # BFF，手写 schema 按前端页面裁剪，零强依赖零数据库
@@ -255,7 +265,8 @@ components:
       iamIssuerUrl: "http://localhost:8000" # Casdoor 浏览器直连地址，随部署环境的真实公网域名替换
       casdoorClientId: "" # 部署时用 Casdoor 管理 API 现查 brickkit-app 的 client_id 填入，不提交真实值
   - id: crm/opportunity
-    version: 1.0.3 # v1.0.3：补 ListOpportunities 真实数据权限边界测试，无破坏性变更。
+    version: 1.0.4 # v1.0.4：docs/手册.md 的 TEST_PG_DSN 示例改指向 brickkit_test_db，无破坏性变更。
+    # v1.0.3：补 ListOpportunities 真实数据权限边界测试，无破坏性变更。
     # v1.0.2：弱依赖版本号同步跟进 mdm/customer@1.0.4、mdm/product@1.0.4。
     # v1.0.1：补数据权限边界测试（data-scope-test-scan 门禁发现零覆盖）。
                    # 阶段三 Task 13：阶段三第一个业务组件、CRM 域第一个组件。
