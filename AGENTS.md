@@ -164,6 +164,7 @@ make registry-check              # 端口册与 schema 册自洽
 make gates                       # 铁律六 import 扫描 + SystemClient 误用 + 裸路由 + 事件契约破坏性变更 + 数据权限边界测试缺失
 make docs-check REPO=<仓库名>     # 某个组件的四份文档结构检查
 make test-cross REPO=<仓库名>     # 局部跑一个组件的跨组件 L4 测试（强依赖树要在跑）
+make test-db-init                # 建/刷新本地测试库 brickkit_test_db（跟演示库 brickkit_db 物理分开，见下方"测试库与演示库分开"）
 make arsenal-check / -restore    # 军火库结构与 brickkit.yaml 是否自洽
 brickkit up --dry-run            # 只算不启动，看这次会跑哪些、什么顺序
 brickkit down                    # 停掉 14 个组装态容器（不删 volume）——见下方"容器默认关闭"
@@ -171,7 +172,9 @@ brickkit down                    # 停掉 14 个组装态容器（不删 volume�
 
 **任何 `brickkit` 命令的参数去问 `brickkit <命令> --help`。** 本页与 `.claude/skills/` 都刻意不复刻参数清单——复刻一份就是承诺维护两份，而过期的那份会让你自信地敲出一条 `unknown flag`。
 
-⚠️ **组装态的 14 个组件容器默认应该是关着的，不是常年挂着。** `make up` 管的 `be-postgres`/`be-nats`/`be-casdoor` 等**基础资源**是长期开发基础设施，可以一直开着（`TEST_PG_DSN`/`TEST_NATS_URL` 连的就是它们）；但 `brickkit up` 拉起来的 14 个组件容器只在**真机验证/演示**时才需要，用完就 `brickkit down`（不删数据）。长期挂着有两个真实代价：① 忘了重新 `brickkit up` 就成了跑着旧版本的容器（真实踩过：`infra-notification` 挂着 `v1.0.0` 时代码早改到 `v1.0.2` 都没人发现）；② 同机真实容器会跟本地测试的临时 NATS 订阅者抢同一个 subject 的消息，断言结果不确定（踩坑记录类别 E 的 E1/E2）——容器不在跑，这类问题从根上就不存在，不需要靠"测试用私有 subject"这种防御性写法兜底。
+⚠️ **组装态的 14 个组件容器默认应该是关着的，不是常年挂着。** `make up` 管的 `be-postgres`/`be-nats`/`be-casdoor` 等**基础资源**是长期开发基础设施，可以一直开着；但 `brickkit up` 拉起来的 14 个组件容器只在**真机验证/演示**时才需要，用完就 `brickkit down`（不删数据）。长期挂着有两个真实代价：① 忘了重新 `brickkit up` 就成了跑着旧版本的容器（真实踩过：`infra-notification` 挂着 `v1.0.0` 时代码早改到 `v1.0.2` 都没人发现）；② 同机真实容器会跟本地测试的临时 NATS 订阅者抢同一个 subject 的消息，断言结果不确定（踩坑记录类别 E 的 E1/E2）——容器不在跑，这类问题从根上就不存在，不需要靠"测试用私有 subject"这种防御性写法兜底。
+
+⚠️ **测试库与演示库物理分开：`TEST_PG_DSN` 指向 `brickkit_test_db`，不是 `brickkit_db`。** `brickkit_db` 是 `brickkit up` 真实容器 + `make seed-data` 演示数据用的库——用户开着项目边体验边改这些数据；`brickkit_test_db` 是同一个 `be-postgres` 实例里另一个 database，专供 `go test`/`pytest` 用，`make test-db-init` 建/刷新（幂等）。分开的原因是真实发现过的问题，不是预防性设计：`erp-inventory`/`erp-finance` 这类"物理/事件汇枢纽"组件的测试会真的写共享的、migration 种下的引用行（`WH-EAST` 仓库余额、`default` 法人的过账序号）——这些行演示数据也在用，测试跑一次就真的改一次，容器关没关、有没有同时运行都不影响（数据是持久化的，不是运行时状态）。PostgreSQL 里 ROLE 是集群级对象、SCHEMA 是 per-database，所以只需要在 `brickkit_test_db` 里单独建一份 schema，角色不用重建；`be-ops db-script` 已支持 `--database` 参数产出任意库名的建库脚本。**换数据库引擎这个方案依然成立**——本项目的 `resources[].engine` 对数据库写的是产品名不是能力名（决策 105），换引擎本来就是迁移级操作，"同实例内第二个库"这个原则本身跨引擎通用，不会给那天新增负担。
 
 ---
 

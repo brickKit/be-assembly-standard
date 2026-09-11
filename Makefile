@@ -90,6 +90,10 @@ db-init:  ## 执行 be-ops 产出的建库脚本（幂等，可重跑）
 	@echo "✓ 建库脚本已执行（幂等，可重跑）"
 .PHONY: db-init
 
+test-db-init:  ## 建/刷新本地测试专用库 brickkit_test_db（跟真机演示数据用的 brickkit_db 物理分开，幂等可重跑）
+	@bash infra/scripts/test-db-init.sh
+.PHONY: test-db-init
+
 ##@ 门禁
 gates:  ## 跑全部验收门禁：铁律六 import 扫描 + SystemClient 误用 + 裸路由/裸 resolver + 事件契约破坏性变更 + 数据权限边界测试缺失 + 依赖版本号漂移（拆回门禁见阶段四）
 	@cd tools/be-acceptance && go build -o build/be-acceptance ./cmd/be-acceptance

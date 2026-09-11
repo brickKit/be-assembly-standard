@@ -39,8 +39,15 @@ mapfile -t DEPS < <(awk '
 ' "$DIR/component.yaml")
 
 # .env 里的 POSTGRES_PASSWORD 用于拼默认 TEST_PG_DSN（已在环境里就不覆盖）
+#
+# ⚠️ 只能部分隔离：这里默认指到 brickkit_test_db，隔离的是"这个组件
+# 自己写自己 schema"那部分；但 test-cross 的整个意义就是打真实在跑的
+# 依赖容器（下面转发器桥的那些强依赖 gRPC 端点），那些容器连的是真机
+# 部署用的 brickkit_db（brickkit.yaml 的资源绑定写死的，跟这个环境变量
+# 无关）——如果被测流程会通过真实 gRPC 调用让依赖容器产生新数据（比如
+# 真的建一个客户），那条数据还是会落进 brickkit_db，不受这里影响。
 if [ -f "$ROOT/.env" ]; then set -a; . "$ROOT/.env"; set +a; fi
-: "${TEST_PG_DSN:=postgres://postgres:${POSTGRES_PASSWORD:-postgres}@localhost:5432/brickkit_db?sslmode=disable}"
+: "${TEST_PG_DSN:=postgres://postgres:${POSTGRES_PASSWORD:-postgres}@localhost:5432/brickkit_test_db?sslmode=disable}"
 : "${TEST_NATS_URL:=nats://localhost:4222}"
 
 FWDS=()
