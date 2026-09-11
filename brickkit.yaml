@@ -58,7 +58,8 @@ components:
       authzBundleUrl: "http://infra-authz-1-0-2:8223/authz/bundle"
       iamJwksUrl: "http://infra-iam-casdoor-1-0-2:8200/.well-known/jwks.json"
   - id: erp/finance
-    version: 1.0.3 # v1.0.3：阶段三 Task 6，权限键换成真实键 + legal_entity 维
+    version: 1.0.4 # v1.0.4：补 ListEntries 真实跨法人排除测试，无破坏性变更。
+    # v1.0.3：阶段三 Task 6，权限键换成真实键 + legal_entity 维
                    # 数据权限真正生效（新增 legal_entity_access 分配表 + 管理
                    # 接口），无破坏性变更
     expose: true # 同上：curl 打 HTTP 需要，gRPC 只能走容器 IP
@@ -66,7 +67,8 @@ components:
       authzBundleUrl: "http://infra-authz-1-0-2:8223/authz/bundle"
       iamJwksUrl: "http://infra-iam-casdoor-1-0-2:8200/.well-known/jwks.json"
   - id: erp/sales
-    version: 1.0.10 # v1.0.10：弱依赖版本号同步跟进 mdm/customer@1.0.4、mdm/product@1.0.4。
+    version: 1.0.11 # v1.0.11：强依赖版本号同步跟进 erp/finance@1.0.4，无破坏性变更。
+    # v1.0.10：弱依赖版本号同步跟进 mdm/customer@1.0.4、mdm/product@1.0.4。
     # v1.0.6：阶段三 Task 8 收尾，弱依赖 infra/workflow 真正接通——
                    # 补偿连续失败 3 次调 CreateTask 建异常待办，消费
                    # task.completed.v1 恢复订单（设计计划 §4.4.4），无破坏性变更；
@@ -217,7 +219,8 @@ components:
       authzBundleUrl: "http://infra-authz-1-0-2:8223/authz/bundle"
       iamJwksUrl: "http://infra-iam-casdoor-1-0-2:8200/.well-known/jwks.json"
   - id: infra/bff-mobile
-    version: 1.0.4 # v1.0.4：弱依赖版本号同步跟进 mdm/customer@1.0.4、mdm/product@1.0.4、erp/sales@1.0.10。
+    version: 1.0.5 # v1.0.5：弱依赖版本号同步跟进 erp/sales@1.0.11，无破坏性变更。
+    # v1.0.4：弱依赖版本号同步跟进 mdm/customer@1.0.4、mdm/product@1.0.4、erp/sales@1.0.10。
     # 阶段三 Task 11：全系统第一个 TypeScript 组件，GraphQL
                    # BFF，手写 schema 按前端页面裁剪，零强依赖零数据库
                    # （五条弱依赖：mdm/customer、mdm/product、erp/sales、
@@ -252,7 +255,8 @@ components:
       iamIssuerUrl: "http://localhost:8000" # Casdoor 浏览器直连地址，随部署环境的真实公网域名替换
       casdoorClientId: "" # 部署时用 Casdoor 管理 API 现查 brickkit-app 的 client_id 填入，不提交真实值
   - id: crm/opportunity
-    version: 1.0.2 # v1.0.2：弱依赖版本号同步跟进 mdm/customer@1.0.4、mdm/product@1.0.4。
+    version: 1.0.3 # v1.0.3：补 ListOpportunities 真实数据权限边界测试，无破坏性变更。
+    # v1.0.2：弱依赖版本号同步跟进 mdm/customer@1.0.4、mdm/product@1.0.4。
     # v1.0.1：补数据权限边界测试（data-scope-test-scan 门禁发现零覆盖）。
                    # 阶段三 Task 13：阶段三第一个业务组件、CRM 域第一个组件。
                    # 商机全生命周期，两条强依赖（mdm/customer、mdm/product 的
