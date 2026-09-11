@@ -175,9 +175,11 @@ components:
       authzBundleUrl: "http://infra-authz-1-0-2:8223/authz/bundle"
       iamJwksUrl: "http://infra-iam-casdoor-1-0-2:8200/.well-known/jwks.json"
   - id: infra/notification
-    version: 1.0.0 # 阶段三 Task 9 首次出档：统一通知中心，零依赖零入边，
+    version: 1.0.2 # 阶段三 Task 9 首次出档：统一通知中心，零依赖零入边，
                    # 完全活在事件图上（消费 infra.workflow.task.created.v1
                    # 等，发 dispatch 事件；见 03-阶段三 Task 9 小节）
+                   # v1.0.1：补数据权限边界测试（data-scope-test-scan 门禁发现零覆盖）。
+                   # v1.0.2：consumer 测试改用测试私有 subject，避免同机真实容器抢消息（踩坑记录 E2）。
     expose: true # curl 打 HTTP 需要（主端口 8202），gRPC（9202）只能走容器 IP，同其余组件先例
     config:
       authzBundleUrl: "http://infra-authz-1-0-2:8223/authz/bundle"
@@ -246,7 +248,8 @@ components:
       iamIssuerUrl: "http://localhost:8000" # Casdoor 浏览器直连地址，随部署环境的真实公网域名替换
       casdoorClientId: "" # 部署时用 Casdoor 管理 API 现查 brickkit-app 的 client_id 填入，不提交真实值
   - id: crm/opportunity
-    version: 1.0.0 # 阶段三 Task 13：阶段三第一个业务组件、CRM 域第一个组件。
+    version: 1.0.1 # v1.0.1：补数据权限边界测试（data-scope-test-scan 门禁发现零覆盖）。
+                   # 阶段三 Task 13：阶段三第一个业务组件、CRM 域第一个组件。
                    # 商机全生命周期，两条强依赖（mdm/customer、mdm/product 的
                    # BatchGet），明确不依赖任何 erp-*/infra-workflow（§1.4 铁律：
                    # CRM 与 ERP 零同步边，仅事件握手）。MarkWon 真机验证过
