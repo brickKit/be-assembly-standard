@@ -12,31 +12,11 @@ die()  { echo "${C_RED}✗${C_OFF} $*" >&2; exit 1; }
 
 psqlx() { docker exec -i be-postgres psql -U postgres -d brickkit_db -v ON_ERROR_STOP=1 "$@"; }
 
-echo "── ① crm-opportunity + 联带的 erp-sales 自动建单 ──"
-psqlx -q <<'SQL'
-SET search_path TO crm_opportunity;
-DO $$
-DECLARE
-  opp_id text;
-  opp_ids text[] := ARRAY[]::text[];
-  k text;
-BEGIN
-  FOREACH k IN ARRAY ARRAY['seed-opp-1','seed-opp-2','seed-opp-3','seed-opp-4','seed-opp-5'] LOOP
-    SELECT result_id INTO opp_id FROM command_idempotency WHERE idempotency_key = k;
-    IF opp_id IS NOT NULL AND opp_id <> '' THEN
-      opp_ids := array_append(opp_ids, opp_id);
-    END IF;
-  END LOOP;
-  IF array_length(opp_ids, 1) > 0 THEN
-    DELETE FROM opportunity_stage_history WHERE opportunity_id::text = ANY(opp_ids);
-    DELETE FROM opportunity_items WHERE opportunity_id::text = ANY(opp_ids);
-    DELETE FROM opportunities WHERE id::text = ANY(opp_ids);
-    DELETE FROM command_idempotency WHERE idempotency_key LIKE 'seed-opp-%';
-    RAISE NOTICE '删除商机: %', opp_ids;
-  END IF;
-END $$;
-SQL
-ok "已清理 crm-opportunity 的种子商机"
+echo "── ① crm-opportunity：调它自己的 make seed-clean ──"
+# 商机数据的清理归 crm-opportunity 自己的 scripts/seed-clean.sh 所有
+# （总纲 SOP-W-7）——本脚本不再重复实现。erp-sales 联带自动建的订单
+# 不在这一步清理，见下一步。
+( cd "$ROOT/components/crm/opportunity" && make seed-clean )
 
 # seed-opp-4 赢单后 erp-sales 会自动建一张订单，幂等键是 crm-won:<opp4_id>——
 # 上一步已经把 crm_opportunity 自己的 command_idempotency 清空，这里在清空

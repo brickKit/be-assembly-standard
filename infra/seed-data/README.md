@@ -12,10 +12,10 @@
 | `infra-authz` | 一个持有 `registry/permissions.tsv` 里**全部**权限键的角色，授予 `dev.superuser` | 1 个角色 | `infra-authz` 自己的 `make seed`（独立向 Casdoor 查 `dev.superuser` 的 sub，不吃 `infra-iam-casdoor` 传参，两边各自 `make seed` 都能单独跑通——身份类种子数据链式调用这条此前未验证的判据，已真机验证） |
 | `mdm-customer` | 示例客户（制造业/贸易/物流几个行业），覆盖 `ACTIVE`/`DISABLED` 两种状态 + 一条带联系人的样例 | 5 个 | `mdm-customer` 自己的 `make seed` |
 | `mdm-product` | 示例产品，覆盖三种 `TrackingType`（`NONE`/`BATCH`/`SERIAL`）+ `ACTIVE`/`DISABLED` 两种状态 | 5 个 | `mdm-product` 自己的 `make seed` |
-| `erp-inventory` | 给 4 个 `ACTIVE` 示例产品在默认仓库（`warehouse_id=1`）灌 200 件库存（`DISABLED` 样例不进货） | 4 条余额 | 本脚本（直接写库，还没有自己的 `make seed`，见下方"下一步"） |
-| `crm-opportunity` | 示例商机：3 个 `OPEN`（分处不同阶段）、1 个 `WON`、1 个 `LOST`——真的走 `POST /crm/opportunity/opportunities` 等真实 REST 接口建的，不是直接写库（`CreateOpportunity` 会拒绝非 `ACTIVE` 的客户/产品，所以只用 4 个 `ACTIVE` 样例，`DISABLED` 那个不参与） | 5 个 | 本脚本（真实 REST 调用，还没有自己的 `make seed`，见下方"下一步"） |
+| `erp-inventory` | 给 4 个 `ACTIVE` 示例产品在默认仓库（`warehouse_id=1`）灌 200 件库存（`DISABLED` 样例不进货） | 4 条余额 | 本脚本（直接写库，还没有自己的 `make seed`，见下方"下一步"——`product_id` 对 `erp-inventory` 是不透明外键，本组件明确不依赖 `mdm-product`，这一步天然没有单一归属，留在编排层是刻意的，不是偷懒） |
+| `crm-opportunity` | 示例商机：3 个 `OPEN`（分处不同阶段）、1 个 `WON`、1 个 `LOST`——真的走 `POST /crm/opportunity/opportunities` 等真实 REST 接口建的，不是直接写库（`CreateOpportunity` 会拒绝非 `ACTIVE` 的客户/产品，所以只用 4 个 `ACTIVE` 样例，`DISABLED` 那个不参与） | 5 个 | `crm-opportunity` 自己的 `make seed`（`component.yaml` 声明的强依赖，Makefile 链式调用 `mdm-customer`/`mdm-product` 与身份类例外 `infra-iam-casdoor`/`infra-authz` 各自的 `make seed`，单独跑就能拿到完整数据——只是单独跑的话，WON 商机触发的自动建单会因为 `erp-inventory` 没有库存走 TCC 补偿建异常待办，这是设计上正确的行为；完整"库存先备好、订单真正 CONFIRMED"的演示效果需要按本脚本的编排顺序） |
 
-**下一步（未做，留给用户决定节奏）**：`erp-inventory`/`crm-opportunity` 还没有自己的 `make seed`，这两块数据仍在这个装配层脚本里。数据本身也偏单薄——单一仓库、单一法人、库存只进不出，`erp-finance`/`infra-workflow`/`infra-notification` 几乎没有专属演示数据——铺开这两个组件自己的种子数据时可以一并把数据做得更丰富。
+**下一步（未做，留给用户决定节奏）**：`erp-inventory` 还没有自己的 `make seed`（架构原因见上表，不是遗漏），这块数据仍在这个装配层脚本里。数据本身也偏单薄——单一仓库、库存只进不出，`erp-finance`/`infra-workflow`/`infra-notification` 几乎没有专属演示数据——如果要给 `erp-inventory` 补更丰富的**自成一体**的演示数据（多仓库、多种流水类型，用它自己造的产品 id，不跟 `mdm-product` 挂钩），可以另建一份，跟本脚本"给真实产品灌库存"这件事并存，不冲突。
 
 所有人类可读的名字字段都带 `「本地测试」` 前缀，方便在任何界面/查询结果里一眼认出——`clean.sh` 也是靠这个前缀 + 固定的 `idempotency_key`/用户名找到自己灌的数据，不会误删真实数据。
 
@@ -28,15 +28,15 @@ make seed-data-clean    # 清空这批数据
 
 登录方式：走前端/`frontend-standard` 正常的 Casdoor 登录页，用户名 `dev.superuser`、密码 `DevSeed123!`。
 
-## 这一步做了什么，为什么要手工建一个 ROPC 测试应用
+## 为什么要建一个 ROPC 测试应用
 
-`crm-opportunity` 的建档/赢单接口需要真实登录态（`besdk.ScopeOf(ctx)` 取 `owner_id`/`dept_path`），`seed.sh` 为此会在 Casdoor 里建一个**只在本地环境存在**的 OIDC 应用 `local-dev-seed-app`（开了 Resource Owner Password Credentials 授权类型），用 `dev.superuser` 的用户名密码换一个真实 JWT，再拿这个 JWT 走真实 REST 接口建商机——不是直接写库，这批商机数据因此也顺带验证了一遍真实鉴权链路。
+`crm-opportunity` 的建档/赢单接口需要真实登录态（`besdk.ScopeOf(ctx)` 取 `owner_id`/`dept_path`），`infra-iam-casdoor` 自己的 `scripts/seed.sh` 为此会在 Casdoor 里建一个**只在本地环境存在**的 OIDC 应用 `local-dev-seed-app`（开了 Resource Owner Password Credentials 授权类型）；`crm-opportunity` 自己的 `scripts/seed.sh` 用 `dev.superuser` 的用户名密码换一个真实 JWT，再拿这个 JWT 走真实 REST 接口建商机——不是直接写库，这批商机数据因此也顺带验证了一遍真实鉴权链路。
 
 ⚠️ **`local-dev-seed-app` 只应该存在于本地/测试环境**——生产环境的 OIDC 应用（`brickkit-app`）不许开 `password` 授权类型（见 `infra-iam-casdoor` 的 `docs/手册.md` §6），`seed.sh` 建的是一个独立的、专门给这个脚本自己用的应用，不会碰 `brickkit-app`。
 
 ## 依赖
 
-`seed.sh`/`clean.sh` 假设 `brickkit up` 已经把 14 个组件全部起来（脚本会在关键步骤前探测端口/健康检查，起不来就直接报错退出，不会留一半数据）。需要 `curl`、`python3`、`docker`（`docker exec` 打 `be-postgres`；委托给的 `mdm-customer`/`mdm-product` 各自的 `make seed` 内部会再拉 `fullstorydev/grpcurl` 镜像，不需要本机装 `grpcurl` 二进制）。
+`seed.sh`/`clean.sh` 假设 `brickkit up` 已经把 14 个组件全部起来（脚本会在关键步骤前探测端口/健康检查，起不来就直接报错退出，不会留一半数据）。需要 `curl`、`python3`、`docker`（`docker exec` 打 `be-postgres`；委托给的 `mdm-customer`/`mdm-product` 各自的 `make seed` 内部会再拉 `fullstorydev/grpcurl` 镜像，不需要本机装 `grpcurl` 二进制）。`crm-opportunity` 自己的 `make seed` 也可以单独跑（`make -C components/crm/opportunity seed`），会自动链式调用 `infra-iam-casdoor`/`infra-authz`/`mdm-customer`/`mdm-product` 各自的 `make seed`，不需要这个装配层脚本。
 
 ## 这不是什么
 
