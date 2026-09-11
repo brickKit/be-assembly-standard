@@ -166,9 +166,12 @@ make docs-check REPO=<仓库名>     # 某个组件的四份文档结构检查
 make test-cross REPO=<仓库名>     # 局部跑一个组件的跨组件 L4 测试（强依赖树要在跑）
 make arsenal-check / -restore    # 军火库结构与 brickkit.yaml 是否自洽
 brickkit up --dry-run            # 只算不启动，看这次会跑哪些、什么顺序
+brickkit down                    # 停掉 14 个组装态容器（不删 volume）——见下方"容器默认关闭"
 ```
 
 **任何 `brickkit` 命令的参数去问 `brickkit <命令> --help`。** 本页与 `.claude/skills/` 都刻意不复刻参数清单——复刻一份就是承诺维护两份，而过期的那份会让你自信地敲出一条 `unknown flag`。
+
+⚠️ **组装态的 14 个组件容器默认应该是关着的，不是常年挂着。** `make up` 管的 `be-postgres`/`be-nats`/`be-casdoor` 等**基础资源**是长期开发基础设施，可以一直开着（`TEST_PG_DSN`/`TEST_NATS_URL` 连的就是它们）；但 `brickkit up` 拉起来的 14 个组件容器只在**真机验证/演示**时才需要，用完就 `brickkit down`（不删数据）。长期挂着有两个真实代价：① 忘了重新 `brickkit up` 就成了跑着旧版本的容器（真实踩过：`infra-notification` 挂着 `v1.0.0` 时代码早改到 `v1.0.2` 都没人发现）；② 同机真实容器会跟本地测试的临时 NATS 订阅者抢同一个 subject 的消息，断言结果不确定（踩坑记录类别 E 的 E1/E2）——容器不在跑，这类问题从根上就不存在，不需要靠"测试用私有 subject"这种防御性写法兜底。
 
 ---
 
