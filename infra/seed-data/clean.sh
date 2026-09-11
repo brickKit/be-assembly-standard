@@ -48,28 +48,17 @@ END $$;
 SQL
 ok "已清理 erp-sales 的种子订单"
 
-echo "── ③ erp-inventory：清掉种子产品的库存余额 ──"
-psqlx -q <<'SQL'
-SET search_path TO erp_inventory;
-DO $$
-DECLARE
-  prod_ids text[] := ARRAY[]::text[];
-  pid text;
-  k text;
-BEGIN
-  FOREACH k IN ARRAY ARRAY['seed-product-1','seed-product-2','seed-product-3','seed-product-4','seed-product-5'] LOOP
-    SELECT result_id INTO pid FROM mdm_product.command_idempotency WHERE idempotency_key = k;
-    IF pid IS NOT NULL AND pid <> '' THEN
-      prod_ids := array_append(prod_ids, pid);
-    END IF;
-  END LOOP;
-  IF array_length(prod_ids, 1) > 0 THEN
-    DELETE FROM inventory_balances WHERE product_id = ANY(prod_ids);
-    RAISE NOTICE '删除库存余额，产品: %', prod_ids;
-  END IF;
-END $$;
-SQL
-ok "已清理 erp-inventory 的种子库存"
+echo "── ③ erp-inventory：不清理，见下方说明 ──"
+# ⚠️ erp-inventory 现在自己拥有这份数据（含真实产品的库存联动，见
+# components/erp/inventory/scripts/seed.sh），而且是真的走 Receive/
+# Adjust/Reserve 等业务命令写的流水/预留——不再是当年可以精确 DELETE
+# 撤销的裸 SQL 写入。本组件的 inventory_movements"只增不改"（AGENTS.md
+# 既有判据），没有 seed-clean，只有 db-reset（migrate down 再 up，
+# 见总纲 SOP-W-7"delete 不是 reset"）——但 db-reset 会清空**整个**
+# erp-inventory（不止 seed 灌的那部分），所以不适合塞进这个只想"撤销
+# seed 数据"的编排脚本里自动调用，需要的话手动跑：
+#   make -C components/erp/inventory db-reset
+ok "跳过（如需清空 erp-inventory 全部数据，手动执行上面那条命令）"
 
 echo "── ④ mdm-customer / mdm-product：调各自组件自己的 make seed-clean ──"
 # ⚠️ 顺序不能提前——①②③还要反查 mdm_customer/mdm_product 的

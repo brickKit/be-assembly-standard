@@ -48,7 +48,9 @@ components:
       authzBundleUrl: "http://infra-authz-1-0-3:8223/authz/bundle"
       iamJwksUrl: "http://infra-iam-casdoor-1-0-5:8200/.well-known/jwks.json"
   - id: erp/inventory
-    version: 1.0.7 # v1.0.7：docs/手册.md 的 TEST_PG_DSN 示例改指向 brickkit_test_db，无破坏性变更。
+    version: 1.0.9 # v1.0.9：seed.sh 探测式关联的 idempotency_key 改用真实产品 id，无破坏性变更。
+    # v1.0.8：新增 make seed/db-reset（总纲 SOP-W-7）+ 修复 down 迁移外键漂移 bug，无破坏性变更。
+    # v1.0.7：docs/手册.md 的 TEST_PG_DSN 示例改指向 brickkit_test_db，无破坏性变更。
     # v1.0.5：阶段三 Task 6，权限键换成真实键 + warehouse 维
                    # 数据权限真正生效（新增 warehouse_access 分配表 + 管理
                    # 接口），无破坏性变更（新表、新增可选字段）；v1.0.6：
@@ -69,7 +71,9 @@ components:
       authzBundleUrl: "http://infra-authz-1-0-3:8223/authz/bundle"
       iamJwksUrl: "http://infra-iam-casdoor-1-0-5:8200/.well-known/jwks.json"
   - id: erp/sales
-    version: 1.0.12 # v1.0.12：依赖版本号同步跟进 erp/inventory@1.0.7、erp/finance@1.0.5、infra/workflow@1.0.2，无破坏性变更。
+    version: 1.0.14 # v1.0.14：依赖版本号同步跟进 erp/inventory@1.0.9，无破坏性变更。
+    # v1.0.13：依赖版本号同步跟进 erp/inventory@1.0.8，无破坏性变更。
+    # v1.0.12：依赖版本号同步跟进 erp/inventory@1.0.7、erp/finance@1.0.5、infra/workflow@1.0.2，无破坏性变更。
     # v1.0.11：强依赖版本号同步跟进 erp/finance@1.0.4，无破坏性变更。
     # v1.0.10：弱依赖版本号同步跟进 mdm/customer@1.0.4、mdm/product@1.0.4。
     # v1.0.6：阶段三 Task 8 收尾，弱依赖 infra/workflow 真正接通——
@@ -229,7 +233,9 @@ components:
       authzBundleUrl: "http://infra-authz-1-0-3:8223/authz/bundle"
       iamJwksUrl: "http://infra-iam-casdoor-1-0-5:8200/.well-known/jwks.json"
   - id: infra/bff-mobile
-    version: 1.0.6 # v1.0.6：弱依赖版本号同步跟进 erp/sales@1.0.12、erp/inventory@1.0.7、infra/workflow@1.0.2，无破坏性变更。
+    version: 1.0.8 # v1.0.8：弱依赖版本号同步跟进 erp/sales@1.0.14、erp/inventory@1.0.9，无破坏性变更。
+    # v1.0.7：弱依赖版本号同步跟进 erp/sales@1.0.13、erp/inventory@1.0.8，无破坏性变更。
+    # v1.0.6：弱依赖版本号同步跟进 erp/sales@1.0.12、erp/inventory@1.0.7、infra/workflow@1.0.2，无破坏性变更。
     # v1.0.5：弱依赖版本号同步跟进 erp/sales@1.0.11，无破坏性变更。
     # v1.0.4：弱依赖版本号同步跟进 mdm/customer@1.0.4、mdm/product@1.0.4、erp/sales@1.0.10。
     # 阶段三 Task 11：全系统第一个 TypeScript 组件，GraphQL
