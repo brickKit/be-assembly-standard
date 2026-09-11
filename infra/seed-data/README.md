@@ -4,13 +4,15 @@
 
 ## 灌了什么
 
-| 组件 | 数据 | 数量 |
-|---|---|---|
-| Casdoor + `infra-authz` | 一个万能测试账号 `dev.superuser`（密码 `DevSeed123!`），持有 `registry/permissions.tsv` 里**全部**权限键 | 1 个用户 + 1 个角色 |
-| `mdm-customer` | 示例客户（制造业/贸易/物流几个行业，方便一眼认出是测试数据） | 5 个 |
-| `mdm-product` | 示例产品 | 5 个 |
-| `erp-inventory` | 给每个示例产品在默认仓库（`warehouse_id=1`）灌 200 件库存 | 5 条余额 |
-| `crm-opportunity` | 示例商机：3 个 `OPEN`（分处不同阶段）、1 个 `WON`、1 个 `LOST`——真的走 `POST /crm/opportunity/opportunities` 等真实 REST 接口建的，不是直接写库 | 5 个 |
+⚠️ **架构已经变了（总纲 SOP-W-7）**：客户/产品数据不再由这里直接建，改成本脚本调用 `mdm-customer`/`mdm-product` 各自的 `make seed`——那两个组件自己拥有种子数据，单独 `make -C components/mdm/customer seed` 也能独立跑出一整套数据，不依赖这个装配层脚本。这里只负责编排顺序（先建身份、再建客户产品、再建库存和商机——后面几步要用前面产出的 id）+ 补上"天然跨组件"的那部分（身份/权限、跨组件库存写入、真实走 REST 建商机）。新组件如果也想要"开箱即用的示例数据"，应该照 `mdm-customer`/`mdm-product` 的样子给自己加 `make seed`/`seed-clean`，而不是在这个脚本里加一段。
+
+| 组件 | 数据 | 数量 | 谁负责 |
+|---|---|---|---|
+| Casdoor + `infra-authz` | 一个万能测试账号 `dev.superuser`（密码 `DevSeed123!`），持有 `registry/permissions.tsv` 里**全部**权限键 | 1 个用户 + 1 个角色 | 本脚本（天然跨组件，无自然归属） |
+| `mdm-customer` | 示例客户（制造业/贸易/物流几个行业），覆盖 `ACTIVE`/`DISABLED` 两种状态 + 一条带联系人的样例 | 5 个 | `mdm-customer` 自己的 `make seed` |
+| `mdm-product` | 示例产品，覆盖三种 `TrackingType`（`NONE`/`BATCH`/`SERIAL`）+ `ACTIVE`/`DISABLED` 两种状态 | 5 个 | `mdm-product` 自己的 `make seed` |
+| `erp-inventory` | 给 4 个 `ACTIVE` 示例产品在默认仓库（`warehouse_id=1`）灌 200 件库存（`DISABLED` 样例不进货） | 4 条余额 | 本脚本（直接写库） |
+| `crm-opportunity` | 示例商机：3 个 `OPEN`（分处不同阶段）、1 个 `WON`、1 个 `LOST`——真的走 `POST /crm/opportunity/opportunities` 等真实 REST 接口建的，不是直接写库（`CreateOpportunity` 会拒绝非 `ACTIVE` 的客户/产品，所以只用 4 个 `ACTIVE` 样例，`DISABLED` 那个不参与） | 5 个 | 本脚本（真实 REST 调用） |
 
 所有人类可读的名字字段都带 `「本地测试」` 前缀，方便在任何界面/查询结果里一眼认出——`clean.sh` 也是靠这个前缀 + 固定的 `idempotency_key`/用户名找到自己灌的数据，不会误删真实数据。
 
@@ -31,7 +33,7 @@ make seed-data-clean    # 清空这批数据
 
 ## 依赖
 
-`seed.sh`/`clean.sh` 假设 `brickkit up` 已经把 14 个组件全部起来（脚本会在关键步骤前探测端口/健康检查，起不来就直接报错退出，不会留一半数据）。需要 `curl`、`python3`、`docker`（用来 `docker exec` 打 `be-postgres`）、`grpcurl`（脚本会检测有没有装，没有会提示怎么装——`go install github.com/fullstorydev/grpcurl/cmd/grpcurl@latest` 或 `docker run fullstorydev/grpcurl`）。
+`seed.sh`/`clean.sh` 假设 `brickkit up` 已经把 14 个组件全部起来（脚本会在关键步骤前探测端口/健康检查，起不来就直接报错退出，不会留一半数据）。需要 `curl`、`python3`、`docker`（`docker exec` 打 `be-postgres`；委托给的 `mdm-customer`/`mdm-product` 各自的 `make seed` 内部会再拉 `fullstorydev/grpcurl` 镜像，不需要本机装 `grpcurl` 二进制）。
 
 ## 这不是什么
 

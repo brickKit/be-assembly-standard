@@ -98,15 +98,12 @@ END $$;
 SQL
 ok "已清理 erp-inventory 的种子库存"
 
-echo "── ④ mdm-customer / mdm-product：删除种子主数据本身 ──"
-psqlx -q <<'SQL'
-SET search_path TO mdm_customer;
-DELETE FROM customers WHERE id::text IN (SELECT result_id FROM command_idempotency WHERE idempotency_key LIKE 'seed-customer-%');
-DELETE FROM command_idempotency WHERE idempotency_key LIKE 'seed-customer-%';
-SET search_path TO mdm_product;
-DELETE FROM products WHERE id::text IN (SELECT result_id FROM command_idempotency WHERE idempotency_key LIKE 'seed-product-%');
-DELETE FROM command_idempotency WHERE idempotency_key LIKE 'seed-product-%';
-SQL
+echo "── ④ mdm-customer / mdm-product：调各自组件自己的 make seed-clean ──"
+# ⚠️ 顺序不能提前——①②③还要反查 mdm_customer/mdm_product 的
+# command_idempotency 表拿客户/产品 id，这一步会把那些行删掉。删除
+# 内容本身归各组件自己（总纲 SOP-W-7），这里只负责编排顺序。
+( cd "$ROOT/components/mdm/customer" && make seed-clean )
+( cd "$ROOT/components/mdm/product" && make seed-clean )
 ok "已清理 mdm-customer/mdm-product 的种子主数据"
 
 echo "── ⑤ infra-authz：撤销测试角色 ──"

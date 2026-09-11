@@ -13,9 +13,6 @@ die()  { echo "${C_RED}✗${C_OFF} $*" >&2; exit 1; }
 
 CASDOOR_URL="http://localhost:8000"
 IAM_URL="http://localhost:8200"
-CUSTOMER_GRPC="localhost:9090"
-PRODUCT_GRPC="localhost:9092"
-INVENTORY_GRPC="localhost:9096"
 CRM_REST="http://localhost:8102"
 
 SEED_USER="dev.superuser"
@@ -27,23 +24,13 @@ trap 'rm -f "$COOKIE_JAR"' EXIT
 
 need() { command -v "$1" >/dev/null 2>&1 || die "缺少命令：$1"; }
 need curl; need python3; need docker
-if ! command -v grpcurl >/dev/null 2>&1; then
-  warn "未找到本地 grpcurl，改用 fullstorydev/grpcurl 镜像（需要能访问 brickkit-be-assembly-standard-net）"
-  GRPCURL="docker run --rm --network brickkit-be-assembly-standard-net -v $ROOT/components:/components:ro fullstorydev/grpcurl:latest"
-  GRPCURL_MDM_CUSTOMER_PROTO="/components/mdm/customer/contracts"
-  GRPCURL_MDM_PRODUCT_PROTO="/components/mdm/product/contracts"
-  GRPCURL_INVENTORY_PROTO="/components/erp/inventory/contracts"
-  CUSTOMER_GRPC="mdm-customer-1-0-3:9090"
-  PRODUCT_GRPC="mdm-product-1-0-3:9092"
-  INVENTORY_GRPC="erp-inventory-1-0-6:9096"
-else
-  GRPCURL="grpcurl"
-  GRPCURL_MDM_CUSTOMER_PROTO="$ROOT/components/mdm/customer/contracts"
-  GRPCURL_MDM_PRODUCT_PROTO="$ROOT/components/mdm/product/contracts"
-  GRPCURL_INVENTORY_PROTO="$ROOT/components/erp/inventory/contracts"
-fi
 
 psqlx() { docker exec -i be-postgres psql -U postgres -d brickkit_db -v ON_ERROR_STOP=1 "$@"; }
+# idfor <schema> <idempotency_key>：反查某个组件自己的 command_idempotency
+# 表，拿它 claim-first 幂等落下的真实行 id——组件自己的 seed 脚本（见
+# ④）只负责把数据灌进去，不负责把 id 打印成本脚本能解析的格式，两边
+# 用同一张幂等表当"交接协议"，不需要额外约定输出格式。
+idfor() { psqlx -tA -q -c "SET search_path TO $1; SELECT result_id FROM command_idempotency WHERE idempotency_key = '$2';"; }
 
 echo "── 检查依赖组件是否在跑 ──"
 curl -sf -o /dev/null "$CASDOOR_URL/api/health" || die "Casdoor（$CASDOOR_URL）连不上，先 brickkit up"
@@ -138,44 +125,33 @@ ACCESS_TOKEN="$(curl -s -X POST "$IAM_URL/api/iam/token" \
 [ -n "$ACCESS_TOKEN" ] || die "换应用 JWT 失败"
 ok "已换到真实应用 JWT"
 
-echo "── ④ mdm-customer / mdm-product：建示例主数据（gRPC，claim-first 幂等）──"
-mkcustomer() {
-  local key="$1" name="$2" credit="$3"
-  $GRPCURL -plaintext -import-path "$GRPCURL_MDM_CUSTOMER_PROTO" -proto mdm/customer/v1/customer.proto \
-    -d "{\"idempotency_key\":\"$key\",\"name\":\"$name\",\"credit_limit\":\"$credit\"}" \
-    "$CUSTOMER_GRPC" mdm.customer.v1.CustomerService/Create \
-    | python3 -c 'import json,sys; print(json.load(sys.stdin)["customer"]["id"])'
-}
-mkproduct() {
-  local key="$1" name="$2" cost="$3"
-  $GRPCURL -plaintext -import-path "$GRPCURL_MDM_PRODUCT_PROTO" -proto mdm/product/v1/product.proto \
-    -d "{\"idempotency_key\":\"$key\",\"name\":\"$name\",\"base_uom_id\":\"1\",\"tracking_type\":\"TRACKING_TYPE_NONE\",\"standard_cost\":\"$cost\"}" \
-    "$PRODUCT_GRPC" mdm.product.v1.ProductService/Create \
-    | python3 -c 'import json,sys; print(json.load(sys.stdin)["product"]["id"])'
-}
+echo "── ④ mdm-customer / mdm-product：调各自组件自己的 make seed ──"
+# 客户/产品数据的内容与幂等键归各组件自己的 scripts/seed.sh 所有（总纲
+# SOP-W-7）——本脚本不再重复实现"怎么建一个客户/产品"，只负责编排顺序 +
+# 反查 idfor 拿到本次要用的 id。单独 `make -C components/mdm/customer
+# seed` 也能独立跑通，不依赖这个编排脚本。
+( cd "$ROOT/components/mdm/customer" && make seed )
+( cd "$ROOT/components/mdm/product" && make seed )
 
-CUST1="$(mkcustomer seed-customer-1 "「本地测试」华南电子科技有限公司" 500000.00)"
-CUST2="$(mkcustomer seed-customer-2 "「本地测试」京城机械制造集团" 300000.00)"
-CUST3="$(mkcustomer seed-customer-3 "「本地测试」江南纺织实业公司" 200000.00)"
-CUST4="$(mkcustomer seed-customer-4 "「本地测试」西部矿业贸易公司" 800000.00)"
-CUST5="$(mkcustomer seed-customer-5 "「本地测试」滨海物流仓储公司" 150000.00)"
-ok "客户：$CUST1 $CUST2 $CUST3 $CUST4 $CUST5"
-
-PROD1="$(mkproduct seed-product-1 "「本地测试」标准螺栓 M8" 0.50)"
-PROD2="$(mkproduct seed-product-2 "「本地测试」工业润滑油 20L" 120.00)"
-PROD3="$(mkproduct seed-product-3 "「本地测试」不锈钢管件 DN50" 35.00)"
-PROD4="$(mkproduct seed-product-4 "「本地测试」电力电缆 3x2.5mm²" 8.80)"
-PROD5="$(mkproduct seed-product-5 "「本地测试」包装纸箱 60x40x40" 3.20)"
-ok "产品：$PROD1 $PROD2 $PROD3 $PROD4 $PROD5"
+CUST1="$(idfor mdm_customer seed-customer-1)"
+CUST2="$(idfor mdm_customer seed-customer-2)"
+CUST3="$(idfor mdm_customer seed-customer-3)"
+CUST4="$(idfor mdm_customer seed-customer-4)"
+PROD1="$(idfor mdm_product seed-product-1)"
+PROD2="$(idfor mdm_product seed-product-2)"
+PROD3="$(idfor mdm_product seed-product-3)"
+PROD4="$(idfor mdm_product seed-product-4)"
+ok "客户：$CUST1 $CUST2 $CUST3 $CUST4（+ 1 个 DISABLED 样例，见各自组件的 seed 输出）"
+ok "产品：$PROD1 $PROD2 $PROD3 $PROD4（+ 1 个 DISABLED 样例，见各自组件的 seed 输出）"
 
 echo "── ⑤ erp-inventory：给每个示例产品灌库存（直接写库，同 Receive 的落库形状）──"
 {
   echo "SET search_path TO erp_inventory;"
-  for p in "$PROD1" "$PROD2" "$PROD3" "$PROD4" "$PROD5"; do
+  for p in "$PROD1" "$PROD2" "$PROD3" "$PROD4"; do
     echo "INSERT INTO inventory_balances (product_id, warehouse_id, on_hand_qty) VALUES ('$p', '1', 200) ON CONFLICT (product_id, warehouse_id) DO UPDATE SET on_hand_qty = GREATEST(inventory_balances.on_hand_qty, 200);"
   done
 } | psqlx -q
-ok "已给 5 个示例产品各灌 200 件库存"
+ok "已给 4 个 ACTIVE 示例产品各灌 200 件库存（DISABLED 样例不进货，符合业务语义）"
 
 echo "── ⑥ crm-opportunity：真实调 REST 接口建示例商机（3 OPEN + 1 WON + 1 LOST）──"
 mkopportunity() {
@@ -201,7 +177,11 @@ OPP4="$(mkopportunity seed-opp-4 "「本地测试」西部矿业·已成交项�
 curl -s -X POST "$CRM_REST/crm/opportunity/opportunities/$OPP4/win" \
   -H "Authorization: Bearer $ACCESS_TOKEN" -H "Content-Type: application/json" \
   -d '{"idempotency_key":"seed-opp-4-win"}' >/dev/null
-OPP5="$(mkopportunity seed-opp-5 "「本地测试」滨海物流·已流失项目" "$CUST5" "$PROD5" "15000.00")"
+# ⚠️ 第 5 个客户/产品在各自组件的 seed 里是 DISABLED 样例（覆盖状态
+# 完整度用的），CreateOpportunity 会拒绝非 ACTIVE 的客户/产品
+# （service.go 真实校验），所以这里改回用 CUST1/PROD2——纯粹是拿一对
+# 已知有效的组合，跟这条商机本身讲的是哪家客户没有关系。
+OPP5="$(mkopportunity seed-opp-5 "「本地测试」滨海物流·已流失项目" "$CUST1" "$PROD2" "15000.00")"
 curl -s -X POST "$CRM_REST/crm/opportunity/opportunities/$OPP5/lose" \
   -H "Authorization: Bearer $ACCESS_TOKEN" -H "Content-Type: application/json" \
   -d '{"idempotency_key":"seed-opp-5-lose","reason":"「本地测试」价格谈不拢"}' >/dev/null

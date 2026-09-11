@@ -17,7 +17,8 @@ sources:
 
 components:
   - id: mdm/customer
-    version: 1.0.3 # v1.0.3：阶段三 Task 6，besdk.GET/POST/PATCH 的权限键从
+    version: 1.0.4 # v1.0.4：新增 make seed/seed-clean（总纲 SOP-W-7 种子数据归属样板首例）。
+                   # v1.0.3：阶段三 Task 6，besdk.GET/POST/PATCH 的权限键从
                    # besdk.Public 换成 assembly.yaml 里声明的真实键，无破坏
                    # 性变更（判定本体走进程内 bundle map，组件代码不变）
     expose: true # 档 0 验收要用 curl 从宿主机直接打 HTTP（Task 17 步骤 2）。
@@ -40,7 +41,8 @@ components:
       # stub。
       iamJwksUrl: "http://infra-iam-casdoor-1-0-2:8200/.well-known/jwks.json"
   - id: mdm/product
-    version: 1.0.3 # v1.0.3：同 mdm-customer，权限键从 besdk.Public 换成真实键
+    version: 1.0.4 # v1.0.4：新增 make seed/seed-clean（同 mdm-customer，种子数据归属样板第二例）。
+                   # v1.0.3：同 mdm-customer，权限键从 besdk.Public 换成真实键
     expose: true # 同 mdm-customer：curl 打 HTTP 需要，gRPC 只能走容器 IP
     config:
       authzBundleUrl: "http://infra-authz-1-0-2:8223/authz/bundle"
@@ -64,7 +66,8 @@ components:
       authzBundleUrl: "http://infra-authz-1-0-2:8223/authz/bundle"
       iamJwksUrl: "http://infra-iam-casdoor-1-0-2:8200/.well-known/jwks.json"
   - id: erp/sales
-    version: 1.0.9 # v1.0.6：阶段三 Task 8 收尾，弱依赖 infra/workflow 真正接通——
+    version: 1.0.10 # v1.0.10：弱依赖版本号同步跟进 mdm/customer@1.0.4、mdm/product@1.0.4。
+    # v1.0.6：阶段三 Task 8 收尾，弱依赖 infra/workflow 真正接通——
                    # 补偿连续失败 3 次调 CreateTask 建异常待办，消费
                    # task.completed.v1 恢复订单（设计计划 §4.4.4），无破坏性变更；
                    # v1.0.7：依赖版本号同步 erp/inventory@1.0.6 + 升级 be-sdk-go
@@ -214,7 +217,8 @@ components:
       authzBundleUrl: "http://infra-authz-1-0-2:8223/authz/bundle"
       iamJwksUrl: "http://infra-iam-casdoor-1-0-2:8200/.well-known/jwks.json"
   - id: infra/bff-mobile
-    version: 1.0.3 # 阶段三 Task 11：全系统第一个 TypeScript 组件，GraphQL
+    version: 1.0.4 # v1.0.4：弱依赖版本号同步跟进 mdm/customer@1.0.4、mdm/product@1.0.4、erp/sales@1.0.10。
+    # 阶段三 Task 11：全系统第一个 TypeScript 组件，GraphQL
                    # BFF，手写 schema 按前端页面裁剪，零强依赖零数据库
                    # （五条弱依赖：mdm/customer、mdm/product、erp/sales、
                    # erp/inventory、infra/workflow）。真机验证过完整链路：
@@ -248,7 +252,8 @@ components:
       iamIssuerUrl: "http://localhost:8000" # Casdoor 浏览器直连地址，随部署环境的真实公网域名替换
       casdoorClientId: "" # 部署时用 Casdoor 管理 API 现查 brickkit-app 的 client_id 填入，不提交真实值
   - id: crm/opportunity
-    version: 1.0.1 # v1.0.1：补数据权限边界测试（data-scope-test-scan 门禁发现零覆盖）。
+    version: 1.0.2 # v1.0.2：弱依赖版本号同步跟进 mdm/customer@1.0.4、mdm/product@1.0.4。
+    # v1.0.1：补数据权限边界测试（data-scope-test-scan 门禁发现零覆盖）。
                    # 阶段三 Task 13：阶段三第一个业务组件、CRM 域第一个组件。
                    # 商机全生命周期，两条强依赖（mdm/customer、mdm/product 的
                    # BatchGet），明确不依赖任何 erp-*/infra-workflow（§1.4 铁律：
