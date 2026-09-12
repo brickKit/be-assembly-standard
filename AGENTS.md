@@ -208,6 +208,8 @@ brickkit down                    # Stop the 14 assembly-time containers (volumes
 
 ⚠️ **Test and demo databases are physically separate: `TEST_PG_DSN` points at `brickkit_test_db`, not `brickkit_db`.** Two physically separate databases inside the same `be-postgres` instance; `make test-db-init` creates/refreshes the test one. The full reasoning (why they can't share one) is in [`docs/standards/05-data-construction-standard.md`](docs/standards/05-data-construction-standard.md) §1.
 
+⚠️ **Shell mode and brickKit's own per-component containers are mutually exclusive — never run both against real infrastructure at the same time.** A shell (`shells/go`/`shells/python`, Phase 4 onward) and the `brickkit up`-generated container for the same component are two runtime forms of the exact same thing, not two layers that stack — running both at once collides on the component's own registered port (`local: true`'s `localPort` reuses it directly, Design Book §13.8.1), on NATS (both sides run the same consumer code subscribed to the same subject — broadcast semantics mean both receive and process every message, pitfalls E1/E2's other variant), and on `brickkit_db` state (Outbox/idempotency tables, real concurrent writes). **The operating rule: before switching to shell mode, `brickkit down` every component container first — not just the ones being merged, all of them, for simplicity — and before switching back, stop every shell container first.** Full reasoning in Design Book §13.9. This does **not** apply to shell unit/integration tests run against `TEST_PG_DSN`/ephemeral ports (never touching `brickkit_db` or a component's registered port) — only to running both against real shared resources at once.
+
 ---
 
 ## The Platform's Four Iron Rules (brickKit side)

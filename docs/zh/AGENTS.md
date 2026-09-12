@@ -208,6 +208,8 @@ brickkit down                    # 停掉 14 个组装态容器（不删 volume�
 
 ⚠️ **测试库与演示库物理分开：`TEST_PG_DSN` 指向 `brickkit_test_db`，不是 `brickkit_db`。** 同一个 `be-postgres` 实例里两个物理分开的 database，`make test-db-init` 建/刷新测试库那一份。完整原因（为什么不能共用）见 [`docs/standards/05-data-construction-standard.md`](standards/05-data-construction-standard.md) 的 §一。
 
+⚠️ **外壳态与 brickKit 自己的独立容器互斥——不能同时对着真实基础设施两边都跑。** 外壳（`shells/go`/`shells/python`，阶段四起）和 `brickkit up` 给同一个组件生成的独立容器，是同一件事的两种运行形态，不是可以叠加的两层——同时开着会撞组件自己注册的端口（`local: true` 的 `localPort` 直接复用它，设计书 §13.8.1）、撞 NATS（两边跑同一份消费者代码订阅同一个 subject，广播语义让两边都收到并各处理一遍，是踩坑记录 E1/E2 的另一个变种）、撞 `brickkit_db` 状态（Outbox/幂等表被两个进程同时真实写）。**操作纪律：切到外壳态之前先 `brickkit down` 停掉全部组装态容器（不是只停将被合并的那几个，图简单直接全部停）；切回全拆态之前先把全部外壳容器停掉。** 完整推理见设计书 §13.9。**这条不管本地用 `TEST_PG_DSN`/临时端口跑的外壳单元测试**（完全不碰 `brickkit_db` 或组件注册端口）——只管"两边都对着真实资源跑"的那一刻。
+
 ---
 
 ## 平台的四条铁律（brickKit 侧）
