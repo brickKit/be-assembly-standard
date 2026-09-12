@@ -42,7 +42,7 @@ components:
       # stub。
       iamJwksUrl: "http://infra-iam-casdoor-1-0-6:8200/.well-known/jwks.json"
   - id: mdm/product
-    version: 1.0.5 # v1.0.5：make seed 加量到 12 个产品，三种 TrackingType 各补样本+单价区间铺开，无破坏性变更。
+    version: 1.0.6 # v1.0.6：补齐 README 的"怎么起来"/"怎么用"/"配置项"三节，纯文档修复，无破坏性变更。
     # v1.0.4：新增 make seed/seed-clean（同 mdm-customer，种子数据归属样板第二例）。
                    # v1.0.3：同 mdm-customer，权限键从 besdk.Public 换成真实键
     expose: true # 同 mdm-customer：curl 打 HTTP 需要，gRPC 只能走容器 IP
@@ -50,7 +50,7 @@ components:
       authzBundleUrl: "http://infra-authz-1-0-4:8223/authz/bundle"
       iamJwksUrl: "http://infra-iam-casdoor-1-0-6:8200/.well-known/jwks.json"
   - id: erp/inventory
-    version: 1.0.10 # v1.0.10：make seed 探测 mdm-product 的循环范围补齐到 1..12（记入踩坑记录 C24），无破坏性变更。
+    version: 1.0.11 # v1.0.11：补齐 README 的"怎么起来"/"怎么用"/"配置项"三节，纯文档修复，无破坏性变更。
     # v1.0.9：seed.sh 探测式关联的 idempotency_key 改用真实产品 id，无破坏性变更。
     # v1.0.8：新增 make seed/db-reset（总纲 SOP-W-7）+ 修复 down 迁移外键漂移 bug，无破坏性变更。
     # v1.0.7：docs/手册.md 的 TEST_PG_DSN 示例改指向 brickkit_test_db，无破坏性变更。
@@ -64,7 +64,7 @@ components:
       authzBundleUrl: "http://infra-authz-1-0-4:8223/authz/bundle"
       iamJwksUrl: "http://infra-iam-casdoor-1-0-6:8200/.well-known/jwks.json"
   - id: erp/finance
-    version: 1.0.6 # v1.0.6：新增 make seed/db-reset——人工凭证+期间生命周期+法人授权演示数据，旁路修复 C23，无破坏性变更。
+    version: 1.0.7 # v1.0.7：补齐 README 的"怎么起来"/"怎么用"/"配置项"三节，纯文档修复，无破坏性变更。
     # v1.0.5：docs/手册.md 的 TEST_PG_DSN 示例改指向 brickkit_test_db，无破坏性变更。
     # v1.0.4：补 ListEntries 真实跨法人排除测试，无破坏性变更。
     # v1.0.3：阶段三 Task 6，权限键换成真实键 + legal_entity 维
@@ -75,7 +75,7 @@ components:
       authzBundleUrl: "http://infra-authz-1-0-4:8223/authz/bundle"
       iamJwksUrl: "http://infra-iam-casdoor-1-0-6:8200/.well-known/jwks.json"
   - id: erp/sales
-    version: 1.0.15 # v1.0.15：新增 make seed——独立订单数据+依赖版本号同步（mdm/customer@1.0.5、mdm/product@1.0.5、erp/inventory@1.0.10、erp/finance@1.0.6），无破坏性变更。
+    version: 1.0.16 # v1.0.16：补齐 README 的"怎么起来"/"怎么用"/"配置项"三节 + 依赖版本号同步（mdm/product@1.0.6、erp/inventory@1.0.11、erp/finance@1.0.7），无破坏性变更。
     # v1.0.14：依赖版本号同步跟进 erp/inventory@1.0.9，无破坏性变更。
     # v1.0.13：依赖版本号同步跟进 erp/inventory@1.0.8，无破坏性变更。
     # v1.0.12：依赖版本号同步跟进 erp/inventory@1.0.7、erp/finance@1.0.5、infra/workflow@1.0.2，无破坏性变更。
@@ -241,7 +241,7 @@ components:
       authzBundleUrl: "http://infra-authz-1-0-4:8223/authz/bundle"
       iamJwksUrl: "http://infra-iam-casdoor-1-0-6:8200/.well-known/jwks.json"
   - id: infra/bff-mobile
-    version: 1.0.9 # v1.0.9：弱依赖版本号同步跟进 mdm/customer@1.0.5、mdm/product@1.0.5、erp/sales@1.0.15、erp/inventory@1.0.10，无破坏性变更。
+    version: 1.0.10 # v1.0.10：弱依赖版本号同步跟进 mdm/product@1.0.6、erp/sales@1.0.16、erp/inventory@1.0.11，无破坏性变更。
     # v1.0.8：弱依赖版本号同步跟进 erp/sales@1.0.14、erp/inventory@1.0.9，无破坏性变更。
     # v1.0.7：弱依赖版本号同步跟进 erp/sales@1.0.13、erp/inventory@1.0.8，无破坏性变更。
     # v1.0.6：弱依赖版本号同步跟进 erp/sales@1.0.12、erp/inventory@1.0.7、infra/workflow@1.0.2，无破坏性变更。
@@ -281,7 +281,7 @@ components:
       iamIssuerUrl: "http://localhost:8000" # Casdoor 浏览器直连地址，随部署环境的真实公网域名替换
       casdoorClientId: "" # 部署时用 Casdoor 管理 API 现查 brickkit-app 的 client_id 填入，不提交真实值
   - id: crm/opportunity
-    version: 1.0.6 # v1.0.6：make seed 加量到 11 条商机，补 org 维数据样本+信用超限负向场景，依赖版本号同步跟进 mdm/customer@1.0.5、mdm/product@1.0.5，无破坏性变更。
+    version: 1.0.7 # v1.0.7：依赖版本号同步跟进 mdm/product@1.0.6（补 README 三节，纯文档修复），无破坏性变更。
     # v1.0.5：新增 make seed/seed-clean，种子商机归本组件自己持有，无破坏性变更。
     # v1.0.4：docs/手册.md 的 TEST_PG_DSN 示例改指向 brickkit_test_db，无破坏性变更。
     # v1.0.3：补 ListOpportunities 真实数据权限边界测试，无破坏性变更。

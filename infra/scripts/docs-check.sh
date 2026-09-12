@@ -36,7 +36,14 @@ grep -nE '见上文|见上节|详见上|如前所述' "$DIR/AGENTS.md" 2>/dev/nu
   || err "docs/design/$REPO.md 的九个二级标题不齐"
 
 for f in "$ROOT/docs/design/$REPO.md" "$DIR/README.md" "$DIR/docs/手册.md" "$DIR/AGENTS.md"; do
-  [[ -f "$f" ]] && grep -nE 'TBD|TODO|待补' "$f" && err "$f 里有占位符"
+  # ⚠️ 曾经只查 'TBD|TODO|待补'，漏了实际写法"（Task N 后补：……）"——4 个
+  # 最早建的组件（mdm-product/erp-inventory/erp-finance/erp-sales）的
+  # README 里这类占位符存在了很久这条检查却一直显示通过，就是因为正则
+  # 没覆盖到真实用的措辞（见 docs/dev/field-tested-pitfalls-log.md）。
+  # "后补"必须要求紧跟标点（：或，）才纳入——"后补"本身是常见中文词组的
+  # 一部分（"事后补偿""建成后补齐"），裸词匹配会在长篇设计文档里大量
+  # 误报，加了这条要求后才用真机跑过一遍全部 14 个组件反向验证过
+  [[ -f "$f" ]] && grep -nE 'TBD|TODO|待补|后补[：，]' "$f" && err "$f 里有占位符"
 done
 
 ((FAIL)) && exit 1
