@@ -6,7 +6,7 @@
 |---|---|---|
 | **AI 助手** | 这个仓库的规矩、禁令、我该查哪一节 | 仓库根 [`AGENTS.md`](../AGENTS.md)（每次会话自动加载）→ 它的**路由表** |
 | **部署人员** | 装什么、什么顺序、哪些自动哪些要我做、报错了怎么办 | [`ops/部署手册.md`](ops/部署手册.md) ⭐ **只需要这一份** |
-| **开发者**（写组件的人） | 怎么写一个组件、测试写在哪一层、卡住了怎么办 | [`plans/00-总纲.md`](plans/00-总纲.md) 的 **§4 SOP-W** → 该组件的 [`design/<仓库名>.md`](design/)；**测试怎么分层/怎么跑/卡住了怎么办**，唯一真相源是 [`plans/00-测试标准.md`](plans/00-测试标准.md)；**种子数据/测试数据怎么设计、组件间数据怎么协作**，唯一真相源是 [`plans/00-数据构建标准.md`](plans/00-数据构建标准.md)；「这个坑是不是已经踩过了」先查 [`dev/实测踩坑记录.md`](dev/实测踩坑记录.md)；日常怎么聚焦到几个组件、提交前要注意什么见 [`军火库维护手册.md`](军火库维护手册.md) |
+| **开发者**（写组件的人） | 怎么写一个组件、测试写在哪一层、卡住了怎么办 | [`standards/00-master-guide.md`](standards/00-master-guide.md) 的 **§4 SOP-W** → 该组件的 [`design/<仓库名>.md`](design/)；**测试怎么分层/怎么跑/卡住了怎么办**，唯一真相源是 [`standards/04-testing-standard.md`](standards/04-testing-standard.md)；**种子数据/测试数据怎么设计、组件间数据怎么协作**，唯一真相源是 [`standards/05-data-construction-standard.md`](standards/05-data-construction-standard.md)；「这个坑是不是已经踩过了」先查 [`dev/实测踩坑记录.md`](dev/实测踩坑记录.md)；日常怎么聚焦到几个组件、提交前要注意什么见 [`军火库维护手册.md`](军火库维护手册.md) |
 | **架构 / 拿决策的人** | 为什么是这个形状、某条约束的出处 | [`../BrickEnterprise 设计书.md`](../BrickEnterprise%20设计书.md) —— **规范真相源** |
 | **二次开发的客户工程师** | 我能改哪里、改了会不会被升级覆盖 | 该组件仓库的 `docs/手册.md` + `assembly.yaml` 的 `customization_guide` |
 | **客户 / 主管理员** | 系统能做什么、我买了哪些模块、怎么用 | 🔜 **还没有**。现在一个业务组件都还没建，写了也是空的（见下方「什么时候写」） |
@@ -26,6 +26,8 @@
 
 **冲突时的优先级**：设计书 > 总纲 > 阶段计划 > `AGENTS.md`。
 **但操作层跑不通时，不要迁就理论层**——先让它跑通，再回头判断是理论错了还是实现错了，然后**把结论写回去**。
+
+**文档本身该怎么组织、什么时候该拆成独立文件、组件文档要同时服务哪两种读者**，规则见 [`standards/01-documentation-standard.md`](standards/01-documentation-standard.md)（英文正本，中文版 [`zh/standards/01-documentation-standard.md`](zh/standards/01-documentation-standard.md)）。
 
 ---
 
@@ -48,7 +50,7 @@
 
 ## 一个组件有四份文档
 
-写组件时看 [`plans/00-总纲.md`](plans/00-总纲.md) 的 **SOP-D**，四份缺一不可：
+写组件时看 [`standards/00-master-guide.md`](standards/00-master-guide.md) 的 **SOP-D**，四份缺一不可：
 
 | # | 文件 | 在哪 | 给谁看 |
 |---|---|---|---|
