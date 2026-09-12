@@ -119,13 +119,39 @@ test-cross:  ## 组件局部测试：只跑 REPO 一个组件，强依赖 gRPC �
 	@bash $(S)/test-cross.sh "$(REPO)"
 .PHONY: test-cross
 
-##@ 本地开发数据（见 infra/seed-data/README.md——只给本地用，不用于生产/CI）
-seed-data:  ## 灌本地开发/测试用的示例数据（用户+角色+客户+产品+库存+商机），可重复跑
-	@bash infra/seed-data/seed.sh
+##@ 本地开发数据（只给本地用，不用于生产/CI；每个组件自己拥有种子数据——总纲 SOP-W-7）
+# ⚠️ 这里曾经是 infra/seed-data/ 的编排脚本（seed.sh/clean.sh）。等到每个
+# 组件都有了自己的 make seed（且互不需要装配层帮它们传 id/sub——各自反查
+# 依赖组件的 command_idempotency 表），编排层就只剩"按顺序调用谁"这一件
+# 事，薄到直接写在这里就够了，不需要再维护一个单独的目录/脚本文件。
+# ⚠️ 顺序不能乱：erp-inventory 必须先于 crm-opportunity——crm-opportunity
+# 的 WON 商机会真实触发 erp-sales 自动建单确认（含 Reserve 库存），库存
+# 不够会走 TCC 补偿建异常待办（不是失败，但不是"打开就是一条干净
+# CONFIRMED 订单"这个演示效果）。erp-finance/infra-print 零依赖，谁先谁
+# 后都行。
+seed-data:  ## 灌本地开发/测试用的示例数据（身份+客户/产品+库存+订单+商机+财务凭证+打印模板），可重复跑
+	@$(MAKE) -C components/mdm/customer seed
+	@$(MAKE) -C components/mdm/product seed
+	@$(MAKE) -C components/erp/inventory seed
+	@$(MAKE) -C components/erp/sales seed
+	@$(MAKE) -C components/crm/opportunity seed
+	@$(MAKE) -C components/erp/finance seed
+	@$(MAKE) -C components/infra/print seed
+	@echo ""
+	@echo "✓ 种子数据灌完了。登录方式：Casdoor 用户名 dev.superuser / 密码 DevSeed123!"
 .PHONY: seed-data
 
-seed-data-clean:  ## 清空 seed-data 灌的全部数据
-	@bash infra/seed-data/clean.sh
+seed-data-clean:  ## 清空 seed-data 能清的部分（见下方哪些组件没有 seed-clean）
+	@$(MAKE) -C components/crm/opportunity seed-clean
+	@$(MAKE) -C components/erp/sales seed-clean
+	@$(MAKE) -C components/mdm/customer seed-clean
+	@$(MAKE) -C components/mdm/product seed-clean
+	@$(MAKE) -C components/infra/authz seed-clean
+	@$(MAKE) -C components/infra/iam-casdoor seed-clean
+	@echo ""
+	@echo "⚠️ erp-inventory/erp-finance 没有 seed-clean，只有 db-reset（entry_no_seq/post_no 等计数器只增不回退，LockPeriod 是终态——逐行 DELETE 做不到干净复原，见总纲 SOP-W-7「delete 不是 reset」判据）：make -C components/erp/inventory db-reset / make -C components/erp/finance db-reset（会清空该组件全部数据，不止 seed 灌的那部分）"
+	@echo "⚠️ infra-print 也没有 seed-clean——模板走版本管理，重跑 seed 只追加新版本，不需要撤销机制"
+	@echo "✓ 其余组件的种子数据已清空"
 .PHONY: seed-data-clean
 
 ##@ 验收
