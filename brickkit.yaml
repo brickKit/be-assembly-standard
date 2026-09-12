@@ -17,7 +17,8 @@ sources:
 
 components:
   - id: mdm/customer
-    version: 1.0.4 # v1.0.4：新增 make seed/seed-clean（总纲 SOP-W-7 种子数据归属样板首例）。
+    version: 1.0.5 # v1.0.5：make seed 加量到 12 个客户，覆盖更多行业画像+信用额度区间，无破坏性变更。
+    # v1.0.4：新增 make seed/seed-clean（总纲 SOP-W-7 种子数据归属样板首例）。
                    # v1.0.3：阶段三 Task 6，besdk.GET/POST/PATCH 的权限键从
                    # besdk.Public 换成 assembly.yaml 里声明的真实键，无破坏
                    # 性变更（判定本体走进程内 bundle map，组件代码不变）
@@ -32,23 +33,25 @@ components:
       # 阶段三 Task 6：bundle 轮询指向真实跑着的 infra-authz（内部 Docker
       # 网络地址，服务名带版本号——没有依赖边，brickKit 不会帮忙注入，
       # 只能手写字面量，infra/authz 升版本时这几处要跟着改）。
-      authzBundleUrl: "http://infra-authz-1-0-3:8223/authz/bundle"
+      authzBundleUrl: "http://infra-authz-1-0-4:8223/authz/bundle"
       # 阶段三 Task 7：infra-iam-casdoor 建成，真实签发方第一次存在——
       # 同样是手写字面量的内部服务名，不是依赖边注入（这个组件对
       # infra-iam-casdoor 没有、也不该有依赖边，见它自己的 AGENTS.md
       # "零入边是 slot:iam 的物理前提"）。配上这一项之后 RequirePermission
       # 才第一次真正走到"验签 + 查 bundle"这条路径，不再是 fail-closed
       # stub。
-      iamJwksUrl: "http://infra-iam-casdoor-1-0-5:8200/.well-known/jwks.json"
+      iamJwksUrl: "http://infra-iam-casdoor-1-0-6:8200/.well-known/jwks.json"
   - id: mdm/product
-    version: 1.0.4 # v1.0.4：新增 make seed/seed-clean（同 mdm-customer，种子数据归属样板第二例）。
+    version: 1.0.5 # v1.0.5：make seed 加量到 12 个产品，三种 TrackingType 各补样本+单价区间铺开，无破坏性变更。
+    # v1.0.4：新增 make seed/seed-clean（同 mdm-customer，种子数据归属样板第二例）。
                    # v1.0.3：同 mdm-customer，权限键从 besdk.Public 换成真实键
     expose: true # 同 mdm-customer：curl 打 HTTP 需要，gRPC 只能走容器 IP
     config:
-      authzBundleUrl: "http://infra-authz-1-0-3:8223/authz/bundle"
-      iamJwksUrl: "http://infra-iam-casdoor-1-0-5:8200/.well-known/jwks.json"
+      authzBundleUrl: "http://infra-authz-1-0-4:8223/authz/bundle"
+      iamJwksUrl: "http://infra-iam-casdoor-1-0-6:8200/.well-known/jwks.json"
   - id: erp/inventory
-    version: 1.0.9 # v1.0.9：seed.sh 探测式关联的 idempotency_key 改用真实产品 id，无破坏性变更。
+    version: 1.0.10 # v1.0.10：make seed 探测 mdm-product 的循环范围补齐到 1..12（记入踩坑记录 C24），无破坏性变更。
+    # v1.0.9：seed.sh 探测式关联的 idempotency_key 改用真实产品 id，无破坏性变更。
     # v1.0.8：新增 make seed/db-reset（总纲 SOP-W-7）+ 修复 down 迁移外键漂移 bug，无破坏性变更。
     # v1.0.7：docs/手册.md 的 TEST_PG_DSN 示例改指向 brickkit_test_db，无破坏性变更。
     # v1.0.5：阶段三 Task 6，权限键换成真实键 + warehouse 维
@@ -58,20 +61,22 @@ components:
                    # 容器的严重问题（实测踩坑记录 C11），无破坏性变更
     expose: true # 同上：curl 打 HTTP 需要，gRPC 只能走容器 IP
     config:
-      authzBundleUrl: "http://infra-authz-1-0-3:8223/authz/bundle"
-      iamJwksUrl: "http://infra-iam-casdoor-1-0-5:8200/.well-known/jwks.json"
+      authzBundleUrl: "http://infra-authz-1-0-4:8223/authz/bundle"
+      iamJwksUrl: "http://infra-iam-casdoor-1-0-6:8200/.well-known/jwks.json"
   - id: erp/finance
-    version: 1.0.5 # v1.0.5：docs/手册.md 的 TEST_PG_DSN 示例改指向 brickkit_test_db，无破坏性变更。
+    version: 1.0.6 # v1.0.6：新增 make seed/db-reset——人工凭证+期间生命周期+法人授权演示数据，旁路修复 C23，无破坏性变更。
+    # v1.0.5：docs/手册.md 的 TEST_PG_DSN 示例改指向 brickkit_test_db，无破坏性变更。
     # v1.0.4：补 ListEntries 真实跨法人排除测试，无破坏性变更。
     # v1.0.3：阶段三 Task 6，权限键换成真实键 + legal_entity 维
                    # 数据权限真正生效（新增 legal_entity_access 分配表 + 管理
                    # 接口），无破坏性变更
     expose: true # 同上：curl 打 HTTP 需要，gRPC 只能走容器 IP
     config:
-      authzBundleUrl: "http://infra-authz-1-0-3:8223/authz/bundle"
-      iamJwksUrl: "http://infra-iam-casdoor-1-0-5:8200/.well-known/jwks.json"
+      authzBundleUrl: "http://infra-authz-1-0-4:8223/authz/bundle"
+      iamJwksUrl: "http://infra-iam-casdoor-1-0-6:8200/.well-known/jwks.json"
   - id: erp/sales
-    version: 1.0.14 # v1.0.14：依赖版本号同步跟进 erp/inventory@1.0.9，无破坏性变更。
+    version: 1.0.15 # v1.0.15：新增 make seed——独立订单数据+依赖版本号同步（mdm/customer@1.0.5、mdm/product@1.0.5、erp/inventory@1.0.10、erp/finance@1.0.6），无破坏性变更。
+    # v1.0.14：依赖版本号同步跟进 erp/inventory@1.0.9，无破坏性变更。
     # v1.0.13：依赖版本号同步跟进 erp/inventory@1.0.8，无破坏性变更。
     # v1.0.12：依赖版本号同步跟进 erp/inventory@1.0.7、erp/finance@1.0.5、infra/workflow@1.0.2，无破坏性变更。
     # v1.0.11：强依赖版本号同步跟进 erp/finance@1.0.4，无破坏性变更。
@@ -93,13 +98,14 @@ components:
       # 阶段二没有多仓选货逻辑）。"1" 是 erp-inventory 迁移播种的 WH-EAST
       # 的真实 id（003_seed_warehouses.up.sql，真机查过 warehouses 表）。
       defaultWarehouseId: "1"
-      authzBundleUrl: "http://infra-authz-1-0-3:8223/authz/bundle"
-      iamJwksUrl: "http://infra-iam-casdoor-1-0-5:8200/.well-known/jwks.json"
+      authzBundleUrl: "http://infra-authz-1-0-4:8223/authz/bundle"
+      iamJwksUrl: "http://infra-iam-casdoor-1-0-6:8200/.well-known/jwks.json"
       # 补偿连续失败 3 次时建的 infra-workflow exception 待办分配给谁——
       # 本阶段没有 mdm-org，先固定指派给这个占位 sub（设计计划 §4.4.4）。
       exceptionAssigneeSub: "u_ops_reviewer"
   - id: infra/authz
-    version: 1.0.3 # v1.0.3：新增 make seed/seed-clean，种子授权归本组件自己持有，无破坏性变更。
+    version: 1.0.4 # v1.0.4：make seed 扩成多角色权限体系样板——部门树+3个权限子集角色，无破坏性变更。
+    # v1.0.3：新增 make seed/seed-clean，种子授权归本组件自己持有，无破坏性变更。
     # v1.0.2：阶段三 Task 6，权限键换成真实键（/api/me/permissions
                    # 换 besdk.Authenticated，/api/admin/** 换 infra.authz.admin）+
                    # 临时的 X-Authz-Debug-Sub header 退役、改用真实验签后的
@@ -111,8 +117,8 @@ components:
       bootstrapAdminSub: ""
       # 本组件自吃自己下发的 bundle（README「自我鉴权」一节）——地址
       # 指向自己，同其余五个组件一样是手写字面量，不是依赖边注入。
-      authzBundleUrl: "http://infra-authz-1-0-3:8223/authz/bundle"
-      iamJwksUrl: "http://infra-iam-casdoor-1-0-5:8200/.well-known/jwks.json"
+      authzBundleUrl: "http://infra-authz-1-0-4:8223/authz/bundle"
+      iamJwksUrl: "http://infra-iam-casdoor-1-0-6:8200/.well-known/jwks.json"
       # ⚠️ Task 14 真机测试时发现的系统性缺口：这一项从建仓库起就从未被
       # 填过——be-ops 的 permissions 子命令只写 registry/permissions.tsv，
       # 从没把结果灌回这里，role_permissions 的 FK 约束因此让"正向权限
@@ -129,7 +135,8 @@ components:
       # 条目间逗号分隔（阶段三 Task 4 设计决策）。
       permissionCatalog: "crm.opportunity.edit|编辑商机|action|crm/opportunity,crm.opportunity.view|查看商机|page|crm/opportunity,crm.opportunity.win|商机赢单|action|crm/opportunity,erp.finance.close|关账/反关账/锁定期间|action|erp/finance,erp.finance.manage_access|分配法人访问权限|action|erp/finance,erp.finance.post|手工过账/冲销|action|erp/finance,erp.finance.view|查看财务数据|page|erp/finance,erp.inventory.adjust|盘盈盘亏调整|action|erp/inventory,erp.inventory.issue|确认出库|action|erp/inventory,erp.inventory.manage_access|分配仓库访问权限|action|erp/inventory,erp.inventory.receive|入库|action|erp/inventory,erp.inventory.reserve|预留库存|action|erp/inventory,erp.inventory.view|查看库存|page|erp/inventory,erp.sales.cancel|取消订单|action|erp/sales,erp.sales.confirm|确认订单|action|erp/sales,erp.sales.create|建立报价/订单|action|erp/sales,erp.sales.ship|发货|action|erp/sales,erp.sales.view|查看销售订单|page|erp/sales,infra.authz.admin|权限与角色管理|page|infra/authz,infra.bff-mobile.customer.view|查询客户（移动端）|action|infra/bff-mobile,infra.bff-mobile.inventory.view|查询库存余量（移动端）|action|infra/bff-mobile,infra.bff-mobile.order.view|查询销售订单（移动端）|action|infra/bff-mobile,infra.bff-mobile.product.view|查询产品（移动端）|action|infra/bff-mobile,infra.bff-mobile.task.view|查询我的待办（移动端）|action|infra/bff-mobile,infra.notification.admin|通知排障视图|page|infra/notification,infra.notification.preference.edit|编辑通知偏好|action|infra/notification,infra.notification.view|查看我的通知|page|infra/notification,infra.print.render|调用渲染|action|infra/print,infra.print.template.edit|编辑打印模板|action|infra/print,infra.print.template.view|查看打印模板|page|infra/print,infra.workflow.admin|待办全局视图|page|infra/workflow,infra.workflow.task.act|处理待办（同意/驳回）|action|infra/workflow,infra.workflow.task.view|查看我的待办|page|infra/workflow,integration.im.admin|钉钉投递排障|page|integration/im-dingtalk,mdm.customer.add_contact|新增客户联系人|action|mdm/customer,mdm.customer.create|新建客户|action|mdm/customer,mdm.customer.set_status|启用/停用客户|action|mdm/customer,mdm.customer.update|编辑客户|action|mdm/customer,mdm.customer.view|查看客户主数据|page|mdm/customer,mdm.product.create|新建产品|action|mdm/product,mdm.product.edit|编辑产品|action|mdm/product,mdm.product.view|查看产品主数据|page|mdm/product"
   - id: infra/iam-casdoor
-    version: 1.0.5 # v1.0.5：修 get-application 解析（Casdoor 应用真实登录后带非法控制字符），无破坏性变更。
+    version: 1.0.6 # v1.0.6：make seed 从单一超级用户扩成 4 个覆盖不同角色画像的测试用户，依赖版本号同步跟进 infra/authz@1.0.4，无破坏性变更。
+    # v1.0.5：修 get-application 解析（Casdoor 应用真实登录后带非法控制字符），无破坏性变更。
     # v1.0.4：新增 make seed/seed-clean + 同步 infra/authz@1.0.3 依赖引用，无破坏性变更。
     # 阶段三 Task 7：Casdoor 适配层建成，全系统第一次有真实
                    # 签发方能发出验签通过的 JWT——这一条上线之前，以上
@@ -178,7 +185,7 @@ components:
       # token 唯一的 JWKS 来源就是本组件自己（组件自己的 README/AGENTS.md
       # 已经解释过这是"真正意义上的自引用"，同 infra-authz 的
       # authzBundleUrl 自引用是同一个道理）。
-      iamJwksUrl: "http://infra-iam-casdoor-1-0-5:8200/.well-known/jwks.json"
+      iamJwksUrl: "http://infra-iam-casdoor-1-0-6:8200/.well-known/jwks.json"
   - id: infra/workflow
     version: 1.0.2 # v1.0.2：docs/手册.md 的 TEST_PG_DSN 示例改指向 brickkit_test_db，无破坏性变更。
     # 阶段三 Task 8 首次出档：审批待办中心，零依赖（§6.6 铁律三：
@@ -188,8 +195,8 @@ components:
                    # 维护循环的真实缺口（根 docs/dev/实测踩坑记录.md C12）
     expose: true # curl 打 HTTP 需要（主端口 8201），gRPC（9201）只能走容器 IP，同其余组件先例
     config:
-      authzBundleUrl: "http://infra-authz-1-0-3:8223/authz/bundle"
-      iamJwksUrl: "http://infra-iam-casdoor-1-0-5:8200/.well-known/jwks.json"
+      authzBundleUrl: "http://infra-authz-1-0-4:8223/authz/bundle"
+      iamJwksUrl: "http://infra-iam-casdoor-1-0-6:8200/.well-known/jwks.json"
   - id: infra/notification
     version: 1.0.3 # v1.0.3：docs/手册.md 的 TEST_PG_DSN 示例改指向 brickkit_test_db，无破坏性变更。
     # 阶段三 Task 9 首次出档：统一通知中心，零依赖零入边，
@@ -199,8 +206,8 @@ components:
                    # v1.0.2：consumer 测试改用测试私有 subject，避免同机真实容器抢消息（踩坑记录 E2）。
     expose: true # curl 打 HTTP 需要（主端口 8202），gRPC（9202）只能走容器 IP，同其余组件先例
     config:
-      authzBundleUrl: "http://infra-authz-1-0-3:8223/authz/bundle"
-      iamJwksUrl: "http://infra-iam-casdoor-1-0-5:8200/.well-known/jwks.json"
+      authzBundleUrl: "http://infra-authz-1-0-4:8223/authz/bundle"
+      iamJwksUrl: "http://infra-iam-casdoor-1-0-6:8200/.well-known/jwks.json"
   - id: integration/im-dingtalk
     version: 1.0.3 # v1.0.3：docs/手册.md 的 TEST_PG_DSN 示例改指向 brickkit_test_db，无破坏性变更。
     # 阶段三 Task 9：channel:im 族第一个成员，零依赖零入边
@@ -215,13 +222,14 @@ components:
                    # Task 9 小节有完整记录）
     expose: true # curl 打 HTTP 需要（主端口 8207），gRPC（9207）只能走容器 IP，同其余组件先例
     config:
-      authzBundleUrl: "http://infra-authz-1-0-3:8223/authz/bundle"
-      iamJwksUrl: "http://infra-iam-casdoor-1-0-5:8200/.well-known/jwks.json"
+      authzBundleUrl: "http://infra-authz-1-0-4:8223/authz/bundle"
+      iamJwksUrl: "http://infra-iam-casdoor-1-0-6:8200/.well-known/jwks.json"
       dingtalkAppKey: "${DINGTALK_APP_KEY}"
       dingtalkAppSecret: "${DINGTALK_APP_SECRET}"
       dingtalkAgentId: "${DINGTALK_AGENT_ID}"
   - id: infra/print
-    version: 1.0.3 # v1.0.3：docs/手册.md 的 TEST_PG_DSN/DATABASE_NAME 示例改指向 brickkit_test_db，无破坏性变更。
+    version: 1.0.4 # v1.0.4：新增 make seed——上传送货单PDF+发货标签ZPL两个真实模板，无破坏性变更。
+    # v1.0.3：docs/手册.md 的 TEST_PG_DSN/DATABASE_NAME 示例改指向 brickkit_test_db，无破坏性变更。
     # 阶段三 Task 10：全系统第一个 Python 组件，纯函数打印
                    # 渲染中心，零依赖零出边（erp/sales 等业务组件强依赖
                    # Render，本组件反过来不依赖任何人）。真机验证过完整
@@ -230,10 +238,11 @@ components:
                    # 人工核对内容与模板对得上（03-阶段三 Task 10 小节）
     expose: true # curl/grpcurl 打通需要（主端口 8400），gRPC（9400）只能走容器 IP，同其余组件先例
     config:
-      authzBundleUrl: "http://infra-authz-1-0-3:8223/authz/bundle"
-      iamJwksUrl: "http://infra-iam-casdoor-1-0-5:8200/.well-known/jwks.json"
+      authzBundleUrl: "http://infra-authz-1-0-4:8223/authz/bundle"
+      iamJwksUrl: "http://infra-iam-casdoor-1-0-6:8200/.well-known/jwks.json"
   - id: infra/bff-mobile
-    version: 1.0.8 # v1.0.8：弱依赖版本号同步跟进 erp/sales@1.0.14、erp/inventory@1.0.9，无破坏性变更。
+    version: 1.0.9 # v1.0.9：弱依赖版本号同步跟进 mdm/customer@1.0.5、mdm/product@1.0.5、erp/sales@1.0.15、erp/inventory@1.0.10，无破坏性变更。
+    # v1.0.8：弱依赖版本号同步跟进 erp/sales@1.0.14、erp/inventory@1.0.9，无破坏性变更。
     # v1.0.7：弱依赖版本号同步跟进 erp/sales@1.0.13、erp/inventory@1.0.8，无破坏性变更。
     # v1.0.6：弱依赖版本号同步跟进 erp/sales@1.0.12、erp/inventory@1.0.7、infra/workflow@1.0.2，无破坏性变更。
     # v1.0.5：弱依赖版本号同步跟进 erp/sales@1.0.11，无破坏性变更。
@@ -253,8 +262,8 @@ components:
     expose: true
     exposePort: 28500 # registry/ports.tsv 的既有登记（决策 107：独立容器 exposePort 一律走 2xxxx 段）
     config:
-      authzBundleUrl: "http://infra-authz-1-0-3:8223/authz/bundle"
-      iamJwksUrl: "http://infra-iam-casdoor-1-0-5:8200/.well-known/jwks.json"
+      authzBundleUrl: "http://infra-authz-1-0-4:8223/authz/bundle"
+      iamJwksUrl: "http://infra-iam-casdoor-1-0-6:8200/.well-known/jwks.json"
   - id: frontend/standard
     version: 1.0.0 # 阶段三 Task 12：PC 独立 Vite SPA + 移动端 Uni-app H5，
                    # 共享 packages/design-tokens，唯一没有后端形态的组件
@@ -272,7 +281,8 @@ components:
       iamIssuerUrl: "http://localhost:8000" # Casdoor 浏览器直连地址，随部署环境的真实公网域名替换
       casdoorClientId: "" # 部署时用 Casdoor 管理 API 现查 brickkit-app 的 client_id 填入，不提交真实值
   - id: crm/opportunity
-    version: 1.0.5 # v1.0.5：新增 make seed/seed-clean，种子商机归本组件自己持有，无破坏性变更。
+    version: 1.0.6 # v1.0.6：make seed 加量到 11 条商机，补 org 维数据样本+信用超限负向场景，依赖版本号同步跟进 mdm/customer@1.0.5、mdm/product@1.0.5，无破坏性变更。
+    # v1.0.5：新增 make seed/seed-clean，种子商机归本组件自己持有，无破坏性变更。
     # v1.0.4：docs/手册.md 的 TEST_PG_DSN 示例改指向 brickkit_test_db，无破坏性变更。
     # v1.0.3：补 ListOpportunities 真实数据权限边界测试，无破坏性变更。
     # v1.0.2：弱依赖版本号同步跟进 mdm/customer@1.0.4、mdm/product@1.0.4。
@@ -285,8 +295,8 @@ components:
                    # 总线（03-阶段三 Task 13 小节）。
     expose: true # curl 打 HTTP 需要，gRPC 只能走容器 IP
     config:
-      authzBundleUrl: "http://infra-authz-1-0-3:8223/authz/bundle"
-      iamJwksUrl: "http://infra-iam-casdoor-1-0-5:8200/.well-known/jwks.json"
+      authzBundleUrl: "http://infra-authz-1-0-4:8223/authz/bundle"
+      iamJwksUrl: "http://infra-iam-casdoor-1-0-6:8200/.well-known/jwks.json"
 resources:
   - id: postgres-shared
     kind: database
