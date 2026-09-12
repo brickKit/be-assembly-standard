@@ -29,7 +29,7 @@
 |---|---|
 | 阶段 | **阶段一** ✅ 已出档。**阶段二** ✅ 已出档（[`02-阶段二`](../plans/02-阶段二-验平台.md)，复盘见 [`02-阶段二复盘`](../retrospectives/02-阶段二-验平台-复盘.md)）。**阶段三 · 业务闭环** ✅ 主线已收官——9 个新组件 + 2 个新 SDK，Task 1–15 全部完成；逐 Task 的实现细节、真机验证过程、意外发现的 bug 全部在 [`03-阶段三`](../plans/03-阶段三-业务闭环.md) 本身，这里不重复。核心成果：阶段二 5 个组件的权限判定从 fail-closed stub 换成 `infra-authz` 真实 bundle；全系统第一次有真实签发方（`infra-iam-casdoor`）签发验签通过的 JWT；附录 E"商机赢单→订单→库存→应收"全链路真机跑通。⚠️ **已知的流程偏离**：按 [`02-阶段二复盘`](../retrospectives/02-阶段二-验平台-复盘.md) 定下的规矩，阶段三主线收官后应该先写 `docs/retrospectives/03-阶段三-业务闭环-复盘.md` 再继续（见 [`03-阶段三`](../plans/03-阶段三-业务闭环.md) 的"出档之后要做的事"），但下面三条后续工作是在没有先写复盘的情况下直接开始的——这份复盘目前**仍未补**，找时间应该补上。**阶段三主线之后的三条工作线**（均已完成）：① 测试体系扩展，已固化进 [`04-testing-standard.md`](standards/04-testing-standard.md)；② 种子数据丰富度整改，9 个组件 + 1 个下游同步已按新版本发布（当前版本见下方「已建组件一览」），过程中的具体 bug 见 [`field-tested-pitfalls-log.md`](../dev/field-tested-pitfalls-log.md)（C16–C24、E3）；③ 文档架构重构，规则见 [`01-documentation-standard.md`](standards/01-documentation-standard.md)，本项工作本身进行中。 |
 | 已建组件 | **14 个建完**，见下方「已建组件一览」表。十三个后端组件的 `iamJwksUrl`/`authzBundleUrl` 都指向真实运行的对端。 |
-| 工具仓库 | `be-sdk-go@v0.2.5`、`be-ops@v0.1.5`、`be-acceptance@v0.3.11`（`make gates` 六个 gate + `bump-version` 子命令的产出方，见 SOP-W-11）、`be-sdk-python@v0.3.1`、`be-sdk-ts@v0.3.3`——全部已 tag（带注解）并被装配仓库的 submodule 指针跟踪。⚠️ **已知的版本漂移**：`be-sdk-go@v0.2.5` 修的 `StartOutboxPump` 原子认领 bug（踩坑记录 C15）目前只有 `infra-iam-casdoor`/`erp-inventory`/`erp-sales` 升级到位，其余业务组件仍在更早的 v0.2.1-v0.2.4——这个 bug 只在 K8s 多副本场景触发，不是本阶段的阻塞项，按"下次改动顺带升"处理。每个工具版本具体修了什么、哪次真机验证发现的，见各自仓库自己的 changelog 或 [`field-tested-pitfalls-log.md`](../dev/field-tested-pitfalls-log.md)（C11/C12/C15、A9/A10/A11、类别 F）。 |
+| 工具仓库 | `be-sdk-go@v0.2.5`、`be-ops@v0.1.5`、`be-acceptance@v0.3.12`（`make gates` 六个 gate + `bump-version` 子命令的产出方，见 SOP-W-11）、`be-sdk-python@v0.3.1`、`be-sdk-ts@v0.3.3`——全部已 tag（带注解）并被装配仓库的 submodule 指针跟踪。⚠️ **已知的版本漂移**：`be-sdk-go@v0.2.5` 修的 `StartOutboxPump` 原子认领 bug（踩坑记录 C15）目前只有 `infra-iam-casdoor`/`erp-inventory`/`erp-sales` 升级到位，其余业务组件仍在更早的 v0.2.1-v0.2.4——这个 bug 只在 K8s 多副本场景触发，不是本阶段的阻塞项，按"下次改动顺带升"处理。每个工具版本具体修了什么、哪次真机验证发现的，见各自仓库自己的 changelog 或 [`field-tested-pitfalls-log.md`](../dev/field-tested-pitfalls-log.md)（C11/C12/C15、A9/A10/A11、类别 F）。 |
 | 已钉死不许改的 | `registry/ports.tsv`、`registry/schemas.tsv`、`registry/permissions.tsv`（**只增不改**，见下）；**每种语言的技术栈与模块入口签名**（设计书 §12.4 / §12.5）；**PC 端骨架形态**（§12.6.7）；**权限体系**（第 14 章） |
 | 平台 CLI | 已装 **v0.2.2**。`brickkit restore`（含 `--check`）、`init --hooks`、`sync`/`remove` 对已登记 submodule 的守卫（`SUBMODULE_GUARD`）均已实现并在用。已知修复历史见 [`field-tested-pitfalls-log.md`](../dev/field-tested-pitfalls-log.md) 与 brickKit 仓库自己的 changelog。 |
 | 常用验收 | `make tier0`（档 0 六项验收，**每加一个组件都要重跑**）、`make docs-check REPO=<仓库名>`、`make gates`、`make version-check`（扫全部 submodule 的 tag 漂移） |
@@ -44,14 +44,14 @@
 | `mdm-product` | 1.0.6 | 只读枢纽，`data_scopes: none` | [`docs/design/mdm-product.md`](../design/mdm-product.md) |
 | `erp-inventory` | 1.0.13 | 物理命令枢纽：TCC 三件套 + claim-first 幂等 + `warehouse` 维数据权限 | [`docs/design/erp-inventory.md`](../design/erp-inventory.md) |
 | `erp-finance` | 1.0.9 | 事件汇枢纽：`FinanceService` 11 rpc + `legal_entity` 维数据权限 | [`docs/design/erp-finance.md`](../design/erp-finance.md) |
-| `erp-sales` | 1.0.18 | 唯一的链上一环：四条强依赖全部真实 gRPC 调用，`ConfirmOrder` 的 TCC 补偿链 + `org`/`owner` 两维数据权限 | [`docs/design/erp-sales.md`](../design/erp-sales.md) |
+| `erp-sales` | 1.0.19 | 唯一的链上一环：四条强依赖全部真实 gRPC 调用，`ConfirmOrder` 的 TCC 补偿链 + `org`/`owner` 两维数据权限 | [`docs/design/erp-sales.md`](../design/erp-sales.md) |
 | `infra-authz` | 1.0.4 | 权限体系里唯一持久化状态的组件：`GET /authz/bundle` 策略下发，纯并集无 Deny | [`docs/design/infra-authz.md`](../design/infra-authz.md) |
 | `infra-iam-casdoor` | 1.0.6 | `slot:iam` Default 成员：两个 token 架构，refresh token rotation + 重放检测 | [`docs/design/infra-iam-casdoor.md`](../design/infra-iam-casdoor.md) |
 | `infra-workflow` | 1.0.2 | 零依赖审批待办中心：claim-first 幂等 + `owner`/`org` 两维数据权限 | [`docs/design/infra-workflow.md`](../design/infra-workflow.md) |
 | `infra-notification` | 1.0.3 | 路由中枢：零依赖零出边完全活在事件图上，两层通道偏好 | [`docs/design/infra-notification.md`](../design/infra-notification.md) |
 | `integration-im-dingtalk` | 1.0.4 | `channel:im` 族第一个成员：钉钉 access_token 缓存刷新 | [`docs/design/integration-im-dingtalk.md`](../design/integration-im-dingtalk.md) |
 | `infra-print` | 1.0.4 | 全系统第一个 Python 组件：纯函数打印渲染中心，PDF/ZPL 双渲染 | [`docs/design/infra-print.md`](../design/infra-print.md) |
-| `infra-bff-mobile` | 1.0.12 | 全系统第一个 TypeScript 组件：GraphQL BFF，零强依赖零数据库 | [`docs/design/infra-bff-mobile.md`](../design/infra-bff-mobile.md) |
+| `infra-bff-mobile` | 1.0.13 | 全系统第一个 TypeScript 组件：GraphQL BFF，零强依赖零数据库 | [`docs/design/infra-bff-mobile.md`](../design/infra-bff-mobile.md) |
 | `frontend-standard` | 1.0.0 | PC 独立 Vite SPA + 移动端 Uni-app H5，唯一没有后端形态的组件 | [`docs/design/frontend-standard.md`](../design/frontend-standard.md) |
 | `crm-opportunity` | 1.0.7 | 阶段三第一个业务组件、CRM 域第一个组件：商机全生命周期 | [`docs/design/crm-opportunity.md`](../design/crm-opportunity.md) |
 

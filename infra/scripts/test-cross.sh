@@ -46,8 +46,20 @@ mapfile -t DEPS < <(awk '
 # 部署用的 brickkit_db（brickkit.yaml 的资源绑定写死的，跟这个环境变量
 # 无关）——如果被测流程会通过真实 gRPC 调用让依赖容器产生新数据（比如
 # 真的建一个客户），那条数据还是会落进 brickkit_db，不受这里影响。
+#
+# ⚠️ 这条注释曾经只停在"提醒"这一步，没有配套的环境变量——真实踩过的
+# 坑：erp-sales 的 confirm_test.go/opportunity_won_test.go 有两个辅助
+# 函数（receiveRealStock/getRealBalance）直接读写 erp-inventory 的
+# schema，图省事传的是 TEST_PG_DSN 那个连接，结果真实 Reserve 调用
+# （打真实在跑的 erp-inventory 容器，读的是 brickkit_db）永远看不到写
+# 进 brickkit_test_db 的库存——TestConfirmOrder_真实happy_path 这条
+# 全组件最核心的 TCC happy-path 测试因此长期报"库存不足"，没人发现是
+# 因为很少有人真的单独重跑 test-cross。新增 REAL_PG_DSN，专门给这类
+# "需要让真实依赖容器看到这批数据"的测试辅助函数用，不跟 TEST_PG_DSN
+# 混用。
 if [ -f "$ROOT/.env" ]; then set -a; . "$ROOT/.env"; set +a; fi
 : "${TEST_PG_DSN:=postgres://postgres:${POSTGRES_PASSWORD:-postgres}@localhost:5432/brickkit_test_db?sslmode=disable}"
+: "${REAL_PG_DSN:=postgres://postgres:${POSTGRES_PASSWORD:-postgres}@localhost:5432/brickkit_db?sslmode=disable}"
 : "${TEST_NATS_URL:=nats://localhost:4222}"
 
 FWDS=()
@@ -87,5 +99,5 @@ else
 fi
 
 cd "$DIR"
-env "${ENVS[@]}" TEST_PG_DSN="$TEST_PG_DSN" TEST_NATS_URL="$TEST_NATS_URL" \
+env "${ENVS[@]}" TEST_PG_DSN="$TEST_PG_DSN" REAL_PG_DSN="$REAL_PG_DSN" TEST_NATS_URL="$TEST_NATS_URL" \
 	go test ./backend/... -race -count=1 "$@"
