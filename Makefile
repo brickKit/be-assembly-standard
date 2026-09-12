@@ -109,6 +109,12 @@ version-check:  ## 扫全部 submodule：HEAD 是否领先最新 tag（阶段三
 	@bash infra/scripts/version-check.sh
 .PHONY: version-check
 
+bump-version:  ## 自动传播一次版本升级（算出全部下游要跟着同步的组件+改好所有文件），不写盘先看计划：make bump-version PLAN=<计划文件>；确认后加 APPLY=1 真的落地。计划文件格式与完整流程见 00-master-guide.md SOP-W-11
+	@test -n "$(PLAN)" || { echo "用法：make bump-version PLAN=<计划文件> [APPLY=1]"; exit 1; }
+	@cd tools/be-acceptance && go build -o build/be-acceptance ./cmd/be-acceptance
+	@tools/be-acceptance/build/be-acceptance bump-version --root . --plan "$(PLAN)" $(if $(APPLY),--apply,)
+.PHONY: bump-version
+
 docs-check:  ## 检查某个组件的四份文档：make docs-check REPO=mdm-customer
 	@test -n "$(REPO)" || { echo "用法：make docs-check REPO=<仓库名>"; exit 1; }
 	@bash $(S)/docs-check.sh "$(REPO)"

@@ -983,6 +983,38 @@ When a wholesale rewrite beats patching, and exactly what process to follow — 
 
 ✅ **A verified example**: the seed-data-richness overhaul (the history W-7's paragraphs above link to) is the real-world validation of "seed-data-class judgment calls get a looser rewrite bar" — "adding data" to a component was, most of the time, not a few lines appended to the end of the existing `seed.sh`, but redesigning the whole `seed.sh` around the new criteria. That's the expected way to do this work, not "failed to control the blast radius."
 
+#### W-11 · Propagating a version bump: mechanized, not hand-hunted (tool: `be-acceptance bump-version`)
+
+**The problem this solves**: this project's own rule is that *every* change — including a pure-documentation or pure-test fix with zero behavior/contract change — gets its own version bump (§W's overall rhythm; the reasoning for why version and image must move together, not just why a bump happens at all, is below). But a single component's version bump doesn't stay local: every other component that lists it under `dependencies.components` must have that reference updated too (its own version bump, cascading further); the root `brickkit.yaml`'s top-level `components[].version` pin needs updating; the root `AGENTS.md`/`docs/zh/AGENTS.md` Component Roster table needs updating; and if the bumped component is `infra/authz` or `infra/iam-casdoor`, every hand-written `authzBundleUrl`/`iamJwksUrl` literal across every other component's `config:` section needs its embedded hostname-version updated too (pitfall C18 — missed 25 of these references at once, because nothing was checking). Hunting all of this down by hand, file by file, grep by grep, is exactly the kind of mechanical, well-defined, repeated task this project's own testing philosophy already has a name for ("whatever criterion can be mechanized, must be mechanized") — the only reason it wasn't mechanized sooner is that propagating a change is a different shape of problem than detecting one.
+
+**The tool**: `tools/be-acceptance`'s `bump-version` subcommand (package `versionbump`, wired into the same `be-acceptance` binary `make gates` already builds).
+
+```
+be-acceptance bump-version --root . --plan <plan-file>            # compute + print only, writes nothing
+be-acceptance bump-version --root . --plan <plan-file> --apply    # write the files for real
+```
+
+The plan file lists only the components that **actually changed** (real code, real tests, real docs) — not the ones that only need a dependency-reference sync, which the tool derives automatically by walking the reverse dependency graph to a fixed point:
+
+```
+id: erp/inventory
+reason: 补 TestProperty_库存三大不变式，无行为/契约变更。
+---
+id: erp/finance
+reason: 补 TestProperty_借贷不平衡的分录被拒绝且不落库，无行为/契约变更。
+```
+
+(`version: 1.1.0` is an optional third field per block, for the rare case that needs an explicit target instead of the default next-patch bump.)
+
+Running it against the two changes above doesn't just bump those two — it also finds `erp-sales` (depends on both), then `infra-bff-mobile` (depends on `erp-sales`), assigns each its own next patch version, writes an auto-generated changelog line for each ("depends-on-X-so-following-along" text, distinct from the hand-written reasons for the two real changes), and updates every file that needed it: each touched component's own `component.yaml` (`metadata.version`, `deployment.image` tag, and — for anything that's a dependent — the `id@version` references inside its own `dependencies.components` block), the root `brickkit.yaml` pin, and both `AGENTS.md` roster tables.
+
+⚠️ **What it deliberately does *not* do**: `git commit`/`tag`/`make image`/`push`. Editing files in bulk is a safe, reviewable, git-revertable operation; pushing a tagged, rebuilt image to several separate component repos is exactly the class of "visible to others, hard to reverse" action this project has always kept a human/AI checkpoint in front of (real-machine verification, `make gates`, reading the diff) — collapsing that into the same one-shot call would trade a real safety margin for a small amount of extra convenience. The workflow stays two-phase on purpose:
+
+1. **Compute the whole batch first, apply once.** If a session's work touches several components at once (a common shape when a feature spans components), write **one** plan file naming all of the real changes and run `bump-version` **once** — not once per component as each one gets finished. This is what actually removes the "back-and-forth" cost: every file lands at its final version number in a single pass, instead of a component's dependency reference getting bumped once, then bumped *again* a few minutes later because a sibling component changed too.
+2. **Finalize per component, in the order the tool printed** (its printed order is root-changes-first, then whatever they pulled in — purely for readability; the file edits themselves don't depend on doing this in any particular order, since every new version number was already decided in step 1). For each: review the diff, run that component's own tests/`make gates`, `git commit` + `git tag -a` + `make image`, `git push` (commit and tag). Then commit the parent repo (`brickkit.yaml`, both `AGENTS.md` files, the regenerated `.brickkit/manifests`), verify with a real `brickkit up` pass, `brickkit down`, and push.
+
+**Why the version number still moves even for a pure docs/test change, instead of only bumping "the repo" and leaving `metadata.version`/the image alone**: this was raised directly as a question — since bumping-and-rebuilding is entirely a local, free operation here (`make image` is a local build, seconds long, no registry involved — Global Constraint §J), the only real cost this project was ever paying for "every change gets a version bump" was the *bookkeeping labor* of propagating it — and that's exactly what this tool removes. Decoupling the git tag from `metadata.version`/`deployment.image` wouldn't save anything further (the automation already did), and it would reopen a real, already-lived failure mode: `component.yaml` is `COPY`'d **into the image itself**, so the version the image carries internally must equal the version painted on its tag — that's pitfall C5, and its inverse (a version bumped, the image never rebuilt to match, `brickkit up` silently reusing a stale local image) is C13. A "this one's just tests, skip the rebuild" exception reopens exactly that judgment call — and per this document's own W-2, "is this actually behavior-neutral" is precisely the kind of call that's occasionally wrong, which is why L2 tests exist instead of "the author was pretty sure." Keep the invariant (version number, git tag, and image contents always agree); let the tool carry the labor instead.
+
 ---
 
 ### SOP-B · Backend components (Go / Python)

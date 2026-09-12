@@ -29,7 +29,7 @@
 |---|---|
 | 阶段 | **阶段一** ✅ 已出档。**阶段二** ✅ 已出档（[`02-阶段二`](../plans/02-阶段二-验平台.md)，复盘见 [`02-阶段二复盘`](../retrospectives/02-阶段二-验平台-复盘.md)）。**阶段三 · 业务闭环** ✅ 主线已收官——9 个新组件 + 2 个新 SDK，Task 1–15 全部完成；逐 Task 的实现细节、真机验证过程、意外发现的 bug 全部在 [`03-阶段三`](../plans/03-阶段三-业务闭环.md) 本身，这里不重复。核心成果：阶段二 5 个组件的权限判定从 fail-closed stub 换成 `infra-authz` 真实 bundle；全系统第一次有真实签发方（`infra-iam-casdoor`）签发验签通过的 JWT；附录 E"商机赢单→订单→库存→应收"全链路真机跑通。⚠️ **已知的流程偏离**：按 [`02-阶段二复盘`](../retrospectives/02-阶段二-验平台-复盘.md) 定下的规矩，阶段三主线收官后应该先写 `docs/retrospectives/03-阶段三-业务闭环-复盘.md` 再继续（见 [`03-阶段三`](../plans/03-阶段三-业务闭环.md) 的"出档之后要做的事"），但下面三条后续工作是在没有先写复盘的情况下直接开始的——这份复盘目前**仍未补**，找时间应该补上。**阶段三主线之后的三条工作线**（均已完成）：① 测试体系扩展，已固化进 [`04-testing-standard.md`](standards/04-testing-standard.md)；② 种子数据丰富度整改，9 个组件 + 1 个下游同步已按新版本发布（当前版本见下方「已建组件一览」），过程中的具体 bug 见 [`field-tested-pitfalls-log.md`](../dev/field-tested-pitfalls-log.md)（C16–C24、E3）；③ 文档架构重构，规则见 [`01-documentation-standard.md`](standards/01-documentation-standard.md)，本项工作本身进行中。 |
 | 已建组件 | **14 个建完**，见下方「已建组件一览」表。十三个后端组件的 `iamJwksUrl`/`authzBundleUrl` 都指向真实运行的对端。 |
-| 工具仓库 | `be-sdk-go@v0.2.5`、`be-ops@v0.1.5`、`be-acceptance@v0.3.8`（`make gates` 六个 gate 的产出方）、`be-sdk-python@v0.3.1`、`be-sdk-ts@v0.3.3`——全部已 tag（带注解）并被装配仓库的 submodule 指针跟踪。⚠️ **已知的版本漂移**：`be-sdk-go@v0.2.5` 修的 `StartOutboxPump` 原子认领 bug（踩坑记录 C15）目前只有 `infra-iam-casdoor`/`erp-inventory`/`erp-sales` 升级到位，其余业务组件仍在更早的 v0.2.1-v0.2.4——这个 bug 只在 K8s 多副本场景触发，不是本阶段的阻塞项，按"下次改动顺带升"处理。每个工具版本具体修了什么、哪次真机验证发现的，见各自仓库自己的 changelog 或 [`field-tested-pitfalls-log.md`](../dev/field-tested-pitfalls-log.md)（C11/C12/C15、A9/A10/A11、类别 F）。 |
+| 工具仓库 | `be-sdk-go@v0.2.5`、`be-ops@v0.1.5`、`be-acceptance@v0.3.9`（`make gates` 六个 gate + `bump-version` 子命令的产出方，见 SOP-W-11）、`be-sdk-python@v0.3.1`、`be-sdk-ts@v0.3.3`——全部已 tag（带注解）并被装配仓库的 submodule 指针跟踪。⚠️ **已知的版本漂移**：`be-sdk-go@v0.2.5` 修的 `StartOutboxPump` 原子认领 bug（踩坑记录 C15）目前只有 `infra-iam-casdoor`/`erp-inventory`/`erp-sales` 升级到位，其余业务组件仍在更早的 v0.2.1-v0.2.4——这个 bug 只在 K8s 多副本场景触发，不是本阶段的阻塞项，按"下次改动顺带升"处理。每个工具版本具体修了什么、哪次真机验证发现的，见各自仓库自己的 changelog 或 [`field-tested-pitfalls-log.md`](../dev/field-tested-pitfalls-log.md)（C11/C12/C15、A9/A10/A11、类别 F）。 |
 | 已钉死不许改的 | `registry/ports.tsv`、`registry/schemas.tsv`、`registry/permissions.tsv`（**只增不改**，见下）；**每种语言的技术栈与模块入口签名**（设计书 §12.4 / §12.5）；**PC 端骨架形态**（§12.6.7）；**权限体系**（第 14 章） |
 | 平台 CLI | 已装 **v0.2.2**。`brickkit restore`（含 `--check`）、`init --hooks`、`sync`/`remove` 对已登记 submodule 的守卫（`SUBMODULE_GUARD`）均已实现并在用。已知修复历史见 [`field-tested-pitfalls-log.md`](../dev/field-tested-pitfalls-log.md) 与 brickKit 仓库自己的 changelog。 |
 | 常用验收 | `make tier0`（档 0 六项验收，**每加一个组件都要重跑**）、`make docs-check REPO=<仓库名>`、`make gates`、`make version-check`（扫全部 submodule 的 tag 漂移） |
@@ -69,6 +69,7 @@
 | **有人问「怎么装 / 怎么部署 / 数据库谁建」** | [`docs/ops/部署手册.md`](../ops/部署手册.md)。⚠️ **别把设计书或总纲甩给部署人员**——那份手册是自足的，需要看别处时它自己会指路。数据库分五层、只有第 3/4 层要人动手，见它的 §3 |
 | **写代码/配置时“看起来对、静态检查也过、一跑起来才发现不对”** | [`docs/dev/field-tested-pitfalls-log.md`](../dev/field-tested-pitfalls-log.md)——可能已经踩过。**只记这一类坑**（第三方镜像的实际行为、Docker/Compose 的行为、脚本自己的逻辑漏洞），设计决策不放这里 |
 | **写任何 `component.yaml`** | 总纲 §2.1 端口册 + §2.2 schema 册 + 全局约束 B/C/E/F。**端口不许自定** |
+| **改完一个改动，要给组件跳版本号了**（哪怕是纯文档/纯测试改动——每个改动都要跳） | 总纲 **SOP-W-11**：不要自己满仓库 grep 找哪些地方引用了这个组件的版本号——跑 `make bump-version PLAN=<文件>`（先不加 `APPLY=1` 看计划，确认后再加），它会自己算出全部下游依赖引用/`brickkit.yaml`/两份 `AGENTS.md` 名录表要跟着改的地方。**这次会话里动了几个组件，就把它们一起写进同一份计划文件，跑一次**，不要一个组件跑一次 |
 | **开始写代码**（任何组件） | 总纲 §4 **SOP-W** —— 七步循环、测试分四层、红绿节奏、一次会话装多少。**这是驱动其余 SOP 的节奏，先读它** |
 | **选框架 / 建后端骨架 / 写 `main`** | 总纲 **全局约束 §K** + 设计书 **§12.4**（技术栈逐格锁定表）+ **§12.5**（模块入口契约）。**框架不许自选**：Go = Gin，Python = FastAPI，栈的其余每一格同样定死 |
 | **配置怎么读 / 日志与 OTel 怎么初始化 / 指标注册到哪** | 设计书 **§12.5.2 / §12.5.3** + 总纲 SOP-L 的 **L-1/L-2**。一律从 `rt` 拿，**模块代码里零 `os.Getenv`**、零进程级 init |
@@ -192,6 +193,7 @@ make up                          # 一键开启默认资源（先整体预检，
 make <res>-up / <res>-down       # 单个可选资源：minio/keycloak/kafka/rabbitmq/nginx/obs
 make registry-check              # 端口册与 schema 册自洽
 make gates                       # 铁律六 import 扫描 + SystemClient 误用 + 裸路由 + 事件契约破坏性变更 + 数据权限边界测试缺失
+make bump-version PLAN=<文件>    # 自动传播一次版本升级到每一个该改的地方（下游依赖引用/brickkit.yaml pin/两份 AGENTS.md 名录表），先不写盘，加 APPLY=1 才真的落地。见总纲 SOP-W-11
 make docs-check REPO=<仓库名>     # 某个组件的四份文档结构检查
 make test-cross REPO=<仓库名>     # 局部跑一个组件的跨组件 L4 测试（强依赖树要在跑）
 make test-db-init                # 建/刷新本地测试库 brickkit_test_db（跟演示库 brickkit_db 物理分开，见下方"测试库与演示库分开"）
