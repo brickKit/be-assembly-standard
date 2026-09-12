@@ -1,7 +1,7 @@
 # 军火库维护手册
 
 > 给**开发者**看：怎么把组件源码接进本仓库、日常怎么聚焦到几个组件、提交前要注意什么。
-> 部署相关请看 [`docs/ops/部署手册.md`](ops/部署手册.md)；踩坑记录见 [`docs/dev/实测踩坑记录.md`](dev/实测踩坑记录.md)。
+> 部署相关请看 [`docs/ops/部署手册.md`](../ops/部署手册.md)；踩坑记录见 [`docs/dev/field-tested-pitfalls-log.md`](dev/field-tested-pitfalls-log.md)。
 
 ## 新机器上手三步
 
@@ -35,7 +35,7 @@ git commit -m "..."
 | 禁令 | 为什么 |
 |---|---|
 | **`brickkit remove` 前必须先 commit & push** | 它会**连同已归档的源码目录一起删除**（§9.4.2）。submodule 目录里有未 push 的改动时，这是数据丢失 |
-| **不许改已分配的端口与 schema** | 端口册见 [`registry/README.md`](../registry/README.md)；gRPC 端口没有事后补救手段 |
+| **不许改已分配的端口与 schema** | 端口册见 [`registry/README.md`](../../registry/README.md)；gRPC 端口没有事后补救手段 |
 | **不许在 Fork 件里改 `metadata.id` 或 `version`** | 改了之后所有依赖方拿到的 `*_ENDPOINT` **整个消失**——平台注入的变量名是从组件 ID 推导的。整条 Fork 机制当场垮掉（§3.4.1） |
 
 ## 找不到源码时

@@ -6,7 +6,7 @@
 |---|---|---|
 | **AI 助手** | 这个仓库的规矩、禁令、我该查哪一节 | 仓库根 [`AGENTS.md`](../AGENTS.md)（每次会话自动加载）→ 它的**路由表** |
 | **部署人员** | 装什么、什么顺序、哪些自动哪些要我做、报错了怎么办 | [`ops/部署手册.md`](ops/部署手册.md) ⭐ **只需要这一份** |
-| **开发者**（写组件的人） | 怎么写一个组件、测试写在哪一层、卡住了怎么办 | [`standards/00-master-guide.md`](standards/00-master-guide.md) 的 **§4 SOP-W** → 该组件的 [`design/<仓库名>.md`](design/)；**测试怎么分层/怎么跑/卡住了怎么办**，唯一真相源是 [`standards/04-testing-standard.md`](standards/04-testing-standard.md)；**种子数据/测试数据怎么设计、组件间数据怎么协作**，唯一真相源是 [`standards/05-data-construction-standard.md`](standards/05-data-construction-standard.md)；「这个坑是不是已经踩过了」先查 [`dev/实测踩坑记录.md`](dev/实测踩坑记录.md)；日常怎么聚焦到几个组件、提交前要注意什么见 [`军火库维护手册.md`](军火库维护手册.md) |
+| **开发者**（写组件的人） | 怎么写一个组件、测试写在哪一层、卡住了怎么办 | [`standards/00-master-guide.md`](standards/00-master-guide.md) 的 **§4 SOP-W** → 该组件的 [`design/<仓库名>.md`](design/)；**测试怎么分层/怎么跑/卡住了怎么办**，唯一真相源是 [`standards/04-testing-standard.md`](standards/04-testing-standard.md)；**种子数据/测试数据怎么设计、组件间数据怎么协作**，唯一真相源是 [`standards/05-data-construction-standard.md`](standards/05-data-construction-standard.md)；「这个坑是不是已经踩过了」先查 [`dev/field-tested-pitfalls-log.md`](dev/field-tested-pitfalls-log.md)；日常怎么聚焦到几个组件、提交前要注意什么见 [`arsenal-maintenance-handbook.md`](arsenal-maintenance-handbook.md) |
 | **架构 / 拿决策的人** | 为什么是这个形状、某条约束的出处 | [`../BrickEnterprise 设计书.md`](../BrickEnterprise%20设计书.md) —— **规范真相源** |
 | **二次开发的客户工程师** | 我能改哪里、改了会不会被升级覆盖 | 该组件仓库的 `docs/手册.md` + `assembly.yaml` 的 `customization_guide` |
 | **客户 / 主管理员** | 系统能做什么、我买了哪些模块、怎么用 | 🔜 **还没有**。现在一个业务组件都还没建，写了也是空的（见下方「什么时候写」） |

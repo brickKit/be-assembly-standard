@@ -226,7 +226,7 @@ Task 3 补记）——REST handler 放 `backend/app/http/`，这是 `make gates`
 9 条分歧、以及本阶段 `infra-workflow` 的审批路由完全一致（复盘 §4 第 5 条）。
 
 **这也正面回答了"将来能不能实现 ODT 那一套"**：能，而且路径是清楚的——Fork 一份 `infra-print-odt`，
-换掉 §3.3 那个内部接口的实现，**`Render` 的契约一个字不改**，调用方无感。两条 Fork 点已记进 `_可替换性地图.md`。
+换掉 §3.3 那个内部接口的实现，**`Render` 的契约一个字不改**，调用方无感。两条 Fork 点已记进 `_replaceability-map.md`。
 
 ## 9. 待决问题
 
