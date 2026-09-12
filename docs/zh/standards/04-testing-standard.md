@@ -269,7 +269,7 @@ func TestReserve_产品ID为空时返回InvalidArgument(t *testing.T) { /* … *
 | `make test` | 跑本组件的全部 L2 + L3 测试（开启并发/竞态检测） | 日常开发、每个红绿循环结束时 |
 | `make migrate-idempotent` | 同一份数据库迁移连跑两次都必须成功 | 每次改动迁移文件 |
 | `make contract-check` | 契约破坏性变更检测 | 每次改动契约 |
-| `make smoke` | 只装这一个组件（连同强依赖树）真实启动，用真实协议（HTTP + gRPC）各打一次，健康检查转正常 | 每次真机验证前 |
+| `make smoke` | 一次 `brickkit up --dry-run` 检查，只确认这一个组件（连同强依赖树）真的能解析出来、能起得来——不真的启动容器，也不打任何协议。"真的启动、用真实协议（HTTP + gRPC）各打一次、健康检查转正常"这件事，真正的检查在根目录的 `make tier0`（档 0 六项验收） | 每次真机验证前 |
 | `make test-cross REPO=<本组件仓库名>`（装配层根目录跑） | 局部化的跨组件 L4 测试，见 §四 | 有强依赖边、想验证真实调用链路时 |
 | `make seed` | 灌一套覆盖各种状态/分支/权限维度的种子数据（若本组件有种子数据） | 本地探索、演示、手工验证新功能 |
 | `make seed-clean` 或 `make db-reset` | 撤销/重置种子数据，怎么选见 [`05-data-construction-standard.md`](05-data-construction-standard.md) | 需要清空重来时 |

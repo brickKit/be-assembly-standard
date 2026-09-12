@@ -271,7 +271,7 @@ Regardless of language — backend Go/Python, frontend TypeScript — the same t
 | `make test` | Runs this component's full L2 + L3 tests (with concurrency/race detection enabled) | Day-to-day development, at the end of every red-green cycle |
 | `make migrate-idempotent` | The same database migration run twice in a row must both succeed | Every time a migration file changes |
 | `make contract-check` | Breaking-contract-change detection | Every time the contract changes |
-| `make smoke` | Really starts just this one component (together with its strong-dependency tree), hits it once over each real protocol (HTTP + gRPC), confirms the health check turns healthy | Before every real-machine verification |
+| `make smoke` | A `brickkit up --dry-run` check confirming just this one component (together with its strong-dependency tree) actually resolves and would come up — it does not start a real container or hit any protocol. The real "start it for real, hit it once over each protocol (HTTP + gRPC), confirm the health check turns healthy" check is the root `make tier0` (Tier-0's six checks) | Before every real-machine verification |
 | `make test-cross REPO=<this component's repo name>` (run from the assembly-layer root) | Localized cross-component L4 tests, see §4 | When there's a strong-dependency edge and you want to verify the real call chain |
 | `make seed` | Seeds a dataset covering various states/branches/permission dimensions (if this component has seed data) | Local exploration, demos, manually verifying a new feature |
 | `make seed-clean` or `make db-reset` | Undoes/resets seed data — which one to use, see [`05-data-construction-standard.md`](05-data-construction-standard.md) | When a clean slate is needed |
