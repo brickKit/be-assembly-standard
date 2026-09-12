@@ -165,3 +165,7 @@ seed-data-clean:  ## 清空 seed-data 能清的部分（见下方哪些组件没
 tier0:  ## 档 0 六项验收，每加一个组件都要重跑（§9.6.1 档 4）
 	@$(MAKE) -C tools/be-acceptance tier0
 .PHONY: tier0
+
+tier1:  ## 档 1 平台断言（brickKit 自身行为的回归测试，非业务），需要 brickkit up 先起好
+	@$(MAKE) -C tools/be-acceptance tier1
+.PHONY: tier1
