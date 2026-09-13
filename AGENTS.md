@@ -50,7 +50,7 @@
 | `infra-workflow` | 1.0.3 | Zero-dependency approval-task hub: claim-first idempotency + `owner`/`org` two-dimension data scoping | [`docs/design/infra-workflow.md`](docs/design/infra-workflow.md) |
 | `infra-notification` | 1.0.3 | Routing hub: zero dependencies, zero outbound edges, lives entirely on the event graph, two-tier channel preference | [`docs/design/infra-notification.md`](docs/design/infra-notification.md) |
 | `integration-im-dingtalk` | 1.0.4 | First member of the `channel:im` family: DingTalk access-token cache refresh | [`docs/design/integration-im-dingtalk.md`](docs/design/integration-im-dingtalk.md) |
-| `infra-print` | 1.0.4 | The system's first Python component: a pure-function print-rendering hub, dual PDF/ZPL rendering | [`docs/design/infra-print.md`](docs/design/infra-print.md) |
+| `infra-print` | 1.0.5 | The system's first Python component: a pure-function print-rendering hub, dual PDF/ZPL rendering | [`docs/design/infra-print.md`](docs/design/infra-print.md) |
 | `infra-bff-mobile` | 1.0.17 | The system's first TypeScript component: a GraphQL BFF, zero strong dependencies, zero database | [`docs/design/infra-bff-mobile.md`](docs/design/infra-bff-mobile.md) |
 | `frontend-standard` | 1.0.0 | A standalone PC Vite SPA + mobile Uni-app H5, the only component with no backend shape | [`docs/design/frontend-standard.md`](docs/design/frontend-standard.md) |
 | `crm-opportunity` | 1.0.10 | Phase 3's first business component, the CRM domain's first component: the full opportunity lifecycle | [`docs/design/crm-opportunity.md`](docs/design/crm-opportunity.md) |

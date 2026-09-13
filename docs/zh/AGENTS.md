@@ -50,7 +50,7 @@
 | `infra-workflow` | 1.0.3 | 零依赖审批待办中心：claim-first 幂等 + `owner`/`org` 两维数据权限 | [`docs/design/infra-workflow.md`](../design/infra-workflow.md) |
 | `infra-notification` | 1.0.3 | 路由中枢：零依赖零出边完全活在事件图上，两层通道偏好 | [`docs/design/infra-notification.md`](../design/infra-notification.md) |
 | `integration-im-dingtalk` | 1.0.4 | `channel:im` 族第一个成员：钉钉 access_token 缓存刷新 | [`docs/design/integration-im-dingtalk.md`](../design/integration-im-dingtalk.md) |
-| `infra-print` | 1.0.4 | 全系统第一个 Python 组件：纯函数打印渲染中心，PDF/ZPL 双渲染 | [`docs/design/infra-print.md`](../design/infra-print.md) |
+| `infra-print` | 1.0.5 | 全系统第一个 Python 组件：纯函数打印渲染中心，PDF/ZPL 双渲染 | [`docs/design/infra-print.md`](../design/infra-print.md) |
 | `infra-bff-mobile` | 1.0.17 | 全系统第一个 TypeScript 组件：GraphQL BFF，零强依赖零数据库 | [`docs/design/infra-bff-mobile.md`](../design/infra-bff-mobile.md) |
 | `frontend-standard` | 1.0.0 | PC 独立 Vite SPA + 移动端 Uni-app H5，唯一没有后端形态的组件 | [`docs/design/frontend-standard.md`](../design/frontend-standard.md) |
 | `crm-opportunity` | 1.0.10 | 阶段三第一个业务组件、CRM 域第一个组件：商机全生命周期 | [`docs/design/crm-opportunity.md`](../design/crm-opportunity.md) |

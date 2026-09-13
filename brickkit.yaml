@@ -293,7 +293,11 @@ components:
       dingtalkAppSecret: "${DINGTALK_APP_SECRET}"
       dingtalkAgentId: "${DINGTALK_AGENT_ID}"
   - id: infra/print
-    version: 1.0.4 # v1.0.4：新增 make seed——上传送货单PDF+发货标签ZPL两个真实模板，无破坏性变更。
+    version: 1.0.5 # v1.0.5：阶段四 Task 7，be-shell-python 把本组件直接装成 pip 依赖时，git URL 依赖解析不接受两个不同 tag 的 besdk 同时出现（be-shell-python 已经在用 v0.3.3）。升级本组件的 besdk 依赖到 v0.3.3——核对过 v0.3.1..v0.3.3 只新增 besdk/shell.py 一个外壳级构件模块，本组件用到的既有 API 一字未动，纯升版本号，27 个既有测试全部保持绿。无业务行为/契约变更。
+    # ⚠️ local: true 不是有人在调试，是合并部署（阶段四 Task 7 原子式切换，设计书 §13.1）
+    local: true
+    localPort: 8400
+    # v1.0.4：新增 make seed——上传送货单PDF+发货标签ZPL两个真实模板，无破坏性变更。
     # v1.0.3：docs/手册.md 的 TEST_PG_DSN/DATABASE_NAME 示例改指向 brickkit_test_db，无破坏性变更。
     # 阶段三 Task 10：全系统第一个 Python 组件，纯函数打印
                    # 渲染中心，零依赖零出边（erp/sales 等业务组件强依赖
@@ -433,13 +437,18 @@ resources:
         database: brickkit_db
       - componentId: integration/im-dingtalk
         database: brickkit_db
-  - id: postgres-shared
+  # 阶段四 Task 7 原子式切换：infra/print 是 postgres-shared 最后一个绑定
+  # ——现在也进了 py-render 外壳，postgres-shared（postgres 超级用户登录）
+  # 不再被任何组件引用，整块删除（声明了资源却没有 bindings，brickkit up
+  # 会阻断，不能留一个空块占位）。至此全部 12 个有数据库的组件都已经
+  # 挂在各自外壳的登录角色下，不再有组件走 postgres 超级用户这条路径。
+  - id: postgres-py-render
     kind: database
     engine: postgresql
     host: host.docker.internal
     port: 5432
-    username: postgres
-    password: ${POSTGRES_PASSWORD}
+    username: shell_py_render
+    password: ${SHELL_PY_RENDER_PASSWORD}
     bindings:
       - componentId: infra/print
         database: brickkit_db
