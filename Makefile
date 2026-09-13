@@ -213,3 +213,7 @@ tier0:  ## 档 0 六项验收，每加一个组件都要重跑（§9.6.1 档 4�
 tier1:  ## 档 1 平台断言（brickKit 自身行为的回归测试，非业务），需要 brickkit up 先起好
 	@$(MAKE) -C tools/be-acceptance tier1
 .PHONY: tier1
+
+tier2:  ## 档 2 合并态专属断言（阶段四 Task 11），需要真实可达的 TEST_PG_DSN/TEST_NATS_URL
+	@$(MAKE) -C tools/be-acceptance tier2
+.PHONY: tier2
