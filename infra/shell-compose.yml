@@ -1,0 +1,171 @@
+# 第 3 份 compose（设计书 §13.8.3）——4 个外壳实例：go-core/go-backoffice/
+# go-infra（同一个 be-shell-go 镜像，`SHELL_NAME` 决定装哪几个真实模块，
+# 阶段四调研记录 04 §12："部署几份实例纯粹是运行时配置问题"）+ py-render
+# （be-shell-python 镜像）。跟 docker-compose.infra.yml 共用同一个 external
+# network be-net（§13.8.3 最后一条：Traefik 的 Docker Provider 只能看到
+# 同网络容器；本文件的服务直连 be-postgres/be-nats 走容器 DNS，同
+# docker-compose.infra.yml 里 casdoor 服务自己的既有先例，不走
+# host.docker.internal 那一套间接寻址）。
+#
+# ⚠️ 本文件不是 be-ops 生成的——docker-compose.infra.yml 本身也是手写、
+# 不自动生成，四个外壳这种小规模、拓扑长期稳定的集合，手写更直接，见
+# 阶段四 Task 8 的调研结论（produce 1/网关路由表这一层至今没有实现，
+# 跟本文件是否手写是两件独立的事，见 shells/README.md）。
+#
+# 挂载的两份 JSON（`SHELL_CONFIG_JSON`/`SHELL_ENV_JSON`）由
+# `make shell-gen` 现生成到 `.brickkit/shellgen/`——那个目录被 .gitignore
+# 排除（产出 7 的内容含真实密码，见该目录加入 .gitignore 时的说明），
+# 每次 `make shell-up` 都会先重新生成一份最新的，不依赖仓库里有历史版本。
+name: be-shell
+
+networks:
+  be-net:
+    external: true
+
+x-shell-common: &shell-common
+  networks: [be-net]
+  # host.docker.internal 只给"跨外壳"这一类地址用（IAM_JWKS_URL/
+  # AUTHZ_BUNDLE_URL 指向 go-infra 时、以及 infra-iam-casdoor 自己的
+  # CASDOOR_BASE_URL/WEBHOOK_CALLBACK_URL——这些字面量已经在
+  # brickkit.yaml/local-debug 里写死是这个地址，阶段四 Task 6/7 真机
+  # 验证过，这里不重新选择寻址方式）。Linux 的 Docker Engine 不会像
+  # Docker Desktop 那样自动解析这个名字，必须显式加这一条。
+  extra_hosts:
+    - "host.docker.internal:host-gateway"
+  volumes:
+    - ../.brickkit/shellgen/shell-config.json:/app/shell-config.json:ro
+    - ../.brickkit/shellgen/shell-env.json:/app/shell-env.json:ro
+  environment: &shell-common-env
+    OTEL_BASE_URL: ${OTEL_BASE_URL:-}
+    SHELL_CONFIG_JSON: /app/shell-config.json
+    SHELL_ENV_JSON: /app/shell-env.json
+    # 直连 be-postgres/be-nats 的容器 DNS——本文件跟它们同在 be-net 上，
+    # 同 docker-compose.infra.yml 的 casdoor 服务已经在用的既有先例，
+    # 不需要 host.docker.internal 这层间接寻址。
+    DATABASE_HOST: be-postgres
+    DATABASE_PORT: "5432"
+    DATABASE_NAME: brickkit_db
+    MQ_HOST: be-nats
+    MQ_PORT: "4222"
+  restart: unless-stopped
+
+services:
+  go-core:
+    <<: *shell-common
+    image: brickenterprise/be-shell-go:local
+    container_name: be-shell-go-core
+    ports:
+      # mdm-customer / mdm-product / erp-sales / erp-inventory / erp-finance
+      - "8080:8080"
+      - "9090:9090"
+      - "8082:8082"
+      - "9092:9092"
+      - "8084:8084"
+      - "9094:9094"
+      - "8086:8086"
+      - "9096:9096"
+      - "8087:8087"
+      - "9097:9097"
+      - "18888:18888"
+    environment:
+      <<: *shell-common-env
+      SHELL_NAME: go-core
+      SHELL_HEALTH_PORT: "18888"
+      DATABASE_USER: shell_go_core
+      DATABASE_PASSWORD: ${SHELL_GO_CORE_PASSWORD:?SHELL_GO_CORE_PASSWORD 必须在 .env 里设置}
+      # 跨外壳依赖 go-infra——地址同 brickkit.yaml 已经写死的判据
+      # （阶段四 Task 6：跟 go-infra 不同外壳，走 host.docker.internal）。
+      IAM_JWKS_URL: http://host.docker.internal:8200/.well-known/jwks.json
+      AUTHZ_BUNDLE_URL: http://host.docker.internal:8223/authz/bundle
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://localhost:18888/ || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 30s
+
+  go-backoffice:
+    <<: *shell-common
+    image: brickenterprise/be-shell-go:local
+    container_name: be-shell-go-backoffice
+    depends_on:
+      go-core:
+        condition: service_healthy
+    ports:
+      # crm-opportunity
+      - "8102:8102"
+      - "9102:9102"
+      - "18889:18889"
+    environment:
+      <<: *shell-common-env
+      SHELL_NAME: go-backoffice
+      SHELL_HEALTH_PORT: "18889"
+      DATABASE_USER: shell_go_backoffice
+      DATABASE_PASSWORD: ${SHELL_GO_BACKOFFICE_PASSWORD:?SHELL_GO_BACKOFFICE_PASSWORD 必须在 .env 里设置}
+      IAM_JWKS_URL: http://host.docker.internal:8200/.well-known/jwks.json
+      AUTHZ_BUNDLE_URL: http://host.docker.internal:8223/authz/bundle
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://localhost:18889/ || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 30s
+
+  go-infra:
+    <<: *shell-common
+    image: brickenterprise/be-shell-go:local
+    container_name: be-shell-go-infra
+    ports:
+      # infra-iam-casdoor / infra-workflow / infra-notification /
+      # integration-im-dingtalk / infra-authz
+      - "8200:8200"
+      - "9200:9200"
+      - "8201:8201"
+      - "9201:9201"
+      - "8202:8202"
+      - "9202:9202"
+      - "8207:8207"
+      - "9207:9207"
+      - "8223:8223"
+      - "9223:9223"
+      - "18890:18890"
+    environment:
+      <<: *shell-common-env
+      SHELL_NAME: go-infra
+      SHELL_HEALTH_PORT: "18890"
+      DATABASE_USER: shell_go_infra
+      DATABASE_PASSWORD: ${SHELL_GO_INFRA_PASSWORD:?SHELL_GO_INFRA_PASSWORD 必须在 .env 里设置}
+      # 自引用：infra-authz/infra-iam-casdoor 跟本外壳自己同进程，走
+      # 127.0.0.1（同 brickkit.yaml 已经写死的判据）。
+      IAM_JWKS_URL: http://127.0.0.1:8200/.well-known/jwks.json
+      AUTHZ_BUNDLE_URL: http://127.0.0.1:8223/authz/bundle
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://localhost:18890/ || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 30s
+
+  py-render:
+    <<: *shell-common
+    image: brickenterprise/be-shell-python:local
+    container_name: be-shell-py-render
+    ports:
+      # infra-print
+      - "8400:8400"
+      - "9400:9400"
+      - "18891:18891"
+    environment:
+      <<: *shell-common-env
+      SHELL_NAME: py-render
+      SHELL_HEALTH_PORT: "18891"
+      DATABASE_USER: shell_py_render
+      DATABASE_PASSWORD: ${SHELL_PY_RENDER_PASSWORD:?SHELL_PY_RENDER_PASSWORD 必须在 .env 里设置}
+      IAM_JWKS_URL: http://host.docker.internal:8200/.well-known/jwks.json
+      AUTHZ_BUNDLE_URL: http://host.docker.internal:8223/authz/bundle
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://localhost:18891/ || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 30s

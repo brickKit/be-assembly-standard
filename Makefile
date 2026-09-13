@@ -94,6 +94,50 @@ test-db-init:  ## 建/刷新本地测试专用库 brickkit_test_db（跟真机�
 	@bash infra/scripts/test-db-init.sh
 .PHONY: test-db-init
 
+##@ 外壳（阶段四 Task 8，设计书 §13.8/§13.9）
+# ⚠️ 外壳态（本节）与全拆态（brickkit up 管理的 14 个组装态容器）互斥，
+# 同一时刻只能有一个在跑（§13.9）——下面 shell-up/teardown-up 互为对方
+# 的前置清理步骤，不依赖人记得"先做哪一步"。图简单，`shell-up` 第一步
+# 一律 brickkit down 全部 14 个，不判断"是不是真的有冲突"。
+
+shell-gen:  ## 重新生成 be-ops 产出 4/7/8（shell-compose.yml 消费的两份 JSON + 依赖顺序），供 shell-up 内部调用
+	@brickkit up --dry-run >/dev/null
+	@cd tools/be-ops && go build -o build/be-ops ./cmd/be-ops
+	@mkdir -p .brickkit/shellgen
+	@tools/be-ops/build/be-ops shell-config --root . --out .brickkit/shellgen/shell-config.json
+	@tools/be-ops/build/be-ops shell-env --root . --local-debug-dir .brickkit/generated --out .brickkit/shellgen/shell-env.json
+	@tools/be-ops/build/be-ops shell-depends --root . --out .brickkit/shellgen/shell-depends.json
+.PHONY: shell-gen
+
+shell-image:  ## 构建两个外壳镜像（本地构建，不在 brickKit 签名覆盖范围内）
+	@docker build -t brickenterprise/be-shell-go:local shells/go
+	@docker build -t brickenterprise/be-shell-python:local shells/python
+.PHONY: shell-image
+
+shell-up: shell-gen shell-image  ## 原子式切到外壳态：先关全部组装态容器，再起 4 个外壳容器 + brickkit up 管理的独立组件
+	@echo "▸ 停掉全部组装态容器（设计书 §13.9：外壳态与全拆态互斥，为了方便直接关闭所有）"
+	@brickkit down
+	@docker compose --env-file .env -p be-shell -f infra/shell-compose.yml up -d --wait
+	@brickkit up
+	@echo "✓ 外壳态已启动：4 个外壳容器（go-core/go-backoffice/go-infra/py-render）+ brickkit up 管理的独立组件"
+.PHONY: shell-up
+
+shell-down:  ## 停掉外壳态的全部容器——brickkit down 本身停不了外壳（§13.8.3），这条命令自己把两半都停了
+	@docker compose --env-file .env -p be-shell -f infra/shell-compose.yml down
+	@brickkit down
+	@echo "✓ 外壳态已停止"
+.PHONY: shell-down
+
+teardown-up:  ## 原子式切到全拆态：先关外壳（如果在跑），再 brickkit up 起 14 个组装态容器
+	@echo "▸ 停掉外壳态的全部容器（如果在跑）"
+	@docker compose --env-file .env -p be-shell -f infra/shell-compose.yml down 2>/dev/null || true
+	@brickkit up
+.PHONY: teardown-up
+
+teardown-down:  ## 停掉全拆态的全部容器（brickkit down 本身够用，外壳没在跑时这条什么都不做）
+	@brickkit down
+.PHONY: teardown-down
+
 ##@ 门禁
 gates:  ## 跑全部验收门禁：铁律六 import 扫描 + SystemClient 误用 + 裸路由/裸 resolver + 事件契约破坏性变更 + 数据权限边界测试缺失 + 依赖版本号漂移（拆回门禁见阶段四）
 	@cd tools/be-acceptance && go build -o build/be-acceptance ./cmd/be-acceptance
