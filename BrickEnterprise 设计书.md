@@ -2834,10 +2834,24 @@ PG 的连接绑死两样东西：**一个 database、一个认证角色**。所�
 所以：
 
 - ✅ 外壳 `main` 可以 `import` 每个组件的 `NewServer()`
-- ❌ `erp-sales` 的代码里**绝不许出现** `import ".../mdm-customer/..."`。要客户数据就走 gRPC，和拆开时一模一样（§1.5 原则一）
+- ❌ `erp-sales` 的代码里**绝不许出现** `import ".../mdm-customer/..."`（业务逻辑包）。要客户数据就走 gRPC，和拆开时一模一样（§1.5 原则一）
 - ❌ 也不许抽一个"公共 model 包"给两个组件共用。契约在 `contracts/`，代码不共享
+- ✅ **例外（阶段四新增）：`import ".../<组件仓库>/gen/<domain>/<name>"`（生成物契约包）放行**——见下方说明
 
 **必须有机器来守这一条，人守不住。** 在 `be-acceptance` 里加一条门禁：对每个组件目录跑一次 import 扫描（Go 用 `go list -deps`，Python 用 `grimp` / 自写 AST 扫描），发现任何一条指向另一个组件仓库的边就红。这条门禁进 §3.11 的 CI 清单，和 `contract-check` 同级。
+
+**铁律六的第二类白名单：生成物契约包（`gen/<domain>/<name>`），与 `be-sdk-*` 同类**
+
+阶段一到阶段三，跨组件同步调用一直用"vendored-contract"模式：调用方把被调组件的 `.proto` 逐字复制一份进自己仓库的 `contracts/vendor/`，本地 `buf generate` 出自己的客户端 stub（`erp-sales` 设计计划 §9 首创，阶段二复盘 §2.3 记录了论证过程）——图的是不直接 `import` 被调组件的 Go 代码，物理上不可能违反铁律六。
+
+阶段四合并部署时发现，这个模式一旦调用方和被调方**被分进同一个外壳**（编译进同一个进程），就会出问题：两份内容相同、`import path` 不同的生成代码，各自的 `init()` 都会往 protobuf **进程级全局**注册表（`protoregistry.GlobalFiles`/`GlobalTypes`）注册同一个 `.proto` 文件路径与类型全名，第二个注册直接 `panic`。**这不是配置问题，是 Go module 系统的硬限制**：`replace` 只能决定"这个 import path 的源码从哪里取"，无法把两个不同的 import path 合并成同一份编译实例——即使 `replace A => B`，Go 依然把 `A` 和 `B` 当成两个独立的包，各自的 `init()` 都会跑一次（阶段四调研记录 04 §13 有完整的最小复现实验）。
+
+真正的解法：**把"生成物契约包"本身提升为跟 `be-sdk-*` 同类的白名单**——纯 `protoc-gen-go`/`-grpc` 产出，只有消息类型与客户端 stub，不含任何业务逻辑，横切、无组件语义，符合 `be-sdk-*` 当初被列为唯一例外的判断标准（自查第 2 条）。具体做法：
+
+- 每个组件把自己的 `gen/<domain>/<name>`（协议版本目录 `v1` 的**上一级**）拆成独立嵌套 go module，供其它组件直接 `require`/`import`——**不再各自逐字复制一份**。module 边界必须切在 `v1` 的上一级，因为 Go 模块路径禁止以字面量 `/v1`/`/v0` 结尾（会被当成语义化导入版本号后缀，只有 `v2+` 合法）；包本身的导入路径（含 `/v1`）不受影响。
+- 需要这份契约的组件，把自己 `contracts/vendor/` 下那份逐字复制的镜像删掉，改成直接 `import` 对方仓库发布的 `gen/<domain>/<name>/<version>` 包。
+- `import-scan` 门禁（`be-acceptance` 的 `ImportScan` + 各组件 `Makefile` 的 `import-scan` 目标）放行形如 `github.com/brickKit/<repo>/gen/...` 的 import，其它路径（业务逻辑包）依旧照红不误。
+- 代价：每个发布 `gen/<domain>/<name>` 供别人 import 的组件，版本变化时要多打一个嵌套 module 专属的 tag（`gen/<domain>/<name>/vX.Y.Z`），比原来单一版本号流程多一道工序——这是唯一的持续成本，换来的是从根上消除撞车，而不是每加一对新的"同外壳+跨组件调用"就要重新论证一次。
 
 **为什么它值得单列一条铁律**：前五条铁律破了，症状是当场起不来（端口撞、迁移不跑、地址连不上），改起来是一小时的事。第六条破了没有任何症状——系统跑得更快了，直到某天要上 K8s 全拆，才发现拆不动。那时的代价是重写。
 

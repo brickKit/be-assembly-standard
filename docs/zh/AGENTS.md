@@ -29,7 +29,7 @@
 |---|---|
 | 阶段 | **阶段一** ✅ 已出档。**阶段二** ✅ 已出档（[`02-阶段二`](../plans/02-阶段二-验平台.md)，复盘见 [`02-阶段二复盘`](../retrospectives/02-阶段二-验平台-复盘.md)）。**阶段三 · 业务闭环** ✅ **已真正结束**——9 个新组件 + 2 个新 SDK，Task 1–15 全部真正完成（Task 15 一度被跳过，靠后来一次系统排查才发现并补上，见下方复盘），阶段三主线之后的四条工作线（测试体系扩展、种子数据丰富度整改、文档架构重构、Task 15 补齐）均已完成，复盘见 [`03-阶段三复盘`](../retrospectives/03-阶段三-业务闭环-复盘.md)。逐 Task 的实现细节、真机验证过程、意外发现的 bug 全部在 [`03-阶段三`](../plans/03-阶段三-业务闭环.md) 本身，这里不重复。核心成果：阶段二 5 个组件的权限判定从 fail-closed stub 换成 `infra-authz` 真实 bundle；全系统第一次有真实签发方（`infra-iam-casdoor`）签发验签通过的 JWT；附录 E"商机赢单→订单→库存→应收"全链路真机跑通。⚠️ **这份复盘自己最大的一条发现**：主线收官后复盘本身被跳过，这正是 Task 15 长期没被发现的原因——完整分析与由此定下的流程规矩（后续工作线开工前先写复盘，不是先斩后奏）在复盘 §5，这里不重复。 |
 | 已建组件 | **14 个建完**，见下方「已建组件一览」表。十三个后端组件的 `iamJwksUrl`/`authzBundleUrl` 都指向真实运行的对端。 |
-| 工具仓库 | `be-sdk-go@v0.2.7`、`be-ops@v0.1.6`、`be-acceptance@v0.3.13`（`make gates` 六个 gate + `bump-version` 子命令的产出方，见 SOP-W-11）、`be-sdk-python@v0.3.3`、`be-sdk-ts@v0.3.3`——全部已 tag（带注解）并被装配仓库的 submodule 指针跟踪。⚠️ **已知的版本漂移**：`be-sdk-go@v0.2.7` 修的 `StartOutboxPump` 原子认领 bug（踩坑记录 C15）目前只有 `infra-iam-casdoor`/`erp-inventory`/`erp-sales` 升级到位，其余业务组件仍在更早的 v0.2.1-v0.2.4——这个 bug 只在 K8s 多副本场景触发，不是本阶段的阻塞项，按"下次改动顺带升"处理。每个工具版本具体修了什么、哪次真机验证发现的，见各自仓库自己的 changelog 或 [`field-tested-pitfalls-log.md`](../dev/field-tested-pitfalls-log.md)（C11/C12/C15、A9/A10/A11、类别 F）。 |
+| 工具仓库 | `be-sdk-go@v0.2.7`、`be-ops@v0.1.6`、`be-acceptance@v0.3.14`（`make gates` 六个 gate + `bump-version` 子命令的产出方，见 SOP-W-11）、`be-sdk-python@v0.3.3`、`be-sdk-ts@v0.3.3`——全部已 tag（带注解）并被装配仓库的 submodule 指针跟踪。⚠️ **已知的版本漂移**：`be-sdk-go@v0.2.7` 修的 `StartOutboxPump` 原子认领 bug（踩坑记录 C15）目前只有 `infra-iam-casdoor`/`erp-inventory`/`erp-sales` 升级到位，其余业务组件仍在更早的 v0.2.1-v0.2.4——这个 bug 只在 K8s 多副本场景触发，不是本阶段的阻塞项，按"下次改动顺带升"处理。每个工具版本具体修了什么、哪次真机验证发现的，见各自仓库自己的 changelog 或 [`field-tested-pitfalls-log.md`](../dev/field-tested-pitfalls-log.md)（C11/C12/C15、A9/A10/A11、类别 F）。 |
 | 已钉死不许改的 | `registry/ports.tsv`、`registry/schemas.tsv`、`registry/permissions.tsv`（**只增不改**，见下）；**每种语言的技术栈与模块入口签名**（设计书 §12.4 / §12.5）；**PC 端骨架形态**（§12.6.7）；**权限体系**（第 14 章） |
 | 平台 CLI | 已装 **v0.2.2**。`brickkit restore`（含 `--check`）、`init --hooks`、`sync`/`remove` 对已登记 submodule 的守卫（`SUBMODULE_GUARD`）均已实现并在用。已知修复历史见 [`field-tested-pitfalls-log.md`](../dev/field-tested-pitfalls-log.md) 与 brickKit 仓库自己的 changelog。 |
 | 常用验收 | `make tier0`（档 0 六项验收，**每加一个组件都要重跑**）、`make tier1`（23 条平台断言，验的是 brickKit 自身行为不是业务逻辑，需要先 `brickkit up`）、`make docs-check REPO=<仓库名>`、`make gates`、`make version-check`（扫全部 submodule 的 tag 漂移） |
@@ -40,20 +40,20 @@
 
 | 组件 | 版本 | 定位 | 详细设计 |
 |---|---|---|---|
-| `mdm-customer` | 1.0.5 | 只读枢纽，`data_scopes: none` | [`docs/design/mdm-customer.md`](../design/mdm-customer.md) |
-| `mdm-product` | 1.0.6 | 只读枢纽，`data_scopes: none` | [`docs/design/mdm-product.md`](../design/mdm-product.md) |
-| `erp-inventory` | 1.0.13 | 物理命令枢纽：TCC 三件套 + claim-first 幂等 + `warehouse` 维数据权限 | [`docs/design/erp-inventory.md`](../design/erp-inventory.md) |
-| `erp-finance` | 1.0.9 | 事件汇枢纽：`FinanceService` 11 rpc + `legal_entity` 维数据权限 | [`docs/design/erp-finance.md`](../design/erp-finance.md) |
-| `erp-sales` | 1.0.19 | 唯一的链上一环：四条强依赖全部真实 gRPC 调用，`ConfirmOrder` 的 TCC 补偿链 + `org`/`owner` 两维数据权限 | [`docs/design/erp-sales.md`](../design/erp-sales.md) |
+| `mdm-customer` | 1.0.6 | 只读枢纽，`data_scopes: none` | [`docs/design/mdm-customer.md`](../design/mdm-customer.md) |
+| `mdm-product` | 1.0.7 | 只读枢纽，`data_scopes: none` | [`docs/design/mdm-product.md`](../design/mdm-product.md) |
+| `erp-inventory` | 1.0.14 | 物理命令枢纽：TCC 三件套 + claim-first 幂等 + `warehouse` 维数据权限 | [`docs/design/erp-inventory.md`](../design/erp-inventory.md) |
+| `erp-finance` | 1.0.10 | 事件汇枢纽：`FinanceService` 11 rpc + `legal_entity` 维数据权限 | [`docs/design/erp-finance.md`](../design/erp-finance.md) |
+| `erp-sales` | 1.0.22 | 唯一的链上一环：四条强依赖全部真实 gRPC 调用，`ConfirmOrder` 的 TCC 补偿链 + `org`/`owner` 两维数据权限 | [`docs/design/erp-sales.md`](../design/erp-sales.md) |
 | `infra-authz` | 1.0.4 | 权限体系里唯一持久化状态的组件：`GET /authz/bundle` 策略下发，纯并集无 Deny | [`docs/design/infra-authz.md`](../design/infra-authz.md) |
 | `infra-iam-casdoor` | 1.0.6 | `slot:iam` Default 成员：两个 token 架构，refresh token rotation + 重放检测 | [`docs/design/infra-iam-casdoor.md`](../design/infra-iam-casdoor.md) |
-| `infra-workflow` | 1.0.2 | 零依赖审批待办中心：claim-first 幂等 + `owner`/`org` 两维数据权限 | [`docs/design/infra-workflow.md`](../design/infra-workflow.md) |
+| `infra-workflow` | 1.0.3 | 零依赖审批待办中心：claim-first 幂等 + `owner`/`org` 两维数据权限 | [`docs/design/infra-workflow.md`](../design/infra-workflow.md) |
 | `infra-notification` | 1.0.3 | 路由中枢：零依赖零出边完全活在事件图上，两层通道偏好 | [`docs/design/infra-notification.md`](../design/infra-notification.md) |
 | `integration-im-dingtalk` | 1.0.4 | `channel:im` 族第一个成员：钉钉 access_token 缓存刷新 | [`docs/design/integration-im-dingtalk.md`](../design/integration-im-dingtalk.md) |
 | `infra-print` | 1.0.4 | 全系统第一个 Python 组件：纯函数打印渲染中心，PDF/ZPL 双渲染 | [`docs/design/infra-print.md`](../design/infra-print.md) |
-| `infra-bff-mobile` | 1.0.13 | 全系统第一个 TypeScript 组件：GraphQL BFF，零强依赖零数据库 | [`docs/design/infra-bff-mobile.md`](../design/infra-bff-mobile.md) |
+| `infra-bff-mobile` | 1.0.16 | 全系统第一个 TypeScript 组件：GraphQL BFF，零强依赖零数据库 | [`docs/design/infra-bff-mobile.md`](../design/infra-bff-mobile.md) |
 | `frontend-standard` | 1.0.0 | PC 独立 Vite SPA + 移动端 Uni-app H5，唯一没有后端形态的组件 | [`docs/design/frontend-standard.md`](../design/frontend-standard.md) |
-| `crm-opportunity` | 1.0.7 | 阶段三第一个业务组件、CRM 域第一个组件：商机全生命周期 | [`docs/design/crm-opportunity.md`](../design/crm-opportunity.md) |
+| `crm-opportunity` | 1.0.9 | 阶段三第一个业务组件、CRM 域第一个组件：商机全生命周期 | [`docs/design/crm-opportunity.md`](../design/crm-opportunity.md) |
 
 ⚠️ **版本号 changelog 的唯一源头是每个组件自己的 `component.yaml`**——这张表只给"现在是什么版本、这个组件是干什么的"，不复述版本历史。想知道某个组件从建仓库到现在经历了什么，去读它自己的 `component.yaml` 或 `git log`。
 
@@ -262,7 +262,7 @@ brickkit down                    # 停掉 14 个组装态容器（不删 volume�
 
 0. **我是不是在为了让测试通过而改测试？** 默认该改的是实现。测试真的写错时**先停下说清哪里错**，改测试要单独一次 commit（[`04-testing-standard.md`](standards/04-testing-standard.md) §2.3）。**L2 业务规则测试挡路时，几乎一定是实现或理解错了。**
 1. **我要写的东西，端口和 schema 是从 `registry/` 抄的，还是我自己起的？** 自己起的一律错。
-2. **我是不是让两个组件模块直接互相认识了？** 跨组件只能走 gRPC/HTTP + `contracts/`，代码不共享（`be-sdk-*` 是唯一白名单）。
+2. **我是不是让两个组件模块直接互相认识了？** 跨组件只能走 gRPC/HTTP + `contracts/`，代码不共享，只有两类白名单例外：`be-sdk-*`，以及（阶段四新增）组件自己的生成物契约包 `gen/<domain>/<name>`——纯 `protoc-gen-go`/`-grpc` 产出、零业务逻辑，独立发布成嵌套 go module，供别的组件直接 `import`，不再逐字复制一份。理由：vendored-contract（逐字复制）一旦调用方和被调方被分进同一个外壳，两份 import path 不同但内容相同的生成代码会各自往 Go 进程级全局的 protobuf 注册表注册同一个文件/类型全名，第二次注册直接 panic——`replace` 没法把两个不同 import path 合并成一份编译实例，这是 Go module 系统的硬限制，不是能靠约定绕开的（设计书 §13.3 铁律六新增说明、阶段四调研记录 04 §13）。
 3. **这段代码在「同一个进程里还有另外 22 个模块」的前提下还对吗？** 三个问法：我读了 `os.Getenv` 吗？我初始化了什么进程级的东西（OTel / 日志 / 信号 / 默认 registry）吗？我在什么地方 `log.Fatal` 了吗？三个都是「否」才算过（设计书 §12.5、§13.3 铁律七）。
 4. **这段逻辑我是凭空想的，还是走了 SOP-R 的三步法？** 顺序是：自己先设计 → 理不清才去读别人的 → 回来自己写。凭空设计漏掉的边界情形要到客户上线三个月后才暴露；而空着脑袋去读别人的，会把它们的通病一起搬进来。
 5. **我是不是在用 `if` 硬扛一个本该是槽位族的分歧？** 如果这几个分支对应的是「不同客户画像各自合理的做法」（成本核算法、拣货策略、审批路由…），那是 [`02-reference-implementation-standard.md`](standards/02-reference-implementation-standard.md) §4 的槽位族信号——该新增一个族，而不是加分支。
