@@ -45,8 +45,8 @@
 | `erp-inventory` | 1.0.15 | 物理命令枢纽：TCC 三件套 + claim-first 幂等 + `warehouse` 维数据权限 | [`docs/design/erp-inventory.md`](../design/erp-inventory.md) |
 | `erp-finance` | 1.0.11 | 事件汇枢纽：`FinanceService` 11 rpc + `legal_entity` 维数据权限 | [`docs/design/erp-finance.md`](../design/erp-finance.md) |
 | `erp-sales` | 1.0.23 | 唯一的链上一环：四条强依赖全部真实 gRPC 调用，`ConfirmOrder` 的 TCC 补偿链 + `org`/`owner` 两维数据权限 | [`docs/design/erp-sales.md`](../design/erp-sales.md) |
-| `infra-authz` | 1.0.4 | 权限体系里唯一持久化状态的组件：`GET /authz/bundle` 策略下发，纯并集无 Deny | [`docs/design/infra-authz.md`](../design/infra-authz.md) |
-| `infra-iam-casdoor` | 1.0.6 | `slot:iam` Default 成员：两个 token 架构，refresh token rotation + 重放检测 | [`docs/design/infra-iam-casdoor.md`](../design/infra-iam-casdoor.md) |
+| `infra-authz` | 1.0.5 | 权限体系里唯一持久化状态的组件：`GET /authz/bundle` 策略下发，纯并集无 Deny | [`docs/design/infra-authz.md`](../design/infra-authz.md) |
+| `infra-iam-casdoor` | 1.0.7 | `slot:iam` Default 成员：两个 token 架构，refresh token rotation + 重放检测 | [`docs/design/infra-iam-casdoor.md`](../design/infra-iam-casdoor.md) |
 | `infra-workflow` | 1.0.3 | 零依赖审批待办中心：claim-first 幂等 + `owner`/`org` 两维数据权限 | [`docs/design/infra-workflow.md`](../design/infra-workflow.md) |
 | `infra-notification` | 1.0.3 | 路由中枢：零依赖零出边完全活在事件图上，两层通道偏好 | [`docs/design/infra-notification.md`](../design/infra-notification.md) |
 | `integration-im-dingtalk` | 1.0.4 | `channel:im` 族第一个成员：钉钉 access_token 缓存刷新 | [`docs/design/integration-im-dingtalk.md`](../design/integration-im-dingtalk.md) |

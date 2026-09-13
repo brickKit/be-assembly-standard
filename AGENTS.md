@@ -45,8 +45,8 @@
 | `erp-inventory` | 1.0.15 | Physical command hub: the TCC triad + claim-first idempotency + `warehouse`-dimension data scoping | [`docs/design/erp-inventory.md`](docs/design/erp-inventory.md) |
 | `erp-finance` | 1.0.11 | Event-sink hub: 11 `FinanceService` rpcs + `legal_entity`-dimension data scoping | [`docs/design/erp-finance.md`](docs/design/erp-finance.md) |
 | `erp-sales` | 1.0.23 | The one link in the chain: all four strong dependencies called over real gRPC, `ConfirmOrder`'s TCC compensation chain + `org`/`owner` two-dimension data scoping | [`docs/design/erp-sales.md`](docs/design/erp-sales.md) |
-| `infra-authz` | 1.0.4 | The only component holding persistent state in the permission system: `GET /authz/bundle` policy distribution, pure-union with no Deny | [`docs/design/infra-authz.md`](docs/design/infra-authz.md) |
-| `infra-iam-casdoor` | 1.0.6 | `slot:iam` Default member: the two-token architecture, refresh-token rotation + replay detection | [`docs/design/infra-iam-casdoor.md`](docs/design/infra-iam-casdoor.md) |
+| `infra-authz` | 1.0.5 | The only component holding persistent state in the permission system: `GET /authz/bundle` policy distribution, pure-union with no Deny | [`docs/design/infra-authz.md`](docs/design/infra-authz.md) |
+| `infra-iam-casdoor` | 1.0.7 | `slot:iam` Default member: the two-token architecture, refresh-token rotation + replay detection | [`docs/design/infra-iam-casdoor.md`](docs/design/infra-iam-casdoor.md) |
 | `infra-workflow` | 1.0.3 | Zero-dependency approval-task hub: claim-first idempotency + `owner`/`org` two-dimension data scoping | [`docs/design/infra-workflow.md`](docs/design/infra-workflow.md) |
 | `infra-notification` | 1.0.3 | Routing hub: zero dependencies, zero outbound edges, lives entirely on the event graph, two-tier channel preference | [`docs/design/infra-notification.md`](docs/design/infra-notification.md) |
 | `integration-im-dingtalk` | 1.0.4 | First member of the `channel:im` family: DingTalk access-token cache refresh | [`docs/design/integration-im-dingtalk.md`](docs/design/integration-im-dingtalk.md) |
