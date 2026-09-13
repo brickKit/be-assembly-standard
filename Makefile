@@ -128,14 +128,25 @@ shell-down:  ## 停掉外壳态的全部容器——brickkit down 本身停不�
 	@echo "✓ 外壳态已停止"
 .PHONY: shell-down
 
-teardown-up:  ## 原子式切到全拆态：先关外壳（如果在跑），再 brickkit up 起 14 个组装态容器
+teardown-up:  ## 原子式切到全拆态：先关外壳（如果在跑），临时去掉 brickkit.yaml 的 local:true，再 brickkit up 起 14 个组装态容器
 	@echo "▸ 停掉外壳态的全部容器（如果在跑）"
 	@docker compose --env-file .env -p be-shell -f infra/shell-compose.yml down 2>/dev/null || true
+	@if [ -n "$$(git status --porcelain brickkit.yaml)" ]; then \
+		echo "✗ brickkit.yaml 当前不干净——teardown-up 要临时改它、teardown-down 会用 git checkout 恢复，先处理掉这份未提交的改动再重跑" >&2; \
+		exit 1; \
+	fi
+	@echo "▸ 临时去掉 brickkit.yaml 里全部 local:true/localPort（不 commit，teardown-down 时原样恢复）"
+	@python3 infra/scripts/strip-shell-local.py
 	@brickkit up
+	@echo "✓ 全拆态已启动：14 个组装态容器。⚠️ brickkit.yaml 现在处于临时改过的状态，用 make teardown-down 恢复，不要在这期间提交它"
 .PHONY: teardown-up
 
-teardown-down:  ## 停掉全拆态的全部容器（brickkit down 本身够用，外壳没在跑时这条什么都不做）
+teardown-down:  ## 停掉全拆态的全部容器，并把 teardown-up 临时改过的 brickkit.yaml 还原
 	@brickkit down
+	@if [ -n "$$(git status --porcelain brickkit.yaml)" ]; then \
+		echo "▸ 恢复 brickkit.yaml 到 teardown-up 之前提交的样子"; \
+		git checkout -- brickkit.yaml; \
+	fi
 .PHONY: teardown-down
 
 ##@ 门禁

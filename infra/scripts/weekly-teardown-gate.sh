@@ -39,20 +39,7 @@ docker compose --env-file .env -p be-shell -f infra/shell-compose.yml down >/dev
 brickkit down >/dev/null 2>&1 || true
 
 echo "▸ 临时去掉 brickkit.yaml 里全部 local:true/localPort（不 commit，结束时原样恢复）"
-python3 - << 'PYEOF'
-import re
-with open("brickkit.yaml", encoding="utf-8") as f:
-    content = f.read()
-pattern = re.compile(
-    r"[ \t]*# ⚠️ local: true 不是有人在调试，是合并部署（阶段四 Task [67] 原子式切换，设计书 §13\.1）\n"
-    r"[ \t]*local: true\n"
-    r"[ \t]*localPort: \d+\n"
-)
-new_content, n = pattern.subn("", content)
-with open("brickkit.yaml", "w", encoding="utf-8") as f:
-    f.write(new_content)
-print(f"  去掉了 {n} 处 local: true")
-PYEOF
+python3 infra/scripts/strip-shell-local.py
 
 restore_and_exit() {
   code="$1"
