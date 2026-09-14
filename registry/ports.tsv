@@ -61,6 +61,11 @@ hrm-payroll-us	hrm/payroll-us	8307	9307	py-brain	blueprint不开发，端口预�
 # ===== 外壳五 Py-Render =====
 infra-print	infra/print	8400	9400	py-render	-
 integration-edi	integration/edi	8401	9401	py-render	-
+# ===== 外壳自身（servedBy 落地后是真实 brickKit 组件，阶段四附加 Task 0.4；见 registry/README.md 规矩3b）=====
+_shell-go-core	shell/go-core	8090	-	standalone	外壳自己的健康检查端口，不是任何成员的端口；成员的地址走 servedBy 网络别名，不走这个端口
+_shell-go-backoffice	shell/go-backoffice	8116	-	standalone	同上
+_shell-go-infra	shell/go-infra	8224	-	standalone	同上
+_shell-py-render	shell/py-render	8402	-	standalone	同上
 # ===== 独立容器 =====
 infra-bff-mobile	infra/bff-mobile	8500	-	standalone	GraphQL over HTTP，不暴露gRPC；exposePort=28500（决策107）
 frontend-standard	frontend/standard	80	-	standalone	slot:frontend族共用80；exposePort=28090（决策107）
