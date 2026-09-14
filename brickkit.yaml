@@ -517,15 +517,16 @@ resources:
   # 建好、真机验证过能登录的 5 个外壳登录角色（registry/schemas.tsv 第
   # 4 列），不是这次新建的角色。
   #
-  # ⚠️ 阶段四附加 Task 0.4 重要变化：bindings 从"每个成员各自一条"改成
-  # "外壳自己一条"。原因是真机验证过的一条硬事实（docs/plans/
-  # 04b-验证记录.md Task 0.4）——brickKit 的 servedBy 合并只把
-  # Source == SourceEndpoint 的变量（*_ENDPOINT）合进外壳容器的共享
-  # 环境，DATABASE_*/MQ_* 这类"资源连接"变量是 Source == SourceResource，
-  # 不在合并范围内。也就是说，即使 bindings 还挂在每个成员自己身上，
-  # brickKit 内部算是算了，但这份数据永远不会被送进外壳的真实容器——
-  # 外壳自己才是真正持有连接池、需要 DATABASE_*/MQ_* 注入的那个进程，
-  # bindings 必须直接挂在外壳的 componentId 上（shell/go-core 等）。
+  # ⚠️ 阶段四附加 Task 0.4：bindings 从"每个成员各自一条"改成"外壳自己
+  # 一条"——brickKit 的 servedBy 合并只把 Source == SourceEndpoint 的
+  # 变量（*_ENDPOINT）合进外壳容器的共享环境，DATABASE_*/MQ_* 这类"资源
+  # 连接"变量是 Source == SourceResource，真正需要它的是外壳自己（持有
+  # 连接池的那个进程），不是任何一个成员。只写外壳的 componentId 即可——
+  # 曾经因为 brickKit 的资源绑定校验（CheckRunningResourceBindings）不
+  # 认 servedBy，临时在这里给每个成员也重复绑了一份；这条已经在
+  # brickKit v0.4.1 修好（servingShellID：外壳绑了就等价于成员也绑了），
+  # 升级后去掉了那份临时绕过，完整过程见 docs/plans/04b-验证记录.md
+  # Task 0.4。
   - id: postgres-go-core
     kind: database
     engine: postgresql
@@ -535,28 +536,6 @@ resources:
     password: ${SHELL_GO_CORE_PASSWORD}
     bindings:
       - componentId: shell/go-core
-        database: brickkit_db
-      # ⚠️ 下面 5 条成员自己的 bindings 是真机验证 brickkit up（非
-      # --dry-run）时发现必须留着的：CheckRunningResourceBindings
-      # （brickKit internal/resolver/resolver.go）逐个检查"会启动的组件
-      # 自己的 componentId 在不在某条资源的 bindings 里"，完全不知道
-      # servedBy 语义——不加这几行，真的 brickkit up（不带 --dry-run）
-      # 会直接报「资源依赖未满足」硬阻断，即使外壳自己已经绑了同一个
-      # 资源、DATABASE_* 也确实注入进了外壳容器。这几行不会产生任何
-      # 真实副作用（servedBy 成员本来就不生成容器，多绑几行不会多注入
-      # 出一份数据），纯粹是为了满足这条校验，已反馈给 brickKit（同一类
-      # "校验/合并机制没跟上 servedBy 语义"的问题，见 docs/dev/
-      # brickKit反馈-servedBy的labels合并漏了排除规则.md 的姊妹问题，
-      # 完整记录见 docs/plans/04b-验证记录.md Task 0.4）。
-      - componentId: mdm/customer
-        database: brickkit_db
-      - componentId: mdm/product
-        database: brickkit_db
-      - componentId: erp/inventory
-        database: brickkit_db
-      - componentId: erp/finance
-        database: brickkit_db
-      - componentId: erp/sales
         database: brickkit_db
   - id: postgres-go-backoffice
     kind: database
@@ -568,9 +547,6 @@ resources:
     bindings:
       - componentId: shell/go-backoffice
         database: brickkit_db
-      # 同 postgres-go-core 的判据（上面那条注释）
-      - componentId: crm/opportunity
-        database: brickkit_db
   - id: postgres-go-infra
     kind: database
     engine: postgresql
@@ -580,17 +556,6 @@ resources:
     password: ${SHELL_GO_INFRA_PASSWORD}
     bindings:
       - componentId: shell/go-infra
-        database: brickkit_db
-      # 同 postgres-go-core 的判据（上面那条注释）
-      - componentId: infra/authz
-        database: brickkit_db
-      - componentId: infra/iam-casdoor
-        database: brickkit_db
-      - componentId: infra/workflow
-        database: brickkit_db
-      - componentId: infra/notification
-        database: brickkit_db
-      - componentId: integration/im-dingtalk
         database: brickkit_db
   - id: postgres-py-render
     kind: database
@@ -602,9 +567,6 @@ resources:
     bindings:
       - componentId: shell/py-render
         database: brickkit_db
-      # 同 postgres-go-core 的判据（上面那条注释）
-      - componentId: infra/print
-        database: brickkit_db
   - id: nats-shared
     kind: mq
     engine: nats
@@ -612,22 +574,10 @@ resources:
     port: 4222
     bindings:
       # 同上：NATS 资源连接也是外壳自己持有一个共享连接，不是每个成员
-      # 各自一条——4 个外壳各自一条负责真实注入，12 个成员自己的
-      # componentId 留着是为了满足 CheckRunningResourceBindings 校验
-      # （同 postgres-go-core 那条注释，理由一样，不重复）。
+      # 各自一条。
       - componentId: shell/go-core
       - componentId: shell/go-backoffice
       - componentId: shell/go-infra
       - componentId: shell/py-render
-      - componentId: mdm/customer
-      - componentId: mdm/product
-      - componentId: erp/inventory
-      - componentId: erp/finance
-      - componentId: erp/sales
-      - componentId: infra/authz
-      - componentId: infra/iam-casdoor
-      - componentId: infra/workflow
-      - componentId: infra/notification
-      - componentId: integration/im-dingtalk
       - componentId: infra/print
       - componentId: crm/opportunity
