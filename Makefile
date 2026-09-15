@@ -101,15 +101,26 @@ test-db-init:  ## 建/刷新本地测试专用库 brickkit_test_db（跟真机�
 # 的容器——这跟"部署时到底选外壳态还是全拆态"是两件事，前者是本仓库
 # brickkit.yaml 目前唯一在用的真实部署形态，后者是"验证组件没有偷偷依赖
 # 合并"这条设计铁律专用的、一次性的临时测试状态。
+#
+# 阶段四附加 Task 0.6：brickKit v0.4.2 新增 `brickkit up --ignore-served-by`
+# （内存里清空全部 servedBy，不写回文件）之后，"删掉每个成员 servedBy 那
+# 一行"不再需要脚本自己动手改文件、也不再需要事后恢复。但资源绑定
+# （servingShellID 的等价关系只在 servedBy 指向外壳时成立，清空之后
+# 12 个成员必须每个都有自己的直接绑定）+ `expose: true`（12 个成员早就
+# 不是独立容器，这两个字段已被删掉）这两件事 `--ignore-served-by` 管不到，
+# 仍然需要 `infra/scripts/patch-teardown-bindings.py` 临时打补丁、
+# `teardown-down` 时 `git checkout` 恢复。完整推演（含真机 `--dry-run`
+# 验证过"只加 flag 不打补丁会 RESOURCE_UNBOUND"）见
+# `docs/plans/04b-验证记录.md` Task 0.6。
 
-teardown-up:  ## 临时切到全拆态：把 brickkit.yaml 里 12 个成员的 servedBy 去掉、4 个外壳组件条目禁用，验证"组件真的能独立跑"（设计书 §13.7 拆回门禁）
+teardown-up:  ## 临时切到全拆态：打上全拆态专用资源绑定、用 --ignore-served-by 验证"组件真的能独立跑"（设计书 §13.7 拆回门禁）
 	@if [ -n "$$(git status --porcelain brickkit.yaml)" ]; then \
 		echo "✗ brickkit.yaml 当前不干净——teardown-up 要临时改它、teardown-down 会用 git checkout 恢复，先处理掉这份未提交的改动再重跑" >&2; \
 		exit 1; \
 	fi
-	@echo "▸ 临时去掉 brickkit.yaml 里 12 个成员的 servedBy、禁用 4 个外壳组件条目（不 commit，teardown-down 时原样恢复）"
-	@python3 infra/scripts/strip-shell-servedby.py
-	@brickkit up
+	@echo "▸ 临时给 brickkit.yaml 打上全拆态专用的资源绑定 + expose:true、禁用 4 个外壳组件条目（不 commit，teardown-down 时原样恢复）"
+	@python3 infra/scripts/patch-teardown-bindings.py
+	@brickkit up --ignore-served-by
 	@echo "✓ 全拆态已启动：14 个组装态容器（12 个原 servedBy 成员各自独立 + 2 个本来就独立的 infra-bff-mobile/frontend-standard）。⚠️ brickkit.yaml 现在处于临时改过的状态，用 make teardown-down 恢复，不要在这期间提交它"
 .PHONY: teardown-up
 

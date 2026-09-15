@@ -12,17 +12,24 @@
 # ⚠️ 阶段四附加 Task 0.4/0.5：外壳态改用 brickKit 原生 servedBy 之后，
 # 不再有"外壳态"和"全拆态"两条独立的部署路径——两者是同一份
 # brickkit.yaml、同一条 `brickkit up`，区别只在于 12 个成员组件的条目
-# 上有没有写 `servedBy`。本脚本临时去掉的也不再是 `local:true`，见下面
-# `strip-shell-servedby.py`。
+# 上有没有写 `servedBy`。
+#
+# ⚠️ 阶段四附加 Task 0.6：brickKit v0.4.2 新增 `brickkit up
+# --ignore-served-by`（内存里清空全部 servedBy，不写回文件）之后，
+# "servedBy 那一行本身"不再需要这条脚本去改/去恢复。仍然需要临时改
+# `brickkit.yaml` 的只剩资源绑定（servingShellID 的等价关系只在
+# servedBy 指向外壳时成立，清空之后 12 个成员必须每个都有自己的直接
+# 绑定）+ `expose: true`（12 个成员已经不是独立容器，这两个字段被删掉
+# 了）——`infra/scripts/patch-teardown-bindings.py` 只打这两类补丁。
 #
 # 流程：① 确认 git 工作区干净（不干净直接中止，不清理别人的在制品）
 # ② 无条件 `brickkit down`（不判断是不是真的有东西在跑）③ brickkit.yaml
-# 临时去掉 12 个成员的 servedBy、禁用 4 个外壳组件条目（内存里改，从不
-# commit）④ brickkit up 起 14 个组件各自独立的容器 ⑤ make tier0 + make
-# tier1 ⑥ 不管成功失败，用 git checkout 把 brickkit.yaml 恢复成拆之前
-# 提交的样子 ⑦ brickkit down 收尾，不尝试猜测"该不该把 servedBy 那份
-# 部署重新起回来"——组装态容器默认关闭是本项目自己的既有习惯
-# （AGENTS.md），不替不在场的人做假设。
+# 临时补上 12 个成员的资源绑定 + expose:true、禁用 4 个外壳组件条目
+# （内存里改，从不 commit）④ `brickkit up --ignore-served-by` 起 14 个
+# 组件各自独立的容器 ⑤ make tier0 + make tier1 ⑥ 不管成功失败，用
+# git checkout 把 brickkit.yaml 恢复成拆之前提交的样子 ⑦ brickkit down
+# 收尾，不尝试猜测"该不该把 servedBy 那份部署重新起回来"——组装态容器
+# 默认关闭是本项目自己的既有习惯（AGENTS.md），不替不在场的人做假设。
 set -uo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 cd "$ROOT"
@@ -43,8 +50,8 @@ fi
 echo "▸ 停掉全部容器（不判断是不是真的有冲突，图简单直接全关）"
 brickkit down >/dev/null 2>&1 || true
 
-echo "▸ 临时去掉 brickkit.yaml 里 12 个成员的 servedBy、禁用 4 个外壳组件条目（不 commit，结束时原样恢复）"
-python3 infra/scripts/strip-shell-servedby.py
+echo "▸ 临时给 brickkit.yaml 打上全拆态专用的资源绑定 + expose:true、禁用 4 个外壳组件条目（不 commit，结束时原样恢复）"
+python3 infra/scripts/patch-teardown-bindings.py
 
 restore_and_exit() {
   code="$1"
@@ -60,8 +67,8 @@ restore_and_exit() {
   exit "$code"
 }
 
-echo "▸ brickkit up：11 个 Go 组件 + infra/print 各自独立起一个容器"
-if ! brickkit up; then
+echo "▸ brickkit up --ignore-served-by：11 个 Go 组件 + infra/print 各自独立起一个容器"
+if ! brickkit up --ignore-served-by; then
   restore_and_exit 1
 fi
 
