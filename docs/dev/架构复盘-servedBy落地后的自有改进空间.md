@@ -141,11 +141,27 @@ configSchema key，驼峰形式）打包成 JSON 数组，原生注入外壳容�
 2. 退休 `be-ops shell-config` 子命令——它的产出对象不再需要存在。
 3. 4 个外壳的 `component.yaml`，删掉 `shellConfigJson` 这个
    `configSchema` 属性；`brickkit.yaml` 里对应的字符串配置也一并删掉。
-4. ⚠️ **一个需要留意的差异**：`BRICKKIT_SERVED_MEMBERS_CONFIG` 刻意
-   不含资源连接变量（`DATABASE_*` 之类，可能标了密钥身份，该走
-   K8s Secret）——`go-infra` 外壳那 6 个密钥类配置项
-   （`appTokenSigningKeyPem` 等）走的 `envWithProcessFallback`/
-   `_env_with_process_fallback` 兜底机制不受这次迁移影响，继续保留。
+4. ⚠️ **这条预判被真机验证推翻，记录下来避免重蹈覆辙**：这里原来
+   以为 `go-infra` 外壳那 6 个密钥类配置项（`appTokenSigningKeyPem`
+   等）走的 `envWithProcessFallback`/`_env_with_process_fallback`
+   兜底机制不受这次迁移影响、继续保留——真机 `brickkit up` 复现出
+   一个更严重的问题：这几个值在 `brickkit.yaml` 里仍然是 `${VAR}`
+   占位符，docker compose 读取生成好的 `docker-compose.yaml` 时会对
+   整份文件按纯文本做 `${VAR}` 替换，不知道某个 `${VAR}` 恰好嵌在
+   `BRICKKIT_SERVED_MEMBERS_CONFIG` 那份 JSON 字符串内部——真实密钥
+   自带原始换行符，替换进去直接把 JSON 断开（`shell-go-infra`
+   crash-loop）。恢复 `envWithProcessFallback` 这条老路**治标不治本**
+   （撑坏 JSON 的是拥有该密钥的成员自己那条 config 记录，外壳自己
+   多存一份不会让它消失），真正的修复是外壳启动器自己在
+   `json.Unmarshal`/`json.loads` 之前做一次"只转义 JSON 字符串内部
+   裸控制字符"的最小状态机（`sanitizeServedMembersConfig`/
+   `_sanitize_served_members_config`）——修好之后
+   `envWithProcessFallback` 反而**彻底不需要了**，`BRICKKIT_SERVED_
+   MEMBERS_CONFIG` 对全部 config 值（含密钥类）统一成立。这是
+   `BRICKKIT_SERVED_MEMBERS_CONFIG` 机制本身的普适性设计缺口（docker
+   compose 的全文本 `${VAR}` 替换不知道自己在 JSON 字符串内部），已
+   反馈给 brickKit。完整过程见 `docs/plans/04b-验证记录.md` Task 0.6、
+   两个外壳仓库各自 README.md 的"Task 0.6"系列小节。
 5. 《BrickEnterprise 设计书.md》§13.8（这次 Task 0.5 才刚重写成
    "`SHELL_CONFIG_JSON` + `be-ops shell-config`"的机制说明）需要跟着
    再改一版，反映"外壳启动器直接读 `BRICKKIT_SERVED_MEMBERS_CONFIG`，
