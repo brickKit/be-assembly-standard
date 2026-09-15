@@ -29,7 +29,7 @@
 |---|---|
 | 阶段 | **阶段一** ✅ 已出档。**阶段二** ✅ 已出档（[`02-阶段二`](../plans/02-阶段二-验平台.md)，复盘见 [`02-阶段二复盘`](../retrospectives/02-阶段二-验平台-复盘.md)）。**阶段三 · 业务闭环** ✅ **已真正结束**——9 个新组件 + 2 个新 SDK，Task 1–15 全部真正完成（Task 15 一度被跳过，靠后来一次系统排查才发现并补上，见下方复盘），阶段三主线之后的四条工作线（测试体系扩展、种子数据丰富度整改、文档架构重构、Task 15 补齐）均已完成，复盘见 [`03-阶段三复盘`](../retrospectives/03-阶段三-业务闭环-复盘.md)。逐 Task 的实现细节、真机验证过程、意外发现的 bug 全部在 [`03-阶段三`](../plans/03-阶段三-业务闭环.md) 本身，这里不重复。核心成果：阶段二 5 个组件的权限判定从 fail-closed stub 换成 `infra-authz` 真实 bundle；全系统第一次有真实签发方（`infra-iam-casdoor`）签发验签通过的 JWT；附录 E"商机赢单→订单→库存→应收"全链路真机跑通。⚠️ **这份复盘自己最大的一条发现**：主线收官后复盘本身被跳过，这正是 Task 15 长期没被发现的原因——完整分析与由此定下的流程规矩（后续工作线开工前先写复盘，不是先斩后奏）在复盘 §5，这里不重复。**阶段四 · 做外壳验拆回** ✅ **已完成**——Task 1–12 全部做完，复盘见 [`04-阶段四复盘`](../retrospectives/04-阶段四-做外壳验拆回-复盘.md)（这次主线收官后立刻写的，没有被别的工作线插队——阶段三定下的流程规矩这次真的兑现了）。逐 Task 的实现细节、真机验证过程全部在 [`04-阶段四`](../plans/04-阶段四-做外壳验拆回.md) 本身，这里不重复。核心成果：11 个 Go 组件 + `infra-print` 合并进 4 个真实外壳容器（`go-core`/`go-backoffice`/`go-infra`/`py-render`，`infra-bff-mobile`/`frontend-standard` 按设计保持独立）；§13.7 拆回门禁与铁律六 import 扫描都在真实合并态拓扑下验证过绿；新增 `make tier2` 覆盖合并态专属断言（单个模块 panic 不再拖垮外壳其余模块；共享连接池下即使查询漏加 schema 限定，`SET LOCAL` 依然正确把它限定在调用方自己的 schema 里）。 |
 | 已建组件 | **14 个建完**，见下方「已建组件一览」表。十三个后端组件的 `iamJwksUrl`/`authzBundleUrl` 都指向真实运行的对端。 |
-| 工具仓库 | `be-sdk-go@v0.2.7`、`be-ops@v0.1.9`、`be-acceptance@v0.3.17`（`make gates` 六个 gate + `bump-version` 子命令的产出方，见 SOP-W-11）、`be-sdk-python@v0.3.3`、`be-sdk-ts@v0.3.3`——全部已 tag（带注解）并被装配仓库的 submodule 指针跟踪。⚠️ **已知的版本漂移**：`be-sdk-go@v0.2.7` 修的 `StartOutboxPump` 原子认领 bug（踩坑记录 C15）目前只有 `infra-iam-casdoor`/`erp-inventory`/`erp-sales` 升级到位，其余业务组件仍在更早的 v0.2.1-v0.2.4——这个 bug 只在 K8s 多副本场景触发，不是本阶段的阻塞项，按"下次改动顺带升"处理。每个工具版本具体修了什么、哪次真机验证发现的，见各自仓库自己的 changelog 或 [`field-tested-pitfalls-log.md`](../dev/field-tested-pitfalls-log.md)（C11/C12/C15、A9/A10/A11、类别 F）。 |
+| 工具仓库 | `be-sdk-go@v0.2.7`、`be-ops@v0.1.15`、`be-acceptance@v0.3.17`（`make gates` 六个 gate + `bump-version` 子命令的产出方，见 SOP-W-11）、`be-sdk-python@v0.3.3`、`be-sdk-ts@v0.3.3`——全部已 tag（带注解）并被装配仓库的 submodule 指针跟踪。⚠️ **已知的版本漂移**：`be-sdk-go@v0.2.7` 修的 `StartOutboxPump` 原子认领 bug（踩坑记录 C15）目前只有 `infra-iam-casdoor`/`erp-inventory`/`erp-sales` 升级到位，其余业务组件仍在更早的 v0.2.1-v0.2.4——这个 bug 只在 K8s 多副本场景触发，不是本阶段的阻塞项，按"下次改动顺带升"处理。每个工具版本具体修了什么、哪次真机验证发现的，见各自仓库自己的 changelog 或 [`field-tested-pitfalls-log.md`](../dev/field-tested-pitfalls-log.md)（C11/C12/C15、A9/A10/A11、类别 F）。 |
 | 已钉死不许改的 | `registry/ports.tsv`、`registry/schemas.tsv`、`registry/permissions.tsv`（**只增不改**，见下）；**每种语言的技术栈与模块入口签名**（设计书 §12.4 / §12.5）；**PC 端骨架形态**（§12.6.7）；**权限体系**（第 14 章） |
 | 平台 CLI | 已装 **v0.2.2**。`brickkit restore`（含 `--check`）、`init --hooks`、`sync`/`remove` 对已登记 submodule 的守卫（`SUBMODULE_GUARD`）均已实现并在用。已知修复历史见 [`field-tested-pitfalls-log.md`](../dev/field-tested-pitfalls-log.md) 与 brickKit 仓库自己的 changelog。 |
 | 常用验收 | `make tier0`（档 0 六项验收，**每加一个组件都要重跑**）、`make tier1`（23 条平台断言，验的是 brickKit 自身行为不是业务逻辑，需要先 `brickkit up`）、`make tier2`（合并态专属断言——单个模块 panic 隔离 + 共享连接池下 `SET LOCAL` schema 越权测试，需要真实可达的 `TEST_PG_DSN`/`TEST_NATS_URL`）、`make docs-check REPO=<仓库名>`、`make gates`、`make version-check`（扫全部 submodule 的 tag 漂移） |
@@ -40,20 +40,20 @@
 
 | 组件 | 版本 | 定位 | 详细设计 |
 |---|---|---|---|
-| `mdm-customer` | 1.0.8 | 只读枢纽，`data_scopes: none` | [`docs/design/mdm-customer.md`](../design/mdm-customer.md) |
-| `mdm-product` | 1.0.9 | 只读枢纽，`data_scopes: none` | [`docs/design/mdm-product.md`](../design/mdm-product.md) |
-| `erp-inventory` | 1.0.16 | 物理命令枢纽：TCC 三件套 + claim-first 幂等 + `warehouse` 维数据权限 | [`docs/design/erp-inventory.md`](../design/erp-inventory.md) |
-| `erp-finance` | 1.0.12 | 事件汇枢纽：`FinanceService` 11 rpc + `legal_entity` 维数据权限 | [`docs/design/erp-finance.md`](../design/erp-finance.md) |
-| `erp-sales` | 1.0.24 | 唯一的链上一环：四条强依赖全部真实 gRPC 调用，`ConfirmOrder` 的 TCC 补偿链 + `org`/`owner` 两维数据权限 | [`docs/design/erp-sales.md`](../design/erp-sales.md) |
-| `infra-authz` | 1.0.6 | 权限体系里唯一持久化状态的组件：`GET /authz/bundle` 策略下发，纯并集无 Deny | [`docs/design/infra-authz.md`](../design/infra-authz.md) |
-| `infra-iam-casdoor` | 1.0.8 | `slot:iam` Default 成员：两个 token 架构，refresh token rotation + 重放检测 | [`docs/design/infra-iam-casdoor.md`](../design/infra-iam-casdoor.md) |
+| `mdm-customer` | 1.0.9 | 只读枢纽，`data_scopes: none` | [`docs/design/mdm-customer.md`](../design/mdm-customer.md) |
+| `mdm-product` | 1.0.10 | 只读枢纽，`data_scopes: none` | [`docs/design/mdm-product.md`](../design/mdm-product.md) |
+| `erp-inventory` | 1.0.17 | 物理命令枢纽：TCC 三件套 + claim-first 幂等 + `warehouse` 维数据权限 | [`docs/design/erp-inventory.md`](../design/erp-inventory.md) |
+| `erp-finance` | 1.0.13 | 事件汇枢纽：`FinanceService` 11 rpc + `legal_entity` 维数据权限 | [`docs/design/erp-finance.md`](../design/erp-finance.md) |
+| `erp-sales` | 1.0.25 | 唯一的链上一环：四条强依赖全部真实 gRPC 调用，`ConfirmOrder` 的 TCC 补偿链 + `org`/`owner` 两维数据权限 | [`docs/design/erp-sales.md`](../design/erp-sales.md) |
+| `infra-authz` | 1.0.7 | 权限体系里唯一持久化状态的组件：`GET /authz/bundle` 策略下发，纯并集无 Deny | [`docs/design/infra-authz.md`](../design/infra-authz.md) |
+| `infra-iam-casdoor` | 1.0.9 | `slot:iam` Default 成员：两个 token 架构，refresh token rotation + 重放检测 | [`docs/design/infra-iam-casdoor.md`](../design/infra-iam-casdoor.md) |
 | `infra-workflow` | 1.0.4 | 零依赖审批待办中心：claim-first 幂等 + `owner`/`org` 两维数据权限 | [`docs/design/infra-workflow.md`](../design/infra-workflow.md) |
 | `infra-notification` | 1.0.4 | 路由中枢：零依赖零出边完全活在事件图上，两层通道偏好 | [`docs/design/infra-notification.md`](../design/infra-notification.md) |
 | `integration-im-dingtalk` | 1.0.5 | `channel:im` 族第一个成员：钉钉 access_token 缓存刷新 | [`docs/design/integration-im-dingtalk.md`](../design/integration-im-dingtalk.md) |
-| `infra-print` | 1.0.6 | 全系统第一个 Python 组件：纯函数打印渲染中心，PDF/ZPL 双渲染 | [`docs/design/infra-print.md`](../design/infra-print.md) |
-| `infra-bff-mobile` | 1.0.18 | 全系统第一个 TypeScript 组件：GraphQL BFF，零强依赖零数据库 | [`docs/design/infra-bff-mobile.md`](../design/infra-bff-mobile.md) |
+| `infra-print` | 1.0.7 | 全系统第一个 Python 组件：纯函数打印渲染中心，PDF/ZPL 双渲染 | [`docs/design/infra-print.md`](../design/infra-print.md) |
+| `infra-bff-mobile` | 1.0.19 | 全系统第一个 TypeScript 组件：GraphQL BFF，零强依赖零数据库 | [`docs/design/infra-bff-mobile.md`](../design/infra-bff-mobile.md) |
 | `frontend-standard` | 1.0.0 | PC 独立 Vite SPA + 移动端 Uni-app H5，唯一没有后端形态的组件 | [`docs/design/frontend-standard.md`](../design/frontend-standard.md) |
-| `crm-opportunity` | 1.0.11 | 阶段三第一个业务组件、CRM 域第一个组件：商机全生命周期 | [`docs/design/crm-opportunity.md`](../design/crm-opportunity.md) |
+| `crm-opportunity` | 1.0.12 | 阶段三第一个业务组件、CRM 域第一个组件：商机全生命周期 | [`docs/design/crm-opportunity.md`](../design/crm-opportunity.md) |
 
 ⚠️ **版本号 changelog 的唯一源头是每个组件自己的 `component.yaml`**——这张表只给"现在是什么版本、这个组件是干什么的"，不复述版本历史。想知道某个组件从建仓库到现在经历了什么，去读它自己的 `component.yaml` 或 `git log`。
 
@@ -208,7 +208,7 @@ brickkit down                    # 停掉 14 个组装态容器（不删 volume�
 
 ⚠️ **测试库与演示库物理分开：`TEST_PG_DSN` 指向 `brickkit_test_db`，不是 `brickkit_db`。** 同一个 `be-postgres` 实例里两个物理分开的 database，`make test-db-init` 建/刷新测试库那一份。完整原因（为什么不能共用）见 [`docs/standards/05-data-construction-standard.md`](standards/05-data-construction-standard.md) 的 §一。
 
-⚠️ **外壳态与 brickKit 自己的独立容器互斥——不能同时对着真实基础设施两边都跑。** 外壳（`shells/go`/`shells/python`，阶段四起）和 `brickkit up` 给同一个组件生成的独立容器，是同一件事的两种运行形态，不是可以叠加的两层——同时开着会撞组件自己注册的端口（`local: true` 的 `localPort` 直接复用它，设计书 §13.8.1）、撞 NATS（两边跑同一份消费者代码订阅同一个 subject，广播语义让两边都收到并各处理一遍，是踩坑记录 E1/E2 的另一个变种）、撞 `brickkit_db` 状态（Outbox/幂等表被两个进程同时真实写）。**操作纪律：切到外壳态之前先 `brickkit down` 停掉全部组装态容器（不是只停将被合并的那几个，图简单直接全部停）；切回全拆态之前先把全部外壳容器停掉。** 完整推理见设计书 §13.9。**这条不管本地用 `TEST_PG_DSN`/临时端口跑的外壳单元测试**（完全不碰 `brickkit_db` 或组件注册端口）——只管"两边都对着真实资源跑"的那一刻。
+⚠️ **合并态与全拆态不再是两套独立的部署机制——两者是同一份 `brickkit.yaml`、同一条 `brickkit up`，区别只在于成员有没有写 `servedBy`**（阶段四附加 Task 0.4：`local: true` 退休，改用 brickKit 原生的 `servedBy`，取代这段原来描述的、本仓库外壳手写的 `infra/shell-compose.yml` 编排）。同一时刻只有一个真实拓扑在跑——当前 `brickkit.yaml` 写的是什么就是什么。唯一还需要"不能同时跑两边"这条旧纪律的场景，是*临时*的拆回测试窗口（`make teardown-up`/`make teardown-down`）——验证设计书"每个组件都必须能独立 `brickkit up` 起来"这条不可动摇的原则（§1.5）需要短暂去掉全部成员的 `servedBy`、起 14 个完全独立的容器，验证完再恢复。`teardown-up` 会原子式处理这一步（先要求 `git status` 干净，因为它会就地改 `brickkit.yaml`，靠 `git checkout` 恢复）——不要手动对着改了一半的 `brickkit.yaml` 跑 `brickkit up`。这条不管本地用 `TEST_PG_DSN`/临时端口跑的外壳单元测试（完全不碰 `brickkit_db` 或组件注册端口）。
 
 ---
 

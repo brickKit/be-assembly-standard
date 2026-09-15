@@ -94,51 +94,23 @@ test-db-init:  ## 建/刷新本地测试专用库 brickkit_test_db（跟真机�
 	@bash infra/scripts/test-db-init.sh
 .PHONY: test-db-init
 
-##@ 外壳（阶段四 Task 8，设计书 §13.8/§13.9）
-# ⚠️ 外壳态（本节）与全拆态（brickkit up 管理的 14 个组装态容器）互斥，
-# 同一时刻只能有一个在跑（§13.9）——下面 shell-up/teardown-up 互为对方
-# 的前置清理步骤，不依赖人记得"先做哪一步"。图简单，`shell-up` 第一步
-# 一律 brickkit down 全部 14 个，不判断"是不是真的有冲突"。
+##@ 外壳（阶段四 Task 8，设计书 §13.8/§13.9；阶段四附加 Task 0.4/0.5：外壳态改用 brickKit 原生 servedBy 之后，shell-gen/shell-image/shell-up/shell-down 这几个手写编排目标已经退休——外壳跟独立组件现在是同一份 brickkit.yaml、同一条 `brickkit up`，"谁被 servedBy 收编谁没有"的区别，不再是两条互斥的部署路径。见 docs/plans/04b-验证记录.md Task 0.4/0.5）
+# 剩下这两个目标（teardown-up/teardown-down）仍然有存在的理由：验证
+# "组件真的能独立跑"（设计书 §13.7 拆回门禁、`make tier0`/`make tier1`
+# 的部分断言）需要把当前的 servedBy 临时去掉，让 12 个成员变回各自独立
+# 的容器——这跟"部署时到底选外壳态还是全拆态"是两件事，前者是本仓库
+# brickkit.yaml 目前唯一在用的真实部署形态，后者是"验证组件没有偷偷依赖
+# 合并"这条设计铁律专用的、一次性的临时测试状态。
 
-shell-gen:  ## 重新生成 be-ops 产出 4/7/8（shell-compose.yml 消费的两份 JSON + 依赖顺序），供 shell-up 内部调用
-	@brickkit up --dry-run >/dev/null
-	@cd tools/be-ops && go build -o build/be-ops ./cmd/be-ops
-	@mkdir -p .brickkit/shellgen
-	@tools/be-ops/build/be-ops shell-config --root . --out .brickkit/shellgen/shell-config.json
-	@tools/be-ops/build/be-ops shell-env --root . --local-debug-dir .brickkit/generated --out .brickkit/shellgen/shell-env.json
-	@tools/be-ops/build/be-ops shell-depends --root . --out .brickkit/shellgen/shell-depends.json
-.PHONY: shell-gen
-
-shell-image:  ## 构建两个外壳镜像（本地构建，不在 brickKit 签名覆盖范围内）
-	@docker build -t brickenterprise/be-shell-go:local shells/go
-	@docker build -t brickenterprise/be-shell-python:local shells/python
-.PHONY: shell-image
-
-shell-up: shell-gen shell-image  ## 原子式切到外壳态：先关全部组装态容器，再起 4 个外壳容器 + brickkit up 管理的独立组件
-	@echo "▸ 停掉全部组装态容器（设计书 §13.9：外壳态与全拆态互斥，为了方便直接关闭所有）"
-	@brickkit down
-	@docker compose --env-file .env -p be-shell -f infra/shell-compose.yml up -d --wait
-	@brickkit up
-	@echo "✓ 外壳态已启动：4 个外壳容器（go-core/go-backoffice/go-infra/py-render）+ brickkit up 管理的独立组件"
-.PHONY: shell-up
-
-shell-down:  ## 停掉外壳态的全部容器——brickkit down 本身停不了外壳（§13.8.3），这条命令自己把两半都停了
-	@docker compose --env-file .env -p be-shell -f infra/shell-compose.yml down
-	@brickkit down
-	@echo "✓ 外壳态已停止"
-.PHONY: shell-down
-
-teardown-up:  ## 原子式切到全拆态：先关外壳（如果在跑），临时去掉 brickkit.yaml 的 local:true，再 brickkit up 起 14 个组装态容器
-	@echo "▸ 停掉外壳态的全部容器（如果在跑）"
-	@docker compose --env-file .env -p be-shell -f infra/shell-compose.yml down 2>/dev/null || true
+teardown-up:  ## 临时切到全拆态：把 brickkit.yaml 里 12 个成员的 servedBy 去掉、4 个外壳组件条目禁用，验证"组件真的能独立跑"（设计书 §13.7 拆回门禁）
 	@if [ -n "$$(git status --porcelain brickkit.yaml)" ]; then \
 		echo "✗ brickkit.yaml 当前不干净——teardown-up 要临时改它、teardown-down 会用 git checkout 恢复，先处理掉这份未提交的改动再重跑" >&2; \
 		exit 1; \
 	fi
-	@echo "▸ 临时去掉 brickkit.yaml 里全部 local:true/localPort（不 commit，teardown-down 时原样恢复）"
-	@python3 infra/scripts/strip-shell-local.py
+	@echo "▸ 临时去掉 brickkit.yaml 里 12 个成员的 servedBy、禁用 4 个外壳组件条目（不 commit，teardown-down 时原样恢复）"
+	@python3 infra/scripts/strip-shell-servedby.py
 	@brickkit up
-	@echo "✓ 全拆态已启动：14 个组装态容器。⚠️ brickkit.yaml 现在处于临时改过的状态，用 make teardown-down 恢复，不要在这期间提交它"
+	@echo "✓ 全拆态已启动：14 个组装态容器（12 个原 servedBy 成员各自独立 + 2 个本来就独立的 infra-bff-mobile/frontend-standard）。⚠️ brickkit.yaml 现在处于临时改过的状态，用 make teardown-down 恢复，不要在这期间提交它"
 .PHONY: teardown-up
 
 teardown-down:  ## 停掉全拆态的全部容器，并把 teardown-up 临时改过的 brickkit.yaml 还原

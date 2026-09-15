@@ -9,14 +9,20 @@
 # 刻磨掉了组件性"——失败时优先怀疑铁律六（有人 import 了别人）或铁律二
 # （有人跨 schema 查了），不是去怀疑业务逻辑本身。
 #
+# ⚠️ 阶段四附加 Task 0.4/0.5：外壳态改用 brickKit 原生 servedBy 之后，
+# 不再有"外壳态"和"全拆态"两条独立的部署路径——两者是同一份
+# brickkit.yaml、同一条 `brickkit up`，区别只在于 12 个成员组件的条目
+# 上有没有写 `servedBy`。本脚本临时去掉的也不再是 `local:true`，见下面
+# `strip-shell-servedby.py`。
+#
 # 流程：① 确认 git 工作区干净（不干净直接中止，不清理别人的在制品）
-# ② 无条件停掉外壳态 + 全拆态的全部容器（同 make shell-up/teardown-up
-# 的既有判据："图简单直接全关，不判断是不是真的有冲突"）③ brickkit.yaml
-# 临时去掉全部 local:true/localPort（内存里改，从不 commit）④ brickkit up
-# 起 14 个组件各自独立的容器 ⑤ make tier0 + make tier1 ⑥ 不管成功失败，
-# 用 git checkout 把 brickkit.yaml 恢复成拆之前提交的样子 ⑦ brickkit down
-# 收尾，不尝试猜测"该不该把外壳态重新起回来"——组装态容器默认关闭是本
-# 项目自己的既有习惯（AGENTS.md），不替不在场的人做假设。
+# ② 无条件 `brickkit down`（不判断是不是真的有东西在跑）③ brickkit.yaml
+# 临时去掉 12 个成员的 servedBy、禁用 4 个外壳组件条目（内存里改，从不
+# commit）④ brickkit up 起 14 个组件各自独立的容器 ⑤ make tier0 + make
+# tier1 ⑥ 不管成功失败，用 git checkout 把 brickkit.yaml 恢复成拆之前
+# 提交的样子 ⑦ brickkit down 收尾，不尝试猜测"该不该把 servedBy 那份
+# 部署重新起回来"——组装态容器默认关闭是本项目自己的既有习惯
+# （AGENTS.md），不替不在场的人做假设。
 set -uo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 cd "$ROOT"
@@ -34,12 +40,11 @@ if [[ -n "$(git status --porcelain)" ]]; then
   die "git 工作区不干净——拆回门禁只能在干净的工作区上跑（怕的是这条脚本 checkout 掉别人还没提交的改动）。先 commit/stash，再重跑。"
 fi
 
-echo "▸ 停掉外壳态 + 全拆态的全部容器（不判断是不是真的有冲突，图简单直接全关）"
-docker compose --env-file .env -p be-shell -f infra/shell-compose.yml down >/dev/null 2>&1 || true
+echo "▸ 停掉全部容器（不判断是不是真的有冲突，图简单直接全关）"
 brickkit down >/dev/null 2>&1 || true
 
-echo "▸ 临时去掉 brickkit.yaml 里全部 local:true/localPort（不 commit，结束时原样恢复）"
-python3 infra/scripts/strip-shell-local.py
+echo "▸ 临时去掉 brickkit.yaml 里 12 个成员的 servedBy、禁用 4 个外壳组件条目（不 commit，结束时原样恢复）"
+python3 infra/scripts/strip-shell-servedby.py
 
 restore_and_exit() {
   code="$1"
