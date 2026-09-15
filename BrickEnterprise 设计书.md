@@ -87,14 +87,14 @@ brickKit 把 DDD 边界从代码规范变成物理墙：独立程序/库/仓库�
 
 #### 原则二：合并只发生在部署形态上，组件完整性一步不让
 
-合并部署（第 13 章）是**交付期的部署选择**，不是开发期的架构选择。外壳是我们自己造的、平台完全不知道的东西（brickKit 明确不做，`012` §2.21）。它可以做的事只有一件：**把 N 个进程变成 1 个进程**。它不许做的事：
+合并部署（第 13 章）是**交付期的部署选择**，不是开发期的架构选择。外壳本身（进程内部怎么把 N 个模块拼起来）仍然是我们自己写的代码，但"哪个组件被哪个外壳收编、地址怎么算"这件事，2026-09 起已经是 brickKit 原生支持的能力（`servedBy` 字段，见 §13.1）——不再是平台完全不知道、我们借用 `local: true` 硬凑出来的效果。外壳可以做的事只有一件：**把 N 个进程变成 1 个进程**。它不许做的事：
 
 - ❌ 不许让两个组件模块直接互相 `import`（13.3 铁律六）
 - ❌ 不许把两个组件的表放进同一个 schema、不许跨 schema JOIN（13.3 铁律二）
 - ❌ 不许把 N 个模块的 API 合并成一个端口（13.3 铁律三）
 - ❌ 不许在外壳里写任何业务逻辑
 
-判断一次合并做对了没有，只有一个检验动作：**把 `local: true` 去掉，`brickkit up` 一次，本次装配的全部组件各起一个容器、业务闭环照样跑通。** 做不到就说明合并那一刻磨掉了组件性。§13.7 把这个检验固化成一条必须周期性执行的门禁。
+判断一次合并做对了没有，只有一个检验动作：**把全部 `servedBy` 去掉，`brickkit up` 一次，本次装配的全部组件各起一个容器、业务闭环照样跑通。** 做不到就说明合并那一刻磨掉了组件性。§13.7 把这个检验固化成一条必须周期性执行的门禁。
 
 ---
 
@@ -1323,16 +1323,16 @@ flowchart LR
 
 brickKit 是刻意极简的：不做网关、不做路由聚合、不建库建 schema、不知道"当前装配了什么"。这些活不会因为平台不做就消失，只是没有人认领——`be-ops` 就是认领它们的那一个。它不是 brickKit 组件（不进 `brickkit.yaml`），是我们自己的命令行工具，读全部组件的 `assembly.yaml`，产出：
 
+⚠️ **2026-09 更新**：原来的产出 4/7/8（外壳合并配置、每外壳环境变量表、外壳间 `depends_on`）已经**全部退休**——`servedBy` 落地后，"哪个组件进哪个外壳""地址怎么算"由平台原生处理，不再需要我们自己产出一份平行数据（真机验证记录见 `docs/plans/04b-验证记录.md` Task 0.2/0.3）。下表已经反映退休后的编号（原 5/6 顺移，原产出 4 的位置改放"外壳自己的合并清单"这个仍然需要我们自己生成的东西，语义已经不同，见下方 §13.8.1）。
+
 | # | 产出 | 替代了平台的什么 |
 | --- | --- | --- |
-| 1 | **网关路由表（两个出口）**：进外壳的组件 → 我们那份 shell-compose 的 service `labels`；独立容器组件 → `brickkit.yaml` 的 `components[].labels`；K8s → 带外 Ingress 清单 | 平台不做 path 路由（6.3） |
+| 1 | **网关路由表**：独立容器组件 → `brickkit.yaml` 的 `components[].labels`；K8s → 带外 Ingress 清单 | 平台不做 path 路由（6.3） |
 | 2 | **数据库建置脚本**：`CREATE SCHEMA` + `CREATE ROLE` + 授权 + 每外壳一个登录角色 | 平台只打印 `CREATE DATABASE`，不建库不建 schema 不建 role（2.7.2） |
 | 3 | **Feature 清单**：装配结果 → 写进 IAM 适配层的 `config`，供 `/api/tenant/features` 下发 | 平台不给组件"当前装配了什么"的视图（6.1） |
-| 4 | **外壳合并配置**：哪些组件进哪个外壳、端口分配、迁移执行顺序 | 平台不提供合并部署支持（13.6） |
+| 4 | **`shell-config`：外壳自己的合并清单**（`SHELL_CONFIG_JSON`，§13.8.1）——这个外壳理论上可能收编的全部成员各自的 componentId/端口/schema/`configSchema` 值 | 平台的 manifest 模型没有 `volumes` 字段，外壳没法"挂载一份文件"拿数据，只能把这份清单当一个 `configSchema` 字符串手动贴回 `brickkit.yaml`（13.8.1） |
 | 5 | **`brickkit.yaml` 生成**：含 `assembly.yaml` 的 schema 校验、`slot` 互斥校验、`channel` 多选校验 | 平台没有装配角色的概念（3.3） |
 | 6 | **全局端口册**：62 个组件的 HTTP + gRPC 端口**外加全部带外容器的宿主机端口**，两两不重复，`component.yaml` 由它校验 | 平台只在 `local: true` 撞车时报错，不给全局视图（3.5.1.1）。带外容器平台根本不知道它存在，更不会管（2.7.1） |
-| 7 | **每外壳的环境变量表**：外壳里每个模块的完整 env，跨外壳的 `*_ENDPOINT` 指向宿主机网关 | **平台只往它自己生成的容器里注入。合并后没有那些容器**（13.8） |
-| 8 | **shell-compose 的 `depends_on`**：外壳之间的启动顺序 | 平台只排它生成的那些；外壳之间它一个都不排（13.8） |
 
 ⚠️ **生成器铁律一：`labels` 的值必须是字符串。** Docker labels 与 K8s annotations 两边都只收字符串，平台**不做自动转换**。布尔与数字一律带引号产出：`"true"` / `"8080"`。
 
@@ -1524,19 +1524,20 @@ NATS/Kafka/RabbitMQ 三选一。按聚合根划分通道，避免 Topic 爆炸�
 
    ⚠️ **更正旧版说法**：两个组件写同一个 `hostname` **不是**静默打架，CLI 在生成阶段就硬报错（`checkHostnameUnique`），`expose: true` 却漏写 `hostname` 也一样报错。平台在这件事上守得很紧——它拒绝的不是"发现冲突"，而是"按路径分流"这个语义本身。所以结论不变：网关当不了组件，路由表归 `be-ops`。
 
-#### 6.3.1 路由表的**三个**出口
+#### 6.3.1 路由表的出口
 
-> ⚠️ **本节旧版写的是「两个出口」，其中「独立容器 → `brickkit.yaml` 的 `components[].labels`，平台透传进 compose service」这一条是行不通的。** 原因见下方 ⚠️⚠️。
+> ⚠️ **本节 2026-09 更新**：`servedBy` 落地后，"被合并进外壳的组件单独走一份 shell-compose 路由"这条已经不存在——原因不是编排方式变了，是**被 `servedBy` 收编的成员本身就没有外部路由这回事**：`expose: true`/`exposePort` 这类字段对 `servedBy` 成员根本不生效（平台只打印警告，见 §13.9），一个外壳内部同时装着 N 个模块，也没有"哪个端口对应哪个模块"的公开约定可以让 Traefik 分流。真实客户面的外部入口，本来就应该走 `infra-bff-mobile`/`frontend-standard` 这类刻意保持独立的组件（第 13 章"必须独立的钉子户"），不是绕过它们直接把网关捅进某个合并组件——下表因此收窄成两个出口，不是设计遗漏。
 
-`be-ops` 读各组件 `assembly.yaml` 的 `edge_routes`，按**组件跑在哪一份 compose 里**分流：
+`be-ops` 读各组件 `assembly.yaml` 的 `edge_routes`，只对**独立组件**（不管是本来就独立、还是没有写 `servedBy`）生效：
 
 | 组件形态 | 在哪一份 compose | 产出到哪 | Traefik 怎么发现它 |
 | --- | --- | --- | --- |
-| 被合并进外壳（`local: true`） | 第 3 份 `shell-compose.yml`（我们的） | shell-compose 的 service **`labels`** | **Docker Provider**（同在 `be-net` 上） |
-| **平台生成的独立容器**（`infra-bff-mobile`、`frontend-standard`） | 第 2 份 `.brickkit/` 下的 compose（**平台的**） | **Traefik 的 file provider 动态配置**，`url` 指向 `http://<宿主机地址>:<exposePort>` | **File Provider**（Docker Provider 看不到它，见下） |
+| **平台生成的独立容器**（`infra-bff-mobile`、`frontend-standard`，以及任何没有写 `servedBy` 的组件） | `.brickkit/` 下的 compose（**平台生成的唯一一份**） | **Traefik 的 file provider 动态配置**，`url` 指向 `http://<宿主机地址>:<exposePort>` | **File Provider**（Docker Provider 看不到它，见下） |
 | K8s 全拆（阶段三） | —— | **带外 Traefik Ingress / IngressRoute 清单** | Kubernetes Provider |
 
-⚠️⚠️ **为什么第二行不能用 `components[].labels`：平台生成的 compose 自己建一个 bridge 网络，而且没有任何配置项能让它接进外部网络。**
+⚠️ **`servedBy` 成员想要外部路由，唯一正确的做法是从 `brickkit.yaml` 里去掉它的 `servedBy`，让它变回独立容器**——跟阶段二"把一个组件从外壳里拆出来"是同一个操作（§13.4）。不存在"既合并进外壳、又能被外部直接路由"这种中间态。
+
+⚠️⚠️ **为什么不能直接用 `components[].labels`：平台生成的 compose 自己建一个 bridge 网络，而且没有任何配置项能让它接进外部网络。**
 
 实测 brickKit `internal/compose/compose.go`：
 
@@ -1561,28 +1562,19 @@ networks := map[string]any{
 2. `be-ops` 产出一份 **Traefik file provider 的动态配置**（不是 labels），`service.loadBalancer.servers[].url` 写 `http://<宿主机地址>:<exposePort>`
 3. Traefik 的静态配置里**同时**启用 `docker` 与 `file` 两个 provider
 
-**`exposePort` 因此必须进全局端口册**（§3.5.1.1）：它是宿主机端口，和外壳发布的端口、带外容器的端口活在同一个空间里。
+**`exposePort` 因此必须进全局端口册**（§3.5.1.1）：它是宿主机端口，和带外容器的端口活在同一个空间里。
 
-⚠️ **这一条应当作为平台改进请求提给 brickKit**：`deploy.docker` 下加一个 `externalNetworks: [be-net]`，让生成的 compose 能接进已有网络。那样第二行就能回退成简单的 `components[].labels`。**按 §9.6.2 的纪律，先在 `be-acceptance` 记一条用例（现在是红的），再回 brickKit 仓库提。**
+⚠️ **这一条应当作为平台改进请求提给 brickKit**：`deploy.docker` 下加一个 `externalNetworks: [be-net]`，让生成的 compose 能接进已有网络。那样就能回退成简单的 `components[].labels`。**按 §9.6.2 的纪律，先在 `be-acceptance` 记一条用例（现在是红的），再回 brickKit 仓库提。**
 
-⚠️ **`local: true` 的组件不生成容器，没有可以挂标签的对象**——产出到那些条目上的 labels 一行都不会出现在生成物里。平台会警告并点名那几个键（不是静默失效），但 `be-ops` 不能靠这个警告过日子，必须自己分流。
+⚠️ **`local: true`/`servedBy` 的组件都不生成容器，没有可以挂标签的对象**——产出到那些条目上的 labels 一行都不会出现在生成物里。平台会警告并点名那几个键（不是静默失效）。
 
 ⚠️ **K8s 下平台的 labels 落在 `annotations`，Traefik 不读它。** 阶段三的路由走带外 Ingress；那时 `components[].labels` 的用途是 `prometheus.io/*`（第 7 章），不是路由。
 
-#### 6.3.2 外壳侧的两个坑（`be-ops` 必须处理）
+#### 6.3.2 ⚠️ 已废弃：外壳侧的路由坑（`servedBy` 落地后不再适用）
 
-1. **router 名全局唯一**：Traefik 的 router name 跨 provider 全局。外壳三那个 service 上要挂 22 组规则，名字必须带组件前缀去重（`erp-sales` 而不是 `sales`）。
-2. **必须显式声明 service 端口**：外壳容器同时监听 8080~8087 等多个端口，**Traefik 猜不出该转发到哪个，会直接放弃**。每个模块要成套产出三条标签：
+旧版这里讲的是"外壳容器同时监听多个端口，Traefik 猜不出转发到哪个，每个模块要成套产出三条 router/service/port 标签"——这套方案的前提是"合并进外壳的组件仍然可以被外部路由"，而 §13.9 已经确认这个前提在真实 `servedBy` 下不成立：`expose`/`labels` 这类字段对 `servedBy` 成员根本不生效。这一小节因此整个作废，不留替代方案——**需要外部路由的组件从设计上就不该合并进外壳**，见 §6.3.1 的更新说明。
 
-```yaml
-traefik.http.routers.erp-sales.rule: "PathPrefix(`/erp/sales`)"
-traefik.http.routers.erp-sales.service: "erp-sales"
-traefik.http.services.erp-sales.loadbalancer.server.port: "8080"
-```
-
-⚠️ **值必须带引号。** Docker labels 与 K8s annotations 两边都只收字符串，平台不做自动转换，`traefik.enable: true` 会被当场拦下。
-
-Traefik 使用 `ForwardAuth` 中间件对接 Casdoor 实现统一验签。
+Traefik 使用 `ForwardAuth` 中间件对接 Casdoor 实现统一验签，这一条继续成立，跟组件是否合并无关。
 
 ### 6.4 前端组件
 
@@ -1857,7 +1849,7 @@ erp-sales/
 | **档 0**<br>单砖 | 一块砖能独立活 | `mdm/customer` 一个组件 | 单独 `brickkit up` 起来；`curl` 打通 HTTP；**`grpcurl` 打通 gRPC 的 `Get` / `List` / `batchGet`**；迁移能被平台单独调起且可重跑；`/healthz` 只查本进程；镜像里有 shell + wget |
 | **档 1**<br>验平台 | brickKit 的每条承诺都真的成立 | 加 `mdm/product`、`erp/inventory`、`erp/finance`、`erp/sales` 共 5 个 | 见 §9.6.2 的平台验收清单，逐条打勾 |
 | **档 2**<br>闭环 | 一条业务链真的跑通 | 加 `crm/opportunity`、`infra-iam-casdoor`、**`infra-authz`**、`infra-workflow`、`infra-notification`、1 个 IM 通道、**`infra-print`（Python，档 3 要靠它验 Python 外壳）**、`infra-bff-mobile`、`frontend-standard`（只做这几个模块的页面），**共 14 个组件**（= 附录 H 里「切片」列打勾的那些） | 「CRM 赢单 → 建单 → 锁库存 → 生成应收 → 审批 → 钉钉通知 → 打印送货单 PDF」全链路跑通（附录 E）；Saga 补偿与超时查询走一遍；DLQ 进得去出得来（⚠️ `infra-dlq-monitor` 在档 4a，不在这 14 个里——**档 2 验的是平台 SDK 层的死信通道本身**：重试耗尽后消息进 DLQ、`hop_count > 5` 被丢弃、能被重新投递。管理界面与积压告警留到档 4a）；**权限判定从 fail-closed stub 换成真实的 `infra-authz` bundle 轮询**，阶段二标 `Public` 的接口这一档要换回真实权限键（§14.3：`infra-authz` 组件本体、`.sql` 数据权限谓词、`SystemClient`/`UserClient` 分家扫描，全部落在这一档） |
-| **档 3**<br>做外壳 | 验"合并不磨掉组件性" | 把档 2 的 14 个组件合成 **2 个外壳**：Go 外壳装 **11** 个模块（含 `infra-iam-casdoor`、`infra-authz`），Python 外壳装 `infra-print`；TS 的 `infra-bff-mobile` 与 `frontend-standard` 保持独立容器（§13.5：跨语言合不进来，Nginx 也合不进来） | 合并态业务闭环全绿；**§13.7 的拆回门禁全绿**；铁律六的 import 扫描全绿；13.8 那三份 compose 一条命令启停 |
+| **档 3**<br>做外壳 | 验"合并不磨掉组件性" | 把档 2 的 14 个组件合成 **2 个外壳**：Go 外壳装 **11** 个模块（含 `infra-iam-casdoor`、`infra-authz`），Python 外壳装 `infra-print`；TS 的 `infra-bff-mobile` 与 `frontend-standard` 保持独立容器（§13.5：跨语言合不进来，Nginx 也合不进来） | 合并态业务闭环全绿；**§13.7 的拆回门禁全绿**；铁律六的 import 扫描全绿；`brickkit up` 一条命令启停（⚠️ 当时是"13.8 那三份 compose"，`servedBy` 落地后收成一份，见 §13.8 2026-09 更新） |
 | **档 4a**<br>补齐 default | 凑齐最小可交付形态 | `infra-storage`、`infra-attachment`、`infra-dlq-monitor`、`mdm-supplier`、`mdm-org` 共 5 个 | 每加一个组件，档 0 的六项 + 拆回门禁重跑 |
 | **档 4b**<br>铺货 | 军火库补齐 | 其余组件按客户订单优先级排队 | 同上 |
 
@@ -1931,7 +1923,7 @@ erp-sales/
 | 17 | 通道按聚合根划分 | 避免 Kafka Topic 爆炸 | 细粒度 Topic 元数据膨胀 |
 | 18 | event-bus 只跑业务事件 | 职责单一 | 混入日志流量导致延迟 |
 | 19 | Schema 只增不删不改 | 事件结构变更不击穿已有消费者 | 删字段导致消费者崩溃 |
-| 20 | 路由表生成期聚合，**由 `be-ops` 做，不是 `brickkit up`**；两个出口：进外壳的组件 → 我们那份 shell-compose 的 service labels，独立容器 → `brickkit.yaml` 的 `components[].labels`，K8s → 带外 Ingress | 静态可审计、无额外依赖。平台明确不做 path 路由，也没有 volumes 字段挂网关配置——这两件是物理限制，不是取舍（6.3） | Consul 引入运维复杂度；以及"以为平台会生成路由"导致交付现场网关空转 |
+| 20 | 路由表生成期聚合，**由 `be-ops` 做，不是 `brickkit up`**；独立容器 → `brickkit.yaml` 的 `components[].labels`，K8s → 带外 Ingress（⚠️ `servedBy` 落地后合并进外壳的组件不再有独立的路由出口，见 §6.3.1 2026-09 更新） | 静态可审计、无额外依赖。平台明确不做 path 路由，也没有 volumes 字段挂网关配置——这两件是物理限制，不是取舍（6.3） | Consul 引入运维复杂度；以及"以为平台会生成路由"导致交付现场网关空转 |
 | 21 | BFF 透传用户 JWT | 业务组件能识别操作用户 | 服务账号导致审计丢失操作人 |
 | 22 | 强制启用 Persisted Queries | 弱网请求体降至数十字节 | 浪费带宽 |
 | 23 | DataLoader 绑定 `batchGet` | 防 N+1 的唯一合法路径 | Resolver 循环调 Get 瀑布流 |
@@ -1999,12 +1991,14 @@ erp-sales/
 | 85 | Fork 件的 `metadata.id` 与 `version` **必须与标准件一致**，靠 `sources` 声明顺序遮蔽 | 平台注入的变量名由组件 ID 推导。改 id = 所有依赖方的 `*_ENDPOINT` 整个消失 | 改 id 导致整条 Fork 机制垮掉，每个依赖方都要改 Manifest 和源码 |
 | 86 | 事件总线与对象存储底座降级为**基础资源**（`kind: mq` / `kind: storage`），网关降级为**带外容器** | 我们零代码的东西不该包成组件：包了之后除了原本的代价还要多维护一个空壳仓库。网关另有物理限制（无 volumes、无 path 路由） | infra 域凭空多出 5 个只有壳的仓库。⚠️ **本条旧版的理由写的是「换实现从改一个字段变成改几十个 Manifest」，那句话是错的**——`engine` 逐字参与匹配，换事件总线本来就要改所有组件的 Manifest（§2.7.3.1）。结论不变，理由要按新的那条说 |
 | 87 | 业务组件对 `slot:iam` **不建依赖边**，一律 JWT 本地验签 | 平台的依赖变量名带着实现的名字（`INFRA_IAM_CASDOOR_ENDPOINT`）。一旦建了依赖边，slot 就名存实亡 | 换 IAM 要改几十个仓库的 Manifest 加源码 |
-| 88 | 合并部署只用于 Docker 单机交付，**上 K8s 就是全拆** | `local: true` 只能配 `deploy.target: docker`，K8s 目标下 CLI 在生成阶段直接报错；K8s 上做部分合并就用不了 `brickkit up` | 承诺一条不存在的中间态，交付现场才发现 |
+| 88 | ~~合并部署只用于 Docker 单机交付，上 K8s 就是全拆~~ **本条结论 2026-09 已反转，见 §13.4 更新说明** | 原判据：`local: true` 只能配 `deploy.target: docker`，K8s 目标下 CLI 在生成阶段直接报错。`servedBy` 落地后判据本身不成立——读源码确认 `internal/k8s/servedby.go` 原生支持 K8s 下的合并部署（尚未在本项目真机验证，见 §13.4） | 原文这里担心的"承诺一条不存在的中间态"，现在中间态是真实存在的；反过来要小心的是"以为 K8s 下合并部署已经在本项目跑通"——目前只有源码依据，没有真机验证 |
 | 89 | `be-ops` 是交付关键路径上的必需件，不是 `reserve` | 平台不做的那**八**件事（路由聚合、建库脚本、features 清单、外壳编排、`brickkit.yaml` 生成、全局端口册、每外壳环境变量表、外壳间启动顺序）活不会消失，只是没人认领 | 设计书把这些活默认成"brickKit 会做"，到现场没人干 |
 | 90 | **两条不可让渡的原则**：① 每个组件以纯 brickKit 组件形态开发、gRPC 一个不省、能单独 `brickkit up` 起来；② 合并只发生在部署形态上（§1.5） | 合并是交付期的省钱手段，不是架构。gRPC 是逻辑边界的物理载体——省掉它，合并那一刻边界就消失了 | "反正最后要合并，同进程直接调函数不就完了"——这么想一次，阶段三永远到不了 |
 | 91 | **铁律六：组件模块之间绝不互相 `import`**，由 `be-acceptance` 的 import 扫描守（§13.3） | 外壳工程把 N 个模块引进同一个 `go.work`，物理隔离退化成纪律，而纪律会烂。brickKit 自己把这条列为合并代价里最贵的一条 | 前五条铁律破了当场起不来，一小时能修；这条破了**没有任何症状**，直到要全拆才发现拆不动，那时的代价是重写 |
-| 92 | **拆回门禁**：每周把 `local: true` 全去掉、`brickkit up` 全拆一次、业务闭环全绿（§13.7） | 原则二如果不能被机器检验，半年后一定不成立。磨掉组件性的改动在合并态下**全都是正确的**，只有全拆才让它们变成错误 | "先把全拆用例注掉，回头再修"——那等于宣布阶段三不做了 |
-| 93 | **`be-ops` 还要产出：全局端口册、每外壳的环境变量表、外壳之间的 `depends_on`**（产出 6/7/8） | 平台只往它自己生成的容器里注入，合并后那些容器不存在；平台也不排它不认识的外壳之间的顺序 | 交付现场外壳里的模块拿着 `http://localhost:8080` 去调另一个外壳的组件，打到自己身上——而两边配置看上去都没毛病 |
+| 92 | **拆回门禁**：每周把全部 `servedBy` 去掉（⚠️ 原文是 `local: true`，`servedBy` 落地后改用它，见 §13.7 2026-09 更新）、`brickkit up` 全拆一次、业务闭环全绿（§13.7） | 原则二如果不能被机器检验，半年后一定不成立。磨掉组件性的改动在合并态下**全都是正确的**，只有全拆才让它们变成错误 | "先把全拆用例注掉，回头再修"——那等于宣布阶段三不做了 |
+| 93 | **`be-ops` 还要产出：全局端口册**（产出 6） | 平台没有跨组件的端口全局视图，只在真的撞车时报错 | 写到第 30 个组件才发现端口撞了，前面 29 份 Manifest 要回头改 |
+
+⚠️ **本条 2026-09 更新**：原文这里还包括"每外壳的环境变量表、外壳之间的 `depends_on`"（产出 7/8）——`servedBy` 落地后，依赖地址由平台原生算好写进外壳容器自己的 `os.Environ`（§13.1 机制三），产出 7 已经退休；外壳之间的启动顺序平台从来不排（也不打算排，见 §13.6），产出 8 设想的"手写一份 shell 间 `depends_on` 顺序表"已经证明是错误方向，正确做法是外壳自己的依赖客户端代码容忍"对方还没起来"，不是排出一个一旦被打乱就失效的固定顺序（§13.8）。
 | 94 | **gRPC 等额外端口必须在 `component.yaml` 里一次写对**，没有 `localPort` 那种事后补救（§3.5.1.1） | 平台改写地址时明确跳过额外端口；两个 `local: true` 组件撞同一额外端口直接硬报错 | 以为 gRPC 端口也能在装配期挪，写到第 30 个组件才发现要回头改前 29 份 Manifest |
 | 95 | **推进顺序档 0→4，档 3（做外壳、验拆回）必须早于档 4（铺满军火库）**（§9.6） | 外壳的坑是结构性的，13 个组件时踩到改 `be-ops` 就行，62 个组件时踩到要改 61 份 Manifest 加拆代码 | 先铺 62 个组件再合并，等于把最贵的重构留到最后 |
 | 96 | **`be-acceptance` 升为必需件**，第一批用例的被测对象是 **brickKit 本身**（§9.6.2） | 我们既是平台作者又是它第一个真实用户；平台升级后重跑这批用例就是回归测试 | 平台某条断言悄悄变了，而 62 个组件已经照旧版写完了 |
@@ -2018,7 +2012,7 @@ erp-sales/
 | 104 | **组件清单是活的**：本书是"在还没实现任何组件的情况下"尽力做出的划分，实现反馈会新增组件、改组件边界、甚至改组件结构。**发现"多个成熟 ERP 各给一种实现且都合理、只是适配客户不同"时，那是新槽位族的信号——先回本书新增族，再实现**（§5.11.1） | 最终目标是"我们自己有一套默认 ERP，但每个功能组件都可以有多种实现，客户按需选择，甚至基于最接近的那个做闭源二次开发"。族越贴合真实分歧，客户 Fork 的起点越接近他要的东西，我们后期二次开发的时间越少 | ① 把四种成本核算法塞进一个组件写 `if costingMethod ==`，最后每个客户的需求在同一份代码里互相牵制；② 反过来，把"单据编号规则"这种本该是配置项的东西也做成族，凭空多出三个仓库 |
 | 105 | **`resources[].engine` 逐字参与匹配**，所以这个词写什么是个设计决定：**协议兼容的写能力名**（storage → `s3`，换 RustFS↔MinIO↔S3 零改动），**协议不兼容的写产品名**（mq → `nats`，换 Kafka 时让平台主动阻断，因为那本来就是一次迁移）。数据库写 `postgresql`，不在替换范围（§2.7.3.1） | 平台靠 `kind` 决定注入哪组变量，靠 `engine` 逐字相等判断「组件要的和管理员绑的是不是同一样东西」。它不认别名——`postgres` 与 `postgresql` 是两个不同的值 | 照旧版那句「改一个字段、组件代码与 Manifest 零改动」去换 Kafka，`brickkit up` 当场阻断；而报错说的是「engine 写的不一样」，与「零改动」的预期完全对不上 |
 | 106 | **带外容器的宿主机端口一律用 `2xxxx` 段**，`1xxxx` 整段留给平台（§2.7.1） | brickKit 给 `local: true` 组件及其依赖做宿主机映射时首选 `10000 + 容器端口`、fallback 从 `28080` 起递增扫描。我们的组件端口 8080/8081/9090/9092 恰好对应 28080/28081/29090/29092，而那正是带外容器官方默认端口挪开后最自然的落点 | 把 Traefik Dashboard 放 28080，等到第一次给 local 组件做调试映射时才发现平台也要这个端口——那时报的是 `CodePortConflict`，而两边配置看上去都没毛病 |
-| 107 | **平台生成的 compose 接不进外部网络**，所以路由表有**三个**出口：进外壳的走 shell-compose 的 `labels`（Docker Provider）、**平台生成的独立容器走 `expose: true` + `exposePort` + Traefik file provider**、K8s 走带外 Ingress（§6.3.1） | 平台生成的 compose 自建一个非 external 的 bridge 网络，`brickkit.yaml` 里没有任何字段能改。Traefik 的 Docker Provider 只看得见同网络的容器，所以 `components[].labels` 上的路由标签它一条都读不到 | 照旧版「独立容器 → `components[].labels`」去做：labels 写对了、`docker inspect` 也看得见，而**网关 404、容器全 healthy**——最难查的一类。连带：`exposePort` 必须进全局端口册；`resources[].host` 只能写 `host.docker.internal` |
+| 107 | **平台生成的 compose 接不进外部网络**，独立容器走 **`expose: true` + `exposePort` + Traefik file provider**、K8s 走带外 Ingress（§6.3.1；⚠️ `servedBy` 落地前旧版这里还有"进外壳的走 shell-compose 的 labels"第三个出口，现已确认合并进外壳的组件根本没有外部路由这回事，不是编排方式变了，见 §6.3.1/§6.3.2 2026-09 更新） | 平台生成的 compose 自建一个非 external 的 bridge 网络，`brickkit.yaml` 里没有任何字段能改。Traefik 的 Docker Provider 只看得见同网络的容器，所以 `components[].labels` 上的路由标签它一条都读不到 | 照旧版「独立容器 → `components[].labels`」去做：labels 写对了、`docker inspect` 也看得见，而**网关 404、容器全 healthy**——最难查的一类。连带：`exposePort` 必须进全局端口册；`resources[].host` 只能写 `host.docker.internal` |
 | 108 | **每种语言的技术栈逐格锁定**（§12.4）：Go = Gin + `database/sql`/`pgx stdlib` + `sqlc` + `golang-migrate`；Python = FastAPI + uvicorn 单进程 + **`grpc.aio`** + `asyncpg` + 手写 SQL + `yoyo-migrations`；指标一律**每模块一个 registry**。⚠️ **迁移那一格是「语言内统一」，其余是「全项目统一」**——外壳不跨语言，所以每个外壳的启动器只需认识自己那门语言的迁移工具 | §13.5 那句「只能合并同语言**同框架**的组件」以前没有任何地方展开过。展开之后发现分歧分三层：ASGI/WSGI、同步 gRPC、DB 驱动、迁移工具、默认 registry 这五格是**物理合不进去**；OTel/日志/信号/环境变量那几格是**起得来然后悄悄错**；只有 Gin 那一格是纪律锁（`gin.Engine` 就是个 `http.Handler`，混用能编译）。**理由要分清，否则将来有人以为 FastAPI 也只是偏好** | ① 用 Flask 写一个 Python 组件，做外壳那天才发现 WSGI 的同步 handler 拿不到共享的 asyncpg 池；② 两个模块都往默认 Prometheus registry 注册 `http_requests_total`，单跑 100% 正常，进外壳第二个模块起来就崩；③ **同一个外壳里**一个组件用 alembic、其余用裸 `.sql`，那个外壳的启动器要写两套迁移编排（跨外壳不同则无妨——这一格只在语言内是硬的） |
 | 109 | **模块入口契约**（§12.5、§13.3 铁律七）：每个后端组件导出唯一入口 `module.New(ctx, rt) (*besdk.Module, error)`（Python `create_module(rt)`），`main` 塌成 `besdk.RunStandalone(module.New)` 一行。**单跑与合并调同一个函数** | §1.5 原则二「合并只发生在部署形态上」如果单跑走 `main` 的一套装配、合并走外壳的另一套装配，就只是口号。**同一个入口是原则二唯一能被机器守住的形态**，也是 `be-ops` 产出 4（外壳合并配置）的生成对象。外壳只收 `http.Handler`，所以决策 108 的框架锁不会漏进外壳代码 | ① 62 个组件各自发明一个 `main`，合并那天 61 份装配代码全要重写；② §13.7 的拆回门禁半年后第一次真跑时全红，而当时已分不清是哪一处磨掉了组件性 |
 | 110 | **配置只能由调用方注入，模块代码里零 `os.Getenv`**（§12.5.3）；进程内单例（OTel provider、日志根、信号处理器、Prometheus registry、连接池）一律归外壳，模块**不许 `log.Fatal` / `os.Exit`** | §13.8.2 已经要求「外壳按模块持有各自的 env map」，可一个进程只有一份 `environ`——那句要求**只有在模块不碰 `os.Getenv` 时才成立**。撞的恰好都是不带 `_ENDPOINT` 的那些：`COMPONENT_ID`、`PG_SCHEMA`、以及每份 `configSchema` 里的每一项（`pgSchema`/`batchSize`/`otelBaseUrl` 同名很常见）。**本条更正旧版 §13.3 铁律一与总纲 SOP-B 的 B-8**——不许硬编码地址的意图没变，改的是「谁去读」 | ① 22 个模块的 `PG_SCHEMA` 互相顶掉，**不报错**，模块按别人的 schema 建表写数据——决策 3 那个「悄悄读写别人的数据」的第二条路径；② 一个模块启动时踩到可恢复的错就 `log.Fatal`，**整组 22 个组件一起没了**；③ 22 个模块的 trace 全挂在最后一个 `SetTracerProvider` 的 `service.name` 上，而一路全绿 |
@@ -2099,7 +2093,7 @@ CREATE TABLE sales_orders_2026_02 PARTITION OF sales_orders
 1. 迁移工具显式配置目标 schema（Go 侧 `golang-migrate` 的 `x-migrations-table` + `search_path`；Python 侧 `yoyo-migrations` 的 `--schema` / 连接串里的 `schema` 参数。工具按语言分，见 §12.4）
 2. 迁移状态表的**主键或表名必须含组件标识**（brickKit `002` §8.11 对"两个组件共用一个库"的硬性要求）
 
-⚠️ 合并部署时这条更要紧：平台不为 `local: true` 的组件生成迁移容器，迁移由外壳启动器自己跑（13.3 铁律五），没有平台兜底。
+⚠️ 合并部署时这条更要紧：平台不为 `servedBy` 的组件生成迁移容器，迁移由外壳启动器自己跑（13.3 铁律五），没有平台兜底。
 
 #### 11.2.4 子表跟随主表分区
 
@@ -2295,7 +2289,7 @@ CREATE TABLE sales_orders_2026_02 PARTITION OF sales_orders
    | Python 组件（`hrm-payroll-es`、`infra-print`、`ana-*`） | `120` |
    | Node 组件（`infra-bff-mobile`） | `90` |
    | Go 单体组件 | 不写（默认 60 够用） |
-   | **外壳镜像**（在我们自己那份 shell-compose 里，不经平台） | `300`：22 个模块的迁移串行跑，60 秒远远不够 |
+   | **外壳镜像**（`servedBy` 只接管编排，不接管构建，镜像仍是我们自己的 Dockerfile 产出） | `300`：22 个模块的迁移串行跑，60 秒远远不够 |
 
 6. **健康检查禁令（三种语言一视同仁）**：`/healthz` **只检查本进程存活**，严禁在里面查数据库、查依赖组件、查 NATS。一个下游抖动会让所有上游同时被判不健康并重启——合并部署下更狠：一个模块把探针拖挂，**整组 22 个组件一起重启**。
 
@@ -2681,34 +2675,39 @@ vxe 的文档里带 `enterprise-version` / `enterprise-link` 这类标记，说�
 `brickKit` 平台在设计之初就预留了 **"模块化单体（Modular Monolith）"** 的退路。正如 `brickKit` 官方文档《组件合并部署.md》中断言：
 > "调用方本来就不知道对面是什么。只要 `<版本化服务名>:<端口>` 这个地址能被解析、能被连上，你的外壳就是透明的。"
 
-### 13.1 核心哲学：模块化单体与"不改代码"的欺骗术
+### 13.1 核心哲学：模块化单体与"不改代码"的透明寻址
 
-⚠️ **最容易误解的一点，先说在最前面：`local: true` 是"这个组件根本不生成容器"，不是"容器照常跑、只是额外给它加了个宿主机端口"**（阶段一实测踩过——想给一个正常起着的 Docker 组件加个宿主机端口去调 gRPC，顺手设了 `local: true`，容器直接被干掉了）。往下三个机制里的第三个会展开讲这件事。
+⚠️ **本节 2026-09 更新：brickKit 从这个版本起原生支持合并部署（`servedBy` 字段），下面的机制三已经不再是"借用 `local: true` 的障眼法"，而是平台的一等公民能力。** 旧版这里描述的 `local: true` + `extra_hosts` + 手写三份 compose 那一整套借用机制，本章后面凡是提到的地方都已经改写；`local: true` 本身**没有消失**，但语义收窄回了它最初、也是唯一真正的用途——"这个组件跑在开发者自己的 IDE 里，用于单组件本地调试"，不再被用来表达合并部署。
 
 为什么可以"不改代码"直接合并？三个机制：
 
 1. **机制一：调用方无感知（环境变量铁律）**
-   `erp-sales` 调用 `mdm-customer` 时，代码里永远只读环境变量：`MDM_CUSTOMER_ENDPOINT=http://mdm-customer-1-0-0:8080`。它不知道对面是独立的 Pod，还是同一个进程里的另一个线程。
+   `erp-sales` 调用 `mdm-customer` 时，代码里永远只读环境变量：`MDM_CUSTOMER_ENDPOINT=http://mdm-customer-1-0-9:8080`。它不知道对面是独立的容器，还是同一个进程里的另一个模块——**这条地址无论合并与否都是同一个格式**（机制三展开讲为什么），代码不需要区分"我现在是不是被合并了"。
 2. **机制二：端口隔离（唯一拦路石）**
    一个进程不能监听 60 个 8080 端口。合并外壳（Shell）必须在进程内启动多个 HTTP/gRPC Server，分别监听 8080, 8081, 8082...（端口从各自的 `component.yaml` 读取）。
-3. **机制三：`local: true` + `extra_hosts`（障眼法）**
+3. **机制三：`servedBy`（brickKit 原生的合并部署字段）**
 
-   平台没有"这几个组件我自己接管"的开关，唯一能借用的是 `local: true`。它恰好做了三件我们要的事：**不为该组件生成 service**、在**每个依赖方容器里写 `extra_hosts`** 把版本化服务名指到宿主机网关、并把注入地址里的端口换成 `localPort`。
+   一个组件在 `brickkit.yaml` 里声明 `servedBy: <外壳组件ID>@<外壳版本>`，就是告诉平台"这个组件的工作负载由那个外壳容器代跑，不要为我单独生成容器"。外壳本身是一个普通的 `brickkit.yaml` 组件条目（自己的 `id`/`version`/`image`/`deployment.port`/`healthCheck`），不需要我们自己另外维护一份 compose/K8s 编排：
 
-```yaml
-# brickkit.yaml —— 被合并进外壳的组件（by be-ops 生成）
-components:
-  - { id: mdm/customer,  version: 1.0.0, local: true, localPort: 8080 }
-  - { id: mdm/supplier,  version: 1.0.0, local: true, localPort: 8081 }
-  - { id: erp/sales,     version: 1.0.0, local: true, localPort: 8084 }
-  # …外壳一的 8 个组件，端口来自各自 component.yaml 的 deployment.port
-```
+   ```yaml
+   # brickkit.yaml —— 被合并进外壳的组件
+   components:
+     - id: mdm/customer
+       version: 1.0.9
+       servedBy: shell/go-core@0.4.8
+     - id: erp/sales
+       version: 1.0.25
+       servedBy: shell/go-core@0.4.8
+     # …外壳一的其余组件，端口仍然来自各自 component.yaml 的 deployment.port
 
-⚠️ **不要用 Docker 网络别名（`aliases`）。** `extra_hosts` 落在 `/etc/hosts`，而 glibc 与 musl 的解析顺序都是 `hosts: files dns`——**先查文件，查到就不问 DNS 了**。所以一旦 `local: true` 生效，网络别名一行都不会起作用，留着只会把排障引向完全错误的方向。
+     - id: shell/go-core        # 外壳本身，跟其它组件条目没有本质区别
+       version: 0.4.8
+       deployment: { image: brickenterprise/be-shell-go:0.4.8, port: 8090 }
+   ```
 
-⚠️ **连带要求：外壳必须从宿主机可达。** `extra_hosts` 指向 `host-gateway`（= 宿主机 IP），所以外壳跑在容器里也行，但**必须把端口发布到宿主机**。
+   平台给每个被 `servedBy` 收编的组件，在**外壳那一个容器**的 Docker 网络别名列表里挂上这个组件自己的版本化服务名（`internal/manifest/servicename.go` 的 `ServiceName(id, version)`：componentId+version 转小写、`/`和`.`全部替换成`-`）——这条转换规则和组件独立部署时的 compose service 名**完全相同**，K8s 侧原理一致（新建一个 Service 对象，selector 指向外壳 Pod）。调用方看到的地址格式因此从来没变过：机制一说的"调用方无感知"，字面意义上就是"同一个字符串格式解析到不同地方"，不需要任何 `extra_hosts` 障眼法，也不需要把端口发布到宿主机。
 
-⚠️ **`local: true` 的语义是"这个组件跑在开发者的 IDE 里"**，拿它做交付是借用。交付现场的 `brickkit.yaml` 里会写着一串 `local: true`，读的人会以为有人正在调试——**必须在同一个文件里写注释说明**，`be-ops` 生成时自动加。
+   ⚠️ **这不是"每个成员各自需要一份特殊配置"**——`dependencies.components` 声明的强/弱依赖边，地址由平台自动算好直接写进外壳容器自己的 `os.Environ`（真机验证过：`erp-sales` 所在的 `shell/go-core` 容器里，`docker exec ... env` 能同时看到 `MDM_CUSTOMER_ENDPOINT`/`ERP_INVENTORY_ENDPOINT` 这类同外壳依赖、和 `INFRA_WORKFLOW_ENDPOINT` 这类**跨外壳**依赖——两者格式完全一样，都是 `http://<版本化服务名>:<端口>`，**没有"同外壳用 `127.0.0.1`、跨外壳用宿主机地址"这种区分**，那是旧版 `local: true` 时代手工计算才需要的逻辑，`servedBy` 下平台自己算，不需要我们插手）。**唯一还需要手写的是绕过依赖边机制的字面量配置项**——第 14 章的 `authzBundleUrl`/`iamJwksUrl` 是仅有的例外：`infra-authz`/`infra-iam-casdoor` 依照设计**不能**被任何组件声明为依赖边（"零入边"是 `slot:iam`/`slot:authz` 能保持可替换性的物理前提，见两者各自的 AGENTS.md），这两项因此从来不在平台的依赖注入路径上，仍然要人工判断"调用方和被调方现在是不是同一个外壳"——同外壳写 `127.0.0.1`（同进程 loopback），跨外壳或独立部署写版本化服务名，且组件升版本时要跟着手动同步（`docs/dev/field-tested-pitfalls-log.md` C18 记录的正是这类漂移）。
 
 ### 13.2 高维合并分组方案（60+ 组件 ➔ 5 大业务外壳）
 
@@ -2784,7 +2783,7 @@ components:
 **铁律一：严禁硬编码地址（环境变量铁律）**
 - ❌ 错误写法：`http_client.get("http://localhost:8081/api/v1/customers")`
 - ✅ 正确写法：`http_client.get(os.Getenv("MDM_CUSTOMER_ENDPOINT") + "/api/v1/customers")`
-- **原理**：合并时，环境变量指向外壳内部的 `127.0.0.1:8081`；拆分时，`brickKit` 自动将其注入为 K8s 的 DNS。代码一行不用改。
+- **原理**：合并时（`servedBy`），环境变量指向对方组件的版本化服务名（外壳容器的一个网络别名，格式跟独立部署时完全一样，不是 `127.0.0.1`，见 §13.1 机制三）；拆分时，`brickKit` 自动将其注入为 K8s 的 DNS。代码一行不用改。
 
 **铁律二：单 Database + 独立 Schema + 外壳级连接池共享（防爆铁律）**
 
@@ -2821,9 +2820,9 @@ PG 的连接绑死两样东西：**一个 database、一个认证角色**。所�
 - 所有组件产生的事件，必须先写入自己数据库的 `event_outbox` 表。外壳内运行一个统一的"事件推送线程池"，轮询各个组件的 Outbox 表，发往独立的 NATS 容器。这样即使进程内某个模块崩溃，事件依然不会丢失。
 
 **铁律五：迁移由外壳自己跑（合并后平台不再管）**
-- ⚠️ **`local: true` 的组件，平台不生成迁移容器 / Job**。外壳一（8 个）、外壳二（14 个）、外壳三（21 个）的迁移全部由外壳启动器按拓扑顺序执行，失败即中止启动。
+- ⚠️ **`servedBy` 的组件，平台不生成迁移容器 / Job**。各外壳的迁移全部由外壳启动器按拓扑顺序执行，失败即中止启动。
 - ⚠️ 多个模块共用一个 database 时，**各自的 `schema_migrations` 表必须落在各自的 schema 里**。迁移工具默认往 `public` 写，不配就会全挤在一起互相顶掉。
-- 拆分回独立容器时（去掉 `local: true`），平台重新接管迁移——迁移脚本必须是**幂等**的，两种执行路径下都能安全重跑。
+- 拆分回独立容器时（去掉 `servedBy`），平台重新接管迁移——迁移脚本必须是**幂等**的，两种执行路径下都能安全重跑。
 
 **铁律六：组件模块之间绝不互相 `import`（这是最贵的一条）**
 
@@ -2877,20 +2876,18 @@ PG 的连接绑死两样东西：**一个 database、一个认证角色**。所�
 |---|---|---|---|---|
 | 阶段一（初创/信任期） | 只买了一台 16C32G 服务器，预算紧，信任度低 | **Docker** | 5 基础/带外 + 5 外壳 + 2（前端/BFF） | 12 |
 | 阶段二（业务爆发期） | `erp-sales` 流量暴增，需要独立扩容 | **Docker** | 把 `erp-sales` 从 Go-Core 外壳里剔除，成为独立容器 | 13 |
-| 阶段三（K8s 完全体） | 全面上云，购买 K8s 集群 | **K8s** | 本次装配的组件全部独立，一个组件一个 Deployment/Service | 装了多少个就是多少个 |
+| 阶段三（K8s 完全体） | 全面上云，购买 K8s 集群 | **K8s** | 本次装配的组件全部独立，一个组件一个 Deployment/Service——**或者继续合并，见下方 2026-09 更新** | 装了多少个就是多少个 |
 
-> **⚠️ 铁律：合并部署只用于 Docker 单机交付。上 K8s 就是全拆，没有中间态。**
+> ⚠️ **本条铁律 2026-09 更新，结论已反转**：这条铁律成立的前提是"合并只能靠 `local: true`，而它只配 `deploy.target: docker`"——`servedBy` 落地后这个前提不再存在。**读 brickKit 源码确认**（`internal/k8s/servedby.go`）：K8s 目标下 `servedBy` 由平台原生生成一个独立的 Service 对象，`selector` 指向外壳 Pod 的 label，跟 Docker 侧"往外壳容器网络别名列表里挂一个别名"是同一个转换函数（`ServiceName()`）算出来的地址，机制不同但效果一致——**合并部署不再是"只能 Docker 单机交付"，K8s 下同样支持合并**。旧版这里说的"承诺一条不存在的中间态"（决策 88）本身也需要重新审视：中间态现在是真实存在的。
 >
-> 物理原因：`local: true` **只能配 `deploy.target: docker`**，K8s 目标下 CLI 在生成阶段直接报错（`003` §4.4、`005` §5.3.1）。K8s 上想做部分合并，`brickkit up` 那一键就用不了，只能 `--dry-run` 生成清单后手工挑着 `kubectl apply`——那不是一条能交付的路。brickKit 已把这处空缺如实写在文档里并声明不补（`012` §2.21）。
->
-> 好消息是这条铁律和上面的路线图本来就一致：阶段一、二都在 Docker，阶段三是全拆。
+> ⚠️ **诚实标注当前状态**：以上是读 brickKit 源码得出的结论，本项目自己**还没有在真实 K8s 集群上跑过 `servedBy`**（见 `docs/plans/04b-部署矩阵验证.md` Task 6，尚未开工）——这条铁律的反转目前只有源码依据，没有本项目自己的真机验证，回来补上真机记录之前，不要把"K8s 下合并部署"当成已经在本项目里跑通的能力对客户承诺。
 
 **阶段二操作细节**（把一个组件从外壳里拆出来）：
 
-1. 修改 `brickkit.yaml`，**删掉 `erp-sales` 那一条的 `local: true` 和 `localPort` 两行**（平台没有 `standalone: true` 这种字段，而且 `brickkit.yaml` 同样拒绝未知字段——写了会当场报错）。
-2. `brickkit up` 自动为它生成独立容器与 service DNS，其他组件的 `ERP_SALES_ENDPOINT` 自动从"宿主机网关 + localPort"变回"版本化服务名 + 8080"。
+1. 修改 `brickkit.yaml`，**删掉 `erp-sales` 那一条的 `servedBy` 一行**（平台没有 `standalone: true` 这种字段，而且 `brickkit.yaml` 同样拒绝未知字段——写了会当场报错）。
+2. `brickkit up` 自动为它生成独立容器与 service DNS，其他组件的 `ERP_SALES_ENDPOINT` 的值不用变——`servedBy` 收编前后，地址格式本来就是同一个版本化服务名（§13.1 机制三），差别只是这个名字现在解析到它自己的容器，不再解析到外壳容器。
 3. 从外壳的合并清单里去掉这个模块，重建外壳镜像；把它的迁移交还给平台（平台会重新为它生成迁移容器）。
-4. `be-ops` 重新产出路由：这个组件的 `edge_routes` 从**外壳的 shell-compose labels** 迁到 **`brickkit.yaml` 的 `components[].labels`**（6.3.1）。
+4. 这个组件的 `expose`/`labels` 等"独立部署时才生效"的字段（合并时平台只打印警告、不生效，见 §13.9）现在可以按需要写回去了。
 5. 全程无需重新编译业务代码，只需重启相关外壳。
 
 ### 13.5 合并部署的代价（必须清醒认识）
@@ -2906,32 +2903,34 @@ PG 的连接绑死两样东西：**一个 database、一个认证角色**。所�
 
 ### 13.6 与 `brickKit` 平台的对接
 
-**先说清楚：平台对合并部署"不挡路，也不帮忙"。** 它不提供 `--consolidated` 之类的命令、不提供外壳基础镜像或工程模板、不做进程管理与健康检查聚合、不做合并后的迁移编排，**端口撞了、别名漏了它一个字都不说**。这是被论证过后拒绝的（`012` §2.21），不是还没做。
+⚠️ **本节 2026-09 更新：这里原来的立场是"平台对合并部署不挡路也不帮忙，地址计算/启动排序/环境变量全部我们自己接手"——`servedBy` 落地后，这个立场只对一部分事情还成立，另一部分已经由平台原生接管，不再是我们自己的负担。** 两者的分界线，是下面这张表。
 
-合并之所以可行，靠的是平台的克制：
+平台在 `servedBy` 之上仍然保持的克制：
 - 平台没有注册中心（DNS 就是注册中心）。
 - 平台不做 API 代理与路由——**调用链上没有任何中间层需要同步**。
 - 平台不做配置中心（环境变量注入，改配置就重启）。
 - 调用方只读环境变量 `*_ENDPOINT`，不硬编码任何地址。
+- 平台不做进程管理与健康检查聚合、不提供外壳基础镜像或工程模板——外壳镜像本身仍然要我们自己的 `Dockerfile`/构建流程产出（`servedBy` 只接管"编排"这一层，不接管"构建镜像"这一层）。
 
-**我们要接手的六件事**（平台原来做、合并后不再做）：
+**现在到底谁管什么**（`servedBy` 落地后的真实分工，2026 年阶段四附加 Task 0.4/0.5 真机验证过）：
 
-| 事项 | 平台原来做什么 | 合并后归谁 |
+| 事项 | 平台管不管 | 真实归属 |
 | --- | --- | --- |
-| 健康检查 | 每组件一份 probe | 一个容器一个 probe。**任何一个模块把进程拖死，整组一起重启**——故障隔离是第一样付掉的东西。`/healthz` 里**仍然禁止**检查别的模块 |
-| 数据库迁移 | 生成一次性 service / Job，跑完才起主服务 | 外壳按序自己跑（铁律五） |
-| 外壳**内部**启动顺序 | 拓扑排序 + `depends_on` | 外壳启动器 |
-| 外壳**之间**启动顺序 | ——（平台只排它生成的那些，而外壳它一个都不认识） | `be-ops` 产出 shell-compose 的 `depends_on`（§13.8） |
-| **每个模块的环境变量** | 注入进它生成的容器 | **合并后那些容器不存在了。归 `be-ops`（§13.8）——这是最容易被漏掉的一件** |
-| 签名 | 生产强制校验 Manifest 签名 | 外壳镜像是本地构建的，**不在任何签名覆盖范围内**（见 9.4） |
+| 健康检查 | 不管 | 一个容器一个 probe。**任何一个模块把进程拖死，整组一起重启**——故障隔离是第一样付掉的东西。`/healthz` 里**仍然禁止**检查别的模块 |
+| 数据库迁移 | 不管 | 外壳按序自己跑（铁律五） |
+| 外壳**内部**启动顺序 | 不管 | 外壳启动器（拓扑排序 + 等待/重试） |
+| 外壳**之间**启动顺序 | **不管，且没有替代机制**——真机确认过 `servedBy` 不会在外壳之间生成 `depends_on`（`docker compose config` 里每个外壳的 `depends_on` 都是空） | **谁也不归——这是刻意的，不是遗漏**：每个外壳的依赖客户端代码自己必须容忍"对方还没起来"这件事（重试 + 退避 + 缓存旧值继续跑，同 `infra-authz` bundle 轮询客户端"拉取失败沿用内存里已有的旧版本"的既有判据）。旧版这里设想的"手写一份 shell 间 `depends_on` 顺序表"（`be-ops` 产出 8）已经证明是错误方向：外壳一旦启动顺序被别的机制（K8s 滚动升级、某个外壳单独重启）打乱，硬编码的顺序表立刻过期，而"调用方自己重试"这条路径不管顺序怎么乱都成立 |
+| **每个组件的依赖地址**（`dependencies.components` 声明的 `*_ENDPOINT`） | **平台原生管**——真机验证过：地址直接算好写进外壳容器自己的 `os.Environ`，同外壳/跨外壳格式完全一样，都是版本化服务名（§13.1 机制三），不需要我们自己算，也不需要为它专门维护一份产出文件 |
+| **绕过依赖边的字面量配置项**（`authzBundleUrl`/`iamJwksUrl` 这两个仅有的例外，见 §13.1 机制三末尾） | 不管 | 人工判断"同外壳写 `127.0.0.1`，跨外壳/独立部署写版本化服务名"，组件升版本时手动同步（`docs/dev/field-tested-pitfalls-log.md` C18） |
+| 签名 | 不管 | 外壳镜像是本地构建的，**不在任何签名覆盖范围内**（见 9.4） |
 
-正因为平台的克制，你才可以在只改 DNS 指向的前提下把对端换成任何东西。换个说法：**平台的克制，正是你能自己动手的原因。**
+正因为平台在"调用方无感知"这条链路上做得比旧版设想的更多（原生算地址），我们真正要自己扛的东西，收窄到"外壳启动器本身怎么把 N 个模块拼进一个进程"和"少数几个刻意绕开依赖边机制的字面量配置项"——不再是一整套手写的 compose/环境变量表/启动顺序编排。
 
 ### 13.7 拆回门禁：合并做对了没有，只有一个检验动作
 
 §1.5 原则二说合并只发生在部署形态上。这句话如果不能被机器检验，半年后一定不成立。**检验动作只有一个**：
 
-> 把全部 `local: true` / `localPort` 去掉，`brickkit up` 一次，本次装配的每个组件各起一个容器、全部 healthy，`be-acceptance` 的业务闭环用例全绿。
+> 把全部 `servedBy` 去掉、被服务的外壳组件条目临时禁用（`enabled: false`，见 §13.9），`brickkit up` 一次，本次装配的每个组件各起一个容器、全部 healthy，`be-acceptance` 的业务闭环用例全绿。
 
 这条门禁的纪律：
 
@@ -2944,87 +2943,47 @@ PG 的连接绑死两样东西：**一个 database、一个认证角色**。所�
 
 **为什么必须是"全拆"而不是"抽查"**：磨掉组件性的那些改动，在合并态下全都是**正确的**——同进程直调当然通、跨 schema JOIN 当然查得出来。只有全拆才会让它们变成错误。
 
-### 13.8 ⚠️ 合并态下的环境变量与启动顺序（旧版整块缺失）
+⚠️ **真机踩到的两个连带坑（`servedBy` 落地后新增）**：光去掉 `servedBy` 不够——(1) `resources.bindings` 在 `servedBy` 常态下只绑外壳自己的 componentId（平台判定"外壳绑了资源就等价于它收编的每个成员也绑了"），脱离 `servedBy` 之后这条等价判定不再适用，全拆之前要给每个成员临时补回自己独立的资源绑定；(2) 被合并的组件在常态 `brickkit.yaml` 里通常已经删掉了 `expose: true`（因为对 `servedBy` 成员不生效，写了只会收到警告），全拆之后如果还想用 `curl`/`grpcurl` 从宿主机直接打这些组件，也要临时把 `expose: true` 加回来。这两步已经沉淀进 `infra/scripts/strip-shell-servedby.py`（拆回门禁自动化脚本自己处理，不需要人工每次现算）。
 
-这一节补的是上一版设计里**真正会在交付现场炸的那个洞**。
+### 13.8 外壳启动器自己要做的事：怎么把 N 个模块拼进一个进程
 
-#### 13.8.1 平台不会给外壳环境变量
+⚠️ **本节 2026-09 整节重写**：旧版这里补的是"上一版设计真正会在交付现场炸的洞"——因为那时平台完全不知道合并这回事，跨外壳依赖地址、每外壳的环境变量表、三份 compose 的启动顺序，全部要靠 `be-ops` 产出 7/8 手工算、手工编排。`servedBy` 落地后，**地址计算这部分已经由平台原生接管**（§13.1 机制三、§13.6），`be-ops` 产出 7/8 与手写的 `shell-compose.yml`/三份 compose 编排已经全部退休（真机验证记录见 `docs/plans/04b-验证记录.md` Task 0.2-0.5）。真正还要我们自己写代码解决的，收窄到"外壳进程内部怎么把 N 个模块拼起来"这一件事——这天然就是我们自己的代码（`shells/go`/`shells/python`），不是平台的职责范围。
 
-平台的注入只发生在**它自己生成的容器**上。`local: true` 的组件没有容器，它拿到的是一份 `local-debug.<版本化服务名>.env` 文件。那份文件**不能直接喂给外壳**，因为里面的依赖地址被改写成了 `http://localhost:<端口>`：
+#### 13.8.1 外壳怎么知道自己该装哪些模块：`BRICKKIT_SERVED_MEMBERS` + `SHELL_CONFIG_JSON`
 
-| 调用关系 | `local-debug` 里写的 | 在外壳容器里对不对 |
+平台原生注入一个变量、我们自己生成并贴回另一个变量：
+
+| 变量 | 谁生成、什么时候生成 | 内容 |
 | --- | --- | --- |
-| 同外壳：`erp-sales` → `mdm-customer` | `http://localhost:8080` | ✅ 对，同一个进程同一个 localhost |
-| **跨外壳**：外壳二的 `crm-lead` → 外壳一的 `mdm-customer` | `http://localhost:8080` | ❌ **错。** 打到外壳二自己的 8080 上去了 |
+| `BRICKKIT_SERVED_MEMBERS` | **平台原生注入**，`brickkit up` 每次运行时按当前 `brickkit.yaml` 现算 | 这次部署里，真的有哪些成员的 `servedBy` 指向这个外壳（版本化服务名列表）——**这是"这次真的收编了谁"的唯一权威来源**，外壳启动器按它筛出要装的模块 |
+| `SHELL_CONFIG_JSON` | **我们自己生成**（`be-ops shell-config --shell <外壳名>`），手动贴进 `brickkit.yaml` 该外壳组件条目自己的 `configSchema` 字符串值 | 这个外壳理论上可能收编的全部成员各自的 componentId/端口/schema/`configSchema` 值——是一份"菜单"，不是"这次真的装了谁"（那是上一行的职责） |
 
-那份文件的语义是"这个组件跑在开发者的 IDE 里，其他东西在容器里"——**它假设只有一个 local 进程**。我们有五个。
+⚠️ **为什么不能只用 `SHELL_CONFIG_JSON` 一份数据**：`brickkit.yaml` 的 manifest 模型没有 `volumes` 字段，外壳没法像旧版设想的那样"挂载一份文件"拿到自己的合并清单——`SHELL_CONFIG_JSON` 的值只能是一个 `configSchema` 字符串（一次性、静态），而"这次到底收编了谁"要随 `brickkit.yaml` 改动实时变化，两种性质的数据分成两个变量，一个平台原生给、一个我们自己手工同步，缺一不可。**这意味着改了 `brickkit.yaml` 里任何成员的 `servedBy`/版本号/配置项之后，必须重新跑一遍 `be-ops shell-config --shell <外壳名>` 把新字符串贴回 `config.shellConfigJson`——忘记这一步平台不会报错，外壳会拿着过期的菜单装错模块，或者直接报"`BRICKKIT_SERVED_MEMBERS` 里有 `SHELL_CONFIG_JSON` 找不到的成员"（真机复发过一次，属于该及时提示、不该悄悄成功的错误）。**
 
-顺带一条：brickKit 明确**不注入"我该监听哪个端口"**。环境变量表里只有"别人在哪"（`*_ENDPOINT`），没有"我该监听哪"。外壳启动器要从每个模块自己的 `component.yaml` 读 `deployment.port` 与 `extraPorts`，**不许在外壳里另写一份端口表**——Manifest 才是权威，抄一份必然过期。
+#### 13.8.2 每个模块拿到的是不是同一份 env——大多数是独立的，两类例外要认出来
 
-#### 13.8.2 `be-ops` 产出 7：每外壳一份环境变量表
+外壳把 `SHELL_CONFIG_JSON` 里筛出来的每个成员的 `config` 字段，转成 `ModuleSpec.Env`（**每个模块一份独立的 map，不是拍平共享**）——`configSchema` 里声明的普通配置项（`pgSchema`/`otelBaseUrl` 之类）走这条路径，天然隔离，不会互相顶掉，§12.5.3 那条铁律继续成立。
 
-规则：
+**依赖地址（`*_ENDPOINT`）不走这条路径**——见 §13.1 机制三，这些是平台直接写进外壳容器共享 `os.Environ` 的，因为按设计它们对同一个外壳内的所有消费者本来就该是同一个值，这不是对铁律的破例，是这条铁律本来就没打算管的东西（铁律要防的是"该独立却共享"，不是"所有共享都不行"）。
 
-| 变量 | 值怎么定 |
-| --- | --- |
-| 依赖在**同一个外壳** | `http://127.0.0.1:<对方的端口>` |
-| 依赖在**另一个外壳**或独立容器 | `http://<宿主机地址>:<对方的端口>`（外壳把端口发布到宿主机，见 §13.1） |
-| 资源变量（`DATABASE_*` / `MQ_*` / `STORAGE_*`） | 照 `brickkit.yaml` 的 `resources` 原样，本外壳的登录角色 |
-| 组件自身 config | 照各自 `configSchema` 的默认值 + `brickkit.yaml` 的覆盖 |
-| `COMPONENT_ID` / `COMPONENT_VERSION` | 每个模块一份，外壳启动器按模块设进各自的上下文 |
+**唯一的真例外是少数几个刻意绕开 `configSchema` 走进程环境兜底的密钥类配置项**（比如 `appTokenSigningKeyPem`/`casdoorAdminPassword`/`webhookSharedSecret`/`dingtalkAppKey`/`dingtalkAppSecret`/`dingtalkAgentId`）——这几项要么整个值就是一个 `${VAR}` 占位符（真实值只该在生成阶段被 brickKit 自己的 `ExpandEnv` 展开进 gitignore 的 compose 文件，不能进 `SHELL_CONFIG_JSON` 这种会被提交进 git 的字符串），要么真实值带原始换行符（PEM 私钥），塞进本该保持单行的 JSON 字符串中间会直接把 JSON 撑坏。做法：`MergeConfig` 把整个值是 `${VAR}` 占位符的 key 整条排除出 `SHELL_CONFIG_JSON`，改成外壳自己独立的 `configSchema` 项（干净的 YAML 标量值，走 brickKit 原生的按标量展开，没有上面两个问题），外壳自己的 `envWithProcessFallback`（Go）/`_env_with_process_fallback`（Python）把外壳自己的进程环境（这几个密钥所在的地方）作为**兜底层**合进每个模块自己的 `Env`（模块自己声明的同名 key 优先）——真正需要它们的那一个模块（比如 `infra/iam-casdoor` 或 `integration/im-dingtalk`）就能读到，其它模块看不到、也不需要看到。这几个 key 名在全项目里各自只被唯一一个组件使用，没有跨模块撞名风险，不违反"模块不许读进程环境"这条铁律的精神——铁律真正要防的是"因为别的模块也用了同名 key 而互相顶掉"，这里恰好排除了这种可能。
 
-⚠️ **这些变量不能拍平成一份 `.env` 给整个外壳进程。** 22 个模块各有一份 `DATABASE_*`、各有一个 `COMPONENT_ID`，拍平就互相顶掉。外壳启动器必须**按模块持有各自的 env map**，模块代码读的是它自己那一份——这是"合并不改代码"能成立的最后一环。
+### 13.9 合并态与全拆态不再互斥：拆回门禁需要的只是一个临时测试窗口
 
-⚠️ **`be-ops` 应当把平台的注入结果当输入，而不是自己另算一遍。** `brickkit up --dry-run` 会把每个 local 组件的完整变量表写进 `local-debug.*.env`；`be-ops` 读它、只重写依赖地址那几行（按上表），其余原样。自己另算的那份，早晚和平台的算法分叉。
+⚠️ **本节 2026-09 整节重写**：旧版这里描述的"外壳态"和"全拆态"是两套独立的部署机制——手写 `shell-compose.yml` 单独起外壳容器，`brickkit up` 只生成剩下没被合并的那几个，两边各自的 compose 项目互不相干，必须整个关掉一边才能开另一边。`servedBy` 落地后，这个前提不再成立：**只有一份 `brickkit.yaml`、一条 `brickkit up`，"合并态"和"全拆态"的区别仅仅是成员条目上有没有写 `servedBy`。** 同一时刻当然仍然只有一个真实拓扑在跑，但这不再是"两套机制打架、要小心别同时开着"的问题——根本不存在能同时描述同一个组件的两份 compose，物理上就不会撞端口、撞 NATS 订阅、撞数据库状态（旧版这里列的三条"会撞什么"，成因都是"两份独立 compose 各自把同一个组件起了一份"，`servedBy` 下这个成因已经不存在）。
 
-#### 13.8.3 三份 compose，一条启动链
-
-合并态下现场有**三份互不相干的 compose 文件**，`brickkit up` 只管中间那一份：
-
-| # | 文件 | 谁生成 | 里面有什么 | 谁拉起 |
-| --- | --- | --- | --- | --- |
-| 1 | `docker-compose.infra.yml` | 我们手写 | PostgreSQL / NATS / Traefik / Casdoor / RustFS（+ 可选的可观测性那份） | `docker compose` |
-| 2 | `.brickkit/` 下的 compose | **`brickkit up`** | 阶段一只有 **2 个 service**（`infra-bff-mobile`、`frontend-standard`）——其余 45 个都是 `local: true`，不生成 service | `brickkit up` |
-| 3 | `shell-compose.yml` | **`be-ops`** | 5 个外壳容器 + 路由 labels + 环境变量表 + 端口发布 | `docker compose` |
-
-⚠️ **`brickkit down` 停不了外壳。** 它只管第 2 份。交付文档里必须给出成套的启停脚本（`make up` / `make down` 包住三条命令），否则现场一定会出现"以为关干净了，其实外壳还在跑着占着端口"。
-
-**启动顺序（`be-ops` 产出 8）：**
+**唯一还需要临时切换的场景，是 §13.7 拆回门禁本身**——验证"每个组件真的能独立 `brickkit up` 起来"这条不可动摇的原则（§1.5 原则一），需要短暂把全部成员的 `servedBy` 去掉、让它们变回独立容器，验证完再切回来。这不是需要人时刻警惕"两边别同时开着"的运维纪律，而是一个有始有终的原子操作：
 
 ```
-① docker-compose.infra.yml        基础资源健康后再往下
-② be-ops 的建置脚本               CREATE DATABASE / SCHEMA / ROLE，执行一次
-③ shell-compose.yml               外壳一（主数据+核心交易）
-                                    ↓ depends_on: service_healthy
-                                  外壳二、外壳三、外壳四、外壳五（可并行）
-④ brickkit up                     bff-mobile + frontend
+make teardown-up     # 临时去掉 servedBy + 禁用外壳组件条目
+                      # + 补回资源绑定/expose:true，然后 brickkit up
+                      # ……在这个临时状态下跑 make tier0 / make tier1……
+make teardown-down    # brickkit down，git checkout 恢复 brickkit.yaml
 ```
 
-外壳一必须最先起：主数据在里面，其余四个外壳的模块启动时要对它做校准对账（`batchGet`）。这层顺序**平台一个字都不会排**——它不认识外壳。
+`teardown-up` 要求 `git status` 干净才会开始（因为它会就地改 `brickkit.yaml`，靠 `git checkout` 恢复）——这就是它"原子"的地方，不会有人手滑对着改了一半的 `brickkit.yaml` 跑东西。具体改了什么、为什么不能只删 `servedBy` 一行（还要补资源绑定、补 `expose: true`），见 `infra/scripts/strip-shell-servedby.py` 顶部注释和 §13.7 那两条"真机踩到的连带坑"。
 
-⚠️ **第 1 份与第 3 份必须挂同一个 external network `be-net`；第 2 份（平台产物）做不到。**
-
-Traefik 的 Docker Provider 只能看到与它同网络的容器。外壳在第 3 份、Traefik 在第 1 份，不显式声明共享网络的话，`be-ops` 产出的路由 labels **Traefik 一条都读不到**——症状是网关返回 404 而容器全是 healthy。做法：`docker network create be-net`，第 1、3 份都声明 `external: true` 接进来。
-
-⚠️ **但第 2 份接不进来：平台生成的 compose 自己建一个非 external 的 bridge 网络，`brickkit.yaml` 里没有任何字段能改这件事**（实测 `internal/compose/compose.go`）。所以第 2 份里那两个容器（`infra-bff-mobile`、`frontend-standard`）只能靠 **`expose: true` + `exposePort` 把端口发布到宿主机**，再由 `be-ops` 产出一份 **Traefik file provider 动态配置**指向 `http://<宿主机地址>:<exposePort>`。完整说明见 §6.3.1。
-
-⚠️ **同理，`brickkit.yaml` 的 `resources[].host` 只能写 `host.docker.internal`**（而不是 `be-postgres` 这种容器名）——平台生成的容器不在 `be-net` 上，解析不到我们那些容器的名字。这也正是 brickKit `006` §10.4 的建议。
-
-### 13.9 外壳态与全拆态互斥：同一时刻只能有一个在跑
-
-**这条是运维纪律，不是平台限制**——`brickKit` 不知道外壳的存在，不会替你挡这个错误，撞上了它一个字都不会提示（同 §13.6"平台不挡路也不帮忙"）。
-
-外壳存在的唯一理由是省资源（§13.0）；`brickkit up` 给每个组件各起一个独立容器，是外壳要合并掉的那个东西本身。**两者是同一件事的两种运行形态，不是可以叠加的两层**——同一个组件不可能同时以"外壳里的一个模块"和"brickkit 生成的一个独立容器"两种身份存在，硬要同时开着，至少撞上这几样：
-
-| 会撞什么 | 为什么 |
-|---|---|
-| 端口 | `local: true` 的 `localPort` 直接复用组件自己单跑时的端口（§13.8.1），外壳把这个端口发布到宿主机——如果那个端口同时还有一个 brickkit 生成的独立容器占着，宿主机上同一个端口绑两次，后起的那个直接失败 |
-| NATS 订阅 | 外壳里的模块与被它替代的那个独立容器，用的是同一段消费者代码、订阅同一个 subject——两边同时在跑，NATS core 的广播语义（不是竞争消费）会让两边都收到同一条消息各处理一遍，是踩坑记录 E1/E2 那类"本地测试进程与真实容器抢消息"问题的另一个变种，只是这次两边都是"真实"部署，更难往错误的方向排查 |
-| 数据库状态 | 两边如果连的是同一个库（`brickkit_db`），会计数器、幂等键、Outbox 状态机全都是共享可变状态，两个进程同时写会产生竞态，不是"哪个更新的问题"，是"两个进程本来就不该同时存在" |
-
-**操作纪律：切换前先把另一边整个关掉，不要试图精确关掉"重叠的那几个"**——为了简单，无论合并的是全部组件还是一部分，切到外壳态之前一律先 `brickkit down` 停掉全部组装态容器（不是只停将被合并的那几个），确认干净之后再起外壳；反过来，要停用外壳、回到全拆态时，先把全部外壳容器停掉，再 `brickkit up`。这条纪律比"只停冲突的那几个"更容易执行、也更不容易漏——外壳一旦装的模块数量变化（§13.4 演进路线：客户后来把某个组件单独拆出去，或者反过来往外壳里再塞一个），"哪些算冲突"这个集合本身也会跟着变，没有必要每次都重新算一遍。
-
-⚠️ **这条纪律只管"正式运行/真机验证"这一层**——本地开发时用隔离的 `TEST_PG_DSN`/独立端口对着假数据跑外壳的单元/集成测试（不连 `brickkit_db`，不用组件注册的真实端口），跟同时开着的 brickkit 独立容器不冲突，不受这条纪律约束（阶段四 Task 5 验证真实模块合并时用的正是这条路径）。**这条纪律管的是"两边都对着真实资源（`brickkit_db`、组件注册端口、真实 NATS）跑"的那一刻**，不是任何时候只要外壳存在就不能碰 brickkit。
+⚠️ **这条不管本地开发时用 `TEST_PG_DSN`/独立端口跑的外壳单元测试**（不连 `brickkit_db`，不用组件注册的真实端口）——那类测试从来不需要真实的 `brickkit.yaml` 状态切换，跟这里说的"临时测试窗口"是两回事（阶段四 Task 5 验证真实模块合并时用的正是这条路径）。
 
 ---
 
@@ -3827,8 +3786,8 @@ flowchart TB
 | 高维合并分组 | 按 "语言阵营 + 业务亲密度 "将 60+ 组件合并为 5 大业务外壳的分组策略：Go-Core（核心交易）、Go-Backoffice（大后方）、Go-Infra（基建与集成）、Python-Brain（复杂计算与 AI）、Python-Render（渲染与 EDI） |
 | 两条不可让渡的原则 | ① 每个组件以纯 brickKit 组件形态开发、gRPC 一个不省、能单独 `brickkit up` 起来；② 合并只发生在部署形态上，组件完整性一步不让。全书唯二不能改的东西（§1.5） |
 | 铁律六 | 组件模块之间绝不互相 `import`。外壳 `main` 可以引每个模块的 `NewServer()`，模块之间只能走 gRPC/HTTP。由 `be-acceptance` 的 import 扫描守（§13.3） |
-| 拆回门禁 | 检验"合并有没有磨掉组件性"的唯一动作：把全部 `local: true` 去掉、`brickkit up` 全拆一次、业务闭环全绿。每周一次（§13.7） |
-| 全局端口册 | `be-ops` 维护的 62 个组件的 HTTP + gRPC 端口分配表，**外加全部带外容器的宿主机端口**（外壳要把端口发布到宿主机，两边活在同一个端口空间里）。**gRPC 端口没有事后补救手段**，必须一次写对（§3.5.1.1、§2.7.1） |
-| 每外壳的环境变量表 | `be-ops` 产出 7。平台只往它自己生成的容器里注入，合并后那些容器不存在；同外壳的依赖指 `127.0.0.1`，**跨外壳的指宿主机**（§13.8） |
-| 三份 compose | 带外基础资源（我们手写）+ 平台产物（`brickkit up`）+ 外壳（`be-ops`）。三份必须挂同一个 external network，`brickkit down` 只停中间那份（§13.8.3） |
+| 拆回门禁 | 检验"合并有没有磨掉组件性"的唯一动作：把全部 `servedBy` 去掉、`brickkit up` 全拆一次、业务闭环全绿。每周一次（§13.7，`make teardown-up`/`make teardown-down`） |
+| 全局端口册 | `be-ops` 维护的 62 个组件的 HTTP + gRPC 端口分配表，**外加全部带外容器的宿主机端口**。**gRPC 端口没有事后补救手段**，必须一次写对（§3.5.1.1、§2.7.1） |
+| 依赖地址注入 | `dependencies.components` 声明的 `*_ENDPOINT`，由平台原生算好写进外壳容器自己的 `os.Environ`——同外壳、跨外壳、独立部署格式完全一样，都是版本化服务名（§13.1 机制三）。仅有的例外是绕开依赖边机制的字面量配置项（`authzBundleUrl`/`iamJwksUrl`），仍要手写"同外壳 `127.0.0.1`、跨外壳版本化服务名"（§13.6） |
+| `servedBy` | 组件在 `brickkit.yaml` 里声明 `servedBy: <外壳组件ID>@<外壳版本>`，代替旧版的 `local: true`+手写 `shell-compose.yml`——平台原生生成正确的网络别名/depends_on，一份 `brickkit.yaml`、一条 `brickkit up` 同时表达独立与合并（§13.1、§13.9） |
 | 档 0~4 | 推进顺序：单砖 → 验平台 → 业务闭环 → **做外壳验拆回** → 铺满军火库。档 3 必须早于档 4（§9.6） |
