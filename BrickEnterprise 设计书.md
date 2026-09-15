@@ -2947,41 +2947,48 @@ PG 的连接绑死两样东西：**一个 database、一个认证角色**。所�
 
 ### 13.8 外壳启动器自己要做的事：怎么把 N 个模块拼进一个进程
 
-⚠️ **本节 2026-09 整节重写**：旧版这里补的是"上一版设计真正会在交付现场炸的洞"——因为那时平台完全不知道合并这回事，跨外壳依赖地址、每外壳的环境变量表、三份 compose 的启动顺序，全部要靠 `be-ops` 产出 7/8 手工算、手工编排。`servedBy` 落地后，**地址计算这部分已经由平台原生接管**（§13.1 机制三、§13.6），`be-ops` 产出 7/8 与手写的 `shell-compose.yml`/三份 compose 编排已经全部退休（真机验证记录见 `docs/plans/04b-验证记录.md` Task 0.2-0.5）。真正还要我们自己写代码解决的，收窄到"外壳进程内部怎么把 N 个模块拼起来"这一件事——这天然就是我们自己的代码（`shells/go`/`shells/python`），不是平台的职责范围。
+⚠️ **本节 2026-09 第二次整节重写**：第一版重写记的是"`servedBy` 刚落地那一刻"的状态——地址计算已经由平台接管，但"外壳该装哪些模块、每个模块的完整 config"仍然要我们自己起一个命令行工具（`be-ops shell-config`）手工算、手工贴进 `brickkit.yaml`。**这一层手工同步本身也已经退休**：brickKit v0.4.2 新增原生保留变量 `BRICKKIT_SERVED_MEMBERS_CONFIG`，在算 `BRICKKIT_SERVED_MEMBERS` 的同一处代码里，brickKit 自己顺手把每个成员的完整装配数据（componentId/version/端口/合并后 config）打包成 JSON 数组原生注入外壳容器——`be-ops` 产出 4（连同更早退休的产出 7/8）至此全部退休（真机验证记录见 `docs/plans/04b-验证记录.md` Task 0.2-0.6，总纲 §2.4 表格同步标注）。真正还要我们自己写代码解决的，进一步收窄到"外壳进程内部怎么把 JSON 数组转成 `ModuleSpec` 数组、怎么把 componentId 字符串映到真实 Go/Python 源码 import"这两件事——这天然就是我们自己的代码（`shells/go`/`shells/python`），不是平台的职责范围。
 
-#### 13.8.1 外壳怎么知道自己该装哪些模块：`BRICKKIT_SERVED_MEMBERS` + `SHELL_CONFIG_JSON`
+#### 13.8.1 外壳怎么知道自己该装哪些模块：`BRICKKIT_SERVED_MEMBERS_CONFIG`
 
-平台原生注入一个变量、我们自己生成并贴回另一个变量：
+平台原生注入一个变量，本身就是"这次真的收编了谁 + 每个成员完整的装配数据"：
 
-| 变量 | 谁生成、什么时候生成 | 内容 |
-| --- | --- | --- |
-| `BRICKKIT_SERVED_MEMBERS` | **平台原生注入**，`brickkit up` 每次运行时按当前 `brickkit.yaml` 现算 | 这次部署里，真的有哪些成员的 `servedBy` 指向这个外壳（版本化服务名列表）——**这是"这次真的收编了谁"的唯一权威来源**，外壳启动器按它筛出要装的模块 |
-| `SHELL_CONFIG_JSON` | **我们自己生成**（`be-ops shell-config --shell <外壳名>`），手动贴进 `brickkit.yaml` 该外壳组件条目自己的 `configSchema` 字符串值 | 这个外壳理论上可能收编的全部成员各自的 componentId/端口/schema/`configSchema` 值——是一份"菜单"，不是"这次真的装了谁"（那是上一行的职责） |
+```json
+[
+  {
+    "componentId": "erp/finance", "version": "1.0.13",
+    "httpPort": 8087, "extraPorts": [{"name": "grpc", "port": 9097}],
+    "config": {"authzBundleUrl": "http://...", "pgSchema": "erp_finance", ...}
+  }
+]
+```
 
-⚠️ **为什么不能只用 `SHELL_CONFIG_JSON` 一份数据**：`brickkit.yaml` 的 manifest 模型没有 `volumes` 字段，外壳没法像旧版设想的那样"挂载一份文件"拿到自己的合并清单——`SHELL_CONFIG_JSON` 的值只能是一个 `configSchema` 字符串（一次性、静态），而"这次到底收编了谁"要随 `brickkit.yaml` 改动实时变化，两种性质的数据分成两个变量，一个平台原生给、一个我们自己手工同步，缺一不可。**这意味着改了 `brickkit.yaml` 里任何成员的 `servedBy`/版本号/配置项之后，必须重新跑一遍 `be-ops shell-config --shell <外壳名>` 把新字符串贴回 `config.shellConfigJson`——忘记这一步平台不会报错，外壳会拿着过期的菜单装错模块，或者直接报"`BRICKKIT_SERVED_MEMBERS` 里有 `SHELL_CONFIG_JSON` 找不到的成员"（真机复发过一次，属于该及时提示、不该悄悄成功的错误）。**
+关键细节：数组元素本身就是"这次真的被 servedBy 收编的成员"（不需要再单独按 `BRICKKIT_SERVED_MEMBERS` 筛一遍）；零成员时是 `[]`，不是变量缺失（同 `BRICKKIT_SERVED_MEMBERS` 既有的"空字符串 vs 缺失"语义）；`config` 的键是**原始 `configSchema` 驼峰 key**（brickKit 刻意不做大小写下划线转换，交给外壳实现者自己处理——`configEnvVarName`/`_config_env_var_name` 复刻的正是 brickKit 自己 `internal/inject.EnvVarName` 的算法）；`extraPorts` 是 `[{name, port}]` 数组形状，不是 `map[string]int`。
 
-#### 13.8.2 每个模块拿到的是不是同一份 env——大多数是独立的，两类例外要认出来
+**这一份数据取代了"平台原生注入 `BRICKKIT_SERVED_MEMBERS` + 我们自己生成并手工贴回 `SHELL_CONFIG_JSON`"这两份数据、两次同步**——`brickkit.yaml` 改了哪个成员的版本号/`servedBy`/config 值，下一次 `brickkit up` 生成的 `BRICKKIT_SERVED_MEMBERS_CONFIG` 自动就是新的，不存在"忘记重新生成、外壳拿着过期菜单装错模块"这整类坑（旧版机制真机复发过两次，是促成这次原生支持的直接动机）。
 
-外壳把 `SHELL_CONFIG_JSON` 里筛出来的每个成员的 `config` 字段，转成 `ModuleSpec.Env`（**每个模块一份独立的 map，不是拍平共享**）——`configSchema` 里声明的普通配置项（`pgSchema`/`otelBaseUrl` 之类）走这条路径，天然隔离，不会互相顶掉，§12.5.3 那条铁律继续成立。
+#### 13.8.2 每个模块拿到的是不是同一份 env——大多数是独立的，一处必须做的 JSON 修补要认出来
+
+外壳把 `BRICKKIT_SERVED_MEMBERS_CONFIG` 里每个成员的 `config` 字段，转成 `ModuleSpec.Env`（**每个模块一份独立的 map，不是拍平共享**）——`configSchema` 里声明的普通配置项（`pgSchema`/`otelBaseUrl` 之类）走这条路径，天然隔离，不会互相顶掉，§12.5.3 那条铁律继续成立。
 
 **依赖地址（`*_ENDPOINT`）不走这条路径**——见 §13.1 机制三，这些是平台直接写进外壳容器共享 `os.Environ` 的，因为按设计它们对同一个外壳内的所有消费者本来就该是同一个值，这不是对铁律的破例，是这条铁律本来就没打算管的东西（铁律要防的是"该独立却共享"，不是"所有共享都不行"）。
 
-**唯一的真例外是少数几个刻意绕开 `configSchema` 走进程环境兜底的密钥类配置项**（比如 `appTokenSigningKeyPem`/`casdoorAdminPassword`/`webhookSharedSecret`/`dingtalkAppKey`/`dingtalkAppSecret`/`dingtalkAgentId`）——这几项要么整个值就是一个 `${VAR}` 占位符（真实值只该在生成阶段被 brickKit 自己的 `ExpandEnv` 展开进 gitignore 的 compose 文件，不能进 `SHELL_CONFIG_JSON` 这种会被提交进 git 的字符串），要么真实值带原始换行符（PEM 私钥），塞进本该保持单行的 JSON 字符串中间会直接把 JSON 撑坏。做法：`MergeConfig` 把整个值是 `${VAR}` 占位符的 key 整条排除出 `SHELL_CONFIG_JSON`，改成外壳自己独立的 `configSchema` 项（干净的 YAML 标量值，走 brickKit 原生的按标量展开，没有上面两个问题），外壳自己的 `envWithProcessFallback`（Go）/`_env_with_process_fallback`（Python）把外壳自己的进程环境（这几个密钥所在的地方）作为**兜底层**合进每个模块自己的 `Env`（模块自己声明的同名 key 优先）——真正需要它们的那一个模块（比如 `infra/iam-casdoor` 或 `integration/im-dingtalk`）就能读到，其它模块看不到、也不需要看到。这几个 key 名在全项目里各自只被唯一一个组件使用，没有跨模块撞名风险，不违反"模块不许读进程环境"这条铁律的精神——铁律真正要防的是"因为别的模块也用了同名 key 而互相顶掉"，这里恰好排除了这种可能。
+⚠️ **密钥类 config 值（比如 `infra/iam-casdoor` 的 `appTokenSigningKeyPem`）需要一步 JSON 修补，不是外壳自己另开一条路**：这些值在 `brickkit.yaml` 里写的是 `${VAR}` 占位符（真实值不进 git），brickKit 生成 `BRICKKIT_SERVED_MEMBERS_CONFIG` 这份 JSON 时占位符字符串本身没有特殊字符，编码完全合法——**但 docker compose 读取生成好的 `docker-compose.yaml` 时会对整份文件按纯文本做 `${VAR}` 替换，不知道也不关心某个 `${VAR}` 恰好嵌在这份 JSON 字符串内部**，真实密钥（PEM 私钥）自带原始换行符，替换进去会把 JSON 从中间断开。真机复现过一次"外壳自己另开独立 configSchema 项 + 进程环境兜底"这条老路**治标不治本**（撑坏 JSON 的是拥有该密钥的成员自己那条 config 记录，外壳自己多存一份不会让它消失）；真正的修复在解析这一步本身：`cmd/shell/main.go`/`main.py` 的 `sanitizeServedMembersConfig`/`_sanitize_served_members_config`，在 `json.Unmarshal`/`json.loads` 之前用一个只关心"现在在不在 JSON 字符串里面"的最小状态机，把字符串**内部**被替换进来的裸控制字符转义回合法形式——合法 JSON 字符串内部本来就不可能出现裸控制字符，见到了就一定是这次替换造成的，对任何 key 都通用，不需要先判断"这个 key 是不是密钥"。这是 `BRICKKIT_SERVED_MEMBERS_CONFIG` 机制本身的普适性设计缺口（不是本项目独有的坑），已反馈给 brickKit，完整根因分析与真机复现过程见 `docs/plans/04b-验证记录.md` Task 0.6。
 
 ### 13.9 合并态与全拆态不再互斥：拆回门禁需要的只是一个临时测试窗口
 
 ⚠️ **本节 2026-09 整节重写**：旧版这里描述的"外壳态"和"全拆态"是两套独立的部署机制——手写 `shell-compose.yml` 单独起外壳容器，`brickkit up` 只生成剩下没被合并的那几个，两边各自的 compose 项目互不相干，必须整个关掉一边才能开另一边。`servedBy` 落地后，这个前提不再成立：**只有一份 `brickkit.yaml`、一条 `brickkit up`，"合并态"和"全拆态"的区别仅仅是成员条目上有没有写 `servedBy`。** 同一时刻当然仍然只有一个真实拓扑在跑，但这不再是"两套机制打架、要小心别同时开着"的问题——根本不存在能同时描述同一个组件的两份 compose，物理上就不会撞端口、撞 NATS 订阅、撞数据库状态（旧版这里列的三条"会撞什么"，成因都是"两份独立 compose 各自把同一个组件起了一份"，`servedBy` 下这个成因已经不存在）。
 
-**唯一还需要临时切换的场景，是 §13.7 拆回门禁本身**——验证"每个组件真的能独立 `brickkit up` 起来"这条不可动摇的原则（§1.5 原则一），需要短暂把全部成员的 `servedBy` 去掉、让它们变回独立容器，验证完再切回来。这不是需要人时刻警惕"两边别同时开着"的运维纪律，而是一个有始有终的原子操作：
+**唯一还需要临时切换的场景，是 §13.7 拆回门禁本身**——验证"每个组件真的能独立 `brickkit up` 起来"这条不可动摇的原则（§1.5 原则一），需要短暂让全部成员变回独立容器，验证完再切回来。brickKit v0.4.2 新增 `brickkit up --ignore-served-by`（内存里清空全部 servedBy 声明再跑一次，**不写回 `brickkit.yaml`**）之后，"servedBy 那一行本身"这一半不再需要脚本去改/去恢复；这不是需要人时刻警惕"两边别同时开着"的运维纪律，而是一个有始有终的原子操作：
 
 ```
-make teardown-up     # 临时去掉 servedBy + 禁用外壳组件条目
-                      # + 补回资源绑定/expose:true，然后 brickkit up
+make teardown-up     # 临时补上资源绑定/expose:true + 禁用外壳组件条目，
+                      # 然后 brickkit up --ignore-served-by
                       # ……在这个临时状态下跑 make tier0 / make tier1……
 make teardown-down    # brickkit down，git checkout 恢复 brickkit.yaml
 ```
 
-`teardown-up` 要求 `git status` 干净才会开始（因为它会就地改 `brickkit.yaml`，靠 `git checkout` 恢复）——这就是它"原子"的地方，不会有人手滑对着改了一半的 `brickkit.yaml` 跑东西。具体改了什么、为什么不能只删 `servedBy` 一行（还要补资源绑定、补 `expose: true`），见 `infra/scripts/strip-shell-servedby.py` 顶部注释和 §13.7 那两条"真机踩到的连带坑"。
+`--ignore-served-by` 只在内存里清空 servedBy，`servingShellID` 的资源绑定等价关系（"外壳绑了资源，等价于它收编的每个成员也绑了"）因此跟着失效——12 个成员必须每个都有自己的直接资源绑定，`expose: true` 也需要临时加回来（供 `make tier0`/`make tier1` 直接 curl 用），这两类补丁仍然需要 `teardown-up` 就地改 `brickkit.yaml`，靠 `git checkout` 恢复——`git status` 必须干净才会开始，这就是它"原子"的地方，不会有人手滑对着改了一半的 `brickkit.yaml` 跑东西。具体改了什么，见 `infra/scripts/patch-teardown-bindings.py` 顶部注释和 §13.7 那两条"真机踩到的连带坑"。
 
 ⚠️ **这条不管本地开发时用 `TEST_PG_DSN`/独立端口跑的外壳单元测试**（不连 `brickkit_db`，不用组件注册的真实端口）——那类测试从来不需要真实的 `brickkit.yaml` 状态切换，跟这里说的"临时测试窗口"是两回事（阶段四 Task 5 验证真实模块合并时用的正是这条路径）。
 
