@@ -35,7 +35,7 @@ components:
     # servedBy——工作负载被 shell/go-core 收编，不再自己起容器（合并
     # 部署现在走平台原生机制而不是本仓库外壳的手写 shell-compose.yml，
     # 设计书 §13.1，见 docs/plans/04b-验证记录.md Task 0.4）
-    servedBy: shell/go-core@0.4.6
+    servedBy: shell/go-core@0.4.8
     # v1.0.6：gen/mdm/customer 拆成独立嵌套 go module，理由与做法同 erp/finance 这次改动（阶段四调研记录 04 §13）。本仓库自己 standalone 构建/测试用本地 replace 完全不受影响，import-scan/单测全绿。无业务行为/契约变更。
     # v1.0.5：make seed 加量到 12 个客户，覆盖更多行业画像+信用额度区间，无破坏性变更。
     # v1.0.4：新增 make seed/seed-clean（总纲 SOP-W-7 种子数据归属样板首例）。
@@ -65,14 +65,14 @@ components:
       # mdm/product、erp/inventory、erp/finance、erp/sales、crm/opportunity、
       # infra/print、infra/bff-mobile）写 http://host.docker.internal:<port>
       # （外壳把端口发布到宿主机，设计书 §13.8.2）。
-      authzBundleUrl: "http://host.docker.internal:8223/authz/bundle"
+      authzBundleUrl: "http://infra-authz-1-0-6:8223/authz/bundle"
       # 阶段三 Task 7：infra-iam-casdoor 建成，真实签发方第一次存在——
       # 同样是手写字面量的内部服务名，不是依赖边注入（这个组件对
       # infra-iam-casdoor 没有、也不该有依赖边，见它自己的 AGENTS.md
       # "零入边是 slot:iam 的物理前提"）。配上这一项之后 RequirePermission
       # 才第一次真正走到"验签 + 查 bundle"这条路径，不再是 fail-closed
       # stub。地址同上一项的判据。
-      iamJwksUrl: "http://host.docker.internal:8200/.well-known/jwks.json"
+      iamJwksUrl: "http://infra-iam-casdoor-1-0-8:8200/.well-known/jwks.json"
   - id: mdm/product
     version: 1.0.9 # v1.0.9：同 mdm/customer 这次改动，删掉 deployment.labels 的 prometheus.io/port，理由同上。无业务行为/契约变更。
     # v1.0.8：import-scan 门禁提前补上铁律六第二类白名单，理由同 erp/finance 这次改动（设计书§13.3）。本组件目前没有任何代码实际用到这条豁免，无行为变更。
@@ -80,7 +80,7 @@ components:
     # servedBy——工作负载被 shell/go-core 收编，不再自己起容器（合并
     # 部署现在走平台原生机制而不是本仓库外壳的手写 shell-compose.yml，
     # 设计书 §13.1，见 docs/plans/04b-验证记录.md Task 0.4）
-    servedBy: shell/go-core@0.4.6
+    servedBy: shell/go-core@0.4.8
     # v1.0.7：gen/mdm/product 拆成独立嵌套 go module，理由与做法同 erp/finance 这次改动（阶段四调研记录 04 §13）。本仓库自己 standalone 构建/测试用本地 replace 完全不受影响，import-scan/单测全绿。无业务行为/契约变更。
     # v1.0.6：补齐 README 的"怎么起来"/"怎么用"/"配置项"三节，纯文档修复，无破坏性变更。
     # v1.0.4：新增 make seed/seed-clean（同 mdm-customer，种子数据归属样板第二例）。
@@ -91,8 +91,8 @@ components:
     # docker exec 进外壳容器 + curl 容器内部地址，见 docs/plans/
     # 04b-验证记录.md Task 0.4/0.5。
     config:
-      authzBundleUrl: "http://host.docker.internal:8223/authz/bundle"
-      iamJwksUrl: "http://host.docker.internal:8200/.well-known/jwks.json"
+      authzBundleUrl: "http://infra-authz-1-0-6:8223/authz/bundle"
+      iamJwksUrl: "http://infra-iam-casdoor-1-0-8:8200/.well-known/jwks.json"
   - id: erp/inventory
     version: 1.0.16 # v1.0.16：同 mdm/customer 这次改动，删掉 deployment.labels 的 prometheus.io/port，理由同上。无业务行为/契约变更。
     # v1.0.15：import-scan 门禁提前补上铁律六第二类白名单，理由同 erp/finance 这次改动（设计书§13.3）。本组件目前没有任何代码实际用到这条豁免，无行为变更。
@@ -100,7 +100,7 @@ components:
     # servedBy——工作负载被 shell/go-core 收编，不再自己起容器（合并
     # 部署现在走平台原生机制而不是本仓库外壳的手写 shell-compose.yml，
     # 设计书 §13.1，见 docs/plans/04b-验证记录.md Task 0.4）
-    servedBy: shell/go-core@0.4.6
+    servedBy: shell/go-core@0.4.8
     # v1.0.14：gen/erp/inventory 拆成独立嵌套 go module，理由与做法同 erp/finance 这次改动（阶段四调研记录 04 §13）。本仓库自己 standalone 构建/测试用本地 replace 完全不受影响，import-scan/单测全绿。无业务行为/契约变更。
     # v1.0.13：消费者测试改用测试私有 subject，纯测试基础设施修复，无破坏性变更。
     # v1.0.12：补 04-testing-standard.md §3.2 强制要求的属性测试，纯测试新增，无破坏性变更。
@@ -119,8 +119,8 @@ components:
     # docker exec 进外壳容器 + curl 容器内部地址，见 docs/plans/
     # 04b-验证记录.md Task 0.4/0.5。
     config:
-      authzBundleUrl: "http://host.docker.internal:8223/authz/bundle"
-      iamJwksUrl: "http://host.docker.internal:8200/.well-known/jwks.json"
+      authzBundleUrl: "http://infra-authz-1-0-6:8223/authz/bundle"
+      iamJwksUrl: "http://infra-iam-casdoor-1-0-8:8200/.well-known/jwks.json"
   - id: erp/finance
     version: 1.0.12 # v1.0.12：同 mdm/customer 这次改动，删掉 deployment.labels 的 prometheus.io/port，理由同上。无业务行为/契约变更。
     # v1.0.11：import-scan 门禁提前补上铁律六第二类白名单（github.com/brickKit/<repo>/gen/...，设计书§13.3），跟 erp-sales/be-acceptance 那批一起定的规矩保持一致——本组件目前没有任何代码实际用到这条豁免，纯粹是为了跟中心化门禁（be-acceptance 的 ImportScan）和其它组件的判据保持同一份逻辑，不是遗漏也不改变任何现有行为。
@@ -128,7 +128,7 @@ components:
     # servedBy——工作负载被 shell/go-core 收编，不再自己起容器（合并
     # 部署现在走平台原生机制而不是本仓库外壳的手写 shell-compose.yml，
     # 设计书 §13.1，见 docs/plans/04b-验证记录.md Task 0.4）
-    servedBy: shell/go-core@0.4.6
+    servedBy: shell/go-core@0.4.8
     # v1.0.10：gen/erp/finance 拆成独立嵌套 go module（module 边界切在 v1 目录上一级，因为 Go 模块路径禁止以字面量 /v1 结尾）——为了让外壳（shells/go）能在合并部署时用自己的 go.mod replace 把 erp-sales vendor 的同一份契约镜像重定向到这里，避免两份逐字复制的生成代码在同一个 protobuf 全局注册表里重复注册同一个文件/类型全名而 panic（TestRun_go_core外壳全部5个真实模块合并进一个进程真机测出来的，阶段四调研记录 04 §13 有完整推演）。本仓库自己 standalone 构建/测试用本地 replace 完全不受影响，import-scan/单测全绿。无业务行为/ 契约变更。
     # v1.0.9：消费者测试改用测试私有 subject，纯测试基础设施修复，无破坏性变更。
     # v1.0.8：补 04-testing-standard.md §3.2 强制要求的属性测试 + 修 TestListEntries_看不到别的法人的凭证 测试夹具缺 schema 前缀的既有 bug，无破坏性变更。
@@ -144,8 +144,8 @@ components:
     # docker exec 进外壳容器 + curl 容器内部地址，见 docs/plans/
     # 04b-验证记录.md Task 0.4/0.5。
     config:
-      authzBundleUrl: "http://host.docker.internal:8223/authz/bundle"
-      iamJwksUrl: "http://host.docker.internal:8200/.well-known/jwks.json"
+      authzBundleUrl: "http://infra-authz-1-0-6:8223/authz/bundle"
+      iamJwksUrl: "http://infra-iam-casdoor-1-0-8:8200/.well-known/jwks.json"
   - id: erp/sales
     version: 1.0.24 # v1.0.24：同 mdm/customer 这次改动，删掉 deployment.labels 的 prometheus.io/port，理由同上。无业务行为/契约变更。
     # v1.0.23：依赖版本号同步跟进 erp/finance@1.0.11、erp/inventory@1.0.15、mdm/customer@1.0.7、mdm/product@1.0.8，无破坏性变更。
@@ -153,7 +153,7 @@ components:
     # servedBy——工作负载被 shell/go-core 收编，不再自己起容器（合并
     # 部署现在走平台原生机制而不是本仓库外壳的手写 shell-compose.yml，
     # 设计书 §13.1，见 docs/plans/04b-验证记录.md Task 0.4）
-    servedBy: shell/go-core@0.4.6
+    servedBy: shell/go-core@0.4.8
     # v1.0.22：最后一份 vendor 镜像（contracts/vendor/infra/workflow）也改成直接 import infra-workflow 发布的真身 gen/infra/workflow 包——理由与这次 finance/inventory/mdm-customer/mdm-product 四份同批（阶段四调研记录 04 §13）：本组件自己的测试文件把 5 个外壳的真实模块测试放进同一个 Go 测试二进制，即使 infra-workflow 目前分在不同外壳、生产环境不会真的同进程，测试编译阶段依然会把两份内容相同的生成代码一起链进去，触发一模一样的 protobuf 全局注册表撞车。至此本组件 vendor 的全部五份契约镜像都已经改成直接 import 真身，不再保留任何一份逐字复制的镜像代码。gRPC 调用行为、契约面、业务逻辑均无变化，import-scan/单测/contract-check 全绿。
     # v1.0.21：铁律六新增第二类白名单（生成物契约包 gen/<domain>/<name>，与 be-sdk-* 同类，设计书§13.3）——本组件不再 vendor 一份 erp-finance/erp-inventory/ mdm-customer/mdm-product 的生成代码副本，改成直接 import 它们各自发布的真身 gen/ 包。原因：上一版（v1.0.20）尝试的"嵌套 go module + 外壳 replace 去重"经真机测试证明技术上不可行——Go module 系统无法把两个不同 import path 的包合并成一份编译实例，即使 replace 也不行，外壳合并部署时 protobuf 全局注册表撞车的 panic 原样复现（阶段四调研记录 04 §13 有完整推演+最小复现）。这次改动删掉 contracts/vendor/{erp/finance,erp/inventory, mdm/customer,mdm/product} 与 gen/ 下对应的四份镜像，5 处 import 语句改指真身包（别名不变，业务代码零改动），import-scan 门禁新增放行 github.com/brickKit/<repo>/gen/... 这个形状。gen/infra/workflow（vendor 的第五份，跟本组件不同外壳，当前不撞车）保持原样，留给下次触及时再改。 contract-check 的 buf breaking 范围收紧到只查 contracts/erp、 contracts/events（不含 contracts/vendor 只读镜像——这个意图本来就写在注释里，只是命令一直没真的照做，这次一并修正）。gRPC 调用行为、契约面、业务逻辑均无变化，import-scan/单测/contract-check 全绿。
     # v1.0.20：本组件 vendor 的四份契约只读镜像（gen/erp/finance、gen/erp/inventory、 gen/mdm/customer、gen/mdm/product——vendored-contract 模式，设计计划§9）各自拆成独立嵌套 go module，各用一条本地 replace 指回自己（module 边界切在 v1 目录上一级，理由同上）。这是外壳合并部署能把这四份镜像去重指向各自真身的前提（阶段四调研记录 04 §13）——本仓库自己 standalone 构建/测试完全不受影响，import-scan/单测全绿。gen/erp/sales/v1（自己的契约）与 gen/infra/workflow（vendor 的第五份，当前跟本组件不同外壳，不撞车）都没有改动。无业务行为/契约变更。
@@ -185,8 +185,8 @@ components:
       # 阶段二没有多仓选货逻辑）。"1" 是 erp-inventory 迁移播种的 WH-EAST
       # 的真实 id（003_seed_warehouses.up.sql，真机查过 warehouses 表）。
       defaultWarehouseId: "1"
-      authzBundleUrl: "http://host.docker.internal:8223/authz/bundle"
-      iamJwksUrl: "http://host.docker.internal:8200/.well-known/jwks.json"
+      authzBundleUrl: "http://infra-authz-1-0-6:8223/authz/bundle"
+      iamJwksUrl: "http://infra-iam-casdoor-1-0-8:8200/.well-known/jwks.json"
       # 补偿连续失败 3 次时建的 infra-workflow exception 待办分配给谁——
       # 本阶段没有 mdm-org，先固定指派给这个占位 sub（设计计划 §4.4.4）。
       exceptionAssigneeSub: "u_ops_reviewer"
@@ -197,7 +197,7 @@ components:
     # servedBy——工作负载被 shell/go-infra 收编，不再自己起容器（合并
     # 部署现在走平台原生机制而不是本仓库外壳的手写 shell-compose.yml，
     # 设计书 §13.1，见 docs/plans/04b-验证记录.md Task 0.4）
-    servedBy: shell/go-infra@0.4.6
+    servedBy: shell/go-infra@0.4.8
     # v1.0.4：make seed 扩成多角色权限体系样板——部门树+3个权限子集角色，无破坏性变更。
     # v1.0.3：新增 make seed/seed-clean，种子授权归本组件自己持有，无破坏性变更。
     # v1.0.2：阶段三 Task 6，权限键换成真实键（/api/me/permissions
@@ -239,7 +239,7 @@ components:
     # servedBy——工作负载被 shell/go-infra 收编，不再自己起容器（合并
     # 部署现在走平台原生机制而不是本仓库外壳的手写 shell-compose.yml，
     # 设计书 §13.1，见 docs/plans/04b-验证记录.md Task 0.4）
-    servedBy: shell/go-infra@0.4.6
+    servedBy: shell/go-infra@0.4.8
     # v1.0.6：make seed 从单一超级用户扩成 4 个覆盖不同角色画像的测试用户，依赖版本号同步跟进 infra/authz@1.0.4，无破坏性变更。
     # v1.0.5：修 get-application 解析（Casdoor 应用真实登录后带非法控制字符），无破坏性变更。
     # v1.0.4：新增 make seed/seed-clean + 同步 infra/authz@1.0.3 依赖引用，无破坏性变更。
@@ -305,7 +305,7 @@ components:
     # servedBy——工作负载被 shell/go-infra 收编，不再自己起容器（合并
     # 部署现在走平台原生机制而不是本仓库外壳的手写 shell-compose.yml，
     # 设计书 §13.1，见 docs/plans/04b-验证记录.md Task 0.4）
-    servedBy: shell/go-infra@0.4.6
+    servedBy: shell/go-infra@0.4.8
     # v1.0.2：docs/手册.md 的 TEST_PG_DSN 示例改指向 brickkit_test_db，无破坏性变更。
     # 阶段三 Task 8 首次出档：审批待办中心，零依赖（§6.6 铁律三：
                    # 只有入边）。erp/sales@1.0.6 起已真的接通这条弱依赖调用
@@ -327,7 +327,7 @@ components:
     # servedBy——工作负载被 shell/go-infra 收编，不再自己起容器（合并
     # 部署现在走平台原生机制而不是本仓库外壳的手写 shell-compose.yml，
     # 设计书 §13.1，见 docs/plans/04b-验证记录.md Task 0.4）
-    servedBy: shell/go-infra@0.4.6
+    servedBy: shell/go-infra@0.4.8
     # 阶段三 Task 9 首次出档：统一通知中心，零依赖零入边，
                    # 完全活在事件图上（消费 infra.workflow.task.created.v1
                    # 等，发 dispatch 事件；见 03-阶段三 Task 9 小节）
@@ -348,7 +348,7 @@ components:
     # servedBy——工作负载被 shell/go-infra 收编，不再自己起容器（合并
     # 部署现在走平台原生机制而不是本仓库外壳的手写 shell-compose.yml，
     # 设计书 §13.1，见 docs/plans/04b-验证记录.md Task 0.4）
-    servedBy: shell/go-infra@0.4.6
+    servedBy: shell/go-infra@0.4.8
     # v1.0.3：docs/手册.md 的 TEST_PG_DSN 示例改指向 brickkit_test_db，无破坏性变更。
     # 阶段三 Task 9：channel:im 族第一个成员，零依赖零入边
                    # （消费 infra.notification.dispatch.im.v1，发
@@ -378,7 +378,7 @@ components:
     # servedBy——工作负载被 shell/py-render 收编，不再自己起容器（合并
     # 部署现在走平台原生机制而不是本仓库外壳的手写 shell-compose.yml，
     # 设计书 §13.1，见 docs/plans/04b-验证记录.md Task 0.4）
-    servedBy: shell/py-render@0.2.4
+    servedBy: shell/py-render@0.2.7
     # v1.0.4：新增 make seed——上传送货单PDF+发货标签ZPL两个真实模板，无破坏性变更。
     # v1.0.3：docs/手册.md 的 TEST_PG_DSN/DATABASE_NAME 示例改指向 brickkit_test_db，无破坏性变更。
     # 阶段三 Task 10：全系统第一个 Python 组件，纯函数打印
@@ -393,8 +393,8 @@ components:
     # docker exec 进外壳容器 + curl 容器内部地址，见 docs/plans/
     # 04b-验证记录.md Task 0.4/0.5。
     config:
-      authzBundleUrl: "http://host.docker.internal:8223/authz/bundle"
-      iamJwksUrl: "http://host.docker.internal:8200/.well-known/jwks.json"
+      authzBundleUrl: "http://infra-authz-1-0-6:8223/authz/bundle"
+      iamJwksUrl: "http://infra-iam-casdoor-1-0-8:8200/.well-known/jwks.json"
   - id: infra/bff-mobile
     version: 1.0.18 # v1.0.18：依赖版本号同步跟进 erp/inventory@1.0.16、erp/sales@1.0.24、infra/workflow@1.0.4、mdm/customer@1.0.8、mdm/product@1.0.9，无破坏性变更。
     # v1.0.17：依赖版本号同步跟进 erp/inventory@1.0.15、mdm/customer@1.0.7、mdm/product@1.0.8，无破坏性变更。
@@ -425,8 +425,8 @@ components:
     expose: true
     exposePort: 28500 # registry/ports.tsv 的既有登记（决策 107：独立容器 exposePort 一律走 2xxxx 段）
     config:
-      authzBundleUrl: "http://host.docker.internal:8223/authz/bundle"
-      iamJwksUrl: "http://host.docker.internal:8200/.well-known/jwks.json"
+      authzBundleUrl: "http://infra-authz-1-0-6:8223/authz/bundle"
+      iamJwksUrl: "http://infra-iam-casdoor-1-0-8:8200/.well-known/jwks.json"
   - id: frontend/standard
     version: 1.0.0 # 阶段三 Task 12：PC 独立 Vite SPA + 移动端 Uni-app H5，
                    # 共享 packages/design-tokens，唯一没有后端形态的组件
@@ -450,7 +450,7 @@ components:
     # servedBy——工作负载被 shell/go-backoffice 收编，不再自己起容器（合并
     # 部署现在走平台原生机制而不是本仓库外壳的手写 shell-compose.yml，
     # 设计书 §13.1，见 docs/plans/04b-验证记录.md Task 0.4）
-    servedBy: shell/go-backoffice@0.4.6
+    servedBy: shell/go-backoffice@0.4.8
     # v1.0.9：不再 vendor mdm-customer/mdm-product 两份契约镜像，改直接 import 真身 gen/ 包（铁律六新增第二类白名单，与 be-sdk-* 同类，设计书§13.3）。原因：shells/go 的测试文件把多个外壳的真实模块测试放进同一个 Go 测试二进制，本组件跟 mdm-customer/mdm-product 虽然分在不同外壳（生产环境不会真的同进程），但测试编译阶段依然会把两份内容相同的生成代码一起链进去，在 protobuf 全局注册表里重复注册同一个文件/类型全名而 panic ——Go 的 module system 无法把两个不同 import path 的包合并成一份编译实例，replace 也解决不了（阶段四调研记录 04 §13 有完整推演+最小复现； erp-sales 已经先行完成同样的改动）。contracts/vendor/ 整个目录清空删除，import-scan 门禁新增放行 github.com/brickKit/<repo>/gen/... 这个形状。gRPC 调用行为、契约面、业务逻辑均无变化，import-scan/单测/ contract-check 全绿。
     # v1.0.8：依赖版本号同步跟进 mdm/customer@1.0.6、mdm/product@1.0.7，无破坏性变更。
     # v1.0.7：依赖版本号同步跟进 mdm/product@1.0.6（补 README 三节，纯文档修复），无破坏性变更。
@@ -471,46 +471,66 @@ components:
     # docker exec 进外壳容器 + curl 容器内部地址，见 docs/plans/
     # 04b-验证记录.md Task 0.4/0.5。
     config:
-      authzBundleUrl: "http://host.docker.internal:8223/authz/bundle"
-      iamJwksUrl: "http://host.docker.internal:8200/.well-known/jwks.json"
+      authzBundleUrl: "http://infra-authz-1-0-6:8223/authz/bundle"
+      iamJwksUrl: "http://infra-iam-casdoor-1-0-8:8200/.well-known/jwks.json"
   # ===== 外壳自身（阶段四附加 Task 0.4：servedBy 落地后第一次把外壳当成
   # 真正的 brickKit 组件——manifest 在各自外壳仓库的 deploy/ 子目录下，
   # 见上面 sources 的 shells-go/shells-python 两条。4 个外壳不在设计书
   # 62 个业务组件的固定名录里，registry/ports.tsv 里对应 _shell-* 前缀
   # 的行，见 registry/README.md 规矩 3b） =====
   - id: shell/go-core
-    version: 0.4.6
+    version: 0.4.8
     config:
       shellName: go-core
       shellHealthPort: "8090"
+      shellConfigJson: '[{"componentId":"erp/finance","version":"1.0.12","schema":"erp_finance","httpPort":8087,"extraPorts":{"grpc":9097},"config":{"AUTHZ_BUNDLE_URL":"http://infra-authz-1-0-6:8223/authz/bundle","IAM_JWKS_URL":"http://infra-iam-casdoor-1-0-8:8200/.well-known/jwks.json","OTEL_BASE_URL":"","PG_SCHEMA":"erp_finance"}},{"componentId":"erp/inventory","version":"1.0.16","schema":"erp_inventory","httpPort":8086,"extraPorts":{"grpc":9096},"config":{"AUTHZ_BUNDLE_URL":"http://infra-authz-1-0-6:8223/authz/bundle","IAM_JWKS_URL":"http://infra-iam-casdoor-1-0-8:8200/.well-known/jwks.json","OTEL_BASE_URL":"","PG_SCHEMA":"erp_inventory"}},{"componentId":"mdm/customer","version":"1.0.8","schema":"mdm_customer","httpPort":8080,"extraPorts":{"grpc":9090},"config":{"AUTHZ_BUNDLE_URL":"http://infra-authz-1-0-6:8223/authz/bundle","IAM_JWKS_URL":"http://infra-iam-casdoor-1-0-8:8200/.well-known/jwks.json","OTEL_BASE_URL":"","PG_SCHEMA":"mdm_customer"}},{"componentId":"mdm/product","version":"1.0.9","schema":"mdm_product","httpPort":8082,"extraPorts":{"grpc":9092},"config":{"AUTHZ_BUNDLE_URL":"http://infra-authz-1-0-6:8223/authz/bundle","IAM_JWKS_URL":"http://infra-iam-casdoor-1-0-8:8200/.well-known/jwks.json","OTEL_BASE_URL":"","PG_SCHEMA":"mdm_product"}},{"componentId":"erp/sales","version":"1.0.24","schema":"erp_sales","httpPort":8084,"extraPorts":{"grpc":9094},"config":{"AUTHZ_BUNDLE_URL":"http://infra-authz-1-0-6:8223/authz/bundle","DEFAULT_WAREHOUSE_ID":"1","EXCEPTION_ASSIGNEE_SUB":"u_ops_reviewer","IAM_JWKS_URL":"http://infra-iam-casdoor-1-0-8:8200/.well-known/jwks.json","OTEL_BASE_URL":"","PG_SCHEMA":"erp_sales"}}]'
       # go-core 自己不含 infra/authz、infra/iam-casdoor，跟它们不同外壳，
       # 走宿主机发布地址（同下面各成员的既有判据）。
-      authzBundleUrl: "http://host.docker.internal:8223/authz/bundle"
-      iamJwksUrl: "http://host.docker.internal:8200/.well-known/jwks.json"
+      authzBundleUrl: "http://infra-authz-1-0-6:8223/authz/bundle"
+      iamJwksUrl: "http://infra-iam-casdoor-1-0-8:8200/.well-known/jwks.json"
   - id: shell/go-backoffice
-    version: 0.4.6
+    version: 0.4.8
     config:
       shellName: go-backoffice
       shellHealthPort: "8116"
-      authzBundleUrl: "http://host.docker.internal:8223/authz/bundle"
-      iamJwksUrl: "http://host.docker.internal:8200/.well-known/jwks.json"
+      shellConfigJson: '[{"componentId":"crm/opportunity","version":"1.0.11","schema":"crm_opportunity","httpPort":8102,"extraPorts":{"grpc":9102},"config":{"AUTHZ_BUNDLE_URL":"http://infra-authz-1-0-6:8223/authz/bundle","IAM_JWKS_URL":"http://infra-iam-casdoor-1-0-8:8200/.well-known/jwks.json","OTEL_BASE_URL":"","PG_SCHEMA":"crm_opportunity"}}]'
+      authzBundleUrl: "http://infra-authz-1-0-6:8223/authz/bundle"
+      iamJwksUrl: "http://infra-iam-casdoor-1-0-8:8200/.well-known/jwks.json"
   - id: shell/go-infra
-    version: 0.4.6
+    version: 0.4.8
     config:
       shellName: go-infra
       shellHealthPort: "8224"
+      shellConfigJson: '[{"componentId":"infra/authz","version":"1.0.6","schema":"infra_authz","httpPort":8223,"extraPorts":{"grpc":9223},"config":{"ACCESS_TOKEN_TTL_SECONDS":"600","AUTHZ_BUNDLE_URL":"http://127.0.0.1:8223/authz/bundle","BOOTSTRAP_ADMIN_SUB":"","DEFAULT_ORG_ID":"1","IAM_JWKS_URL":"http://127.0.0.1:8200/.well-known/jwks.json","OTEL_BASE_URL":"","PERMISSION_CATALOG":"crm.opportunity.edit|编辑商机|action|crm/opportunity,crm.opportunity.view|查看商机|page|crm/opportunity,crm.opportunity.win|商机赢单|action|crm/opportunity,erp.finance.close|关账/反关账/锁定期间|action|erp/finance,erp.finance.manage_access|分配法人访问权限|action|erp/finance,erp.finance.post|手工过账/冲销|action|erp/finance,erp.finance.view|查看财务数据|page|erp/finance,erp.inventory.adjust|盘盈盘亏调整|action|erp/inventory,erp.inventory.issue|确认出库|action|erp/inventory,erp.inventory.manage_access|分配仓库访问权限|action|erp/inventory,erp.inventory.receive|入库|action|erp/inventory,erp.inventory.reserve|预留库存|action|erp/inventory,erp.inventory.view|查看库存|page|erp/inventory,erp.sales.cancel|取消订单|action|erp/sales,erp.sales.confirm|确认订单|action|erp/sales,erp.sales.create|建立报价/订单|action|erp/sales,erp.sales.ship|发货|action|erp/sales,erp.sales.view|查看销售订单|page|erp/sales,infra.authz.admin|权限与角色管理|page|infra/authz,infra.bff-mobile.customer.view|查询客户（移动端）|action|infra/bff-mobile,infra.bff-mobile.inventory.view|查询库存余量（移动端）|action|infra/bff-mobile,infra.bff-mobile.order.view|查询销售订单（移动端）|action|infra/bff-mobile,infra.bff-mobile.product.view|查询产品（移动端）|action|infra/bff-mobile,infra.bff-mobile.task.view|查询我的待办（移动端）|action|infra/bff-mobile,infra.notification.admin|通知排障视图|page|infra/notification,infra.notification.preference.edit|编辑通知偏好|action|infra/notification,infra.notification.view|查看我的通知|page|infra/notification,infra.print.render|调用渲染|action|infra/print,infra.print.template.edit|编辑打印模板|action|infra/print,infra.print.template.view|查看打印模板|page|infra/print,infra.workflow.admin|待办全局视图|page|infra/workflow,infra.workflow.task.act|处理待办（同意/驳回）|action|infra/workflow,infra.workflow.task.view|查看我的待办|page|infra/workflow,integration.im.admin|钉钉投递排障|page|integration/im-dingtalk,mdm.customer.add_contact|新增客户联系人|action|mdm/customer,mdm.customer.create|新建客户|action|mdm/customer,mdm.customer.set_status|启用/停用客户|action|mdm/customer,mdm.customer.update|编辑客户|action|mdm/customer,mdm.customer.view|查看客户主数据|page|mdm/customer,mdm.product.create|新建产品|action|mdm/product,mdm.product.edit|编辑产品|action|mdm/product,mdm.product.view|查看产品主数据|page|mdm/product","PG_SCHEMA":"infra_authz"}},{"componentId":"infra/iam-casdoor","version":"1.0.8","schema":"infra_iam_casdoor","httpPort":8200,"extraPorts":{"grpc":9200},"config":{"APP_TOKEN_PREVIOUS_PUBLIC_KEY_PEM":"","APP_TOKEN_TTL_SECONDS":"600","CASDOOR_ADMIN_USERNAME":"admin","CASDOOR_APP_NAME":"brickkit-app","CASDOOR_BASE_URL":"http://host.docker.internal:8000","CASDOOR_ORG_NAME":"brickkit","ENABLED_COMPONENTS":"mdm/customer,mdm/product,erp/inventory,erp/finance,erp/sales,infra/authz,infra/iam-casdoor","IAM_JWKS_URL":"http://127.0.0.1:8200/.well-known/jwks.json","OTEL_BASE_URL":"","PG_SCHEMA":"infra_iam_casdoor","REFRESH_TOKEN_TTL_SECONDS":"604800","WEBHOOK_CALLBACK_URL":"http://172.18.0.1:8200/api/iam/webhooks/casdoor"}},{"componentId":"infra/notification","version":"1.0.4","schema":"infra_notification","httpPort":8202,"extraPorts":{"grpc":9202},"config":{"AUTHZ_BUNDLE_URL":"http://127.0.0.1:8223/authz/bundle","IAM_JWKS_URL":"http://127.0.0.1:8200/.well-known/jwks.json","IM_TARGET_ADAPTERS":"dingtalk","OTEL_BASE_URL":"","PG_SCHEMA":"infra_notification"}},{"componentId":"infra/workflow","version":"1.0.4","schema":"infra_workflow","httpPort":8201,"extraPorts":{"grpc":9201},"config":{"AUTHZ_BUNDLE_URL":"http://127.0.0.1:8223/authz/bundle","IAM_JWKS_URL":"http://127.0.0.1:8200/.well-known/jwks.json","OTEL_BASE_URL":"","PG_SCHEMA":"infra_workflow"}},{"componentId":"integration/im-dingtalk","version":"1.0.5","schema":"integration_im_dingtalk","httpPort":8207,"extraPorts":{"grpc":9207},"config":{"AUTHZ_BUNDLE_URL":"http://127.0.0.1:8223/authz/bundle","DINGTALK_BASE_URL":"https://oapi.dingtalk.com","IAM_JWKS_URL":"http://127.0.0.1:8200/.well-known/jwks.json","OTEL_BASE_URL":"","PG_SCHEMA":"integration_im_dingtalk"}}]'
       # go-infra 自己就是 infra/authz、infra/iam-casdoor 所在的外壳——
       # 同进程 loopback，不是 host.docker.internal（同这两个组件自引用的
       # 既有判据）。
       authzBundleUrl: "http://127.0.0.1:8223/authz/bundle"
       iamJwksUrl: "http://127.0.0.1:8200/.well-known/jwks.json"
+      # ⚠️ 阶段四附加 Task 0.4：以下 6 项是真实的秘钥，原来分别是
+      # infra/iam-casdoor、integration/im-dingtalk 各自 component.yaml
+      # 上的 configSchema 项——真机验证 servedBy 时发现它们不能像其它
+      # config 项那样走 shellConfigJson（这类值整个是 ${VAR} 占位符，
+      # be-ops 的 MergeConfig 会把它们整条排除：带真实换行符会破坏 JSON
+      # 结构，展开后的真实密钥又不能提交进 git，完整推演见 be-ops
+      # genyaml.MergeConfig 的注释）。这里走的是正常的 ${VAR} 展开路径
+      # （跟其它任何一个组件的秘钥项完全一样），brickKit 原生注入引擎
+      # 会把它们展开成外壳容器自己的进程环境变量，internal/shell.
+      # envWithProcessFallback 再兜底传给真正需要它们的模块。
+      appTokenSigningKeyPem: "${APP_TOKEN_SIGNING_KEY_PEM}"   # → infra/iam-casdoor
+      casdoorAdminPassword: "${CASDOOR_ADMIN_PASSWORD}"       # → infra/iam-casdoor
+      webhookSharedSecret: "${WEBHOOK_SHARED_SECRET}"         # → infra/iam-casdoor
+      dingtalkAppKey: "${DINGTALK_APP_KEY}"                   # → integration/im-dingtalk
+      dingtalkAppSecret: "${DINGTALK_APP_SECRET}"             # → integration/im-dingtalk
+      dingtalkAgentId: "${DINGTALK_AGENT_ID}"                 # → integration/im-dingtalk
   - id: shell/py-render
-    version: 0.2.4
+    version: 0.2.7
     config:
       shellName: py-render
       shellHealthPort: "8402"
-      authzBundleUrl: "http://host.docker.internal:8223/authz/bundle"
-      iamJwksUrl: "http://host.docker.internal:8200/.well-known/jwks.json"
+      shellConfigJson: '[{"componentId":"infra/print","version":"1.0.6","schema":"infra_print","httpPort":8400,"extraPorts":{"grpc":9400},"config":{"AUTHZ_BUNDLE_URL":"http://infra-authz-1-0-6:8223/authz/bundle","IAM_JWKS_URL":"http://infra-iam-casdoor-1-0-8:8200/.well-known/jwks.json","OTEL_BASE_URL":"","PG_SCHEMA":"infra_print"}}]'
+      authzBundleUrl: "http://infra-authz-1-0-6:8223/authz/bundle"
+      iamJwksUrl: "http://infra-iam-casdoor-1-0-8:8200/.well-known/jwks.json"
 resources:
   # 设计书 §13.3 铁律二："brickkit.yaml 里只有 5 个外壳登录角色（5 个
   # resources 条目，同一个 host、不同凭据）"——凭据是 make db-init 早就
