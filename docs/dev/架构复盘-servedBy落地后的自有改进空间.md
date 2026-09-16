@@ -162,6 +162,18 @@ configSchema key，驼峰形式）打包成 JSON 数组，原生注入外壳容�
    compose 的全文本 `${VAR}` 替换不知道自己在 JSON 字符串内部），已
    反馈给 brickKit。完整过程见 `docs/plans/04b-验证记录.md` Task 0.6、
    两个外壳仓库各自 README.md 的"Task 0.6"系列小节。
+
+   ⚠️ **2026-09-16 更新，`sanitizeServedMembersConfig` 本身也已经退休**：
+   brickKit v0.4.3 换了个从根上消除这类问题的设计——
+   `BRICKKIT_SERVED_MEMBERS_CONFIG` 的 `config` 字段改名
+   `configEnvVars`，只携带"这个 key 对应外壳进程环境里哪条独立变量"
+   的变量名，不再携带值本身，值改走一条独立的、带组件 ID 前缀命名的
+   标量环境变量，`${VAR}` 展开完全交给 docker compose，不再嵌在任何
+   结构化字符串内部。两个外壳仓库的
+   `sanitizeServedMembersConfig`/`_sanitize_served_members_config`
+   这层下游兜底因此也整个删除——上面这段"密钥类值需要 JSON 字符串内部
+   转义"的描述本身已经是历史，不再是现状，完整过程见
+   `docs/plans/04b-验证记录.md` Task 0.6 收尾一节。
 5. 《BrickEnterprise 设计书.md》§13.8（这次 Task 0.5 才刚重写成
    "`SHELL_CONFIG_JSON` + `be-ops shell-config`"的机制说明）需要跟着
    再改一版，反映"外壳启动器直接读 `BRICKKIT_SERVED_MEMBERS_CONFIG`，
