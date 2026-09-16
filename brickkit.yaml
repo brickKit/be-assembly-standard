@@ -36,7 +36,7 @@ components:
     # servedBy——工作负载被 shell/go-core 收编，不再自己起容器（合并
     # 部署现在走平台原生机制而不是本仓库外壳的手写 shell-compose.yml，
     # 设计书 §13.1，见 docs/plans/04b-验证记录.md Task 0.4）
-    servedBy: shell/go-core@0.5.3
+    servedBy: shell/go-core@0.5.4
     # v1.0.6：gen/mdm/customer 拆成独立嵌套 go module，理由与做法同 erp/finance 这次改动（阶段四调研记录 04 §13）。本仓库自己 standalone 构建/测试用本地 replace 完全不受影响，import-scan/单测全绿。无业务行为/契约变更。
     # v1.0.5：make seed 加量到 12 个客户，覆盖更多行业画像+信用额度区间，无破坏性变更。
     # v1.0.4：新增 make seed/seed-clean（总纲 SOP-W-7 种子数据归属样板首例）。
@@ -82,7 +82,7 @@ components:
     # servedBy——工作负载被 shell/go-core 收编，不再自己起容器（合并
     # 部署现在走平台原生机制而不是本仓库外壳的手写 shell-compose.yml，
     # 设计书 §13.1，见 docs/plans/04b-验证记录.md Task 0.4）
-    servedBy: shell/go-core@0.5.3
+    servedBy: shell/go-core@0.5.4
     # v1.0.7：gen/mdm/product 拆成独立嵌套 go module，理由与做法同 erp/finance 这次改动（阶段四调研记录 04 §13）。本仓库自己 standalone 构建/测试用本地 replace 完全不受影响，import-scan/单测全绿。无业务行为/契约变更。
     # v1.0.6：补齐 README 的"怎么起来"/"怎么用"/"配置项"三节，纯文档修复，无破坏性变更。
     # v1.0.4：新增 make seed/seed-clean（同 mdm-customer，种子数据归属样板第二例）。
@@ -103,7 +103,7 @@ components:
     # servedBy——工作负载被 shell/go-core 收编，不再自己起容器（合并
     # 部署现在走平台原生机制而不是本仓库外壳的手写 shell-compose.yml，
     # 设计书 §13.1，见 docs/plans/04b-验证记录.md Task 0.4）
-    servedBy: shell/go-core@0.5.3
+    servedBy: shell/go-core@0.5.4
     # v1.0.14：gen/erp/inventory 拆成独立嵌套 go module，理由与做法同 erp/finance 这次改动（阶段四调研记录 04 §13）。本仓库自己 standalone 构建/测试用本地 replace 完全不受影响，import-scan/单测全绿。无业务行为/契约变更。
     # v1.0.13：消费者测试改用测试私有 subject，纯测试基础设施修复，无破坏性变更。
     # v1.0.12：补 04-testing-standard.md §3.2 强制要求的属性测试，纯测试新增，无破坏性变更。
@@ -132,7 +132,7 @@ components:
     # servedBy——工作负载被 shell/go-core 收编，不再自己起容器（合并
     # 部署现在走平台原生机制而不是本仓库外壳的手写 shell-compose.yml，
     # 设计书 §13.1，见 docs/plans/04b-验证记录.md Task 0.4）
-    servedBy: shell/go-core@0.5.3
+    servedBy: shell/go-core@0.5.4
     # v1.0.10：gen/erp/finance 拆成独立嵌套 go module（module 边界切在 v1 目录上一级，因为 Go 模块路径禁止以字面量 /v1 结尾）——为了让外壳（shells/go）能在合并部署时用自己的 go.mod replace 把 erp-sales vendor 的同一份契约镜像重定向到这里，避免两份逐字复制的生成代码在同一个 protobuf 全局注册表里重复注册同一个文件/类型全名而 panic（TestRun_go_core外壳全部5个真实模块合并进一个进程真机测出来的，阶段四调研记录 04 §13 有完整推演）。本仓库自己 standalone 构建/测试用本地 replace 完全不受影响，import-scan/单测全绿。无业务行为/ 契约变更。
     # v1.0.9：消费者测试改用测试私有 subject，纯测试基础设施修复，无破坏性变更。
     # v1.0.8：补 04-testing-standard.md §3.2 强制要求的属性测试 + 修 TestListEntries_看不到别的法人的凭证 测试夹具缺 schema 前缀的既有 bug，无破坏性变更。
@@ -158,7 +158,7 @@ components:
     # servedBy——工作负载被 shell/go-core 收编，不再自己起容器（合并
     # 部署现在走平台原生机制而不是本仓库外壳的手写 shell-compose.yml，
     # 设计书 §13.1，见 docs/plans/04b-验证记录.md Task 0.4）
-    servedBy: shell/go-core@0.5.3
+    servedBy: shell/go-core@0.5.4
     # v1.0.22：最后一份 vendor 镜像（contracts/vendor/infra/workflow）也改成直接 import infra-workflow 发布的真身 gen/infra/workflow 包——理由与这次 finance/inventory/mdm-customer/mdm-product 四份同批（阶段四调研记录 04 §13）：本组件自己的测试文件把 5 个外壳的真实模块测试放进同一个 Go 测试二进制，即使 infra-workflow 目前分在不同外壳、生产环境不会真的同进程，测试编译阶段依然会把两份内容相同的生成代码一起链进去，触发一模一样的 protobuf 全局注册表撞车。至此本组件 vendor 的全部五份契约镜像都已经改成直接 import 真身，不再保留任何一份逐字复制的镜像代码。gRPC 调用行为、契约面、业务逻辑均无变化，import-scan/单测/contract-check 全绿。
     # v1.0.21：铁律六新增第二类白名单（生成物契约包 gen/<domain>/<name>，与 be-sdk-* 同类，设计书§13.3）——本组件不再 vendor 一份 erp-finance/erp-inventory/ mdm-customer/mdm-product 的生成代码副本，改成直接 import 它们各自发布的真身 gen/ 包。原因：上一版（v1.0.20）尝试的"嵌套 go module + 外壳 replace 去重"经真机测试证明技术上不可行——Go module 系统无法把两个不同 import path 的包合并成一份编译实例，即使 replace 也不行，外壳合并部署时 protobuf 全局注册表撞车的 panic 原样复现（阶段四调研记录 04 §13 有完整推演+最小复现）。这次改动删掉 contracts/vendor/{erp/finance,erp/inventory, mdm/customer,mdm/product} 与 gen/ 下对应的四份镜像，5 处 import 语句改指真身包（别名不变，业务代码零改动），import-scan 门禁新增放行 github.com/brickKit/<repo>/gen/... 这个形状。gen/infra/workflow（vendor 的第五份，跟本组件不同外壳，当前不撞车）保持原样，留给下次触及时再改。 contract-check 的 buf breaking 范围收紧到只查 contracts/erp、 contracts/events（不含 contracts/vendor 只读镜像——这个意图本来就写在注释里，只是命令一直没真的照做，这次一并修正）。gRPC 调用行为、契约面、业务逻辑均无变化，import-scan/单测/contract-check 全绿。
     # v1.0.20：本组件 vendor 的四份契约只读镜像（gen/erp/finance、gen/erp/inventory、 gen/mdm/customer、gen/mdm/product——vendored-contract 模式，设计计划§9）各自拆成独立嵌套 go module，各用一条本地 replace 指回自己（module 边界切在 v1 目录上一级，理由同上）。这是外壳合并部署能把这四份镜像去重指向各自真身的前提（阶段四调研记录 04 §13）——本仓库自己 standalone 构建/测试完全不受影响，import-scan/单测全绿。gen/erp/sales/v1（自己的契约）与 gen/infra/workflow（vendor 的第五份，当前跟本组件不同外壳，不撞车）都没有改动。无业务行为/契约变更。
@@ -203,7 +203,7 @@ components:
     # servedBy——工作负载被 shell/go-infra 收编，不再自己起容器（合并
     # 部署现在走平台原生机制而不是本仓库外壳的手写 shell-compose.yml，
     # 设计书 §13.1，见 docs/plans/04b-验证记录.md Task 0.4）
-    servedBy: shell/go-infra@0.5.3
+    servedBy: shell/go-infra@0.5.4
     # v1.0.4：make seed 扩成多角色权限体系样板——部门树+3个权限子集角色，无破坏性变更。
     # v1.0.3：新增 make seed/seed-clean，种子授权归本组件自己持有，无破坏性变更。
     # v1.0.2：阶段三 Task 6，权限键换成真实键（/api/me/permissions
@@ -246,7 +246,7 @@ components:
     # servedBy——工作负载被 shell/go-infra 收编，不再自己起容器（合并
     # 部署现在走平台原生机制而不是本仓库外壳的手写 shell-compose.yml，
     # 设计书 §13.1，见 docs/plans/04b-验证记录.md Task 0.4）
-    servedBy: shell/go-infra@0.5.3
+    servedBy: shell/go-infra@0.5.4
     # v1.0.6：make seed 从单一超级用户扩成 4 个覆盖不同角色画像的测试用户，依赖版本号同步跟进 infra/authz@1.0.4，无破坏性变更。
     # v1.0.5：修 get-application 解析（Casdoor 应用真实登录后带非法控制字符），无破坏性变更。
     # v1.0.4：新增 make seed/seed-clean + 同步 infra/authz@1.0.3 依赖引用，无破坏性变更。
@@ -312,7 +312,7 @@ components:
     # servedBy——工作负载被 shell/go-infra 收编，不再自己起容器（合并
     # 部署现在走平台原生机制而不是本仓库外壳的手写 shell-compose.yml，
     # 设计书 §13.1，见 docs/plans/04b-验证记录.md Task 0.4）
-    servedBy: shell/go-infra@0.5.3
+    servedBy: shell/go-infra@0.5.4
     # v1.0.2：docs/手册.md 的 TEST_PG_DSN 示例改指向 brickkit_test_db，无破坏性变更。
     # 阶段三 Task 8 首次出档：审批待办中心，零依赖（§6.6 铁律三：
                    # 只有入边）。erp/sales@1.0.6 起已真的接通这条弱依赖调用
@@ -334,7 +334,7 @@ components:
     # servedBy——工作负载被 shell/go-infra 收编，不再自己起容器（合并
     # 部署现在走平台原生机制而不是本仓库外壳的手写 shell-compose.yml，
     # 设计书 §13.1，见 docs/plans/04b-验证记录.md Task 0.4）
-    servedBy: shell/go-infra@0.5.3
+    servedBy: shell/go-infra@0.5.4
     # 阶段三 Task 9 首次出档：统一通知中心，零依赖零入边，
                    # 完全活在事件图上（消费 infra.workflow.task.created.v1
                    # 等，发 dispatch 事件；见 03-阶段三 Task 9 小节）
@@ -355,7 +355,7 @@ components:
     # servedBy——工作负载被 shell/go-infra 收编，不再自己起容器（合并
     # 部署现在走平台原生机制而不是本仓库外壳的手写 shell-compose.yml，
     # 设计书 §13.1，见 docs/plans/04b-验证记录.md Task 0.4）
-    servedBy: shell/go-infra@0.5.3
+    servedBy: shell/go-infra@0.5.4
     # v1.0.3：docs/手册.md 的 TEST_PG_DSN 示例改指向 brickkit_test_db，无破坏性变更。
     # 阶段三 Task 9：channel:im 族第一个成员，零依赖零入边
                    # （消费 infra.notification.dispatch.im.v1，发
@@ -460,7 +460,7 @@ components:
     # servedBy——工作负载被 shell/go-backoffice 收编，不再自己起容器（合并
     # 部署现在走平台原生机制而不是本仓库外壳的手写 shell-compose.yml，
     # 设计书 §13.1，见 docs/plans/04b-验证记录.md Task 0.4）
-    servedBy: shell/go-backoffice@0.5.3
+    servedBy: shell/go-backoffice@0.5.4
     # v1.0.9：不再 vendor mdm-customer/mdm-product 两份契约镜像，改直接 import 真身 gen/ 包（铁律六新增第二类白名单，与 be-sdk-* 同类，设计书§13.3）。原因：shells/go 的测试文件把多个外壳的真实模块测试放进同一个 Go 测试二进制，本组件跟 mdm-customer/mdm-product 虽然分在不同外壳（生产环境不会真的同进程），但测试编译阶段依然会把两份内容相同的生成代码一起链进去，在 protobuf 全局注册表里重复注册同一个文件/类型全名而 panic ——Go 的 module system 无法把两个不同 import path 的包合并成一份编译实例，replace 也解决不了（阶段四调研记录 04 §13 有完整推演+最小复现； erp-sales 已经先行完成同样的改动）。contracts/vendor/ 整个目录清空删除，import-scan 门禁新增放行 github.com/brickKit/<repo>/gen/... 这个形状。gRPC 调用行为、契约面、业务逻辑均无变化，import-scan/单测/ contract-check 全绿。
     # v1.0.8：依赖版本号同步跟进 mdm/customer@1.0.6、mdm/product@1.0.7，无破坏性变更。
     # v1.0.7：依赖版本号同步跟进 mdm/product@1.0.6（补 README 三节，纯文档修复），无破坏性变更。
@@ -489,7 +489,7 @@ components:
   # 62 个业务组件的固定名录里，registry/ports.tsv 里对应 _shell-* 前缀
   # 的行，见 registry/README.md 规矩 3b） =====
   - id: shell/go-core
-    version: 0.5.3
+    version: 0.5.4
     config:
       shellName: go-core
       shellHealthPort: "8090"
@@ -498,14 +498,14 @@ components:
       authzBundleUrl: "http://infra-authz-1-0-7:8223/authz/bundle"
       iamJwksUrl: "http://infra-iam-casdoor-1-0-9:8200/.well-known/jwks.json"
   - id: shell/go-backoffice
-    version: 0.5.3
+    version: 0.5.4
     config:
       shellName: go-backoffice
       shellHealthPort: "8116"
       authzBundleUrl: "http://infra-authz-1-0-7:8223/authz/bundle"
       iamJwksUrl: "http://infra-iam-casdoor-1-0-9:8200/.well-known/jwks.json"
   - id: shell/go-infra
-    version: 0.5.3
+    version: 0.5.4
     config:
       shellName: go-infra
       shellHealthPort: "8224"
