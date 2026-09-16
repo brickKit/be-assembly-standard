@@ -1323,7 +1323,7 @@ flowchart LR
 
 brickKit 是刻意极简的：不做网关、不做路由聚合、不建库建 schema、不知道"当前装配了什么"。这些活不会因为平台不做就消失，只是没有人认领——`be-ops` 就是认领它们的那一个。它不是 brickKit 组件（不进 `brickkit.yaml`），是我们自己的命令行工具，读全部组件的 `assembly.yaml`，产出：
 
-⚠️ **2026-09 更新**：原来的产出 4/7/8（外壳合并配置、每外壳环境变量表、外壳间 `depends_on`）已经**全部退休**——`servedBy` 落地后，"哪个组件进哪个外壳""地址怎么算"由平台原生处理，不再需要我们自己产出一份平行数据（真机验证记录见 `docs/plans/04b-验证记录.md` Task 0.2/0.3）。下表已经反映退休后的编号（原 5/6 顺移，原产出 4 的位置改放"外壳自己的合并清单"这个仍然需要我们自己生成的东西，语义已经不同，见下方 §13.8.1）。
+⚠️ **2026-09 更新**：原来的产出 4/7/8（外壳合并配置、每外壳环境变量表、外壳间 `depends_on`）已经**全部退休**——`servedBy` 落地后，"哪个组件进哪个外壳""地址怎么算"由平台原生处理，不再需要我们自己产出一份平行数据（真机验证记录见 `docs/plans/05a-迁移到servedBy.md` Task 0.2/0.3）。下表已经反映退休后的编号（原 5/6 顺移，原产出 4 的位置改放"外壳自己的合并清单"这个仍然需要我们自己生成的东西，语义已经不同，见下方 §13.8.1）。
 
 | # | 产出 | 替代了平台的什么 |
 | --- | --- | --- |
@@ -2880,7 +2880,7 @@ PG 的连接绑死两样东西：**一个 database、一个认证角色**。所�
 
 > ⚠️ **本条铁律 2026-09 更新，结论已反转**：这条铁律成立的前提是"合并只能靠 `local: true`，而它只配 `deploy.target: docker`"——`servedBy` 落地后这个前提不再存在。**读 brickKit 源码确认**（`internal/k8s/servedby.go`）：K8s 目标下 `servedBy` 由平台原生生成一个独立的 Service 对象，`selector` 指向外壳 Pod 的 label，跟 Docker 侧"往外壳容器网络别名列表里挂一个别名"是同一个转换函数（`ServiceName()`）算出来的地址，机制不同但效果一致——**合并部署不再是"只能 Docker 单机交付"，K8s 下同样支持合并**。旧版这里说的"承诺一条不存在的中间态"（决策 88）本身也需要重新审视：中间态现在是真实存在的。
 >
-> ⚠️ **诚实标注当前状态**：以上是读 brickKit 源码得出的结论，本项目自己**还没有在真实 K8s 集群上跑过 `servedBy`**（见 `docs/plans/04b-部署矩阵验证.md` Task 6，尚未开工）——这条铁律的反转目前只有源码依据，没有本项目自己的真机验证，回来补上真机记录之前，不要把"K8s 下合并部署"当成已经在本项目里跑通的能力对客户承诺。
+> ⚠️ **诚实标注当前状态**：以上是读 brickKit 源码得出的结论，本项目自己**还没有在真实 K8s 集群上跑过 `servedBy`**（见 `docs/plans/05b-组合矩阵验证.md` Task 6，尚未开工）——这条铁律的反转目前只有源码依据，没有本项目自己的真机验证，回来补上真机记录之前，不要把"K8s 下合并部署"当成已经在本项目里跑通的能力对客户承诺。
 
 **阶段二操作细节**（把一个组件从外壳里拆出来）：
 
@@ -2947,7 +2947,7 @@ PG 的连接绑死两样东西：**一个 database、一个认证角色**。所�
 
 ### 13.8 外壳启动器自己要做的事：怎么把 N 个模块拼进一个进程
 
-⚠️ **本节 2026-09 第二次整节重写**：第一版重写记的是"`servedBy` 刚落地那一刻"的状态——地址计算已经由平台接管，但"外壳该装哪些模块、每个模块的完整 config"仍然要我们自己起一个命令行工具（`be-ops shell-config`）手工算、手工贴进 `brickkit.yaml`。**这一层手工同步本身也已经退休**：brickKit v0.4.2 新增原生保留变量 `BRICKKIT_SERVED_MEMBERS_CONFIG`，在算 `BRICKKIT_SERVED_MEMBERS` 的同一处代码里，brickKit 自己顺手把每个成员的完整装配数据（componentId/version/端口/合并后 config）打包成 JSON 数组原生注入外壳容器——`be-ops` 产出 4（连同更早退休的产出 7/8）至此全部退休（真机验证记录见 `docs/plans/04b-验证记录.md` Task 0.2-0.6，总纲 §2.4 表格同步标注）。真正还要我们自己写代码解决的，进一步收窄到"外壳进程内部怎么把 JSON 数组转成 `ModuleSpec` 数组、怎么把 componentId 字符串映到真实 Go/Python 源码 import"这两件事——这天然就是我们自己的代码（`shells/go`/`shells/python`），不是平台的职责范围。
+⚠️ **本节 2026-09 第二次整节重写**：第一版重写记的是"`servedBy` 刚落地那一刻"的状态——地址计算已经由平台接管，但"外壳该装哪些模块、每个模块的完整 config"仍然要我们自己起一个命令行工具（`be-ops shell-config`）手工算、手工贴进 `brickkit.yaml`。**这一层手工同步本身也已经退休**：brickKit v0.4.2 新增原生保留变量 `BRICKKIT_SERVED_MEMBERS_CONFIG`，在算 `BRICKKIT_SERVED_MEMBERS` 的同一处代码里，brickKit 自己顺手把每个成员的完整装配数据（componentId/version/端口/合并后 config）打包成 JSON 数组原生注入外壳容器——`be-ops` 产出 4（连同更早退休的产出 7/8）至此全部退休（真机验证记录见 `docs/plans/05a-迁移到servedBy.md` Task 0.2-0.6，总纲 §2.4 表格同步标注）。真正还要我们自己写代码解决的，进一步收窄到"外壳进程内部怎么把 JSON 数组转成 `ModuleSpec` 数组、怎么把 componentId 字符串映到真实 Go/Python 源码 import"这两件事——这天然就是我们自己的代码（`shells/go`/`shells/python`），不是平台的职责范围。
 
 #### 13.8.1 外壳怎么知道自己该装哪些模块：`BRICKKIT_SERVED_MEMBERS_CONFIG`
 
@@ -2973,7 +2973,7 @@ PG 的连接绑死两样东西：**一个 database、一个认证角色**。所�
 
 **依赖地址（`*_ENDPOINT`）不走这条路径**——见 §13.1 机制三，这些是平台直接写进外壳容器共享 `os.Environ` 的，因为按设计它们对同一个外壳内的所有消费者本来就该是同一个值，这不是对铁律的破例，是这条铁律本来就没打算管的东西（铁律要防的是"该独立却共享"，不是"所有共享都不行"）。
 
-⚠️ **密钥类 config 值（比如 `infra/iam-casdoor` 的 `appTokenSigningKeyPem`）需要一步 JSON 修补，不是外壳自己另开一条路**：这些值在 `brickkit.yaml` 里写的是 `${VAR}` 占位符（真实值不进 git），brickKit 生成 `BRICKKIT_SERVED_MEMBERS_CONFIG` 这份 JSON 时占位符字符串本身没有特殊字符，编码完全合法——**但 docker compose 读取生成好的 `docker-compose.yaml` 时会对整份文件按纯文本做 `${VAR}` 替换，不知道也不关心某个 `${VAR}` 恰好嵌在这份 JSON 字符串内部**，真实密钥（PEM 私钥）自带原始换行符，替换进去会把 JSON 从中间断开。真机复现过一次"外壳自己另开独立 configSchema 项 + 进程环境兜底"这条老路**治标不治本**（撑坏 JSON 的是拥有该密钥的成员自己那条 config 记录，外壳自己多存一份不会让它消失）；真正的修复在解析这一步本身：`cmd/shell/main.go`/`main.py` 的 `sanitizeServedMembersConfig`/`_sanitize_served_members_config`，在 `json.Unmarshal`/`json.loads` 之前用一个只关心"现在在不在 JSON 字符串里面"的最小状态机，把字符串**内部**被替换进来的裸控制字符转义回合法形式——合法 JSON 字符串内部本来就不可能出现裸控制字符，见到了就一定是这次替换造成的，对任何 key 都通用，不需要先判断"这个 key 是不是密钥"。这是 `BRICKKIT_SERVED_MEMBERS_CONFIG` 机制本身的普适性设计缺口（不是本项目独有的坑），已反馈给 brickKit，完整根因分析与真机复现过程见 `docs/plans/04b-验证记录.md` Task 0.6。
+⚠️ **密钥类 config 值（比如 `infra/iam-casdoor` 的 `appTokenSigningKeyPem`）需要一步 JSON 修补，不是外壳自己另开一条路**：这些值在 `brickkit.yaml` 里写的是 `${VAR}` 占位符（真实值不进 git），brickKit 生成 `BRICKKIT_SERVED_MEMBERS_CONFIG` 这份 JSON 时占位符字符串本身没有特殊字符，编码完全合法——**但 docker compose 读取生成好的 `docker-compose.yaml` 时会对整份文件按纯文本做 `${VAR}` 替换，不知道也不关心某个 `${VAR}` 恰好嵌在这份 JSON 字符串内部**，真实密钥（PEM 私钥）自带原始换行符，替换进去会把 JSON 从中间断开。真机复现过一次"外壳自己另开独立 configSchema 项 + 进程环境兜底"这条老路**治标不治本**（撑坏 JSON 的是拥有该密钥的成员自己那条 config 记录，外壳自己多存一份不会让它消失）；真正的修复在解析这一步本身：`cmd/shell/main.go`/`main.py` 的 `sanitizeServedMembersConfig`/`_sanitize_served_members_config`，在 `json.Unmarshal`/`json.loads` 之前用一个只关心"现在在不在 JSON 字符串里面"的最小状态机，把字符串**内部**被替换进来的裸控制字符转义回合法形式——合法 JSON 字符串内部本来就不可能出现裸控制字符，见到了就一定是这次替换造成的，对任何 key 都通用，不需要先判断"这个 key 是不是密钥"。这是 `BRICKKIT_SERVED_MEMBERS_CONFIG` 机制本身的普适性设计缺口（不是本项目独有的坑），已反馈给 brickKit，完整根因分析与真机复现过程见 `docs/plans/05a-迁移到servedBy.md` Task 0.6。
 
 ### 13.9 合并态与全拆态不再互斥：拆回门禁需要的只是一个临时测试窗口
 

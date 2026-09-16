@@ -160,7 +160,7 @@ configSchema key，驼峰形式）打包成 JSON 数组，原生注入外壳容�
    MEMBERS_CONFIG` 对全部 config 值（含密钥类）统一成立。这是
    `BRICKKIT_SERVED_MEMBERS_CONFIG` 机制本身的普适性设计缺口（docker
    compose 的全文本 `${VAR}` 替换不知道自己在 JSON 字符串内部），已
-   反馈给 brickKit。完整过程见 `docs/plans/04b-验证记录.md` Task 0.6、
+   反馈给 brickKit。完整过程见 `docs/plans/05a-迁移到servedBy.md` Task 0.6、
    两个外壳仓库各自 README.md 的"Task 0.6"系列小节。
 
    ⚠️ **2026-09-16 更新，`sanitizeServedMembersConfig` 本身也已经退休**：
@@ -173,7 +173,7 @@ configSchema key，驼峰形式）打包成 JSON 数组，原生注入外壳容�
    `sanitizeServedMembersConfig`/`_sanitize_served_members_config`
    这层下游兜底因此也整个删除——上面这段"密钥类值需要 JSON 字符串内部
    转义"的描述本身已经是历史，不再是现状，完整过程见
-   `docs/plans/04b-验证记录.md` Task 0.6 收尾一节。
+   `docs/plans/05a-迁移到servedBy.md` Task 0.6 收尾一节。
 5. 《BrickEnterprise 设计书.md》§13.8（这次 Task 0.5 才刚重写成
    "`SHELL_CONFIG_JSON` + `be-ops shell-config`"的机制说明）需要跟着
    再改一版，反映"外壳启动器直接读 `BRICKKIT_SERVED_MEMBERS_CONFIG`，
