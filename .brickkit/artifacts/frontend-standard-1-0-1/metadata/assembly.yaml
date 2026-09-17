@@ -1,0 +1,17 @@
+id: frontend/standard
+version: 1.0.0
+asset:
+  source_type: open_standard
+  assembly_role: slot
+  slot_name: frontend                # 同一环境只能装一个 slot_name: frontend
+  contract_lock: strict
+  customization_guide: |
+    深度定制前端交互或视觉时：复制目录为 frontend-acme，改 git remote，
+    在定制目录中改代码。若完全重新设计，必须保持动态特性路由机制
+    （启动时读 /api/tenant/features）。metadata.id 与 version 不能改。
+domain: frontend
+tier: frontend
+edge_routes:
+  - { path: /**, auth: none }        # 兜底路由，be-ops 产出时排在所有业务路由之后
+menus: []                            # 前端自己不贡献菜单项，菜单来自各业务组件的 assembly.yaml 生成期聚合
+data_scopes: none                    # 前端无数据库，§14.2.2 要求显式写（省略会被 be-ops 拦下）
