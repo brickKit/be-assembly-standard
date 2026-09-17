@@ -96,6 +96,7 @@ components:
       authzBundleUrl: "http://infra-authz-1-0-7:8223/authz/bundle"
       iamJwksUrl: "http://infra-iam-casdoor-1-0-9:8200/.well-known/jwks.json"
   - id: erp/inventory
+    enabled: true # 显式钉住：本组件当前唯一的依赖方是 infra/bff-mobile（弱依赖）+ erp/sales，若两者都被 enabled: false，级联规则会把本组件也带下线——但它是独立核心业务模块，不应该因为移动端 BFF 没被采购就被牵连关闭（05b Task 5 真机验证发现，见该文档"结论"）
     version: 1.0.17 # v1.0.17：同 mdm/customer 这次改动，scripts/seed.sh 里既有 docker ps 容器名发现（gRPC 直连 Reserve/ConfirmIssue）又有宿主机 localhost 端口假设（REST 调用 + Casdoor/infra-iam-casdoor 换 JWT）两类坑，一并修复：gRPC 目标地址改用 ServiceName() 规则拼；REST 调用改成起一次性工具箱容器加入 brickkit 网络内部访问，不再假设任何组件把端口发布到宿主机。真机在 servedBy 部署下跑通 make seed（含①自成一体演示数据、②探测 mdm-product 灌真实库存两步）。无业务行为/契约变更。
     # v1.0.16：同 mdm/customer 这次改动，删掉 deployment.labels 的 prometheus.io/port，理由同上。无业务行为/契约变更。
     # v1.0.15：import-scan 门禁提前补上铁律六第二类白名单，理由同 erp/finance 这次改动（设计书§13.3）。本组件目前没有任何代码实际用到这条豁免，无行为变更。
@@ -125,6 +126,7 @@ components:
       authzBundleUrl: "http://infra-authz-1-0-7:8223/authz/bundle"
       iamJwksUrl: "http://infra-iam-casdoor-1-0-9:8200/.well-known/jwks.json"
   - id: erp/finance
+    enabled: true # 显式钉住：本组件当前唯一的依赖方是 erp/sales，若 erp/sales 因 infra/bff-mobile 被禁用而级联下线，本组件会跟着被误伤——但它是独立核心业务模块（05b Task 5 真机验证发现，见该文档"结论"）
     version: 1.0.13 # v1.0.13：同 erp/inventory 这次改动的 REST 部分——scripts/seed.sh 假设 CASDOOR/IAM/FIN 三个地址都是宿主机 localhost 端口，servedBy 合并部署下后两者不再成立。改成一次性工具箱容器 + ServiceName() 地址规则。真机在 servedBy 部署下跑通 make seed（5 张凭证 + 会计期间三态流转）。无业务行为/契约变更。
     # v1.0.12：同 mdm/customer 这次改动，删掉 deployment.labels 的 prometheus.io/port，理由同上。无业务行为/契约变更。
     # v1.0.11：import-scan 门禁提前补上铁律六第二类白名单（github.com/brickKit/<repo>/gen/...，设计书§13.3），跟 erp-sales/be-acceptance 那批一起定的规矩保持一致——本组件目前没有任何代码实际用到这条豁免，纯粹是为了跟中心化门禁（be-acceptance 的 ImportScan）和其它组件的判据保持同一份逻辑，不是遗漏也不改变任何现有行为。
@@ -151,6 +153,7 @@ components:
       authzBundleUrl: "http://infra-authz-1-0-7:8223/authz/bundle"
       iamJwksUrl: "http://infra-iam-casdoor-1-0-9:8200/.well-known/jwks.json"
   - id: erp/sales
+    enabled: true # 显式钉住：本组件当前唯一的依赖方是 infra/bff-mobile（弱依赖），若它被 enabled: false，级联规则会把本组件也带下线——但它是独立核心业务模块，不应该因为移动端 BFF 没被采购就被牵连关闭（05b Task 5 真机验证发现，见该文档"结论"）
     version: 1.0.25 # v1.0.25：同上，scripts/seed.sh 的 REST+JWT 换取部分改成工具箱容器 + ServiceName() 地址规则。真机在 servedBy 部署下跑通 make seed（5 条订单，含 dev.superuser/dev.sales.east 两个身份）。无业务行为/契约变更。
     # v1.0.24：同 mdm/customer 这次改动，删掉 deployment.labels 的 prometheus.io/port，理由同上。无业务行为/契约变更。
     # v1.0.23：依赖版本号同步跟进 erp/finance@1.0.11、erp/inventory@1.0.15、mdm/customer@1.0.7、mdm/product@1.0.8，无破坏性变更。
@@ -306,6 +309,7 @@ components:
       # authzBundleUrl 自引用是同一个道理）。
       iamJwksUrl: "http://127.0.0.1:8200/.well-known/jwks.json"
   - id: infra/workflow
+    enabled: true # 显式钉住：本组件当前的依赖方是 infra/bff-mobile（弱依赖）+ erp/sales（弱依赖），若两者都被 enabled: false，级联规则会把本组件也带下线——但它是独立核心业务模块（05b Task 5 真机验证发现，见该文档"结论"）
     version: 1.0.4 # v1.0.4：同 mdm/customer 这次改动，删掉 deployment.labels 的 prometheus.io/port，理由同上。无业务行为/契约变更。
     # v1.0.3：gen/infra/workflow 拆成独立嵌套 go module（module 边界切在 v1 目录上一级，因为 Go 模块路径禁止以字面量 /v1 结尾）——铁律六新增第二类白名单（生成物契约包，与 be-sdk-* 同类，设计书§13.3），让 erp-sales 能直接 import 这份真身包，取代它自己 vendor 的一份逐字复制镜像。原因： vendored-contract 一旦调用方和被调方编译进同一个进程会在 protobuf 全局注册表撞车，Go 的 module system 没有别的办法去重（阶段四调研记录 04 §13）。本仓库自己 standalone 构建/测试用本地 replace 完全不受影响， import-scan/单测全绿。无业务行为/契约变更。
     # ⚠️ 阶段四附加 Task 0.4：local:true 退休，改用 brickKit 原生的
