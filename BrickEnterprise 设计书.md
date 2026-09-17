@@ -2337,7 +2337,7 @@ CREATE TABLE sales_orders_2026_02 PARTITION OF sales_orders
 | 层 | Go（外壳一/二/三） | Python（外壳四/五） | TypeScript | 混用会怎样 |
 | --- | --- | --- | --- | --- |
 | HTTP 框架 | **Gin**（`gin.Engine` 只以 `http.Handler` 形态交给外壳） | **FastAPI** | Apollo Server 4 | Go：第③层；**Python：第①层**（见本节末的两条 ⚠️） |
-| HTTP / ASGI server | `net/http.Server` | **uvicorn 编程式 `Server`；单进程单事件循环，禁 gunicorn、禁 `workers > 1`** | Node 20 | 多 worker = 多进程：Outbox 推送线程跑 N 遍，而外壳形态只有一个进程——**两种形态行为不同，拆回门禁（§13.7）就白跑了** |
+| HTTP / ASGI server | `net/http.Server` | **uvicorn 编程式 `Server`；单进程单事件循环，禁 gunicorn、禁 `workers > 1`** | Node 24（最新维护版 LTS，2026-09-18 从 Node 20 升级——05b Task 9 真机验证时发现依赖树的 graphql@17/@prometheus-io/client 已经要求 Node ≥22，原锁定版本滞后） | 多 worker = 多进程：Outbox 推送线程跑 N 遍，而外壳形态只有一个进程——**两种形态行为不同，拆回门禁（§13.7）就白跑了** |
 | gRPC | `grpc-go` | **`grpc.aio`**（禁同步 `grpc`） | 不提供 gRPC（§6.5） | 第①层：混用等于一个进程里同时跑线程池与事件循环两套运行时，同步 handler 拿不到共享的 async 池，每个方法都得 `run_coroutine_threadsafe` 桥一次 |
 | DB 驱动 | **`database/sql` + `pgx/v5/stdlib`** | **`asyncpg`** | 严禁直连 DB（§6.5） | 第①层：外壳只有一个池（铁律二），`*sql.DB` 与 `*pgxpool.Pool` 互相递不进去，池就合不掉 |
 | SQL 层 | **`sqlc`**（`database/sql` 模式），手写 SQL | **手写 SQL + Pydantic 行映射**（由 `be-sdk-python` 提供），**不用 ORM** | — | GORM / SQLAlchemy ORM 都要自己管连接与会话生命周期，和「外壳一个全局池 + `SET LOCAL` 事务」（铁律二）正面打架 |
