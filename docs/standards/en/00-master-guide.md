@@ -1075,7 +1075,7 @@ The TS side's `infra-bff-mobile` (a GraphQL BFF, not part of any shell, see §12
 - [ ] **B-10 Write the `Dockerfile`**: base `alpine` (Go) / `python:3.11-slim` (Python), with `wget` installed, plus this language's migration tool (Go: `golang-migrate`; Python: `pip install yoyo-migrations`, §K); after `make image`, `docker run --rm <img> sh -c 'wget --version'` must succeed.
 - [ ] **B-11 Write the `Makefile`**: all 9 gate targets from §I, fully implemented.
 - [ ] **B-12 Run all 9 gates, confirm all green** (gate 9, `make module-check`, guards Iron Rule 7)
-- [ ] **B-13 `brickkit up` it standalone and run the six acceptance checks** (see the six-item acceptance table in [`01-Phase 1`](../../plans/01-阶段一-地基与第一块砖.md) §2. **Rerun every time a component is added**, §9.6.1 Tier 4)
+- [ ] **B-13 `brickkit up` it standalone and run the six acceptance checks** (see the six-item acceptance table in [`01-Phase 1`](../../dev/plans/01-阶段一-地基与第一块砖.md) §2. **Rerun every time a component is added**, §9.6.1 Tier 4)
 - [ ] **B-14 commit + push + tag `v<version>`** (the tag must match `component.yaml`'s `version`, §9.1)
 
 ### SOP-F · Frontend Components (TypeScript)
@@ -1315,8 +1315,8 @@ The four documents aren't a wrap-up chore — they're **four concrete steps in t
 
 | Phase | Name | Component count | Goal, one line | Shipping condition | Plan file |
 |---|---|---|---|---|---|
-| **1** | Foundation and the first brick | 1 | The environment comes up in one command; the first brick can live on its own | `mdm-customer`'s six acceptance checks all green | [`01-Phase 1`](../../plans/01-阶段一-地基与第一块砖.md) ✅ **shipped** |
-| **2** | Prove the platform | +4 = 5 | Every promise brickKit makes actually holds | Design Book §9.6.2's **20-item platform acceptance list**, checked off one by one | [`02-Phase 2`](../../plans/02-阶段二-验平台.md) ✅ written, all four design plans ready (not yet started) |
+| **1** | Foundation and the first brick | 1 | The environment comes up in one command; the first brick can live on its own | `mdm-customer`'s six acceptance checks all green | [`01-Phase 1`](../../dev/plans/01-阶段一-地基与第一块砖.md) ✅ **shipped** |
+| **2** | Prove the platform | +4 = 5 | Every promise brickKit makes actually holds | Design Book §9.6.2's **20-item platform acceptance list**, checked off one by one | [`02-Phase 2`](../../dev/plans/02-阶段二-验平台.md) ✅ written, all four design plans ready (not yet started) |
 | **3** | Business closed loop | +9 = 14 | One business chain genuinely runs end to end, with authorization moving from stub to real | Appendix E's full chain + Saga compensation + timeout query + DLQ in/out + `infra-authz` live | to be written |
 | **4** | Build the shells, verify teardown | 14 (merged into 2 shells) | Verify that "merging doesn't grind away componentness" | Merged-state closed loop all green + **teardown gate all green** + import scan all green + all three compose files start/stop in one command | to be written |
 | **5** | Fill out the `default` set | +5 = 18 | Reach the minimum deliverable shape | Every component added reruns the six acceptance checks + the teardown gate | to be written |

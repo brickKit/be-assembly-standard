@@ -5,6 +5,8 @@
 > **For deployment staff. This is the only document you need.** No need to read the design book, no need to read any component documentation — wherever you need to look elsewhere, this handbook will name the section explicitly.
 >
 > If something this handbook doesn't cover, or following it doesn't work: **that's a bug in this handbook, not in you**. Write it down and send it back — we'll fix it (see `docs/README.md`'s "every document can be changed").
+>
+> Want to customize or swap out a feature? Start with [`_replaceability-map.md`](_replaceability-map.md) — what can be swapped, and who it drags in, laid out in one diagram and one table.
 
 ## What this handbook currently covers
 

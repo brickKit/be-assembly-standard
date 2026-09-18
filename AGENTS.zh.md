@@ -29,7 +29,7 @@
 
 | 项 | 值 |
 |---|---|
-| 阶段 | **阶段一** ✅ 已出档。**阶段二** ✅ 已出档（[`02-阶段二`](docs/plans/02-阶段二-验平台.md)，复盘见 [`02-阶段二复盘`](docs/retrospectives/02-阶段二-验平台-复盘.md)）。**阶段三 · 业务闭环** ✅ **已真正结束**——9 个新组件 + 2 个新 SDK，Task 1–15 全部真正完成（Task 15 一度被跳过，靠后来一次系统排查才发现并补上，见下方复盘），阶段三主线之后的四条工作线（测试体系扩展、种子数据丰富度整改、文档架构重构、Task 15 补齐）均已完成，复盘见 [`03-阶段三复盘`](docs/retrospectives/03-阶段三-业务闭环-复盘.md)。逐 Task 的实现细节、真机验证过程、意外发现的 bug 全部在 [`03-阶段三`](docs/plans/03-阶段三-业务闭环.md) 本身，这里不重复。核心成果：阶段二 5 个组件的权限判定从 fail-closed stub 换成 `infra-authz` 真实 bundle；全系统第一次有真实签发方（`infra-iam-casdoor`）签发验签通过的 JWT；附录 E"商机赢单→订单→库存→应收"全链路真机跑通。⚠️ **这份复盘自己最大的一条发现**：主线收官后复盘本身被跳过，这正是 Task 15 长期没被发现的原因——完整分析与由此定下的流程规矩（后续工作线开工前先写复盘，不是先斩后奏）在复盘 §5，这里不重复。**阶段四 · 做外壳验拆回** ✅ **已完成**——Task 1–12 全部做完，复盘见 [`04-阶段四复盘`](docs/retrospectives/04-阶段四-做外壳验拆回-复盘.md)（这次主线收官后立刻写的，没有被别的工作线插队——阶段三定下的流程规矩这次真的兑现了）。逐 Task 的实现细节、真机验证过程全部在 [`04-阶段四`](docs/plans/04-阶段四-做外壳验拆回.md) 本身，这里不重复。核心成果：11 个 Go 组件 + `infra-print` 合并进 4 个真实外壳容器（`go-core`/`go-backoffice`/`go-infra`/`py-render`，`infra-bff-mobile`/`frontend-standard` 按设计保持独立）；§13.7 拆回门禁与铁律六 import 扫描都在真实合并态拓扑下验证过绿；新增 `make tier2` 覆盖合并态专属断言（单个模块 panic 不再拖垮外壳其余模块；共享连接池下即使查询漏加 schema 限定，`SET LOCAL` 依然正确把它限定在调用方自己的 schema 里）。**阶段五 · 部署组合矩阵验证** ✅ **已完成**——05a（把 `be-assembly-standard` 自己从阶段四挪用的 `local:true` 迁移到 brickKit 正式发布的真实 `servedBy`）已完成，见 [`05a`](docs/plans/05a-迁移到servedBy.md)；05b（拓扑 × 环境 × 版本的全部组合矩阵真机验证——12 个拓扑×环境基础组合、全部版本变体子任务、2 个负向验证任务，每个格子都真机跑过）已完成，见 [`05b`](docs/plans/05b-组合矩阵验证.md)。核心成果：外壳合并部署+K8s 确认是原生、真机验证过的能力（此前从未验证过，且直接反转了从阶段一沿用至今的"K8s 意味着先把所有外壳拆回独立容器"这条判断）；部署手册（现已拆成 `docs/ops/{zh,en}/deployment-handbook.md` + 专门的 `docs/ops/{zh,en}/deployment-selection-guide.md`，见 [`01-documentation-standard.md`](docs/standards/zh/01-documentation-standard.md) §6）现在有一份基于真实数据的部署选型指南，覆盖全部 12 种组合、多版本共存规则、负向验证报错速查表。复盘已在 Task 15 完成后立刻写，见 [`05-阶段五复盘`](docs/retrospectives/05-阶段五-部署组合矩阵验证-复盘.md)——它最大的一条发现：`servedBy` 是一个刚发布的全新平台机制（不是已经成熟的机制），这正是本阶段单独就找到 7 个真实 brickKit bug（阶段二到四总共只有 0-1 个）的原因，推翻了阶段四复盘自己"平台已经摸透，后续阶段不太会再牵连出平台层面新 bug"这条判断——但复盘论证这个推翻本身是健康的，不是需要担心的事。 |
+| 阶段 | **阶段一** ✅ 已出档。**阶段二** ✅ 已出档（[`02-阶段二`](docs/dev/plans/02-阶段二-验平台.md)，复盘见 [`02-阶段二复盘`](docs/dev/retrospectives/02-阶段二-验平台-复盘.md)）。**阶段三 · 业务闭环** ✅ **已真正结束**——9 个新组件 + 2 个新 SDK，Task 1–15 全部真正完成（Task 15 一度被跳过，靠后来一次系统排查才发现并补上，见下方复盘），阶段三主线之后的四条工作线（测试体系扩展、种子数据丰富度整改、文档架构重构、Task 15 补齐）均已完成，复盘见 [`03-阶段三复盘`](docs/dev/retrospectives/03-阶段三-业务闭环-复盘.md)。逐 Task 的实现细节、真机验证过程、意外发现的 bug 全部在 [`03-阶段三`](docs/dev/plans/03-阶段三-业务闭环.md) 本身，这里不重复。核心成果：阶段二 5 个组件的权限判定从 fail-closed stub 换成 `infra-authz` 真实 bundle；全系统第一次有真实签发方（`infra-iam-casdoor`）签发验签通过的 JWT；附录 E"商机赢单→订单→库存→应收"全链路真机跑通。⚠️ **这份复盘自己最大的一条发现**：主线收官后复盘本身被跳过，这正是 Task 15 长期没被发现的原因——完整分析与由此定下的流程规矩（后续工作线开工前先写复盘，不是先斩后奏）在复盘 §5，这里不重复。**阶段四 · 做外壳验拆回** ✅ **已完成**——Task 1–12 全部做完，复盘见 [`04-阶段四复盘`](docs/dev/retrospectives/04-阶段四-做外壳验拆回-复盘.md)（这次主线收官后立刻写的，没有被别的工作线插队——阶段三定下的流程规矩这次真的兑现了）。逐 Task 的实现细节、真机验证过程全部在 [`04-阶段四`](docs/dev/plans/04-阶段四-做外壳验拆回.md) 本身，这里不重复。核心成果：11 个 Go 组件 + `infra-print` 合并进 4 个真实外壳容器（`go-core`/`go-backoffice`/`go-infra`/`py-render`，`infra-bff-mobile`/`frontend-standard` 按设计保持独立）；§13.7 拆回门禁与铁律六 import 扫描都在真实合并态拓扑下验证过绿；新增 `make tier2` 覆盖合并态专属断言（单个模块 panic 不再拖垮外壳其余模块；共享连接池下即使查询漏加 schema 限定，`SET LOCAL` 依然正确把它限定在调用方自己的 schema 里）。**阶段五 · 部署组合矩阵验证** ✅ **已完成**——05a（把 `be-assembly-standard` 自己从阶段四挪用的 `local:true` 迁移到 brickKit 正式发布的真实 `servedBy`）已完成，见 [`05a`](docs/dev/plans/05a-迁移到servedBy.md)；05b（拓扑 × 环境 × 版本的全部组合矩阵真机验证——12 个拓扑×环境基础组合、全部版本变体子任务、2 个负向验证任务，每个格子都真机跑过）已完成，见 [`05b`](docs/dev/plans/05b-组合矩阵验证.md)。核心成果：外壳合并部署+K8s 确认是原生、真机验证过的能力（此前从未验证过，且直接反转了从阶段一沿用至今的"K8s 意味着先把所有外壳拆回独立容器"这条判断）；部署手册（现已拆成 `docs/ops/{zh,en}/deployment-handbook.md` + 专门的 `docs/ops/{zh,en}/deployment-selection-guide.md`，见 [`01-documentation-standard.md`](docs/standards/zh/01-documentation-standard.md) §6）现在有一份基于真实数据的部署选型指南，覆盖全部 12 种组合、多版本共存规则、负向验证报错速查表。复盘已在 Task 15 完成后立刻写，见 [`05-阶段五复盘`](docs/dev/retrospectives/05-阶段五-部署组合矩阵验证-复盘.md)——它最大的一条发现：`servedBy` 是一个刚发布的全新平台机制（不是已经成熟的机制），这正是本阶段单独就找到 7 个真实 brickKit bug（阶段二到四总共只有 0-1 个）的原因，推翻了阶段四复盘自己"平台已经摸透，后续阶段不太会再牵连出平台层面新 bug"这条判断——但复盘论证这个推翻本身是健康的，不是需要担心的事。 |
 | 已建组件 | **14 个建完**，见下方「已建组件一览」表。十三个后端组件的 `iamJwksUrl`/`authzBundleUrl` 都指向真实运行的对端。 |
 | 工具仓库 | `be-sdk-go@v0.2.7`、`be-ops@v0.1.16`、`be-acceptance@v0.3.23`（`make gates` 六个 gate + `bump-version` 子命令的产出方，见 SOP-W-11）、`be-sdk-python@v0.3.3`、`be-sdk-ts@v0.3.3`——全部已 tag（带注解）并被装配仓库的 submodule 指针跟踪。⚠️ **已知的版本漂移**：`be-sdk-go@v0.2.7` 修的 `StartOutboxPump` 原子认领 bug（踩坑记录 C15）目前只有 `infra-iam-casdoor`/`erp-inventory`/`erp-sales` 升级到位，其余业务组件仍在更早的 v0.2.1-v0.2.4——这个 bug 只在 K8s 多副本场景触发，不是本阶段的阻塞项，按"下次改动顺带升"处理。每个工具版本具体修了什么、哪次真机验证发现的，见各自仓库自己的 changelog 或 [`field-tested-pitfalls-log.md`](docs/dev/field-tested-pitfalls-log.md)（C11/C12/C15、A9/A10/A11、类别 F）。 |
 | 已钉死不许改的 | `registry/ports.tsv`、`registry/schemas.tsv`、`registry/permissions.tsv`（**只增不改**，见下）；**每种语言的技术栈与模块入口签名**（设计书 §12.4 / §12.5）；**PC 端骨架形态**（§12.6.7）；**权限体系**（第 14 章） |
@@ -42,20 +42,20 @@
 
 | 组件 | 版本 | 定位 | 详细设计 |
 |---|---|---|---|
-| `mdm-customer` | 1.0.9 | 只读枢纽，`data_scopes: none` | [`docs/design/mdm-customer.md`](docs/design/mdm-customer.md) |
-| `mdm-product` | 1.0.10 | 只读枢纽，`data_scopes: none` | [`docs/design/mdm-product.md`](docs/design/mdm-product.md) |
-| `erp-inventory` | 1.0.17 | 物理命令枢纽：TCC 三件套 + claim-first 幂等 + `warehouse` 维数据权限 | [`docs/design/erp-inventory.md`](docs/design/erp-inventory.md) |
-| `erp-finance` | 1.0.13 | 事件汇枢纽：`FinanceService` 11 rpc + `legal_entity` 维数据权限 | [`docs/design/erp-finance.md`](docs/design/erp-finance.md) |
-| `erp-sales` | 1.0.25 | 唯一的链上一环：四条强依赖全部真实 gRPC 调用，`ConfirmOrder` 的 TCC 补偿链 + `org`/`owner` 两维数据权限 | [`docs/design/erp-sales.md`](docs/design/erp-sales.md) |
-| `infra-authz` | 1.0.7 | 权限体系里唯一持久化状态的组件：`GET /authz/bundle` 策略下发，纯并集无 Deny | [`docs/design/infra-authz.md`](docs/design/infra-authz.md) |
-| `infra-iam-casdoor` | 1.0.9 | `slot:iam` Default 成员：两个 token 架构，refresh token rotation + 重放检测 | [`docs/design/infra-iam-casdoor.md`](docs/design/infra-iam-casdoor.md) |
-| `infra-workflow` | 1.0.4 | 零依赖审批待办中心：claim-first 幂等 + `owner`/`org` 两维数据权限 | [`docs/design/infra-workflow.md`](docs/design/infra-workflow.md) |
-| `infra-notification` | 1.0.4 | 路由中枢：零依赖零出边完全活在事件图上，两层通道偏好 | [`docs/design/infra-notification.md`](docs/design/infra-notification.md) |
-| `integration-im-dingtalk` | 1.0.5 | `channel:im` 族第一个成员：钉钉 access_token 缓存刷新 | [`docs/design/integration-im-dingtalk.md`](docs/design/integration-im-dingtalk.md) |
-| `infra-print` | 1.0.7 | 全系统第一个 Python 组件：纯函数打印渲染中心，PDF/ZPL 双渲染 | [`docs/design/infra-print.md`](docs/design/infra-print.md) |
-| `infra-bff-mobile` | 1.0.21 | 全系统第一个 TypeScript 组件：GraphQL BFF，零强依赖零数据库 | [`docs/design/infra-bff-mobile.md`](docs/design/infra-bff-mobile.md) |
-| `frontend-standard` | 1.0.1 | PC 独立 Vite SPA + 移动端 Uni-app H5，唯一没有后端形态的组件 | [`docs/design/frontend-standard.md`](docs/design/frontend-standard.md) |
-| `crm-opportunity` | 1.0.12 | 阶段三第一个业务组件、CRM 域第一个组件：商机全生命周期 | [`docs/design/crm-opportunity.md`](docs/design/crm-opportunity.md) |
+| `mdm-customer` | 1.0.9 | 只读枢纽，`data_scopes: none` | [`docs/design/mdm-customer.md`](docs/dev/design/mdm-customer.md) |
+| `mdm-product` | 1.0.10 | 只读枢纽，`data_scopes: none` | [`docs/design/mdm-product.md`](docs/dev/design/mdm-product.md) |
+| `erp-inventory` | 1.0.17 | 物理命令枢纽：TCC 三件套 + claim-first 幂等 + `warehouse` 维数据权限 | [`docs/design/erp-inventory.md`](docs/dev/design/erp-inventory.md) |
+| `erp-finance` | 1.0.13 | 事件汇枢纽：`FinanceService` 11 rpc + `legal_entity` 维数据权限 | [`docs/design/erp-finance.md`](docs/dev/design/erp-finance.md) |
+| `erp-sales` | 1.0.25 | 唯一的链上一环：四条强依赖全部真实 gRPC 调用，`ConfirmOrder` 的 TCC 补偿链 + `org`/`owner` 两维数据权限 | [`docs/design/erp-sales.md`](docs/dev/design/erp-sales.md) |
+| `infra-authz` | 1.0.7 | 权限体系里唯一持久化状态的组件：`GET /authz/bundle` 策略下发，纯并集无 Deny | [`docs/design/infra-authz.md`](docs/dev/design/infra-authz.md) |
+| `infra-iam-casdoor` | 1.0.9 | `slot:iam` Default 成员：两个 token 架构，refresh token rotation + 重放检测 | [`docs/design/infra-iam-casdoor.md`](docs/dev/design/infra-iam-casdoor.md) |
+| `infra-workflow` | 1.0.4 | 零依赖审批待办中心：claim-first 幂等 + `owner`/`org` 两维数据权限 | [`docs/design/infra-workflow.md`](docs/dev/design/infra-workflow.md) |
+| `infra-notification` | 1.0.4 | 路由中枢：零依赖零出边完全活在事件图上，两层通道偏好 | [`docs/design/infra-notification.md`](docs/dev/design/infra-notification.md) |
+| `integration-im-dingtalk` | 1.0.5 | `channel:im` 族第一个成员：钉钉 access_token 缓存刷新 | [`docs/design/integration-im-dingtalk.md`](docs/dev/design/integration-im-dingtalk.md) |
+| `infra-print` | 1.0.7 | 全系统第一个 Python 组件：纯函数打印渲染中心，PDF/ZPL 双渲染 | [`docs/design/infra-print.md`](docs/dev/design/infra-print.md) |
+| `infra-bff-mobile` | 1.0.21 | 全系统第一个 TypeScript 组件：GraphQL BFF，零强依赖零数据库 | [`docs/design/infra-bff-mobile.md`](docs/dev/design/infra-bff-mobile.md) |
+| `frontend-standard` | 1.0.1 | PC 独立 Vite SPA + 移动端 Uni-app H5，唯一没有后端形态的组件 | [`docs/design/frontend-standard.md`](docs/dev/design/frontend-standard.md) |
+| `crm-opportunity` | 1.0.12 | 阶段三第一个业务组件、CRM 域第一个组件：商机全生命周期 | [`docs/design/crm-opportunity.md`](docs/dev/design/crm-opportunity.md) |
 
 ⚠️ **版本号 changelog 的唯一源头是每个组件自己的 `component.yaml`**——这张表只给"现在是什么版本、这个组件是干什么的"，不复述版本历史。想知道某个组件从建仓库到现在经历了什么，去读它自己的 `component.yaml` 或 `git log`。
 
@@ -89,7 +89,7 @@
 | 合并部署 / 外壳 | 设计书 §13；`shells/*/AGENTS.md` |
 | 装配生成（路由表、建库脚本、端口册、权限键册…） | 总纲 §2.4 `be-ops` 的 11 个产出 |
 | 验收 / 门禁 | 设计书 §3.11、§9.6.2、§13.7；`make gates` |
-| **一个阶段计划做完了，下一个还没开工** | 先写 `docs/retrospectives/0X-阶段N-<名>-复盘.md`——问题/矛盾/brickKit 理念问题/流程改进/是否要重排阶段，参照 [`02-阶段二复盘`](docs/retrospectives/02-阶段二-验平台-复盘.md) 的结构 |
+| **一个阶段计划做完了，下一个还没开工** | 先写 `docs/retrospectives/0X-阶段N-<名>-复盘.md`——问题/矛盾/brickKit 理念问题/流程改进/是否要重排阶段，参照 [`02-阶段二复盘`](docs/dev/retrospectives/02-阶段二-验平台-复盘.md) 的结构 |
 | **不知道某段业务逻辑该怎么写** | 三步法（先自己设计，卡住了才查参考）见 [`02-reference-implementation-standard.md`](docs/standards/zh/02-reference-implementation-standard.md) §1；**该看现实中哪个开源 ERP 的哪个模块**是本项目专属的，总纲 §4 SOP-R 的 R-2 表。**先读那个模块，再回来实现** |
 | **拿不准要不要用设计模式** | [`03-ai-development-standard.md`](docs/standards/zh/03-ai-development-standard.md) §1：判据按**你（AI）能不能快速看懂**来定；§1.1 有「帮 AI / 害 AI」两张表 |
 | **发现同一功能有多种实现、每一种都合理** | [`02-reference-implementation-standard.md`](docs/standards/zh/02-reference-implementation-standard.md) §4：那是**新槽位族的信号**，不是「做成可配置」。先回设计书新增族（§5.11.1、决策 104），**严禁在一个组件里写 `if costingMethod ==`** |
