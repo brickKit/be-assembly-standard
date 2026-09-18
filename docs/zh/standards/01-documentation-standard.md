@@ -248,3 +248,17 @@ rpc 清单 + 事件清单（发布的与消费的分开）。这是 contracts/ �
 | `docs/standards/03-ai-development-standard.md` | 一 | `docs/zh/standards/03-ai-development-standard.md` | 设计模式判据、会话该装多少、人该审什么、什么时候重写而不是打补丁——全部专属于 AI 驱动的开发 |
 | `docs/standards/04-testing-standard.md` | 一 | `docs/zh/standards/04-testing-standard.md` | 完整测试规范：分层、TDD 节奏、命名、基础设施 |
 | `docs/standards/05-data-construction-standard.md` | 一 | `docs/zh/standards/05-data-construction-standard.md` | 种子数据 vs 测试数据、跨组件数据协作 |
+
+## 8. 面向最终用户的文档是另一条独立的语言轴，不属于 §6 那套镜像机制
+
+§6 的一档/二档划分只为一件事存在：给 AI 内部、面向开发者/架构师的文档提供阅读速度——英语是默认，纯粹因为那是 AI 读得最快的语言；`docs/zh/` 镜像存在，纯粹因为本项目的人类维护者只用中文交流（见 `AGENTS.md` 顶部那条说明）。这套机制不对已发布的产品本身做任何表态。
+
+真正的最终用户会读到的文档——从部署手册开始，未来还会有客户/主管理员手册——是另一回事。产品本身支持英文和中文两种最终用户语言，默认英文（2026-09-18，部署手册第一次真正有了英文版的那天起）。面向这类读者的文档需要两种语言真正对等，跟产品自己支持的语言保持一致——这归本节管，不归 §6 的分档管，一份文档不管按 §6 自己的判据本该分到哪一档，都可以被单独划进本节。
+
+**放在哪**：`docs/<类别>/{zh,en}/<文档名>.md`——语言文件夹嵌在文档类别**里面**（比如 `docs/ops/zh/deployment-handbook.md`、`docs/ops/en/deployment-handbook.md`），不是顶层的 `docs/zh/`/`docs/en/`。这是刻意的，不是风格偏好：顶层 `docs/zh/` 已经被 §6 那套 AI 阅读舒适度镜像占用了，而且那套镜像不只是文档——`tools/be-acceptance` 的 `bump-version` 工具（SOP-W-11）里硬编码了 `docs/zh/AGENTS.md` 的确切路径，用来在每次组件升版本时同步组件名录表。挪动那套镜像是一次真实的跨仓库改动（改一个独立子模块里的 Go 源码、给它自己发版、更新本仓库的子模块指针），**明确不属于本节范围**——见下面的目标结构。
+
+**文件命名约定**：同一份文档的两个语言版本共用**同一个 ASCII 文件名**，只靠所在的 `{zh,en}` 文件夹区分（`zh/` 和 `en/` 下都叫 `deployment-handbook.md`，不会一边中文文件名一边英文文件名）。这跟 §6 的镜像约定（沿用英文正本原本就有的文件名）不同，因为这类文档现实中经常是先用中文写出来的，一个稳定的 ASCII 文件名才能让两个语言文件夹的列表一眼看出是配对的。
+
+**怎么保持对等**：不管哪个语言版本先改，都要在同一个提交里同步改另一个语言的文件——跟 §6 镜像同样的纪律，只是原因不同（对齐产品自己支持的语言，不是为了 AI 阅读速度）。每个文件顶部都链接到对应的另一个语言版本（`*[English](../en/<文档名>.md)*` / `*[中文](../zh/<文档名>.md)*`）。
+
+**目标结构，尚未执行**：`docs/` 未来应该重组成顶层的 `docs/{dev,zh,en}/`——`dev/` 装下 §6/§7 现在管的全部内容，加上本仓库目前还散落在别处的其余开发向内容（`docs/standards/`、`docs/design/`、`docs/plans/`、`docs/retrospectives/`、`docs/arsenal-maintenance-handbook.md`，以及 `docs/dev/` 自己现有的文件），§6 的 `docs/zh/` 镜像到那时候挪进 `docs/dev/zh/`——腾出顶层的 `docs/zh/`/`docs/en/` 给完整的最终用户文档体系用，`docs/ops/` 到那时候会变成其中一个类别，跟未来还会写的其它类别（比如客户/主管理员手册，见 `docs/README.md`"还没有"那一行）并列。这次迁移刻意推迟：除了上面提到的 `be-acceptance` 工具依赖，它还牵涉全部组件各自的 `AGENTS.md`（每份都引用 `docs/design/<仓库名>.md`）和 `infra/scripts/docs-check.sh`。在那之前，`docs/ops/{zh,en}/` 是唯一遵循本节这套约定的地方；`docs/` 下其余内容仍然按 §6/§7 走，或者维持未动的二档纯中文状态。

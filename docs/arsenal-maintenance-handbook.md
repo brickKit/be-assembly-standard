@@ -1,7 +1,7 @@
 # Arsenal Maintenance Handbook
 
 > For **developers**: how to wire a component's source into this repository, how to focus on a handful of components day to day, and what to check before committing.
-> For deployment, see [`docs/ops/部署手册.md`](ops/部署手册.md); for the pitfalls log, see [`docs/dev/field-tested-pitfalls-log.md`](dev/field-tested-pitfalls-log.md).
+> For deployment, see [`docs/ops/en/deployment-handbook.md`](ops/en/deployment-handbook.md); for the pitfalls log, see [`docs/dev/field-tested-pitfalls-log.md`](dev/field-tested-pitfalls-log.md).
 
 ## Three Steps to Get Started on a New Machine
 

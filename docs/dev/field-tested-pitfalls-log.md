@@ -4,7 +4,7 @@
 >
 > What does *not* go here:
 > - **Design decisions** (why this architecture was chosen) → the Design Book
-> - **Operational steps for deployment staff** → `docs/ops/部署手册.md` (its troubleshooting table is a "symptom → what to do" guide for deployers; this document is a "root cause → why" guide for developers/an AI — the two can overlap on an entry, one terse and one detailed, and don't need to replace each other)
+> - **Operational steps for deployment staff** → `docs/ops/en/deployment-handbook.md` (its troubleshooting table is a "symptom → what to do" guide for deployers; this document is a "root cause → why" guide for developers/an AI — the two can overlap on an entry, one terse and one detailed, and don't need to replace each other)
 > - **Project-level AI-assistant prohibitions** (the "23 easiest mistakes" kind of thing) → the root `AGENTS.md`
 >
 > Every entry has four fixed columns: **Symptom / Root Cause / Fix / Found In**. Grouped by category; add a new entry to its matching category, and open a new category only if none fits.

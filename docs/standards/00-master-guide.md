@@ -732,7 +732,7 @@ be-assembly-standard/                    ← this repo = product root + arsenal 
 ├── AGENTS.md / CLAUDE.md
 ├── docs/
 │   ├── README.md                        ← triages by reader, the human entry point
-│   ├── ops/部署手册.md                  ← the one document a deployer needs
+│   ├── ops/{zh,en}/deployment-handbook.md  ← the one document a deployer needs
 │   ├── standards/00-master-guide.md        ← this file
 │   └── design/<repo>.md                 ← component design plans, one per component
 ├── infra/                               ← compose file #1 of three + check scripts

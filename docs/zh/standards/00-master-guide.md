@@ -730,7 +730,7 @@ be-assembly-standard/                    ← 本仓库 = 产品根 + 军火库�
 ├── AGENTS.md / CLAUDE.md
 ├── docs/
 │   ├── README.md                        ← 按读者分诊，人的总入口
-│   ├── ops/部署手册.md                  ← 部署人员唯一需要的一份
+│   ├── ops/{zh,en}/deployment-handbook.md  ← 部署人员唯一需要的一份
 │   ├── standards/00-master-guide.md                ← 本文件
 │   └── design/<仓库名>.md               ← 组件设计计划，一个组件一份
 ├── infra/                               ← 三份 compose 的第 1 份 + 检查脚本

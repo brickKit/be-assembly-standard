@@ -1,7 +1,7 @@
 # 军火库维护手册
 
 > 给**开发者**看：怎么把组件源码接进本仓库、日常怎么聚焦到几个组件、提交前要注意什么。
-> 部署相关请看 [`docs/ops/部署手册.md`](../ops/部署手册.md)；踩坑记录见 [`docs/dev/field-tested-pitfalls-log.md`](dev/field-tested-pitfalls-log.md)。
+> 部署相关请看 [`docs/ops/zh/deployment-handbook.md`](../ops/zh/deployment-handbook.md)；踩坑记录见 [`docs/dev/field-tested-pitfalls-log.md`](dev/field-tested-pitfalls-log.md)。
 
 ## 新机器上手三步
 
