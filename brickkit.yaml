@@ -29,14 +29,15 @@ sources:
 
 components:
   - id: mdm/customer
-    version: 1.0.9 # v1.0.9：修复 scripts/seed.sh 在 brickKit servedBy 合并部署下失效的问题——原来靠 docker ps 按名字前缀找本组件自己的独立容器，servedBy 收编后没有独立容器，脚本直接报错退出。改成按 brickKit 自己给依赖方注入 *_ENDPOINT 时用的同一条地址转换规则（componentId+version 转小写、"/"和"."全部替换成"-"，brickKit 源码 internal/manifest/servicename.go 的 ServiceName()）直接拼目标地址，不再依赖独立容器存在。真机在 servedBy 部署下跑通 make seed。无业务行为/契约变更。
+    version: 1.0.10 # v1.0.10：scripts/seed.sh 改成 source 装配仓库新增的共享库 infra/scripts/lib/seed-net.sh（component_version/service_name/seed_net_check），不再自己重复定义这几个函数——docs/dev/架构复盘-servedBy落地后的自有改进空间.md 发现一的落地：8 个组件的 seed.sh 里这段合并部署寻址样板代码近乎逐字重复。真机跑通 make seed（12 个示例客户，含时间跨度回填），无业务行为/契约变更。
+    # v1.0.9：修复 scripts/seed.sh 在 brickKit servedBy 合并部署下失效的问题——原来靠 docker ps 按名字前缀找本组件自己的独立容器，servedBy 收编后没有独立容器，脚本直接报错退出。改成按 brickKit 自己给依赖方注入 *_ENDPOINT 时用的同一条地址转换规则（componentId+version 转小写、"/"和"."全部替换成"-"，brickKit 源码 internal/manifest/servicename.go 的 ServiceName()）直接拼目标地址，不再依赖独立容器存在。真机在 servedBy 部署下跑通 make seed。无业务行为/契约变更。
     # v1.0.8：删掉 deployment.labels 的 prometheus.io/port——阶段四附加 Task 0.1 真机验证 servedBy 时发现这个标签会跟同外壳其它成员的 prometheus.io/port 撞车报错（每个组件的值天然不同，servedBy 的 labels 合并规则没有排除这类"语义上必然因组件而异"的标签），已反馈给 brickKit。在 brickKit 修复或给出结论之前，暂时从这里删掉，只在合并后的外壳自己的条目上保留一份。无业务行为/契约变更。
     # v1.0.7：import-scan 门禁提前补上铁律六第二类白名单，理由同 erp/finance 这次改动（设计书§13.3）。本组件目前没有任何代码实际用到这条豁免，无行为变更。
     # ⚠️ 阶段四附加 Task 0.4：local:true 退休，改用 brickKit 原生的
     # servedBy——工作负载被 shell/go-core 收编，不再自己起容器（合并
     # 部署现在走平台原生机制而不是本仓库外壳的手写 shell-compose.yml，
     # 设计书 §13.1，见 docs/plans/04b-验证记录.md Task 0.4）
-    servedBy: shell/go-core@0.5.6
+    servedBy: shell/go-core@0.5.9
     # v1.0.6：gen/mdm/customer 拆成独立嵌套 go module，理由与做法同 erp/finance 这次改动（阶段四调研记录 04 §13）。本仓库自己 standalone 构建/测试用本地 replace 完全不受影响，import-scan/单测全绿。无业务行为/契约变更。
     # v1.0.5：make seed 加量到 12 个客户，覆盖更多行业画像+信用额度区间，无破坏性变更。
     # v1.0.4：新增 make seed/seed-clean（总纲 SOP-W-7 种子数据归属样板首例）。
@@ -66,23 +67,24 @@ components:
       # mdm/product、erp/inventory、erp/finance、erp/sales、crm/opportunity、
       # infra/print、infra/bff-mobile）写 http://host.docker.internal:<port>
       # （外壳把端口发布到宿主机，设计书 §13.8.2）。
-      authzBundleUrl: "http://infra-authz-1-0-7:8223/authz/bundle"
+      authzBundleUrl: "http://infra-authz-1-0-8:8223/authz/bundle"
       # 阶段三 Task 7：infra-iam-casdoor 建成，真实签发方第一次存在——
       # 同样是手写字面量的内部服务名，不是依赖边注入（这个组件对
       # infra-iam-casdoor 没有、也不该有依赖边，见它自己的 AGENTS.md
       # "零入边是 slot:iam 的物理前提"）。配上这一项之后 RequirePermission
       # 才第一次真正走到"验签 + 查 bundle"这条路径，不再是 fail-closed
       # stub。地址同上一项的判据。
-      iamJwksUrl: "http://infra-iam-casdoor-1-0-9:8200/.well-known/jwks.json"
+      iamJwksUrl: "http://infra-iam-casdoor-1-0-10:8200/.well-known/jwks.json"
   - id: mdm/product
-    version: 1.0.10 # v1.0.10：同 mdm/customer 这次改动，同样的坑同样的修法。真机在 servedBy 部署下跑通 make seed。无业务行为/契约变更。
+    version: 1.0.11 # v1.0.11：同 mdm/customer 这次改动，scripts/seed.sh 改成 source infra/scripts/lib/seed-net.sh，理由同上。真机跑通 make seed（12 个示例产品，含时间跨度回填），无业务行为/契约变更。
+    # v1.0.10：同 mdm/customer 这次改动，同样的坑同样的修法。真机在 servedBy 部署下跑通 make seed。无业务行为/契约变更。
     # v1.0.9：同 mdm/customer 这次改动，删掉 deployment.labels 的 prometheus.io/port，理由同上。无业务行为/契约变更。
     # v1.0.8：import-scan 门禁提前补上铁律六第二类白名单，理由同 erp/finance 这次改动（设计书§13.3）。本组件目前没有任何代码实际用到这条豁免，无行为变更。
     # ⚠️ 阶段四附加 Task 0.4：local:true 退休，改用 brickKit 原生的
     # servedBy——工作负载被 shell/go-core 收编，不再自己起容器（合并
     # 部署现在走平台原生机制而不是本仓库外壳的手写 shell-compose.yml，
     # 设计书 §13.1，见 docs/plans/04b-验证记录.md Task 0.4）
-    servedBy: shell/go-core@0.5.6
+    servedBy: shell/go-core@0.5.9
     # v1.0.7：gen/mdm/product 拆成独立嵌套 go module，理由与做法同 erp/finance 这次改动（阶段四调研记录 04 §13）。本仓库自己 standalone 构建/测试用本地 replace 完全不受影响，import-scan/单测全绿。无业务行为/契约变更。
     # v1.0.6：补齐 README 的"怎么起来"/"怎么用"/"配置项"三节，纯文档修复，无破坏性变更。
     # v1.0.4：新增 make seed/seed-clean（同 mdm-customer，种子数据归属样板第二例）。
@@ -93,18 +95,19 @@ components:
     # docker exec 进外壳容器 + curl 容器内部地址，见 docs/plans/
     # 04b-验证记录.md Task 0.4/0.5。
     config:
-      authzBundleUrl: "http://infra-authz-1-0-7:8223/authz/bundle"
-      iamJwksUrl: "http://infra-iam-casdoor-1-0-9:8200/.well-known/jwks.json"
+      authzBundleUrl: "http://infra-authz-1-0-8:8223/authz/bundle"
+      iamJwksUrl: "http://infra-iam-casdoor-1-0-10:8200/.well-known/jwks.json"
   - id: erp/inventory
     enabled: true # 显式钉住：本组件当前唯一的依赖方是 infra/bff-mobile（弱依赖）+ erp/sales，若两者都被 enabled: false，级联规则会把本组件也带下线——但它是独立核心业务模块，不应该因为移动端 BFF 没被采购就被牵连关闭（05b Task 5 真机验证发现，见该文档"结论"）
-    version: 1.0.17 # v1.0.17：同 mdm/customer 这次改动，scripts/seed.sh 里既有 docker ps 容器名发现（gRPC 直连 Reserve/ConfirmIssue）又有宿主机 localhost 端口假设（REST 调用 + Casdoor/infra-iam-casdoor 换 JWT）两类坑，一并修复：gRPC 目标地址改用 ServiceName() 规则拼；REST 调用改成起一次性工具箱容器加入 brickkit 网络内部访问，不再假设任何组件把端口发布到宿主机。真机在 servedBy 部署下跑通 make seed（含①自成一体演示数据、②探测 mdm-product 灌真实库存两步）。无业务行为/契约变更。
+    version: 1.0.18 # v1.0.18：scripts/seed.sh 改成 source infra/scripts/lib/seed-net.sh——除了 component_version/service_name/网络检查外，这次还把工具箱容器+curl 包装、Casdoor 登录、JWT 换取、sub_of 查询这几段也换成共享库的 with_toolbox/get_app_jwt/sub_of，本组件自己反查 mdm-product 种子产品 id 的 real_product_id 也改用共享库的 idfor。理由同 docs/dev/架构复盘-servedBy落地后的自有改进空间.md 发现一。真机跑通 make seed（自造 4 个产品覆盖四种流水原因+在途预留，另探测到 mdm-product 12 个真实产品各灌 200 件库存），无业务行为/契约变更。
+    # v1.0.17：同 mdm/customer 这次改动，scripts/seed.sh 里既有 docker ps 容器名发现（gRPC 直连 Reserve/ConfirmIssue）又有宿主机 localhost 端口假设（REST 调用 + Casdoor/infra-iam-casdoor 换 JWT）两类坑，一并修复：gRPC 目标地址改用 ServiceName() 规则拼；REST 调用改成起一次性工具箱容器加入 brickkit 网络内部访问，不再假设任何组件把端口发布到宿主机。真机在 servedBy 部署下跑通 make seed（含①自成一体演示数据、②探测 mdm-product 灌真实库存两步）。无业务行为/契约变更。
     # v1.0.16：同 mdm/customer 这次改动，删掉 deployment.labels 的 prometheus.io/port，理由同上。无业务行为/契约变更。
     # v1.0.15：import-scan 门禁提前补上铁律六第二类白名单，理由同 erp/finance 这次改动（设计书§13.3）。本组件目前没有任何代码实际用到这条豁免，无行为变更。
     # ⚠️ 阶段四附加 Task 0.4：local:true 退休，改用 brickKit 原生的
     # servedBy——工作负载被 shell/go-core 收编，不再自己起容器（合并
     # 部署现在走平台原生机制而不是本仓库外壳的手写 shell-compose.yml，
     # 设计书 §13.1，见 docs/plans/04b-验证记录.md Task 0.4）
-    servedBy: shell/go-core@0.5.6
+    servedBy: shell/go-core@0.5.9
     # v1.0.14：gen/erp/inventory 拆成独立嵌套 go module，理由与做法同 erp/finance 这次改动（阶段四调研记录 04 §13）。本仓库自己 standalone 构建/测试用本地 replace 完全不受影响，import-scan/单测全绿。无业务行为/契约变更。
     # v1.0.13：消费者测试改用测试私有 subject，纯测试基础设施修复，无破坏性变更。
     # v1.0.12：补 04-testing-standard.md §3.2 强制要求的属性测试，纯测试新增，无破坏性变更。
@@ -123,18 +126,19 @@ components:
     # docker exec 进外壳容器 + curl 容器内部地址，见 docs/plans/
     # 04b-验证记录.md Task 0.4/0.5。
     config:
-      authzBundleUrl: "http://infra-authz-1-0-7:8223/authz/bundle"
-      iamJwksUrl: "http://infra-iam-casdoor-1-0-9:8200/.well-known/jwks.json"
+      authzBundleUrl: "http://infra-authz-1-0-8:8223/authz/bundle"
+      iamJwksUrl: "http://infra-iam-casdoor-1-0-10:8200/.well-known/jwks.json"
   - id: erp/finance
     enabled: true # 显式钉住：本组件当前唯一的依赖方是 erp/sales，若 erp/sales 因 infra/bff-mobile 被禁用而级联下线，本组件会跟着被误伤——但它是独立核心业务模块（05b Task 5 真机验证发现，见该文档"结论"）
-    version: 1.0.13 # v1.0.13：同 erp/inventory 这次改动的 REST 部分——scripts/seed.sh 假设 CASDOOR/IAM/FIN 三个地址都是宿主机 localhost 端口，servedBy 合并部署下后两者不再成立。改成一次性工具箱容器 + ServiceName() 地址规则。真机在 servedBy 部署下跑通 make seed（5 张凭证 + 会计期间三态流转）。无业务行为/契约变更。
+    version: 1.0.14 # v1.0.14：同 erp/inventory 这次改动，scripts/seed.sh 改成 source infra/scripts/lib/seed-net.sh（含 with_toolbox/get_app_jwt/sub_of），理由同上。真机跑通 make seed（5 张人工凭证+会计期间三态流转+历史时间回填），无业务行为/契约变更。
+    # v1.0.13：同 erp/inventory 这次改动的 REST 部分——scripts/seed.sh 假设 CASDOOR/IAM/FIN 三个地址都是宿主机 localhost 端口，servedBy 合并部署下后两者不再成立。改成一次性工具箱容器 + ServiceName() 地址规则。真机在 servedBy 部署下跑通 make seed（5 张凭证 + 会计期间三态流转）。无业务行为/契约变更。
     # v1.0.12：同 mdm/customer 这次改动，删掉 deployment.labels 的 prometheus.io/port，理由同上。无业务行为/契约变更。
     # v1.0.11：import-scan 门禁提前补上铁律六第二类白名单（github.com/brickKit/<repo>/gen/...，设计书§13.3），跟 erp-sales/be-acceptance 那批一起定的规矩保持一致——本组件目前没有任何代码实际用到这条豁免，纯粹是为了跟中心化门禁（be-acceptance 的 ImportScan）和其它组件的判据保持同一份逻辑，不是遗漏也不改变任何现有行为。
     # ⚠️ 阶段四附加 Task 0.4：local:true 退休，改用 brickKit 原生的
     # servedBy——工作负载被 shell/go-core 收编，不再自己起容器（合并
     # 部署现在走平台原生机制而不是本仓库外壳的手写 shell-compose.yml，
     # 设计书 §13.1，见 docs/plans/04b-验证记录.md Task 0.4）
-    servedBy: shell/go-core@0.5.6
+    servedBy: shell/go-core@0.5.9
     # v1.0.10：gen/erp/finance 拆成独立嵌套 go module（module 边界切在 v1 目录上一级，因为 Go 模块路径禁止以字面量 /v1 结尾）——为了让外壳（shells/go）能在合并部署时用自己的 go.mod replace 把 erp-sales vendor 的同一份契约镜像重定向到这里，避免两份逐字复制的生成代码在同一个 protobuf 全局注册表里重复注册同一个文件/类型全名而 panic（TestRun_go_core外壳全部5个真实模块合并进一个进程真机测出来的，阶段四调研记录 04 §13 有完整推演）。本仓库自己 standalone 构建/测试用本地 replace 完全不受影响，import-scan/单测全绿。无业务行为/ 契约变更。
     # v1.0.9：消费者测试改用测试私有 subject，纯测试基础设施修复，无破坏性变更。
     # v1.0.8：补 04-testing-standard.md §3.2 强制要求的属性测试 + 修 TestListEntries_看不到别的法人的凭证 测试夹具缺 schema 前缀的既有 bug，无破坏性变更。
@@ -150,18 +154,19 @@ components:
     # docker exec 进外壳容器 + curl 容器内部地址，见 docs/plans/
     # 04b-验证记录.md Task 0.4/0.5。
     config:
-      authzBundleUrl: "http://infra-authz-1-0-7:8223/authz/bundle"
-      iamJwksUrl: "http://infra-iam-casdoor-1-0-9:8200/.well-known/jwks.json"
+      authzBundleUrl: "http://infra-authz-1-0-8:8223/authz/bundle"
+      iamJwksUrl: "http://infra-iam-casdoor-1-0-10:8200/.well-known/jwks.json"
   - id: erp/sales
     enabled: true # 显式钉住：本组件当前唯一的依赖方是 infra/bff-mobile（弱依赖），若它被 enabled: false，级联规则会把本组件也带下线——但它是独立核心业务模块，不应该因为移动端 BFF 没被采购就被牵连关闭（05b Task 5 真机验证发现，见该文档"结论"）
-    version: 1.0.25 # v1.0.25：同上，scripts/seed.sh 的 REST+JWT 换取部分改成工具箱容器 + ServiceName() 地址规则。真机在 servedBy 部署下跑通 make seed（5 条订单，含 dev.superuser/dev.sales.east 两个身份）。无业务行为/契约变更。
+    version: 1.0.26 # v1.0.26：同 erp/inventory 这次改动，scripts/seed.sh 改成 source infra/scripts/lib/seed-net.sh（含 with_toolbox/get_app_jwt 多身份换取、idfor 反查客户/产品 id），理由同上。真机跑通 make seed（5 条订单，含 dev.superuser/dev.sales.east 两个身份），无业务行为/契约变更。
+    # v1.0.25：同上，scripts/seed.sh 的 REST+JWT 换取部分改成工具箱容器 + ServiceName() 地址规则。真机在 servedBy 部署下跑通 make seed（5 条订单，含 dev.superuser/dev.sales.east 两个身份）。无业务行为/契约变更。
     # v1.0.24：同 mdm/customer 这次改动，删掉 deployment.labels 的 prometheus.io/port，理由同上。无业务行为/契约变更。
     # v1.0.23：依赖版本号同步跟进 erp/finance@1.0.11、erp/inventory@1.0.15、mdm/customer@1.0.7、mdm/product@1.0.8，无破坏性变更。
     # ⚠️ 阶段四附加 Task 0.4：local:true 退休，改用 brickKit 原生的
     # servedBy——工作负载被 shell/go-core 收编，不再自己起容器（合并
     # 部署现在走平台原生机制而不是本仓库外壳的手写 shell-compose.yml，
     # 设计书 §13.1，见 docs/plans/04b-验证记录.md Task 0.4）
-    servedBy: shell/go-core@0.5.6
+    servedBy: shell/go-core@0.5.9
     # v1.0.22：最后一份 vendor 镜像（contracts/vendor/infra/workflow）也改成直接 import infra-workflow 发布的真身 gen/infra/workflow 包——理由与这次 finance/inventory/mdm-customer/mdm-product 四份同批（阶段四调研记录 04 §13）：本组件自己的测试文件把 5 个外壳的真实模块测试放进同一个 Go 测试二进制，即使 infra-workflow 目前分在不同外壳、生产环境不会真的同进程，测试编译阶段依然会把两份内容相同的生成代码一起链进去，触发一模一样的 protobuf 全局注册表撞车。至此本组件 vendor 的全部五份契约镜像都已经改成直接 import 真身，不再保留任何一份逐字复制的镜像代码。gRPC 调用行为、契约面、业务逻辑均无变化，import-scan/单测/contract-check 全绿。
     # v1.0.21：铁律六新增第二类白名单（生成物契约包 gen/<domain>/<name>，与 be-sdk-* 同类，设计书§13.3）——本组件不再 vendor 一份 erp-finance/erp-inventory/ mdm-customer/mdm-product 的生成代码副本，改成直接 import 它们各自发布的真身 gen/ 包。原因：上一版（v1.0.20）尝试的"嵌套 go module + 外壳 replace 去重"经真机测试证明技术上不可行——Go module 系统无法把两个不同 import path 的包合并成一份编译实例，即使 replace 也不行，外壳合并部署时 protobuf 全局注册表撞车的 panic 原样复现（阶段四调研记录 04 §13 有完整推演+最小复现）。这次改动删掉 contracts/vendor/{erp/finance,erp/inventory, mdm/customer,mdm/product} 与 gen/ 下对应的四份镜像，5 处 import 语句改指真身包（别名不变，业务代码零改动），import-scan 门禁新增放行 github.com/brickKit/<repo>/gen/... 这个形状。gen/infra/workflow（vendor 的第五份，跟本组件不同外壳，当前不撞车）保持原样，留给下次触及时再改。 contract-check 的 buf breaking 范围收紧到只查 contracts/erp、 contracts/events（不含 contracts/vendor 只读镜像——这个意图本来就写在注释里，只是命令一直没真的照做，这次一并修正）。gRPC 调用行为、契约面、业务逻辑均无变化，import-scan/单测/contract-check 全绿。
     # v1.0.20：本组件 vendor 的四份契约只读镜像（gen/erp/finance、gen/erp/inventory、 gen/mdm/customer、gen/mdm/product——vendored-contract 模式，设计计划§9）各自拆成独立嵌套 go module，各用一条本地 replace 指回自己（module 边界切在 v1 目录上一级，理由同上）。这是外壳合并部署能把这四份镜像去重指向各自真身的前提（阶段四调研记录 04 §13）——本仓库自己 standalone 构建/测试完全不受影响，import-scan/单测全绿。gen/erp/sales/v1（自己的契约）与 gen/infra/workflow（vendor 的第五份，当前跟本组件不同外壳，不撞车）都没有改动。无业务行为/契约变更。
@@ -193,20 +198,21 @@ components:
       # 阶段二没有多仓选货逻辑）。"1" 是 erp-inventory 迁移播种的 WH-EAST
       # 的真实 id（003_seed_warehouses.up.sql，真机查过 warehouses 表）。
       defaultWarehouseId: "1"
-      authzBundleUrl: "http://infra-authz-1-0-7:8223/authz/bundle"
-      iamJwksUrl: "http://infra-iam-casdoor-1-0-9:8200/.well-known/jwks.json"
+      authzBundleUrl: "http://infra-authz-1-0-8:8223/authz/bundle"
+      iamJwksUrl: "http://infra-iam-casdoor-1-0-10:8200/.well-known/jwks.json"
       # 补偿连续失败 3 次时建的 infra-workflow exception 待办分配给谁——
       # 本阶段没有 mdm-org，先固定指派给这个占位 sub（设计计划 §4.4.4）。
       exceptionAssigneeSub: "u_ops_reviewer"
   - id: infra/authz
-    version: 1.0.7 # v1.0.7：同上，scripts/seed.sh 全部走 REST admin API，原来假设 CASDOOR/IAM/AUTHZ 三个地址都是宿主机 localhost 端口。改成工具箱容器 + ServiceName() 地址规则；过程中额外发现并修复一个真实权限问题——工具箱容器跑 curlimages/curl 默认非 root 用户，host 侧 mktemp 建出的 cookie jar 权限 0600 属主是宿主机用户，容器内 curl 读写不了，症状是 Casdoor 返回"Please login first"却看不出是权限问题——加 --user "$(id -u):$(id -g)" 修复，这条修复同步应用到全部 6 个受影响脚本。真机在 servedBy 部署下跑通 make seed（①直接写库授权、②-⑤全部走真实 REST admin API）。无业务行为/契约变更。
+    version: 1.0.8 # v1.0.8：同 erp/inventory 这次改动，scripts/seed.sh 改成 source infra/scripts/lib/seed-net.sh（含 with_toolbox/get_app_jwt/sub_of），本组件特有的"先直接写库建首个全权限角色、再换 JWT 走 REST admin API"这个顺序保持不变，只是每一步换成共享库函数。理由同上。真机跑通 make seed（授权 dev.superuser 全权限角色+建部门树+3 个权限子集角色+4 个测试用户分别归属），无业务行为/契约变更。
+    # v1.0.7：同上，scripts/seed.sh 全部走 REST admin API，原来假设 CASDOOR/IAM/AUTHZ 三个地址都是宿主机 localhost 端口。改成工具箱容器 + ServiceName() 地址规则；过程中额外发现并修复一个真实权限问题——工具箱容器跑 curlimages/curl 默认非 root 用户，host 侧 mktemp 建出的 cookie jar 权限 0600 属主是宿主机用户，容器内 curl 读写不了，症状是 Casdoor 返回"Please login first"却看不出是权限问题——加 --user "$(id -u):$(id -g)" 修复，这条修复同步应用到全部 6 个受影响脚本。真机在 servedBy 部署下跑通 make seed（①直接写库授权、②-⑤全部走真实 REST admin API）。无业务行为/契约变更。
     # v1.0.6：同 mdm/customer 这次改动，删掉 deployment.labels 的 prometheus.io/port，理由同上。无业务行为/契约变更。
     # v1.0.5：gen/infra/authz 拆成独立嵌套 go module（module 边界切在 v1 目录上一级，因为 Go 模块路径禁止以字面量 /v1 结尾）——铁律六新增第二类白名单（生成物契约包，与 be-sdk-* 同类，设计书§13.3），让 infra-iam-casdoor 能直接 import 这份真身包，取代它自己 vendor 的一份逐字复制镜像。原因：两者都被分进了 go-infra 外壳，真机把二者真实模块合并进同一个进程做集成测试时（阶段四 Task 6）撞上了 vendored-contract 一旦调用方和被调方编译进同一个进程就会在 protobuf 全局注册表撞车的问题，这是 erp-sales 等五个组件之后第六次真实撞到同一类问题（阶段四调研记录 04 §13）。本仓库自己 standalone 构建/测试用本地 replace 完全不受影响， import-scan/单测全绿。无业务行为/契约变更。
     # ⚠️ 阶段四附加 Task 0.4：local:true 退休，改用 brickKit 原生的
     # servedBy——工作负载被 shell/go-infra 收编，不再自己起容器（合并
     # 部署现在走平台原生机制而不是本仓库外壳的手写 shell-compose.yml，
     # 设计书 §13.1，见 docs/plans/04b-验证记录.md Task 0.4）
-    servedBy: shell/go-infra@0.5.6
+    servedBy: shell/go-infra@0.5.9
     # v1.0.4：make seed 扩成多角色权限体系样板——部门树+3个权限子集角色，无破坏性变更。
     # v1.0.3：新增 make seed/seed-clean，种子授权归本组件自己持有，无破坏性变更。
     # v1.0.2：阶段三 Task 6，权限键换成真实键（/api/me/permissions
@@ -242,14 +248,15 @@ components:
       # 条目间逗号分隔（阶段三 Task 4 设计决策）。
       permissionCatalog: "crm.opportunity.edit|编辑商机|action|crm/opportunity,crm.opportunity.view|查看商机|page|crm/opportunity,crm.opportunity.win|商机赢单|action|crm/opportunity,erp.finance.close|关账/反关账/锁定期间|action|erp/finance,erp.finance.manage_access|分配法人访问权限|action|erp/finance,erp.finance.post|手工过账/冲销|action|erp/finance,erp.finance.view|查看财务数据|page|erp/finance,erp.inventory.adjust|盘盈盘亏调整|action|erp/inventory,erp.inventory.issue|确认出库|action|erp/inventory,erp.inventory.manage_access|分配仓库访问权限|action|erp/inventory,erp.inventory.receive|入库|action|erp/inventory,erp.inventory.reserve|预留库存|action|erp/inventory,erp.inventory.view|查看库存|page|erp/inventory,erp.sales.cancel|取消订单|action|erp/sales,erp.sales.confirm|确认订单|action|erp/sales,erp.sales.create|建立报价/订单|action|erp/sales,erp.sales.ship|发货|action|erp/sales,erp.sales.view|查看销售订单|page|erp/sales,infra.authz.admin|权限与角色管理|page|infra/authz,infra.bff-mobile.customer.view|查询客户（移动端）|action|infra/bff-mobile,infra.bff-mobile.inventory.view|查询库存余量（移动端）|action|infra/bff-mobile,infra.bff-mobile.order.view|查询销售订单（移动端）|action|infra/bff-mobile,infra.bff-mobile.product.view|查询产品（移动端）|action|infra/bff-mobile,infra.bff-mobile.task.view|查询我的待办（移动端）|action|infra/bff-mobile,infra.notification.admin|通知排障视图|page|infra/notification,infra.notification.preference.edit|编辑通知偏好|action|infra/notification,infra.notification.view|查看我的通知|page|infra/notification,infra.print.render|调用渲染|action|infra/print,infra.print.template.edit|编辑打印模板|action|infra/print,infra.print.template.view|查看打印模板|page|infra/print,infra.workflow.admin|待办全局视图|page|infra/workflow,infra.workflow.task.act|处理待办（同意/驳回）|action|infra/workflow,infra.workflow.task.view|查看我的待办|page|infra/workflow,integration.im.admin|钉钉投递排障|page|integration/im-dingtalk,mdm.customer.add_contact|新增客户联系人|action|mdm/customer,mdm.customer.create|新建客户|action|mdm/customer,mdm.customer.set_status|启用/停用客户|action|mdm/customer,mdm.customer.update|编辑客户|action|mdm/customer,mdm.customer.view|查看客户主数据|page|mdm/customer,mdm.product.create|新建产品|action|mdm/product,mdm.product.edit|编辑产品|action|mdm/product,mdm.product.view|查看产品主数据|page|mdm/product"
   - id: infra/iam-casdoor
-    version: 1.0.9 # v1.0.9：依赖版本号同步跟进 infra/authz@1.0.7，无破坏性变更。
+    version: 1.0.10 # v1.0.10：依赖版本号同步跟进 infra/authz@1.0.8，无破坏性变更。
+    # v1.0.9：依赖版本号同步跟进 infra/authz@1.0.7，无破坏性变更。
     # v1.0.8：同 mdm/customer 这次改动，删掉 deployment.labels 的 prometheus.io/port，理由同上。无业务行为/契约变更。
     # v1.0.7：不再 vendor infra-authz 的契约镜像（contracts/vendor/infra/authz），改直接 import 它发布的真身 gen/infra/authz 包（铁律六新增第二类白名单，设计书§13.3）——理由同 infra/authz 这次改动。contracts/vendor/ 与 gen/ 目录整个清空删除（本组件除了 vendor 的这一份，没有任何自己的 gRPC 契约）。gRPC 调用行为、契约面、业务逻辑均无变化， import-scan/单测/contract-check 全绿。
     # ⚠️ 阶段四附加 Task 0.4：local:true 退休，改用 brickKit 原生的
     # servedBy——工作负载被 shell/go-infra 收编，不再自己起容器（合并
     # 部署现在走平台原生机制而不是本仓库外壳的手写 shell-compose.yml，
     # 设计书 §13.1，见 docs/plans/04b-验证记录.md Task 0.4）
-    servedBy: shell/go-infra@0.5.6
+    servedBy: shell/go-infra@0.5.9
     # v1.0.6：make seed 从单一超级用户扩成 4 个覆盖不同角色画像的测试用户，依赖版本号同步跟进 infra/authz@1.0.4，无破坏性变更。
     # v1.0.5：修 get-application 解析（Casdoor 应用真实登录后带非法控制字符），无破坏性变更。
     # v1.0.4：新增 make seed/seed-clean + 同步 infra/authz@1.0.3 依赖引用，无破坏性变更。
@@ -316,7 +323,7 @@ components:
     # servedBy——工作负载被 shell/go-infra 收编，不再自己起容器（合并
     # 部署现在走平台原生机制而不是本仓库外壳的手写 shell-compose.yml，
     # 设计书 §13.1，见 docs/plans/04b-验证记录.md Task 0.4）
-    servedBy: shell/go-infra@0.5.6
+    servedBy: shell/go-infra@0.5.9
     # v1.0.2：docs/手册.md 的 TEST_PG_DSN 示例改指向 brickkit_test_db，无破坏性变更。
     # 阶段三 Task 8 首次出档：审批待办中心，零依赖（§6.6 铁律三：
                    # 只有入边）。erp/sales@1.0.6 起已真的接通这条弱依赖调用
@@ -338,7 +345,7 @@ components:
     # servedBy——工作负载被 shell/go-infra 收编，不再自己起容器（合并
     # 部署现在走平台原生机制而不是本仓库外壳的手写 shell-compose.yml，
     # 设计书 §13.1，见 docs/plans/04b-验证记录.md Task 0.4）
-    servedBy: shell/go-infra@0.5.6
+    servedBy: shell/go-infra@0.5.9
     # 阶段三 Task 9 首次出档：统一通知中心，零依赖零入边，
                    # 完全活在事件图上（消费 infra.workflow.task.created.v1
                    # 等，发 dispatch 事件；见 03-阶段三 Task 9 小节）
@@ -359,7 +366,7 @@ components:
     # servedBy——工作负载被 shell/go-infra 收编，不再自己起容器（合并
     # 部署现在走平台原生机制而不是本仓库外壳的手写 shell-compose.yml，
     # 设计书 §13.1，见 docs/plans/04b-验证记录.md Task 0.4）
-    servedBy: shell/go-infra@0.5.6
+    servedBy: shell/go-infra@0.5.9
     # v1.0.3：docs/手册.md 的 TEST_PG_DSN 示例改指向 brickkit_test_db，无破坏性变更。
     # 阶段三 Task 9：channel:im 族第一个成员，零依赖零入边
                    # （消费 infra.notification.dispatch.im.v1，发
@@ -383,14 +390,15 @@ components:
       dingtalkAppSecret: "${DINGTALK_APP_SECRET}"
       dingtalkAgentId: "${DINGTALK_AGENT_ID}"
   - id: infra/print
-    version: 1.0.7 # v1.0.7：同上，scripts/seed.sh 的 REST+JWT+模板上传部分改成工具箱容器 + ServiceName() 地址规则（cookie jar/待上传的模板 body 文件都在 /tmp 下，工具箱容器挂载同一个 /tmp 天然可见，不需要额外处理）。真机在 servedBy 部署下跑通 make seed（2 个模板上传 + 真实 PDF/ZPL 渲染验证）。无业务行为/契约变更。
+    version: 1.0.8 # v1.0.8：同 erp/inventory 这次改动，scripts/seed.sh 改成 source infra/scripts/lib/seed-net.sh（含 with_toolbox/get_app_jwt），理由同上。真机跑通 make seed（上传 2 个模板+真实调用 Render 验证 PDF/ZPL 两条渲染路径），无业务行为/契约变更。
+    # v1.0.7：同上，scripts/seed.sh 的 REST+JWT+模板上传部分改成工具箱容器 + ServiceName() 地址规则（cookie jar/待上传的模板 body 文件都在 /tmp 下，工具箱容器挂载同一个 /tmp 天然可见，不需要额外处理）。真机在 servedBy 部署下跑通 make seed（2 个模板上传 + 真实 PDF/ZPL 渲染验证）。无业务行为/契约变更。
     # v1.0.6：同 mdm/customer 这次改动，删掉 deployment.labels 的 prometheus.io/port，理由同上。无业务行为/契约变更。
     # v1.0.5：阶段四 Task 7，be-shell-python 把本组件直接装成 pip 依赖时，git URL 依赖解析不接受两个不同 tag 的 besdk 同时出现（be-shell-python 已经在用 v0.3.3）。升级本组件的 besdk 依赖到 v0.3.3——核对过 v0.3.1..v0.3.3 只新增 besdk/shell.py 一个外壳级构件模块，本组件用到的既有 API 一字未动，纯升版本号，27 个既有测试全部保持绿。无业务行为/契约变更。
     # ⚠️ 阶段四附加 Task 0.4：local:true 退休，改用 brickKit 原生的
     # servedBy——工作负载被 shell/py-render 收编，不再自己起容器（合并
     # 部署现在走平台原生机制而不是本仓库外壳的手写 shell-compose.yml，
     # 设计书 §13.1，见 docs/plans/04b-验证记录.md Task 0.4）
-    servedBy: shell/py-render@0.3.3
+    servedBy: shell/py-render@0.3.5
     # v1.0.4：新增 make seed——上传送货单PDF+发货标签ZPL两个真实模板，无破坏性变更。
     # v1.0.3：docs/手册.md 的 TEST_PG_DSN/DATABASE_NAME 示例改指向 brickkit_test_db，无破坏性变更。
     # 阶段三 Task 10：全系统第一个 Python 组件，纯函数打印
@@ -405,10 +413,11 @@ components:
     # docker exec 进外壳容器 + curl 容器内部地址，见 docs/plans/
     # 04b-验证记录.md Task 0.4/0.5。
     config:
-      authzBundleUrl: "http://infra-authz-1-0-7:8223/authz/bundle"
-      iamJwksUrl: "http://infra-iam-casdoor-1-0-9:8200/.well-known/jwks.json"
+      authzBundleUrl: "http://infra-authz-1-0-8:8223/authz/bundle"
+      iamJwksUrl: "http://infra-iam-casdoor-1-0-10:8200/.well-known/jwks.json"
   - id: infra/bff-mobile
-    version: 1.0.21 # v1.0.21：修复一个真实的、此前从未被发现的 gRPC 目标端口 bug： batchGetCustomers/batchGetProducts 调 besdk.userClient 时漏传 "grpc" extra 参数，实际读的是 MDM_CUSTOMER_ENDPOINT/ MDM_PRODUCT_ENDPOINT（主 REST 端口 8080/8082）而不是 MDM_CUSTOMER_GRPC_ENDPOINT/MDM_PRODUCT_GRPC_ENDPOINT（gRPC 端口 9090/9092），gRPC 客户端对着一个 HTTP/1.1 REST 服务器做 HTTP/2 握手会失败，报 "14 UNAVAILABLE: Protocol error"。05b Task 9 真机构造了一份真实的 persisted-operations.json 清单，第一次真正走通本组件自己的 GraphQL resolver 到 gRPC 调用这条完整路径时发现——此前全部验证任务都是用 grpcurl 直连绕开本组件的代码，从未真正触发过这条路径，test/clients.test.ts 自己的真机测试说明此前也一直把 gRPC 地址手工塞进 MDM_CUSTOMER_ENDPOINT 这个变量名，凑巧掩盖了这个 bug。修复：customer.ts/product.ts 的 userClient 调用补上 "grpc" 第三参数；test/clients.test.ts 的真机测试改成读正确的 MDM_CUSTOMER_GRPC_ENDPOINT/MDM_PRODUCT_GRPC_ENDPOINT 变量名并重新跑通（3/3 通过，含两条真机子测试）。真机用真实 JWT 走完整 GraphQL persisted-query→resolver→gRPC 链路验证过，返回真实客户数据。
+    version: 1.0.22 # v1.0.22：依赖版本号同步跟进 erp/inventory@1.0.18、erp/sales@1.0.26、mdm/customer@1.0.10、mdm/product@1.0.11，无破坏性变更。
+    # v1.0.21：修复一个真实的、此前从未被发现的 gRPC 目标端口 bug： batchGetCustomers/batchGetProducts 调 besdk.userClient 时漏传 "grpc" extra 参数，实际读的是 MDM_CUSTOMER_ENDPOINT/ MDM_PRODUCT_ENDPOINT（主 REST 端口 8080/8082）而不是 MDM_CUSTOMER_GRPC_ENDPOINT/MDM_PRODUCT_GRPC_ENDPOINT（gRPC 端口 9090/9092），gRPC 客户端对着一个 HTTP/1.1 REST 服务器做 HTTP/2 握手会失败，报 "14 UNAVAILABLE: Protocol error"。05b Task 9 真机构造了一份真实的 persisted-operations.json 清单，第一次真正走通本组件自己的 GraphQL resolver 到 gRPC 调用这条完整路径时发现——此前全部验证任务都是用 grpcurl 直连绕开本组件的代码，从未真正触发过这条路径，test/clients.test.ts 自己的真机测试说明此前也一直把 gRPC 地址手工塞进 MDM_CUSTOMER_ENDPOINT 这个变量名，凑巧掩盖了这个 bug。修复：customer.ts/product.ts 的 userClient 调用补上 "grpc" 第三参数；test/clients.test.ts 的真机测试改成读正确的 MDM_CUSTOMER_GRPC_ENDPOINT/MDM_PRODUCT_GRPC_ENDPOINT 变量名并重新跑通（3/3 通过，含两条真机子测试）。真机用真实 JWT 走完整 GraphQL persisted-query→resolver→gRPC 链路验证过，返回真实客户数据。
     # v1.0.20：Node 运行时从设计书§12.4 锁定的 Node 20 升级到当前最新维护版 LTS Node 24（05b Task 9 真机验证裸进程时发现，依赖树的 graphql@17、 @prometheus-io/client 已经要求 Node ≥22，原锁定版本已经滞后）。 Dockerfile 两个阶段的基底镜像改成 node:24-slim，package.json 的 engines.node 改成 >=24，node_modules 在 Node 24 下重装、npm run build 与 vitest 单测全部通过，无业务行为/契约变更。
     # v1.0.19：依赖版本号同步跟进 erp/inventory@1.0.17、erp/sales@1.0.25、mdm/customer@1.0.9、mdm/product@1.0.10，无破坏性变更。
     # v1.0.18：依赖版本号同步跟进 erp/inventory@1.0.16、erp/sales@1.0.24、infra/workflow@1.0.4、mdm/customer@1.0.8、mdm/product@1.0.9，无破坏性变更。
@@ -440,8 +449,8 @@ components:
     expose: true
     exposePort: 28500 # registry/ports.tsv 的既有登记（决策 107：独立容器 exposePort 一律走 2xxxx 段）
     config:
-      authzBundleUrl: "http://infra-authz-1-0-7:8223/authz/bundle"
-      iamJwksUrl: "http://infra-iam-casdoor-1-0-9:8200/.well-known/jwks.json"
+      authzBundleUrl: "http://infra-authz-1-0-8:8223/authz/bundle"
+      iamJwksUrl: "http://infra-iam-casdoor-1-0-10:8200/.well-known/jwks.json"
   - id: frontend/standard
     version: 1.0.1 # v1.0.1：同 infra/bff-mobile 这次改动，构建阶段的基底镜像从 node:20-slim 升到 node:24-slim，package.json 的 engines.node 改成 >=24，理由同上（Node 版本统一升级，不是这个组件自己发现的问题）。无业务行为/契约变更。
     # 阶段三 Task 12：PC 独立 Vite SPA + 移动端 Uni-app H5，
@@ -460,14 +469,15 @@ components:
       iamIssuerUrl: "http://localhost:8000" # Casdoor 浏览器直连地址，随部署环境的真实公网域名替换
       casdoorClientId: "" # 部署时用 Casdoor 管理 API 现查 brickkit-app 的 client_id 填入，不提交真实值
   - id: crm/opportunity
-    version: 1.0.12 # v1.0.12：同上，scripts/seed.sh 的 REST+JWT 换取部分改成工具箱容器 + ServiceName() 地址规则。真机在 servedBy 部署下跑通 make seed（① dev.superuser 5 条商机② dev.sales.east 5 条商机 + 1 条信用超限商机），完整验证了阶段四附录 E 业务链路（CRM 赢单→erp-sales 自动建单确认/信用超限拒绝→infra-workflow 异常待办）在这次 servedBy 迁移之后依然端到端成立，见 docs/plans/04b-验证记录.md Task 0.5。无业务行为/契约变更。
+    version: 1.0.13 # v1.0.13：同 erp/inventory 这次改动，scripts/seed.sh 改成 source infra/scripts/lib/seed-net.sh（含 with_toolbox/get_app_jwt 多身份换取、idfor 反查客户/产品 id），理由同上。真机跑通 make seed（11 条商机，覆盖 OPEN 三阶段/WON/LOST/信用超限赢单失败五种路径），无业务行为/契约变更。
+    # v1.0.12：同上，scripts/seed.sh 的 REST+JWT 换取部分改成工具箱容器 + ServiceName() 地址规则。真机在 servedBy 部署下跑通 make seed（① dev.superuser 5 条商机② dev.sales.east 5 条商机 + 1 条信用超限商机），完整验证了阶段四附录 E 业务链路（CRM 赢单→erp-sales 自动建单确认/信用超限拒绝→infra-workflow 异常待办）在这次 servedBy 迁移之后依然端到端成立，见 docs/plans/04b-验证记录.md Task 0.5。无业务行为/契约变更。
     # v1.0.11：同 mdm/customer 这次改动，删掉 deployment.labels 的 prometheus.io/port，理由同上。无业务行为/契约变更。
     # v1.0.10：依赖版本号同步跟进 mdm/customer@1.0.7、mdm/product@1.0.8，无破坏性变更。
     # ⚠️ 阶段四附加 Task 0.4：local:true 退休，改用 brickKit 原生的
     # servedBy——工作负载被 shell/go-backoffice 收编，不再自己起容器（合并
     # 部署现在走平台原生机制而不是本仓库外壳的手写 shell-compose.yml，
     # 设计书 §13.1，见 docs/plans/04b-验证记录.md Task 0.4）
-    servedBy: shell/go-backoffice@0.5.6
+    servedBy: shell/go-backoffice@0.5.9
     # v1.0.9：不再 vendor mdm-customer/mdm-product 两份契约镜像，改直接 import 真身 gen/ 包（铁律六新增第二类白名单，与 be-sdk-* 同类，设计书§13.3）。原因：shells/go 的测试文件把多个外壳的真实模块测试放进同一个 Go 测试二进制，本组件跟 mdm-customer/mdm-product 虽然分在不同外壳（生产环境不会真的同进程），但测试编译阶段依然会把两份内容相同的生成代码一起链进去，在 protobuf 全局注册表里重复注册同一个文件/类型全名而 panic ——Go 的 module system 无法把两个不同 import path 的包合并成一份编译实例，replace 也解决不了（阶段四调研记录 04 §13 有完整推演+最小复现； erp-sales 已经先行完成同样的改动）。contracts/vendor/ 整个目录清空删除，import-scan 门禁新增放行 github.com/brickKit/<repo>/gen/... 这个形状。gRPC 调用行为、契约面、业务逻辑均无变化，import-scan/单测/ contract-check 全绿。
     # v1.0.8：依赖版本号同步跟进 mdm/customer@1.0.6、mdm/product@1.0.7，无破坏性变更。
     # v1.0.7：依赖版本号同步跟进 mdm/product@1.0.6（补 README 三节，纯文档修复），无破坏性变更。
@@ -488,31 +498,31 @@ components:
     # docker exec 进外壳容器 + curl 容器内部地址，见 docs/plans/
     # 04b-验证记录.md Task 0.4/0.5。
     config:
-      authzBundleUrl: "http://infra-authz-1-0-7:8223/authz/bundle"
-      iamJwksUrl: "http://infra-iam-casdoor-1-0-9:8200/.well-known/jwks.json"
+      authzBundleUrl: "http://infra-authz-1-0-8:8223/authz/bundle"
+      iamJwksUrl: "http://infra-iam-casdoor-1-0-10:8200/.well-known/jwks.json"
   # ===== 外壳自身（阶段四附加 Task 0.4：servedBy 落地后第一次把外壳当成
   # 真正的 brickKit 组件——manifest 在各自外壳仓库的 deploy/ 子目录下，
   # 见上面 sources 的 shells-go/shells-python 两条。4 个外壳不在设计书
   # 62 个业务组件的固定名录里，registry/ports.tsv 里对应 _shell-* 前缀
   # 的行，见 registry/README.md 规矩 3b） =====
   - id: shell/go-core
-    version: 0.5.6
+    version: 0.5.9
     config:
       shellName: go-core
       shellHealthPort: "8090"
       # go-core 自己不含 infra/authz、infra/iam-casdoor，跟它们不同外壳，
       # 走宿主机发布地址（同下面各成员的既有判据）。
-      authzBundleUrl: "http://infra-authz-1-0-7:8223/authz/bundle"
-      iamJwksUrl: "http://infra-iam-casdoor-1-0-9:8200/.well-known/jwks.json"
+      authzBundleUrl: "http://infra-authz-1-0-8:8223/authz/bundle"
+      iamJwksUrl: "http://infra-iam-casdoor-1-0-10:8200/.well-known/jwks.json"
   - id: shell/go-backoffice
-    version: 0.5.6
+    version: 0.5.9
     config:
       shellName: go-backoffice
       shellHealthPort: "8116"
-      authzBundleUrl: "http://infra-authz-1-0-7:8223/authz/bundle"
-      iamJwksUrl: "http://infra-iam-casdoor-1-0-9:8200/.well-known/jwks.json"
+      authzBundleUrl: "http://infra-authz-1-0-8:8223/authz/bundle"
+      iamJwksUrl: "http://infra-iam-casdoor-1-0-10:8200/.well-known/jwks.json"
   - id: shell/go-infra
-    version: 0.5.6
+    version: 0.5.9
     config:
       shellName: go-infra
       shellHealthPort: "8224"
@@ -522,12 +532,12 @@ components:
       authzBundleUrl: "http://127.0.0.1:8223/authz/bundle"
       iamJwksUrl: "http://127.0.0.1:8200/.well-known/jwks.json"
   - id: shell/py-render
-    version: 0.3.3
+    version: 0.3.5
     config:
       shellName: py-render
       shellHealthPort: "8402"
-      authzBundleUrl: "http://infra-authz-1-0-7:8223/authz/bundle"
-      iamJwksUrl: "http://infra-iam-casdoor-1-0-9:8200/.well-known/jwks.json"
+      authzBundleUrl: "http://infra-authz-1-0-8:8223/authz/bundle"
+      iamJwksUrl: "http://infra-iam-casdoor-1-0-10:8200/.well-known/jwks.json"
 resources:
   # 设计书 §13.3 铁律二："brickkit.yaml 里只有 5 个外壳登录角色（5 个
   # resources 条目，同一个 host、不同凭据）"——凭据是 make db-init 早就
