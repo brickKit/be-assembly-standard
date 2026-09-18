@@ -31,9 +31,9 @@
 |---|---|
 | 阶段 | **阶段一** ✅ 已出档。**阶段二** ✅ 已出档（[`02-阶段二`](docs/plans/02-阶段二-验平台.md)，复盘见 [`02-阶段二复盘`](docs/retrospectives/02-阶段二-验平台-复盘.md)）。**阶段三 · 业务闭环** ✅ **已真正结束**——9 个新组件 + 2 个新 SDK，Task 1–15 全部真正完成（Task 15 一度被跳过，靠后来一次系统排查才发现并补上，见下方复盘），阶段三主线之后的四条工作线（测试体系扩展、种子数据丰富度整改、文档架构重构、Task 15 补齐）均已完成，复盘见 [`03-阶段三复盘`](docs/retrospectives/03-阶段三-业务闭环-复盘.md)。逐 Task 的实现细节、真机验证过程、意外发现的 bug 全部在 [`03-阶段三`](docs/plans/03-阶段三-业务闭环.md) 本身，这里不重复。核心成果：阶段二 5 个组件的权限判定从 fail-closed stub 换成 `infra-authz` 真实 bundle；全系统第一次有真实签发方（`infra-iam-casdoor`）签发验签通过的 JWT；附录 E"商机赢单→订单→库存→应收"全链路真机跑通。⚠️ **这份复盘自己最大的一条发现**：主线收官后复盘本身被跳过，这正是 Task 15 长期没被发现的原因——完整分析与由此定下的流程规矩（后续工作线开工前先写复盘，不是先斩后奏）在复盘 §5，这里不重复。**阶段四 · 做外壳验拆回** ✅ **已完成**——Task 1–12 全部做完，复盘见 [`04-阶段四复盘`](docs/retrospectives/04-阶段四-做外壳验拆回-复盘.md)（这次主线收官后立刻写的，没有被别的工作线插队——阶段三定下的流程规矩这次真的兑现了）。逐 Task 的实现细节、真机验证过程全部在 [`04-阶段四`](docs/plans/04-阶段四-做外壳验拆回.md) 本身，这里不重复。核心成果：11 个 Go 组件 + `infra-print` 合并进 4 个真实外壳容器（`go-core`/`go-backoffice`/`go-infra`/`py-render`，`infra-bff-mobile`/`frontend-standard` 按设计保持独立）；§13.7 拆回门禁与铁律六 import 扫描都在真实合并态拓扑下验证过绿；新增 `make tier2` 覆盖合并态专属断言（单个模块 panic 不再拖垮外壳其余模块；共享连接池下即使查询漏加 schema 限定，`SET LOCAL` 依然正确把它限定在调用方自己的 schema 里）。**阶段五 · 部署组合矩阵验证** ✅ **已完成**——05a（把 `be-assembly-standard` 自己从阶段四挪用的 `local:true` 迁移到 brickKit 正式发布的真实 `servedBy`）已完成，见 [`05a`](docs/plans/05a-迁移到servedBy.md)；05b（拓扑 × 环境 × 版本的全部组合矩阵真机验证——12 个拓扑×环境基础组合、全部版本变体子任务、2 个负向验证任务，每个格子都真机跑过）已完成，见 [`05b`](docs/plans/05b-组合矩阵验证.md)。核心成果：外壳合并部署+K8s 确认是原生、真机验证过的能力（此前从未验证过，且直接反转了从阶段一沿用至今的"K8s 意味着先把所有外壳拆回独立容器"这条判断）；部署手册（现已拆成 `docs/ops/{zh,en}/deployment-handbook.md` + 专门的 `docs/ops/{zh,en}/deployment-selection-guide.md`，见 [`01-documentation-standard.md`](docs/standards/zh/01-documentation-standard.md) §6）现在有一份基于真实数据的部署选型指南，覆盖全部 12 种组合、多版本共存规则、负向验证报错速查表。复盘已在 Task 15 完成后立刻写，见 [`05-阶段五复盘`](docs/retrospectives/05-阶段五-部署组合矩阵验证-复盘.md)——它最大的一条发现：`servedBy` 是一个刚发布的全新平台机制（不是已经成熟的机制），这正是本阶段单独就找到 7 个真实 brickKit bug（阶段二到四总共只有 0-1 个）的原因，推翻了阶段四复盘自己"平台已经摸透，后续阶段不太会再牵连出平台层面新 bug"这条判断——但复盘论证这个推翻本身是健康的，不是需要担心的事。 |
 | 已建组件 | **14 个建完**，见下方「已建组件一览」表。十三个后端组件的 `iamJwksUrl`/`authzBundleUrl` 都指向真实运行的对端。 |
-| 工具仓库 | `be-sdk-go@v0.2.7`、`be-ops@v0.1.16`、`be-acceptance@v0.3.23`（`make gates` 六个 gate + `bump-version` 子命令的产出方，见 SOP-W-11）、`be-sdk-python@v0.3.3`、`be-sdk-ts@v0.3.3`——全部已 tag（带注解）并被装配仓库的 submodule 指针跟踪。⚠️ **已知的版本漂移**：`be-sdk-go@v0.2.7` 修的 `StartOutboxPump` 原子认领 bug（踩坑记录 C15）目前只有 `infra-iam-casdoor`/`erp-inventory`/`erp-sales` 升级到位，其余业务组件仍在更早的 v0.2.1-v0.2.4——这个 bug 只在 K8s 多副本场景触发，不是本阶段的阻塞项，按"下次改动顺带升"处理。每个工具版本具体修了什么、哪次真机验证发现的，见各自仓库自己的 changelog 或 [`field-tested-pitfalls-log.md`](docs/dev/field-tested-pitfalls-log.zh.md)（C11/C12/C15、A9/A10/A11、类别 F）。 |
+| 工具仓库 | `be-sdk-go@v0.2.7`、`be-ops@v0.1.16`、`be-acceptance@v0.3.23`（`make gates` 六个 gate + `bump-version` 子命令的产出方，见 SOP-W-11）、`be-sdk-python@v0.3.3`、`be-sdk-ts@v0.3.3`——全部已 tag（带注解）并被装配仓库的 submodule 指针跟踪。⚠️ **已知的版本漂移**：`be-sdk-go@v0.2.7` 修的 `StartOutboxPump` 原子认领 bug（踩坑记录 C15）目前只有 `infra-iam-casdoor`/`erp-inventory`/`erp-sales` 升级到位，其余业务组件仍在更早的 v0.2.1-v0.2.4——这个 bug 只在 K8s 多副本场景触发，不是本阶段的阻塞项，按"下次改动顺带升"处理。每个工具版本具体修了什么、哪次真机验证发现的，见各自仓库自己的 changelog 或 [`field-tested-pitfalls-log.md`](docs/dev/field-tested-pitfalls-log.md)（C11/C12/C15、A9/A10/A11、类别 F）。 |
 | 已钉死不许改的 | `registry/ports.tsv`、`registry/schemas.tsv`、`registry/permissions.tsv`（**只增不改**，见下）；**每种语言的技术栈与模块入口签名**（设计书 §12.4 / §12.5）；**PC 端骨架形态**（§12.6.7）；**权限体系**（第 14 章） |
-| 平台 CLI | 已装 **v0.2.2**。`brickkit restore`（含 `--check`）、`init --hooks`、`sync`/`remove` 对已登记 submodule 的守卫（`SUBMODULE_GUARD`）均已实现并在用。已知修复历史见 [`field-tested-pitfalls-log.md`](docs/dev/field-tested-pitfalls-log.zh.md) 与 brickKit 仓库自己的 changelog。 |
+| 平台 CLI | 已装 **v0.2.2**。`brickkit restore`（含 `--check`）、`init --hooks`、`sync`/`remove` 对已登记 submodule 的守卫（`SUBMODULE_GUARD`）均已实现并在用。已知修复历史见 [`field-tested-pitfalls-log.md`](docs/dev/field-tested-pitfalls-log.md) 与 brickKit 仓库自己的 changelog。 |
 | 常用验收 | `make tier0`（档 0 六项验收，**每加一个组件都要重跑**）、`make tier1`（23 条平台断言，验的是 brickKit 自身行为不是业务逻辑，需要先 `brickkit up`）、`make tier2`（合并态专属断言——单个模块 panic 隔离 + 共享连接池下 `SET LOCAL` schema 越权测试，需要真实可达的 `TEST_PG_DSN`/`TEST_NATS_URL`）、`make docs-check REPO=<仓库名>`、`make gates`、`make version-check`（扫全部 submodule 的 tag 漂移） |
 
 ⚠️ **改了阶段就回来改这张表。** 它是 AI 判断「现在该做什么、什么已经定死」的唯一依据。**这张表只放现在为真的事实**——历史叙事（发生过什么、为什么）不属于这里，属于上面链到的那些文档（见 [`01-documentation-standard.md`](docs/standards/zh/01-documentation-standard.md) §2.1）。
@@ -42,20 +42,20 @@
 
 | 组件 | 版本 | 定位 | 详细设计 |
 |---|---|---|---|
-| `mdm-customer` | 1.0.9 | 只读枢纽，`data_scopes: none` | [`docs/design/zh/mdm-customer.md`](docs/design/zh/mdm-customer.md) |
-| `mdm-product` | 1.0.10 | 只读枢纽，`data_scopes: none` | [`docs/design/zh/mdm-product.md`](docs/design/zh/mdm-product.md) |
-| `erp-inventory` | 1.0.17 | 物理命令枢纽：TCC 三件套 + claim-first 幂等 + `warehouse` 维数据权限 | [`docs/design/zh/erp-inventory.md`](docs/design/zh/erp-inventory.md) |
-| `erp-finance` | 1.0.13 | 事件汇枢纽：`FinanceService` 11 rpc + `legal_entity` 维数据权限 | [`docs/design/zh/erp-finance.md`](docs/design/zh/erp-finance.md) |
-| `erp-sales` | 1.0.25 | 唯一的链上一环：四条强依赖全部真实 gRPC 调用，`ConfirmOrder` 的 TCC 补偿链 + `org`/`owner` 两维数据权限 | [`docs/design/zh/erp-sales.md`](docs/design/zh/erp-sales.md) |
-| `infra-authz` | 1.0.7 | 权限体系里唯一持久化状态的组件：`GET /authz/bundle` 策略下发，纯并集无 Deny | [`docs/design/zh/infra-authz.md`](docs/design/zh/infra-authz.md) |
-| `infra-iam-casdoor` | 1.0.9 | `slot:iam` Default 成员：两个 token 架构，refresh token rotation + 重放检测 | [`docs/design/zh/infra-iam-casdoor.md`](docs/design/zh/infra-iam-casdoor.md) |
-| `infra-workflow` | 1.0.4 | 零依赖审批待办中心：claim-first 幂等 + `owner`/`org` 两维数据权限 | [`docs/design/zh/infra-workflow.md`](docs/design/zh/infra-workflow.md) |
-| `infra-notification` | 1.0.4 | 路由中枢：零依赖零出边完全活在事件图上，两层通道偏好 | [`docs/design/zh/infra-notification.md`](docs/design/zh/infra-notification.md) |
-| `integration-im-dingtalk` | 1.0.5 | `channel:im` 族第一个成员：钉钉 access_token 缓存刷新 | [`docs/design/zh/integration-im-dingtalk.md`](docs/design/zh/integration-im-dingtalk.md) |
-| `infra-print` | 1.0.7 | 全系统第一个 Python 组件：纯函数打印渲染中心，PDF/ZPL 双渲染 | [`docs/design/zh/infra-print.md`](docs/design/zh/infra-print.md) |
-| `infra-bff-mobile` | 1.0.21 | 全系统第一个 TypeScript 组件：GraphQL BFF，零强依赖零数据库 | [`docs/design/zh/infra-bff-mobile.md`](docs/design/zh/infra-bff-mobile.md) |
-| `frontend-standard` | 1.0.1 | PC 独立 Vite SPA + 移动端 Uni-app H5，唯一没有后端形态的组件 | [`docs/design/zh/frontend-standard.md`](docs/design/zh/frontend-standard.md) |
-| `crm-opportunity` | 1.0.12 | 阶段三第一个业务组件、CRM 域第一个组件：商机全生命周期 | [`docs/design/zh/crm-opportunity.md`](docs/design/zh/crm-opportunity.md) |
+| `mdm-customer` | 1.0.9 | 只读枢纽，`data_scopes: none` | [`docs/design/mdm-customer.md`](docs/design/mdm-customer.md) |
+| `mdm-product` | 1.0.10 | 只读枢纽，`data_scopes: none` | [`docs/design/mdm-product.md`](docs/design/mdm-product.md) |
+| `erp-inventory` | 1.0.17 | 物理命令枢纽：TCC 三件套 + claim-first 幂等 + `warehouse` 维数据权限 | [`docs/design/erp-inventory.md`](docs/design/erp-inventory.md) |
+| `erp-finance` | 1.0.13 | 事件汇枢纽：`FinanceService` 11 rpc + `legal_entity` 维数据权限 | [`docs/design/erp-finance.md`](docs/design/erp-finance.md) |
+| `erp-sales` | 1.0.25 | 唯一的链上一环：四条强依赖全部真实 gRPC 调用，`ConfirmOrder` 的 TCC 补偿链 + `org`/`owner` 两维数据权限 | [`docs/design/erp-sales.md`](docs/design/erp-sales.md) |
+| `infra-authz` | 1.0.7 | 权限体系里唯一持久化状态的组件：`GET /authz/bundle` 策略下发，纯并集无 Deny | [`docs/design/infra-authz.md`](docs/design/infra-authz.md) |
+| `infra-iam-casdoor` | 1.0.9 | `slot:iam` Default 成员：两个 token 架构，refresh token rotation + 重放检测 | [`docs/design/infra-iam-casdoor.md`](docs/design/infra-iam-casdoor.md) |
+| `infra-workflow` | 1.0.4 | 零依赖审批待办中心：claim-first 幂等 + `owner`/`org` 两维数据权限 | [`docs/design/infra-workflow.md`](docs/design/infra-workflow.md) |
+| `infra-notification` | 1.0.4 | 路由中枢：零依赖零出边完全活在事件图上，两层通道偏好 | [`docs/design/infra-notification.md`](docs/design/infra-notification.md) |
+| `integration-im-dingtalk` | 1.0.5 | `channel:im` 族第一个成员：钉钉 access_token 缓存刷新 | [`docs/design/integration-im-dingtalk.md`](docs/design/integration-im-dingtalk.md) |
+| `infra-print` | 1.0.7 | 全系统第一个 Python 组件：纯函数打印渲染中心，PDF/ZPL 双渲染 | [`docs/design/infra-print.md`](docs/design/infra-print.md) |
+| `infra-bff-mobile` | 1.0.21 | 全系统第一个 TypeScript 组件：GraphQL BFF，零强依赖零数据库 | [`docs/design/infra-bff-mobile.md`](docs/design/infra-bff-mobile.md) |
+| `frontend-standard` | 1.0.1 | PC 独立 Vite SPA + 移动端 Uni-app H5，唯一没有后端形态的组件 | [`docs/design/frontend-standard.md`](docs/design/frontend-standard.md) |
+| `crm-opportunity` | 1.0.12 | 阶段三第一个业务组件、CRM 域第一个组件：商机全生命周期 | [`docs/design/crm-opportunity.md`](docs/design/crm-opportunity.md) |
 
 ⚠️ **版本号 changelog 的唯一源头是每个组件自己的 `component.yaml`**——这张表只给"现在是什么版本、这个组件是干什么的"，不复述版本历史。想知道某个组件从建仓库到现在经历了什么，去读它自己的 `component.yaml` 或 `git log`。
 
@@ -69,7 +69,7 @@
 | 起环境 / 查基础资源 | 总纲 §1；`make help` |
 | **刚起完 14 个组件，想要点数据直接测/演示，不想从零建客户产品** | `make seed-data`（[`docs/dev/种子数据一览.md`](docs/dev/种子数据一览.md)）——真实建出多角色测试账号 + 客户/产品/库存/订单/商机/财务凭证/打印模板，仅供本地用；`make seed-data-clean` 撤销能清的部分 |
 | **有人问「怎么装 / 怎么部署 / 数据库谁建」** | [`docs/ops/zh/deployment-handbook.md`](docs/ops/zh/deployment-handbook.md)（部署手册；英文正本在 `docs/ops/en/deployment-handbook.md`）。⚠️ **别把设计书或总纲甩给部署人员**——那份手册是自足的，需要看别处时它自己会指路。数据库分五层、只有第 3/4 层要人动手，见它的 §3。**该部署哪种拓扑/环境**——先指给他们看 [`docs/ops/zh/deployment-selection-guide.md`](docs/ops/zh/deployment-selection-guide.md) |
-| **写代码/配置时“看起来对、静态检查也过、一跑起来才发现不对”** | [`docs/dev/field-tested-pitfalls-log.md`](docs/dev/field-tested-pitfalls-log.zh.md)——可能已经踩过。**只记这一类坑**（第三方镜像的实际行为、Docker/Compose 的行为、脚本自己的逻辑漏洞），设计决策不放这里 |
+| **写代码/配置时“看起来对、静态检查也过、一跑起来才发现不对”** | [`docs/dev/field-tested-pitfalls-log.md`](docs/dev/field-tested-pitfalls-log.md)——可能已经踩过。**只记这一类坑**（第三方镜像的实际行为、Docker/Compose 的行为、脚本自己的逻辑漏洞），设计决策不放这里 |
 | **写任何 `component.yaml`** | 总纲 §2.1 端口册 + §2.2 schema 册 + 全局约束 B/C/E/F。**端口不许自定** |
 | **改完一个改动，要给组件跳版本号了**（哪怕是纯文档/纯测试改动——每个改动都要跳） | 总纲 **SOP-W-11**：不要自己满仓库 grep 找哪些地方引用了这个组件的版本号——跑 `make bump-version PLAN=<文件>`（先不加 `APPLY=1` 看计划，确认后再加），它会自己算出全部下游依赖引用/`brickkit.yaml`/两份 `AGENTS.md` 名录表要跟着改的地方。**这次会话里动了几个组件，就把它们一起写进同一份计划文件，跑一次**，不要一个组件跑一次 |
 | **开始写代码**（任何组件） | 总纲 §4 **SOP-W** —— 七步循环、测试分四层、红绿节奏、一次会话装多少。**这是驱动其余 SOP 的节奏，先读它** |
@@ -171,7 +171,7 @@ tools/{be-ops,be-acceptance,be-sdk-go,be-sdk-python,be-sdk-ts}/
 registry/                    端口册 + schema 册
 docs/standards/{en,zh}/       长期有效的规范文档，按阅读优先级编号 00-05（00-总纲最先读；其余按组件真实开工流程排列——文档/参考实现/AI开发/测试/数据构建标准）。英文正本，docs/standards/zh/ 是对等中文版，文件名相同（见 01-documentation-standard.md §6）
 docs/plans/                   每阶段一份的执行计划（历史记录，不是规范）
-docs/design/{en,zh}/         组件设计计划，一个组件一份。这里中文才是正本（14 份组件计划本身的英文翻译还没做，见 §6）
+docs/design/                  组件设计计划，一个组件一份，纯中文（开发向，不进 {zh,en} 那套机制，见 §6）。唯一的例外：docs/design/{en,zh}/_replaceability-map.md，因为真正的最终用户也需要它，所以是真双语
 docs/ops/{en,zh}/             部署手册+选型指南，面向真实最终用户（不是给 AI 阅读舒适度用的，见 01-documentation-standard.md §6）
 AGENTS.zh.md                 本文件的中文对等版本（仓库根 AGENTS.md 本身必须留在根目录，没有可以嵌套语言文件夹的地方）
 ```

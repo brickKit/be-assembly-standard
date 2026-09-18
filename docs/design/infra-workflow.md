@@ -185,7 +185,7 @@ GetTaskStatus(task_id) 或 GetTaskStatus(idempotency_key) → PENDING | APPROVED
 
 ## 8. 参考实现
 
-> 完整调研过程见 [`_调研记录/03-阶段三.md`](../_调研记录/03-阶段三.md) 的「infra-workflow」一节。下表是精炼版。
+> 完整调研过程见 [`_调研记录/03-阶段三.md`](_调研记录/03-阶段三.md) 的「infra-workflow」一节。下表是精炼版。
 
 | 项目 | 版本/commit | 看的模块 | 借鉴了什么 | 许可证（已复核） | 用法 |
 |---|---|---|---|---|---|

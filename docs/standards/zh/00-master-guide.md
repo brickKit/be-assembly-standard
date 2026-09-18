@@ -1051,7 +1051,7 @@ Python 组件的对应位置是 `backend/app/module.py`（`create_module`）与 
 
 ⚠️ **阶段三 Task 3 补记**：Go 版 `backend/internal/http`、`backend/internal/grpc` 在 Python 侧的对应目录是 **`backend/app/http`、`backend/app/grpc`**——这两个目录名此前一直没有文档化（`infra-print` 是本项目第一个 Python 组件，Task 3 写 `make gates` 的 Python 版扫描时才补上），现在钉死：REST handler 放 `backend/app/http/`，gRPC handler 放 `backend/app/grpc/`。这两个目录同时是 `SystemClient` 误用扫描（§14.2.6）与裸路由扫描（§14.1.7）的危险目录，判据同 Go 版，只是 Python 没有 `go/ast` 可用，退化成逐行正则（精度上限见 `tools/be-acceptance/gates/bareginscan.go`/`systemclientscan.go` 的代码注释）。
 
-TS 侧的 `infra-bff-mobile`（GraphQL BFF，不进外壳，见 §12.4.3）同样补一条约定：**resolver map 一律放在 `src/resolvers/` 下，这个目录不放别的东西**。这既是 `SystemClient` 误用扫描的危险目录，也是裸 resolver 扫描（判据：resolver 字段的值必须经过 `requirePermission(perm, resolver)` 包一层，不能直接是箭头函数/`function`）的扫描范围——`docs/design/zh/infra-bff-mobile.md` 待决问题 #1 就此了结。
+TS 侧的 `infra-bff-mobile`（GraphQL BFF，不进外壳，见 §12.4.3）同样补一条约定：**resolver map 一律放在 `src/resolvers/` 下，这个目录不放别的东西**。这既是 `SystemClient` 误用扫描的危险目录，也是裸 resolver 扫描（判据：resolver 字段的值必须经过 `requirePermission(perm, resolver)` 包一层，不能直接是箭头函数/`function`）的扫描范围——`docs/design/infra-bff-mobile.md` 待决问题 #1 就此了结。
 
 **15 个步骤，顺序不能改**（TDD：契约先行、测试先写）：
 
@@ -1553,7 +1553,7 @@ Python 侧对称：`Runtime`（dataclass）、`Module`（dataclass，`asgi_app: 
 | 11 | **brickKit 的设计文档与实现有分叉，且不止一处** | 第三批审查里 5 条全部来自「文档这么写、代码那么做」。往后凡是「平台会不会 X」的关键假设，**以代码为准，并在 `be-acceptance` 里落一条断言** | 已落地：§9.6.2 那 20 条平台验收用例就是这个机制。**新增假设时同步加用例**，别只写进文档 |
 | 10 | **我们自己的组件许可证：按 Apache-2.0 推进**（未经正式书面确认，随时可改） | 每个仓库都需要一份 `LICENSE`；事后改许可证需要所有贡献者同意，所以早定省事 | 选 Apache-2.0 的三个理由：① 允许客户 Fork 件闭源，正是设计书 §3.2 要的形态（GPL/AGPL 会直接否掉它）；② 带专利授权，私有化交付时对方法务更容易过；③ 与 Apache OFBiz 同许可证，真要借用它的代码时少一层判断。**阶段一 CP-1 建仓库时一并写入 `LICENSE`**；要换成别的，在那之前说一声即可 |
 | 9 | **`docs/design/` 目前只有 `mdm-customer` 一份** | 后续每个组件开工前都要补 | 每个阶段的计划里，第一件事就是写该阶段涉及组件的设计计划（§4 SOP-D） |
-| 12 | **`vxe-table` 是「默认选择，待核」，不是已锁死。** 官方文档里带 `enterprise-version` / `enterprise-link` 标记，具体哪些能力属于免费档**未经核对** | 我们是私有化交付。**可编辑单元格 / 虚拟滚动 / 冻结列**这三条是 ERP 表格的地板，其中任何一条落在付费档就必须换 | **阶段三 `frontend-standard` 开工前**走完设计书 §12.6.6 的四步闭环：① 按那张能力清单逐条核 → ② 判定（全免费则锁定 / 少数付费则绕 / 地板三条有付费则换 / 或买——买要先算清私有化交付时是不是每个客户都要授权）→ ③ 换的候选是 AG Grid Community、RevoGrid、TanStack Table，**一律要核同一份清单**（所有严肃表格库都把企业能力做成付费档）→ ④ 从第一天就用 `ui-kit-pc` 的 `<BeTable>`，让换引擎是改一个包而不是 40 个页面。结论写进 `docs/design/zh/frontend-standard.md` 第 8 节。⚠️ 与端口册同类的时序性风险：**发现得越晚越改不动** |
+| 12 | **`vxe-table` 是「默认选择，待核」，不是已锁死。** 官方文档里带 `enterprise-version` / `enterprise-link` 标记，具体哪些能力属于免费档**未经核对** | 我们是私有化交付。**可编辑单元格 / 虚拟滚动 / 冻结列**这三条是 ERP 表格的地板，其中任何一条落在付费档就必须换 | **阶段三 `frontend-standard` 开工前**走完设计书 §12.6.6 的四步闭环：① 按那张能力清单逐条核 → ② 判定（全免费则锁定 / 少数付费则绕 / 地板三条有付费则换 / 或买——买要先算清私有化交付时是不是每个客户都要授权）→ ③ 换的候选是 AG Grid Community、RevoGrid、TanStack Table，**一律要核同一份清单**（所有严肃表格库都把企业能力做成付费档）→ ④ 从第一天就用 `ui-kit-pc` 的 `<BeTable>`，让换引擎是改一个包而不是 40 个页面。结论写进 `docs/design/frontend-standard.md` 第 8 节。⚠️ 与端口册同类的时序性风险：**发现得越晚越改不动** |
 | 13 | **移动端组件库 `wot-design-uni` 不是 DCloud 官方件**，各端小程序的兼容性未经实测 | `apps/mobile` 编到微信 / 钉钉小程序时可能踩组件兼容坑 | 阶段三写 `apps/mobile` 时先拿三五个关键组件（表单、上传、扫码入口、下拉刷新）在目标端各编一遍再铺页面。**退路是 DCloud 官方的 `uni-ui`**（观感差一档，兼容性最稳）——退路要保留在设计计划里，别只写选定的那个 |
 
 ---

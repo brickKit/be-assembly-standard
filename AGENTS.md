@@ -42,20 +42,20 @@
 
 | Component | Version | Role | Full design |
 |---|---|---|---|
-| `mdm-customer` | 1.0.9 | Read-only hub, `data_scopes: none` | [`docs/design/zh/mdm-customer.md`](docs/design/zh/mdm-customer.md) |
-| `mdm-product` | 1.0.10 | Read-only hub, `data_scopes: none` | [`docs/design/zh/mdm-product.md`](docs/design/zh/mdm-product.md) |
-| `erp-inventory` | 1.0.17 | Physical command hub: the TCC triad + claim-first idempotency + `warehouse`-dimension data scoping | [`docs/design/zh/erp-inventory.md`](docs/design/zh/erp-inventory.md) |
-| `erp-finance` | 1.0.13 | Event-sink hub: 11 `FinanceService` rpcs + `legal_entity`-dimension data scoping | [`docs/design/zh/erp-finance.md`](docs/design/zh/erp-finance.md) |
-| `erp-sales` | 1.0.25 | The one link in the chain: all four strong dependencies called over real gRPC, `ConfirmOrder`'s TCC compensation chain + `org`/`owner` two-dimension data scoping | [`docs/design/zh/erp-sales.md`](docs/design/zh/erp-sales.md) |
-| `infra-authz` | 1.0.7 | The only component holding persistent state in the permission system: `GET /authz/bundle` policy distribution, pure-union with no Deny | [`docs/design/zh/infra-authz.md`](docs/design/zh/infra-authz.md) |
-| `infra-iam-casdoor` | 1.0.9 | `slot:iam` Default member: the two-token architecture, refresh-token rotation + replay detection | [`docs/design/zh/infra-iam-casdoor.md`](docs/design/zh/infra-iam-casdoor.md) |
-| `infra-workflow` | 1.0.4 | Zero-dependency approval-task hub: claim-first idempotency + `owner`/`org` two-dimension data scoping | [`docs/design/zh/infra-workflow.md`](docs/design/zh/infra-workflow.md) |
-| `infra-notification` | 1.0.4 | Routing hub: zero dependencies, zero outbound edges, lives entirely on the event graph, two-tier channel preference | [`docs/design/zh/infra-notification.md`](docs/design/zh/infra-notification.md) |
-| `integration-im-dingtalk` | 1.0.5 | First member of the `channel:im` family: DingTalk access-token cache refresh | [`docs/design/zh/integration-im-dingtalk.md`](docs/design/zh/integration-im-dingtalk.md) |
-| `infra-print` | 1.0.7 | The system's first Python component: a pure-function print-rendering hub, dual PDF/ZPL rendering | [`docs/design/zh/infra-print.md`](docs/design/zh/infra-print.md) |
-| `infra-bff-mobile` | 1.0.21 | The system's first TypeScript component: a GraphQL BFF, zero strong dependencies, zero database | [`docs/design/zh/infra-bff-mobile.md`](docs/design/zh/infra-bff-mobile.md) |
-| `frontend-standard` | 1.0.1 | A standalone PC Vite SPA + mobile Uni-app H5, the only component with no backend shape | [`docs/design/zh/frontend-standard.md`](docs/design/zh/frontend-standard.md) |
-| `crm-opportunity` | 1.0.12 | Phase 3's first business component, the CRM domain's first component: the full opportunity lifecycle | [`docs/design/zh/crm-opportunity.md`](docs/design/zh/crm-opportunity.md) |
+| `mdm-customer` | 1.0.9 | Read-only hub, `data_scopes: none` | [`docs/design/mdm-customer.md`](docs/design/mdm-customer.md) |
+| `mdm-product` | 1.0.10 | Read-only hub, `data_scopes: none` | [`docs/design/mdm-product.md`](docs/design/mdm-product.md) |
+| `erp-inventory` | 1.0.17 | Physical command hub: the TCC triad + claim-first idempotency + `warehouse`-dimension data scoping | [`docs/design/erp-inventory.md`](docs/design/erp-inventory.md) |
+| `erp-finance` | 1.0.13 | Event-sink hub: 11 `FinanceService` rpcs + `legal_entity`-dimension data scoping | [`docs/design/erp-finance.md`](docs/design/erp-finance.md) |
+| `erp-sales` | 1.0.25 | The one link in the chain: all four strong dependencies called over real gRPC, `ConfirmOrder`'s TCC compensation chain + `org`/`owner` two-dimension data scoping | [`docs/design/erp-sales.md`](docs/design/erp-sales.md) |
+| `infra-authz` | 1.0.7 | The only component holding persistent state in the permission system: `GET /authz/bundle` policy distribution, pure-union with no Deny | [`docs/design/infra-authz.md`](docs/design/infra-authz.md) |
+| `infra-iam-casdoor` | 1.0.9 | `slot:iam` Default member: the two-token architecture, refresh-token rotation + replay detection | [`docs/design/infra-iam-casdoor.md`](docs/design/infra-iam-casdoor.md) |
+| `infra-workflow` | 1.0.4 | Zero-dependency approval-task hub: claim-first idempotency + `owner`/`org` two-dimension data scoping | [`docs/design/infra-workflow.md`](docs/design/infra-workflow.md) |
+| `infra-notification` | 1.0.4 | Routing hub: zero dependencies, zero outbound edges, lives entirely on the event graph, two-tier channel preference | [`docs/design/infra-notification.md`](docs/design/infra-notification.md) |
+| `integration-im-dingtalk` | 1.0.5 | First member of the `channel:im` family: DingTalk access-token cache refresh | [`docs/design/integration-im-dingtalk.md`](docs/design/integration-im-dingtalk.md) |
+| `infra-print` | 1.0.7 | The system's first Python component: a pure-function print-rendering hub, dual PDF/ZPL rendering | [`docs/design/infra-print.md`](docs/design/infra-print.md) |
+| `infra-bff-mobile` | 1.0.21 | The system's first TypeScript component: a GraphQL BFF, zero strong dependencies, zero database | [`docs/design/infra-bff-mobile.md`](docs/design/infra-bff-mobile.md) |
+| `frontend-standard` | 1.0.1 | A standalone PC Vite SPA + mobile Uni-app H5, the only component with no backend shape | [`docs/design/frontend-standard.md`](docs/design/frontend-standard.md) |
+| `crm-opportunity` | 1.0.12 | Phase 3's first business component, the CRM domain's first component: the full opportunity lifecycle | [`docs/design/crm-opportunity.md`](docs/design/crm-opportunity.md) |
 
 ⚠️ **The one source of truth for a version's changelog is that component's own `component.yaml`** — this table only gives "what version is it now, what does it do," not a rehash of version history. To find out what a component has been through since it was created, read its own `component.yaml` or `git log`.
 
@@ -171,7 +171,7 @@ tools/{be-ops,be-acceptance,be-sdk-go,be-sdk-python,be-sdk-ts}/
 registry/                    Port registry + schema registry
 docs/standards/{en,zh}/       The always-valid regulatory documents, numbered 00-05 by read priority (00-Master Guide first; then, following the actual component-build workflow, documentation/reference-implementation/AI-development/testing/data-construction standards). English is canonical; docs/standards/zh/ is the parity Chinese version, same filenames (see 01-documentation-standard.md §6)
 docs/plans/                   One execution plan per phase (historical record, not a regulatory document)
-docs/design/{en,zh}/         Component design plans, one per component. Chinese is canonical here (English translations of the 14 component plans themselves are still pending — see §6)
+docs/design/                  Component design plans, one per component, Chinese-only (dev-facing, not part of the {zh,en} system — see §6). The one exception: docs/design/{en,zh}/_replaceability-map.md, genuinely bilingual because real end users need it too
 docs/ops/{en,zh}/             Deployment handbook + selection guide, for real end users of the shipped product (not AI-comfort — see 01-documentation-standard.md §6)
 AGENTS.zh.md                 Chinese parity version of this file (repo-root AGENTS.md must itself stay at the root — no folder to nest it in)
 ```

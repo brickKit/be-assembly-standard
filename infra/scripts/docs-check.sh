@@ -8,7 +8,7 @@ FAIL=0
 err(){ echo "✗ $*" >&2; FAIL=1; }
 
 need(){ [[ -f "$1" ]] || err "缺文件：$1"; }
-need "$ROOT/docs/design/zh/$REPO.md"
+need "$ROOT/docs/design/$REPO.md"
 need "$DIR/README.md"
 need "$DIR/docs/手册.md"
 need "$DIR/AGENTS.md"
@@ -32,10 +32,10 @@ grep -qF '@AGENTS.md' "$DIR/CLAUDE.md" 2>/dev/null || err "$DIR/CLAUDE.md 里没
 grep -nE '见上文|见上节|详见上|如前所述' "$DIR/AGENTS.md" 2>/dev/null && err "$DIR/AGENTS.md 里有「见上文」类引用"
 
 # 设计计划九问
-[[ "$(grep -c '^## ' "$ROOT/docs/design/zh/$REPO.md")" -ge 9 ]] \
-  || err "docs/design/zh/$REPO.md 的九个二级标题不齐"
+[[ "$(grep -c '^## ' "$ROOT/docs/design/$REPO.md")" -ge 9 ]] \
+  || err "docs/design/$REPO.md 的九个二级标题不齐"
 
-for f in "$ROOT/docs/design/zh/$REPO.md" "$DIR/README.md" "$DIR/docs/手册.md" "$DIR/AGENTS.md"; do
+for f in "$ROOT/docs/design/$REPO.md" "$DIR/README.md" "$DIR/docs/手册.md" "$DIR/AGENTS.md"; do
   # ⚠️ 曾经只查 'TBD|TODO|待补'，漏了实际写法"（Task N 后补：……）"——4 个
   # 最早建的组件（mdm-product/erp-inventory/erp-finance/erp-sales）的
   # README 里这类占位符存在了很久这条检查却一直显示通过，就是因为正则

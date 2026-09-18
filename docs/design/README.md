@@ -1,7 +1,5 @@
 # 组件设计计划
 
-*[English](../en/README.md)*
-
 一个组件一份，文件名 = 仓库名（`mdm-customer.md`、`erp-sales.md`…）。
 
 ## 什么时候写
@@ -57,11 +55,11 @@
 > 随开发进度逐条添加。**不要预先把 61 行都列出来**——那会让「还没写」和「写了但空着」混成一团。
 >
 > ✅ **阶段三的 9 份设计计划已全部齐备**（`infra-authz` 在阶段二随第 14 章写好，其余 8 份阶段三补齐），
-> 可以按 [`03-阶段三`](../../plans/03-阶段三-业务闭环.md) 开工。
+> 可以按 [`03-阶段三`](../plans/03-阶段三-业务闭环.md) 开工。
 
 ## 另外两类不是逐组件的文档
 
 | 文档 | 是什么 |
 |---|---|
-| [`_replaceability-map.md`](./_replaceability-map.md) | **跨组件**的参考——哪些组件的哪部分能换、换了牵连谁、怎么换。单个组件的设计计划 §8 只记了它自己的 Fork 点，这份把**已建成的几个组件**的 Fork 点画在依赖图上，回答"这个 Fork 点会不会牵连到依赖它的组件"——单份设计计划回答不了，因为它只看得到自己。随每个新组件设计计划写完同步补一行 |
-| `_调研记录/<阶段编号>-<阶段名>.md` | SOP-R 调研的**完整版**（设计计划 §8 是精炼版）。**一个阶段一份，不是一份累加到底**——写法与命名对齐 `docs/plans/` 的阶段编号，理由同 `docs/dev/field-tested-pitfalls-log.md` 已经在用的"文档要分文件管理"原则。目前只有 [`02-阶段二.md`](../_调研记录/02-阶段二.md)（`mdm-product`/`erp-inventory`/`erp-finance`/`erp-sales` 开工前查证 ERPNext/Odoo/Tryton/metasfresh 得到的原始发现） |
+| [`_replaceability-map.md`](zh/_replaceability-map.md)（[English](en/_replaceability-map.md)） | **跨组件**的参考——哪些组件的哪部分能换、换了牵连谁、怎么换。单个组件的设计计划 §8 只记了它自己的 Fork 点，这份把**已建成的几个组件**的 Fork 点画在依赖图上，回答"这个 Fork 点会不会牵连到依赖它的组件"——单份设计计划回答不了，因为它只看得到自己。随每个新组件设计计划写完同步补一行 |
+| `_调研记录/<阶段编号>-<阶段名>.md` | SOP-R 调研的**完整版**（设计计划 §8 是精炼版）。**一个阶段一份，不是一份累加到底**——写法与命名对齐 `docs/plans/` 的阶段编号，理由同 `docs/dev/field-tested-pitfalls-log.md` 已经在用的"文档要分文件管理"原则。目前只有 [`02-阶段二.md`](_调研记录/02-阶段二.md)（`mdm-product`/`erp-inventory`/`erp-finance`/`erp-sales` 开工前查证 ERPNext/Odoo/Tryton/metasfresh 得到的原始发现） |

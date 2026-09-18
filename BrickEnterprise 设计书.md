@@ -1422,7 +1422,7 @@ brickKit 是刻意极简的：不做网关、不做路由聚合、不建库建 s
 
 > **⭐ "可替换"在 ERP 交易组件（`erp-*`/`crm-*`）上的正确落点是 `customer_fork`，不是 slot。** slot 适合的是**没有人对它建依赖边**的位置——`frontend-*`、`slot:iam`、`slot:payroll`、`channel:*`。交易组件内部的客户差异，正确形态是 §9.5 的**代码级 Fork**（复制 `erp-sales` 为 `erp-sales-acme`，改这几处），或分歧小到只有几个分支、看得见的未来不会长出第五种时，用总纲 SOP-P 的内部策略。
 
-这条结论对下面"发现之后要做什么"那四步同样成立：**第 3 步「确认没有依赖边」不是走个过场，是真的会否决——9 条里 9 条都在这一步被拦下**。详见 `docs/design/zh/erp-inventory.md`/`erp-finance.md`/`erp-sales.md` 各自 §8 与 `docs/retrospectives/02-阶段二-验平台-复盘.md` §4 第 5 条。
+这条结论对下面"发现之后要做什么"那四步同样成立：**第 3 步「确认没有依赖边」不是走个过场，是真的会否决——9 条里 9 条都在这一步被拦下**。详见 `docs/design/erp-inventory.md`/`erp-finance.md`/`erp-sales.md` 各自 §8 与 `docs/retrospectives/02-阶段二-验平台-复盘.md` §4 第 5 条。
 
 **发现之后要做什么（顺序不能反）：**
 
