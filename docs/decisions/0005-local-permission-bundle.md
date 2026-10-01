@@ -4,7 +4,7 @@
 
 ## Decision
 
-`infra/authz` publishes the whole role → permission-key policy at `GET /authz/bundle`. The SDK in every process fetches it about every 15 seconds (a conditional GET, mostly answered `304`) into an in-process map, and a permission check is a lookup in that map. No component holds a permission table or a copy of the roles, and no component asks authz per request. Routes are registered only through the SDK functions that take a permission key, so an endpoint without one does not compile.
+`infra/authz` publishes the whole role → permission-key policy at `GET /authz/bundle`. The SDK in every process fetches it about every 15 seconds (a conditional GET, mostly answered `304`) into an in-process map, and a permission check is a lookup in that map. No component holds a permission table or a copy of the roles, and no component asks authz per request. The SDK's route functions take the permission key as a required argument, so calling one without a key does not compile; `make gates` rejects routes registered with the bare framework methods.
 
 ## Why
 

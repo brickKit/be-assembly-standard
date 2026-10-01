@@ -4,11 +4,11 @@
 
 ## Decision
 
-The frontend is Vue 3 with Uni-app. PC uses Ant Design Vue v4 with vxe-table for tables; mobile uses wot-design-uni; charts use ECharts. The two ends share only the design tokens (`packages/design-tokens`), never components.
+The frontend is Vue 3; the mobile app is built with Uni-app. PC uses Ant Design Vue v4 with vxe-table for tables; mobile uses wot-design-uni; charts use ECharts. The two ends share only the design tokens (`packages/design-tokens`), never components.
 
 ## Why
 
-Business forms need two-way binding, Vue and Uni-app cover PC and mobile H5 with one language, and generated Vue templates stay structurally plain enough to review. PC and mobile are different products — dense tables and long cascading forms on one side, card lists, scanning and two approval buttons on the other — so shared components would give a poor mobile app and a constrained PC app; AntDV's dependence on the DOM rules sharing out anyway.
+Business forms need two-way binding, Vue on PC and Uni-app on mobile H5 keep both ends in one framework, and generated Vue templates stay structurally plain enough to review. PC and mobile are different products — dense tables and long cascading forms on one side, card lists, scanning and two approval buttons on the other — so shared components would give a poor mobile app and a constrained PC app; AntDV's dependence on the DOM rules sharing out anyway.
 
 ## What this rules out
 

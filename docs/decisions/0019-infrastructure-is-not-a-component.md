@@ -4,7 +4,7 @@
 
 ## Decision
 
-The event bus (NATS), the object storage server (RustFS, through the S3 API), the gateway (Traefik) and the observability stack are infrastructure that runs outside the component graph (`make up`); they are not brickKit components and never appear in `brickkit.yaml`. Components reach them through shared configuration keys — `NATS_URL`, `S3_URL`, `OTEL_BASE_URL` — written once in `config/vars.yaml` (see [configuration conventions](../conventions/configuration.md)).
+The event bus (NATS), the object storage server (RustFS, through the S3 API), the gateway (Traefik) and the observability stack are infrastructure that runs outside the component graph (`make up`; the observability stack with `make obs-up`); they are not brickKit components and never appear in `brickkit.yaml`. Components reach them through shared configuration keys — `NATS_URL`, `S3_URL`, `OTEL_BASE_URL` — written once in `config/vars.yaml` (see [configuration conventions](../conventions/configuration.md)).
 
 ## Why
 
