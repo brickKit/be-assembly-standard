@@ -1,0 +1,39 @@
+apiVersion: brickkit/v1
+kind: Component
+metadata:
+  id: be/go-infra
+  name: Go infrastructure shell
+  version: 1.0.0
+  description: Runs the infrastructure and integration Go components (permissions, identity, workflow, notification, channels) in one process to save memory and CPU.
+  repository: https://github.com/brickKit/be-assembly-standard
+  license: Apache-2.0
+  vendor: brickKit
+shell:
+  members: []
+dependencies:
+  components: []
+configSchema:
+  type: object
+  properties:
+    PG_HOST: {type: string}
+    PG_PORT: {type: string, default: "5432"}
+    PG_DATABASE: {type: string}
+    PG_USER: {type: string}
+    PG_PASSWORD: {type: string, secret: true}
+    NATS_URL: {type: string}
+    OTEL_BASE_URL: {type: string, default: ""}
+    AUTHZ_BUNDLE_URL: {type: string}
+    IAM_JWKS_URL: {type: string}
+  required: [PG_HOST, PG_DATABASE, PG_USER, PG_PASSWORD, NATS_URL]
+deployment:
+  type: container
+  build:
+    context: .
+    dockerfile: Dockerfile
+  port: 8224
+  resources:
+    requests: {cpu: "200m", memory: "256Mi"}
+healthCheck:
+  type: http
+  path: /healthz
+  startPeriodSeconds: 300
