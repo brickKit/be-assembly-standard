@@ -125,9 +125,9 @@ bump-version:  ## 自动传播一次版本升级（算出全部下游要跟着�
 	@tools/be-acceptance/build/be-acceptance bump-version --root . --plan "$(PLAN)" $(if $(APPLY),--apply,)
 .PHONY: bump-version
 
-test-cross:  ## 组件局部测试：只跑 REPO 一个组件，强依赖 gRPC 指向真实在跑的依赖容器（要求强依赖树在跑）。make test-cross REPO=crm-opportunity；带过滤直接 bash infra/scripts/test-cross.sh <repo> -run <名>
-	@test -n "$(REPO)" || { echo "用法：make test-cross REPO=<仓库名>"; exit 1; }
-	@bash $(S)/test-cross.sh "$(REPO)"
+test-cross:  ## 组件局部测试：只跑 ID 一个组件，强依赖 gRPC 指向真实在跑的依赖容器（要求强依赖树在跑）。make test-cross ID=crm/opportunity [ARGS="-run TestX -v"]
+	@test -n "$(ID)" || { echo "用法：make test-cross ID=<scope>/<name> [ARGS=\"go test 额外参数\"]"; exit 2; }
+	@bash $(S)/test-cross.sh "$(ID)" $(ARGS)
 .PHONY: test-cross
 
 ##@ 本地开发数据（只给本地用，不用于生产/CI；每个组件自己拥有种子数据——总纲 SOP-W-7）

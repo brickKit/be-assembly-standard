@@ -11,16 +11,17 @@
 # 的 DNS 名）。测试进程照常在宿主机上跑（用宿主机 Go cache、-race 正常、
 # 输出正常），只有转发器是容器，跑完就删。
 #
-# 用法：test-cross.sh <仓库名> [传给 go test 的额外参数…]
-#   test-cross.sh crm-opportunity
-#   test-cross.sh crm-opportunity -run TestCreateOpportunity -v
+# 用法：test-cross.sh <scope>/<name> [传给 go test 的额外参数…]
+#   test-cross.sh crm/opportunity
+#   test-cross.sh crm/opportunity -run TestCreateOpportunity -v
 set -uo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
-REPO="${1:?用法：test-cross.sh <仓库名> [go test 额外参数…]}"
+ID="${1:?用法：test-cross.sh <scope>/<name> [go test 额外参数…]}"
+REPO="${ID//\//-}"   # crm/opportunity → crm-opportunity（仅用于日志）
 shift || true
 
-DIR="$ROOT/components/$(echo "$REPO" | sed 's#-#/#')"   # 只换第一个 -：infra-bff-mobile → infra/bff-mobile
+DIR="$ROOT/components/$ID"
 [ -d "$DIR" ] || { echo "✗ 找不到组件目录：$DIR" >&2; exit 1; }
 [ -f "$DIR/component.yaml" ] || { echo "✗ $DIR 下没有 component.yaml" >&2; exit 1; }
 
