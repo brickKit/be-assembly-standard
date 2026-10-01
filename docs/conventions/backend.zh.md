@@ -22,7 +22,7 @@
 | gRPC | `grpc-go` | `grpc.aio` |
 | 迁移 | `golang-migrate`，纯 `.sql` | `yoyo-migrations`，纯 `.sql` |
 
-绝不使用：Echo、Fiber、chi 或裸 `ServeMux`；GORM；`lib/pq`；Flask 或 Django；同步 `grpc`；SQLAlchemy；alembic；gunicorn 或多个 worker。同一种语言内迁移工具统一，一个外壳才能用同一种方式跑完它所有成员的迁移。
+绝不使用：Echo、Fiber、chi 或裸 `ServeMux`；GORM；`lib/pq`；Flask 或 Django；同步 `grpc`；SQLAlchemy；alembic；gunicorn 或多个 worker。同一种语言内迁移工具统一，这种语言的每个组件镜像里都是同一个迁移入口，Makefile 里也是同样的迁移目标。
 
 TypeScript BFF（`infra/bff-mobile`）跑在 Node 上，不进外壳。前端是 Vue 3：PC 端 Ant Design Vue 4 + vxe-table，移动端 Uni-app + wot-design-uni。每个 `package.json` 都写精确版本；前端规则见 [frontend.zh.md](frontend.zh.md)。
 
@@ -64,7 +64,7 @@ async def create_module(rt: Runtime) -> Module: ...
 besdk.run_standalone(create_module)
 ```
 
-模块交回它的 HTTP handler（用 `besdk.NewGinEngine(rt)` 建）、gRPC 注册函数、迁移文件和 `Start` / `Stop`。它自己从不监听端口：独立运行时由 `RunStandalone` 监听，合并时由外壳监听。两种形态调用的是同一个 `New`。
+模块交回它的 HTTP handler（用 `besdk.NewGinEngine(rt)` 建）、gRPC 注册函数和 `Start` / `Stop`。迁移不属于模块：`component.yaml` 声明迁移命令，brickKit 在服务启动前用组件自己的镜像执行它（SDK 已不再读取 `Module.Migrations`，留空即可）。它自己从不监听端口：独立运行时由 `RunStandalone` 监听，合并时由外壳监听。两种形态调用的是同一个 `New`。
 
 外壳在 Go 里是 `shell.Main("<name>", shell.Registry{...})`，在 Python 里是 `besdk.shell_runner.main(name, registry)`。registry 把每个成员的 ID 映射到它的 `New`，列出的成员与外壳 `shell.members` 完全一致。brickKit 在外壳启动之前用每个成员自己的镜像跑它的迁移，所以每个成员仍然要有自己的镜像。
 
@@ -96,7 +96,7 @@ Python 用蛇形命名对应同一套名字（`rt.config.endpoint`、`must_endpo
 - `/healthz` 只报告这个进程是否活着。绝不在里面检查数据库、NATS、authz 或其他组件：下游一次抖动就会让所有上游同时被判不健康、被重启，在外壳里就是所有成员一起重启。
 - `/healthz` 同时应答 `GET` 和 `HEAD`。SDK 的引擎两个都注册了，别自己再注册。
 - 启动宽限期（`startPeriodSeconds`）：Go 组件用默认值（60）不写；Python 120；Node 90；外壳镜像 300。
-- 基础镜像要有 `/bin/sh` 和 `wget`（Go 用 `alpine`，Python 用 `python:3.11-slim`）：健康检查经由 shell 执行。用 `scratch` 或 distroless，组件日志说"已就绪"，平台却永远报不健康。检查：`docker run --rm <镜像> sh -c 'wget --version'`。
+- 基础镜像要有 `/bin/sh` 和 `wget`（Go 用 `alpine`，Python 用 `python:3.12-slim`；be-sdk-python 要求 Python 3.12 及以上）：健康检查经由 shell 执行。用 `scratch` 或 distroless，组件日志说"已就绪"，平台却永远报不健康。检查：`docker run --rm <镜像> sh -c 'wget --version'`。
 
 ## 权限
 

@@ -130,7 +130,7 @@ L3 测这份实现的分支：错误路径、空指针和空字符串、并发�
 | `make migrate-idempotent` | 每个迁移连跑两次 |
 | `make contract-check` | 契约的破坏性变更检查 |
 | `make module-check` | [backend.zh.md](backend.zh.md#合并安全) 的合并安全规则 |
-| `make smoke` | 对这个组件和它的依赖树跑 `brickkit up --dry-run` |
+| `make smoke` | 在项目根目录跑 `brickkit up --dry-run`：包含本组件的依赖图能解析、文件能生成，不启动任何东西 |
 | `make seed`、`make seed-clean` 或 `make db-reset` | 演示数据及其撤销（[data.zh.md](data.zh.md#种子数据规则)） |
 
 L4 和消费者测试指向测试库：`TEST_PG_DSN` → `brickkit_test_db`，由 `make test-db-init` 建立和刷新；绝不指向演示库 `brickkit_db`。

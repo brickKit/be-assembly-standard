@@ -44,7 +44,7 @@
 | 文件 | 读者 | 内容 |
 |---|---|---|
 | `BRICKKIT.md`（+ `.zh.md`） | 使用这个组件的项目，以及它们的 AI | Purpose（它拥有什么、不拥有什么以及归谁）、Before you deploy（要建的库和角色、密钥）、Dependencies、Configuration（每个必填键）、Contracts、Shell declaration |
-| `AGENTS.md`（+ `.zh.md`） | 修改这个组件的 AI | Code map、Build and test、Design decisions、Pitfalls（绝不 / 症状 / 为什么）、Before changing code，然后是 brickKit 维护的块 |
+| `AGENTS.md`（+ `.zh.md`，本项目额外要求：brickKit 本身不翻译 `AGENTS.md`） | 修改这个组件的 AI | Code map、Build and test、Design decisions、Pitfalls（绝不 / 症状 / 为什么）、Before changing code，然后是 brickKit 维护的块 |
 | `CLAUDE.md` | Claude Code | 只有 `@AGENTS.md` 一行 |
 | `README.md`（+ `.zh.md`） | GitHub 上的人 | Use it in a project、Documentation（哪个文件回答哪个问题）、Development |
 | `docs/design.md`（+ `.zh.md`） | 修改设计的人 | 只写结论：边界（以及明确不归这个组件的东西）；拥有的数据（表、分区、终态）；契约面（含 `batchGet` 的 rpc、带权限键的 REST 路径、幂等接口、状态查询接口）；发布和消费的事件；依赖，以及为什么不依赖某个读者会以为它该依赖的东西；它在同步调用图里的位置；分区与归档；数据范围或为什么没有；参考实现（[reference-implementations.zh.md](reference-implementations.zh.md#记录参考了什么)）；未决问题 |

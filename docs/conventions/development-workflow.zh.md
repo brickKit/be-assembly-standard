@@ -2,7 +2,7 @@
 
 # 开发流程
 
-本项目里一次改动怎样从想法走到发布的版本。代码由 AI 写、人来审，所以每一步都切到一次会话放得下的大小，人只审不可逆的东西（见 [ai-development.zh.md](ai-development.zh.md#人要审什么)）。
+本项目里一次改动怎样从想法走到发布的版本。代码由 AI 写、人来审，所以每一步都切到一次会话放得下的大小，人只审不可逆的东西（见 [ai-development.zh.md](ai-development.zh.md#人要审什么)；一次会话做多少见 [ai-development.zh.md](ai-development.zh.md#一次会话做多少)）。
 
 ## 七步循环
 

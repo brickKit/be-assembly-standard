@@ -130,7 +130,7 @@ Every component has these commands, and they really run:
 | `make migrate-idempotent` | every migration twice in a row |
 | `make contract-check` | breaking-change check of the contracts |
 | `make module-check` | the merge-safety rules of [backend.md](backend.md#merge-safety) |
-| `make smoke` | `brickkit up --dry-run` for this component and its dependency tree |
+| `make smoke` | `brickkit up --dry-run` from the project root: the graph including this component resolves and the files generate, nothing starts |
 | `make seed`, `make seed-clean` or `make db-reset` | demo data and undoing it ([data.md](data.md#seed-data-rules)) |
 
 L4 and consumer tests point at the test database, `TEST_PG_DSN` → `brickkit_test_db`, created and refreshed by `make test-db-init`; never at the demo database `brickkit_db`.

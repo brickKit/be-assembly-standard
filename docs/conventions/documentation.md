@@ -44,7 +44,7 @@ Every component and every shell carries:
 | File | Reader | Holds |
 |---|---|---|
 | `BRICKKIT.md` (+ `.zh.md`) | projects using the component, and their AIs | Purpose (what it owns, what it doesn't and who does), Before you deploy (databases and roles to create, secrets), Dependencies, Configuration (every required key), Contracts, Shell declaration |
-| `AGENTS.md` (+ `.zh.md`) | the AI changing the component | Code map, Build and test, Design decisions, Pitfalls (never / symptom / why), Before changing code, then the block brickKit maintains |
+| `AGENTS.md` (+ `.zh.md`, a project addition: brickKit itself does not translate `AGENTS.md`) | the AI changing the component | Code map, Build and test, Design decisions, Pitfalls (never / symptom / why), Before changing code, then the block brickKit maintains |
 | `CLAUDE.md` | Claude Code | exactly `@AGENTS.md` |
 | `README.md` (+ `.zh.md`) | people on GitHub | Use it in a project, Documentation (which file answers which question), Development |
 | `docs/design.md` (+ `.zh.md`) | whoever changes the design | conclusions only: the boundary (and what is explicitly not this component's); the data it owns (tables, partitioning, terminal states); the contract surface (rpcs including `batchGet`, REST paths with permission keys, idempotent endpoints, status endpoints); events published and consumed; dependencies, and why not some expected one; its place in the synchronous call graph; partitioning and archival; data scopes or why none; reference implementations ([reference-implementations.md](reference-implementations.md#recording-what-was-consulted)); open questions |

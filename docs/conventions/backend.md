@@ -22,7 +22,7 @@ The stack is fixed; it is not chosen per component.
 | gRPC | `grpc-go` | `grpc.aio` |
 | Migrations | `golang-migrate`, raw `.sql` | `yoyo-migrations`, raw `.sql` |
 
-Never: Echo, Fiber, chi or a bare `ServeMux`; GORM; `lib/pq`; Flask or Django; synchronous `grpc`; SQLAlchemy; alembic; gunicorn or more than one worker. The migration tool is the same within a language; that is what lets one shell run all its members' migrations the same way.
+Never: Echo, Fiber, chi or a bare `ServeMux`; GORM; `lib/pq`; Flask or Django; synchronous `grpc`; SQLAlchemy; alembic; gunicorn or more than one worker. The migration tool is the same within a language, so every component of that language carries the same migrate entrypoint in its image and the same migration targets in its Makefile.
 
 The TypeScript BFF (`infra/bff-mobile`) runs on Node and never enters a shell. The frontend is Vue 3: Ant Design Vue 4 + vxe-table on PC, Uni-app + wot-design-uni on mobile. Every `package.json` pins exact versions; the frontend rules are in [frontend.md](frontend.md).
 
@@ -64,7 +64,7 @@ async def create_module(rt: Runtime) -> Module: ...
 besdk.run_standalone(create_module)
 ```
 
-The module returns its HTTP handler (built with `besdk.NewGinEngine(rt)`), its gRPC registration, its migrations and its `Start` / `Stop` functions. It never listens on a port: `RunStandalone` does when the component runs on its own, the shell does when it is merged. Both call the same `New`.
+The module returns its HTTP handler (built with `besdk.NewGinEngine(rt)`), its gRPC registration and its `Start` / `Stop` functions. Migrations are not part of the module: `component.yaml` declares the migration command, and brickKit runs it from the component's own image before the service starts (`Module.Migrations` is no longer read by the SDK; leave it empty). It never listens on a port: `RunStandalone` does when the component runs on its own, the shell does when it is merged. Both call the same `New`.
 
 A shell is `shell.Main("<name>", shell.Registry{...})` in Go and `besdk.shell_runner.main(name, registry)` in Python. The registry maps each member's ID to its `New`, and lists exactly the members in the shell's `shell.members`. brickKit runs every member's migration with that member's own image before the shell starts, so each member still has its own image.
 
@@ -96,7 +96,7 @@ Also never call `gin.New()` (the engine loses the SDK's middleware: tracing, met
 - `/healthz` reports only that this process is alive. Never check the database, NATS, authz or another component in it: one downstream hiccup would mark every upstream unhealthy and restart them, and in a shell restart every member at once.
 - `/healthz` answers both `GET` and `HEAD`. The SDK's engine registers both; don't register your own.
 - Startup grace (`startPeriodSeconds`): Go components leave the default (60); Python 120; Node 90; shell images 300.
-- The base image has `/bin/sh` and `wget` (`alpine` for Go, `python:3.11-slim` for Python): the health check runs through a shell. On `scratch` or distroless the component logs "ready" and the platform reports it unhealthy forever. Check: `docker run --rm <image> sh -c 'wget --version'`.
+- The base image has `/bin/sh` and `wget` (`alpine` for Go, `python:3.12-slim`; be-sdk-python needs Python 3.12 or later for Python): the health check runs through a shell. On `scratch` or distroless the component logs "ready" and the platform reports it unhealthy forever. Check: `docker run --rm <image> sh -c 'wget --version'`.
 
 ## Permissions
 

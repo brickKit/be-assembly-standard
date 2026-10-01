@@ -2,7 +2,7 @@
 
 # Development workflow
 
-How a change moves from an idea to a released version in this project. The work is done by an AI and reviewed by a human, so the steps are cut to fit one session each, and a human reviews only what cannot be undone (see [ai-development.md](ai-development.md#what-a-human-reviews)).
+How a change moves from an idea to a released version in this project. The work is done by an AI and reviewed by a human, so the steps are cut to fit one session each, and a human reviews only what cannot be undone (see [ai-development.md](ai-development.md#what-a-human-reviews); how much fits in one session: [ai-development.md](ai-development.md#how-much-in-one-session)).
 
 ## The seven-step loop
 
