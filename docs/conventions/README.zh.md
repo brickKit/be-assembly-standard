@@ -11,6 +11,7 @@
 | [configuration.zh.md](configuration.zh.md) | 给配置键起名；接 PostgreSQL、NATS、对象存储、authz、iam；填 `config/` |
 | [development-workflow.zh.md](development-workflow.zh.md) | 开始做一个组件；安排步骤顺序；真机运行；升版本号；发布 |
 | [backend.zh.md](backend.zh.md) | 写 Go 或 Python 后端代码：技术栈、模块入口、`rt`、权限、数据范围、调用其他组件、SQL、事件、健康检查 |
+| [frontend.zh.md](frontend.zh.md) | 写前端代码：技术栈、设计 token、ui-kit、页面模板、PC 骨架、偏好、功能与权限、国际化 |
 | [testing.zh.md](testing.zh.md) | 决定写哪种测试、放哪一层；跑测试；被一个红测试卡住 |
 | [data.zh.md](data.zh.md) | 设计种子数据或测试数据；依赖方缺你要的数据或能力 |
 | [registries.zh.md](registries.zh.md) | 选端口、schema、数据库角色或权限键 |

@@ -24,7 +24,7 @@
 
 绝不使用：Echo、Fiber、chi 或裸 `ServeMux`；GORM；`lib/pq`；Flask 或 Django；同步 `grpc`；SQLAlchemy；alembic；gunicorn 或多个 worker。同一种语言内迁移工具统一，一个外壳才能用同一种方式跑完它所有成员的迁移。
 
-TypeScript BFF（`infra/bff-mobile`）跑在 Node 上，不进外壳。前端是 Vue 3：PC 端 Ant Design Vue 4 + vxe-table，移动端 Uni-app + wot-design-uni。每个 `package.json` 都写精确版本。
+TypeScript BFF（`infra/bff-mobile`）跑在 Node 上，不进外壳。前端是 Vue 3：PC 端 Ant Design Vue 4 + vxe-table，移动端 Uni-app + wot-design-uni。每个 `package.json` 都写精确版本；前端规则见 [frontend.zh.md](frontend.zh.md)。
 
 **选依赖库版本**：能自由选的，跟系统里已有的保持一致；依赖链强制要求更新的版本时，跟着走。
 
@@ -104,7 +104,7 @@ Python 用蛇形命名对应同一套名字（`rt.config.endpoint`、`must_endpo
 - **权限键是注册路由的一部分。** Go：`besdk.GET(r, path, permKey, h)`（以及 `POST`、`PUT`、`PATCH`、`DELETE`）；Python：`besdk.get(router, path, perm, handler)`；BFF：每个 resolver 都包在 `requirePermission(perm, resolver)` 里。公开路由要显式写 `besdk.Public`；"登录即可"是 `besdk.Authenticated`。用 Gin 裸 `r.GET` 或 FastAPI 裸 `@app.get` 注册的业务路由完全没有校验，而且毫无症状；`make gates` 会扫出来。
 - 校验是一次进程内 map 查找。SDK 大约每 15 秒向 infra/authz 拉一次 bundle（`AUTHZ_BUNDLE_URL`）；没有任何组件持有权限表，JWT 只带身份（`sub`、角色、`dept_path`、`org_id`），从不带权限键。bundle 第一次加载成功之前，受保护的路由返回 `503`，`/healthz` 照常健康。用户角色变更之前签发的 token 返回 `401 token_stale`；前端静默刷新 token，并且只重试一次原请求。
 - 权限是纯并集，没有 deny。"除了 X 都行"就是给一个不含 X 的角色。
-- 前端只在三者同时满足时显示一个路由：已安装（`GET /api/tenant/features`）、该用户有权（`GET /api/me/permissions`）、已登录。只查第一个，结果是菜单看得见、点进去整页 403。前端隐藏从来不是安全边界：拒绝数据的是后端。
+- 前端只在三者同时满足时显示一个路由：已安装（`GET /api/tenant/features`）、该用户有权（`GET /api/me/permissions`）、已登录。只查第一个，结果是菜单看得见、点进去整页 403。前端隐藏从来不是安全边界：拒绝数据的是后端（[frontend.zh.md](frontend.zh.md#功能权限与菜单)）。
 
 ## 数据范围
 

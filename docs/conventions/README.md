@@ -11,6 +11,7 @@ The rules every component, shell and tool in this project follows. brickKit's sk
 | [configuration.md](configuration.md) | naming a config key; wiring PostgreSQL, NATS, object storage, authz or iam; filling `config/` |
 | [development-workflow.md](development-workflow.md) | starting work on a component; ordering the steps; running it for real; bumping a version; releasing |
 | [backend.md](backend.md) | writing Go or Python backend code: stack, module entry, `rt`, permissions, data scopes, calls to other components, SQL, events, health check |
+| [frontend.md](frontend.md) | writing frontend code: stack, design tokens, ui-kits, page templates, the PC skeleton, preferences, features and permissions, i18n |
 | [testing.md](testing.md) | choosing which test to write and in which layer; running tests; stuck on a red test |
 | [data.md](data.md) | designing seed data or test data; a dependency lacks the data or the capability you need |
 | [registries.md](registries.md) | choosing a port, a schema, a database role or a permission key |
