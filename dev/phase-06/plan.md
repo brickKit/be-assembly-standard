@@ -27,6 +27,9 @@
 - [ ] **删除 06a 的 SDD 执行区**：`.superpowers/sdd/plan-06a/` 已被 git 忽略，里面有 ledger、各 Task 的审查报告和发布说明。写 `plan-06b.md` 时还要查阅，**`plan-06b.md` 写完并提交后再删**（`rm -rf .superpowers/sdd/plan-06a`）。要点已整理进 [`batches/06a.md`](batches/06a.md)，删除后不会丢失信息。
 - [ ] **写 `plan-06b.md` 时以这些为准**：外壳的组装和发布步骤，以决策 0022（外壳独立成仓）和 `component-loop.md` §4 为准；`spec.md`、`plan-06a.md`、`batches/06a.md` 里仍写着"外壳是项目代码"，属于历史记录，不要照抄。06b 的其余输入见 `batches/06a.md` §6，以及外壳拆仓审查留下的事项：外壳的 `BRICKKIT.md` 不得引用本项目的 `registry/ports.tsv` 和 `make db-init`，必须在外壳发布 1.0.0 之前改掉。
 
+- [ ] **SDK 注释里的旧文档路径**：be-sdk-go `connection.go`、be-sdk-python `connection.py` 的注释还写着 `docs/conventions/…`，06b 下次升 SDK 时顺手改成 `docs/en/01-conventions/…`。
+- [ ] **阶段 06 结束时**：删掉 `docs/{en,zh}/02-decisions/README.md` 里"阶段 06 内决策可原地改写"那句说明（R33），之后推翻决策一律另起编号、旧文件标注 Superseded。
+
 ## 贯穿全阶段的规则
 
 - 以最终目的为主：过渡状态下的临时问题不修。06a 和 06b 期间，`brickkit lint` 在项目根目录会因为 `components/` 下还没重建的旧 `component.yaml` 报错，这是预期之中的，不处理；单个组件的验证在组件仓库里跑 `brickkit lint --strict`。
