@@ -121,7 +121,7 @@ Also never call `gin.New()` (the engine loses the SDK's middleware: request IDs,
 - Related data comes through the owner's `batchGet`, never through a cross-schema JOIN. Every aggregate root offers `batchGet`.
 - No component imports another. The only shared code is `be-sdk-*` and a component's generated contract package `gen/<domain>/<name>`, published as its own Go module and imported directly. Copying the generated code instead registers the same proto file twice in one process, and the second registration panics once caller and callee share a shell.
 - A component that aggregates many others (the BFF, notification routing) declares every one of those dependencies `optional: true`; a single required one keeps it from starting wherever that component wasn't bought. A component the customer didn't buy is simply not added to the project.
-- authz and iam are not dependency edges: their addresses are the configuration keys `AUTHZ_BUNDLE_URL` and `IAM_JWKS_URL` ([configuration.md](configuration.md#dependency-addresses)).
+- For polling the permission bundle and verifying tokens, authz and iam are not dependency edges: their addresses are the configuration keys `AUTHZ_BUNDLE_URL` and `IAM_JWKS_URL`. A component that calls a business API of authz or iam over gRPC (for example `infra/iam-casdoor` → `infra/authz`) declares that dependency like any other and uses the injected `*_ENDPOINT` for that call only ([configuration.md](configuration.md#dependency-addresses)).
 
 ## Database
 

@@ -121,7 +121,7 @@ Python 用蛇形命名对应同一套名字（`rt.config.endpoint`、`must_endpo
 - 关联数据通过数据所有者的 `batchGet` 拿，绝不跨 schema JOIN。每个聚合根都提供 `batchGet`。
 - 组件之间互不 import。唯一共享的代码是 `be-sdk-*`，以及组件生成的契约包 `gen/<domain>/<name>`：它作为独立的 Go module 发布、被直接 import。改成复制一份生成代码，同一个 proto 文件会在一个进程里注册两次，调用方和被调方进了同一个外壳时第二次注册直接 panic。
 - 聚合很多组件的组件（BFF、通知路由）把这些依赖全部声明为 `optional: true`；只要有一个是必需依赖，客户没买那个组件的地方它就起不来。客户没买的组件，干脆不加进项目。
-- authz 和 iam 不是依赖边：它们的地址是配置键 `AUTHZ_BUNDLE_URL` 和 `IAM_JWKS_URL`（[configuration.zh.md](configuration.zh.md#依赖地址)）。
+- 拉权限 bundle 和验证 token 时，authz 和 iam 不是依赖边：它们的地址是配置键 `AUTHZ_BUNDLE_URL` 和 `IAM_JWKS_URL`。通过 gRPC 调用 authz 或 iam 业务接口的组件（例如 `infra/iam-casdoor` → `infra/authz`），与其他依赖一样声明这条依赖，注入的 `*_ENDPOINT` 只用于这类调用（[configuration.zh.md](configuration.zh.md#依赖地址)）。
 
 ## 数据库
 
