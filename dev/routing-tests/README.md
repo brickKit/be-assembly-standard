@@ -7,11 +7,11 @@
 
 一个对本项目零了解的 AI（Opus / Sonnet / Haiku 三档），只拿到项目路径和一句请求者的原话，能不能：
 
-1. **找对路**：从 `AGENTS.md` 出发，经正式文档（`AGENTS.md`、`docs/conventions/`、`docs/decisions/`、`docs/seed-data.md`、`.claude/skills/`、各组件的 `BRICKKIT.md` / `AGENTS.md` / 契约）走到答案所在的文件和章节，不进 `dev/`、`archive/`、brickKit 仓库、依赖方源码；
+1. **找对路**：从 `AGENTS.md` 出发，经正式文档（`AGENTS.md`、`docs/en/01-conventions/`、`docs/en/02-decisions/`、`docs/en/03-seed-data.md`、`.claude/skills/`、各组件的 `BRICKKIT.md` / `AGENTS.md` / 契约）走到答案所在的文件和章节，不进 `dev/`、`archive/`、brickKit 仓库、依赖方源码；
 2. **判对结论**：改动请求按 `brickkit-plan-change` 的四种结论之一（只改一个组件 / 先改上游 / 需要新组件 / 冲突停下交人）；不是改动的请求直接作答，不硬套改动流程；
 3. **答对内容**：答案里有该有的要点，没有与决策、约定相反的建议，没有编造的命令、文件、配置键，没有 brickKit 0.x 的旧做法。
 
-正式文档是按"写给较弱的模型"的标准写的（`docs/conventions/documentation.md`），所以三档模型**各自**都要过关，不是取最好成绩。
+正式文档是按"写给较弱的模型"的标准写的（`docs/en/01-conventions/08-documentation.md`），所以三档模型**各自**都要过关，不是取最好成绩。
 
 ## 2. 题库结构
 
@@ -47,7 +47,7 @@
    - 配置键名以 06b 之后的实际 `configSchema` 为准（题目里的 `DEFAULT_WAREHOUSE_ID`、`DINGTALK_APP_SECRET` 等按约定推算）；
    - 决策原文变过的，按新原文核对相关题的要点（例如 0021 已收窄为"只拉 bundle / 验 token 不建边"，Q20、Q24 按它写）；
    - G 类（Q29–Q31）的「必含」逐条对照 06b 写成的 `BRICKKIT.md`：文件里没写的点**删掉**，不能留成必含，只读那一份文件的考生无从得知；
-   - `docs/ops/` 在 06e 之前不存在；若开考时已存在，把它加进 Q23 的期望路径。
+   - 部署文档（06e 在 `docs/en/`、`docs/zh/` 里新增的编号部署文件夹）在 06e 之前不存在；若开考时已存在，把它加进 Q23 的期望路径。
 
    核对引起的题目修改**单独提交**，提交信息写明改了哪题、为什么（前提失效 / 键名变化 / 路径变化）。开考后不再改题。
 
@@ -135,10 +135,10 @@ G 类（Q29–Q31）：
 
 - **起点**：A–F 类在首选考法下 `AGENTS.md` 总是随 `CLAUDE.md` 自动加载，所以不单独检查"从哪里开始"；题目把 `AGENTS.md` 的某一行列为必经，指的是考生的行动顺着那一行走了（第一个主动打开的相关文件正是那一行指向的文件，或考生在回答里引用了那一行）。G 类没有自动加载，起点就是给出的 `BRICKKIT.md`。
 - **「必经」项**：期望路径里标「必经」的每一条算 1 项；一条里写了"A 或 B""任选其一""至少其三"的，按写法满足即算到达。
-- **额外文件**：考生主动打开（Read / `cat` / `sed` / `head` 等读出内容）的、不在本题「必经」「可选」列表里的文件。不算额外：自动加载的 `AGENTS.md` / `CLAUDE.md`；列表中文件的 `.zh.md` 译本；只列目录（`ls`、Glob）；`brickkit <命令> --help`。读本题负责组件的源码不算禁止，但计入额外文件。
+- **额外文件**：考生主动打开（Read / `cat` / `sed` / `head` 等读出内容）的、不在本题「必经」「可选」列表里的文件。不算额外：自动加载的 `AGENTS.md` / `CLAUDE.md`；列表中文件的中文版本（`.zh.md` 译本，或 `docs/zh/` 下与 `docs/en/` 同路径的文件）；只列目录（`ls`、Glob）；`brickkit <命令> --help`。读本题负责组件的源码不算禁止，但计入额外文件。
 - **搜索与禁止范围**：在全仓（或项目根）做的搜索，输出里列出了 `archive/`、`dev/`、依赖方源码下的路径或行，**不算**违规；打开读取这类文件的内容（Read / `cat` / `sed` / `head` 等），或把搜索限定在禁止目录里（如 `grep -r X archive/`），**算**违规，路径 0 分。
-- 中文译本（`AGENTS.zh.md`、`*.zh.md`）与英文主文件等价。
-- 经决策索引（`docs/decisions/README.md`）而不是 Where to look 到达同一份决策，不扣分。
+- 中文版本（`AGENTS.zh.md`、`*.zh.md`、`docs/zh/` 下与 `docs/en/` 同路径的文件）与英文主文件等价。
+- 经决策索引（`docs/en/02-decisions/README.md`）而不是 Where to look 到达同一份决策，不扣分。
 - G 类读了给出文件以外的任何文件 = 0。
 
 ### 结论（O）
@@ -186,15 +186,15 @@ G 类（Q29–Q31）：
 
 ## 7. 答错之后：错题映射到文档修改
 
-原则：**改正式文档，不改题**——除非题本身错了。这和"不为通过测试去改测试"是同一条纪律（`docs/conventions/testing.md` 的铁律）。
+原则：**改正式文档，不改题**——除非题本身错了。这和"不为通过测试去改测试"是同一条纪律（`docs/en/01-conventions/06-testing.md` 的铁律）。
 
 | 失分处 | 通常说明 | 修哪里 |
 |---|---|---|
 | P：没从 Where to look 找到入口，或找到了错的行 | 路由行的关键词不是请求者会用的说法 | `AGENTS.md`（及 `AGENTS.zh.md`）Where to look：在对应行补请求者的说法，或加一行；不复述题目原文，写这一类请求的常见说法 |
-| P：到了入口文件但没走到下一份必需文件 | 两份需要一起读的文档没有互相指向 | 在前一份文档对应章节加链接（`documentation.md` 写作规则 7） |
-| P：读进了禁止范围（`archive/`、源码、brickKit 仓库） | 正式文档里缺了它想找的事实，只好去挖 | 把那个事实写进该在的正式文档（组件事实进该组件 `BRICKKIT.md`/`AGENTS.md`，项目规则进 `docs/conventions/`）；**绝不**加指向 `dev/`、`archive/` 的链接 |
+| P：到了入口文件但没走到下一份必需文件 | 两份需要一起读的文档没有互相指向 | 在前一份文档对应章节加链接（`08-documentation.md` 写作规则 7） |
+| P：读进了禁止范围（`archive/`、源码、brickKit 仓库） | 正式文档里缺了它想找的事实，只好去挖 | 把那个事实写进该在的正式文档（组件事实进该组件 `BRICKKIT.md`/`AGENTS.md`，项目规则进 `docs/en/01-conventions/`）；**绝不**加指向 `dev/`、`archive/` 的链接 |
 | O：冲突题没停 | 决策的「What this rules out」没覆盖这种说法，或 `AGENTS.md` 没把这类请求路由到决策 | 在该决策的 rules out 里补这种请求的说法；必要时在 Where to look 加路由 |
-| O：把新组件判成在现有组件里加分支，或槽位族 / 客户 fork 判反 | `BRICKKIT.md` 的 Purpose 没写清"不归我、归谁"，或 0012 / slot-family 一节的判据不够直白 | 该组件 `BRICKKIT.md` Purpose 的 does-not-own；`reference-implementations.md#slot-family-signal` 的表 |
+| O：把新组件判成在现有组件里加分支，或槽位族 / 客户 fork 判反 | `BRICKKIT.md` 的 Purpose 没写清"不归我、归谁"，或 0012 / slot-family 一节的判据不够直白 | 该组件 `BRICKKIT.md` Purpose 的 does-not-own；`10-reference-implementations.md#slot-family-signal` 的表 |
 | O：先改上游类漏了上游或顺序反了 | 消费方的 `BRICKKIT.md` 没写它依赖上游的哪个契约/事件 | 消费方 `BRICKKIT.md` Dependencies / Contracts |
 | A：漏了要点或说错事实 | 叶子文档缺这个事实，或写得有歧义 | 对应叶子文档（约定文件、决策、组件文档、skill 以外的项目文件） |
 | A：说出了 brickKit 0.x 的旧做法 | 有正式文档还残留旧说法，或缺新说法让模型凭记忆补 | 找出残留处修掉；缺的补上 |

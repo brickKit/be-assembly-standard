@@ -1,4 +1,4 @@
-[English](ai-development.md) · [中文](ai-development.zh.md)
+[English](09-ai-development.md) · [中文](../../zh/01-conventions/09-ai-development.md)
 
 # AI development conventions
 
@@ -86,7 +86,7 @@ A complex business function an AI writes, past 50 lines, carries a comment with 
 | Unit | Size | Rule |
 |---|---|---|
 | **Session** | one task, or 2–4 red-green cycles of one task | at half the context, wrap up, commit, start a new session; the headroom is what lets the next one read the surrounding code |
-| **Red-green cycle** | one test and the least code that turns it green | three rounds without green: the step is too big, cut it ([testing.md](testing.md#when-stuck)) |
+| **Red-green cycle** | one test and the least code that turns it green | three rounds without green: the step is too big, cut it ([06-testing.md](06-testing.md#when-stuck)) |
 | **Commit** | one cycle | a failure rolls back exactly to the last green state |
 
 A new session reads, at its start, and no more:

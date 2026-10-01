@@ -1,4 +1,4 @@
-[English](0015-two-tier-navigation.md) · [中文](0015-two-tier-navigation.zh.md)
+[English](0015-two-tier-navigation.md) · [中文](../../../zh/02-decisions/04-frontend/0015-two-tier-navigation.md)
 
 # 0015 PC navigation is two-tier, console style, with in-app tabs
 

@@ -1,4 +1,4 @@
-[English](0016-four-user-preferences.md) · [中文](0016-four-user-preferences.zh.md)
+[English](0016-four-user-preferences.md) · [中文](../../../zh/02-decisions/04-frontend/0016-four-user-preferences.md)
 
 # 0016 Users own four preferences
 

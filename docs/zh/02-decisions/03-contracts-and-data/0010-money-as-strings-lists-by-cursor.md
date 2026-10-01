@@ -1,4 +1,4 @@
-[English](0010-money-as-strings-lists-by-cursor.md) · [中文](0010-money-as-strings-lists-by-cursor.zh.md)
+[English](../../../en/02-decisions/03-contracts-and-data/0010-money-as-strings-lists-by-cursor.md) · [中文](0010-money-as-strings-lists-by-cursor.md)
 
 # 0010 金额是字符串编码的十进制；列表按游标分页
 

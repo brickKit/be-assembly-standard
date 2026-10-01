@@ -1,4 +1,4 @@
-[English](0012-variants-become-slot-families.md) · [中文](0012-variants-become-slot-families.zh.md)
+[English](0012-variants-become-slot-families.md) · [中文](../../../zh/02-decisions/01-architecture/0012-variants-become-slot-families.md)
 
 # 0012 A slot family needs several reasonable implementations and no dependency edge
 

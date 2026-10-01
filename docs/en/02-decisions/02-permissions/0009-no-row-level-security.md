@@ -1,4 +1,4 @@
-[English](0009-no-row-level-security.md) · [中文](0009-no-row-level-security.zh.md)
+[English](0009-no-row-level-security.md) · [中文](../../../zh/02-decisions/02-permissions/0009-no-row-level-security.md)
 
 # 0009 No row-level security, no sharing engine
 

@@ -1,4 +1,4 @@
-[English](reference-implementations.md) · [中文](reference-implementations.zh.md)
+[English](../../en/01-conventions/10-reference-implementations.md) · [中文](10-reference-implementations.md)
 
 # 参考实现
 
@@ -80,7 +80,7 @@
 
 - **其中一种明显更好** → 那就是默认实现，没有别的事要做。
 - **几种都站得住，而且所在位置没有任何组件对它建依赖边** → 槽位族：每个槽位装一个成员（channel 族可以并装多个），每个成员暴露完全相同的契约。符合条件的是这类位置：前端、身份提供方（组件通过配置而不是依赖边找到它）、薪资、通知渠道。
-- **几种都站得住，但长在被别的组件依赖的组件里**（所有 `erp/*`、`crm/*` 交易组件）→ **不是槽位**。依赖方钉死了那个组件，换成另一个成员会断掉这条边。正确的形态是这个组件的**客户 Fork**（为该客户复制一份，`metadata.id` 不变，因为依赖方的地址变量由它推导；改那几处，版本照常走，依赖方用 `brickkit upgrade` / `make bump-version` 移动版本钉）；分歧只有几个分支、看得见的将来不会再长出新变体时，用**内部策略**（[ai-development.zh.md](ai-development.zh.md#何时用设计模式)）。
+- **几种都站得住，但长在被别的组件依赖的组件里**（所有 `erp/*`、`crm/*` 交易组件）→ **不是槽位**。依赖方钉死了那个组件，换成另一个成员会断掉这条边。正确的形态是这个组件的**客户 Fork**（为该客户复制一份，`metadata.id` 不变，因为依赖方的地址变量由它推导；改那几处，版本照常走，依赖方用 `brickkit upgrade` / `make bump-version` 移动版本钉）；分歧只有几个分支、看得见的将来不会再长出新变体时，用**内部策略**（[09-ai-development.md](09-ai-development.md#何时用设计模式)）。
 
 | 功能 | 分歧 | 结论 |
 |---|---|---|
@@ -93,8 +93,8 @@
 
 确认一个槽位族成立之后（多种合理变体，**并且**该位置没有依赖边），按这个顺序：
 
-1. **写任何实现之前先把这个族记下来**：族名、每个成员完全一致的契约、每个成员适配哪类客户、默认装哪一个。新增一个族是一条决策记录（[../decisions/README.zh.md](../decisions/README.zh.md)）。
-2. 把每个成员的端口和 schema 追加进 `registry/`（[registries.zh.md](registries.zh.md)）。
+1. **写任何实现之前先把这个族记下来**：族名、每个成员完全一致的契约、每个成员适配哪类客户、默认装哪一个。新增一个族是一条决策记录（[../02-decisions/README.md](../02-decisions/README.md)）。
+2. 把每个成员的端口和 schema 追加进 `registry/`（[07-registries.md](07-registries.md)）。
 3. 然后才设计和实现每个成员。
 
 **绝不在一个组件里写 `if costingMethod == "fifo"` 把几类客户的变体塞在一起**：那样每个客户的需求都会约束其他所有客户。在被依赖的组件里，这种情况该做成 Fork；唯一的例外是分歧只有两三个分支、看得见的将来不会再长出新变体，写成内部策略。

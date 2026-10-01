@@ -2,7 +2,7 @@
 
 > 开发文件（`dev/`），阶段结束后归档；正式文档不得链接本文件。
 > 用途：06b 重建 13 个后端组件（B1–B6）时，每个组件逐项照做、逐项勾选；某个批次补齐了一个外壳的成员时，再走 §4 外壳组装子清单。06c 的 `frontend/standard` 也按这份清单走（第 4 步换成前端测试）。
-> 依据（写本文件时逐个读过的现状）：spec §5/§10/§11、项目 `AGENTS.md`、`docs/conventions/{configuration,registries,backend,testing,data,documentation,development-workflow}.md`、`docs/decisions/0020–0022`、5 个 brickKit skill + `version-bump-ship`、根 `Makefile` 与 `infra/scripts/`、三个 SDK 的 README、`dev/phase-06/frontend-needs.md`、`dev/phase-06/to-verify.md`、`components/mdm/customer` 与 `components/erp/sales` 的真实文件，以及在 scratch 项目里对 brickKit CLI v1.0.1 的实测（§9 附录 B）。
+> 依据（写本文件时逐个读过的现状）：spec §5/§10/§11、项目 `AGENTS.md`、`docs/en/01-conventions/{04-configuration,07-registries,02-backend,06-testing,05-data,08-documentation,01-development-workflow}.md`、`docs/en/02-decisions/` 的 0020–0022、5 个 brickKit skill + `version-bump-ship`、根 `Makefile` 与 `infra/scripts/`、三个 SDK 的 README、`dev/phase-06/frontend-needs.md`、`dev/phase-06/to-verify.md`、`components/mdm/customer` 与 `components/erp/sales` 的真实文件，以及在 scratch 项目里对 brickKit CLI v1.0.1 的实测（§9 附录 B）。
 > 规则冲突时以正式文档为准，并在批次记录里写明冲突在哪；不要按本清单硬做。
 
 ---
@@ -11,7 +11,7 @@
 
 1. 开始一个组件前，把 §3 的整段清单复制进当前批次记录 `dev/phase-06/batches/<批次>.md`（模板见 §8），在记录里勾选、贴输出。本文件本身不勾。
 2. 每条命令的**关键输出原文**贴进记录，不截断、不只取 `tail`（`tail -N` 曾经把真正的警告截掉过）。耗时也记。
-3. 判定标准写成"通过："的条目，不满足就不往下走：先按 testing.md 的 [When stuck] 三步走；仍不行，或命中 §7 的停止条件，就停下汇报。
+3. 判定标准写成"通过："的条目，不满足就不往下走：先按 06-testing.md 的 [When stuck] 三步走；仍不行，或命中 §7 的停止条件，就停下汇报。
 4. 每完成一个组件的第 8 步（发布），在批次记录里写一句检查点小结；试点 mdm/customer 和每个批次结束时**停下汇报**（§7）。
 5. 跟用户的回复一律中文。
 
@@ -37,10 +37,10 @@ mkdir -p $S
 
 ### 0.2 贯穿全程的纪律（出处见括号）
 
-- 提交信息中文、写进文件、`git commit -F <文件>`，提交后先 `git log --oneline -1` 再打 tag（development-workflow.md#commits）。父仓库只提交自己动过的路径：`git commit -F <msg> -- <路径…>`，不 `git add -A`。
+- 提交信息中文、写进文件、`git commit -F <文件>`，提交后先 `git log --oneline -1` 再打 tag（01-development-workflow.md#commits）。父仓库只提交自己动过的路径：`git commit -F <msg> -- <路径…>`，不 `git add -A`。
 - 镜像只本地 `brickkit build`，不 push（spec §11）。新建或删除 GitHub 仓库前先问用户。
-- 组件容器默认关着：每次真机验证结束都 `brickkit down`（development-workflow.md#running-it-for-real）。
-- 不改测试去迎合实现；测试确实错了，停下说清楚错在哪，单独一个提交（testing.md）。
+- 组件容器默认关着：每次真机验证结束都 `brickkit down`（01-development-workflow.md#running-it-for-real）。
+- 不改测试去迎合实现；测试确实错了，停下说清楚错在哪，单独一个提交（06-testing.md）。
 - 没验证过的构建机制先做最小复现再铺开（如 §3 第 8 步的 Go `/v2` 拉取复现）。
 - 不得不去读 brickKit 仓库源码时，在 `dev/phase-06/to-verify.md` 的"知识缺口记录（V-04）"追加一行。
 - 别人对"已修复"的宣称，自己复测后再当真。
@@ -109,7 +109,7 @@ V-04（知识缺口）贯穿全部批次。V-05、V-08 属于 06e，本清单不
 
 ### 2.1 旧键 → 新键
 
-规则：共享键按 configuration.md 的固定名（`pgSchema`→`PG_SCHEMA`、`iamJwksUrl`→`IAM_JWKS_URL`、`authzBundleUrl`→`AUTHZ_BUNDLE_URL`、`otelBaseUrl`→`OTEL_BASE_URL`）；其余驼峰键机械转大写下划线。没有一个新键以 `_ENDPOINT` 结尾，也没有撞 `COMPONENT_ID`/`COMPONENT_VERSION`/`PORT`/`BRICKKIT_SERVED_MEMBERS*`。
+规则：共享键按 04-configuration.md 的固定名（`pgSchema`→`PG_SCHEMA`、`iamJwksUrl`→`IAM_JWKS_URL`、`authzBundleUrl`→`AUTHZ_BUNDLE_URL`、`otelBaseUrl`→`OTEL_BASE_URL`）；其余驼峰键机械转大写下划线。没有一个新键以 `_ENDPOINT` 结尾，也没有撞 `COMPONENT_ID`/`COMPONENT_VERSION`/`PORT`/`BRICKKIT_SERVED_MEMBERS*`。
 
 | 组件 | 旧版本 | 旧键 | 新键 | 旧默认值 | 旧 required | 新 secret |
 |---|---|---|---|---|---|---|
@@ -236,12 +236,12 @@ V-04（知识缺口）贯穿全部批次。V-05、V-08 属于 06e，本清单不
 2. **没有 `default` 的键一律进 `required`**（brickkit-component skill 规则 2：项目必须提供的键不给默认值，`add` 会写成 `KEY: ""`，`up` 在填好之前拒绝启动）。旧 schema 里 `iamJwksUrl`/`authzBundleUrl` 有的写了 `default: ""`、有的没写——统一改成 required、不给默认值（理由：没有它们，受保护路由一律 403/503，不是一个能工作的默认状态）。⚠️ 这是试点拍板项 P1（§6.2）。
 3. **`secret: true`**：`PG_PASSWORD`，以及键名含 `Password`/`Secret`/`SigningKey` 的（`CASDOOR_ADMIN_PASSWORD`、`WEBHOOK_SHARED_SECRET`、`APP_TOKEN_SIGNING_KEY_PEM`、`DINGTALK_APP_SECRET`）。`DINGTALK_APP_KEY`、`CASDOOR_CLIENT_ID` 是标识不是密钥，不标。
 4. **`type` / `enum` 等只是文档**；整数默认值照旧写成数字（`600`），`brickkit` 原样注入字符串。`configSchema` 属性里不写 `description`：每个键的含义写在 `BRICKKIT.md` 的 Configuration 一节（一个事实一个家）。
-5. **组件自有密钥**在 `config/<repo>.yaml` 里写成 `${<UREPO>_<KEY>}`（例如 `${INFRA_IAM_CASDOOR_WEBHOOK_SHARED_SECRET}`），与 `${<UREPO>_DB_PASSWORD}` 同一前缀，避免 `.env` 里不同组件的同名键撞车。⚠️ configuration.md 只规定了数据库密码的变量名，这条是本清单的提议，首次用到（B2 iam-casdoor）时作为拍板项 P7 问用户，定了再补进 configuration.md。
+5. **组件自有密钥**在 `config/<repo>.yaml` 里写成 `${<UREPO>_<KEY>}`（例如 `${INFRA_IAM_CASDOOR_WEBHOOK_SHARED_SECRET}`），与 `${<UREPO>_DB_PASSWORD}` 同一前缀，避免 `.env` 里不同组件的同名键撞车。⚠️ 04-configuration.md 只规定了数据库密码的变量名，这条是本清单的提议，首次用到（B2 iam-casdoor）时作为拍板项 P7 问用户，定了再补进 04-configuration.md。
 6. **多行密钥**（`APP_TOKEN_SIGNING_KEY_PEM`）用 `file://.secrets/<repo>/<文件>`，不塞进 `.env`。进外壳后它会被编码进 `BRICKKIT_SERVED_MEMBERS_CONFIG` 的 JSON，而 compose 运行期还会对生成文件再做一次 `${VAR}` 文本替换——必须在运行期（`docker exec … env`、成员日志）确认值完整，只看 `--dry-run` 不算数。
 
 ### 2.4 `config/<repo>.yaml` 的标准写法
 
-`brickkit add` 写出的骨架：required 键是 `KEY: ""`，其余键是注释行。按 configuration.md 的"值从哪来"一栏填（共享值即使组件有默认值也显式写 `$var:`，这样换环境时 deploy 文件的 `vars:` 能覆盖到它）：
+`brickkit add` 写出的骨架：required 键是 `KEY: ""`，其余键是注释行。按 04-configuration.md 的"值从哪来"一栏填（共享值即使组件有默认值也显式写 `$var:`，这样换环境时 deploy 文件的 `vars:` 能覆盖到它）：
 
 ```yaml
 # config/mdm-customer.yaml（以 mdm/customer 为例；$var: 与名字之间没有空格）
@@ -307,7 +307,7 @@ IAM_JWKS_URL: $var:IAM_JWKS_URL
   2. `$ROOT/archive/pre-v1/docs/dev/design/$REPO.md`（旧设计文档，`docs/design.md` 的来源）；
   3. `$C/component.yaml`、`$C/assembly.yaml`、`$C/Makefile`、`$C/Dockerfile`；
   4. 本文件 §1.2 中本组件那一行，以及 frontend-needs.md 对应小节；
-  5. 规则：configuration.md（全篇）、backend.md 的 [Module entry]/[The runtime is the only way in]/[Database]/[Calling other components]、testing.md、documentation.md 的 [Component documents]。
+  5. 规则：04-configuration.md（全篇）、02-backend.md 的 [Module entry]/[The runtime is the only way in]/[Database]/[Calling other components]、06-testing.md、08-documentation.md 的 [Component documents]。
 - [ ] **1.6 现有数据的属主**（迁移会以 `$ROLE` 身份跑，不再是 postgres 超级用户）：
   ```bash
   docker exec be-postgres psql -U postgres -d brickkit_db -tAc \
@@ -353,7 +353,7 @@ IAM_JWKS_URL: $var:IAM_JWKS_URL
   metadata:
     id: mdm/customer
     name: Customer master data
-    version: 2.0.0                       # 先升版本再动手（development-workflow.md#versions）
+    version: 2.0.0                       # 先升版本再动手（01-development-workflow.md#versions）
     description: Customer names, tax IDs, credit limits, status, contacts and billing details.
     repository: https://github.com/brickKit/mdm-customer
     license: Apache-2.0
@@ -468,7 +468,7 @@ IAM_JWKS_URL: $var:IAM_JWKS_URL
 
   ⚠️ 形态 B 照着形态 A 的改法做（import 改 `/v2` 时跳过 `gen/`）会**静默出错**：`go build` 先报 `no required module provides package github.com/brickKit/<repo>/gen/…`，接着 `go mod tidy` 自己"修好"它——`found … in github.com/brickKit/<repo> v1.x.y`，往 `go.mod` 里加一行 `require github.com/brickKit/<repo> v1.x.y`，之后 v2 组件就对着**自己上一个已发布版本**的生成代码编译，所有门禁都是绿的（infra/notification 上实测复现，见 task-17 报告）。
 
-  **规则（两种形态统一到一种结果）**：每个 Go 组件的 `gen/<domain>/<name>/` 都是**独立的嵌套 Go 模块**（backend.md 的仓库结构本来就这么写），模块路径是 `github.com/brickKit/<repo>/gen/<domain>/<name>`，**不带 `/v2`**、跟组件的主版本无关；它自己的 tag 是 `gen/<domain>/<name>/v1.<minor>.<patch>`，只在生成物变化时打（契约新增 → minor，只是重新生成 → patch；形态 B 拆出来时第一个 tag 是 `v1.0.0`）。组件根 `go.mod` 永远 `require` 一个**真实存在的**契约包版本（第 8.3 步打的那个 tag，不再是 `v0.0.0`），外加本地 `replace => ./gen/<domain>/<name>` 给自己构建用。`.proto` 的 `go_package` 不改（它写的正是这个嵌套模块里的包路径），所以 `make contract-check` 不受影响。形态 B 先做 4.1，再和形态 A 一起做 4.2–4.4。
+  **规则（两种形态统一到一种结果）**：每个 Go 组件的 `gen/<domain>/<name>/` 都是**独立的嵌套 Go 模块**（02-backend.md 的仓库结构本来就这么写），模块路径是 `github.com/brickKit/<repo>/gen/<domain>/<name>`，**不带 `/v2`**、跟组件的主版本无关；它自己的 tag 是 `gen/<domain>/<name>/v1.<minor>.<patch>`，只在生成物变化时打（契约新增 → minor，只是重新生成 → patch；形态 B 拆出来时第一个 tag 是 `v1.0.0`）。组件根 `go.mod` 永远 `require` 一个**真实存在的**契约包版本（第 8.3 步打的那个 tag，不再是 `v0.0.0`），外加本地 `replace => ./gen/<domain>/<name>` 给自己构建用。`.proto` 的 `go_package` 不改（它写的正是这个嵌套模块里的包路径），所以 `make contract-check` 不受影响。形态 B 先做 4.1，再和形态 A 一起做 4.2–4.4。
 - [ ] **4.1 只有形态 B：把 `gen/` 拆成嵌套模块**（`G` 是 `gen/` 下第一层的两级目录，如 `gen/infra/notification`、`gen/infra/iam`、`gen/integration/im`、`gen/erp/sales`、`gen/crm/opportunity`；以 `ls -d gen/*/*/` 的实际结果为准）：
   ```bash
   cd $C && M=github.com/brickKit/$REPO && G=$(ls -d gen/*/*/ | head -1); G=${G%/}; echo "G=$G"
@@ -521,7 +521,7 @@ IAM_JWKS_URL: $var:IAM_JWKS_URL
   - golang-migrate 自带的 `postgres` 驱动底层是 lib/pq，默认 `sslmode=require`，而 SDK 的 DSN 不再追加 `sslmode=disable`（pgx 默认 `prefer`）——两者混用会在不开 TLS 的本地库上报 `SSL is not enabled on the server`。选型（换 golang-migrate 的 `database/pgx/v5` 驱动，或显式带 `sslmode`）是试点拍板项 P4。
   - 只认 `up` / `down` 两个参数，其它参数（含空）立即报错退出（brickkit-component skill 规则 7）。
   - 在 `cmd/` 下允许读环境变量、允许 `log.Fatal`（不进外壳）；模块代码里一个都不许有。
-- [ ] **4.7 `Makefile` 按 v1 改**（目标集合保持 testing.md 要求的那几个：`test`、`migrate-idempotent`、`contract-check`、`module-check`、`smoke`、`seed`/`seed-clean` 或 `db-reset`）：
+- [ ] **4.7 `Makefile` 按 v1 改**（目标集合保持 06-testing.md 要求的那几个：`test`、`migrate-idempotent`、`contract-check`、`module-check`、`smoke`、`seed`/`seed-clean` 或 `db-reset`）：
   - `check-version`：不再查 `deployment.image`；HEAD 带 tag 时要求同时有 `$(VERSION)` 与 `v$(VERSION)`（Go）；`VERSION` 用 `yq` 或 `grep -m1 '^  version:'` 取 `metadata.version`。
   - `migrate-idempotent`：注释和用法改成 `PG_*`（`PG_HOST=localhost PG_PORT=5432 PG_DATABASE=brickkit_test_db PG_USER=… PG_PASSWORD=… PG_SCHEMA=$SCHEMA make migrate-idempotent`）。
   - `docs-check`：改成 `brickkit lint --strict`（旧的 `infra/scripts/docs-check.sh` 已不存在）。
@@ -542,15 +542,15 @@ TypeScript（infra/bff-mobile）对应项：`package.json` 的 `version` 改 `2.
   git ls-files '*.go' | grep -v -e '^gen/' -e '_test.go$' | xargs wc -l | sort -n | awk '$1>600'
   git ls-files '*.go' | grep -v -e '^gen/' -e '_test.go$' | xargs awk 'FNR==1{f=""} /^func /{f=$0; s=FNR} /^}/{if(f!=""){if(FNR-s>150) print FILENAME": "FNR-s" 行: "f; f=""}}'
   ```
-  命中的按 ai-development.md 判断是否拆；拆就单独一个提交，说明为什么。
+  命中的按 09-ai-development.md 判断是否拆；拆就单独一个提交，说明为什么。
 - [ ] **4.11 正确性与重复样板**：通读 `module.go`、`internal/` 各层；重复的样板代码（同一段在三处以上）能下沉到 SDK 的，记进批次记录的"反馈候选"，不在组件里自创抽象。发现真实 bug：先写一个红的测试，再修（红绿各一个提交）。
-- [ ] **4.12 合并安全三问**（backend.md#merge-safety）：`make module-check` 绿，且人工确认：模块代码零 `os.Getenv`、零进程级初始化、零 `log.Fatal`/`os.Exit`。
+- [ ] **4.12 合并安全三问**（02-backend.md#merge-safety）：`make module-check` 绿，且人工确认：模块代码零 `os.Getenv`、零进程级初始化、零 `log.Fatal`/`os.Exit`。
 
 **4C 补前端需要的接口（§1.2 本组件那一行）**
 
 - [ ] **4.13 先写设计**：边界 / 契约 / 事件有变化的，先改 `docs/design.md`（第 5 步的文件，可以先只写这一段）。涉及新的跨组件事件或改变已有事件语义的，**停下汇报**（§7）。
 - [ ] **4.14 契约先行，只增不改**：改 `contracts/*.proto` / `*.openapi.yaml` / `events/*.json`；`make contract-check` 绿；`buf generate` 重新生成 `gen/`（`git diff --stat gen/` 有变化，第 8 步要打新的契约包 tag）。
-- [ ] **4.15 红绿**：每条新规则先写 L2 测试并跑红（红的原因是"功能还不存在"），再写实现跑绿；一个循环一个提交。有数据范围的接口（warehouse、legal_entity、org/owner）必须有"别人的数据看不到"的测试（testing.md#l2）。新增路由一律 `besdk.GET(r, path, permKey, h)` 这类带权限键的注册。
+- [ ] **4.15 红绿**：每条新规则先写 L2 测试并跑红（红的原因是"功能还不存在"），再写实现跑绿；一个循环一个提交。有数据范围的接口（warehouse、legal_entity、org/owner）必须有"别人的数据看不到"的测试（06-testing.md#l2）。新增路由一律 `besdk.GET(r, path, permKey, h)` 这类带权限键的注册。
 
 **4D 全部测试**
 
@@ -567,7 +567,7 @@ TypeScript（infra/bff-mobile）对应项：`package.json` 的 `version` 改 `2.
 ### 第 5 步　四件套（每份都带 `.zh.md`）
 
 - [ ] **5.0 提醒用户切换到 Opus**：真正落笔写 `docs/design.md` 之前，先提醒用户切模型（用户偏好），等确认再写。
-- [ ] **5.1 写作要点**（documentation.md#component-documents、brickkit-component skill 规则 12）：
+- [ ] **5.1 写作要点**（08-documentation.md#component-documents、brickkit-component skill 规则 12）：
 
   | 文件 | 必须有的内容 |
   |---|---|
@@ -657,7 +657,7 @@ TypeScript（infra/bff-mobile）对应项：`package.json` 的 `version` 改 `2.
   git add -A && git commit -F $S/commit-msg.txt && git log --oneline -1
   git push origin main && git status -sb | head -1
   ```
-  通过：`git log` 第一行就是这次的提交；推送后 `## main...origin/main` 后面没有 `[ahead`。红绿循环中途已经有若干提交的，这里是最后一个"文档 + 版本"提交。⚠️ 与 spec §11"组件仓库每个组件一个提交"的冲突：本清单按正式文档 development-workflow.md#commits 的"一个红绿循环一个提交、改测试单独一个提交"来做（正式文档优先）；纯机械迁移（第 3、4A 步）与文档（第 5 步）各合成一个提交即可。
+  通过：`git log` 第一行就是这次的提交；推送后 `## main...origin/main` 后面没有 `[ahead`。红绿循环中途已经有若干提交的，这里是最后一个"文档 + 版本"提交。⚠️ 与 spec §11"组件仓库每个组件一个提交"的冲突：本清单按正式文档 01-development-workflow.md#commits 的"一个红绿循环一个提交、改测试单独一个提交"来做（正式文档优先）；纯机械迁移（第 3、4A 步）与文档（第 5 步）各合成一个提交即可。
 - [ ] **8.3 契约包 tag（第 4.14 步 `gen/` 有变化时；形态 B 刚拆出来的组件第一次一定要打 `v1.0.0`）**：先打、先推，再发组件版本（三个 tag 打在同一个提交上）。tag 的版本必须等于根 `go.mod` 里 require 的契约包版本（第 4.3 步），推送之前外壳视角拉不到（实测：`unknown revision gen/infra/notification/v1.0.0`）：
   ```bash
   git tag -a gen/<domain>/<name>/v<契约包版本> -F $S/notes-2.0.0.md && git push origin gen/<domain>/<name>/v<契约包版本>
@@ -820,7 +820,7 @@ TypeScript（infra/bff-mobile）对应项：`package.json` 的 `version` 改 `2.
 
 - [ ] 本批每个组件的第 1–9 步全部勾完；本批补齐了外壳的，§4 全部勾完。
 - [ ] 项目级检查：`make registry-check`、`make docs-boundary`、`make gates`、`make version-check`、`brickkit up --dry-run`。根目录 `make lint`（`brickkit lint --strict`）会因为还没重建的旧 `component.yaml` 报错，这是预期的过渡现象：只核对报错里**没有**本批组件。
-- [ ] 全量真机：`brickkit up`（当前项目里的全部组件）→ `brickkit status` 全部 healthy → 本批相关的跨组件路径各打一次（受保护路由带真 token）→ 本批组件的 `make seed` 跑通（种子数据规则见 data.md；新组件的示例数据要加进它自己的 `make seed`）。B1 额外跑一次 `make tier0`（⚠️ 它会临时停掉 postgres，并假设 `mdm/customer` 暴露在宿主机 8080——需要在 `deploy.local.yaml` 里给 mdm/customer 写 `expose: true`；红了先判断是不是 v0 时代的假设，是就记录交 06f）。
+- [ ] 全量真机：`brickkit up`（当前项目里的全部组件）→ `brickkit status` 全部 healthy → 本批相关的跨组件路径各打一次（受保护路由带真 token）→ 本批组件的 `make seed` 跑通（种子数据规则见 05-data.md；新组件的示例数据要加进它自己的 `make seed`）。B1 额外跑一次 `make tier0`（⚠️ 它会临时停掉 postgres，并假设 `mdm/customer` 暴露在宿主机 8080——需要在 `deploy.local.yaml` 里给 mdm/customer 写 `expose: true`；红了先判断是不是 v0 时代的假设，是就记录交 06f）。
 - [ ] B5 额外：业务闭环。`make seed-data` 跑通后，确认至少一个 WON 商机有对应订单（`source_opportunity_id` 指向它、商机 `order_id` 回填）、订单确认产生了库存预留、财务有对应应收凭证；每一环的查询命令与结果原文进记录。
 - [ ] `brickkit down`；`brickkit local off`。
 - [ ] 本批里已发布 2.0.0 的组件后来又改过的（返工、修 bug），用 `make bump-version PLAN=…`（dry-run → `APPLY=1`）传播版本并按 `version-bump-ship` 发布，再 `brickkit upgrade <id>@<新版本>`；不要手改下游依赖或外壳成员版本。
@@ -847,8 +847,8 @@ TypeScript（infra/bff-mobile）对应项：`package.json` 的 `version` 改 `2.
 | # | 问题 | 本清单的默认做法 | 依据 |
 |---|---|---|---|
 | P1 | `AUTHZ_BUNDLE_URL`/`IAM_JWKS_URL` 是否一律 required、不给默认值 | 是 | §2.3 第 2 条 |
-| P2 | `PG_SCHEMA` 带默认值（= registry schema），同时在 `config/` 里写字面量 | 是 | configuration.md 的值来源表 |
-| P3 | 契约包 `gen/<domain>/<name>`：一律是嵌套模块（形态 B 的 5 个组件拆出来），路径不带 `/v2`，tag `gen/<domain>/<name>/v1.<minor>.<patch>` 只在生成物变化时打；组件根 `go.mod` require 真实 tag（不再 `v0.0.0`）+ 本地 `replace` | 是（scratch 上两种形态都验证过，见 task-17 报告） | 第 4.0–4.4、8.3、8.5 步；conventions 里没有写契约包的 tag 规则，定了之后补进 development-workflow.md#versions |
+| P2 | `PG_SCHEMA` 带默认值（= registry schema），同时在 `config/` 里写字面量 | 是 | 04-configuration.md 的值来源表 |
+| P3 | 契约包 `gen/<domain>/<name>`：一律是嵌套模块（形态 B 的 5 个组件拆出来），路径不带 `/v2`，tag `gen/<domain>/<name>/v1.<minor>.<patch>` 只在生成物变化时打；组件根 `go.mod` require 真实 tag（不再 `v0.0.0`）+ 本地 `replace` | 是（scratch 上两种形态都验证过，见 task-17 报告） | 第 4.0–4.4、8.3、8.5 步；conventions 里没有写契约包的 tag 规则，定了之后补进 01-development-workflow.md#versions |
 | P4 | 迁移入口的驱动：golang-migrate `pgx/v5`（与模块同一个 pgx）还是保留 lib/pq 显式带 `sslmode` | 倾向 `pgx/v5`，以 `make migrate-idempotent` 与 7.8 迁移容器真跑通过为准 | 第 4.6 步 |
 | P5 | `assembly.yaml` 清理：删 `version`、`shell`；`asset`、`edge_routes` 留不留 | 删 `version`、`shell`；`asset`/`edge_routes` 等用户定 | [0022]、"一个事实一个家" |
 | P6 | 组件仓库是否提交 `brickkit skills update` 写入的 `.claude/skills/brickkit-component/` | 提交 | 第 2.5 步 |
@@ -868,7 +868,7 @@ TypeScript（infra/bff-mobile）对应项：`package.json` 的 `version` 改 `2.
 
 - 边界变化：需要本组件拥有某个 `BRICKKIT.md` Purpose 里写着"Does not own"的东西，或者把已有职责移给别的组件。
 - 破坏性契约变化：删字段、改类型、删 rpc / REST 路径 / 事件 subject，或者改已有事件的语义；新增一条跨组件事件链（例如 B5 的订单创建 → 商机 `order_id` 回填）也先停下确认方案。
-- 推翻已有决策：`docs/decisions/` 里的任何一条，或组件 `docs/design.md` 里的设计结论。
+- 推翻已有决策：`docs/en/02-decisions/` 里的任何一条，或组件 `docs/design.md` 里的设计结论。
 - 需要新的依赖边（尤其会成环、或违背"CRM 与 ERP 之间只有事件"）；需要改 `registry/` 里已有的行（端口、schema、已发布的权限键）。
 - 迁移以组件角色运行时报权限问题（`must be owner of table` 等，见 1.6）。
 - 任何测试 / gate 红了，且不是本清单"已知过渡现象"（附录 B）里列出的那种；三轮红绿仍不绿。
@@ -1041,7 +1041,7 @@ for p in sorted(glob.glob(ROOT + 'components/*/*/component.yaml')):
 - `config/vars.yaml` 的 `AUTHZ_BUNDLE_URL` / `IAM_JWKS_URL` 用成员服务名 `infra-authz-2-0-0` / `infra-iam-casdoor-2-0-0`（R29/R30）。B1（authz、iam-casdoor 还没加入项目）：这两个主机名解析不到，受保护路由只验到 `401`（判定链在工作），不验 `200`；`service-hostname-scan` 对还没声明的组件只警告。B2 起 authz、iam-casdoor 作为独立组件加入项目，地址直接可达，验 `200`；B3 它们进 go-infra 外壳后由外壳容器的网络别名解析，值不变。任何阶段都不需要 `deploy.local.yaml` 或 `deploy.teardown.yaml` 的 `vars:` 覆盖，也不改 `config/vars.yaml`。focus 起的宿主机进程解析不了容器服务名，受保护路由在 focus 下只验 `401`。
 - `make tier1` 是占位（06f 重写）。`make tier0` 是 mdm/customer 专用、带 v0 假设的旧断言。
 - `make bump-version`：be-acceptance v0.4.1（父仓库的 `tools/be-acceptance` 已指向它）不再往 `component.yaml` 写历史注释，照常使用（控制者裁定 R26）。分工：首轮 1.x → 2.0.0 时，下游组件的依赖版本在它自己第 3 步整份重写 `component.yaml` 时直接写 `@2.0.0`（那时它的旧文件反正要整份换掉）；**一个组件发布 2.0.0 之后再有任何改动**（修 bug 发 2.0.1、补字段发 2.1.0），以及外壳的 `shell.members` / `go.mod` 跟着成员换版本，一律走 `make bump-version PLAN=<计划文件>`（先 dry-run 看级联，再 `APPLY=1`），一个批次写一份计划文件，然后按 `version-bump-ship` skill 逐个发布、`brickkit upgrade`。
-- `version-bump-ship` skill 和根 `Makefile` 的 `bump-version` 帮助文字还引用已归档的 `00-master-guide.md` SOP-W-11；以 development-workflow.md 为准。
+- `version-bump-ship` skill 和根 `Makefile` 的 `bump-version` 帮助文字还引用已归档的 `00-master-guide.md` SOP-W-11；以 01-development-workflow.md 为准。
 - `make test-cross` 只跑 Go（`go test`）。
 
 **scratch 实测（brickKit CLI v1.0.1，scratch 项目 `brickkit init` + 假组件，未起容器）**

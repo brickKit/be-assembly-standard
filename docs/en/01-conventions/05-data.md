@@ -1,8 +1,8 @@
-[English](data.md) · [中文](data.zh.md)
+[English](05-data.md) · [中文](../../zh/01-conventions/05-data.md)
 
 # Data conventions
 
-Where the data in this project comes from. There are two independent paths, seed data for people and test data for automated tests, and one principle behind both: cover as many scenarios as possible, and when a dependency lacks something, fix it at the source. What is seeded today is listed in [../seed-data.md](../seed-data.md).
+Where the data in this project comes from. There are two independent paths, seed data for people and test data for automated tests, and one principle behind both: cover as many scenarios as possible, and when a dependency lacks something, fix it at the source. What is seeded today is listed in [../03-seed-data.md](../03-seed-data.md).
 
 ## Two paths, never shared
 
@@ -46,7 +46,7 @@ Seed data also serves testing: walking through the running system with real-look
 - **Enough rows to page**: a list with cursor paging and five rows never shows a second page.
 - **Spread in time**: rows across past dates (set absolutely, `now() - interval`, so reruns don't drift), so "last N days" queries, trends and partition maintenance have something to work on.
 - **Negative cases**: disabled records, zero stock, overdue balances, rejected requests.
-- **Discoverable**: [../seed-data.md](../seed-data.md) lists what each component seeds, how much and who owns it. Update it in the same commit as the seed.
+- **Discoverable**: [../03-seed-data.md](../03-seed-data.md) lists what each component seeds, how much and who owns it. Update it in the same commit as the seed.
 
 **Ownership and collaboration**:
 
@@ -70,6 +70,6 @@ Seed data also serves testing: walking through the running system with real-look
 ## Test data rules
 
 - Generation and lifetime: unique suffix, no cleanup (the first section).
-- Consumer tests that trigger the consumer themselves use a private subject and a unique `aggregate_id` ([testing.md](testing.md#l4-integration-tests)).
+- Consumer tests that trigger the consumer themselves use a private subject and a unique `aggregate_id` ([06-testing.md](06-testing.md#l4-integration-tests)).
 - A shape of data the dependency's contract can't produce: [When a dependency lacks what you need](#when-a-dependency-lacks-what-you-need).
 - Test data ignores the seed-only concerns (paging, time spread, discoverability); it matches its own assertion and nothing else.

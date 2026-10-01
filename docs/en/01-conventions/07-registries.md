@@ -1,4 +1,4 @@
-[English](registries.md) · [中文](registries.zh.md)
+[English](07-registries.md) · [中文](../../zh/01-conventions/07-registries.md)
 
 # Registries
 
@@ -55,13 +55,13 @@ The component → repository map is `.gitmodules`: each component is a Git submo
 | Shell login role | `shell_<name>`, a member of each hosted component's role | `shell_go_core` |
 
 - brickKit never creates a database, schema or role. `make db-init` runs the script be-ops generates from these tables and the shells' member lists (`CREATE SCHEMA`, roles, grants); it is idempotent. `make test-db-init` does the same for the test database.
-- How the role and password reach the component: [configuration.md](configuration.md#database-roles).
+- How the role and password reach the component: [04-configuration.md](04-configuration.md#database-roles).
 - Every shell member has a row in `schemas.tsv`; be-ops refuses a shell whose member has none.
 - No schema: `infra/bff-mobile` (never connects to the database), the frontends, and blueprints not being built. Non-component schemas: `casdoor` (the Casdoor image's own), `keycloak` (when that slot member is used).
 
 ## Permission keys
 
-- A key is `<domain>.<aggregate>.<action>`; its prefix equals the owning component's domain, and keys are unique across the project. Declaring and registering keys in code: [backend.md](backend.md#permissions).
+- A key is `<domain>.<aggregate>.<action>`; its prefix equals the owning component's domain, and keys are unique across the project. Declaring and registering keys in code: [02-backend.md](02-backend.md#permissions).
 - `be-ops permissions --root .` reads every component's `assembly.yaml` and merges new keys into `permissions.tsv`. It only adds: a key no component declares any more (and not marked `deprecated`) prints a warning and stays; retiring it is a manual tombstone in the `deprecated` column.
 - After adding keys, refresh the permission catalog infra/authz is configured with. A key missing there never reaches the permission list, and every check on it fails.
 - `data-scopes.tsv` is produced the same way from the `data_scopes` sections. It exists so that a customer security review or a delivery acceptance reads one table instead of every component.

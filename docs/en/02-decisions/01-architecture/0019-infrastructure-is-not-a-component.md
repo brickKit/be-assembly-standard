@@ -1,10 +1,10 @@
-[English](0019-infrastructure-is-not-a-component.md) · [中文](0019-infrastructure-is-not-a-component.zh.md)
+[English](0019-infrastructure-is-not-a-component.md) · [中文](../../../zh/02-decisions/01-architecture/0019-infrastructure-is-not-a-component.md)
 
 # 0019 Infrastructure is not a component
 
 ## Decision
 
-The event bus (NATS), the object storage server (RustFS, through the S3 API), the gateway (Traefik) and the observability stack are infrastructure that runs outside the component graph (`make up`; the observability stack with `make obs-up`); they are not brickKit components and never appear in `brickkit.yaml`. Components reach them through shared configuration keys — `NATS_URL`, `S3_URL`, `OTEL_BASE_URL` — written once in `config/vars.yaml` (see [configuration conventions](../conventions/configuration.md)).
+The event bus (NATS), the object storage server (RustFS, through the S3 API), the gateway (Traefik) and the observability stack are infrastructure that runs outside the component graph (`make up`; the observability stack with `make obs-up`); they are not brickKit components and never appear in `brickkit.yaml`. Components reach them through shared configuration keys — `NATS_URL`, `S3_URL`, `OTEL_BASE_URL` — written once in `config/vars.yaml` (see [configuration conventions](../../01-conventions/04-configuration.md)).
 
 ## Why
 

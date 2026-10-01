@@ -1,4 +1,4 @@
-[English](0014-third-party-ui-only-in-ui-kit.md) · [中文](0014-third-party-ui-only-in-ui-kit.zh.md)
+[English](0014-third-party-ui-only-in-ui-kit.md) · [中文](../../../zh/02-decisions/04-frontend/0014-third-party-ui-only-in-ui-kit.md)
 
 # 0014 Third-party UI components appear only inside ui-kit
 

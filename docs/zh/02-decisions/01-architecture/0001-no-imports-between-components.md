@@ -1,4 +1,4 @@
-[English](0001-no-imports-between-components.md) · [中文](0001-no-imports-between-components.zh.md)
+[English](../../../en/02-decisions/01-architecture/0001-no-imports-between-components.md) · [中文](0001-no-imports-between-components.md)
 
 # 0001 组件之间禁止 import
 
@@ -16,7 +16,7 @@
 - 两个组件共用的 `models` / `common` / `utils` / `types` 公共包
 - 为了复用一个工具函数去 import 别的组件的业务、仓储或服务包
 - 把别的组件的 `.proto` 复制到自己仓库里生成 stub（vendoring），而不是 import 它的 `gen` 包
-- 为了省一次接口调用直接读别的组件的表（见 [0002](0002-one-schema-per-component.zh.md)）
+- 为了省一次接口调用直接读别的组件的表（见 [0002](0002-one-schema-per-component.md)）
 
 ## 何时重新讨论
 

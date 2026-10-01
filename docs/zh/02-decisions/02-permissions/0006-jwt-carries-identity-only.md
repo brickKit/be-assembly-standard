@@ -1,10 +1,10 @@
-[English](0006-jwt-carries-identity-only.md) · [中文](0006-jwt-carries-identity-only.zh.md)
+[English](../../../en/02-decisions/02-permissions/0006-jwt-carries-identity-only.md) · [中文](0006-jwt-carries-identity-only.md)
 
 # 0006 token 只承载身份
 
 ## 决策
 
-JWT 只说明用户是谁——`sub`、`roles[]`、`dept_path`、`org_id`——别的都不放。权限键一个都不进 token；每个角色能做什么，来自 bundle（[0005](0005-local-permission-bundle.zh.md)）。
+JWT 只说明用户是谁——`sub`、`roles[]`、`dept_path`、`org_id`——别的都不放。权限键一个都不进 token；每个角色能做什么，来自 bundle（[0005](0005-local-permission-bundle.md)）。
 
 ## 理由
 

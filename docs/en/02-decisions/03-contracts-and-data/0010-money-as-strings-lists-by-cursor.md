@@ -1,4 +1,4 @@
-[English](0010-money-as-strings-lists-by-cursor.md) · [中文](0010-money-as-strings-lists-by-cursor.zh.md)
+[English](0010-money-as-strings-lists-by-cursor.md) · [中文](../../../zh/02-decisions/03-contracts-and-data/0010-money-as-strings-lists-by-cursor.md)
 
 # 0010 Money is a decimal string; lists page by cursor
 

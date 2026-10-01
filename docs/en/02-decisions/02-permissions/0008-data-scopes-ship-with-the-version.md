@@ -1,4 +1,4 @@
-[English](0008-data-scopes-ship-with-the-version.md) · [中文](0008-data-scopes-ship-with-the-version.zh.md)
+[English](0008-data-scopes-ship-with-the-version.md) · [中文](../../../zh/02-decisions/02-permissions/0008-data-scopes-ship-with-the-version.md)
 
 # 0008 Data scopes ship with the version
 

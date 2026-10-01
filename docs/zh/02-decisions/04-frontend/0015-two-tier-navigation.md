@@ -1,4 +1,4 @@
-[English](0015-two-tier-navigation.md) · [中文](0015-two-tier-navigation.zh.md)
+[English](../../../en/02-decisions/04-frontend/0015-two-tier-navigation.md) · [中文](0015-two-tier-navigation.md)
 
 # 0015 PC 端采用控制台式两层导航，带应用内标签页
 

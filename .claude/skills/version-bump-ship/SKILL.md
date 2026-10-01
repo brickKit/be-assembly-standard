@@ -112,10 +112,10 @@ dry-run 时重点核对：
 
 - 任何一步测试/gate 红了，且原因不是"级联同步造成的纯字符串替换失败"这种预期之内的情况——出现任何逻辑性失败都要停。
 - `bump-version` 打印的级联看起来不对劲（§2 已经说过）。
-- **这批改动里其实混进了真实的行为/契约变更，不是纯粹"跳版本号"级别的事**——这种情况下的审查深度、commit 粒度该走正常开发流程的标准（[七步循环](../../../docs/conventions/development-workflow.md#the-seven-step-loop)的红绿节奏、[人要审什么](../../../docs/conventions/ai-development.md#what-a-human-reviews)），不能套用这个技能"批量发布"的节奏。这个技能的前提是"代码本身已经写完、测过、review 过，剩下的只是发布动作"，不是拿它来掩盖一次真实改动该有的审查。
+- **这批改动里其实混进了真实的行为/契约变更，不是纯粹"跳版本号"级别的事**——这种情况下的审查深度、commit 粒度该走正常开发流程的标准（[七步循环](../../../docs/en/01-conventions/01-development-workflow.md#the-seven-step-loop)的红绿节奏、[人要审什么](../../../docs/en/01-conventions/09-ai-development.md#what-a-human-reviews)），不能套用这个技能"批量发布"的节奏。这个技能的前提是"代码本身已经写完、测过、review 过，剩下的只是发布动作"，不是拿它来掩盖一次真实改动该有的审查。
 - 任何需要强推、覆盖或删除已推送 tag 的操作（`brickkit build --force` 重建本地镜像不在此列）。
 - §0 找出来的候选里，有哪一条你不确定是不是这次任务范围内该发布的。
 
 ## 为什么这个技能管到 commit/push，而不是止步于"改文件"
 
-`bump-version` 工具本身刻意不做 git 操作（见 [development-workflow.md](../../../docs/conventions/development-workflow.md#versions) 与 `tools/be-acceptance/README.md`）——理由是"批量改文件"和"批量推到远端"是两类不同风险等级的操作，不该被同一次程序调用捆在一起、跳过复核。这个技能把两者重新接在一起，但接的方式不是"再造一个自动 git 的程序"，而是把**判断力**留在执行者身上：每个 commit message 的措辞、每次"这个级联合不合理""这批改动够不够纯粹到可以走批量发布节奏"，都是逐次判断出来的，不是一份写死的脚本替你判断。这正是这个技能存在的意义——把"步骤该怎么走"记下来，省得每次重新推导，但不代替"这一步该不该继续"本身需要的判断。
+`bump-version` 工具本身刻意不做 git 操作（见 [01-development-workflow.md](../../../docs/en/01-conventions/01-development-workflow.md#versions) 与 `tools/be-acceptance/README.md`）——理由是"批量改文件"和"批量推到远端"是两类不同风险等级的操作，不该被同一次程序调用捆在一起、跳过复核。这个技能把两者重新接在一起，但接的方式不是"再造一个自动 git 的程序"，而是把**判断力**留在执行者身上：每个 commit message 的措辞、每次"这个级联合不合理""这批改动够不够纯粹到可以走批量发布节奏"，都是逐次判断出来的，不是一份写死的脚本替你判断。这正是这个技能存在的意义——把"步骤该怎么走"记下来，省得每次重新推导，但不代替"这一步该不该继续"本身需要的判断。

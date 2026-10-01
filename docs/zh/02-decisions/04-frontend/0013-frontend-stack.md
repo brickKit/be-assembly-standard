@@ -1,4 +1,4 @@
-[English](0013-frontend-stack.md) · [中文](0013-frontend-stack.zh.md)
+[English](../../../en/02-decisions/04-frontend/0013-frontend-stack.md) · [中文](0013-frontend-stack.md)
 
 # 0013 前端技术栈：Vue 3，PC 用 AntDV 和 vxe-table，移动端用 wot-design-uni
 
@@ -19,4 +19,4 @@
 
 ## 何时重新讨论
 
-某个锁定的库停止维护，或页面需要的某项 vxe-table 能力被证实只在商业版里提供时——届时在 `<BeTable>` 背后替换表格引擎（[0014](0014-third-party-ui-only-in-ui-kit.zh.md)），页面不用动。
+某个锁定的库停止维护，或页面需要的某项 vxe-table 能力被证实只在商业版里提供时——届时在 `<BeTable>` 背后替换表格引擎（[0014](0014-third-party-ui-only-in-ui-kit.md)），页面不用动。

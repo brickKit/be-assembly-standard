@@ -1,4 +1,4 @@
-[English](0001-no-imports-between-components.md) · [中文](0001-no-imports-between-components.zh.md)
+[English](0001-no-imports-between-components.md) · [中文](../../../zh/02-decisions/01-architecture/0001-no-imports-between-components.md)
 
 # 0001 Components never import each other
 

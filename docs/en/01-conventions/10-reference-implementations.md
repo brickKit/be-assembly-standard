@@ -1,4 +1,4 @@
-[English](reference-implementations.md) · [中文](reference-implementations.zh.md)
+[English](10-reference-implementations.md) · [中文](../../zh/01-conventions/10-reference-implementations.md)
 
 # Reference implementations
 
@@ -80,7 +80,7 @@ While comparing references, one situation comes up again and again: **the same f
 
 - **One implementation clearly better than the rest** → that is the default implementation. Nothing else to do.
 - **Several defensible, in a position no component holds a dependency edge on** → a slot family: one member installed per slot (or several side by side in a channel family), every member exposing the identical contract. The positions that qualify are of this kind: the frontend, the identity provider (components reach it through configuration, not a dependency edge), payroll, the notification channels.
-- **Several defensible, inside a component others depend on** (every `erp/*` and `crm/*` transactional component) → **not a slot**. A dependent pins that component; swapping it for another member would break the edge. The shape is a **customer fork** of the component (a copy for that customer, same `metadata.id` because dependents' address variables derive from it, those few places changed, versioned normally with `brickkit upgrade` / `make bump-version` moving dependents' pins), or, when the divergence is a few branches with no further variant in sight, an **internal strategy** ([ai-development.md](ai-development.md#when-to-use-a-design-pattern)).
+- **Several defensible, inside a component others depend on** (every `erp/*` and `crm/*` transactional component) → **not a slot**. A dependent pins that component; swapping it for another member would break the edge. The shape is a **customer fork** of the component (a copy for that customer, same `metadata.id` because dependents' address variables derive from it, those few places changed, versioned normally with `brickkit upgrade` / `make bump-version` moving dependents' pins), or, when the divergence is a few branches with no further variant in sight, an **internal strategy** ([09-ai-development.md](09-ai-development.md#when-to-use-a-design-pattern)).
 
 | Feature | Divergence | Conclusion |
 |---|---|---|
@@ -93,8 +93,8 @@ While comparing references, one situation comes up again and again: **the same f
 
 Once a slot family is real (several reasonable variants **and** no dependency edge on the position), in this order:
 
-1. **Record the family before writing any implementation**: its name, the contract every member exposes identically, which customer profile each member serves, which member is installed by default. A new family is a decision record ([../decisions/README.md](../decisions/README.md)).
-2. Append each member's ports and schema to `registry/` ([registries.md](registries.md)).
+1. **Record the family before writing any implementation**: its name, the contract every member exposes identically, which customer profile each member serves, which member is installed by default. A new family is a decision record ([../02-decisions/README.md](../02-decisions/README.md)).
+2. Append each member's ports and schema to `registry/` ([07-registries.md](07-registries.md)).
 3. Only then design and build each member.
 
 **Never pack several customers' variants into one component behind `if costingMethod == "fifo"`**: every customer's needs then constrain every other's. Inside a depended-on component that is a fork; the one exception is a divergence of two or three branches with no further variant in sight, written as an internal strategy.

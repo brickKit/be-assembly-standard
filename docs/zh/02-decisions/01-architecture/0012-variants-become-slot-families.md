@@ -1,4 +1,4 @@
-[English](0012-variants-become-slot-families.md) · [中文](0012-variants-become-slot-families.zh.md)
+[English](../../../en/02-decisions/01-architecture/0012-variants-become-slot-families.md) · [中文](0012-variants-become-slot-families.md)
 
 # 0012 槽位族需要多种合理实现，而且没有依赖边
 

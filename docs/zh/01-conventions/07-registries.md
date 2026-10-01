@@ -1,4 +1,4 @@
-[English](registries.md) · [中文](registries.zh.md)
+[English](../../en/01-conventions/07-registries.md) · [中文](07-registries.md)
 
 # 登记表
 
@@ -55,13 +55,13 @@
 | 外壳登录角色 | `shell_<name>`，是它承载的每个组件角色的成员 | `shell_go_core` |
 
 - brickKit 从不建数据库、schema 或角色。`make db-init` 执行 be-ops 根据这些表和外壳成员清单生成的脚本（`CREATE SCHEMA`、角色、授权），幂等可重跑。`make test-db-init` 对测试库做同样的事。
-- 角色和密码怎么交到组件手上：见 [configuration.zh.md](configuration.zh.md#数据库角色)。
+- 角色和密码怎么交到组件手上：见 [04-configuration.md](04-configuration.md#数据库角色)。
 - 外壳的每个成员在 `schemas.tsv` 里都有一行；成员没有行的外壳，be-ops 拒绝生成。
 - 不建 schema 的：`infra/bff-mobile`（从不直连数据库）、前端、不开发的蓝图。非组件 schema：`casdoor`（Casdoor 镜像自用）、`keycloak`（换用那个槽位成员时）。
 
 ## 权限键
 
-- 键是 `<domain>.<aggregate>.<action>`；前缀等于所属组件的领域，全项目唯一。在代码里怎么声明和注册：见 [backend.zh.md](backend.zh.md#权限)。
+- 键是 `<domain>.<aggregate>.<action>`；前缀等于所属组件的领域，全项目唯一。在代码里怎么声明和注册：见 [02-backend.md](02-backend.md#权限)。
 - `be-ops permissions --root .` 读每个组件的 `assembly.yaml`，把新键合并进 `permissions.tsv`。它只增不删：没有组件再声明、又没标 `deprecated` 的键会打警告并留在表里；退役靠人在 `deprecated` 列手工打墓碑。
 - 加了新键之后，刷新 infra/authz 配置里的权限目录。不在那里的键永远进不了权限列表，对它的每次校验都失败。
 - `data-scopes.tsv` 由 `data_scopes` 段用同样的方式产出。它存在的意义是：客户安全审查或交付验收只读一张表，不用一个个组件去翻。

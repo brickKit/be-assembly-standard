@@ -1,4 +1,4 @@
-[English](0003-locked-stack-per-language.md) · [中文](0003-locked-stack-per-language.zh.md)
+[English](0003-locked-stack-per-language.md) · [中文](../../../zh/02-decisions/01-architecture/0003-locked-stack-per-language.md)
 
 # 0003 One locked stack per language
 

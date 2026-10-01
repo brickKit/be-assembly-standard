@@ -1,8 +1,8 @@
-[English](seed-data.md) · [中文](seed-data.zh.md)
+[English](03-seed-data.md) · [中文](../zh/03-seed-data.md)
 
 # Seed data
 
-Demo data for local development and testing by hand: fake customers, products, orders, opportunities, vouchers and templates, plus test accounts with different roles and data scopes. One command gives a fresh checkout something to click, query and test. **It is never part of a deployment**: `make seed-data` and `make seed-data-clean` appear in no deployment script and no CI flow, and only run by hand. The rules behind it are in [conventions/data.md](conventions/data.md).
+Demo data for local development and testing by hand: fake customers, products, orders, opportunities, vouchers and templates, plus test accounts with different roles and data scopes. One command gives a fresh checkout something to click, query and test. **It is never part of a deployment**: `make seed-data` and `make seed-data-clean` appear in no deployment script and no CI flow, and only run by hand. The rules behind it are in [01-conventions/05-data.md](01-conventions/05-data.md).
 
 ## What gets seeded
 

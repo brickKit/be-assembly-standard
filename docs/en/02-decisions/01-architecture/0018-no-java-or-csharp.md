@@ -1,4 +1,4 @@
-[English](0018-no-java-or-csharp.md) · [中文](0018-no-java-or-csharp.zh.md)
+[English](0018-no-java-or-csharp.md) · [中文](../../../zh/02-decisions/01-architecture/0018-no-java-or-csharp.md)
 
 # 0018 No Java or C#
 

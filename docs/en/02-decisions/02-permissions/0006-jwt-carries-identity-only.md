@@ -1,4 +1,4 @@
-[English](0006-jwt-carries-identity-only.md) · [中文](0006-jwt-carries-identity-only.zh.md)
+[English](0006-jwt-carries-identity-only.md) · [中文](../../../zh/02-decisions/02-permissions/0006-jwt-carries-identity-only.md)
 
 # 0006 The token carries identity only
 

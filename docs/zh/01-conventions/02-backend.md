@@ -1,8 +1,8 @@
-[English](backend.md) · [中文](backend.zh.md)
+[English](../../en/01-conventions/02-backend.md) · [中文](02-backend.md)
 
 # 后端约定
 
-本项目里 Go 和 Python 组件（以及注明之处的 TypeScript BFF）怎么写。配置键和值见 [configuration.zh.md](configuration.zh.md)；端口和 schema 见 [registries.zh.md](registries.zh.md)；这些选择背后的理由见 [../decisions/README.zh.md](../decisions/README.zh.md)。
+本项目里 Go 和 Python 组件（以及注明之处的 TypeScript BFF）怎么写。配置键和值见 [04-configuration.md](04-configuration.md)；端口和 schema 见 [07-registries.md](07-registries.md)；这些选择背后的理由见 [../02-decisions/README.md](../02-decisions/README.md)。
 
 ## 两条原则
 
@@ -24,7 +24,7 @@
 
 绝不使用：Echo、Fiber、chi 或裸 `ServeMux`；GORM；`lib/pq`；Flask 或 Django；同步 `grpc`；SQLAlchemy；alembic；gunicorn 或多个 worker。同一种语言内迁移工具统一，这种语言的每个组件镜像里都是同一个迁移入口，Makefile 里也是同样的迁移目标。
 
-TypeScript BFF（`infra/bff-mobile`）跑在 Node 上，不进外壳。前端是 Vue 3：PC 端 Ant Design Vue 4 + vxe-table，移动端 Uni-app + wot-design-uni。每个 `package.json` 都写精确版本；前端规则见 [frontend.zh.md](frontend.zh.md)。
+TypeScript BFF（`infra/bff-mobile`）跑在 Node 上，不进外壳。前端是 Vue 3：PC 端 Ant Design Vue 4 + vxe-table，移动端 Uni-app + wot-design-uni。每个 `package.json` 都写精确版本；前端规则见 [03-frontend.md](03-frontend.md)。
 
 **选依赖库版本**：能自由选的，跟系统里已有的保持一致；依赖链强制要求更新的版本时，跟着走。
 
@@ -100,11 +100,11 @@ Python 用蛇形命名对应同一套名字（`rt.config.endpoint`、`must_endpo
 
 ## 权限
 
-- 权限键是 `<domain>.<aggregate>.<action>`（`erp.sales.confirm`），领域前缀等于组件所属领域。键在 `assembly.yaml` 的 `permissions` 段声明（`key`、`title`、`type: page|action`）；`menus[].permission` 必须是本组件自己的键。新键追加进 `registry/permissions.tsv`，从不改名（[registries.zh.md](registries.zh.md#权限键)）。
+- 权限键是 `<domain>.<aggregate>.<action>`（`erp.sales.confirm`），领域前缀等于组件所属领域。键在 `assembly.yaml` 的 `permissions` 段声明（`key`、`title`、`type: page|action`）；`menus[].permission` 必须是本组件自己的键。新键追加进 `registry/permissions.tsv`，从不改名（[07-registries.md](07-registries.md#权限键)）。
 - **权限键是注册路由的一部分。** Go：`besdk.GET(r, path, permKey, h)`（以及 `POST`、`PUT`、`PATCH`、`DELETE`）；Python：`besdk.get(router, path, perm, handler)`；BFF：每个 resolver 都包在 `requirePermission(perm, resolver)` 里。公开路由要显式写 `besdk.Public`；"登录即可"是 `besdk.Authenticated`。用 Gin 裸 `r.GET` 或 FastAPI 裸 `@app.get` 注册的业务路由完全没有校验，而且毫无症状；`make gates` 会扫出来。
 - 校验是一次进程内 map 查找。SDK 大约每 15 秒向 infra/authz 拉一次 bundle（`AUTHZ_BUNDLE_URL`）；没有任何组件持有权限表，JWT 只带身份（`sub`、角色、`dept_path`、`org_id`），从不带权限键。bundle 第一次加载成功之前，受保护的路由返回 `503`，`/healthz` 照常健康。用户角色变更之前签发的 token 返回 `401 token_stale`；前端静默刷新 token，并且只重试一次原请求。
 - 权限是纯并集，没有 deny。"除了 X 都行"就是给一个不含 X 的角色。
-- 前端只在三者同时满足时显示一个路由：已安装（`GET /api/tenant/features`）、该用户有权（`GET /api/me/permissions`）、已登录。只查第一个，结果是菜单看得见、点进去整页 403。前端隐藏从来不是安全边界：拒绝数据的是后端（[frontend.zh.md](frontend.zh.md#功能权限与菜单)）。
+- 前端只在三者同时满足时显示一个路由：已安装（`GET /api/tenant/features`）、该用户有权（`GET /api/me/permissions`）、已登录。只查第一个，结果是菜单看得见、点进去整页 403。前端隐藏从来不是安全边界：拒绝数据的是后端（[03-frontend.md](03-frontend.md#功能权限与菜单)）。
 
 ## 数据范围
 
@@ -112,7 +112,7 @@ Python 用蛇形命名对应同一套名字（`rt.config.endpoint`、`must_endpo
 - 现在用到的维度：`org`（按 `dept_path` 前缀匹配，不需要组织树副本）、`owner`（等于调用者的 `sub`），以及 `warehouse`、`legal_entity` 这类资源维度（调用者被授权的 ID 集合）。be-ops 把它们汇总进 `registry/data-scopes.tsv`。
 - `besdk.ScopeOf(ctx)` 给出按调用者 token 算好的过滤条件；repository 方法接收它，作为静态 `sqlc` 查询的参数传进去。不用 PostgreSQL 行级安全，不拼动态 SQL。
 - 列表把 `owner` 和 `org` 用 OR 组合时，两个操作数都必须来自调用者真实的范围；任何一个停留在"全匹配"，整个条件就匹配一切。
-- 每个有数据范围的组件都有一个测试：建两条归属不同身份的数据，用其中一个身份查，断言另一个身份的数据一条都不返回（[testing.zh.md](testing.zh.md#l2-业务规则测试)）。
+- 每个有数据范围的组件都有一个测试：建两条归属不同身份的数据，用其中一个身份查，断言另一个身份的数据一条都不返回（[06-testing.md](06-testing.md#l2-业务规则测试)）。
 
 ## 调用其他组件
 
@@ -121,7 +121,7 @@ Python 用蛇形命名对应同一套名字（`rt.config.endpoint`、`must_endpo
 - 关联数据通过数据所有者的 `batchGet` 拿，绝不跨 schema JOIN。每个聚合根都提供 `batchGet`。
 - 组件之间互不 import。唯一共享的代码是 `be-sdk-*`，以及组件生成的契约包 `gen/<domain>/<name>`：它作为独立的 Go module 发布、被直接 import。改成复制一份生成代码，同一个 proto 文件会在一个进程里注册两次，调用方和被调方进了同一个外壳时第二次注册直接 panic。
 - 聚合很多组件的组件（BFF、通知路由）把这些依赖全部声明为 `optional: true`；只要有一个是必需依赖，客户没买那个组件的地方它就起不来。客户没买的组件，干脆不加进项目。
-- 拉权限 bundle 和验证 token 时，authz 和 iam 不是依赖边：它们的地址是配置键 `AUTHZ_BUNDLE_URL` 和 `IAM_JWKS_URL`。通过 gRPC 调用 authz 或 iam 业务接口的组件（例如 `infra/iam-casdoor` → `infra/authz`），与其他依赖一样声明这条依赖，注入的 `*_ENDPOINT` 只用于这类调用（[configuration.zh.md](configuration.zh.md#依赖地址)）。
+- 拉权限 bundle 和验证 token 时，authz 和 iam 不是依赖边：它们的地址是配置键 `AUTHZ_BUNDLE_URL` 和 `IAM_JWKS_URL`。通过 gRPC 调用 authz 或 iam 业务接口的组件（例如 `infra/iam-casdoor` → `infra/authz`），与其他依赖一样声明这条依赖，注入的 `*_ENDPOINT` 只用于这类调用（[04-configuration.md](04-configuration.md#依赖地址)）。
 
 ## 数据库
 

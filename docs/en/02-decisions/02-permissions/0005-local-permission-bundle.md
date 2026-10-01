@@ -1,4 +1,4 @@
-[English](0005-local-permission-bundle.md) · [中文](0005-local-permission-bundle.zh.md)
+[English](0005-local-permission-bundle.md) · [中文](../../../zh/02-decisions/02-permissions/0005-local-permission-bundle.md)
 
 # 0005 Permissions are checked against a local bundle
 

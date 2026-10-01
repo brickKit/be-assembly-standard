@@ -1,4 +1,4 @@
-[English](0004-no-redis.md) · [中文](0004-no-redis.zh.md)
+[English](0004-no-redis.md) · [中文](../../../zh/02-decisions/02-permissions/0004-no-redis.md)
 
 # 0004 No Redis
 

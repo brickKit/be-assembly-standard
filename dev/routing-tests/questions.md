@@ -64,9 +64,9 @@
 - 期望路径：
   1. 必经：`AGENTS.md` → Where to look「a new requirement, a feature, "where should this go"…」→ `.claude/skills/brickkit-plan-change/SKILL.md` §1–§3
   2. 必经：`AGENTS.md` Overview「Three hubs」（erp/inventory 是唯一的实物库存流水写入者）与末尾组件表 → `components/erp/inventory/BRICKKIT.md` — Purpose、Contracts（现有 Receive / Adjust；事件清单里已占位的 `erp.inventory.transferred.v1`）
-  3. 必经：`docs/conventions/backend.md#events-and-cross-component-writes`（`idempotency_key` 先原子占位再写）
-  4. 必经：`docs/conventions/backend.md#data-scopes`；`docs/conventions/backend.md#permissions` → `docs/conventions/registries.md#permission-keys`
-  5. 可选：`components/erp/inventory/AGENTS.md`；`docs/conventions/testing.md#l2-business-rule-tests`（核心交易组件用性质测试）
+  3. 必经：`docs/en/01-conventions/02-backend.md#events-and-cross-component-writes`（`idempotency_key` 先原子占位再写）
+  4. 必经：`docs/en/01-conventions/02-backend.md#data-scopes`；`docs/en/01-conventions/02-backend.md#permissions` → `docs/en/01-conventions/07-registries.md#permission-keys`
+  5. 可选：`components/erp/inventory/AGENTS.md`；`docs/en/01-conventions/06-testing.md#l2-business-rule-tests`（核心交易组件用性质测试）
 - 期望结论：Fits one component（erp/inventory），+ 前端跟进（调拨页面 / 按钮）。契约只增：新 rpc / REST 端点，补全已占位事件的字段；minor 版本。
 - 相邻答法给分：inventory 先发版、再改前端加调拨入口 → 2（前端跟进不改变结论）；只改 inventory 不提前端 → 2；inventory 为主、但多拉一个不必要的后端上游（如说要先改 mdm/product）→ 1；在前端或 erp/sales 里串两次 Adjust / Receive → 0；新建一个调拨组件 → 0。
 - 标准答案要点：
@@ -88,8 +88,8 @@
   1. 必经：`AGENTS.md` → Where to look「a new requirement…」→ `brickkit-plan-change` SKILL.md
   2. 必经：组件表 → `components/erp/sales/BRICKKIT.md` — Purpose、Dependencies（infra/workflow 是可选依赖）
   3. 必经：`components/infra/workflow/BRICKKIT.md` — Purpose（只收任务、不判业务规则）、Contracts（`CreateTask`、`infra.workflow.task.completed.v1`）
-  4. 必经：`docs/conventions/reference-implementations.md#which-project-to-read`（infra/workflow 一行：绝不引入 BPMN 引擎）或 `#slot-family-signal`（Approval routing 一行）
-  5. 可选：`docs/conventions/backend.md#events-and-cross-component-writes`；`docs/conventions/configuration.md#key-names`；`docs/decisions/0010-money-as-strings-lists-by-cursor.md`
+  4. 必经：`docs/en/01-conventions/10-reference-implementations.md#which-project-to-read`（infra/workflow 一行：绝不引入 BPMN 引擎）或 `#slot-family-signal`（Approval routing 一行）
+  5. 可选：`docs/en/01-conventions/02-backend.md#events-and-cross-component-writes`；`docs/en/01-conventions/04-configuration.md#key-names`；`docs/en/02-decisions/03-contracts-and-data/0010-money-as-strings-lists-by-cursor.md`
 - 期望结论：Fits one component（erp/sales）。infra/workflow 的现有契约已够用，不用改。
 - 相邻答法给分：只改 erp/sales（+ 前端展示"待审批"）→ 2；规则在 erp/sales，但另外要求 infra/workflow 先加一个其实不需要的接口 → 1；把阈值 / 审批人规则放进 infra/workflow，或引入 BPMN / 规则引擎 → 0；把审批路由做成可配置开关或槽位族 → 0。
 - 标准答案要点：
@@ -111,8 +111,8 @@
   1. 必经：`AGENTS.md` → Where to look「a new requirement…」→ `brickkit-plan-change` SKILL.md
   2. 必经：组件表 → `components/erp/finance/BRICKKIT.md` — Contracts（期间 close / reopen / lock 的 REST 已存在，权限键 `erp.finance.close`）
   3. 必经：`components/frontend/standard/BRICKKIT.md` — Purpose
-  4. 必经：`AGENTS.md` Where to look「a frontend page, the component library…」→ `docs/conventions/frontend.md`（#page-templates、#features-permissions-and-menus、#business-logic-and-data-access、#internationalisation 至少其三）
-  5. 可选：`components/frontend/standard/AGENTS.md`；`docs/decisions/0014-third-party-ui-only-in-ui-kit.md`
+  4. 必经：`AGENTS.md` Where to look「a frontend page, the component library…」→ `docs/en/01-conventions/03-frontend.md`（#page-templates、#features-permissions-and-menus、#business-logic-and-data-access、#internationalisation 至少其三）
+  5. 可选：`components/frontend/standard/AGENTS.md`；`docs/en/02-decisions/04-frontend/0014-third-party-ui-only-in-ui-kit.md`
 - 期望结论：Fits one component。后端契约不改。两种实现都对：(a) 关账入口放在 erp/finance 现有页面或固定在底部的"Component settings"里——只改 frontend/standard；(b) 关账页在 erp/finance 的服务菜单里单独占一项——菜单项声明在 erp/finance 的 `assembly.yaml` 的 `menus`（随 finance 发一版），再前端跟进。
 - 相邻答法给分：(a) → 2；(b)，且菜单项放在 erp/finance 的 `assembly.yaml` → 2（不论考生把它叫"先改上游"还是别的，前端跟进不改变结论）；(b) 但把菜单写进前端的手写菜单表 → 1（答案维度另按 0015 扣分）；认为要给 erp/finance 新增关账接口（没核对出接口已有）→ 1；新建组件 → 0。
 - 标准答案要点：
@@ -133,8 +133,8 @@
 - 期望路径：
   1. 必经：`AGENTS.md` → Where to look「a new requirement…」→ `brickkit-plan-change` SKILL.md
   2. 必经：组件表 → `components/infra/workflow/BRICKKIT.md` — Purpose、Contracts
-  3. 必经：`docs/conventions/backend.md#data-scopes`、`#permissions`
-  4. 可选：`docs/conventions/backend.md#contracts`、`#events-and-cross-component-writes`；`docs/conventions/registries.md#permission-keys`；`components/infra/workflow/AGENTS.md`
+  3. 必经：`docs/en/01-conventions/02-backend.md#data-scopes`、`#permissions`
+  4. 可选：`docs/en/01-conventions/02-backend.md#contracts`、`#events-and-cross-component-writes`；`docs/en/01-conventions/07-registries.md#permission-keys`；`components/infra/workflow/AGENTS.md`
 - 期望结论：Fits one component（infra/workflow），+ 前端跟进（PC 待办页的"转交"按钮）。
 - 相邻答法给分：workflow 先发版、再改前端 → 2；workflow，并把"通知新处理人"列为 infra/notification 的后续可选改动 → 2；把 workflow + notification 当成必须一起做（notification 先或同时）→ 1；去 infra/authz 给同事临时角色、做代理 / 共享记录机制 → 0。
 - 标准答案要点：
@@ -155,8 +155,8 @@
   1. 必经：`AGENTS.md` → Where to look「a new requirement…」→ `brickkit-plan-change` SKILL.md
   2. 必经：组件表 → `components/crm/opportunity/BRICKKIT.md` — Purpose、Dependencies（mdm/customer 是它的依赖）
   3. 必经：`components/mdm/customer/BRICKKIT.md` — Contracts（客户已有状态字段、`Get` / `BatchGet`、`mdm.customer.disabled.v1` 事件）
-  4. 必经：`AGENTS.md` Where to look「calling another component; showing data another component owns」→ `docs/conventions/backend.md#calling-other-components`
-  5. 可选：`docs/decisions/0002-one-schema-per-component.md`
+  4. 必经：`AGENTS.md` Where to look「calling another component; showing data another component owns」→ `docs/en/01-conventions/02-backend.md#calling-other-components`
+  5. 可选：`docs/en/02-decisions/01-architecture/0002-one-schema-per-component.md`
 - 期望结论：Fits one component（crm/opportunity）。mdm/customer 已经提供了需要的一切。
 - 相邻答法给分：只改 crm/opportunity（前端选择器顺手过滤停用客户作为跟进）→ 2；规则在 crm/opportunity，但认为 mdm/customer 要先加一个其实已有的字段或事件 → 1；只在前端过滤 → 0；读 `mdm_customer` 的表 → 0。
 - 标准答案要点：
@@ -176,8 +176,8 @@
 - 期望路径：
   1. 必经：`AGENTS.md` → Where to look「a new requirement…」→ `brickkit-plan-change` SKILL.md
   2. 必经：组件表 → `components/crm/opportunity/BRICKKIT.md` — Purpose、Contracts（`UpdateOpportunity` 已能改 `owner_id`）
-  3. 必经：`AGENTS.md` Where to look「making a table show only some rows to some people」→ `docs/conventions/backend.md#data-scopes` → `docs/decisions/0008-data-scopes-ship-with-the-version.md`（"Sharing one record … change the record's `owner_id`"）
-  4. 可选：`docs/decisions/0009-no-row-level-security.md`
+  3. 必经：`AGENTS.md` Where to look「making a table show only some rows to some people」→ `docs/en/01-conventions/02-backend.md#data-scopes` → `docs/en/02-decisions/02-permissions/0008-data-scopes-ship-with-the-version.md`（"Sharing one record … change the record's `owner_id`"）
+  4. 可选：`docs/en/02-decisions/02-permissions/0009-no-row-level-security.md`
 - 期望结论：Fits one component（crm/opportunity），+ 前端跟进（批量转交入口）。
 - 相邻答法给分：crm/opportunity 加批量转交端点（+ 前端）→ 2；"单条已能改负责人，逐条改即可，不用改代码"、没有回应"一次全部" → 1；建共享表 / 可见性规则、在 infra/authz 给 Li 加能看张三数据的角色、用 RLS → 0。
 - 标准答案要点：
@@ -203,8 +203,8 @@
   2. 必经：组件表 → `components/erp/sales/BRICKKIT.md` — Purpose、Dependencies（mdm/customer、erp/finance 都是它的依赖；确认订单时已查信用占用）
   3. 必经：`components/erp/finance/BRICKKIT.md` — Contracts（`ListARLedger` 可按 `customer_id`、`created_before` 查应收行，每行有 `amount`、`reconciled_amount`、`created_at`）
   4. 必经：`components/mdm/customer/BRICKKIT.md` — Purpose、Contracts（客户主数据的字段）
-  5. 必经：`docs/conventions/backend.md#contracts` 或 `docs/decisions/0011-contracts-are-additive-only.md`
-  6. 可选：`docs/conventions/backend.md#calling-other-components`；`docs/conventions/reference-implementations.md#which-project-to-read`（mdm/customer → `res.partner`）
+  5. 必经：`docs/en/01-conventions/02-backend.md#contracts` 或 `docs/en/02-decisions/03-contracts-and-data/0011-contracts-are-additive-only.md`
+  6. 可选：`docs/en/01-conventions/02-backend.md#calling-other-components`；`docs/en/01-conventions/10-reference-implementations.md#which-project-to-read`（mdm/customer → `res.partner`）
 - 期望结论：Needs a provider's contract first：mdm/customer（客户加账期字段，契约只增）→ erp/sales（确认订单时取客户账期，用 erp/finance 现有的 `ListARLedger` 找出过了账期还没核销完的应收，有就拒绝）。erp/finance 不用改。
 - 依据（给阅卷人，不给考生）：已对照契约核实——`mdm/customer` 的 `Customer` 只有名称、税号、信用额度、状态、联系人、开票信息，没有账期；`erp/finance` 的 `ARLedgerEntry` 有金额、已核销金额、创建时间，但没有到期日或账期；`erp/sales` 的契约里也没有账期。全项目都没有"账期"这个数据，所以必须有一个上游先加；`ListARLedger` 已能提供应收行，所以 finance 不是必改项。
 - 相邻答法给分：
@@ -234,8 +234,8 @@
   1. 必经：`AGENTS.md` → Where to look「a new requirement…」→ `brickkit-plan-change` SKILL.md
   2. 必经：组件表 → `components/erp/finance/BRICKKIT.md` — Purpose（事件汇入方，没有出边）、Contracts（应收来自 `sales.order.created.v1`）
   3. 必经：`components/erp/sales/BRICKKIT.md` — Contracts（`sales.order.created.v1` 的字段里没有部门）
-  4. 必经：`AGENTS.md` Where to look「changing a contract…」或「publishing or consuming an event…」→ `docs/conventions/backend.md#contracts` / `#events-and-cross-component-writes`，`docs/decisions/0011-contracts-are-additive-only.md`
-  5. 可选：`docs/decisions/0002-one-schema-per-component.md`
+  4. 必经：`AGENTS.md` Where to look「changing a contract…」或「publishing or consuming an event…」→ `docs/en/01-conventions/02-backend.md#contracts` / `#events-and-cross-component-writes`，`docs/en/02-decisions/03-contracts-and-data/0011-contracts-are-additive-only.md`
+  5. 可选：`docs/en/02-decisions/01-architecture/0002-one-schema-per-component.md`
 - 期望结论：Needs a provider's contract first：erp/sales（`sales.order.created.v1` 加可选字段 `dept_path`）→ erp/finance（存快照、按前缀汇总）。
 - 相邻答法给分：sales → finance（+ 前端报表跟进）→ 2；顺序反 → 1；只改 finance，让 finance 同步调 erp/sales 的 `GetOrder`（新增 finance → sales 依赖）→ 0；跨 schema JOIN → 0。
 - 标准答案要点：
@@ -259,7 +259,7 @@
   3. 必经：组件表 → `components/crm/opportunity/BRICKKIT.md` — Contracts（商机字段、`crm.opportunity.won.v1` 的字段）
   4. 必经：`components/erp/sales/BRICKKIT.md` — Contracts（消费赢单事件建单；发 `sales.order.created.v1`）
   5. 必经：`components/erp/finance/BRICKKIT.md` — Purpose / Contracts（应收凭证由 `sales.order.created.v1` 生成）
-  6. 必经：`docs/conventions/backend.md#contracts` 或 `docs/decisions/0011-contracts-are-additive-only.md`
+  6. 必经：`docs/en/01-conventions/02-backend.md#contracts` 或 `docs/en/02-decisions/03-contracts-and-data/0011-contracts-are-additive-only.md`
 - 期望结论：Needs a provider's contract first：crm/opportunity（商机加字段 + 赢单事件带上）→ erp/sales（订单加字段，由赢单事件写入；`sales.order.created.v1` 也带上）→ erp/finance（把 PO 号存到应收 / 开票所用的记录上）。前端的录入与展示是跟进。
 - 相邻答法给分：crm → sales → finance 三段，顺序对 → 2；crm → sales，并明确指出 finance 开票还要再接一段（`sales.order.created.v1` 加字段、finance 存下来），不论说成同一计划还是下一轮 → 2；crm → sales、完全没提 finance → 1；顺序有颠倒 → 1；erp/sales 同步调 crm 的 `GetOpportunity`，或 finance 去查 sales / crm → 0；只在前端把 PO 号写进订单备注 → 0。
 - 标准答案要点：
@@ -281,7 +281,7 @@
   2. 必经：组件表 → `components/erp/inventory/BRICKKIT.md` — Purpose、Contracts（现有事件）
   3. 必经：`components/infra/notification/BRICKKIT.md` — Purpose、Contracts（订阅来源事件、按通道偏好路由、IM 派发事件）
   4. 必经：`components/integration/im-dingtalk/BRICKKIT.md` — Purpose（只监听 IM 派发事件）
-  5. 可选：`docs/decisions/0012-variants-become-slot-families.md`（不对族成员建依赖边）；`docs/conventions/backend.md#events-and-cross-component-writes`；`components/infra/notification/AGENTS.md`（收件人只从 payload 直取）
+  5. 可选：`docs/en/02-decisions/01-architecture/0012-variants-become-slot-families.md`（不对族成员建依赖边）；`docs/en/01-conventions/02-backend.md#events-and-cross-component-writes`；`components/infra/notification/AGENTS.md`（收件人只从 payload 直取）
 - 期望结论：Needs a provider's contract first：erp/inventory（新的低库存事件，payload 带收件人）→ infra/notification（订阅并路由）。integration/im-dingtalk 不改。
 - 相邻答法给分：inventory → notification → 2；inventory → notification，另说 im-dingtalk 也要改 → 1；inventory 发事件但让 notification 按角色反查"采购负责人"（业务规则进了 notification）→ 1；inventory 直接调钉钉 API、或依赖 integration/im-dingtalk / 同步调 notification → 0；notification 轮询 inventory 的余额 → 0。
 - 标准答案要点：
@@ -303,8 +303,8 @@
   1. 必经：`AGENTS.md` → Where to look「a new requirement…」→ `brickkit-plan-change` SKILL.md
   2. 必经：组件表 → `components/mdm/product/BRICKKIT.md` — Purpose、Contracts（追踪方式 NONE / BATCH / SERIAL、产品事件）
   3. 必经：`components/erp/inventory/BRICKKIT.md` — Purpose、Contracts（入库 `Receive` 带批次）
-  4. 必经：`docs/conventions/backend.md#calling-other-components`（`batchGet`，不跨 schema）
-  5. 可选：`docs/decisions/0002-one-schema-per-component.md`、`0011-contracts-are-additive-only.md`、`0012-variants-become-slot-families.md`
+  4. 必经：`docs/en/01-conventions/02-backend.md#calling-other-components`（`batchGet`，不跨 schema）
+  5. 可选：`docs/en/02-decisions/01-architecture/0002-one-schema-per-component.md`、`docs/en/02-decisions/03-contracts-and-data/0011-contracts-are-additive-only.md`、`docs/en/02-decisions/01-architecture/0012-variants-become-slot-families.md`
 - 期望结论：Needs a provider's contract first：mdm/product（保质期字段）→ erp/inventory（入库算过期日、查快过期批次）。前端"快过期"列表是跟进。
 - 相邻答法给分：product → inventory（+ 前端）→ 2；顺序反 → 1；只改 inventory，由 inventory 自己维护一份产品保质期 → 0；inventory 读 `mdm_product` 的表 → 0。
 - 标准答案要点：
@@ -328,8 +328,8 @@
 - 请求原文（中）：「有个客户公司用飞书不用钉钉，审批提醒要能发到飞书上。」
 - 期望路径：
   1. 必经：`AGENTS.md` → Where to look「a new requirement…」→ `brickkit-plan-change` SKILL.md §3（Needs a new component）；同一行提示"计划中的组件可能已在 `registry/` 预留"
-  2. 必经：`AGENTS.md` Where to look「several reasonable ways to do one feature…」→ `docs/conventions/reference-implementations.md#slot-family-signal` 和 / 或 `docs/decisions/0012-variants-become-slot-families.md`（external channels such as IM 是合格的槽位位置）
-  3. 必经：`registry/ports.tsv`、`registry/schemas.tsv`（`integration/im-feishu` 已预留 8209 / 9209、schema `integration_im_feishu`），或经 `docs/conventions/registries.md` 到达
+  2. 必经：`AGENTS.md` Where to look「several reasonable ways to do one feature…」→ `docs/en/01-conventions/10-reference-implementations.md#slot-family-signal` 和 / 或 `docs/en/02-decisions/01-architecture/0012-variants-become-slot-families.md`（external channels such as IM 是合格的槽位位置）
+  3. 必经：`registry/ports.tsv`、`registry/schemas.tsv`（`integration/im-feishu` 已预留 8209 / 9209、schema `integration_im_feishu`），或经 `docs/en/01-conventions/07-registries.md` 到达
   4. 必经：`components/integration/im-dingtalk/BRICKKIT.md` — Purpose、Contracts（同族成员的契约）
   5. 可选：`components/infra/notification/BRICKKIT.md` — Configuration（派发给哪些 IM 适配器的配置键）；`brickkit-component` SKILL.md
 - 期望结论：Needs a new component：`integration/im-feishu`，channel:im 族的新成员。
@@ -351,10 +351,10 @@
 - 请求原文（英）："One customer already runs Keycloak for single sign-on and refuses to install Casdoor. Can our system use Keycloak instead?"
 - 期望路径：
   1. 必经：`AGENTS.md` → Where to look「a new requirement…」→ `brickkit-plan-change` SKILL.md
-  2. 必经：`docs/decisions/0012-variants-become-slot-families.md`（`slot:iam` 是槽位族）和 `docs/decisions/0021-authz-and-iam-addresses-are-shared-vars.md`（验 token 经 `IAM_JWKS_URL`，不建依赖边），经 Where to look「several reasonable ways…」或「"why not … "」/ 决策索引到达
+  2. 必经：`docs/en/02-decisions/01-architecture/0012-variants-become-slot-families.md`（`slot:iam` 是槽位族）和 `docs/en/02-decisions/01-architecture/0021-authz-and-iam-addresses-are-shared-vars.md`（验 token 经 `IAM_JWKS_URL`，不建依赖边），经 Where to look「several reasonable ways…」或「"why not … "」/ 决策索引到达
   3. 必经：`components/infra/iam-casdoor/BRICKKIT.md` — Purpose、Contracts（slot:iam 成员要暴露的契约：签发 / 刷新 / 登出 token、JWKS、`/api/tenant/features`）
-  4. 必经：`registry/ports.tsv` / `registry/schemas.tsv`（`infra/iam-keycloak` 已预留 8221 / 9221，注明与 casdoor 互斥；`keycloak` 是非组件 schema），或经 `docs/conventions/registries.md`
-  5. 可选：`docs/conventions/configuration.md#dependency-addresses`；`docs/decisions/0006-jwt-carries-identity-only.md`、`0019-infrastructure-is-not-a-component.md`
+  4. 必经：`registry/ports.tsv` / `registry/schemas.tsv`（`infra/iam-keycloak` 已预留 8221 / 9221，注明与 casdoor 互斥；`keycloak` 是非组件 schema），或经 `docs/en/01-conventions/07-registries.md`
+  5. 可选：`docs/en/01-conventions/04-configuration.md#dependency-addresses`；`docs/en/02-decisions/02-permissions/0006-jwt-carries-identity-only.md`、`docs/en/02-decisions/01-architecture/0019-infrastructure-is-not-a-component.md`
 - 期望结论：Needs a new component：`infra/iam-keycloak`，slot:iam 族成员，与 infra/iam-casdoor 二选一。
 - 相邻答法给分：新建 iam-keycloak → 2；新建 iam-keycloak，但说每个业务组件都要改代码或加对它的依赖 → 1；在 iam-casdoor 里加 Keycloak 模式 / 分支 → 0；把 Keycloak 镜像本身包成组件就完事、不提供 slot:iam 契约 → 0。
 - 标准答案要点：
@@ -363,7 +363,7 @@
   - 必含：业务组件一行代码不改：验 token 只认 `IAM_JWKS_URL`（共享变量），换实现是改 `config/vars.yaml` 或部署文件 `vars:` 里的值（0021）
   - 必含：端口和 schema 用 `registry/` 里已预留的
   - 必含：不在 iam-casdoor 里加 Keycloak 模式 / 分支
-  - 加分：token 只带身份（`sub`、`roles[]`、`dept_path`、`org_id`，0006），新实现也一样；前端的 IAM 配置要跟着换；新成员若像 iam-casdoor 一样调用 infra/authz 的业务 API（登录时算 claims），它自己要声明对 infra/authz 的依赖（`configuration.md#dependency-addresses`）——这与"业务组件不改"不矛盾
+  - 加分：token 只带身份（`sub`、`roles[]`、`dept_path`、`org_id`，0006），新实现也一样；前端的 IAM 配置要跟着换；新成员若像 iam-casdoor 一样调用 infra/authz 的业务 API（登录时算 claims），它自己要声明对 infra/authz 的依赖（`04-configuration.md#dependency-addresses`）——这与"业务组件不改"不矛盾
 - 禁止：F0
 - 陷阱：引诱"给 iam-casdoor 加一个 Keycloak 模式"，或给所有组件加对新 IAM 的依赖。
 - 开考前核对：iam-casdoor 的 `BRICKKIT.md` Contracts 列全了 slot:iam 契约、Dependencies 写了 infra/authz；registry 预留行仍在。
@@ -374,10 +374,10 @@
 - 请求原文（中）：「我们要上采购：请购、采购订单、到货以后入库，还要管供应商资料。」
 - 期望路径：
   1. 必经：`AGENTS.md` Overview「Three hubs」（mdm 只读、谁也不调；erp/inventory 是唯一的实物写入者）→ Where to look「a new requirement…」→ `brickkit-plan-change` SKILL.md
-  2. 必经：`registry/ports.tsv` / `registry/schemas.tsv`（`erp/purchase` 8085 / 9095、`mdm/supplier` 8081 / 9091 已预留），或经 `docs/conventions/registries.md`
-  3. 必经：`docs/conventions/reference-implementations.md#which-project-to-read`（erp/sales, erp/purchase → Odoo `sale`, `purchase`；mdm/customer, mdm/supplier → `res.partner` 的取舍，按数据归属拆开）
+  2. 必经：`registry/ports.tsv` / `registry/schemas.tsv`（`erp/purchase` 8085 / 9095、`mdm/supplier` 8081 / 9091 已预留），或经 `docs/en/01-conventions/07-registries.md`
+  3. 必经：`docs/en/01-conventions/10-reference-implementations.md#which-project-to-read`（erp/sales, erp/purchase → Odoo `sale`, `purchase`；mdm/customer, mdm/supplier → `res.partner` 的取舍，按数据归属拆开）
   4. 必经：`components/erp/inventory/BRICKKIT.md` — Contracts（`Receive`）
-  5. 可选：`docs/conventions/backend.md#calling-other-components`、`#events-and-cross-component-writes`；`components/erp/finance/BRICKKIT.md` — Purpose；`brickkit-component` SKILL.md
+  5. 可选：`docs/en/01-conventions/02-backend.md#calling-other-components`、`#events-and-cross-component-writes`；`components/erp/finance/BRICKKIT.md` — Purpose；`brickkit-component` SKILL.md
 - 期望结论：Needs a new component：先 `mdm/supplier`（上游），再 `erp/purchase`。
 - 相邻答法给分：mdm/supplier 先、erp/purchase 后 → 2；两个新组件但顺序反 → 1；只建 erp/purchase，把供应商资料放在 purchase 自己里 → 1；把采购塞进 erp/sales、供应商塞进 mdm/customer，或让采购自己写库存流水 → 0。
 - 标准答案要点：
@@ -398,9 +398,9 @@
 - 期望路径：
   1. 必经：`AGENTS.md` → Where to look「a new requirement…」→ `brickkit-plan-change` SKILL.md
   2. 必经：组件表 → `components/crm/opportunity/BRICKKIT.md` — Purpose（它拥有商机，线索不归它）、Contracts（`CreateOpportunity`）
-  3. 必经：`registry/ports.tsv` / `registry/schemas.tsv`（`crm/lead` 已预留 8100 / 9100、schema `crm_lead`），或经 `docs/conventions/registries.md`
-  4. 必经：`docs/conventions/reference-implementations.md#which-project-to-read`（crm/lead, crm/opportunity 一行：EspoCRM、SuiteCRM 的线索 → 商机转化）
-  5. 可选：`docs/conventions/backend.md#calling-other-components`、`#data-scopes`
+  3. 必经：`registry/ports.tsv` / `registry/schemas.tsv`（`crm/lead` 已预留 8100 / 9100、schema `crm_lead`），或经 `docs/en/01-conventions/07-registries.md`
+  4. 必经：`docs/en/01-conventions/10-reference-implementations.md#which-project-to-read`（crm/lead, crm/opportunity 一行：EspoCRM、SuiteCRM 的线索 → 商机转化）
+  5. 可选：`docs/en/01-conventions/02-backend.md#calling-other-components`、`#data-scopes`
 - 期望结论：Needs a new component：`crm/lead`。
 - 相邻答法给分：新建 crm/lead，依赖方向 lead → opportunity → 2；新建 crm/lead 但方向反（opportunity 依赖 lead 或订阅 lead 去建商机且说成 opportunity 的改动为主）→ 1；在 crm/opportunity 加"线索"阶段 / 状态 → 0。
 - 标准答案要点：
@@ -424,7 +424,7 @@
 - 类别：与已有决策冲突
 - 请求原文（中）：「每个组件每 15 秒都去拉一遍权限 bundle，太浪费了。加个 Redis，把权限放进去大家共享，判定也快一点。」
 - 期望路径：
-  1. 必经：`AGENTS.md` → Where to look「adding a cache; Redis; making the permission check faster」→ `docs/decisions/0004-no-redis.md`、`docs/decisions/0005-local-permission-bundle.md`
+  1. 必经：`AGENTS.md` → Where to look「adding a cache; Redis; making the permission check faster」→ `docs/en/02-decisions/02-permissions/0004-no-redis.md`、`docs/en/02-decisions/02-permissions/0005-local-permission-bundle.md`
 - 期望结论：Conflicts。停下来交给人，引用 0004、0005 的 Decision 与 Why。
 - 相邻答法给分：见本节开头；另：不加 Redis 但自作主张改 SDK 的轮询机制 → 0（没停）。
 - 标准答案要点：
@@ -440,14 +440,14 @@
 - 类别：与已有决策冲突
 - 请求原文（英）："Our steel-trading customer values every batch at what that batch actually cost them; most of our retail customers want a running average instead. Can inventory do both, with a switch in each customer's deployment? Or better, split stock valuation out so each customer plugs in the one they want."
 - 期望路径：
-  1. 必经：`AGENTS.md` → Where to look「several reasonable ways to do one feature; "let the customer choose"」→ `docs/conventions/reference-implementations.md#slot-family-signal` → `docs/decisions/0012-variants-become-slot-families.md`
+  1. 必经：`AGENTS.md` → Where to look「several reasonable ways to do one feature; "let the customer choose"」→ `docs/en/01-conventions/10-reference-implementations.md#slot-family-signal` → `docs/en/02-decisions/01-architecture/0012-variants-become-slot-families.md`
 - 期望结论：Conflicts（"每个部署一个开关"和"拆成可插拔的估值组件"两种做法都被 0012 排除）。停下来交给人，引用 0012。
 - 相邻答法给分：见本节开头；另：停下来、引用 0012，并把"默认实现 + 客户 fork"列为方向 → 2；停下来、引用 0012，但认为 0012 的"两三个分支的内部策略"例外适用、推荐直接做成内部策略 → 1（答案维度该点不得分）；不停、直接在 inventory 里写两种方法的分支或开关 → 0；新建估值组件 / 槽位 → 0。
 - 标准答案要点：
   - 必含：这是成本（库存估值）方法的分歧，0012 排除了把它做成槽位族（单独的估值组件），也排除了"加一个设置让客户选算法"
   - 必含：理由：估值所在的位置在 erp/inventory 里，而它被其它组件依赖，依赖边钉死了精确的组件 id，换实现就要改所有依赖方；开关把所有客户的变体塞进一份代码，改一个客户的会弄坏另一个
   - 必含：项目的做法：标准件只带一种默认方法，需要另一种的客户拿一个客户 fork（`metadata.id` 不变）
-  - 必含：为什么"两三个分支、看不到更多变体时可以做内部策略"的例外**不适用**：`reference-implementations.md` 的 slot-family 表对成本方法已列出移动平均、FIFO、标准成本差异、批次实际成本四种，更多变体就在视野内；而且请求要的是按客户切换，正是被排除的开关
+  - 必含：为什么"两三个分支、看不到更多变体时可以做内部策略"的例外**不适用**：`10-reference-implementations.md` 的 slot-family 表对成本方法已列出移动平均、FIFO、标准成本差异、批次实际成本四种，更多变体就在视野内；而且请求要的是按客户切换，正是被排除的开关
   - 必含：停下来，请人决定默认方法用哪个、这个客户是否 fork
 - 禁止：F0
 - 陷阱："可配置 / 可插拔"听起来是好设计；只举了两种方法，又容易让人套用内部策略例外。
@@ -458,8 +458,8 @@
 - 请求原文（英）："erp/sales and erp/inventory both run inside the go-core shell. The gRPC hop for Reserve is pointless — just call inventory's reserve function directly in-process. It'll be faster."
 - 期望路径：
   1. 必经：`AGENTS.md` Overview「Two principles that never bend」（会话自动加载即算读到）
-  2. 必经：`docs/decisions/0001-no-imports-between-components.md`（经 Pitfalls「Import another component's code…」行、Where to look「putting several components in one process; a shell」或决策索引到达）
-  3. 可选：`docs/decisions/0022-one-repository-per-shell.md`；`docs/conventions/backend.md#two-principles`
+  2. 必经：`docs/en/02-decisions/01-architecture/0001-no-imports-between-components.md`（经 Pitfalls「Import another component's code…」行、Where to look「putting several components in one process; a shell」或决策索引到达）
+  3. 可选：`docs/en/02-decisions/01-architecture/0022-one-repository-per-shell.md`；`docs/en/01-conventions/02-backend.md#two-principles`
 - 期望结论：Conflicts。停下来交给人，引用两条不变的原则和 0001。
 - 相邻答法给分：见本节开头。
 - 标准答案要点：
@@ -476,8 +476,8 @@
 - 类别：与已有决策冲突
 - 请求原文（中）：「销售总监想在系统后台自己勾选：华东的销售也能看华南的订单，随时开随时关，不用每次找开发。」
 - 期望路径：
-  1. 必经：`AGENTS.md` → Where to look「making a table show only some rows to some people」→ `docs/conventions/backend.md#data-scopes` → `docs/decisions/0008-data-scopes-ship-with-the-version.md`
-  2. 可选：`docs/decisions/0009-no-row-level-security.md`
+  1. 必经：`AGENTS.md` → Where to look「making a table show only some rows to some people」→ `docs/en/01-conventions/02-backend.md#data-scopes` → `docs/en/02-decisions/02-permissions/0008-data-scopes-ship-with-the-version.md`
+  2. 可选：`docs/en/02-decisions/02-permissions/0009-no-row-level-security.md`
 - 期望结论：Conflicts。停下来交给人，引用 0008。
 - 相邻答法给分：见本节开头。
 - 标准答案要点：
@@ -494,8 +494,8 @@
 - 类别：与已有决策冲突
 - 请求原文（中）：「erp/sales 刚启动的那几秒，请求都返回 503，因为 authz 还没起来。给 erp/sales 的 component.yaml 加一个对 infra/authz 的依赖，让平台先把 authz 拉起来，不就好了？」
 - 期望路径：
-  1. 必经：`docs/decisions/0021-authz-and-iam-addresses-are-shared-vars.md`（经 `AGENTS.md` Where to look「naming a config key…」→ `docs/conventions/configuration.md#dependency-addresses`，或经决策索引到达）
-  2. 必经：`docs/decisions/0005-local-permission-bundle.md`（首个 bundle 到达之前业务请求 `503`、`/healthz` 照常健康）
+  1. 必经：`docs/en/02-decisions/01-architecture/0021-authz-and-iam-addresses-are-shared-vars.md`（经 `AGENTS.md` Where to look「naming a config key…」→ `docs/en/01-conventions/04-configuration.md#dependency-addresses`，或经决策索引到达）
+  2. 必经：`docs/en/02-decisions/02-permissions/0005-local-permission-bundle.md`（首个 bundle 到达之前业务请求 `503`、`/healthz` 照常健康）
   3. 可选：`components/erp/sales/BRICKKIT.md` — Dependencies（确认 erp/sales 不调 authz 的业务 API）
 - 期望结论：Conflicts。停下来交给人，引用 0021（以及 0005 说明 503 是设计内行为）。
 - 相邻答法给分：见本节开头；另：以"iam-casdoor 也依赖 authz，有先例"为由同意加边 → 0（没分辨两种情形）。
@@ -518,8 +518,8 @@
 - 类别：部署与配置
 - 请求原文（中）：「erp/sales 连数据库的密码写哪儿？我直接把密码写进 config/erp-sales.yaml 行不行？」
 - 期望路径：
-  1. 必经：`AGENTS.md` → Where to look「naming a config key; … a database password」→ `docs/conventions/configuration.md#database-roles`、`#where-values-live`
-  2. 可选：`docs/conventions/registries.md#schemas-and-roles`（`make db-init`）；`README.md` Quick start（`make dev-env`）；`brickkit-deploy` SKILL.md §5；`registry/schemas.tsv`
+  1. 必经：`AGENTS.md` → Where to look「naming a config key; … a database password」→ `docs/en/01-conventions/04-configuration.md#database-roles`、`#where-values-live`
+  2. 可选：`docs/en/01-conventions/07-registries.md#schemas-and-roles`（`make db-init`）；`README.md` Quick start（`make dev-env`）；`brickkit-deploy` SKILL.md §5；`registry/schemas.tsv`
 - 期望结论：直接作答（不涉及改动）。
 - 相邻答法给分：见总览下方的非改动题共用规则。
 - 标准答案要点：
@@ -530,16 +530,16 @@
   - 加分：`make dev-env` 往 `.env` 补随机密码；`PG_PASSWORD` 是 `secret: true`，写明文会告警；`${VAR}` 未定义时 `up` 拒绝；K8s 上进生成的 Secret 或用 `existingSecret`
 - 禁止：F0
 - 陷阱：brickKit 0.x 时代平台注入 `DATABASE_*` 变量、在 `brickkit.yaml` 里做资源绑定；答出这些旧做法 = 答案维度 0。
-- 开考前核对：configuration.md 的数据库角色一节没变；erp/sales 的 `BRICKKIT.md` Before you deploy 与之一致。
+- 开考前核对：04-configuration.md 的数据库角色一节没变；erp/sales 的 `BRICKKIT.md` Before you deploy 与之一致。
 
 ### Q22 Run only crm/opportunity and what it needs
 
 - 类别：部署与配置
 - 请求原文（英）："Today I only work on crm/opportunity. How do I start just it and what it needs, instead of the whole stack? And how do I go back afterwards?"
 - 期望路径：
-  1. 必经：`AGENTS.md` → Where to look「debugging one component in an IDE; running only one component」→ `docs/conventions/development-workflow.md#running-it-for-real`
+  1. 必经：`AGENTS.md` → Where to look「debugging one component in an IDE; running only one component」→ `docs/en/01-conventions/01-development-workflow.md#running-it-for-real`
   2. 必经：`brickkit-assemble` SKILL.md §12 或 `brickkit-deploy` SKILL.md §12（focus）
-  3. 可选：`components/crm/opportunity/BRICKKIT.md` — Dependencies；`docs/conventions/testing.md#cross-component-tests`
+  3. 可选：`components/crm/opportunity/BRICKKIT.md` — Dependencies；`docs/en/01-conventions/06-testing.md#cross-component-tests`
 - 期望结论：直接作答。
 - 相邻答法给分：见非改动题共用规则。
 - 标准答案要点：
@@ -560,8 +560,8 @@
 - 请求原文（中）：「下个月要上客户的 K8s 生产环境，跟我们本地 docker 用的部署文件怎么区分？数据库密码这些密钥怎么给进去？」
 - 期望路径：
   1. 必经：`AGENTS.md` → Where to look「how to install or deploy; who creates the database; secrets; Kubernetes; another environment」→ `brickkit-deploy` SKILL.md（§4 环境、§5 配置值形式、"How the mechanism works" 的 Targets）
-  2. 必经：同一行指向的组件 `BRICKKIT.md` — Before you deploy（任选一个组件看即可）；`docs/conventions/registries.md#schemas-and-roles`（`make db-init`）
-  3. 可选：`docs/conventions/configuration.md#where-values-live`（部署文件 `vars:` 覆盖）；`deploy.teardown.yaml`（一份部署文件覆盖 `vars:` 的实例）
+  2. 必经：同一行指向的组件 `BRICKKIT.md` — Before you deploy（任选一个组件看即可）；`docs/en/01-conventions/07-registries.md#schemas-and-roles`（`make db-init`）
+  3. 可选：`docs/en/01-conventions/04-configuration.md#where-values-live`（部署文件 `vars:` 覆盖）；`deploy.teardown.yaml`（一份部署文件覆盖 `vars:` 的实例）
 - 期望结论：直接作答。
 - 相邻答法给分：见非改动题共用规则。
 - 标准答案要点：
@@ -571,18 +571,18 @@
   - 必含：数据库 / schema / 角色由部署方创建（`make db-init` 产出的脚本），brickKit 不建库；迁移在 K8s 上以 Job 运行
   - 加分：`mode: debug` / `local` 和 `focus` 在 K8s 上都被拒；对外暴露要 `hostname`（生成 Ingress）；内存 requests = limits 的建议
 - 禁止：F0
-- 陷阱：`docs/ops/` 在 06e 之前还不存在——编造部署手册的内容或路径、编造多文件叠加（overlay）都算答案错误。
-- 开考前核对：若 `docs/ops/` 已存在，把部署手册加进期望路径。
+- 陷阱：部署文档（06e 在 `docs/en/`、`docs/zh/` 里新增的编号部署文件夹）在 06e 之前还不存在——编造部署手册的内容或路径、编造多文件叠加（overlay）都算答案错误。
+- 开考前核对：若部署文档已存在，把部署手册加进期望路径。
 
 ### Q24 Run infra/authz on its own instead of inside the go-infra shell
 
 - 类别：部署与配置
 - 请求原文（英）："We want to run infra/authz as its own container instead of inside the go-infra shell. What do the other components have to change to keep finding it?"
 - 期望路径：
-  1. 必经：`AGENTS.md` → Where to look「naming a config key; … connecting to …」或「putting several components in one process; a shell…」→ `docs/conventions/configuration.md#dependency-addresses`
-  2. 必经：`docs/decisions/0021-authz-and-iam-addresses-are-shared-vars.md`
+  1. 必经：`AGENTS.md` → Where to look「naming a config key; … connecting to …」或「putting several components in one process; a shell…」→ `docs/en/01-conventions/04-configuration.md#dependency-addresses`
+  2. 必经：`docs/en/02-decisions/01-architecture/0021-authz-and-iam-addresses-are-shared-vars.md`
   3. 必经：`config/vars.yaml`（当前值是 authz / iam 自己的成员服务名）
-  4. 可选：`brickkit-deploy` SKILL.md §8（把成员条目移出外壳）；`docs/decisions/0022-one-repository-per-shell.md`；`deploy.teardown.yaml`；`brickkit-troubleshoot` SKILL.md（"Can't reach a dependency"：托管在外壳里的成员经外壳地址访问）
+  4. 可选：`brickkit-deploy` SKILL.md §8（把成员条目移出外壳）；`docs/en/02-decisions/01-architecture/0022-one-repository-per-shell.md`；`deploy.teardown.yaml`；`brickkit-troubleshoot` SKILL.md（"Can't reach a dependency"：托管在外壳里的成员经外壳地址访问）
 - 期望结论：直接作答——任何组件都不改代码、不发版，`config/vars.yaml` 也不改：只在部署文件里把 infra/authz 的条目移出外壳。
 - 相邻答法给分：见非改动题共用规则；另：逐个组件改 `config/<scope>-<name>.yaml` 里的字面量（不改代码）→ 1；给各组件加对 authz 的依赖或要求它们发版 → 0。
 - 标准答案要点：
@@ -600,9 +600,9 @@
 - 类别：部署与配置
 - 请求原文（中）：「我想在 GoLand 里断点调试 erp/inventory，其它组件照常跑在容器里，怎么弄？」
 - 期望路径：
-  1. 必经：`AGENTS.md` → Where to look「debugging one component in an IDE」→ `docs/conventions/development-workflow.md#running-it-for-real`
+  1. 必经：`AGENTS.md` → Where to look「debugging one component in an IDE」→ `docs/en/01-conventions/01-development-workflow.md#running-it-for-real`
   2. 必经：`brickkit-deploy` SKILL.md §3（`mode: debug`）
-  3. 可选：`brickkit-troubleshoot` SKILL.md（"Check this first" 第 4 条）；`docs/conventions/registries.md#ports`（`1xxxx` 留给 brickKit）
+  3. 可选：`brickkit-troubleshoot` SKILL.md（"Check this first" 第 4 条）；`docs/en/01-conventions/07-registries.md#ports`（`1xxxx` 留给 brickKit）
 - 期望结论：直接作答。
 - 相邻答法给分：见非改动题共用规则。
 - 标准答案要点：
@@ -642,7 +642,7 @@
 - 请求原文（中）：「我改了 erp/sales 的代码，brickkit build 了也 brickkit up 了，跑起来还是老逻辑，日志里也看不到我新加的那行。」
 - 期望路径：
   1. 必经：`AGENTS.md` Pitfalls「Change code without bumping `metadata.version`…」
-  2. 必经：`docs/conventions/development-workflow.md#versions` 或 `#running-it-for-real`
+  2. 必经：`docs/en/01-conventions/01-development-workflow.md#versions` 或 `#running-it-for-real`
   3. 可选：`brickkit-troubleshoot` SKILL.md（"Code changes don't show up after `brickkit build`" 一行）
 - 期望结论：直接作答（修法是版本纪律，不是需求改动）。
 - 相邻答法给分：见非改动题共用规则；升版本 / `--force` 属于直接作答，不算"附带改代码建议"。
@@ -660,7 +660,7 @@
 - 请求原文（英）："The go-core shell container exits right after it starts. The log says the member erp/sales is not registered. Every component in that shell is down."
 - 期望路径：
   1. 必经：`AGENTS.md` → Where to look「a shell exits at start: a member "not registered"…」→ Pitfalls 外壳注册表一行
-  2. 必经：`docs/decisions/0022-one-repository-per-shell.md`
+  2. 必经：`docs/en/02-decisions/01-architecture/0022-one-repository-per-shell.md`
   3. 可选：`brickkit-troubleshoot` SKILL.md（外壳成员不一致、`IMAGE_STALE`）；`brickkit-deploy` SKILL.md §8
 - 期望结论：直接作答（修的是外壳仓库 brickKit/be-go-core，本项目里是子模块 `shell/be/go-core/`）。
 - 相邻答法给分：见非改动题共用规则；修外壳的注册表 / 成员清单属于直接作答；要求改 erp/sales 组件本身 → 1。

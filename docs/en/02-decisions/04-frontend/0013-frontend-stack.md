@@ -1,4 +1,4 @@
-[English](0013-frontend-stack.md) · [中文](0013-frontend-stack.zh.md)
+[English](0013-frontend-stack.md) · [中文](../../../zh/02-decisions/04-frontend/0013-frontend-stack.md)
 
 # 0013 Frontend stack: Vue 3, AntDV and vxe-table on PC, wot-design-uni on mobile
 

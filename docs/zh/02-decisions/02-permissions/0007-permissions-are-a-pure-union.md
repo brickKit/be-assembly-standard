@@ -1,4 +1,4 @@
-[English](0007-permissions-are-a-pure-union.md) · [中文](0007-permissions-are-a-pure-union.zh.md)
+[English](../../../en/02-decisions/02-permissions/0007-permissions-are-a-pure-union.md) · [中文](0007-permissions-are-a-pure-union.md)
 
 # 0007 权限是纯并集，没有 Deny
 

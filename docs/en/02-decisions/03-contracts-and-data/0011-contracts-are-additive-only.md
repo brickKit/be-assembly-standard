@@ -1,4 +1,4 @@
-[English](0011-contracts-are-additive-only.md) · [中文](0011-contracts-are-additive-only.zh.md)
+[English](0011-contracts-are-additive-only.md) · [中文](../../../zh/02-decisions/03-contracts-and-data/0011-contracts-are-additive-only.md)
 
 # 0011 Contracts change by adding only
 

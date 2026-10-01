@@ -1,4 +1,4 @@
-[English](0005-local-permission-bundle.md) · [中文](0005-local-permission-bundle.zh.md)
+[English](../../../en/02-decisions/02-permissions/0005-local-permission-bundle.md) · [中文](0005-local-permission-bundle.md)
 
 # 0005 权限判定基于本地 bundle
 
@@ -15,7 +15,7 @@
 - 在业务组件里建角色表或权限表，或用事件把角色同步到各组件
 - 每个请求都"问一下 authz 这个用户能不能做 X"
 - 把 authz 是否可达放进 `/healthz`——authz 抖一下，外壳里所有模块一起重启
-- 用 Redis 缓存权限（[0004](0004-no-redis.zh.md)）
+- 用 Redis 缓存权限（[0004](0004-no-redis.md)）
 - 引入 SpiceDB、OpenFGA 或仿 Zanzibar 的集中式授权服务
 - 用框架原生的 `GET` / `POST` 注册路由，而不是带权限键的版本
 

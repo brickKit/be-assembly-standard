@@ -1,8 +1,8 @@
-[English](frontend.md) · [中文](frontend.zh.md)
+[English](03-frontend.md) · [中文](../../zh/01-conventions/03-frontend.md)
 
 # Frontend conventions
 
-Rules for every frontend component in this project: every member of the frontend slot family, not only `frontend/standard`. A frontend never enters a shell; its constraints come from elsewhere: a page can show only one design system, swapping an implementation must mean changing one package rather than forty pages, and an AI generating pages must not have to guess. Why these choices were made: [../decisions/README.md](../decisions/README.md).
+Rules for every frontend component in this project: every member of the frontend slot family, not only `frontend/standard`. A frontend never enters a shell; its constraints come from elsewhere: a page can show only one design system, swapping an implementation must mean changing one package rather than forty pages, and an AI generating pages must not have to guess. Why these choices were made: [../02-decisions/README.md](../02-decisions/README.md).
 
 ## Stack
 
@@ -63,7 +63,7 @@ The PC skeleton is two-tier navigation in the style of a cloud console: pick a s
 
 - Why not a tree: menus are aggregated at assembly time from each component's `assembly.yaml`, and every customer installs a different set, so a tree would have a different shape for every customer and an AI generating a page couldn't know where it belongs. Mapped to component boundaries, the two tiers look the same for every customer.
 - Unlike a cloud console: in-app tabs exist (an unsaved ERP form must survive switching away, and the browser already has twenty tabs), the in-service menu is always flat, and the region switcher is the organisation / legal-entity switcher, which also feeds the data scope.
-- The app skeleton is our own. For the parts you can't work out, read `vue-vben-admin`'s layout, router + access and request wrapper, never install it ([reference-implementations.md](reference-implementations.md#which-project-to-read)).
+- The app skeleton is our own. For the parts you can't work out, read `vue-vben-admin`'s layout, router + access and request wrapper, never install it ([10-reference-implementations.md](10-reference-implementations.md#which-project-to-read)).
 
 ## Preferences and branding
 
@@ -103,4 +103,4 @@ User preferences are stored in `localStorage`. Adding a preference beyond these 
 
 ## Tests
 
-The frontend test layers are FE-1 (logic: functions, composables, stores), FE-2 (shared components), FE-3 (end-to-end in a real browser on the real backend, one business flow per test) and FE-4 (screenshot comparison inside FE-3 for key pages, light and dark). FE-3 and FE-4 are written once a page's interaction is stable, and run only after the user agrees to the scope. The details are in [testing.md](testing.md#frontend-tests).
+The frontend test layers are FE-1 (logic: functions, composables, stores), FE-2 (shared components), FE-3 (end-to-end in a real browser on the real backend, one business flow per test) and FE-4 (screenshot comparison inside FE-3 for key pages, light and dark). FE-3 and FE-4 are written once a page's interaction is stable, and run only after the user agrees to the scope. The details are in [06-testing.md](06-testing.md#frontend-tests).

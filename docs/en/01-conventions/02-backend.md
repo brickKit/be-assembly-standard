@@ -1,8 +1,8 @@
-[English](backend.md) · [中文](backend.zh.md)
+[English](02-backend.md) · [中文](../../zh/01-conventions/02-backend.md)
 
 # Backend conventions
 
-How Go and Python components (and the TypeScript BFF, where noted) are written in this project. Configuration keys and values are in [configuration.md](configuration.md); ports and schemas in [registries.md](registries.md); the reasons behind the choices in [../decisions/README.md](../decisions/README.md).
+How Go and Python components (and the TypeScript BFF, where noted) are written in this project. Configuration keys and values are in [04-configuration.md](04-configuration.md); ports and schemas in [07-registries.md](07-registries.md); the reasons behind the choices in [../02-decisions/README.md](../02-decisions/README.md).
 
 ## Two principles
 
@@ -24,7 +24,7 @@ The stack is fixed; it is not chosen per component.
 
 Never: Echo, Fiber, chi or a bare `ServeMux`; GORM; `lib/pq`; Flask or Django; synchronous `grpc`; SQLAlchemy; alembic; gunicorn or more than one worker. The migration tool is the same within a language, so every component of that language carries the same migrate entrypoint in its image and the same migration targets in its Makefile.
 
-The TypeScript BFF (`infra/bff-mobile`) runs on Node and never enters a shell. The frontend is Vue 3: Ant Design Vue 4 + vxe-table on PC, Uni-app + wot-design-uni on mobile. Every `package.json` pins exact versions; the frontend rules are in [frontend.md](frontend.md).
+The TypeScript BFF (`infra/bff-mobile`) runs on Node and never enters a shell. The frontend is Vue 3: Ant Design Vue 4 + vxe-table on PC, Uni-app + wot-design-uni on mobile. Every `package.json` pins exact versions; the frontend rules are in [03-frontend.md](03-frontend.md).
 
 **Choosing a library version**: where you are free to choose, match what the system already has; where a dependency chain forces a newer version, follow it.
 
@@ -100,11 +100,11 @@ Also never call `gin.New()` (the engine loses the SDK's middleware: request IDs,
 
 ## Permissions
 
-- A permission key is `<domain>.<aggregate>.<action>` (`erp.sales.confirm`); its domain prefix equals the component's domain. Keys are declared in `assembly.yaml` under `permissions` (`key`, `title`, `type: page|action`); a `menus[].permission` must be one of the component's own keys. New keys are appended to `registry/permissions.tsv` and never renamed ([registries.md](registries.md#permission-keys)).
+- A permission key is `<domain>.<aggregate>.<action>` (`erp.sales.confirm`); its domain prefix equals the component's domain. Keys are declared in `assembly.yaml` under `permissions` (`key`, `title`, `type: page|action`); a `menus[].permission` must be one of the component's own keys. New keys are appended to `registry/permissions.tsv` and never renamed ([07-registries.md](07-registries.md#permission-keys)).
 - **The permission key is part of the route registration.** Go: `besdk.GET(r, path, permKey, h)` (and `POST`, `PUT`, `PATCH`, `DELETE`); Python: `besdk.get(router, path, perm, handler)`; BFF: every resolver wrapped in `requirePermission(perm, resolver)`. A public route says so with `besdk.Public`; "any logged-in user" is `besdk.Authenticated`. A business route registered with Gin's bare `r.GET` or FastAPI's bare `@app.get` has no check at all and shows no symptom; `make gates` scans for it.
 - The check is an in-process map lookup. The SDK polls infra/authz's bundle (`AUTHZ_BUNDLE_URL`) about every 15 seconds; no component holds a permission table, and the JWT carries only identity (`sub`, roles, `dept_path`, `org_id`), never permission keys. Until the bundle has loaded once, protected routes answer `503` while `/healthz` stays healthy. A token issued before the user's roles changed answers `401 token_stale`; the frontend refreshes the token silently and retries the request exactly once.
 - Permissions are a pure union: there is no deny. "Everything except X" is a role without X.
-- The frontend shows a route only when it is installed (`GET /api/tenant/features`), the user may use it (`GET /api/me/permissions`) and the user is logged in. Checking only the first gives a visible menu item that opens a full-page 403. Hiding something in the frontend is never the security boundary: the backend rejects the data ([frontend.md](frontend.md#features-permissions-and-menus)).
+- The frontend shows a route only when it is installed (`GET /api/tenant/features`), the user may use it (`GET /api/me/permissions`) and the user is logged in. Checking only the first gives a visible menu item that opens a full-page 403. Hiding something in the frontend is never the security boundary: the backend rejects the data ([03-frontend.md](03-frontend.md#features-permissions-and-menus)).
 
 ## Data scopes
 
@@ -112,7 +112,7 @@ Also never call `gin.New()` (the engine loses the SDK's middleware: request IDs,
 - Dimensions in use: `org` (prefix match on `dept_path`, no copy of the org tree), `owner` (equals the caller's `sub`), and resource dimensions such as `warehouse` and `legal_entity` (the caller's granted IDs). be-ops collects them into `registry/data-scopes.tsv`.
 - `besdk.ScopeOf(ctx)` gives the filter computed from the caller's token; repository methods take it and pass it as parameters of a static `sqlc` query. No PostgreSQL row-level security, no dynamic SQL.
 - When a list combines `owner` and `org` with OR, both operands must come from the caller's real scope; one operand left at "match all" makes the whole condition match everything.
-- Every component with a data scope has a test that creates rows owned by two different identities and asserts that one identity's query returns none of the other's rows ([testing.md](testing.md#l2-business-rule-tests)).
+- Every component with a data scope has a test that creates rows owned by two different identities and asserts that one identity's query returns none of the other's rows ([06-testing.md](06-testing.md#l2-business-rule-tests)).
 
 ## Calling other components
 
@@ -121,7 +121,7 @@ Also never call `gin.New()` (the engine loses the SDK's middleware: request IDs,
 - Related data comes through the owner's `batchGet`, never through a cross-schema JOIN. Every aggregate root offers `batchGet`.
 - No component imports another. The only shared code is `be-sdk-*` and a component's generated contract package `gen/<domain>/<name>`, published as its own Go module and imported directly. Copying the generated code instead registers the same proto file twice in one process, and the second registration panics once caller and callee share a shell.
 - A component that aggregates many others (the BFF, notification routing) declares every one of those dependencies `optional: true`; a single required one keeps it from starting wherever that component wasn't bought. A component the customer didn't buy is simply not added to the project.
-- For polling the permission bundle and verifying tokens, authz and iam are not dependency edges: their addresses are the configuration keys `AUTHZ_BUNDLE_URL` and `IAM_JWKS_URL`. A component that calls a business API of authz or iam over gRPC (for example `infra/iam-casdoor` → `infra/authz`) declares that dependency like any other and uses the injected `*_ENDPOINT` for that call only ([configuration.md](configuration.md#dependency-addresses)).
+- For polling the permission bundle and verifying tokens, authz and iam are not dependency edges: their addresses are the configuration keys `AUTHZ_BUNDLE_URL` and `IAM_JWKS_URL`. A component that calls a business API of authz or iam over gRPC (for example `infra/iam-casdoor` → `infra/authz`) declares that dependency like any other and uses the injected `*_ENDPOINT` for that call only ([04-configuration.md](04-configuration.md#dependency-addresses)).
 
 ## Database
 

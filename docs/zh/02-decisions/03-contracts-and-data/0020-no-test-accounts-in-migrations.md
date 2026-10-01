@@ -1,4 +1,4 @@
-[English](0020-no-test-accounts-in-migrations.md) · [中文](0020-no-test-accounts-in-migrations.zh.md)
+[English](../../../en/02-decisions/03-contracts-and-data/0020-no-test-accounts-in-migrations.md) · [中文](0020-no-test-accounts-in-migrations.md)
 
 # 0020 测试账号不写进迁移
 

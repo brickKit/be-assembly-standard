@@ -1,8 +1,8 @@
-[English](frontend.md) · [中文](frontend.zh.md)
+[English](../../en/01-conventions/03-frontend.md) · [中文](03-frontend.md)
 
 # 前端约定
 
-本项目每个前端组件都遵守的规则：前端槽位族的每个成员，而不只是 `frontend/standard`。前端从不进外壳；它的约束来自别处：一个页面里只能有一套设计系统；换实现要改的是一个包，而不是四十个页面；AI 生成页面时不能靠猜。这些选择的理由见 [../decisions/README.zh.md](../decisions/README.zh.md)。
+本项目每个前端组件都遵守的规则：前端槽位族的每个成员，而不只是 `frontend/standard`。前端从不进外壳；它的约束来自别处：一个页面里只能有一套设计系统；换实现要改的是一个包，而不是四十个页面；AI 生成页面时不能靠猜。这些选择的理由见 [../02-decisions/README.md](../02-decisions/README.md)。
 
 ## 技术栈
 
@@ -63,7 +63,7 @@ PC 骨架是云控制台式的两级导航：先选服务，再在服务内导�
 
 - 为什么不是树：菜单在装配期从每个组件的 `assembly.yaml` 聚合，每个客户装的组件又不同，树的形状会家家不同，AI 生成一个页面时不知道它该挂在哪一层。按组件边界映射成两级之后，每个客户看到的结构都一样。
 - 与云控制台不同的地方：有应用内标签页（一张没保存的 ERP 单据切走再回来必须还在，而浏览器早就开了二十个标签页）；服务内菜单永远扁平；Region 切换器换成组织 / 法人切换器，它同时也是数据范围的输入。
-- 应用骨架自己写。想不清的部分去读 `vue-vben-admin` 的 layout、router + access、request 封装，绝不安装它（[reference-implementations.zh.md](reference-implementations.zh.md#看哪个项目)）。
+- 应用骨架自己写。想不清的部分去读 `vue-vben-admin` 的 layout、router + access、request 封装，绝不安装它（[10-reference-implementations.md](10-reference-implementations.md#看哪个项目)）。
 
 ## 偏好与品牌
 
@@ -103,4 +103,4 @@ PC 骨架是云控制台式的两级导航：先选服务，再在服务内导�
 
 ## 测试
 
-前端测试分层是 FE-1（逻辑：函数、composable、store）、FE-2（共享组件）、FE-3（真实浏览器对真实后端的端到端，一个测试一条业务流程）和 FE-4（在 FE-3 里对关键页面做截图比对，亮色和暗色各一份）。FE-3 和 FE-4 在页面交互稳定之后再写，并且只在用户同意范围之后才跑。细节见 [testing.zh.md](testing.zh.md#前端测试)。
+前端测试分层是 FE-1（逻辑：函数、composable、store）、FE-2（共享组件）、FE-3（真实浏览器对真实后端的端到端，一个测试一条业务流程）和 FE-4（在 FE-3 里对关键页面做截图比对，亮色和暗色各一份）。FE-3 和 FE-4 在页面交互稳定之后再写，并且只在用户同意范围之后才跑。细节见 [06-testing.md](06-testing.md#前端测试)。

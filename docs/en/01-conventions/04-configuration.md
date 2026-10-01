@@ -1,4 +1,4 @@
-[English](configuration.md) · [中文](configuration.zh.md)
+[English](04-configuration.md) · [中文](../../zh/01-conventions/04-configuration.md)
 
 # Configuration conventions
 

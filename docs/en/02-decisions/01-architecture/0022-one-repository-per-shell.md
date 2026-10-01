@@ -1,4 +1,4 @@
-[English](0022-one-repository-per-shell.md) · [中文](0022-one-repository-per-shell.zh.md)
+[English](0022-one-repository-per-shell.md) · [中文](../../../zh/02-decisions/01-architecture/0022-one-repository-per-shell.md)
 
 # 0022 One shell, one repository, one image, one member list
 

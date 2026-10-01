@@ -1,4 +1,4 @@
-[English](documentation.md) · [中文](documentation.zh.md)
+[English](../../en/01-conventions/08-documentation.md) · [中文](08-documentation.md)
 
 # 文档约定
 
@@ -8,7 +8,7 @@
 
 | 区 | 位置 | 放什么 | 规则 |
 |---|---|---|---|
-| **正式区** | 根目录 `AGENTS.md`、`README.md`，`docs/`（conventions、decisions、ops、`seed-data.md`），每个组件和外壳的文档 | 现在成立的结论 | 英文为主，配 `.zh.md` 译本；绝不链接 `dev/` 或 `archive/` |
+| **正式区** | 根目录 `AGENTS.md`、`README.md`，`docs/en/` 及其镜像 `docs/zh/`（约定、决策、种子数据），每个组件和外壳的文档 | 现在成立的结论 | 英文为主，配中文版本（见[语言](#语言)）；绝不链接 `dev/` 或 `archive/` |
 | **开发区** | `dev/` | 计划、测试记录、路由题库、进行中的工作 | 只用中文；可以链接任何地方；它服务的工作结束后整体归档 |
 | **归档区** | `archive/` | 早先工作的冻结文档 | 从不修改，正式文档从不链接 |
 
@@ -18,10 +18,13 @@
 
 ## 语言
 
-- **英文是主文件。** 每份正式文档旁边都有名为 `<name>.zh.md` 的译本（`backend.md` / `backend.zh.md`，`AGENTS.md` / `AGENTS.zh.md`）。
-- 两个文件的第一行互相链接：`[English](backend.md) · [中文](backend.zh.md)`。`BRICKKIT.md` 改按 brickKit 自己的规则（不写相对链接；它会在别的项目的缓存里被单独阅读）。
+- **英文是主文件。** 每份正式文档都有中文版本；中文版本放在哪里，看文档属于哪一类。
+- **项目文档是两棵镜像树。** `docs/en/` 放英文文档，`docs/zh/` 放中文文档，逐文件对应：相对路径相同、文件名相同，不带 `.zh` 后缀（`docs/en/01-conventions/02-backend.md` / `docs/zh/01-conventions/02-backend.md`）。理由：项目文档数量多、分在带编号的主题文件夹里，两棵树一模一样时，一份文档指向另一份的链接在两种语言里是同一段文字。
+- 树里每个文件的第一行链接它的对应文件：`docs/en/01-conventions/02-backend.md` 以 `[English](02-backend.md) · [中文](../../zh/01-conventions/02-backend.md)` 开头，中文文件以 `[English](../../en/01-conventions/02-backend.md) · [中文](02-backend.md)` 开头。
+- **根目录文档和组件文档按 brickKit 的后缀规则**：译本放在主文件旁边，名为 `<name>.zh.md`（`AGENTS.md` / `AGENTS.zh.md`，`BRICKKIT.md` / `BRICKKIT.zh.md`，组件的 `docs/design.md` / `docs/design.zh.md`），第一行互相链接：`[English](AGENTS.md) · [中文](AGENTS.zh.md)`。理由：`brickkit lint` 按这个后缀找译本，`brickkit add` 和 `brickkit publish` 也按它携带组件的文档。`BRICKKIT.md` 完全不写相对链接（它会在别的项目的缓存里被单独阅读）。
 - 两个版本的 `##` 小节相同、顺序相同。改动在同一个提交里同时改两份；两者不一致时，以英文为准。
-- 对等指的是行文，不是每个字节：要确认相对链接在两个文件里都能解析。
+- 对等指的是行文，不是每个字节：要确认相对链接在两个文件里都能解析。链接到中文文档的某一节时，用中文标题的锚点。
+- **`make docs-mirror`** 在两棵树不一致时报红：某个文件只在一边、一对文件的 `##` 小节数不同、第一行没有链接到对应文件。它是 `make gates` 和 pre-commit 钩子的一部分。
 - `dev/` 只用中文。代码注释用中文。与维护者交流永远用中文，不管讨论的文件是什么语言。
 
 ## 项目文档
@@ -30,10 +33,11 @@
 |---|---|
 | `AGENTS.md` | 项目是什么、项目约定（每条一行，链接到这里）、做什么去看哪里、对所有组件都成立的易错点。每次会话都加载，所以它保持为索引；末尾的组件表由 brickKit 维护 |
 | `README.md` | 人的入口：这是什么、快速开始、文档在哪 |
-| `docs/conventions/` | 规则细则（本目录） |
-| `docs/decisions/` | 约束未来改动的决策 |
-| `docs/ops/` | 部署与拓扑选择 |
-| `docs/seed-data.md` | 有哪些演示数据、怎么登录 |
+| `docs/zh/README.md` | 整棵树的索引：每个文件夹放什么、按什么顺序读 |
+| `docs/zh/01-conventions/` | 规则细则（本文件夹） |
+| `docs/zh/02-decisions/` | 约束未来改动的决策，分在四个主题文件夹里 |
+| `docs/zh/03-seed-data.md` | 有哪些演示数据、怎么登录 |
+| `docs/en/` | 同一棵树的英文版（主文件） |
 
 项目文档是"索引加叶子"。索引（`AGENTS.md`）薄而稳定；每个组件的文档自成一体，假设读者没读过任何别的组件。刻意不做一份覆盖全部组件的摘要：它必然过时，而过时的摘要读起来却像权威。
 
@@ -47,7 +51,7 @@
 | `AGENTS.md`（+ `.zh.md`，本项目额外要求：brickKit 本身不翻译 `AGENTS.md`） | 修改这个组件的 AI | Code map、Build and test、Design decisions、Pitfalls（绝不 / 症状 / 为什么）、Before changing code，然后是 brickKit 维护的块 |
 | `CLAUDE.md` | Claude Code | 只有 `@AGENTS.md` 一行 |
 | `README.md`（+ `.zh.md`） | GitHub 上的人 | Use it in a project、Documentation（哪个文件回答哪个问题）、Development |
-| `docs/design.md`（+ `.zh.md`） | 修改设计的人 | 只写结论：边界（以及明确不归这个组件的东西）；拥有的数据（表、分区、终态）；契约面（含 `batchGet` 的 rpc、带权限键的 REST 路径、幂等接口、状态查询接口）；发布和消费的事件；依赖，以及为什么不依赖某个读者会以为它该依赖的东西；它在同步调用图里的位置；分区与归档；数据范围或为什么没有；参考实现（[reference-implementations.zh.md](reference-implementations.zh.md#记录参考了什么)）；未决问题 |
+| `docs/design.md`（+ `.zh.md`） | 修改设计的人 | 只写结论：边界（以及明确不归这个组件的东西）；拥有的数据（表、分区、终态）；契约面（含 `batchGet` 的 rpc、带权限键的 REST 路径、幂等接口、状态查询接口）；发布和消费的事件；依赖，以及为什么不依赖某个读者会以为它该依赖的东西；它在同步调用图里的位置；分区与归档；数据范围或为什么没有；参考实现（[10-reference-implementations.md](10-reference-implementations.md#记录参考了什么)）；未决问题 |
 
 - `brickkit lint --strict` 检查结构（`make docs-check ID=<scope>/<name>` 在组件里跑它），必须零警告。
 - **一个事实只放一处**：依赖和配置键在 `component.yaml`，接口在 `contracts/`，历史在 Git。文档解释它们说不清的东西。
@@ -60,7 +64,7 @@
 
 ## 决策
 
-`docs/decisions/` 只收约束未来改动的决策：一旦被忘记，就会有人推翻它或重新争论一遍的选择。每条记录写明决策本身和两三句理由。编号一经分配永不复用。小一些的决策留在受它影响的文档里。索引和格式见 [../decisions/README.zh.md](../decisions/README.zh.md)。
+`docs/zh/02-decisions/` 只收约束未来改动的决策：一旦被忘记，就会有人推翻它或重新争论一遍的选择。每条记录写明决策本身和两三句理由，放在它所属的主题文件夹里（`01-architecture/`、`02-permissions/`、`03-contracts-and-data/`、`04-frontend/`）。编号跨文件夹统一，一经分配永不复用。小一些的决策留在受它影响的文档里。索引和格式见 [../02-decisions/README.md](../02-decisions/README.md)。
 
 ## 写作规则
 

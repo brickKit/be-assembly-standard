@@ -1,8 +1,8 @@
-[English](seed-data.md) · [中文](seed-data.zh.md)
+[English](../en/03-seed-data.md) · [中文](03-seed-data.md)
 
 # 种子数据
 
-给本地开发和手工测试用的演示数据：假客户、假产品、订单、商机、凭证、模板，加上几个角色和数据范围各不相同的测试账号。一条命令，刚克隆下来的仓库就有东西可点、可查、可测。**它从不进入任何部署**：`make seed-data` 和 `make seed-data-clean` 不出现在任何部署脚本或 CI 流程里，只手工运行。背后的规则见 [conventions/data.zh.md](conventions/data.zh.md)。
+给本地开发和手工测试用的演示数据：假客户、假产品、订单、商机、凭证、模板，加上几个角色和数据范围各不相同的测试账号。一条命令，刚克隆下来的仓库就有东西可点、可查、可测。**它从不进入任何部署**：`make seed-data` 和 `make seed-data-clean` 不出现在任何部署脚本或 CI 流程里，只手工运行。背后的规则见 [01-conventions/05-data.md](01-conventions/05-data.md)。
 
 ## 灌了什么
 

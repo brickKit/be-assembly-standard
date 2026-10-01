@@ -1,4 +1,4 @@
-[English](0022-one-repository-per-shell.md) · [中文](0022-one-repository-per-shell.zh.md)
+[English](../../../en/02-decisions/01-architecture/0022-one-repository-per-shell.md) · [中文](0022-one-repository-per-shell.md)
 
 # 0022 一个外壳、一个仓库、一个镜像、一份成员清单
 
@@ -15,7 +15,7 @@
 - 把外壳代码直接提交在本仓库，而不是外壳自己的仓库；把启动器代码复制进每个外壳
 - 在本仓库用 `brickkit release --path` 发布外壳、在这里打 `be-<name>/<版本>` tag，或给外壳打 `v` tag
 - 在外壳代码里写业务逻辑、路由、数据访问或成员之间的调用
-- 因为在同一个外壳里，成员之间就在进程内直接调用（[0001](0001-no-imports-between-components.zh.md)）
+- 因为在同一个外壳里，成员之间就在进程内直接调用（[0001](0001-no-imports-between-components.md)）
 - "只升级 `erp/sales`，外壳不动"——成员换了新版本，外壳就要升版本、发布、重新构建
 - 外壳注册的成员与它的 `shell.members` 不一致
 - 在一个外壳里混放 Go 和 Python 成员；把 TypeScript BFF 或前端放进外壳

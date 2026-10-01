@@ -1,4 +1,4 @@
-[English](0002-one-schema-per-component.md) · [中文](0002-one-schema-per-component.zh.md)
+[English](../../../en/02-decisions/01-architecture/0002-one-schema-per-component.md) · [中文](0002-one-schema-per-component.md)
 
 # 0002 一个数据库，每个组件一个 schema
 

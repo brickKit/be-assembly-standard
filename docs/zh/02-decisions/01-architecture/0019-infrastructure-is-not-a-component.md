@@ -1,10 +1,10 @@
-[English](0019-infrastructure-is-not-a-component.md) · [中文](0019-infrastructure-is-not-a-component.zh.md)
+[English](../../../en/02-decisions/01-architecture/0019-infrastructure-is-not-a-component.md) · [中文](0019-infrastructure-is-not-a-component.md)
 
 # 0019 基础设施不是组件
 
 ## 决策
 
-事件总线（NATS）、对象存储服务（RustFS，经由 S3 API）、网关（Traefik）和可观测性全家桶是运行在组件图之外的基础设施（`make up`；可观测性全家桶用 `make obs-up`）；它们不是 brickKit 组件，也从不出现在 `brickkit.yaml` 里。组件通过共享配置键——`NATS_URL`、`S3_URL`、`OTEL_BASE_URL`——访问它们，这些值在 `config/vars.yaml` 中只写一次（见[配置约定](../conventions/configuration.zh.md)）。
+事件总线（NATS）、对象存储服务（RustFS，经由 S3 API）、网关（Traefik）和可观测性全家桶是运行在组件图之外的基础设施（`make up`；可观测性全家桶用 `make obs-up`）；它们不是 brickKit 组件，也从不出现在 `brickkit.yaml` 里。组件通过共享配置键——`NATS_URL`、`S3_URL`、`OTEL_BASE_URL`——访问它们，这些值在 `config/vars.yaml` 中只写一次（见[配置约定](../../01-conventions/04-configuration.md)）。
 
 ## 理由
 

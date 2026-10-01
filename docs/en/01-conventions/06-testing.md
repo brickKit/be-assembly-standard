@@ -1,8 +1,8 @@
-[English](testing.md) · [中文](testing.zh.md)
+[English](06-testing.md) · [中文](../../zh/01-conventions/06-testing.md)
 
 # Testing conventions
 
-What tests exist in this project, what each one tests and does not test, when it is written and how it runs. The goal is one thing: tests written by an AI must catch regressions, not look numerous while guarding nothing. A test that fails that goal is worse than none, because it makes something look covered. Where test data comes from is in [data.md](data.md).
+What tests exist in this project, what each one tests and does not test, when it is written and how it runs. The goal is one thing: tests written by an AI must catch regressions, not look numerous while guarding nothing. A test that fails that goal is worse than none, because it makes something look covered. Where test data comes from is in [05-data.md](05-data.md).
 
 ## Layers at a glance
 
@@ -54,7 +54,7 @@ Three rounds on the same cycle without green: take these in order.
 | # | Way out | What to do |
 |---|---|---|
 | 1 | **Cut the step smaller** | The step is usually solving two or three things at once. Split the test and turn one small assertion green at a time. |
-| 2 | **Read a reference implementation** | Read it, come back, think it through, then write your own ([reference-implementations.md](reference-implementations.md)). Never copy. |
+| 2 | **Read a reference implementation** | Read it, come back, think it through, then write your own ([10-reference-implementations.md](10-reference-implementations.md)). Never copy. |
 | 3 | **Stop and say what is stuck** | What you expected, what happened, what you tried, which layer you suspect. Hand it to a human. |
 
 The third is the correct action, not a failure. A workaround taken once gets copied next time, and after two copies the rule is gone.
@@ -84,16 +84,16 @@ L3 tests the branches of this implementation: error paths, nil pointers and empt
 - **Consumer tests that publish their own triggering event use a private subject** (`test.<base>.<nanoseconds>`): a real container subscribed to the production subject would receive the same message, and the assertion might read its result. A test that checks *which* subject the code publishes to uses the real subject.
 - **Consumer tests use a unique `aggregate_id`.** Deduplication on `(subject, aggregate_id, version)` is permanent; with a fixed ID the second run is swallowed as already processed.
 - **Never use a mock to show that a cross-component call happened.** It stays green when the call sends wrong arguments or ignores the returned error. What happens between components is L4's job, with two real processes.
-- Data is created fresh for each run with a unique suffix and never cleaned up; no shared fixed dataset, no embedded or throwaway database ([data.md](data.md#two-paths-never-shared)).
+- Data is created fresh for each run with a unique suffix and never cleaned up; no shared fixed dataset, no embedded or throwaway database ([05-data.md](05-data.md#two-paths-never-shared)).
 
 ## Cross-component tests
 
 A cross-component test makes this component really call its required dependencies. `make test-cross ID=<scope>/<name>` runs only this component's tests, with each dependency's address bridged to the host from the real dependency containers; the test process stays on the host, so build cache and race detection work as usual.
 
-- Only this component and its dependency tree need to run: `brickkit up --focus <id>` first. That turns local mode on and `brickkit up --all` leaves it on, so edits to `deploy.yaml` take effect only after `brickkit local off` or `brickkit local refresh` ([development-workflow.md](development-workflow.md#running-it-for-real)).
+- Only this component and its dependency tree need to run: `brickkit up --focus <id>` first. That turns local mode on and `brickkit up --all` leaves it on, so edits to `deploy.yaml` take effect only after `brickkit local off` or `brickkit local refresh` ([01-development-workflow.md](01-development-workflow.md#running-it-for-real)).
 - A name filter runs only the tests between two particular components; that is why cross-component tests are named after the other component (see the naming section below).
 - The scope is the synchronous call direction. Another component consuming this component's events goes through the event bus and follows the consumer rules above.
-- Data the test needs from a dependency is created through the dependency's real API, in the test ([data.md](data.md#when-a-dependency-lacks-what-you-need)).
+- Data the test needs from a dependency is created through the dependency's real API, in the test ([05-data.md](05-data.md#when-a-dependency-lacks-what-you-need)).
 
 ## Gates and cross-cutting checks
 
@@ -129,9 +129,9 @@ Every component has these commands, and they really run:
 | `make test` | all L2 and L3 tests, with race detection |
 | `make migrate-idempotent` | every migration twice in a row |
 | `make contract-check` | breaking-change check of the contracts |
-| `make module-check` | the merge-safety rules of [backend.md](backend.md#merge-safety) |
+| `make module-check` | the merge-safety rules of [02-backend.md](02-backend.md#merge-safety) |
 | `make smoke` | `brickkit up --dry-run` from the project root: the graph including this component resolves and the files generate, nothing starts |
-| `make seed`, `make seed-clean` or `make db-reset` | demo data and undoing it ([data.md](data.md#seed-data-rules)) |
+| `make seed`, `make seed-clean` or `make db-reset` | demo data and undoing it ([05-data.md](05-data.md#seed-data-rules)) |
 
 L4 and consumer tests point at the test database, `TEST_PG_DSN` → `brickkit_test_db`, created and refreshed by `make test-db-init`; never at the demo database `brickkit_db`.
 

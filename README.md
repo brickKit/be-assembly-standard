@@ -18,16 +18,16 @@ make seed-data     # demo data and test accounts (log in as dev.superuser / DevS
 brickkit down      # stop the component containers when you are done (data is kept)
 ```
 
-`make help` lists every target; `make check` says which base resource is missing or misconfigured. The demo data and the other test accounts are described in [docs/seed-data.md](docs/seed-data.md).
+`make help` lists every target; `make check` says which base resource is missing or misconfigured. The demo data and the other test accounts are described in [docs/en/03-seed-data.md](docs/en/03-seed-data.md).
 
 ## Documentation
 
 | Question | Read |
 |---|---|
 | I'm an AI (or briefing one): what is this project, what are the rules, where do I look | [AGENTS.md](AGENTS.md) |
-| The rules every component follows: configuration, workflow, backend, frontend, testing, data, registries | [docs/conventions/](docs/conventions/README.md) |
-| Why the project is shaped this way; what has been ruled out | [docs/decisions/](docs/decisions/README.md) |
-| What demo data exists; how to log in | [docs/seed-data.md](docs/seed-data.md) |
+| The rules every component follows: configuration, workflow, backend, frontend, testing, data, registries | [docs/en/01-conventions/](docs/en/01-conventions/README.md) |
+| Why the project is shaped this way; what has been ruled out | [docs/en/02-decisions/](docs/en/02-decisions/README.md) |
+| What demo data exists; how to log in | [docs/en/03-seed-data.md](docs/en/03-seed-data.md) |
 | Deploying: what to prepare, which databases and roles to create, which secrets | each component's `BRICKKIT.md`, section "Before you deploy"; the `brickkit-deploy` skill in `.claude/skills/` |
 | What one component does, and how to change it | the component table at the end of [AGENTS.md](AGENTS.md); then `components/<scope>/<name>/BRICKKIT.md` and its `AGENTS.md` |
 | brickKit itself: commands, flags, error codes | `brickkit <command> --help`; the skills in `.claude/skills/brickkit-*` |
@@ -43,5 +43,6 @@ shell/<scope>/<name>/   one Git submodule per shell: several components in one p
 tools/                  be-sdk-go, be-sdk-python, be-sdk-ts, be-ops, be-acceptance
 registry/               ports, schemas, permission keys, data scopes
 infra/                  the base resources make up starts, and the project's scripts
-docs/                   conventions, decisions, seed data
+docs/en/                conventions, decisions, seed data (English)
+docs/zh/                the same tree in Chinese, file for file
 ```

@@ -1,4 +1,4 @@
-[English](0017-design-tokens-are-css-variables.md) · [中文](0017-design-tokens-are-css-variables.zh.md)
+[English](0017-design-tokens-are-css-variables.md) · [中文](../../../zh/02-decisions/04-frontend/0017-design-tokens-are-css-variables.md)
 
 # 0017 Design tokens are runtime CSS variables
 

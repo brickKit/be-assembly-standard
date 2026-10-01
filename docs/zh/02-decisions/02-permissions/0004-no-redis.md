@@ -1,4 +1,4 @@
-[English](0004-no-redis.md) · [中文](0004-no-redis.zh.md)
+[English](../../../en/02-decisions/02-permissions/0004-no-redis.md) · [中文](0004-no-redis.md)
 
 # 0004 不引入 Redis
 
@@ -8,7 +8,7 @@
 
 ## 理由
 
-通常引入 Redis 要解决的问题都已有着落：身份是无状态的 JWT，权限是进程内的 map（[0005](0005-local-permission-bundle.zh.md)），别的组件拥有的数据以本地摘要保存、由事件刷新，并发控制用 PostgreSQL 行锁，限流归网关。客户在一台资源有限的机器上部署，每多一个基础服务，就多一样要安装、备份、加固和监控的东西。
+通常引入 Redis 要解决的问题都已有着落：身份是无状态的 JWT，权限是进程内的 map（[0005](0005-local-permission-bundle.md)），别的组件拥有的数据以本地摘要保存、由事件刷新，并发控制用 PostgreSQL 行锁，限流归网关。客户在一台资源有限的机器上部署，每多一个基础服务，就多一样要安装、备份、加固和监控的东西。
 
 ## 挡下什么
 

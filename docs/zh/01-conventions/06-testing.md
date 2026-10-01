@@ -1,8 +1,8 @@
-[English](testing.md) · [中文](testing.zh.md)
+[English](../../en/01-conventions/06-testing.md) · [中文](06-testing.md)
 
 # 测试约定
 
-本项目有哪些测试、各测什么不测什么、什么时候写、怎么跑。目标只有一个：AI 写的测试要真的能抓住回归，而不是看起来很多、实际什么都没守住。达不到这个目标的测试比没有还糟，因为它让人以为"这里有覆盖"。测试数据从哪来见 [data.zh.md](data.zh.md)。
+本项目有哪些测试、各测什么不测什么、什么时候写、怎么跑。目标只有一个：AI 写的测试要真的能抓住回归，而不是看起来很多、实际什么都没守住。达不到这个目标的测试比没有还糟，因为它让人以为"这里有覆盖"。测试数据从哪来见 [05-data.md](05-data.md)。
 
 ## 分层一览
 
@@ -54,7 +54,7 @@
 | # | 出路 | 怎么做 |
 |---|---|---|
 | 1 | **把这一步切小** | 这一步通常在同时解决两三件事。拆开测试，一次只让一个小断言变绿。 |
-| 2 | **去看参考实现** | 看完回来想清楚，再写自己的（[reference-implementations.zh.md](reference-implementations.zh.md)）。绝不照抄。 |
+| 2 | **去看参考实现** | 看完回来想清楚，再写自己的（[10-reference-implementations.md](10-reference-implementations.md)）。绝不照抄。 |
 | 3 | **停下来说清卡在哪** | 期望什么、实际发生了什么、试过什么、怀疑是哪一层。交给人判断。 |
 
 第三条是正确动作，不是失败。绕过去一次，下次有人照抄，抄两次这条规则就没了。
@@ -84,16 +84,16 @@ L3 测这份实现的分支：错误路径、空指针和空字符串、并发�
 - **自己发布事件来触发消费者的测试，用私有 subject**（`test.<base>.<纳秒时间戳>`）：订阅了生产 subject 的真实容器会收到同一条消息，断言可能读到的是它的结果。验证代码"发到了哪个 subject"的测试，用真实 subject。
 - **消费者测试用唯一的 `aggregate_id`。** 按 `(subject, aggregate_id, version)` 去重是永久的；用固定 ID，第二次跑会被当成已处理吞掉。
 - **绝不用 mock 证明跨组件调用"发生了"。** 参数传错、返回的错误没处理，它都照样绿。组件之间发生的事是 L4 的职责，要真起两个进程。
-- 数据每次新建、带唯一后缀、从不清理；不用共享的固定数据集，不用内嵌或一次性数据库（[data.zh.md](data.zh.md#两条路径互不共享)）。
+- 数据每次新建、带唯一后缀、从不清理；不用共享的固定数据集，不用内嵌或一次性数据库（[05-data.md](05-data.md#两条路径互不共享)）。
 
 ## 跨组件测试
 
 跨组件测试让这个组件真的调用它的必需依赖。`make test-cross ID=<scope>/<name>` 只跑这个组件的测试，把每个依赖的地址从真实的依赖容器桥接到宿主机上；测试进程留在宿主机，构建缓存和竞态检测照常可用。
 
-- 只需要这个组件和它的依赖树在跑：先 `brickkit up --focus <id>`。它会打开本地模式，`brickkit up --all` 也不会关掉，所以之后改 `deploy.yaml` 要等 `brickkit local off` 或 `brickkit local refresh` 之后才生效（[development-workflow.zh.md](development-workflow.zh.md#真机运行)）。
+- 只需要这个组件和它的依赖树在跑：先 `brickkit up --focus <id>`。它会打开本地模式，`brickkit up --all` 也不会关掉，所以之后改 `deploy.yaml` 要等 `brickkit local off` 或 `brickkit local refresh` 之后才生效（[01-development-workflow.md](01-development-workflow.md#真机运行)）。
 - 按名字过滤，可以只跑某两个组件之间的测试；这就是跨组件测试要以对方组件命名的原因（见下面的命名一节）。
 - 范围是同步调用方向。别的组件消费这个组件发出的事件，走的是事件总线，按上面的消费者规则处理。
-- 测试需要依赖方有的数据，在测试里通过依赖方的真实 API 建（[data.zh.md](data.zh.md#依赖方缺数据或能力时)）。
+- 测试需要依赖方有的数据，在测试里通过依赖方的真实 API 建（[05-data.md](05-data.md#依赖方缺数据或能力时)）。
 
 ## 门禁与横切检查
 
@@ -129,9 +129,9 @@ L3 测这份实现的分支：错误路径、空指针和空字符串、并发�
 | `make test` | 全部 L2、L3 测试，开竞态检测 |
 | `make migrate-idempotent` | 每个迁移连跑两次 |
 | `make contract-check` | 契约的破坏性变更检查 |
-| `make module-check` | [backend.zh.md](backend.zh.md#合并安全) 的合并安全规则 |
+| `make module-check` | [02-backend.md](02-backend.md#合并安全) 的合并安全规则 |
 | `make smoke` | 在项目根目录跑 `brickkit up --dry-run`：包含本组件的依赖图能解析、文件能生成，不启动任何东西 |
-| `make seed`、`make seed-clean` 或 `make db-reset` | 演示数据及其撤销（[data.zh.md](data.zh.md#种子数据规则)） |
+| `make seed`、`make seed-clean` 或 `make db-reset` | 演示数据及其撤销（[05-data.md](05-data.md#种子数据规则)） |
 
 L4 和消费者测试指向测试库：`TEST_PG_DSN` → `brickkit_test_db`，由 `make test-db-init` 建立和刷新；绝不指向演示库 `brickkit_db`。
 

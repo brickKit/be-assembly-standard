@@ -1,4 +1,4 @@
-[English](0018-no-java-or-csharp.md) · [中文](0018-no-java-or-csharp.zh.md)
+[English](../../../en/02-decisions/01-architecture/0018-no-java-or-csharp.md) · [中文](0018-no-java-or-csharp.md)
 
 # 0018 不用 Java / C#
 
@@ -8,7 +8,7 @@
 
 ## 理由
 
-客户在自己的一台机器上部署整个系统，每个组件一个 JVM 或 CLR 的内存与启动开销与此直接冲突。每种语言还需要各自的 SDK、外壳启动器和技术栈锁定（[0003](0003-locked-stack-per-language.zh.md)）；多一种语言，用它写的每个组件都要多出这份工作。
+客户在自己的一台机器上部署整个系统，每个组件一个 JVM 或 CLR 的内存与启动开销与此直接冲突。每种语言还需要各自的 SDK、外壳启动器和技术栈锁定（[0003](0003-locked-stack-per-language.md)）；多一种语言，用它写的每个组件都要多出这份工作。
 
 ## 挡下什么
 

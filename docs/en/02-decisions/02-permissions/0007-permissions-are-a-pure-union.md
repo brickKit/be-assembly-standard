@@ -1,4 +1,4 @@
-[English](0007-permissions-are-a-pure-union.md) · [中文](0007-permissions-are-a-pure-union.zh.md)
+[English](0007-permissions-are-a-pure-union.md) · [中文](../../../zh/02-decisions/02-permissions/0007-permissions-are-a-pure-union.md)
 
 # 0007 Permissions are a pure union, with no Deny
 
