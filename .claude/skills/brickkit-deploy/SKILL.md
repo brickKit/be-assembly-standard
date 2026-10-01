@@ -1,111 +1,191 @@
 ---
 name: brickkit-deploy
-description: 把 BrickKit 项目部署到 Docker 或 Kubernetes、绑定数据库/缓存/消息队列等基础资源、配置密钥、对外暴露服务时使用。含两条部署路径的差别、地址注入的格式、资源绑定怎么声明、以及生产环境的密钥处理。当用户提到 deploy / target / k8s / compose / ingress / 资源绑定，或问「怎么上线」时，这个技能适用。
+description: Use when deploying a BrickKit project to Docker, Podman or Kubernetes, editing deploy.yaml or deploy.local.yaml, turning local mode on/off/refresh, debugging a component in an IDE (mode debug) or running it as a bare process (mode local), setting up several environments with -f, filling config/ values and secrets, building images, hosting members in a shell, or exposing a service. Covers what goes in which file, targets and the k8s block, config value forms ($var, ${VAR}, file://, existingSecret), images and brickkit build, shells and skipWaitFor. Applies when the user mentions deploy / target / k8s / compose / ingress / secrets / local on / debug, or asks "how do I go live" or "how do I debug this one component".
 ---
 
-# 部署与资源绑定
+# Deployment, local mode and configuration
 
-## 什么时候用这个技能
+## When to use this skill
 
-- 要把项目跑到 Docker 或 Kubernetes 上
-- 组件报「资源依赖未满足」
-- 要接数据库、缓存、消息队列、对象存储、搜索、SMTP
-- 要把某个组件暴露到集群外
-- 要处理密码、Token 这类密钥
-- 要配多个环境（开发 / 生产）
+- Running the project on Docker, Podman or Kubernetes, or going to production
+- Changing how one component is deployed (expose, replicas, quotas, labels, mode)
+- Debugging one component in an IDE, or running it outside a container
+- Filling in configuration and secrets under `config/`
+- Several environments (dev / staging / prod)
+- Hosting several components inside one shell
 
-## 你会猜错的地方
+## What goes where
 
-**1. 只有两个部署目标：`docker` 和 `k8s`。**
+| You want to change | Write it in |
+| --- | --- |
+| which components/versions exist | `brickkit.yaml` (via `brickkit add` / `upgrade`) |
+| how the team deploys them: `target`, entries, `k8s:`, `vars:` | `deploy.yaml` |
+| something only true on your machine: `mode: debug`, a free `localPort`, your own database host, another target | `deploy.local.yaml` (after `brickkit local on`) |
+| a component's business values | `config/<scope>-<name>.yaml`, shared values in `config/vars.yaml` |
 
-`deploy.target` 必填。没有 Podman（曾经支持过，已移除）。
+## Where you'll guess wrong
 
-**2. 资源本身由运维部署，平台不装数据库。**
+**1. The deploy file lists every component version exactly once.**
 
-`brickkit.yaml` 的 `resources` 是**声明与绑定**，不是「让平台起一个 postgres」。
-平台管的是连接身份（地址、账号、密码怎么注入进组件），产品特有的旋钮走组件的
-`configSchema`。库本身要使用者先建一次。
+One entry per version in `brickkit.yaml`, members nested under their shell counting too. A bare
+`- id: erp/backend` is the default version; a `requiredBy` version needs its own
+`- id: erp/backend@1.0.0`. Missing or extra entries fail loudly (`DEPLOY_INCONSISTENT`).
+`add` / `remove` / `upgrade` maintain this for you — don't add components by writing entries.
 
-**3. `kind` 是封闭枚举，六类：** `database` / `cache` / `mq` / `storage` / `search` / `smtp`。
+**2. `deploy.local.yaml` replaces `deploy.yaml`; it is never merged.**
 
-绑定里「这个组件占哪一块」这一格**按 kind 用不同的名字，只能写一个**：
+`brickkit local on` copies `deploy.yaml` the first time — identical except that the comment lines at the
+top (the "team file" header) become a personal-file header in the CLI's language; an existing file is
+reused. From then on the commands that run or check the deployment (`up`, `down`, `status`, `sync`,
+`lint`, `build`) read `deploy.local.yaml` instead; `graph` and `deps` always read `deploy.yaml`. `local off` switches back and
+keeps the file. When the team changes `deploy.yaml`, your copy doesn't follow: `up` refuses once the
+component set differs. Run `brickkit local refresh` — it saves the old file as
+`deploy.local.yaml.bak`, writes a fresh copy and **lists your old local changes** for you to re-apply
+by hand. The CLI never merges. `--no-local` ignores the file for one run; `brickkit local status` shows
+the switch and whether the file still matches `brickkit.yaml`. The file is never committed.
 
-| kind | 那一格叫 | 注入成 |
-| --- | --- | --- |
-| `database` | `database` | `DATABASE_NAME` |
-| `mq` | `vhost` | `MQ_VHOST` |
-| `storage` | `bucket` | `STORAGE_BUCKET` |
-| `search` | `index` | `SEARCH_INDEX` |
-| `cache` / `smtp` | **没有这一格** | 写了会报错 |
+**3. `mode: debug` is only accepted in `deploy.local.yaml`.**
 
-用错名字会报错，并点名该用哪个。
+It is a personal fact ("I'm debugging this now"), so `deploy.yaml` rejects it. With it the component
+gets no container; other containers reach your IDE process through `extra_hosts`, and a
+`local-debug.<versioned-service-name>.env` is generated for the IDE to load (dependency addresses as
+`localhost` ports). Set `localPort` to what your process listens on. No migration is run for it.
+`mode: local` is different: BrickKit detects the start command from the local repo, launches and
+supervises the process in the foreground (`Ctrl+C` stops it), and it may go in `deploy.yaml`;
+`localPort` may be left out (a free port is picked). The process inherits your terminal's environment
+except the names the platform owns (`COMPONENT_ID`, `COMPONENT_VERSION`, `PORT`,
+`BRICKKIT_SERVED_MEMBERS`, `BRICKKIT_SERVED_MEMBERS_CONFIG`, every `*_ENDPOINT`, the component's own
+`configSchema` keys) — those come only from BrickKit, so a stale `export` can't stand in for them.
+Both work on docker / podman and are rejected on `target: k8s` (a Pod can't reach your machine). Both
+run code from the local repo, whose `metadata.version` must equal the default version in
+`brickkit.yaml` — so only the default version can run this way; a `requiredBy` version with
+`mode: local` / `debug` is refused. On a mismatch: `brickkit upgrade <id>@<repo version>`, or check
+out the tag of the default version.
+`brickkit graph` never reads local mode, so a `mode: debug` there never shows up in the graph.
 
-**4. `kind` 与 `engine` 要与组件声明的完全一致。**
+**4. Environments are whole files: `brickkit up -f deploy.prod.yaml`.**
 
-组件在 `component.yaml` 里声明 `kind: database` + `engine: postgresql`，
-项目里给的资源必须两项都对得上，否则报「资源依赖未满足」。
+No overlay, no inheritance. `brickkit.yaml` and `config/` are shared; per-environment differences in
+config go through `$var:NAME` references, overridden by the deploy file's `vars:` block. `-f` ignores
+local mode entirely.
 
-**5. 密码必须通过环境变量引用，不能写明文。**
+**5. Config keys are env var names; values take five forms.**
 
 ```yaml
-password: ${DB_PASSWORD}
+DB_PORT: 5432                          # literal
+DB_HOST: $var:DB_HOST                  # from config/vars.yaml, overridden by the deploy file's vars:
+DB_PASSWORD: ${DB_PASSWORD}            # process environment, then .env (never committed)
+TLS_CERT: file://.secrets/cert.pem     # file contents, path relative to the project root
+API_TOKEN: { existingSecret: api, key: token }   # K8s only, secret keys only
 ```
 
-`.env` 已经在 `.gitignore` 里。
+The default version reads `config/<scope>-<name>.yaml`; a `requiredBy` version reads
+`config/<scope>-<name>@<version>.yaml`.
 
-**6. `publicKeys` 是唯一让验签真正生效的字段。**
+A required key is written by `add` as `KEY: ""` — `up` refuses while it's empty and names it.
+Optional keys are commented (`# LOG_LEVEL: info`): leave them commented to follow the component's
+default, so new defaults arrive with upgrades. `$var:NAME` has **no space** after the colon — `$var: NAME` is a YAML map, not a reference. An
+undefined `$var:` is an error; there is no fallback, and values in `config/vars.yaml` can't chain
+another `$var:`.
+Plaintext in a `secret: true` key warns: config files are committed. A `${VAR}` must be defined
+(process environment, then `.env`) when the files are generated, on every target — an undefined one
+stops `up` rather than let compose put in an empty string. Give it a default with `${VAR:-dev}`, or
+`${VAR:-}` for a value that may be empty. On Docker the reference is then left for compose to expand
+at start; on K8s the CLI resolves it and `secret: true` values go into a generated Secret (a
+`secretKeyRef` in the Deployment). A Secret already put into the cluster (by Vault, ESO, …) is
+referenced with `existingSecret`; the platform never reads or writes its value, and never fetches from
+Vault itself — any way of getting the value into the process environment works today.
 
-一个公钥都没配时，签名校验**整体失效**，`requireSignature: true` 也一并不起作用——
-没有信任锚点就没有可校验的对象。CLI 会警告一句，但那时它已经什么都没验过了。
+**6. There are no resource bindings.** A database or cache is deployed by ops, and the component
+reads it through its own config keys (`DB_HOST`, `DB_PASSWORD`, …). The database itself is created
+by you, once; tables come from the component's migration.
 
-公钥必须配在项目里、而不是跟着签名从市场取——否则就成了市场自己给自己发证,
-市场被攻破时攻击者把组件和公钥一起换掉，验签照样通过。
+**7. `up` never builds images.** Local-source components (and git ones with only
+`deployment.build`) need `brickkit build [<id>]` first; while the image is missing `up` stops with
+`IMAGE_MISSING`. Tags equal `metadata.version`, and an existing image of that version is skipped —
+changed code without a version bump needs `--force`. A shell image built with stale member versions is
+`IMAGE_STALE`. Git / market components with `image:` are pulled.
 
-**7. 没有 overlay / 继承 / 合并机制。**
+**8. Shells are chosen in the deploy file.** Nest member entries under the shell entry and they run
+inside it (no own container; their `*_ENDPOINT` points at the shell; their own expose / labels /
+health check don't apply). The hosted version must be the one the shell's `component.yaml` compiles
+in; otherwise `up` stops with three ways out: upgrade the shell to one that compiles that version;
+move the member entry out of the shell to run on its own; or keep both — a `brickkit.yaml` line for the
+compiled version with `requiredBy: [<shell>]`, `id@that-version` nested under the shell, the other
+version left at the top level. `add` of a shell writes all of this for you. A member with
+`mode: debug` / `local` leaves the shell and runs as a bare process.
 
-多环境是**每个环境一份完整自包含的配置文件**，比如 `brickkit.prod.yaml`，
-用 `brickkit up --config brickkit.prod.yaml` 指定。别去找「只覆盖差异」的写法，
-那是被明确拒绝的设计。
+```yaml
+components:
+  - id: erp/shell
+    members:
+      - id: erp/api          # the default version of erp/api runs inside the shell
+      - id: erp/auth@1.2.0   # a requiredBy version can be hosted too
+```
 
-**8. `limits` 没有默认值，都没写就不生成。**
+Merging can create a Compose `depends_on` cycle (a member inside depends on X outside, X depends on
+another member inside); the error names the edges and offers three ways out — move X into the shell
+too, move a member out, or `skipWaitFor: [<id>]` on an entry, which only drops the start wait (the
+connection stays; the component must retry until its dependency is up). `skipWaitFor` has no effect on
+Kubernetes (Pods don't wait for each other) or for a bare process, and `up` warns when it is written
+there. `brickkit up --ignore-shells --dry-run` checks that everything can still stand alone.
 
-只有 `requests` 有默认（`100m` / `128Mi`）。平台不猜 `limits`——猜一个数字的后果是
-去 OOMKill 一个跑得好好的组件。建议**相反地设**：CPU 设 requests、不设上限
-（CPU limit 走 CFS quota，节点空闲时也会限流成 p99 毛刺）；内存 requests = limits
-（拿 Guaranteed QoS，缺内存时最后被驱逐）。
+**9. `limits` has no default.** Only `requests` does (`100m` / `128Mi`). Recommended: CPU `requests`
+with no ceiling (a CPU limit throttles into p99 spikes); memory requests = limits (Guaranteed QoS).
+Write it inline: `resources: { requests: { cpu: 200m, memory: 256Mi }, limits: { memory: 256Mi } }`.
+The entry's quotas override the component's recommendation field by field. Only the sum of `requests`
+must fit a node; `limits` may overcommit. When idle runtimes eat the memory (a JVM's floor is hundreds
+of MB), host them in a shell or run fewer of them — don't merge two components' code into one.
 
-**9. 别为省内存去合并组件。**
+**10. A gateway hooks in through `labels`**, quoted string values (`"true"`), copied verbatim to
+Docker service labels / K8s annotations and overriding the component's `deployment.labels` key by key.
+`app`, `brickkit.io/*` and `com.docker.compose.*` are the platform's own keys and are rejected. A
+gateway on Docker joins the `brickkit-<project>-net` network. Don't hand-write a file-provider config
+full of versioned service names — it goes stale on every version bump.
 
-硬约束只有「一个节点上所有 Pod 的 `requests` 之和 ≤ 节点 allocatable」，`limits` 之和
-可以远超容量，超卖是正常用法。真正的成本是每个进程的内存地板，几乎完全由语言决定：
-Go 8–20MB、Python/Node 40–90MB、JVM 200–450MB。20 个 Spring Boot 光空转就 4–9G。
-那时该换运行时或用 `enabled: false` 少跑几个，合并组件是解错了题。
+**11. Signature verification needs `installer.publicKeys` in `brickkit.yaml`.** With none configured,
+nothing is verified, whatever `requireSignature` says.
 
-## 机制是怎么运作的
+**12. `focus:` is the personal "run just this one" switch.**
 
-**地址格式两个环境完全一样**：`http://<版本化服务名>:<端口>`。本地是
-`http://people-basic-1-0-0:8080`，K8s 上也是同一个字符串。所以组件代码零修改。
-这也意味着多版本天然共存——它们是两个互不冲突的 DNS 名。
+`focus: <id>` exists only in `deploy.local.yaml` (`deploy.yaml` rejects it, and so does
+`target: k8s`). While it is set, `up` starts only that component — from its local source, as if it
+were `mode: local` (a `mode: debug` you wrote is kept) — and what it needs; pinned components
+(`enabled` / `local` / `debug`) still start. `brickkit up` in a component's directory or
+`up --focus <id>` writes it (turning local mode on if needed), `up --all` removes it; `-f` and
+`--no-local` skip it; `sync` ignores it; `local refresh` lists it among your local changes. A focus
+that would break the file is refused before anything is written.
 
-**暴露到集群外**靠组件条目上的 `expose: true`。K8s 下还必须给 `hostname`；
-`exposePort` 只在 Docker 下生效；`tlsSecret` 只在 K8s + expose 时用。
+## How the mechanism works
 
-**`up` 做的事按顺序是**：启停判定 → 生成部署文件 → 生成 `local-debug.env` →
-检测镜像权限 → 执行迁移 → 调用引擎。想只看生成结果不真起，用 `--dry-run`。
+**Targets**: `target: docker | podman | k8s` in the deploy file. Podman runs the same generated
+compose file through `podman compose`. K8s settings live in the `k8s:` block (`context`, `namespace`,
+`createNamespace`, `podSecurity`, `imagePullSecrets`, `ingressClass`, `ingressAnnotations`,
+`serviceAccount`, `networkPolicy`) and warn on other targets; per-entry `hostname`, `tlsSecret`,
+`replicas` (`> 1` adds a PDB) and `serviceAccountName` are K8s only; `exposePort` and `skipWaitFor`
+are docker / podman only.
 
-**本地调试**是给组件写 `local: true`：该组件**不生成容器**，而是跑在你宿主机的 IDE 里，
-用 `extra_hosts` 把它的版本化服务名映射进容器网络。多个组件可以同时本地调试，
-各给一个 `localPort`。CLI 生成 `local-debug.env` 供 IDE 加载。
+**Addresses** are `http://<versioned-service-name>:<port>` on every target, so code never changes and
+several versions coexist.
 
-**K8s 特有的那些**（`context`、`namespace`、`podSecurity`、`ingressClass`、
-`serviceAccount`、`networkPolicy`、`replicas`）都在 `deploy` 段或组件条目里，
-Docker 下写了不生效。`replicas > 1` 时自动生成 PDB。
+**Exposing**: `expose: true`. On K8s it needs a `hostname` (an Ingress is generated; `tlsSecret`
+optional); on Docker the port is mapped to the host (`exposePort` changes the host port). Not written:
+not exposed. `replicas > 1` on K8s adds a PodDisruptionBudget.
 
-## 去哪查更细的
+**Migrations**: on K8s a separate Job (not an init container, so several replicas never migrate at
+once); on Docker a one-shot container. A failure keeps the main service from starting.
 
-- 参数：`brickkit up --help`、`brickkit down --help`
-- 两条部署路径的生成细节、Ingress、迁移 Job、网络策略、优雅排空：
-  `design/005-部署与运行规范.md`
-- 六类资源怎么声明、绑定、注入，密钥管理，生产资源策略：
-  `design/006-基础资源规范.md`
-- `brickkit.yaml` 每个字段：`design/003-项目配置规范.md`、`design/附录合集.md` 附录 D
+**`status` / `down`** read the same deploy file as `up` (and take `-f`); `down` never deletes volumes.
+
+**What `up` does**: load the three layers → decide who starts → check images (missing → build hint,
+git images pulled) → generate files (`--dry-run` stops here) → migrations (a failure blocks the main
+service) → start the engine → supervise `mode: local` processes.
+
+## Where to dig deeper
+
+- Flags: `brickkit up --help`, `brickkit local --help`, `brickkit build --help`, `brickkit lint --help`
+  (`lint --strict` also checks that `${VAR}` and `file://` references resolve)
+- A component's configuration guide: `.brickkit/manifests/<scope>/<name>/<version>/BRICKKIT.md`
+- The full specification: <https://github.com/brickKit/brickKit> and its root `AGENTS.md`
+
+<!-- brickkit:skill version=v1.0.0 sum=sha256:cba1103aa047264b49bd432b8509663c9a16cd985373ec1e39e0c3b253ccdd75 -->

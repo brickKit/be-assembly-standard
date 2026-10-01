@@ -1,111 +1,188 @@
 ---
 name: brickkit-component
-description: 新写一个 BrickKit 组件、修改 component.yaml、加数据库迁移、或让组件对外提供 gRPC / HTTP 接口时使用。含任何组件都必须满足的硬性契约、平台保留变量的禁区、健康检查禁令与启动宽限期、以及依赖声明的规则。当用户说「写一个组件」「组件起不来该怎么声明」或在编辑 component.yaml 时，这个技能适用。
+description: Use when writing a new BrickKit component from scratch, editing component.yaml or a component's documents (BRICKKIT.md, AGENTS.md, README.md), declaring configuration (configSchema) or dependencies, choosing between deployment.image and deployment.build, writing a shell (shell.members), adding a database migration or health check, or releasing a component version with brickkit release. Covers the hard contract every component must satisfy, config keys as environment variable names, the reserved-variable no-go zone, the health-check prohibition, and the release rules. Applies when the user says "write a component", "release a new version", "make a shell", or is editing component.yaml.
 ---
 
-# 写一个 BrickKit 组件
+# Writing a BrickKit component
 
-## 什么时候用这个技能
+## When to use this skill
 
-- 从零写一个新组件
-- 改 `component.yaml`
-- 给组件加数据库迁移
-- 让组件多开一个端口（比如 gRPC）
-- 组件起不来，怀疑是声明写错了
+- Writing a new component (or a shell) from scratch
+- Editing `component.yaml`, or the component's `BRICKKIT.md`
+- Declaring configuration, dependencies, a migration, a health check, an extra port
+- Releasing a new version of a component
+- A component won't start, and a declaration might be the cause
 
-## 你会猜错的地方
+## From scratch: `brickkit new`, then `brickkit lint`
 
-**1. `component.yaml` 没有扩展字段机制。**
+`brickkit new <scope>/<name>` writes a `component.yaml` skeleton that already validates **and the
+four documents** (`BRICKKIT.md`, `AGENTS.md`, `CLAUDE.md`, `README.md`, see rule 12) with `<!-- TODO: … -->`
+hints, to `components/<scope>/<name>/` (the layout the local install source scans). `--shell` writes a shell skeleton to `shell/<scope>/<name>/` instead,
+with one placeholder member to replace; `--contract openapi|proto` adds a placeholder contract under `artifacts`; `--path` writes a
+standalone repository. No Dockerfile or code is generated — the platform doesn't pick a language — and nothing is
+`add`ed to the project: that is a separate step you can review.
 
-`apiVersion` 是 `brickkit/v1`。不认识的键会被**当场拒绝**，不是静默忽略。
-所以别往里加自定义字段——曾经有过 `observability` 和 `compatibility.minCliVersion`
-两个「预留」字段，已经删掉了：它们从未被任何一处读取，而后者更糟，它长得像一道安全闸，
-但写了 `minCliVersion: 2.0.0` 的组件在旧 CLI 上照装不误。
+After every edit run `brickkit lint`: offline, read-only, instant. It reports missing fields, wrong
+types, unknown keys, version format, port ranges, a misspelled key inside a `configSchema` property
+(`defualt` silently does nothing), and config keys that collide with reserved names. It doesn't
+resolve dependencies — that's `brickkit up --dry-run` in a project using the component.
 
-**2. 保留变量不许碰。** 这是最容易踩的一条。
+## Where you'll guess wrong
 
-`configSchema` 里的配置项名转成大写下划线后，不得与这些冲突：
+**1. `component.yaml` has no extension fields.** `apiVersion: brickkit/v1`; an unknown key is
+rejected on the spot. For metadata the engine should see (gateway routing, scrape config) use
+`deployment.labels`; to ship a file for tooling (a contract, an SDK) use `artifacts` — the CLI
+downloads it to `.brickkit/artifacts/<versioned-service-name>/<type>/` and never parses it.
 
-| 模式 | 匹配方式 |
+**2. `configSchema` keys ARE the environment variable names.**
+
+Write `DB_HOST`, `LOG_LEVEL` — exactly what your code reads. There is no camelCase conversion, so a key
+must be a valid environment variable name (letters, digits, `_`, not starting with a digit). The
+project fills values in `config/<scope>-<name>.yaml` under the same keys. Put keys the project must
+supply (a database password, another project's address) in `required` **without** a `default`: `up`
+refuses until they're filled. Everything else gets a `default`. Mark credentials `secret: true` —
+on K8s they go through a generated Secret, never plaintext env. `type` / `enum` / `minimum` /
+`maximum` / `pattern` / `items` are documentation only; values are never validated. A `default` is
+injected exactly as written: `default: 1.10` arrives as `1.10`, not `1.1`.
+
+There are no resource declarations: a database, cache or queue your component uses is simply a set
+of config keys you declare (`DB_HOST`, `DB_PORT`, `DB_PASSWORD` with `secret: true`, …). Sharing one
+value between several components is the project's business (`config/vars.yaml`); declare only what you need.
+
+**3. Never use a reserved name as a config key.**
+
+| Reserved | How it matches |
 | --- | --- |
-| `COMPONENT_ID`、`COMPONENT_VERSION` | 精确 |
-| `*_ENDPOINT` | 后缀 |
-| `DATABASE_*`、`REDIS_*`、`MQ_*`、`STORAGE_*`、`SEARCH_*`、`SMTP_*` | 前缀 |
-| `{envPrefix}_*` | 前缀，envPrefix 由使用者在 `brickkit.yaml` 里定 |
+| `COMPONENT_ID`, `COMPONENT_VERSION`, `PORT`, `BRICKKIT_SERVED_MEMBERS`, `BRICKKIT_SERVED_MEMBERS_CONFIG` | Exact |
+| `*_ENDPOINT` | Suffix |
 
-撞了会怎样：市场在发布时**拒绝**；CLI 在注入时**警告并跳过该配置项**，平台注入的值优先。
-也就是说，你的配置项会静默失效。命名规则是 `defaultPageSize` → `DEFAULT_PAGE_SIZE`，
-所以叫 `databaseTimeout` 会撞 `DATABASE_*`——改成 `dbTimeout` 之类的。
+These are injected by the platform (`PORT` is the listen port given to a `mode: local` process). A colliding key warns at `lint` / `up`, and the platform's value
+wins — your item silently has no effect.
 
-**3. 健康检查禁令：`/healthz` 只检查本进程存活。**
+**4. Dependencies are exact, and one id appears once.**
 
-**禁止**在里面查数据库、查依赖组件、查任何外部系统。原因是级联：一个下游抖动会让
-所有上游同时被判不健康并一起重启，把一次局部故障放大成整片雪崩。
+`dependencies.components` only: `- erp/api@1.0.0` (required) or `- id: infra/cache@1.0.0` +
+`optional: true`. You can't depend on two versions of one id — the variable `ERP_API_ENDPOINT`
+carries no version, so they would collide. Diamonds (A→X@1, B→X@2) are fine; each gets its own.
 
-**4. 冷启动超过 30 秒的组件必须写 `startPeriodSeconds`。**
+**5. A missing optional dependency injects nothing, not an empty string.**
 
-`interval` / `timeout` / `failureThreshold` 由平台固定（10s / 3s / 3），相乘就是默认启动
-预算 = **30 秒**。超过它：Docker 下判 `unhealthy` 让 `up` 失败、依赖方卡在
-`service_healthy`；K8s 下 Pod 被 kill 重启、再走一遍同样的 30 秒 → **永久
-CrashLoopBackOff，而容器日志一路正常**。
+Read it with `os.environ.get()` / `System.getenv()`; `os.environ["X"]` crashes — deliberately, so
+absence shows up at startup instead of as a request to an empty address. Degradation is your code.
 
-Spring Boot、Django 预加载、.NET 首次 JIT 都在射程内。宽限期只推迟「判死」不推迟
-「判活」（两秒就绪的组件照样两秒转 healthy），**所以写大一点没有任何代价**。
-它是 `healthCheck` 下唯一可覆盖的时间参数，默认 60。
+**6. `/healthz` only checks this process.** Never check a database or a dependency in it: one
+downstream hiccup would mark every upstream unhealthy at once. `interval`/`timeout`/`failureThreshold`
+are fixed (10s/3s/3), so the startup grace `startPeriodSeconds` defaults to 60. A cold start longer
+than that (heavy Spring Boot, Django preloading, .NET JIT) must raise it: on Docker the component turns
+`unhealthy` and `up` fails; on K8s it CrashLoopBackOffs forever while the logs look fine. The grace
+period only delays "declared dead", never "declared alive", so setting it generously costs nothing.
 
-**5. `dependencies` 里一个组件 ID 只能出现一次。**
+**7. The migration runs from the same image — fail fast on unknown arguments.**
 
-不能同时依赖 `people/basic@1.0.0` 和 `@2.0.0`。因为依赖地址的**变量名基于组件 ID、
-不带版本号**，写两个版本会撞同一个 `PEOPLE_BASIC_ENDPOINT`，后者静默覆盖前者。
-CLI 解析 Manifest 时就报错。
+`migration.command` (array form) runs before the main service, with every config env var. If your
+entrypoint falls through to "start the service" on an argument it doesn't recognize, a typo turns
+the migration into a second server that never exits, and the deployment hangs. Validate the argument
+before reading env vars or connecting to anything. Migration state is yours to keep; when two components
+share a database, the state table's key must include the component's identity.
 
-菱形依赖不受影响（A 依赖 X@1、B 依赖 X@2，各拿各的）。多版本共存是**项目级**能力。
+**8. `deployment.image` and `deployment.build`: at least one.**
 
-**6. 弱依赖缺失时「完全不注入」，不是「注入空字符串」。**
+`build: { context: ., dockerfile: Dockerfile }` lets `brickkit build` build it; `image:` lets git or
+market consumers pull it. The image **tag is always `metadata.version`**. `up` never builds, and
+`brickkit build` skips a version whose image already exists — so changed code without a version bump
+needs either a bump or `brickkit build <id> --force` on the user's side.
 
-这是 BrickKit 最容易被误解的设计。组件代码必须用安全读取：Python 的
-`os.environ.get()`、Java 的 `System.getenv()`。用 `os.environ["X"]` 会抛 `KeyError`
-让组件立刻崩溃——**这是刻意的**，让「依赖不在」在启动时就暴露，而不是变成一个
-连向空地址的运行时谜题。
+**9. `deployment.resources`: write `requests`, leave `limits` to the deployer.** Quotas merge field by
+field (deploy entry > `component.yaml` > default), so a `limits.cpu` you write can never be removed.
 
-降级逻辑（Redis 挂了是查库、返空列表还是写本地文件）是你的业务代码，平台不管。
+**10. `deployment.labels` values must be quoted strings**, and reserved keys (`app`, `brickkit.io/*`,
+`com.docker.compose.*`) are rejected. Write only facts you own (`prometheus.io/port: "9090"`).
 
-**7. `resources` 建议只写 `requests`，别写 `limits`。**
+**11. A shell declares the exact member versions it compiles in.**
 
-配额优先级是 `brickkit.yaml` > `component.yaml` > CLI 默认值，而且**逐字段合并**——
-组件写了 `limits.cpu`，部署方就删不掉它。限额是业务判断，留给部署方。
+`shell: { members: [erp/api@1.2.0, erp/auth@1.2.0] }` makes the component a shell. Those versions
+are a promise about what's inside the image: a project may only host exactly those versions in it,
+and a locally built shell image records them in a label that `up` checks. Change a member version →
+bump and rebuild the shell. Each member still needs its own image (its migration runs with it). At
+start the shell reads two variables:
 
-## 机制是怎么运作的
+- `BRICKKIT_SERVED_MEMBERS`: the versioned service names hosted this run, comma-separated. Initialise
+  only those modules; an empty string means none is hosted — not "the variable is missing, start all".
+- `BRICKKIT_SERVED_MEMBERS_CONFIG`: a JSON array, one object per hosted member —
+  `{componentId, version, httpPort, extraPorts: [{name, port}], config}`. `config` is the member's whole
+  environment (its config keys and its dependencies' `*_ENDPOINT`) with every value already resolved
+  (`$var:`, `${VAR}`, `file://`). Nothing of a member's config is put into the shell's own environment:
+  read it from here, by the member's own key names. A member key written as `existingSecret` is refused,
+  because the CLI can't read a value that lives only in the cluster.
 
-**地址注入。** 平台给你注入依赖的地址，变量名基于组件 ID（`/` 和 `-` → `_`，全大写），
-值指向带版本的服务名：
+**12. A component carries five documents, each for one reader — keep them in step with the code.**
+
+| File | Reader | Holds |
+| --- | --- | --- |
+| `BRICKKIT.md` | Projects using it (their AIs read the cached copy at `.brickkit/manifests/<scope>/<name>/<version>/BRICKKIT.md`) | Six sections: `Purpose` (what it owns, what it does not own and who does), `Before you deploy`, `Dependencies`, `Configuration`, `Contracts`, `Shell declaration` |
+| `AGENTS.md` | The AI developing it | Five sections — `Code map` (tables; paths in backticks, directories end in `/`), `Build and test`, `Design decisions`, `Pitfalls` (never / symptom / why), `Before changing code` — then the block maintained by brickkit |
+| `CLAUDE.md` | Claude Code | Exactly `@AGENTS.md` |
+| `README.md` | People on GitHub | `Use it in a project`, `Documentation` (a table pointing at the file that answers each question), `Development` |
+| `component.yaml` | The CLI | Dependencies, config keys, ports, image; optional `metadata.repository` is the link a project's component table shows |
+
+- One fact, one home: dependencies and config keys live in `component.yaml`, interfaces in the contract files, history in Git. The docs explain what those can't say — they don't restate it.
+- `BRICKKIT.md` has **no relative links**: it is read alone in other projects' caches. Name files as inline code.
+- A shell's `Shell declaration` section lists the same members as `shell.members`.
+- Translations are siblings: `BRICKKIT.zh.md`, `README.zh.md`, `docs/design.zh.md`. The unsuffixed file is canonical; each language version links every other near the top (not `BRICKKIT*.md`); `AGENTS.md` is not translated.
+- `brickkit lint` checks all of this (warnings; `--strict` fails on them): `DOC_FILE_MISSING`, `DOC_SECTION_MISSING`, `DOC_PATH_MISSING` (a code-map path that's gone — every inline-code token in the first column of the first table is a path, `main.go` and `Dockerfile` included; elsewhere only tokens containing `/` count, and a token starting with `/` is a route such as `/healthz`, never a path), `DOC_LINK_BROKEN`, `DOC_LINK_NOT_PORTABLE`, `DOC_OUT_OF_STEP` (a dependency, required key, contract file or shell member that `component.yaml` has and the doc doesn't mention), `DOC_PLACEHOLDER`, `DOC_TRANSLATION_DRIFT`, `AGENTS_BLOCK_MISSING`, `CLAUDE_IMPORT_MISSING`. Change the docs in the same commit as the code: the next AI reads what you left.
+- The docs are part of the version, like the code. Work towards a new version — bump `metadata.version` first, test, then release — and edit it freely until it's released. Never change a released version in place: a machine where it is a local source and a machine that takes it from the tag then write different rows into the component table of the project's `AGENTS.md`, back and forth.
+
+## Releasing a version
+
+A release is a Git tag. Bump `metadata.version`, commit, push, then `brickkit release` (or
+`--path <dir>`; `--local` releases every local-source component). It refuses (`RELEASE_BLOCKED`)
+unless `component.yaml` validates, the component directory is clean, the branch has an upstream with nothing unpushed, and the
+tag doesn't exist. Tags are `1.2.0` (no `v`), or `<scope>-<name>/1.2.0` for a monorepo subdirectory.
+A failed push deletes the local tag again. A `brickkit.yaml` next to `component.yaml` (a local
+workbench) plays no part in what gets released — `release` reads only `component.yaml` — but its
+files still count for "the component directory is clean": commit the workbench (`brickkit.yaml`,
+`deploy.yaml`, `config/`, `.gitignore`) or `release` refuses. A tag that exists only locally (never
+pushed) is not a release: push it or delete it. `brickkit publish` to a market is separate.
+
+Release notes are optional but are what projects read before they upgrade: `brickkit release
+--notes-file <file>` (or `--notes "<text>"`) writes Markdown, verbatim, into an annotated tag, and
+`brickkit upgrade` prints the notes of every version it crosses before changing anything. Lead with
+what a project must do — a key whose meaning or unit changed, an endpoint removed — then what was
+added. Keep the file outside the component directory (an untracked file there fails the clean check).
+Not with `--local` (one note per component version); `publish` takes the same two flags.
+
+## How the mechanism works
+
+**Addresses**: each dependency's main port is `{ID}_ENDPOINT` (`/` and `-` → `_`, uppercase), extra
+ports `{ID}_{NAME}_ENDPOINT` (the port name the same way: `admin-api` → `ERP_API_ADMIN_API_ENDPOINT`);
+the value points at the versioned service name — identical on Docker and K8s, so code never changes:
 
 ```
 PEOPLE_BASIC_ENDPOINT=http://people-basic-1-0-0:8080
 PEOPLE_BASIC_GRPC_ENDPOINT=http://people-basic-1-0-0:9090
 ```
 
-额外端口的变量名是 `{组件ID前缀}_{NAME大写}_ENDPOINT`，`NAME` 来自
-`deployment.extraPorts[].name`。
+The service name is the id and the exact version joined by `-`, with `/` and `.` → `-`. A dependency
+hosted in a shell is reached at the shell's address, on the port the dependency itself declares — the
+caller neither knows nor needs to. `COMPONENT_ID` and `COMPONENT_VERSION` are always injected.
+`deployment.port` (required) serves the health check and `_ENDPOINT`. `deployment.type` is always
+`container`, frontends included (an nginx container, `port: 80`).
 
-**地址格式在本地和生产完全一样**（都是 `http://<版本化服务名>:<端口>`），
-所以组件代码在两个环境之间零修改。
+**Local runs**: in `mode: local` BrickKit detects how to start your code from its source; the optional
+`local: { language, runCommand }` block overrides detection. The repo's `metadata.version` must equal
+the project's default version of the component. The process inherits the terminal's environment except
+the names the platform owns — `COMPONENT_ID`, `COMPONENT_VERSION`, `PORT`, `BRICKKIT_SERVED_MEMBERS`,
+`BRICKKIT_SERVED_MEMBERS_CONFIG`, every `*_ENDPOINT` and your own `configSchema` keys: those come only
+from BrickKit, so a value left exported in your shell can't stand in for one the project didn't give.
 
-**服务名 = 组件 ID 转换 + 精确版本**：`/` → `-`，`.` → `-`，全小写。
-`people/basic` + `1.0.0` → `people-basic-1-0-0`。
+**A workbench**: the component's repository can have its own `brickkit.yaml` for local integration work
+(`brickkit init` in the repository, or `brickkit add --local --init` in the project above). `up` and `add`
+treat it as a project; `release` reads only `component.yaml`.
 
-**主端口的用途有两个**：健康检查和 `_ENDPOINT` 变量。`deployment.port` 必填。
+## Where to dig deeper
 
-**迁移**是 `migration.command`，数组格式。状态自己记（迁移状态表），平台只负责在
-`up` 时把它作为一个前置步骤跑掉。
+- Flags: `brickkit new --help`, `brickkit lint --help`, `brickkit build --help`, `brickkit release --help`
+- The full specification: <https://github.com/brickKit/brickKit> and its root `AGENTS.md`
+- Examples: the cached `BRICKKIT.md` and `component.yaml` of any component under `.brickkit/manifests/`
 
-**`deployment.type` 固定是 `container`**，前端组件也一样——前端同样要监听端口、
-提供健康检查、被 Ingress 暴露、通过环境变量拿后端地址。
-
-## 去哪查更细的
-
-- `component.yaml` 每个字段的规则：`design/002-组件规范.md`
-- 完整字段参考：`design/附录合集.md` 附录 B
-- 环境变量命名与保留变量：`design/附录合集.md` 附录 C
-- 手把手教程（从 mkdir 到 publish，含 gRPC 双协议、前端 nginx 组件、迁移、断点调试）：
-  `design/009-组件开发快速入门.md`
+<!-- brickkit:skill version=v1.0.0 sum=sha256:52f12fb62f184c4113967c5f3a6b659a8f0cfa1a4dd49643025b2deaa03d84b3 -->

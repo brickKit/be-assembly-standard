@@ -1,87 +1,162 @@
 ---
 name: brickkit-assemble
-description: 在 BrickKit 项目里增删组件、调整启停、启动或停止整套服务、查看运行状态时使用。覆盖 add / remove / fetch / sync / up / down / status 的适用场景，依赖解析与启动顺序怎么算，以及「启停跟着上层走」的判定规则。当用户提到 brickkit.yaml 的 components / enabled 字段，或者问「怎么把某个组件加进来 / 关掉 / 为什么它没起来」时，这个技能适用。
+description: Use when adding, removing or upgrading components in a BrickKit project, keeping two versions side by side, changing what's on or off, starting or stopping the stack, or checking what's running. Covers add / remove / upgrade / fetch / deps / sync / up / down / status, brickkit.yaml as a lock file, the default version and requiredBy, how add/remove/upgrade keep deploy.yaml, deploy.local.yaml and config/ in step, the "follows the layer above" rule for what starts, and focus runs (one component inside a big project, up --focus / --all). Applies when the user mentions brickkit.yaml's components, requiredBy, mode, upgrade, or asks "how do I add / upgrade / turn off a component" or "why isn't it starting".
 ---
 
-# 拼装 BrickKit 项目
+# Assembling a BrickKit project
 
-## 什么时候用这个技能
+## When to use this skill
 
-- 要把一个组件加进项目，或者从项目里移除
-- 要让某些组件这次不启动
-- `brickkit up` 起来的组件跟预期不一样
-- 要看当前在跑什么
-- 要整理 `components/` 下堆积的组件源码
+- Adding a component to the project, removing one, or moving it to a newer version
+- A dependency needs a different version of something already in the project
+- Keeping some components from starting this run
+- What `brickkit up` starts doesn't match what you expected
+- Checking what's running, or what depends on what
+- Tidying up the component source piling up under `components/`
 
-## 你会猜错的地方
+## Where you'll guess wrong
 
-**1. 版本必须精确，没有范围版本。**
+**1. Versions must be exact, and `brickkit.yaml` is a lock file.**
 
-`1.2.0` 可以。`^1.2`、`~1.2`、`1.2.x`、`latest` 全都不行——这不是还没做，是论证过之后
-拒绝的。`brickkit add` 不写版本时会取安装源上最新可安装版本，然后**以精确版本落盘**。
+`1.2.0` is fine; `^1.2`, `1.2.x`, `latest` are rejected by design. `brickkit add <id>` without a
+version takes the latest one from the install source and **pins it**. Resolution only ever uses
+versions declared in `brickkit.yaml`: a required dependency whose version isn't there is an error
+that tells you to `brickkit add` it — nothing is fetched behind your back. An undeclared *optional*
+dependency is simply absent.
 
-**2. `brickkit add` 不写 `enabled` 字段。**
+**2. Don't hand-edit the three layers — let the commands do it.**
 
-加进来的组件在配置里不会带 `enabled`。这不是漏了——不写就是「跟着上层走」，
-那是默认且推荐的状态。别为了「显式一点」去补 `enabled: true`：那含义完全不同（见下一条）。
+`brickkit add`, `remove` and `upgrade` write `brickkit.yaml`, the entries in `deploy.yaml` (and
+`deploy.local.yaml` if it exists) and the skeleton in `config/` together, and restore everything if
+the result wouldn't load. Adding a line to `brickkit.yaml` by hand leaves the deploy file without its
+entry, and every command then refuses with `DEPLOY_INCONSISTENT`. Dependencies are never written in
+`brickkit.yaml` at all — they come from each `component.yaml`; `brickkit deps` prints the tree.
 
-**3. `enabled` 的三种状态，两种是钉死的。**
+**3. The default version is the line without `requiredBy`.**
 
-| 写法 | 含义 |
+A component can have several lines in `brickkit.yaml`. Exactly one has no `requiredBy` — that is the
+**default version**, and a bare id means it everywhere: the bare deploy entry (`- id: erp/backend`),
+the unversioned config file (`config/erp-backend.yaml`), the local repo, a bare shell member. A line
+with `requiredBy: [crm/web]` is a compatibility version kept only because `crm/web` needs it; its
+deploy entry is `- id: erp/backend@1.0.0` and its config file is `config/erp-backend@1.0.0.yaml`.
+
+**4. `add` of another version is an error — use `upgrade`.**
+
+When a *dependency* needs another version, `add` writes the `requiredBy` line itself. But
+`brickkit add erp/backend@2.0.0` when `erp/backend` is already present is refused: moving the
+default is `brickkit upgrade erp/backend@2.0.0`. `upgrade` with no argument moves every component
+that has a newer version, never downward; the old version stays (with `requiredBy`) only if
+something still depends on it, otherwise it is removed and its config archived. Try it first with
+`brickkit upgrade --dry-run` — it runs on a temporary copy and writes nothing. It is all or nothing.
+Before changing anything (`--dry-run` too) it prints the release notes of every version it crosses,
+from the author's tags or the market; read them before the real upgrade — a key whose meaning or
+unit changed keeps its name, so the config migration can't notice it. A local source has no notes.
+
+**5. `upgrade` migrates config key by key — and can leave a deliberate duplicate key.**
+
+Keys you wrote are copied if the new schema still has them; keys you never wrote follow the new
+defaults (that's why `add` writes optional keys as commented lines — leave them commented). If you
+changed a key whose default also changed, that's a conflict: in a terminal you choose; with `--yes`
+or no TTY a duplicate-key block with a comment is written into the config file, and `up` refuses
+until you delete one line. That failure is intentional — don't "fix" it with a YAML formatter, which
+silently drops one of the keys.
+
+**6. `mode` lives in the deploy file, and `add` never writes it.**
+
+Not writing `mode` means the component follows the layer above it: a top-level component (nothing depends on it)
+runs; a lower one runs while anything running needs it. Don't add `mode: enabled` "to be explicit" —
+it means something else:
+
+| In the deploy entry | Meaning |
 | --- | --- |
-| **不写** | 跟着上层走。顶层（没有任何组件依赖它）默认跑；下层看上层 |
-| `enabled: true` | **一定跑**，不看上层。它的强依赖被关掉时**报错**——两个意图冲突了 |
-| `enabled: false` | **一定不跑**。依赖它的组件跟着不跑；钉住的那些则报错 |
+| **not written** | Follows the layer above |
+| `mode: enabled` | Always runs; if a required dependency is turned off, that's an **error** (two intents conflict) |
+| `mode: disable` | Never runs; what depends on it stops too, and anything pinned on top of it errors |
+| `mode: local` | Always runs as a bare process BrickKit starts from the local repo (docker / podman; default version only) |
+| `mode: debug` | Always runs as a process you start in your IDE (docker / podman) — **only allowed in `deploy.local.yaml`** |
 
-想收窄这次跑哪些，改顶层的 `enabled: false` 就够了，下面一串会跟着不启动。
-**别去逐个关。**
+To narrow what runs, put `mode: disable` on the top-level thing — there is no `--only` flag; don't
+look for one. For personal changes (debugging one
+component, turning half the stack off on your laptop), use `brickkit local on` and edit
+`deploy.local.yaml`, not the team's `deploy.yaml` — see the `brickkit-deploy` skill.
 
-**4. 强依赖和弱依赖在启停上一视同仁。**
+**7. Required and optional dependencies count the same for start/stop.**
 
-上层只是弱依赖它，它照样跟着跑。`optional: true` 只管两件事：解析期取不到只警告不阻断、
-它没在跑时不注入那个 `*_ENDPOINT` 变量。跟「要不要启动」无关。
+`optional: true` only means a missing one warns instead of blocking, and its `*_ENDPOINT` isn't
+injected while it isn't running. A component shared by several above it runs while any of them runs.
 
-**5. 被多个上层共用的组件不会被误伤。**
+**8. `remove` archives config and may delete source.**
 
-只要还有一个上层在跑，它就跑。所以关掉一个上层不会顺手把共享的底层组件带走。
+Its config file moves to `config/.archive/` (re-adding later migrates it back). Its deploy entries go,
+versions kept only for it go too, and a removed shell's members move back to the top level. If you
+remove the default and one version remains, that one becomes the default. With several versions in the
+project, name the one to remove: `brickkit remove erp/backend@1.0.0`. The source directory (and its
+copy archived by `sync`) is deleted only when the last version goes, and only if nothing in it would be
+lost — uncommitted or unpushed changes stop the whole `remove` before anything is written (`--force`
+deletes anyway).
 
-**6. `sync` 只动目录，不碰容器。**
+**9. `fetch` writes no config and deploys nothing.**
 
-它把这次不启动的组件源码挪进 `components/.archived/`，判据与 `up` 完全一致。
-运行中的容器一个都不受影响，`up` 会启动谁也不会改变。整个目录连 `.git` 一起搬。
+It only downloads a component's artifacts into `.brickkit/artifacts/<versioned-service-name>/` — for
+calling another project's service (generate a client from its contract). It isn't a lightweight `add`.
 
-**7. `remove` 会删源码目录，包括归档的那一份。**
+**10. `sync` only moves directories.**
 
-不是只从配置里摘掉。多版本共存时必须指定版本。
+It moves the source of components that won't start this run into `components/.archived/` (and back),
+using exactly `up`'s decision. Containers aren't touched. `brickkit restore` puts `deploy.yaml`'s
+`mode` values back to the last commit, for projects that commit `components/`.
 
-**8. `fetch` 不写配置、不部署。**
+**11. `up` never builds images.** Local-source components need `brickkit build` first — see the
+`brickkit-deploy` skill.
 
-它只把产物下到 `.brickkit/artifacts/<版本化服务名>/`。跨项目调别人的服务时用这个，
-不是「add 的轻量版」。
+**12. To work on one component, run a focus run — not the whole stack.**
 
-## 机制是怎么运作的
+`brickkit up` in the component's directory (or `brickkit up --focus <id>` anywhere in the project)
+writes `focus: <id>` into `deploy.local.yaml` and starts only that component — from its source — plus
+what it needs; everything else prints `not starting (outside the focus)`. The focus stays until
+`brickkit up --all`. Project commands work from any subdirectory (they find the nearest
+`brickkit.yaml` upward); `build` and `deps` without an argument mean the component you are in.
+`sync` ignores the focus, so switching focus moves no directories.
 
-**启停判定算的是「谁不跑」。** 从 `enabled: false` 出发向上传播，得到一个最小不动点，
-剩下的都跑。所以两个组件互相弱依赖成环时不需要任何特例——环上没有更上层的东西，
-两个都算顶层，都跑。
+**13. There is one `components/`.**
 
-**`up` 的顺序是拓扑排序**（依赖先起）。想看这次会启动谁、什么顺序，`brickkit up --dry-run`
-只生成部署文件供审查，不真起。
+Component source lives only in the project's `components/` (`add --repo` always clones there, from any
+subdirectory of the project; in a workbench that is itself a component of an enclosing project it
+refuses — run it in the outer project). Never copy or clone a component into another component's directory: `up`,
+`lint` and `sync` refuse nested copies and BrickKit never moves them — ask before deleting one, it may
+hold the only copy of someone's changes. Git submodules are never fetched.
 
-**CLI 输出里每一行都带理由**：`启动（顶层）` / `启动（enabled: true）` / `启动（X 需要）`。
-组件没起来时先读这个理由，它直接说明了判定结果的来源。
+## How the mechanism works
 
-**多版本共存是项目级能力。** `brickkit.yaml` 里可以并列 `people/basic@1.0.0` 与
-`@2.0.0`，供不同调用方各用各的——它们是两个互不冲突的服务名。但**同一份
-`component.yaml` 的 `dependencies` 里，一个组件 ID 只能出现一次**（原因见
-`brickkit-component` 技能）。
+**Start/stop is computed as "who doesn't run"** — a least fixed point propagated from
+`mode: disable`, so weak-dependency cycles need no special case. **`up`'s order is a topological
+sort**. Every line of `up` output carries its reason (`starting (top-level)`,
+`starting (mode: enabled)`, `starting (X needs it)`); read it first when something is off.
+`brickkit up --dry-run` generates the files without starting anything; `brickkit status` reads the
+engine's real state and lists the components that won't start too; `brickkit graph` prints the
+graph as Mermaid (greyed nodes won't start; shell members are drawn inside their shell).
 
-**没有 overlay / 继承 / 合并。** 多环境是每个环境一份完整自包含的配置文件，
-用 `--config` 指定，比如 `brickkit up --config brickkit.prod.yaml`。
+**Coexisting versions is a project-level capability**: `erp-backend-1-0-0` and `erp-backend-2-0-0`
+are two different service names. Inside one `component.yaml`, a component id can appear only once.
 
-## 去哪查更细的
+**Adding a shell** brings in the member versions it compiles in and nests them under the shell's
+deploy entry; **upgrading a shell** switches to the members the new shell compiles in.
 
-- 参数：`brickkit <命令> --help`。这份技能刻意不复刻参数清单
-- 命令的完整行为：`design/004-CLI 设计.md`
-- `enabled` 与启停：`design/003-项目配置规范.md` §4.3
-- 安装、拼装、更新、回滚、卸载的完整流程：`design/011-组件安装与拼装指南.md`
+**Environments**: one complete deploy file per environment, `brickkit up -f deploy.prod.yaml`.
+`brickkit.yaml` and `config/` are shared; values that differ per environment go through the deploy
+file's `vars:`. No overlay, no merge. `-f` ignores local mode.
+
+`status` and `down` read the same deploy file as `up`. `graph` and `deps` always read `deploy.yaml`,
+never local mode, so their output is the same for everyone. `down` never deletes volumes.
+
+## Where to dig deeper
+
+- Flags and exact behavior: `brickkit <command> --help` (`add`, `remove`, `upgrade`, `deps`, `sync`,
+  `up`, `local`). This skill deliberately doesn't duplicate the flag reference
+- A component's own guide: `.brickkit/manifests/<scope>/<name>/<version>/BRICKKIT.md`; which
+  components the project has and what each does: the component table at the end of `AGENTS.md`
+  (maintained by `add` / `remove` / `upgrade`; write your own notes outside its markers)
+- A new requirement or a change across components: the `brickkit-plan-change` skill
+- The platform's full specification: <https://github.com/brickKit/brickKit> and its root `AGENTS.md`
+
+<!-- brickkit:skill version=v1.0.0 sum=sha256:4772027dd48d1cca98808fca3afae2806b5b9d996d88014b9bc6c921823d2fc4 -->
