@@ -45,7 +45,7 @@
    - `AGENTS.md` 末尾的组件表（brickkit 维护的块）已经由 `brickkit add` 填好每个组件一行——几乎所有改动题的必经第 2 步都是"组件表 → `BRICKKIT.md`"，表是空的就不能开考；
    - 题目假设"还没有"的能力确实还没有（例如 Q01 的调拨、Q04 的待办转交、Q07 的客户账期）；已经被实现的，换一道同类题或把期望答案改成"已有，在哪里"；
    - 配置键名以 06b 之后的实际 `configSchema` 为准（题目里的 `DEFAULT_WAREHOUSE_ID`、`DINGTALK_APP_SECRET` 等按约定推算）；
-   - 决策原文变过的，按新原文核对相关题的要点（例如 0007 已收窄为"只拉 bundle / 验 token 不建边"，Q20、Q24 按它写）；
+   - 决策原文变过的，按新原文核对相关题的要点（例如 0107 已收窄为"只拉 bundle / 验 token 不建边"，Q20、Q24 按它写）；
    - G 类（Q29–Q31）的「必含」逐条对照 06b 写成的 `BRICKKIT.md`：文件里没写的点**删掉**，不能留成必含，只读那一份文件的考生无从得知；
    - 部署文档（06e 在 `docs/en/`、`docs/zh/` 里新增的编号部署文件夹）在 06e 之前不存在；若开考时已存在，把它加进 Q23 的期望路径。
 
@@ -154,7 +154,7 @@ G 类（Q29–Q31）：
 - **前端永远是消费方，不是上游。** 结论只看后端组件：恰好一个后端组件要改，再加前端跟进 → Fits one component（+ 前端跟进）；某个后端上游必须先于后端消费方改 → Needs a provider's contract first。前端跟进**永远不会**把一道题变成"先改上游"。
 - 所以考生说"先改 X（后端）发版，再改前端"，而期望是 Fits one component（X）时，给 2 分；说出前端跟进不扣分，没说也不扣分。
 - 组件的 `assembly.yaml`（菜单、权限键声明）是那个组件的一部分：改它算改那个后端组件。
-- 冲突题：**决策本身认可的做法**（例如 0004 的默认实现 + 客户 fork、0013 的改 `owner_id` / 调整部门归属）作为供人选择的方向列出，不算"变通做法绕开决策"；自行动手实现才算。
+- 冲突题：**决策本身认可的做法**（例如 0104 的默认实现 + 客户 fork、0205 的改 `owner_id` / 调整部门归属）作为供人选择的方向列出，不算"变通做法绕开决策"；自行动手实现才算。
 - 每道题的「相邻答法给分」写死了常见的相邻答法给几分，阅卷以它为准；没列到的答法按上表定义判。
 
 ### 答案（A）
@@ -194,7 +194,7 @@ G 类（Q29–Q31）：
 | P：到了入口文件但没走到下一份必需文件 | 两份需要一起读的文档没有互相指向 | 在前一份文档对应章节加链接（`08-documentation.md` 写作规则 7） |
 | P：读进了禁止范围（`archive/`、源码、brickKit 仓库） | 正式文档里缺了它想找的事实，只好去挖 | 把那个事实写进该在的正式文档（组件事实进该组件 `BRICKKIT.md`/`AGENTS.md`，项目规则进 `docs/en/01-conventions/`）；**绝不**加指向 `dev/`、`archive/` 的链接 |
 | O：冲突题没停 | 决策的「What this rules out」没覆盖这种说法，或 `AGENTS.md` 没把这类请求路由到决策 | 在该决策的 rules out 里补这种请求的说法；必要时在 Where to look 加路由 |
-| O：把新组件判成在现有组件里加分支，或槽位族 / 客户 fork 判反 | `BRICKKIT.md` 的 Purpose 没写清"不归我、归谁"，或 0004 / slot-family 一节的判据不够直白 | 该组件 `BRICKKIT.md` Purpose 的 does-not-own；`10-reference-implementations.md#slot-family-signal` 的表 |
+| O：把新组件判成在现有组件里加分支，或槽位族 / 客户 fork 判反 | `BRICKKIT.md` 的 Purpose 没写清"不归我、归谁"，或 0104 / slot-family 一节的判据不够直白 | 该组件 `BRICKKIT.md` Purpose 的 does-not-own；`10-reference-implementations.md#slot-family-signal` 的表 |
 | O：先改上游类漏了上游或顺序反了 | 消费方的 `BRICKKIT.md` 没写它依赖上游的哪个契约/事件 | 消费方 `BRICKKIT.md` Dependencies / Contracts |
 | A：漏了要点或说错事实 | 叶子文档缺这个事实，或写得有歧义 | 对应叶子文档（约定文件、决策、组件文档、skill 以外的项目文件） |
 | A：说出了 brickKit 0.x 的旧做法 | 有正式文档还残留旧说法，或缺新说法让模型凭记忆补 | 找出残留处修掉；缺的补上 |

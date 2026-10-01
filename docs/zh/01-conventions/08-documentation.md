@@ -64,7 +64,7 @@
 
 ## 决策
 
-`docs/zh/02-decisions/` 只收约束未来改动的决策：一旦被忘记，就会有人推翻它或重新争论一遍的选择。每条记录写明决策本身和两三句理由，放在它所属的主题文件夹里（`01-architecture/`、`02-permissions/`、`03-contracts-and-data/`、`04-frontend/`）。编号跨文件夹统一，一经分配永不复用。小一些的决策留在受它影响的文档里。索引和格式见 [../02-decisions/README.md](../02-decisions/README.md)。
+`docs/zh/02-decisions/` 只收约束未来改动的决策：一旦被忘记，就会有人推翻它或重新争论一遍的选择。每条记录写明决策本身和两三句理由，放在它所属的主题文件夹里（`01-architecture/`、`02-permissions/`、`03-contracts-and-data/`、`04-frontend/`）。每个文件夹有自己的编号段（`01-architecture/` 0101–0199、`02-permissions/` 0201–0299，依此类推），所以同一文件夹里的编号始终连续；编号一经分配永不复用。小一些的决策留在受它影响的文档里。索引和格式见 [../02-decisions/README.md](../02-decisions/README.md)。
 
 ## 写作规则
 

@@ -64,7 +64,7 @@ Every component and every shell carries:
 
 ## Decisions
 
-`docs/en/02-decisions/` holds only the decisions that constrain future changes: a choice that, if forgotten, someone would undo or argue again. Each record states the decision and two or three sentences of why, and lives in the topic folder it belongs to (`01-architecture/`, `02-permissions/`, `03-contracts-and-data/`, `04-frontend/`). Numbers run across all folders, are assigned once and never reused. Smaller decisions stay in the documents they shaped. The index and the format are in [../02-decisions/README.md](../02-decisions/README.md).
+`docs/en/02-decisions/` holds only the decisions that constrain future changes: a choice that, if forgotten, someone would undo or argue again. Each record states the decision and two or three sentences of why, and lives in the topic folder it belongs to (`01-architecture/`, `02-permissions/`, `03-contracts-and-data/`, `04-frontend/`). Each folder has its own number range (`01-architecture/` 0101–0199, `02-permissions/` 0201–0299, and so on), so a folder's numbers stay contiguous; a number is assigned once and never reused. Smaller decisions stay in the documents they shaped. The index and the format are in [../02-decisions/README.md](../02-decisions/README.md).
 
 ## Writing rules
 

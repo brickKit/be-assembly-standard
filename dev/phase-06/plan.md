@@ -25,7 +25,7 @@
 
 - [x] **同步两份开发文件到 R29**：authz/iam 地址改为成员服务名（`infra-authz-<ver>` / `infra-iam-casdoor-<ver>`），不再用外壳服务名，也不再在 teardown 部署文件里覆盖。改动范围：`component-loop.md`（:260、附录 B）和 `dev/routing-tests/questions.md` 的标准答案。外壳拆成独立仓库时已一并完成（父仓库 `298d1a2`，裁定 R30）。
 - [ ] **删除 06a 的 SDD 执行区**：`.superpowers/sdd/plan-06a/` 已被 git 忽略，里面有 ledger、各 Task 的审查报告和发布说明。写 `plan-06b.md` 时还要查阅，**`plan-06b.md` 写完并提交后再删**（`rm -rf .superpowers/sdd/plan-06a`）。要点已整理进 [`batches/06a.md`](batches/06a.md)，删除后不会丢失信息。
-- [ ] **写 `plan-06b.md` 时以这些为准**：外壳的组装和发布步骤，以决策 0008（外壳独立成仓）和 `component-loop.md` §4 为准；`spec.md`、`plan-06a.md`、`batches/06a.md` 里仍写着"外壳是项目代码"，属于历史记录，不要照抄。06b 的其余输入见 `batches/06a.md` §6，以及外壳拆仓审查留下的事项：外壳的 `BRICKKIT.md` 不得引用本项目的 `registry/ports.tsv` 和 `make db-init`，必须在外壳发布 1.0.0 之前改掉。
+- [ ] **写 `plan-06b.md` 时以这些为准**：外壳的组装和发布步骤，以决策 0108（外壳独立成仓）和 `component-loop.md` §4 为准；`spec.md`、`plan-06a.md`、`batches/06a.md` 里仍写着"外壳是项目代码"，属于历史记录，不要照抄。06b 的其余输入见 `batches/06a.md` §6，以及外壳拆仓审查留下的事项：外壳的 `BRICKKIT.md` 不得引用本项目的 `registry/ports.tsv` 和 `make db-init`，必须在外壳发布 1.0.0 之前改掉。
 
 - [ ] **SDK 注释里的旧文档路径**：be-sdk-go `connection.go`、be-sdk-python `connection.py` 的注释还写着 `docs/conventions/…`，06b 下次升 SDK 时顺手改成 `docs/en/01-conventions/…`。
 - [ ] **阶段 06 结束时**：删掉 `docs/{en,zh}/02-decisions/README.md` 里"阶段 06 内决策可原地改写"那句说明（R33），之后推翻决策一律另起编号、旧文件标注 Superseded。

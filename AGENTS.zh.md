@@ -13,7 +13,7 @@
 - **三个中枢**把其余组件串起来。`mdm/*` 被所有组件读，自己不调用任何组件。`erp/inventory` 是实物库存变动的唯一写入者。`erp/finance` 基本只接受命令、监听事件。CRM 与 ERP 之间没有同步调用边，只有事件；库存与财务之间没有任何边，由同一个上游（比如 `erp/sales`）并排触发。
 - **东西在哪。**
   - `components/<scope>/<name>/`：每个组件一个 Git 子模块；`.gitmodules` 记录每个组件的确切提交。
-  - `shell/<scope>/<name>/`：外壳（`be/go-core`、`be/go-infra`、`be/go-backoffice`、`be/py-render`）；每个都是独立仓库，像组件一样以 Git 子模块检出，供别的装配项目复用（[0008](docs/zh/02-decisions/01-architecture/0008-one-repository-per-shell.md)）。
+  - `shell/<scope>/<name>/`：外壳（`be/go-core`、`be/go-infra`、`be/go-backoffice`、`be/py-render`）；每个都是独立仓库，像组件一样以 Git 子模块检出，供别的装配项目复用（[0108](docs/zh/02-decisions/01-architecture/0108-one-repository-per-shell.md)）。
   - `tools/`：`be-sdk-go`、`be-sdk-python`、`be-sdk-ts`（每个组件依托的运行时库）、`be-ops`（组装期生成：建库脚本、权限与数据范围登记表）、`be-acceptance`（`make gates` 背后的门禁）。
   - `registry/`（端口、schema、权限键、数据范围）、`config/`（组件配置值，共享值在 `vars.yaml`）、`infra/`（`make up` 启动的基础资源）、`docs/zh/`（约定、决策、种子数据；[索引](docs/zh/README.md)），与英文的 `docs/en/` 逐文件对应。
 - **两条不可违背的原则。**
@@ -33,7 +33,7 @@
 - **数据**：种子数据给人用，测试数据给测试用，两个物理库（`brickkit_db`、`brickkit_test_db`）；依赖方缺能力就在源头补（[05-data.md](docs/zh/01-conventions/05-data.md)）。
 - **登记表**：端口、schema、角色、权限键都从 `registry/` 抄，绝不自己编；`ports.tsv`、`schemas.tsv`、`permissions.tsv` 只追加：已有的行绝不修改、删除或回收再用（[07-registries.md](docs/zh/01-conventions/07-registries.md#只追加)）。
 - **子模块映射**：`.gitmodules` 与子模块指针记录每个组件和外壳来自哪个仓库、哪一个确切提交；只通过 `git submodule` 命令改动，指针与需要它的那次 `brickkit upgrade` 一起提交（[01-development-workflow.md](docs/zh/01-conventions/01-development-workflow.md#发布)）。
-- **每个组件两份清单**：`component.yaml` 只放 brickKit 读的内容；本项目自己的键（`permissions`、`data_scopes`、`menus`，以及 `domain`、`tier` 这类项目自己的元数据）放在旁边的 `assembly.yaml`，由 be-ops 读取（[02-backend.md](docs/zh/01-conventions/02-backend.md#仓库结构)）。组件由哪个外壳托管，在部署文件里选（[0008](docs/zh/02-decisions/01-architecture/0008-one-repository-per-shell.md)）。
+- **每个组件两份清单**：`component.yaml` 只放 brickKit 读的内容；本项目自己的键（`permissions`、`data_scopes`、`menus`，以及 `domain`、`tier` 这类项目自己的元数据）放在旁边的 `assembly.yaml`，由 be-ops 读取（[02-backend.md](docs/zh/01-conventions/02-backend.md#仓库结构)）。组件由哪个外壳托管，在部署文件里选（[0108](docs/zh/02-decisions/01-architecture/0108-one-repository-per-shell.md)）。
 - **版本号**：每次改动都升版本，版本号是精确值，组件在 `2.x`、外壳在 `1.x`；Go 组件在同一个提交上打两个 tag（brickKit 用的 `2.0.0`、Go 用的 `v2.0.0`），模块路径以 `/v2` 结尾；外壳在它自己的仓库发布，只打裸 tag（`1.0.0`）；用 `make bump-version` 传播（[01-development-workflow.md](docs/zh/01-conventions/01-development-workflow.md#版本号)）。
 - **提交与发布**：提交信息用中文、写进文件、`git commit -F`，tag 一律带注释，按 `bump-version` 打印的顺序发布（[01-development-workflow.md](docs/zh/01-conventions/01-development-workflow.md#发布)）。
 - **业务逻辑**：先自己设计，卡住才看参考实现，绝不照抄（[10-reference-implementations.md](docs/zh/01-conventions/10-reference-implementations.md)）。
@@ -51,24 +51,24 @@
 | 写一个新组件；改 `component.yaml`；仓库结构 | `brickkit-component` 技能（[SKILL.md](.claude/skills/brickkit-component/SKILL.md)）、[02-backend.md](docs/zh/01-conventions/02-backend.md#仓库结构) |
 | 用哪个端口、schema、数据库角色或权限键 | [07-registries.md](docs/zh/01-conventions/07-registries.md) |
 | 给配置键起名；读一个配置值；连 PostgreSQL、NATS 或对象存储；数据库密码 | [04-configuration.md](docs/zh/01-conventions/04-configuration.md)、[04-configuration.md](docs/zh/01-conventions/04-configuration.md#数据库角色)、[02-backend.md](docs/zh/01-conventions/02-backend.md#rt-是唯一入口) |
-| 用哪个框架或库；写 `main`；模块入口 | [02-backend.md](docs/zh/01-conventions/02-backend.md#技术栈)、[02-backend.md](docs/zh/01-conventions/02-backend.md#模块入口)、[0003](docs/zh/02-decisions/01-architecture/0003-locked-stack-per-language.md) |
+| 用哪个框架或库；写 `main`；模块入口 | [02-backend.md](docs/zh/01-conventions/02-backend.md#技术栈)、[02-backend.md](docs/zh/01-conventions/02-backend.md#模块入口)、[0103](docs/zh/02-decisions/01-architecture/0103-locked-stack-per-language.md) |
 | 加一个接口；谁能调用它；权限键 | [02-backend.md](docs/zh/01-conventions/02-backend.md#权限) |
-| 让一张表只给某些人看某些行（"销售只看自己的订单"、"仓管只看一个仓库"） | [02-backend.md](docs/zh/01-conventions/02-backend.md#数据范围)、[0013](docs/zh/02-decisions/02-permissions/0013-data-scopes-ship-with-the-version.md)、[0014](docs/zh/02-decisions/02-permissions/0014-no-row-level-security.md) |
+| 让一张表只给某些人看某些行（"销售只看自己的订单"、"仓管只看一个仓库"） | [02-backend.md](docs/zh/01-conventions/02-backend.md#数据范围)、[0205](docs/zh/02-decisions/02-permissions/0205-data-scopes-ship-with-the-version.md)、[0206](docs/zh/02-decisions/02-permissions/0206-no-row-level-security.md) |
 | 调用另一个组件；展示别的组件拥有的数据 | [02-backend.md](docs/zh/01-conventions/02-backend.md#调用其他组件) |
 | 加表、加迁移、加分区 | [02-backend.md](docs/zh/01-conventions/02-backend.md#数据库) |
 | 发布或消费事件；跨组件写入；超时或补偿 | [02-backend.md](docs/zh/01-conventions/02-backend.md#事件与跨组件写入) |
-| 改契约：改字段名、删 rpc 或删事件 | [02-backend.md](docs/zh/01-conventions/02-backend.md#契约)、[0016](docs/zh/02-decisions/03-contracts-and-data/0016-contracts-are-additive-only.md) |
-| 金额、价格、钱的字段；列表分页 | [0015](docs/zh/02-decisions/03-contracts-and-data/0015-money-as-strings-lists-by-cursor.md) |
-| 加缓存；Redis；让权限检查更快 | [0009](docs/zh/02-decisions/02-permissions/0009-no-redis.md)、[0010](docs/zh/02-decisions/02-permissions/0010-local-permission-bundle.md) |
+| 改契约：改字段名、删 rpc 或删事件 | [02-backend.md](docs/zh/01-conventions/02-backend.md#契约)、[0302](docs/zh/02-decisions/03-contracts-and-data/0302-contracts-are-additive-only.md) |
+| 金额、价格、钱的字段；列表分页 | [0301](docs/zh/02-decisions/03-contracts-and-data/0301-money-as-strings-lists-by-cursor.md) |
+| 加缓存；Redis；让权限检查更快 | [0201](docs/zh/02-decisions/02-permissions/0201-no-redis.md)、[0202](docs/zh/02-decisions/02-permissions/0202-local-permission-bundle.md) |
 | 外壳启动即退出：某成员"未登记" / 没编译进本外壳；外壳成员不一致 | 下方[易错点](#易错点)里外壳 registry 那一行；`brickkit` 自己打印的错误看 `brickkit-troubleshoot` 技能 |
-| 把几个组件放进一个进程；外壳；外壳托管哪些成员 | [0008](docs/zh/02-decisions/01-architecture/0008-one-repository-per-shell.md)、`brickkit-component` 技能（外壳部分）、[01-development-workflow.md](docs/zh/01-conventions/01-development-workflow.md#真机运行)（拆回验证） |
+| 把几个组件放进一个进程；外壳；外壳托管哪些成员 | [0108](docs/zh/02-decisions/01-architecture/0108-one-repository-per-shell.md)、`brickkit-component` 技能（外壳部分）、[01-development-workflow.md](docs/zh/01-conventions/01-development-workflow.md#真机运行)（拆回验证） |
 | 该写什么测试、放哪一层；测试红了、卡住了 | [06-testing.md](docs/zh/01-conventions/06-testing.md)、[卡住时](docs/zh/01-conventions/06-testing.md#卡住时) |
 | 对着真实依赖跑测试 | [06-testing.md](docs/zh/01-conventions/06-testing.md#跨组件测试)、[06-testing.md](docs/zh/01-conventions/06-testing.md#运行测试) |
 | 演示数据；测试账号；怎么登录 | [docs/zh/03-seed-data.md](docs/zh/03-seed-data.md) |
 | 设计种子数据或测试数据；依赖方没有我要的数据 | [05-data.md](docs/zh/01-conventions/05-data.md) |
 | 前端页面、组件库、主题、菜单、只有部分用户能看到的按钮 | [03-frontend.md](docs/zh/01-conventions/03-frontend.md) |
 | 这段业务逻辑该怎么做；该看哪个开源 ERP | [10-reference-implementations.md](docs/zh/01-conventions/10-reference-implementations.md) |
-| 同一个功能有几种都合理的做法；"让客户自己选" | [10-reference-implementations.md](docs/zh/01-conventions/10-reference-implementations.md#槽位族信号)、[0004](docs/zh/02-decisions/01-architecture/0004-variants-become-slot-families.md) |
+| 同一个功能有几种都合理的做法；"让客户自己选" | [10-reference-implementations.md](docs/zh/01-conventions/10-reference-implementations.md#槽位族信号)、[0104](docs/zh/02-decisions/01-architecture/0104-variants-become-slot-families.md) |
 | 要不要用设计模式；文件或函数越写越长 | [09-ai-development.md](docs/zh/01-conventions/09-ai-development.md#何时用设计模式) |
 | 写、拆分或翻译文档；组件的文档 | [08-documentation.md](docs/zh/01-conventions/08-documentation.md) |
 | 升版本；发布；打 tag；"ship it" | `version-bump-ship` 技能（[SKILL.md](.claude/skills/version-bump-ship/SKILL.md)）、[01-development-workflow.md](docs/zh/01-conventions/01-development-workflow.md#版本号) |
@@ -91,7 +91,7 @@
 | 在模块代码里读 `os.Getenv` / `os.environ` | 单独运行全绿；合进外壳后，成员互相覆盖 `PG_SCHEMA` 和其他所有键，某个模块悄悄用上别人的 schema | 一个进程只有一份环境。配置只从 `rt.Config` 来（[02-backend.md](docs/zh/01-conventions/02-backend.md#合并安全)） |
 | 在模块里做进程级初始化：`otel.SetTracerProvider`、`logging.basicConfig`、信号处理、默认 Prometheus registry、`gin.SetMode` | 合并后最后一个初始化的赢，所有 trace 落在同一个服务名下，一个模块的 debug 模式让所有模块都向客户端泄露堆栈；默认 registry 在第二个模块注册时 panic | 用 `rt.Logger`、`rt.Tracer`、`rt.Meter`、`rt.Registry`（[02-backend.md](docs/zh/01-conventions/02-backend.md#合并安全)） |
 | 在模块里 `log.Fatal` / `os.Exit` / `sys.exit`，或 `gin.New()` / `sql.Open()` / `Listen` | 一个模块的可恢复错误拖垮整个外壳；`gin.New()` 悄悄丢掉 SDK 的整条中间件链：请求 ID、链路追踪、RED 指标、访问日志、panic 恢复和错误映射 | 返回错误；用 `besdk.NewGinEngine(rt)`、`rt.DB`；端口由调用方监听（[02-backend.md](docs/zh/01-conventions/02-backend.md#合并安全)） |
-| import 另一个组件的代码、共用模型包、或复制它生成的契约代码 | 什么都不坏，直到某天组件必须单独运行而做不到；复制的生成代码在调用方与被调方进入同一个外壳时启动即 panic | 跨边界的代码只有 `be-sdk-*` 和被 import 的 `gen/<domain>/<name>` 包（[0001](docs/zh/02-decisions/01-architecture/0001-no-imports-between-components.md)） |
+| import 另一个组件的代码、共用模型包、或复制它生成的契约代码 | 什么都不坏，直到某天组件必须单独运行而做不到；复制的生成代码在调用方与被调方进入同一个外壳时启动即 panic | 跨边界的代码只有 `be-sdk-*` 和被 import 的 `gen/<domain>/<name>` 包（[0101](docs/zh/02-decisions/01-architecture/0101-no-imports-between-components.md)） |
 | 把注入的 `*_ENDPOINT` 值原样拿去拨号 | 它总以 `http://` 开头，gRPC 端口也一样；拨号失败，错误指向域名解析。端口名传 `""` 时 gRPC 打到 HTTP 端口：TCP 能连上，随后报协议错误 | 用 `rt.Config.Endpoint(dep, "grpc")`（[02-backend.md](docs/zh/01-conventions/02-backend.md#rt-是唯一入口)） |
 | 把缺席的可选依赖当成空值，或直接按下标取环境变量 | 这个变量根本不存在；按下标取值启动即崩 | `Endpoint` 返回 `ok == false`，模块降级（[02-backend.md](docs/zh/01-conventions/02-backend.md#rt-是唯一入口)） |
 | 配置键起名为 `*_ENDPOINT`、`COMPONENT_ID`、`COMPONENT_VERSION`、`PORT` 或 `BRICKKIT_SERVED_MEMBERS*` | 平台的值胜出，只给一条警告；`up` 全绿，组件永远拿不到你的值 | 这些名字属于平台（[04-configuration.md](docs/zh/01-conventions/04-configuration.md#键名)） |
@@ -99,17 +99,17 @@
 | 镜像基于 `scratch` 或 distroless | 组件日志说"ready"，平台永远判它不健康 | 健康检查经 `/bin/sh` 和 `wget` 执行（[02-backend.md](docs/zh/01-conventions/02-backend.md#健康检查与镜像)） |
 | 用裸 `r.GET` / `@app.get` 注册业务路由，或 resolver 不包一层 | 这个接口完全没有权限检查，零症状 | 权限键是路由注册的一部分；`make gates` 会扫（[02-backend.md](docs/zh/01-conventions/02-backend.md#权限)） |
 | 在服务用户请求的路径上用 `besdk.SystemClient` | 返回结果悄悄多出用户无权看的行 | 它带的是组件自己的身份，绕过数据范围；只用于 `Start()` 和事件处理（[02-backend.md](docs/zh/01-conventions/02-backend.md#调用其他组件)） |
-| `assembly.yaml` 里省略 `data_scopes` | be-ops 拒绝这个组件 | 有意为之：安全设置不能默认关闭。不需要行级范围就写 `data_scopes: none`（[0013](docs/zh/02-decisions/02-permissions/0013-data-scopes-ship-with-the-version.md)） |
+| `assembly.yaml` 里省略 `data_scopes` | be-ops 拒绝这个组件 | 有意为之：安全设置不能默认关闭。不需要行级范围就写 `data_scopes: none`（[0205](docs/zh/02-decisions/02-permissions/0205-data-scopes-ship-with-the-version.md)） |
 | `owner` OR `org` 组合时有一个操作数停在"全匹配" | 整个条件匹配一切，每个用户都看到所有行 | 两个操作数都必须来自调用方真实的范围（[02-backend.md](docs/zh/01-conventions/02-backend.md#数据范围)） |
 | 改名或复用已发布的权限键 | 被授予它的每个角色悄悄失去它；升级后用户突然点不了某个按钮 | 权限键是持久标识；退役用 `deprecated` 列（[07-registries.md](docs/zh/01-conventions/07-registries.md#只追加)） |
 | 前端只查 `features`，不查 `permissions` | 菜单项看得见，点进去是整页 403 | `features` 说装了什么，`permissions` 说这个用户能做什么（[03-frontend.md](docs/zh/01-conventions/03-frontend.md#功能权限与菜单)） |
 | 把本项目的键（`permissions`、`data_scopes`、`menus`，以及 `domain`、`tier` 这类项目自己的元数据）写进 `component.yaml` | `brickkit lint` 和 `brickkit add` 拒绝整份清单：`MANIFEST_INVALID`、`unknown field`；组件加不进项目、也起不来 | `component.yaml` 没有扩展字段；这些键属于 `assembly.yaml`（[02-backend.md](docs/zh/01-conventions/02-backend.md#仓库结构)） |
 | 挪动已登记的端口、给 schema 改名、或分配 `1xxxx` 端口 | 每个依赖方和托管它的外壳都坏掉；schema 改名就是数据迁移；`1xxxx` 端口与 brickKit 为 `mode: debug` / `local` 做的宿主机映射冲突 | [07-registries.md](docs/zh/01-conventions/07-registries.md#端口) |
 | 用先 `SELECT` 再写的方式认领队列行或幂等键 | 两个副本把每条 outbox 记录发两遍；两个并发请求都执行了 | 原子认领：`FOR UPDATE SKIP LOCKED`、`INSERT … ON CONFLICT DO NOTHING`（[02-backend.md](docs/zh/01-conventions/02-backend.md#数据库)） |
-| 用浮点数传金额，或 `List` 用 `offset` 分页 | 金额在语言之间丢精度；深翻页变慢且漏行 | 十进制字符串和游标（[0015](docs/zh/02-decisions/03-contracts-and-data/0015-money-as-strings-lists-by-cursor.md)） |
+| 用浮点数传金额，或 `List` 用 `offset` 分页 | 金额在语言之间丢精度；深翻页变慢且漏行 | 十进制字符串和游标（[0301](docs/zh/02-decisions/03-contracts-and-data/0301-money-as-strings-lists-by-cursor.md)） |
 | 为了让测试通过而改测试：注释掉、`t.Skip`、放宽断言 | 一切全绿，什么都没守住 | 改实现；测试确实错了，就单独一个提交改它，并说明原因（[06-testing.md](docs/zh/01-conventions/06-testing.md#红绿节奏与铁律)） |
 | 改 Fork 组件的 `metadata.id` | 换了 ID，每个依赖方的 `<ID>_ENDPOINT` 变量整个消失 | Fork 保留 `metadata.id`，但版本照常走：每次改动都升 `metadata.version`，依赖方用 `brickkit upgrade` / `make bump-version` 移动版本钉；只有仓库名和目录名可以不同（[01-development-workflow.md](docs/zh/01-conventions/01-development-workflow.md#发布)） |
-| 外壳 `main` 里登记的成员（它的 registry）与 `component.yaml` 的 `shell.members` 不一致，或 Go 外壳的 `go.mod` 与二者之一不一致 | 要托管的成员没登记：外壳启动即退出，里面所有成员一起下线。`go.mod` 没 require 的成员版本：镜像里跑的代码不是项目以为的那份，不报任何错 | JSON 说托管谁，二进制决定有谁；`make bump-version` 会同时改 `shell.members` 和 `go.mod`（[0008](docs/zh/02-decisions/01-architecture/0008-one-repository-per-shell.md)） |
+| 外壳 `main` 里登记的成员（它的 registry）与 `component.yaml` 的 `shell.members` 不一致，或 Go 外壳的 `go.mod` 与二者之一不一致 | 要托管的成员没登记：外壳启动即退出，里面所有成员一起下线。`go.mod` 没 require 的成员版本：镜像里跑的代码不是项目以为的那份，不报任何错 | JSON 说托管谁，二进制决定有谁；`make bump-version` 会同时改 `shell.members` 和 `go.mod`（[0108](docs/zh/02-decisions/01-architecture/0108-one-repository-per-shell.md)） |
 | 以为 `deploy.local.yaml` 会和 `deploy.yaml` 合并 | 本地模式开着时，改 `deploy.yaml` 不起作用；团队后来的改动永远到不了你的副本，组件集合一不同 `up` 就拒绝 | 它整份替换 `deploy.yaml`。`brickkit up --focus` 会打开本地模式，`--all` 不会关掉。`brickkit local status` 显示开关；改 `deploy.yaml` 之前 `brickkit local off`，或改完之后 `brickkit local refresh`，它会列出你旧的改动供手工重放（[01-development-workflow.md](docs/zh/01-conventions/01-development-workflow.md#真机运行)） |
 | 用外壳的服务名寻址 authz 或 iam，或者它们发版后 `AUTHZ_BUNDLE_URL` / `IAM_JWKS_URL` 还停在旧版本 | 每个组件的每条受保护路由都返回 `503` 或 `403`，而 `/healthz` 保持绿色 | `config/vars.yaml` 里用成员自己的服务名，authz 或 iam 发版时跟着改；与 `brickkit.yaml` 对不上时 `make gates`（`service-hostname-scan`）失败（[04-configuration.md](docs/zh/01-conventions/04-configuration.md#依赖地址)） |
 | Go 组件发 `2.x` 时只打 brickKit 的 tag，或模块路径不带 `/v2` | 外壳的 Go 构建拉不到成员：`unknown revision v2.0.0`，或 "module path must match major version" | Go 需要带 `v` 的 tag 和路径里的主版本号；brickKit 的 tag 不带 `v`（[01-development-workflow.md](docs/zh/01-conventions/01-development-workflow.md#版本号)） |

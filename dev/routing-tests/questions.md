@@ -32,11 +32,11 @@
 | Q13 | 需要新组件 | 英 | New component：infra/iam-keycloak | 槽位族（slot:iam）；v1：JWKS 地址是共享变量 |
 | Q14 | 需要新组件 | 中 | New component：mdm/supplier、erp/purchase | |
 | Q15 | 需要新组件 | 英 | New component：crm/lead | 引诱撑大现有组件 |
-| Q16 | 与已有决策冲突 | 中 | Conflicts（0009、0010） | |
-| Q17 | 与已有决策冲突 | 英 | Conflicts（0004） | 槽位族 vs 客户 fork |
-| Q18 | 与已有决策冲突 | 英 | Conflicts（0001、0008） | |
-| Q19 | 与已有决策冲突 | 中 | Conflicts（0013） | 听着像普通后台配置 |
-| Q20 | 与已有决策冲突 | 中 | Conflicts（0007） | v1：只拉 bundle 不建边 |
+| Q16 | 与已有决策冲突 | 中 | Conflicts（0201、0202） | |
+| Q17 | 与已有决策冲突 | 英 | Conflicts（0104） | 槽位族 vs 客户 fork |
+| Q18 | 与已有决策冲突 | 英 | Conflicts（0101、0108） | |
+| Q19 | 与已有决策冲突 | 中 | Conflicts（0205） | 听着像普通后台配置 |
+| Q20 | 与已有决策冲突 | 中 | Conflicts（0107） | v1：只拉 bundle 不建边 |
 | Q21 | 部署与配置 | 中 | 直接作答 | v1：数据库密码 |
 | Q22 | 部署与配置 | 英 | 直接作答 | v1：focus 运行 |
 | Q23 | 部署与配置 | 中 | 直接作答 | v1：一个环境一份部署文件 |
@@ -89,7 +89,7 @@
   2. 必经：组件表 → `components/erp/sales/BRICKKIT.md` — Purpose、Dependencies（infra/workflow 是可选依赖）
   3. 必经：`components/infra/workflow/BRICKKIT.md` — Purpose（只收任务、不判业务规则）、Contracts（`CreateTask`、`infra.workflow.task.completed.v1`）
   4. 必经：`docs/en/01-conventions/10-reference-implementations.md#which-project-to-read`（infra/workflow 一行：绝不引入 BPMN 引擎）或 `#slot-family-signal`（Approval routing 一行）
-  5. 可选：`docs/en/01-conventions/02-backend.md#events-and-cross-component-writes`；`docs/en/01-conventions/04-configuration.md#key-names`；`docs/en/02-decisions/03-contracts-and-data/0015-money-as-strings-lists-by-cursor.md`
+  5. 可选：`docs/en/01-conventions/02-backend.md#events-and-cross-component-writes`；`docs/en/01-conventions/04-configuration.md#key-names`；`docs/en/02-decisions/03-contracts-and-data/0301-money-as-strings-lists-by-cursor.md`
 - 期望结论：Fits one component（erp/sales）。infra/workflow 的现有契约已够用，不用改。
 - 相邻答法给分：只改 erp/sales（+ 前端展示"待审批"）→ 2；规则在 erp/sales，但另外要求 infra/workflow 先加一个其实不需要的接口 → 1；把阈值 / 审批人规则放进 infra/workflow，或引入 BPMN / 规则引擎 → 0；把审批路由做成可配置开关或槽位族 → 0。
 - 标准答案要点：
@@ -112,9 +112,9 @@
   2. 必经：组件表 → `components/erp/finance/BRICKKIT.md` — Contracts（期间 close / reopen / lock 的 REST 已存在，权限键 `erp.finance.close`）
   3. 必经：`components/frontend/standard/BRICKKIT.md` — Purpose
   4. 必经：`AGENTS.md` Where to look「a frontend page, the component library…」→ `docs/en/01-conventions/03-frontend.md`（#page-templates、#features-permissions-and-menus、#business-logic-and-data-access、#internationalisation 至少其三）
-  5. 可选：`components/frontend/standard/AGENTS.md`；`docs/en/02-decisions/04-frontend/0019-third-party-ui-only-in-ui-kit.md`
+  5. 可选：`components/frontend/standard/AGENTS.md`；`docs/en/02-decisions/04-frontend/0402-third-party-ui-only-in-ui-kit.md`
 - 期望结论：Fits one component。后端契约不改。两种实现都对：(a) 关账入口放在 erp/finance 现有页面或固定在底部的"Component settings"里——只改 frontend/standard；(b) 关账页在 erp/finance 的服务菜单里单独占一项——菜单项声明在 erp/finance 的 `assembly.yaml` 的 `menus`（随 finance 发一版），再前端跟进。
-- 相邻答法给分：(a) → 2；(b)，且菜单项放在 erp/finance 的 `assembly.yaml` → 2（不论考生把它叫"先改上游"还是别的，前端跟进不改变结论）；(b) 但把菜单写进前端的手写菜单表 → 1（答案维度另按 0020 扣分）；认为要给 erp/finance 新增关账接口（没核对出接口已有）→ 1；新建组件 → 0。
+- 相邻答法给分：(a) → 2；(b)，且菜单项放在 erp/finance 的 `assembly.yaml` → 2（不论考生把它叫"先改上游"还是别的，前端跟进不改变结论）；(b) 但把菜单写进前端的手写菜单表 → 1（答案维度另按 0403 扣分）；认为要给 erp/finance 新增关账接口（没核对出接口已有）→ 1；新建组件 → 0。
 - 标准答案要点：
   - 必含：后端已有 `POST /periods/{period}/close|reopen|lock`（权限键 `erp.finance.close`），erp/finance 的业务代码和契约不动
   - 必含：页面从 ui-kit 页面模板起（`<BeListPage>` / `<BeSettingsPage>` 等），不从空 `<div>` 起；不在页面里直接 import AntDV / vxe
@@ -144,7 +144,7 @@
   - 必含：权限键要么新增（如 `infra.workflow.task.reassign`，声明在 workflow 的 `assembly.yaml`，`be-ops permissions --root .` 并入 `registry/permissions.tsv`，刷新 infra/authz 的权限目录），要么说明复用 `infra.workflow.task.act` 的理由；不改已有键
   - 加分：发一个只增的新事件（如 `infra.workflow.task.reassigned.v1`），以后 infra/notification 可以订阅去提醒新处理人；在审批历史里记一条转交
 - 禁止：F0
-- 陷阱：容易想成"代理 / 共享"机制（0014 排除记录共享引擎），或去 infra/authz 给同事临时加角色；也可能把通知新处理人当成必须同时改 infra/notification。
+- 陷阱：容易想成"代理 / 共享"机制（0206 排除记录共享引擎），或去 infra/authz 给同事临时加角色；也可能把通知新处理人当成必须同时改 infra/notification。
 - 开考前核对：06b 没有实现转交。
 
 ### Q05 Block new opportunities for disabled customers
@@ -156,7 +156,7 @@
   2. 必经：组件表 → `components/crm/opportunity/BRICKKIT.md` — Purpose、Dependencies（mdm/customer 是它的依赖）
   3. 必经：`components/mdm/customer/BRICKKIT.md` — Contracts（客户已有状态字段、`Get` / `BatchGet`、`mdm.customer.disabled.v1` 事件）
   4. 必经：`AGENTS.md` Where to look「calling another component; showing data another component owns」→ `docs/en/01-conventions/02-backend.md#calling-other-components`
-  5. 可选：`docs/en/02-decisions/01-architecture/0002-one-schema-per-component.md`
+  5. 可选：`docs/en/02-decisions/01-architecture/0102-one-schema-per-component.md`
 - 期望结论：Fits one component（crm/opportunity）。mdm/customer 已经提供了需要的一切。
 - 相邻答法给分：只改 crm/opportunity（前端选择器顺手过滤停用客户作为跟进）→ 2；规则在 crm/opportunity，但认为 mdm/customer 要先加一个其实已有的字段或事件 → 1；只在前端过滤 → 0；读 `mdm_customer` 的表 → 0。
 - 标准答案要点：
@@ -176,12 +176,12 @@
 - 期望路径：
   1. 必经：`AGENTS.md` → Where to look「a new requirement…」→ `brickkit-plan-change` SKILL.md
   2. 必经：组件表 → `components/crm/opportunity/BRICKKIT.md` — Purpose、Contracts（`UpdateOpportunity` 已能改 `owner_id`）
-  3. 必经：`AGENTS.md` Where to look「making a table show only some rows to some people」→ `docs/en/01-conventions/02-backend.md#data-scopes` → `docs/en/02-decisions/02-permissions/0013-data-scopes-ship-with-the-version.md`（"Sharing one record … change the record's `owner_id`"）
-  4. 可选：`docs/en/02-decisions/02-permissions/0014-no-row-level-security.md`
+  3. 必经：`AGENTS.md` Where to look「making a table show only some rows to some people」→ `docs/en/01-conventions/02-backend.md#data-scopes` → `docs/en/02-decisions/02-permissions/0205-data-scopes-ship-with-the-version.md`（"Sharing one record … change the record's `owner_id`"）
+  4. 可选：`docs/en/02-decisions/02-permissions/0206-no-row-level-security.md`
 - 期望结论：Fits one component（crm/opportunity），+ 前端跟进（批量转交入口）。
 - 相邻答法给分：crm/opportunity 加批量转交端点（+ 前端）→ 2；"单条已能改负责人，逐条改即可，不用改代码"、没有回应"一次全部" → 1；建共享表 / 可见性规则、在 infra/authz 给 Li 加能看张三数据的角色、用 RLS → 0。
 - 标准答案要点：
-  - 必含：把商机交给另一个人 = 改记录的 `owner_id`（0013 明说这是业务功能），不是共享表、共享引擎（0014）、运行时数据范围规则或 RLS
+  - 必含：把商机交给另一个人 = 改记录的 `owner_id`（0205 明说这是业务功能），不是共享表、共享引擎（0206）、运行时数据范围规则或 RLS
   - 必含：单条已经能做（`UpdateOpportunity` 带 `owner_id`，权限 `crm.opportunity.edit`，带 `version` 乐观锁）；"一次全部转"需要在 crm/opportunity 新增批量转交端点（契约只增、带幂等键）
   - 必含：经理只能转交他自己数据范围（`org` 前缀 / `owner`）内的商机，批量端点也要按调用者的范围过滤
   - 必含：转交后 Li 能看到，是因为 `owner` 维度现在等于 Li——不需要给 Li 加任何"能看张三的数据"的规则
@@ -203,7 +203,7 @@
   2. 必经：组件表 → `components/erp/sales/BRICKKIT.md` — Purpose、Dependencies（mdm/customer、erp/finance 都是它的依赖；确认订单时已查信用占用）
   3. 必经：`components/erp/finance/BRICKKIT.md` — Contracts（`ListARLedger` 可按 `customer_id`、`created_before` 查应收行，每行有 `amount`、`reconciled_amount`、`created_at`）
   4. 必经：`components/mdm/customer/BRICKKIT.md` — Purpose、Contracts（客户主数据的字段）
-  5. 必经：`docs/en/01-conventions/02-backend.md#contracts` 或 `docs/en/02-decisions/03-contracts-and-data/0016-contracts-are-additive-only.md`
+  5. 必经：`docs/en/01-conventions/02-backend.md#contracts` 或 `docs/en/02-decisions/03-contracts-and-data/0302-contracts-are-additive-only.md`
   6. 可选：`docs/en/01-conventions/02-backend.md#calling-other-components`；`docs/en/01-conventions/10-reference-implementations.md#which-project-to-read`（mdm/customer → `res.partner`）
 - 期望结论：Needs a provider's contract first：mdm/customer（客户加账期字段，契约只增）→ erp/sales（确认订单时取客户账期，用 erp/finance 现有的 `ListARLedger` 找出过了账期还没核销完的应收，有就拒绝）。erp/finance 不用改。
 - 依据（给阅卷人，不给考生）：已对照契约核实——`mdm/customer` 的 `Customer` 只有名称、税号、信用额度、状态、联系人、开票信息，没有账期；`erp/finance` 的 `ARLedgerEntry` 有金额、已核销金额、创建时间，但没有到期日或账期；`erp/sales` 的契约里也没有账期。全项目都没有"账期"这个数据，所以必须有一个上游先加；`ListARLedger` 已能提供应收行，所以 finance 不是必改项。
@@ -234,14 +234,14 @@
   1. 必经：`AGENTS.md` → Where to look「a new requirement…」→ `brickkit-plan-change` SKILL.md
   2. 必经：组件表 → `components/erp/finance/BRICKKIT.md` — Purpose（事件汇入方，没有出边）、Contracts（应收来自 `sales.order.created.v1`）
   3. 必经：`components/erp/sales/BRICKKIT.md` — Contracts（`sales.order.created.v1` 的字段里没有部门）
-  4. 必经：`AGENTS.md` Where to look「changing a contract…」或「publishing or consuming an event…」→ `docs/en/01-conventions/02-backend.md#contracts` / `#events-and-cross-component-writes`，`docs/en/02-decisions/03-contracts-and-data/0016-contracts-are-additive-only.md`
-  5. 可选：`docs/en/02-decisions/01-architecture/0002-one-schema-per-component.md`
+  4. 必经：`AGENTS.md` Where to look「changing a contract…」或「publishing or consuming an event…」→ `docs/en/01-conventions/02-backend.md#contracts` / `#events-and-cross-component-writes`，`docs/en/02-decisions/03-contracts-and-data/0302-contracts-are-additive-only.md`
+  5. 可选：`docs/en/02-decisions/01-architecture/0102-one-schema-per-component.md`
 - 期望结论：Needs a provider's contract first：erp/sales（`sales.order.created.v1` 加可选字段 `dept_path`）→ erp/finance（存快照、按前缀汇总）。
 - 相邻答法给分：sales → finance（+ 前端报表跟进）→ 2；顺序反 → 1；只改 finance，让 finance 同步调 erp/sales 的 `GetOrder`（新增 finance → sales 依赖）→ 0；跨 schema JOIN → 0。
 - 标准答案要点：
   - 必含：应收在 finance，部门只有 sales 知道（订单上的 `dept_path` 快照），所以先改 sales 的事件
-  - 必含：事件契约只增：新字段对现有消费者可选（0016，`make gates` 查事件破坏性变更）
-  - 必含：erp/finance 不为此同步调用 erp/sales（finance 是事件汇入方、零出边），更不 JOIN `erp_sales` 的表（0002）
+  - 必含：事件契约只增：新字段对现有消费者可选（0302，`make gates` 查事件破坏性变更）
+  - 必含：erp/finance 不为此同步调用 erp/sales（finance 是事件汇入方、零出边），更不 JOIN `erp_sales` 的表（0102）
   - 必含：finance 把 `dept_path` 存成自己台账行上的快照，汇总按前缀
   - 必含：发布顺序：sales 先，finance 后
   - 加分：历史应收没有这个字段，补不补、怎么补交给人；"按部门统计"是报表维度，不是数据范围——如果还要求"财务人员只看本部门"，那是 finance 的数据范围变更，另一件事
@@ -259,7 +259,7 @@
   3. 必经：组件表 → `components/crm/opportunity/BRICKKIT.md` — Contracts（商机字段、`crm.opportunity.won.v1` 的字段）
   4. 必经：`components/erp/sales/BRICKKIT.md` — Contracts（消费赢单事件建单；发 `sales.order.created.v1`）
   5. 必经：`components/erp/finance/BRICKKIT.md` — Purpose / Contracts（应收凭证由 `sales.order.created.v1` 生成）
-  6. 必经：`docs/en/01-conventions/02-backend.md#contracts` 或 `docs/en/02-decisions/03-contracts-and-data/0016-contracts-are-additive-only.md`
+  6. 必经：`docs/en/01-conventions/02-backend.md#contracts` 或 `docs/en/02-decisions/03-contracts-and-data/0302-contracts-are-additive-only.md`
 - 期望结论：Needs a provider's contract first：crm/opportunity（商机加字段 + 赢单事件带上）→ erp/sales（订单加字段，由赢单事件写入；`sales.order.created.v1` 也带上）→ erp/finance（把 PO 号存到应收 / 开票所用的记录上）。前端的录入与展示是跟进。
 - 相邻答法给分：crm → sales → finance 三段，顺序对 → 2；crm → sales，并明确指出 finance 开票还要再接一段（`sales.order.created.v1` 加字段、finance 存下来），不论说成同一计划还是下一轮 → 2；crm → sales、完全没提 finance → 1；顺序有颠倒 → 1；erp/sales 同步调 crm 的 `GetOpportunity`，或 finance 去查 sales / crm → 0；只在前端把 PO 号写进订单备注 → 0。
 - 标准答案要点：
@@ -281,12 +281,12 @@
   2. 必经：组件表 → `components/erp/inventory/BRICKKIT.md` — Purpose、Contracts（现有事件）
   3. 必经：`components/infra/notification/BRICKKIT.md` — Purpose、Contracts（订阅来源事件、按通道偏好路由、IM 派发事件）
   4. 必经：`components/integration/im-dingtalk/BRICKKIT.md` — Purpose（只监听 IM 派发事件）
-  5. 可选：`docs/en/02-decisions/01-architecture/0004-variants-become-slot-families.md`（不对族成员建依赖边）；`docs/en/01-conventions/02-backend.md#events-and-cross-component-writes`；`components/infra/notification/AGENTS.md`（收件人只从 payload 直取）
+  5. 可选：`docs/en/02-decisions/01-architecture/0104-variants-become-slot-families.md`（不对族成员建依赖边）；`docs/en/01-conventions/02-backend.md#events-and-cross-component-writes`；`components/infra/notification/AGENTS.md`（收件人只从 payload 直取）
 - 期望结论：Needs a provider's contract first：erp/inventory（新的低库存事件，payload 带收件人）→ infra/notification（订阅并路由）。integration/im-dingtalk 不改。
 - 相邻答法给分：inventory → notification → 2；inventory → notification，另说 im-dingtalk 也要改 → 1；inventory 发事件但让 notification 按角色反查"采购负责人"（业务规则进了 notification）→ 1；inventory 直接调钉钉 API、或依赖 integration/im-dingtalk / 同步调 notification → 0；notification 轮询 inventory 的余额 → 0。
 - 标准答案要点：
   - 必含：inventory 知道余额，由它在跌破补货点时经 outbox 发一个新事件（新 subject，只增）
-  - 必含：inventory 不直接调钉钉，也不依赖 integration/im-dingtalk（channel:im 族成员，0004）或同步调用 notification
+  - 必含：inventory 不直接调钉钉，也不依赖 integration/im-dingtalk（channel:im 族成员，0104）或同步调用 notification
   - 必含：收件人（"采购负责人"的 `sub`）由触发方 erp/inventory 决定（例如一个配置键），放进事件 payload；notification 只从 payload 直取收件人，不按角色反查——判谁该收是触发方的业务规则
   - 必含：infra/notification 订阅这个事件，转成通知，按通道偏好走 IM 派发，钉钉适配器照常投递
   - 必含：只在"跨过阈值"时发一次，不是每笔流水都发；消费幂等
@@ -304,7 +304,7 @@
   2. 必经：组件表 → `components/mdm/product/BRICKKIT.md` — Purpose、Contracts（追踪方式 NONE / BATCH / SERIAL、产品事件）
   3. 必经：`components/erp/inventory/BRICKKIT.md` — Purpose、Contracts（入库 `Receive` 带批次）
   4. 必经：`docs/en/01-conventions/02-backend.md#calling-other-components`（`batchGet`，不跨 schema）
-  5. 可选：`docs/en/02-decisions/01-architecture/0002-one-schema-per-component.md`、`docs/en/02-decisions/03-contracts-and-data/0016-contracts-are-additive-only.md`、`docs/en/02-decisions/01-architecture/0004-variants-become-slot-families.md`
+  5. 可选：`docs/en/02-decisions/01-architecture/0102-one-schema-per-component.md`、`docs/en/02-decisions/03-contracts-and-data/0302-contracts-are-additive-only.md`、`docs/en/02-decisions/01-architecture/0104-variants-become-slot-families.md`
 - 期望结论：Needs a provider's contract first：mdm/product（保质期字段）→ erp/inventory（入库算过期日、查快过期批次）。前端"快过期"列表是跟进。
 - 相邻答法给分：product → inventory（+ 前端）→ 2；顺序反 → 1；只改 inventory，由 inventory 自己维护一份产品保质期 → 0；inventory 读 `mdm_product` 的表 → 0。
 - 标准答案要点：
@@ -313,7 +313,7 @@
   - 必含：过期日作为快照存在 inventory 自己的批次 / 流水上；只对按批次追踪的产品有意义
   - 必含："快过期"查询受 `warehouse` 数据范围约束
   - 必含：顺序：product → inventory，前端最后
-  - 加分：如果接着要"先过期先出库自动拣货"，那是拣货策略，按 0004 是默认实现 + 客户 fork，不做开关
+  - 加分：如果接着要"先过期先出库自动拣货"，那是拣货策略，按 0104 是默认实现 + 客户 fork，不做开关
 - 禁止：F0
 - 陷阱：引诱让 inventory 自己存一份保质期，或 join 产品表。
 - 开考前核对：06b 没加保质期。
@@ -328,7 +328,7 @@
 - 请求原文（中）：「有个客户公司用飞书不用钉钉，审批提醒要能发到飞书上。」
 - 期望路径：
   1. 必经：`AGENTS.md` → Where to look「a new requirement…」→ `brickkit-plan-change` SKILL.md §3（Needs a new component）；同一行提示"计划中的组件可能已在 `registry/` 预留"
-  2. 必经：`AGENTS.md` Where to look「several reasonable ways to do one feature…」→ `docs/en/01-conventions/10-reference-implementations.md#slot-family-signal` 和 / 或 `docs/en/02-decisions/01-architecture/0004-variants-become-slot-families.md`（external channels such as IM 是合格的槽位位置）
+  2. 必经：`AGENTS.md` Where to look「several reasonable ways to do one feature…」→ `docs/en/01-conventions/10-reference-implementations.md#slot-family-signal` 和 / 或 `docs/en/02-decisions/01-architecture/0104-variants-become-slot-families.md`（external channels such as IM 是合格的槽位位置）
   3. 必经：`registry/ports.tsv`、`registry/schemas.tsv`（`integration/im-feishu` 已预留 8209 / 9209、schema `integration_im_feishu`），或经 `docs/en/01-conventions/07-registries.md` 到达
   4. 必经：`components/integration/im-dingtalk/BRICKKIT.md` — Purpose、Contracts（同族成员的契约）
   5. 可选：`components/infra/notification/BRICKKIT.md` — Configuration（派发给哪些 IM 适配器的配置键）；`brickkit-component` SKILL.md
@@ -351,19 +351,19 @@
 - 请求原文（英）："One customer already runs Keycloak for single sign-on and refuses to install Casdoor. Can our system use Keycloak instead?"
 - 期望路径：
   1. 必经：`AGENTS.md` → Where to look「a new requirement…」→ `brickkit-plan-change` SKILL.md
-  2. 必经：`docs/en/02-decisions/01-architecture/0004-variants-become-slot-families.md`（`slot:iam` 是槽位族）和 `docs/en/02-decisions/01-architecture/0007-authz-and-iam-addresses-are-shared-vars.md`（验 token 经 `IAM_JWKS_URL`，不建依赖边），经 Where to look「several reasonable ways…」或「"why not … "」/ 决策索引到达
+  2. 必经：`docs/en/02-decisions/01-architecture/0104-variants-become-slot-families.md`（`slot:iam` 是槽位族）和 `docs/en/02-decisions/01-architecture/0107-authz-and-iam-addresses-are-shared-vars.md`（验 token 经 `IAM_JWKS_URL`，不建依赖边），经 Where to look「several reasonable ways…」或「"why not … "」/ 决策索引到达
   3. 必经：`components/infra/iam-casdoor/BRICKKIT.md` — Purpose、Contracts（slot:iam 成员要暴露的契约：签发 / 刷新 / 登出 token、JWKS、`/api/tenant/features`）
   4. 必经：`registry/ports.tsv` / `registry/schemas.tsv`（`infra/iam-keycloak` 已预留 8221 / 9221，注明与 casdoor 互斥；`keycloak` 是非组件 schema），或经 `docs/en/01-conventions/07-registries.md`
-  5. 可选：`docs/en/01-conventions/04-configuration.md#dependency-addresses`；`docs/en/02-decisions/02-permissions/0011-jwt-carries-identity-only.md`、`docs/en/02-decisions/01-architecture/0006-infrastructure-is-not-a-component.md`
+  5. 可选：`docs/en/01-conventions/04-configuration.md#dependency-addresses`；`docs/en/02-decisions/02-permissions/0203-jwt-carries-identity-only.md`、`docs/en/02-decisions/01-architecture/0106-infrastructure-is-not-a-component.md`
 - 期望结论：Needs a new component：`infra/iam-keycloak`，slot:iam 族成员，与 infra/iam-casdoor 二选一。
 - 相邻答法给分：新建 iam-keycloak → 2；新建 iam-keycloak，但说每个业务组件都要改代码或加对它的依赖 → 1；在 iam-casdoor 里加 Keycloak 模式 / 分支 → 0；把 Keycloak 镜像本身包成组件就完事、不提供 slot:iam 契约 → 0。
 - 标准答案要点：
   - 必含：新建 `infra/iam-keycloak`，暴露与 infra/iam-casdoor 相同的契约；一个项目只装其中一个
   - 必含：Keycloak 本身是带外基础设施（官方镜像），不是组件
-  - 必含：业务组件一行代码不改：验 token 只认 `IAM_JWKS_URL`（共享变量），换实现是改 `config/vars.yaml` 或部署文件 `vars:` 里的值（0007）
+  - 必含：业务组件一行代码不改：验 token 只认 `IAM_JWKS_URL`（共享变量），换实现是改 `config/vars.yaml` 或部署文件 `vars:` 里的值（0107）
   - 必含：端口和 schema 用 `registry/` 里已预留的
   - 必含：不在 iam-casdoor 里加 Keycloak 模式 / 分支
-  - 加分：token 只带身份（`sub`、`roles[]`、`dept_path`、`org_id`，0011），新实现也一样；前端的 IAM 配置要跟着换；新成员若像 iam-casdoor 一样调用 infra/authz 的业务 API（登录时算 claims），它自己要声明对 infra/authz 的依赖（`04-configuration.md#dependency-addresses`）——这与"业务组件不改"不矛盾
+  - 加分：token 只带身份（`sub`、`roles[]`、`dept_path`、`org_id`，0203），新实现也一样；前端的 IAM 配置要跟着换；新成员若像 iam-casdoor 一样调用 infra/authz 的业务 API（登录时算 claims），它自己要声明对 infra/authz 的依赖（`04-configuration.md#dependency-addresses`）——这与"业务组件不改"不矛盾
 - 禁止：F0
 - 陷阱：引诱"给 iam-casdoor 加一个 Keycloak 模式"，或给所有组件加对新 IAM 的依赖。
 - 开考前核对：iam-casdoor 的 `BRICKKIT.md` Contracts 列全了 slot:iam 契约、Dependencies 写了 infra/authz；registry 预留行仍在。
@@ -417,21 +417,21 @@
 
 ## 四、与已有决策冲突
 
-> 冲突题共用的相邻答法给分：停下来、指出决策（编号或文件名）及其理由、交给人 → 2；停下来但只说"好像不太好"、没指出是哪条决策 → 1；直接给实现步骤、"先这样做以后再说"、或给出绕开决策的变通实现 → 0。**决策本身认可的做法**（0004 的默认实现 + 客户 fork、0013 的改 `owner_id` / 调整部门归属）作为供人选择的方向列出，不算绕开。
+> 冲突题共用的相邻答法给分：停下来、指出决策（编号或文件名）及其理由、交给人 → 2；停下来但只说"好像不太好"、没指出是哪条决策 → 1；直接给实现步骤、"先这样做以后再说"、或给出绕开决策的变通实现 → 0。**决策本身认可的做法**（0104 的默认实现 + 客户 fork、0205 的改 `owner_id` / 调整部门归属）作为供人选择的方向列出，不算绕开。
 
 ### Q16 加个 Redis 存权限，判定快一点
 
 - 类别：与已有决策冲突
 - 请求原文（中）：「每个组件每 15 秒都去拉一遍权限 bundle，太浪费了。加个 Redis，把权限放进去大家共享，判定也快一点。」
 - 期望路径：
-  1. 必经：`AGENTS.md` → Where to look「adding a cache; Redis; making the permission check faster」→ `docs/en/02-decisions/02-permissions/0009-no-redis.md`、`docs/en/02-decisions/02-permissions/0010-local-permission-bundle.md`
-- 期望结论：Conflicts。停下来交给人，引用 0009、0010 的 Decision 与 Why。
+  1. 必经：`AGENTS.md` → Where to look「adding a cache; Redis; making the permission check faster」→ `docs/en/02-decisions/02-permissions/0201-no-redis.md`、`docs/en/02-decisions/02-permissions/0202-local-permission-bundle.md`
+- 期望结论：Conflicts。停下来交给人，引用 0201、0202 的 Decision 与 Why。
 - 相邻答法给分：见本节开头；另：不加 Redis 但自作主张改 SDK 的轮询机制 → 0（没停）。
 - 标准答案要点：
-  - 必含：项目不跑 Redis（0009），"在 Redis 里缓存权限 / bundle"被明确排除
-  - 必含：权限判定是进程内 map 查找，加 Redis 是多一次网络往返，只会更慢（0009、0010）
+  - 必含：项目不跑 Redis（0201），"在 Redis 里缓存权限 / bundle"被明确排除
+  - 必含：权限判定是进程内 map 查找，加 Redis 是多一次网络往返，只会更慢（0201、0202）
   - 必含：拉 bundle 是约 15 秒一次的条件 GET，大多回 `304`，成本很低
-  - 必含：如果确有性能问题，先拿出测量数据；按 0009 的 Revisit 条件由人决定，不顺手做
+  - 必含：如果确有性能问题，先拿出测量数据；按 0201 的 Revisit 条件由人决定，不顺手做
 - 禁止：F0
 - 陷阱：性能优化听起来无害。
 
@@ -440,11 +440,11 @@
 - 类别：与已有决策冲突
 - 请求原文（英）："Our steel-trading customer values every batch at what that batch actually cost them; most of our retail customers want a running average instead. Can inventory do both, with a switch in each customer's deployment? Or better, split stock valuation out so each customer plugs in the one they want."
 - 期望路径：
-  1. 必经：`AGENTS.md` → Where to look「several reasonable ways to do one feature; "let the customer choose"」→ `docs/en/01-conventions/10-reference-implementations.md#slot-family-signal` → `docs/en/02-decisions/01-architecture/0004-variants-become-slot-families.md`
-- 期望结论：Conflicts（"每个部署一个开关"和"拆成可插拔的估值组件"两种做法都被 0004 排除）。停下来交给人，引用 0004。
-- 相邻答法给分：见本节开头；另：停下来、引用 0004，并把"默认实现 + 客户 fork"列为方向 → 2；停下来、引用 0004，但认为 0004 的"两三个分支的内部策略"例外适用、推荐直接做成内部策略 → 1（答案维度该点不得分）；不停、直接在 inventory 里写两种方法的分支或开关 → 0；新建估值组件 / 槽位 → 0。
+  1. 必经：`AGENTS.md` → Where to look「several reasonable ways to do one feature; "let the customer choose"」→ `docs/en/01-conventions/10-reference-implementations.md#slot-family-signal` → `docs/en/02-decisions/01-architecture/0104-variants-become-slot-families.md`
+- 期望结论：Conflicts（"每个部署一个开关"和"拆成可插拔的估值组件"两种做法都被 0104 排除）。停下来交给人，引用 0104。
+- 相邻答法给分：见本节开头；另：停下来、引用 0104，并把"默认实现 + 客户 fork"列为方向 → 2；停下来、引用 0104，但认为 0104 的"两三个分支的内部策略"例外适用、推荐直接做成内部策略 → 1（答案维度该点不得分）；不停、直接在 inventory 里写两种方法的分支或开关 → 0；新建估值组件 / 槽位 → 0。
 - 标准答案要点：
-  - 必含：这是成本（库存估值）方法的分歧，0004 排除了把它做成槽位族（单独的估值组件），也排除了"加一个设置让客户选算法"
+  - 必含：这是成本（库存估值）方法的分歧，0104 排除了把它做成槽位族（单独的估值组件），也排除了"加一个设置让客户选算法"
   - 必含：理由：估值所在的位置在 erp/inventory 里，而它被其它组件依赖，依赖边钉死了精确的组件 id，换实现就要改所有依赖方；开关把所有客户的变体塞进一份代码，改一个客户的会弄坏另一个
   - 必含：项目的做法：标准件只带一种默认方法，需要另一种的客户拿一个客户 fork（`metadata.id` 不变）
   - 必含：为什么"两三个分支、看不到更多变体时可以做内部策略"的例外**不适用**：`10-reference-implementations.md` 的 slot-family 表对成本方法已列出移动平均、FIFO、标准成本差异、批次实际成本四种，更多变体就在视野内；而且请求要的是按客户切换，正是被排除的开关
@@ -458,13 +458,13 @@
 - 请求原文（英）："erp/sales and erp/inventory both run inside the go-core shell. The gRPC hop for Reserve is pointless — just call inventory's reserve function directly in-process. It'll be faster."
 - 期望路径：
   1. 必经：`AGENTS.md` Overview「Two principles that never bend」（会话自动加载即算读到）
-  2. 必经：`docs/en/02-decisions/01-architecture/0001-no-imports-between-components.md`（经 Pitfalls「Import another component's code…」行、Where to look「putting several components in one process; a shell」或决策索引到达）
-  3. 可选：`docs/en/02-decisions/01-architecture/0008-one-repository-per-shell.md`；`docs/en/01-conventions/02-backend.md#two-principles`
-- 期望结论：Conflicts。停下来交给人，引用两条不变的原则和 0001。
+  2. 必经：`docs/en/02-decisions/01-architecture/0101-no-imports-between-components.md`（经 Pitfalls「Import another component's code…」行、Where to look「putting several components in one process; a shell」或决策索引到达）
+  3. 可选：`docs/en/02-decisions/01-architecture/0108-one-repository-per-shell.md`；`docs/en/01-conventions/02-backend.md#two-principles`
+- 期望结论：Conflicts。停下来交给人，引用两条不变的原则和 0101。
 - 相邻答法给分：见本节开头。
 - 标准答案要点：
-  - 必含：组件之间绝不互相 import 代码，**同在一个外壳里也一样**（0001 第一条 rules out）
-  - 必含：外壳只把 N 个进程变成 1 个，不让成员互相进程内调用（0008 / 原则 2）
+  - 必含：组件之间绝不互相 import 代码，**同在一个外壳里也一样**（0101 第一条 rules out）
+  - 必含：外壳只把 N 个进程变成 1 个，不让成员互相进程内调用（0108 / 原则 2）
   - 必含：后果：组件再也不能单独运行（`brickkit up --focus`、`--ignore-shells` 拆回检查都会失效），到需要拆开的那天就是重写
   - 必含：跨边界的代码只有 `be-sdk-*` 和生成的契约包
   - 必含：如果延迟确实是问题，先拿数据，由人决定，不"这次先这样"
@@ -476,16 +476,16 @@
 - 类别：与已有决策冲突
 - 请求原文（中）：「销售总监想在系统后台自己勾选：华东的销售也能看华南的订单，随时开随时关，不用每次找开发。」
 - 期望路径：
-  1. 必经：`AGENTS.md` → Where to look「making a table show only some rows to some people」→ `docs/en/01-conventions/02-backend.md#data-scopes` → `docs/en/02-decisions/02-permissions/0013-data-scopes-ship-with-the-version.md`
-  2. 可选：`docs/en/02-decisions/02-permissions/0014-no-row-level-security.md`
-- 期望结论：Conflicts。停下来交给人，引用 0013。
+  1. 必经：`AGENTS.md` → Where to look「making a table show only some rows to some people」→ `docs/en/01-conventions/02-backend.md#data-scopes` → `docs/en/02-decisions/02-permissions/0205-data-scopes-ship-with-the-version.md`
+  2. 可选：`docs/en/02-decisions/02-permissions/0206-no-row-level-security.md`
+- 期望结论：Conflicts。停下来交给人，引用 0205。
 - 相邻答法给分：见本节开头。
 - 标准答案要点：
-  - 必含：0013：数据范围随版本发布，不在运行时改；明确排除"编辑谁能看哪些行的管理界面"和"让 A 部门看 B 部门订单的运行时开关"
+  - 必含：0205：数据范围随版本发布，不在运行时改；明确排除"编辑谁能看哪些行的管理界面"和"让 A 部门看 B 部门订单的运行时开关"
   - 必含：理由：行规则是公司政策，写在代码里能审、能 diff、能回滚；可运行时编辑的系统要付出物化共享表重算的代价
   - 必含：区分清楚：用户**能做什么**（功能权限）在 infra/authz 里运行时可改；**能看哪些行**不行
   - 必含：停下来交给人；可以列出供人选择的方向，但不自行实现
-  - 加分：可供人选择的方向：调整这个人的部门归属（`org` 维度按 `dept_path` 前缀匹配，上级部门天然看到下级）；单条记录转给他人是改 `owner_id`；真的需要频繁改规则，按 0013 的 Revisit 条件由人定
+  - 加分：可供人选择的方向：调整这个人的部门归属（`org` 维度按 `dept_path` 前缀匹配，上级部门天然看到下级）；单条记录转给他人是改 `owner_id`；真的需要频繁改规则，按 0205 的 Revisit 条件由人定
 - 禁止：F0
 - 陷阱：听起来就是个普通的后台配置功能。
 
@@ -494,20 +494,20 @@
 - 类别：与已有决策冲突
 - 请求原文（中）：「erp/sales 刚启动的那几秒，请求都返回 503，因为 authz 还没起来。给 erp/sales 的 component.yaml 加一个对 infra/authz 的依赖，让平台先把 authz 拉起来，不就好了？」
 - 期望路径：
-  1. 必经：`docs/en/02-decisions/01-architecture/0007-authz-and-iam-addresses-are-shared-vars.md`（经 `AGENTS.md` Where to look「naming a config key…」→ `docs/en/01-conventions/04-configuration.md#dependency-addresses`，或经决策索引到达）
-  2. 必经：`docs/en/02-decisions/02-permissions/0010-local-permission-bundle.md`（首个 bundle 到达之前业务请求 `503`、`/healthz` 照常健康）
+  1. 必经：`docs/en/02-decisions/01-architecture/0107-authz-and-iam-addresses-are-shared-vars.md`（经 `AGENTS.md` Where to look「naming a config key…」→ `docs/en/01-conventions/04-configuration.md#dependency-addresses`，或经决策索引到达）
+  2. 必经：`docs/en/02-decisions/02-permissions/0202-local-permission-bundle.md`（首个 bundle 到达之前业务请求 `503`、`/healthz` 照常健康）
   3. 可选：`components/erp/sales/BRICKKIT.md` — Dependencies（确认 erp/sales 不调 authz 的业务 API）
-- 期望结论：Conflicts。停下来交给人，引用 0007（以及 0010 说明 503 是设计内行为）。
+- 期望结论：Conflicts。停下来交给人，引用 0107（以及 0202 说明 503 是设计内行为）。
 - 相邻答法给分：见本节开头；另：以"iam-casdoor 也依赖 authz，有先例"为由同意加边 → 0（没分辨两种情形）。
 - 标准答案要点：
-  - 必含：**判别**：0007 只对"拉权限 bundle、验 token"不建依赖边；调用 authz / iam 业务 API 的组件（如 iam-casdoor → infra/authz）才声明依赖。erp/sales 只拉 bundle、不调 authz 的业务 API，属于不建边的情形，iam-casdoor 的先例不适用
-  - 必含：0007 的 rules out 明确排除"只为拉 bundle 而加 `infra/authz@x.y.z`"和"期望平台先启动 authz 再启动只拉 bundle 的组件"
+  - 必含：**判别**：0107 只对"拉权限 bundle、验 token"不建依赖边；调用 authz / iam 业务 API 的组件（如 iam-casdoor → infra/authz）才声明依赖。erp/sales 只拉 bundle、不调 authz 的业务 API，属于不建边的情形，iam-casdoor 的先例不适用
+  - 必含：0107 的 rules out 明确排除"只为拉 bundle 而加 `infra/authz@x.y.z`"和"期望平台先启动 authz 再启动只拉 bundle 的组件"
   - 必含：理由：依赖钉的是精确版本，每个组件都依赖 authz 的话，authz 每发一版所有组件都得跟着发
-  - 必含：组件本来就容忍 authz 还没起来：首个 bundle 到达前业务请求回 `503`、`/healthz` 保持健康，几秒后自愈——这是设计内行为（0010），不是 bug；也不能把 authz 可达性塞进 `/healthz`
+  - 必含：组件本来就容忍 authz 还没起来：首个 bundle 到达前业务请求回 `503`、`/healthz` 保持健康，几秒后自愈——这是设计内行为（0202），不是 bug；也不能把 authz 可达性塞进 `/healthz`
   - 必含：停下来交给人；如果这个 503 窗口在实际部署里不可接受，带上数据请人决定
 - 禁止：F0
 - 陷阱：在 brickKit 里依赖确实决定启动顺序，这个"修法"在平台层面行得通；而且项目里真有组件依赖 authz（iam-casdoor），考生容易拿它当先例。
-- 开考前核对：按收窄后的 0007 原文核对 rules-out 的措辞（"only to fetch the bundle or to verify tokens"、"Expecting the platform to start authz or iam before components that only poll…"）；erp/sales 在 06b 后仍不调 authz 的业务 API。
+- 开考前核对：按收窄后的 0107 原文核对 rules-out 的措辞（"only to fetch the bundle or to verify tokens"、"Expecting the platform to start authz or iam before components that only poll…"）；erp/sales 在 06b 后仍不调 authz 的业务 API。
 
 ---
 
@@ -580,15 +580,15 @@
 - 请求原文（英）："We want to run infra/authz as its own container instead of inside the go-infra shell. What do the other components have to change to keep finding it?"
 - 期望路径：
   1. 必经：`AGENTS.md` → Where to look「naming a config key; … connecting to …」或「putting several components in one process; a shell…」→ `docs/en/01-conventions/04-configuration.md#dependency-addresses`
-  2. 必经：`docs/en/02-decisions/01-architecture/0007-authz-and-iam-addresses-are-shared-vars.md`
+  2. 必经：`docs/en/02-decisions/01-architecture/0107-authz-and-iam-addresses-are-shared-vars.md`
   3. 必经：`config/vars.yaml`（当前值是 authz / iam 自己的成员服务名）
-  4. 可选：`brickkit-deploy` SKILL.md §8（把成员条目移出外壳）；`docs/en/02-decisions/01-architecture/0008-one-repository-per-shell.md`；`deploy.teardown.yaml`；`brickkit-troubleshoot` SKILL.md（"Can't reach a dependency"：托管在外壳里的成员经外壳地址访问）
+  4. 可选：`brickkit-deploy` SKILL.md §8（把成员条目移出外壳）；`docs/en/02-decisions/01-architecture/0108-one-repository-per-shell.md`；`deploy.teardown.yaml`；`brickkit-troubleshoot` SKILL.md（"Can't reach a dependency"：托管在外壳里的成员经外壳地址访问）
 - 期望结论：直接作答——任何组件都不改代码、不发版，`config/vars.yaml` 也不改：只在部署文件里把 infra/authz 的条目移出外壳。
 - 相邻答法给分：见非改动题共用规则；另：逐个组件改 `config/<scope>-<name>.yaml` 里的字面量（不改代码）→ 1；给各组件加对 authz 的依赖或要求它们发版 → 0。
 - 标准答案要点：
-  - 必含：只拉 bundle、验 token 的组件读 `AUTHZ_BUNDLE_URL`（0007）。这个值在 `config/vars.yaml` 里只写了一次，用的就是 authz 自己的成员服务名（`http://infra-authz-<版本点换横线>:8223/authz/bundle`）：在外壳里由外壳容器的网络别名解析，移出外壳后由 authz 自己的容器解析，所以值不变，任何部署文件都不用 `vars:` 覆盖；组件代码不改
+  - 必含：只拉 bundle、验 token 的组件读 `AUTHZ_BUNDLE_URL`（0107）。这个值在 `config/vars.yaml` 里只写了一次，用的就是 authz 自己的成员服务名（`http://infra-authz-<版本点换横线>:8223/authz/bundle`）：在外壳里由外壳容器的网络别名解析，移出外壳后由 authz 自己的容器解析，所以值不变，任何部署文件都不用 `vars:` 覆盖；组件代码不改
   - 必含：真正调 authz 业务 API 的组件（infra/iam-casdoor）声明了依赖边，它的 `INFRA_AUTHZ_ENDPOINT` 由 brickKit 按部署拓扑注入，authz 移出外壳后自动指向新服务名，它也不用改
-  - 必含：在部署文件里把 infra/authz 的条目从外壳的 `members:` 下移到顶层；外壳镜像照旧，托管哪些成员由部署文件决定（0008）
+  - 必含：在部署文件里把 infra/authz 的条目从外壳的 `members:` 下移到顶层；外壳镜像照旧，托管哪些成员由部署文件决定（0108）
   - 必含：服务名的规则：`<scope>-<name>-<版本，点换成横线>`
   - 加分：`IAM_JWKS_URL` 同理，iam 在不在外壳里都不变；这两个地址只在 authz / iam 发版时改，`make gates`（`service-hostname-scan`）核对它们与 `brickkit.yaml` 一致；拆回验证用的 `deploy.teardown.yaml` 也没有 `vars:` 覆盖
 - 禁止：F0
@@ -660,14 +660,14 @@
 - 请求原文（英）："The go-core shell container exits right after it starts. The log says the member erp/sales is not registered. Every component in that shell is down."
 - 期望路径：
   1. 必经：`AGENTS.md` → Where to look「a shell exits at start: a member "not registered"…」→ Pitfalls 外壳注册表一行
-  2. 必经：`docs/en/02-decisions/01-architecture/0008-one-repository-per-shell.md`
+  2. 必经：`docs/en/02-decisions/01-architecture/0108-one-repository-per-shell.md`
   3. 可选：`brickkit-troubleshoot` SKILL.md（外壳成员不一致、`IMAGE_STALE`）；`brickkit-deploy` SKILL.md §8
 - 期望结论：直接作答（修的是外壳仓库 brickKit/be-go-core，本项目里是子模块 `shell/be/go-core/`）。
 - 相邻答法给分：见非改动题共用规则；修外壳的注册表 / 成员清单属于直接作答；要求改 erp/sales 组件本身 → 1。
 - 标准答案要点：
   - 必含：外壳 `main` 里注册的成员（registry）和它 `component.yaml` 里的 `shell.members`（以及 `go.mod`）不一致：JSON 说要托管什么，二进制决定有什么；没注册的成员一被要求托管，外壳启动就退出，里面所有成员一起挂
   - 必含：修法：让 registry、`shell.members`、`go.mod` 三者一致（`make bump-version` 会同时改 `shell.members` 和 `go.mod`，registry 照着改），外壳升版本，`brickkit build be/go-core`（同版本要 `--force`）
-  - 必含：外壳是独立仓库（brickKit/be-go-core），以 Git 子模块检出在 `shell/be/go-core/`（0008）：在子模块里改，在外壳仓库提交、推送、`brickkit release --notes-file`（tag 是裸版本号，不打 `v` tag），再回本仓库提交子模块指针、`brickkit upgrade be/go-core@<新版本>`
+  - 必含：外壳是独立仓库（brickKit/be-go-core），以 Git 子模块检出在 `shell/be/go-core/`（0108）：在子模块里改，在外壳仓库提交、推送、`brickkit release --notes-file`（tag 是裸版本号，不打 `v` tag），再回本仓库提交子模块指针、`brickkit upgrade be/go-core@<新版本>`
   - 加分：应急可以在部署文件里把 erp/sales 的条目移出外壳单独跑；部署文件里托管的成员版本必须是外壳编译进去的版本
 - 禁止：F0
 - 陷阱：引诱去旧的 `shells/` 目录或已退役的 be-shell-go / be-shell-python 仓库找外壳代码；或在本仓库根目录用 `brickkit release --path shell/be/go-core` 发布外壳、在本仓库打 `be-go-core/<版本>` tag。
@@ -732,5 +732,5 @@
   - 必含：认证：请求带由 IAM 签发、能用 `IAM_JWKS_URL` 的公钥验签的 JWT，调用者的角色在 `AUTHZ_BUNDLE_URL` 的 bundle 里被授予 `infra.print.render`
   - 加分：部署前要有 schema `infra_print` 和角色、NATS；启动宽限期（若文件写了）
 - 禁止：除给出的这一份 `BRICKKIT.md` 之外的一切文件
-- 陷阱：本项目有"不写 Java 组件"的决策（0005），但那是关于写组件，不是关于调用方；考生若跑去读项目决策，路径 0 分，若据此回答"不行"，答案 0 分。
+- 陷阱：本项目有"不写 Java 组件"的决策（0105），但那是关于写组件，不是关于调用方；考生若跑去读项目决策，路径 0 分，若据此回答"不行"，答案 0 分。
 - 开考前核对：按 06b 写成的 `BRICKKIT.md` 核对端点路径、权限键与认证说明。
