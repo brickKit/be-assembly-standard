@@ -89,7 +89,7 @@ Python 用蛇形命名对应同一套名字（`rt.config.endpoint`、`must_endpo
 2. **有没有初始化任何进程级的东西？** `otel.SetTracerProvider`、`logging.basicConfig`、信号处理器、默认 Prometheus registry、`gin.SetMode`（它是包级变量：一个模块开了 debug，所有模块都进 debug，panic 堆栈直接发给客户端）。最后一个初始化的赢、一切照样全绿；默认 registry 在第二个模块注册时直接 panic。一律用 `rt` 提供的。
 3. **有没有退出进程**（`log.Fatal`、`os.Exit`、`sys.exit`）？一个模块的可恢复错误会拖垮整个外壳。返回 error。
 
-模块里也绝不调用 `gin.New()`（引擎会丢掉 SDK 的整条中间件链：追踪、指标、PII 脱敏、错误映射，而且不报错）、`sql.Open()` 或 `Listen`。`make module-check` 检查以上全部。
+模块里也绝不调用 `gin.New()`（引擎会丢掉 SDK 的整条中间件链：请求 ID、追踪、RED 指标、访问日志、panic 恢复和错误映射，而且不报错）、`sql.Open()` 或 `Listen`。`make module-check` 检查以上全部。
 
 ## 健康检查与镜像
 

@@ -78,6 +78,6 @@
 
 - 只为测试做的版本只打本地 tag，从不推送，测完删掉。
 - 只有已经有文件等着推的时候才新建 GitHub 仓库；新建或删除任何仓库之前先告诉维护者。
-- `brickkit remove` 会删掉组件源码：先提交并推送。
+- 组件源码有未提交或未推送的改动时，`brickkit remove` 在写任何东西之前就停下；绝不用 `--force` 越过，它会连同这些改动删掉源码。登记为 Git 子模块的组件会以 `SUBMODULE_GUARD` 停下：先提交并推送，再注销子模块（`git submodule deinit -f <path>`、`git rm <path>`），然后重跑 `brickkit remove`。
 - Fork 出来的组件保留原来的 `metadata.id`：所有依赖方的地址变量都由它推导。
 - 平台行为不对时，写出复现、报给 brickKit；绝不在组件里绕过去。

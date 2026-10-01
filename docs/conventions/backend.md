@@ -89,7 +89,7 @@ Three questions, all answered "no", before code is done:
 2. **Does it initialise anything process-wide?** `otel.SetTracerProvider`, `logging.basicConfig`, signal handlers, the default Prometheus registry, `gin.SetMode` (a package variable: one module in debug mode puts every module in debug mode and leaks stack traces to clients). The last initialiser wins and everything stays green; the default registry panics on the second module. Use what `rt` provides.
 3. **Does it exit the process** (`log.Fatal`, `os.Exit`, `sys.exit`)? One module's recoverable error takes the whole shell down. Return an error.
 
-Also never call `gin.New()` (the engine loses the SDK's middleware: tracing, metrics, PII redaction, error mapping, with no error), `sql.Open()` or `Listen` from a module. `make module-check` checks all of this.
+Also never call `gin.New()` (the engine loses the SDK's middleware: request IDs, tracing, RED metrics, the access log, panic recovery and error mapping, with no error), `sql.Open()` or `Listen` from a module. `make module-check` checks all of this.
 
 ## Health check and image
 

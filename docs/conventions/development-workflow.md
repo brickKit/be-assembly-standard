@@ -78,6 +78,6 @@ The `version-bump-ship` skill walks this sequence and says when to stop and ask 
 
 - A version made only for a test gets a local tag that is never pushed, and is deleted after the test.
 - A new GitHub repository is created only when a file is ready to be pushed into it, and the human maintainer is told before any repository is created or deleted.
-- `brickkit remove` deletes the component's source: commit and push first.
+- `brickkit remove` stops before writing anything while the component's source has uncommitted or unpushed changes; never pass `--force` to get past that, it deletes the source and the work with it. A component registered as a Git submodule stops with `SUBMODULE_GUARD`: commit and push it, deregister it (`git submodule deinit -f <path>`, `git rm <path>`), then run `brickkit remove` again.
 - A fork keeps the component's `metadata.id`: every dependent's address variable is derived from it.
 - When the platform misbehaves, write a reproduction and report it to brickKit; never work around it inside a component.
