@@ -48,6 +48,6 @@ A shell logs in with its own role `shell_<name>` (for example `shell_go_core`, p
 
 Strong and weak dependency addresses are injected by brickKit as `<ID>_ENDPOINT`; code reads them through the runtime config's endpoint accessor.
 
-The permission bundle and the identity key set are deliberately not dependency edges. Pinning an exact version on them would force every component to release whenever authz or iam releases. Their addresses are plain configuration: `$var:AUTHZ_BUNDLE_URL` and `$var:IAM_JWKS_URL`.
+The permission bundle and the identity key set are deliberately not dependency edges. Pinning an exact version on them would force every component to release whenever authz or iam releases. Their addresses are plain configuration: `$var:AUTHZ_BUNDLE_URL` and `$var:IAM_JWKS_URL`. A component that calls a business API of authz or iam over gRPC (for example `infra/iam-casdoor` → `infra/authz`) declares that dependency like any other and uses the injected `*_ENDPOINT` for that call only.
 
 A shell service is named `<scope>-<name>-<version with dots as dashes>`, so `be/go-infra@1.0.0` is reached as `be-go-infra-1-0-0`. These values appear in `config/vars.yaml` and are overridden in the deploy file's `vars:` when the topology changes.

@@ -48,6 +48,6 @@
 
 强、弱依赖的地址由 brickKit 以 `<ID>_ENDPOINT` 注入，代码通过运行时配置的 endpoint 访问器读取。
 
-权限策略包和身份公钥集刻意不是依赖边：给它们加精确版本锁，会让 authz 或 iam 每次发版都连带全部组件发版。它们的地址是普通配置：`$var:AUTHZ_BUNDLE_URL` 与 `$var:IAM_JWKS_URL`。
+权限策略包和身份公钥集刻意不是依赖边：给它们加精确版本锁，会让 authz 或 iam 每次发版都连带全部组件发版。它们的地址是普通配置：`$var:AUTHZ_BUNDLE_URL` 与 `$var:IAM_JWKS_URL`。通过 gRPC 调用 authz 或 iam 业务接口的组件（例如 `infra/iam-casdoor` → `infra/authz`），与其他依赖一样声明这条依赖，注入的 `*_ENDPOINT` 只用于这类调用。
 
 外壳服务名为 `<scope>-<name>-<版本，点换成横线>`，因此 `be/go-infra@1.0.0` 的地址主机名是 `be-go-infra-1-0-0`。这些值写在 `config/vars.yaml` 中，拓扑变化时在部署文件的 `vars:` 里覆盖。

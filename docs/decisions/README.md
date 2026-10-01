@@ -34,5 +34,5 @@ The decisions that constrain future changes to this project. Each file gives the
 | [0018](0018-no-java-or-csharp.md) | No Java or C# | Spring Boot / .NET components; a fourth backend language |
 | [0019](0019-infrastructure-is-not-a-component.md) | Event bus, object storage, gateway and observability are not components | An `infra/nats` or gateway component; swapping NATS for Kafka by a setting |
 | [0020](0020-no-test-accounts-in-migrations.md) | No test accounts in migrations; the first admin comes from `BOOTSTRAP_ADMIN_SUB` | A default admin account; demo data in migrations |
-| [0021](0021-authz-and-iam-addresses-are-shared-vars.md) | authz and iam addresses are shared variables, not dependencies | A dependency edge on `infra/authz` or the IAM component |
+| [0021](0021-authz-and-iam-addresses-are-shared-vars.md) | Polling the permission bundle and verifying tokens use shared variables, not dependencies; a real gRPC call to authz / iam declares its dependency as usual | A dependency edge on `infra/authz` or the IAM component just to fetch the bundle or verify tokens; calling their gRPC API without declaring the dependency |
 | [0022](0022-shells-are-project-code.md) | Shells are project code: one shell, one image, one member list | A repository per shell; logic in a shell; upgrading a member without the shell |
