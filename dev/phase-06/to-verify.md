@@ -8,6 +8,7 @@
 | V-02 | `AGENTS.zh.md` 在 lint 里会被怎么处理（规范说 AGENTS.md 不翻译） | 06a 项目 AGENTS.md 落地后 | 项目和一个组件各放一份 `AGENTS.zh.md`，跑 `brickkit lint --strict` | |
 | V-03 | 构建上下文不能越出组件目录。一个外壳仓库（一份代码、一个镜像）对应多个外壳实例的布局能不能用 `brickkit build` | 06a 外壳按 v1 重建后 | 先按 `brickkit new --shell` 的标准布局重建，确认是否真的需要"一个镜像、多个实例"，需要的话实测 | |
 | V-05 | "只要地址自动注入、不锁版本"的依赖关系是否缺失：authz / iam 的地址如果走依赖边，精确版本锁定会让 authz 每发一版都连带 12 个组件发版；目前方案是改用 `config/vars.yaml` 的 `$var:` 集中写一处 | 06e 部署矩阵跑完 | 看 `$var:` 方案在独立 / 外壳 / k8s 各拓扑下需要改几处、是否别扭；确认 brickKit 没有现成机制 | |
+| V-06 | Go 生态和 brickKit tag 规则冲突：brickKit 版本 tag 不带 v（`2.0.0`，`v2.0.0` 不算版本），Go 模块要求带 v，且 v2 及以上要改模块路径 `/v2`；Go 外壳通过 `go mod download` 拉成员源码，所以每个 Go 组件每次发版都要打双 tag | 06b 第一个 Go 组件发布、第一个 Go 外壳构建后 | 实际走一遍 `brickkit release` + `git tag v2.0.0`，记录摩擦点；确认 brickKit 有没有现成办法（比如 release 时顺手打 Go tag） | |
 | V-04 | 知识缺口：只靠已安装的 5 个 skill、项目 AGENTS.md 的 CLI 维护块、`.brickkit/manifests/` 缓存和 `--help`，能不能完成组件开发和部署 | 06a 用 `brickkit init` / `skills update` / `new` 重新生成之后，贯穿 06b–06f | 每次不得不去翻 brickKit 仓库，就在下面的缺口记录里追加一行；阶段末整理成反馈 | |
 
 ## 知识缺口记录（V-04）

@@ -40,6 +40,7 @@
 | 外壳 | 外壳改为项目代码，放在 `shell/` 下，用 `brickkit new --shell` 生成，每个外壳对应一个镜像和一份成员清单。`shells/go`、`shells/python` 两个 submodule 退役。启动器代码下沉到 SDK |
 | 共用配置 | 多个组件重复使用的值（数据库主机、NATS、authz/iam 地址等）统一放在 `config/vars.yaml`，组件通过 `$var:` 引用。组件有特殊需要时，在自己的 config 中覆盖 |
 | authz/iam 地址 | 不走依赖边（精确版本锁定会导致连锁发版），改用 `$var:` 集中维护，一处修改即可。不同拓扑在各自部署文件的 `vars:` 中覆盖 |
+| Go 模块版本 | Go 组件升 2.0.0 时，模块路径改成 `/v2`；每次发版在同一提交上打双 tag：`2.0.0`（brickKit）和 `v2.0.0`（Go）。由重写后的 version-bump-ship 自动完成（待验证 V-06） |
 | 发布 | 真实版本用 `brickkit release` 打 tag 并推送。测试用的版本只打本地 tag，永不推送，测完删除。镜像只在本地构建，不推送。新建或删除 GitHub 仓库前先提醒用户 |
 | 反馈 | `brickkit-feedback/`（已加入 gitignore 的信箱）只放重建后真机验证过的条目，不提迁移或兼容性问题。未验证的疑问先记入 `dev/phase-06/to-verify.md` |
 
