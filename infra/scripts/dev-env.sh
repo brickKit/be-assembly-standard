@@ -9,7 +9,7 @@ ENVF="$ROOT/.env"
 touch "$ENVF"
 added=()
 while read -r _ var; do
-  if ! grep -q "^${var}=" "$ENVF"; then
+  if ! grep -q "^${var}=." "$ENVF"; then
     [ -s "$ENVF" ] && [ -n "$(tail -c1 "$ENVF")" ] && echo >> "$ENVF"
     echo "${var}=$(openssl rand -hex 16)" >> "$ENVF"
     added+=("$var")

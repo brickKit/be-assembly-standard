@@ -13,3 +13,17 @@ db_pw_pairs() {
       if ($4 != "") shells[$4]=1 }
     END { for (s in shells) print "pw_" s, toupper(s) "_PASSWORD" }' "$tsv" | sort -u
 }
+
+# db_pw_set_lines <tsv>：向 stdout 输出 psql 的 \set 行（口令走 stdin，不进任何进程的 argv）。
+# 缺失/为空的环境变量名收集到全局数组 DB_PW_MISSING，不输出值。
+# psql 单引号参数的转义：' → ''，\ → \\。
+db_pw_set_lines() {
+  DB_PW_MISSING=()
+  local pv ev val
+  while read -r pv ev; do
+    val="${!ev:-}"
+    if [ -z "$val" ]; then DB_PW_MISSING+=("$ev"); continue; fi
+    val="${val//\\/\\\\}"; val="${val//\'/\'\'}"
+    printf '\\set %s '"'"'%s'"'"'\n' "$pv" "$val"
+  done < <(db_pw_pairs "$1")
+}

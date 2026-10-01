@@ -26,13 +26,15 @@ docker ps --filter "name=^be-postgres$" --filter "status=running" --format '{{.N
 echo "▸ ① 生成 + 应用建库脚本（brickkit_test_db + 54 个组件的 schema）"
 ( cd tools/be-ops && go build -o build/be-ops ./cmd/be-ops )
 tools/be-ops/build/be-ops db-script --root . --out tools/be-ops/build/test-db-init.sql --database brickkit_test_db
-docker exec -i be-postgres psql -v ON_ERROR_STOP=1 -U postgres \
-	-v pw_shell_go_core="$SHELL_GO_CORE_PASSWORD" \
-	-v pw_shell_go_backoffice="$SHELL_GO_BACKOFFICE_PASSWORD" \
-	-v pw_shell_go_infra="$SHELL_GO_INFRA_PASSWORD" \
-	-v pw_shell_py_brain="$SHELL_PY_BRAIN_PASSWORD" \
-	-v pw_shell_py_render="$SHELL_PY_RENDER_PASSWORD" \
-	-f - < tools/be-ops/build/test-db-init.sql >/dev/null
+# 口令走 stdin 的 \set 行，不进 argv（与 db-init.sh 同一套）
+source "$ROOT/infra/scripts/lib/db-pw.sh"
+PW_FILE="$(mktemp)"; chmod 600 "$PW_FILE"; trap 'rm -f "$PW_FILE"' EXIT
+db_pw_set_lines registry/schemas.tsv > "$PW_FILE"
+if [ ${#DB_PW_MISSING[@]} -gt 0 ]; then
+	echo "✗ .env 缺少：${DB_PW_MISSING[*]}——运行 bash infra/scripts/dev-env.sh" >&2
+	exit 1
+fi
+{ cat "$PW_FILE"; cat tools/be-ops/build/test-db-init.sql; } | docker exec -i be-postgres psql -v ON_ERROR_STOP=1 -U postgres -f - >/dev/null
 
 # 已建组件里真的有数据库的那 12 个——infra-bff-mobile（§6.5 铁律二严禁
 # 直连 DB）和 frontend-standard（无数据）没有 schema，天然跳过。
