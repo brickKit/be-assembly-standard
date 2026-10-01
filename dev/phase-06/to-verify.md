@@ -10,6 +10,7 @@
 | V-05 | "只要地址自动注入、不锁版本"的依赖关系是否缺失：authz / iam 的地址如果走依赖边，精确版本锁定会让 authz 每发一版都连带 12 个组件发版；目前方案是改用 `config/vars.yaml` 的 `$var:` 集中写一处 | 06e 部署矩阵跑完 | 看 `$var:` 方案在独立 / 外壳 / k8s 各拓扑下需要改几处、是否别扭；确认 brickKit 没有现成机制 | |
 | V-06 | Go 生态和 brickKit tag 规则冲突：brickKit 版本 tag 不带 v（`2.0.0`，`v2.0.0` 不算版本），Go 模块要求带 v，且 v2 及以上要改模块路径 `/v2`；Go 外壳通过 `go mod download` 拉成员源码，所以每个 Go 组件每次发版都要打双 tag | 06b 第一个 Go 组件发布、第一个 Go 外壳构建后 | 实际走一遍 `brickkit release` + `git tag v2.0.0`，记录摩擦点；确认 brickKit 有没有现成办法（比如 release 时顺手打 Go tag） | |
 | V-07 | 版本漂移只被 `brickkit up --dry-run` 拦住，`brickkit lint` 一种都拦不住；而且"brickkit.yaml 版本与 component.yaml 不一致"只在 `.brickkit/manifests` 缓存不存在时才被拦——缓存可能掩盖本地源的版本变化（证据：dev/test-records/06a/task10-version-checks-experiment.md） | 06b 第一个组件升版时 | 在真实项目里先 `up --dry-run` 让缓存生成，再改 component.yaml 版本，看 lint / up 是否发现；确认是有意设计还是缓存失效问题 | |
+| V-08 | 外壳合并部署下，成员的 Prometheus 指标怎么抓取：成员各自的 HTTP 端口上有 /metrics，但外壳的 labels 只能声明一个 prometheus.io/port；v1 起成员 labels 不再合并进外壳 | 06e 部署矩阵（开 obs 的那一格） | 合并部署 + make obs-up，看 Prometheus 能否拿到每个成员的指标；不行的话设计方案（外壳聚合 /metrics，或请 brickKit 支持多端口抓取声明） | |
 | V-04 | 知识缺口：只靠已安装的 5 个 skill、项目 AGENTS.md 的 CLI 维护块、`.brickkit/manifests/` 缓存和 `--help`，能不能完成组件开发和部署 | 06a 用 `brickkit init` / `skills update` / `new` 重新生成之后，贯穿 06b–06f | 每次不得不去翻 brickKit 仓库，就在下面的缺口记录里追加一行；阶段末整理成反馈 | |
 
 ## 知识缺口记录（V-04）
@@ -21,3 +22,5 @@
 | 2026-10-01 | 外壳成员在网络上如何寻址（成员服务名是否作为外壳服务的网络别名） | 06a Task 11 重写 seed-net.sh / test-cross.sh 的寻址逻辑 | brickKit 源码 internal/compose/servedby.go | brickkit-deploy 或 brickkit-component skill 的外壳一节写明：成员的服务名是外壳容器的网络别名，调用方照常用成员服务名 |
 | 2026-10-01 | BRICKKIT_SERVED_MEMBERS_CONFIG 每项的确切字段名（componentId / version / httpPort / extraPorts / config） | 06a Task 5 实现 Go 外壳的成员解析 | brickKit 源码 internal/shell/shell.go（docs/en/04-shell/02-json-injection.md 有示例，但项目里装的 skill 没有） | brickkit-component skill 的外壳一节附一份完整 JSON 示例和字段表 |
 | 2026-10-01 | mode local / debug 的宿主机端口映射规则（优先 10000+容器端口，冲突时从 18080 递增）是否仍成立 | 06a Task 13 写 registries.md 的端口段划分 | brickKit 源码 internal/compose/local.go | brickkit-deploy skill 的 local/debug 一节写明宿主机端口如何分配、项目应避开哪个端口段 |
+| 2026-10-01 | BRICKKIT.zh.md 的章节标题必须用规定的中文名（组件定位/部署前准备/依赖说明/配置指南/契约索引/外壳声明），不能自由翻译 | 06a Task 8 写外壳文档 | 只能从 lint 报错反推（未读源码） | brickkit-component skill 的文档规则表列出每节的 en/zh 标准标题 |
+| 2026-10-01 | DOC_LINK_NOT_PORTABLE 也检查组件 AGENTS.md 里指向 `../` 的链接，不只 BRICKKIT.md | 06a Task 8 写外壳 AGENTS.md | 只能从 lint 报错反推 | 同上，在 skill 里写明哪些文件受这条约束 |
