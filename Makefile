@@ -68,7 +68,10 @@ registry-check:  ## 校验端口册与 schema 册自洽
 
 docs-boundary:  ## 正式文档不得链接 dev/ 或 archive/
 	@python3 infra/scripts/docs-boundary.py
-.PHONY: registry-check docs-boundary
+
+docs-mirror:  ## 项目文档 docs/en/ 与 docs/zh/ 逐文件对应：路径相同、二级标题数相同、第一行互链
+	@python3 infra/scripts/docs-mirror.py
+.PHONY: registry-check docs-boundary docs-mirror
 
 ##@ 校验
 lint:  ## brickKit 自身的三层 + 文档检查（严格模式）
@@ -103,7 +106,7 @@ teardown-down:  ## 停掉拆回验证的容器
 .PHONY: teardown-up teardown-down
 
 ##@ 门禁
-gates: docs-boundary  ## 跑全部验收门禁：组件互不 import + SystemClient 误用 + 裸路由/裸 resolver + 事件契约破坏性变更 + 数据权限边界测试缺失 + 依赖版本号漂移（外壳 go.mod 钉与镜像 tag）+ 配置里的版本化服务名与 brickkit.yaml 一致 + brickkit up --dry-run（brickKit 自带的依赖/钉/成员漂移检查）
+gates: docs-boundary docs-mirror  ## 跑全部验收门禁：正式文档边界 + 中英文档树镜像 + 组件互不 import + SystemClient 误用 + 裸路由/裸 resolver + 事件契约破坏性变更 + 数据权限边界测试缺失 + 依赖版本号漂移（外壳 go.mod 钉与镜像 tag）+ 配置里的版本化服务名与 brickkit.yaml 一致 + brickkit up --dry-run（brickKit 自带的依赖/钉/成员漂移检查）
 	@cd tools/be-acceptance && go build -o build/be-acceptance ./cmd/be-acceptance
 	@tools/be-acceptance/build/be-acceptance gate import-scan --root .
 	@tools/be-acceptance/build/be-acceptance gate system-client-scan --root .
@@ -120,7 +123,7 @@ version-check:  ## 扫全部 submodule（组件、外壳、工具仓库）：HEA
 	@bash infra/scripts/version-check.sh
 .PHONY: version-check
 
-bump-version:  ## 自动传播一次版本升级（算出全部下游要跟着同步的组件+改好所有文件），不写盘先看计划：make bump-version PLAN=<计划文件>；确认后加 APPLY=1 真的落地。计划文件格式与完整流程见 .claude/skills/version-bump-ship/SKILL.md 与 docs/conventions/development-workflow.md
+bump-version:  ## 自动传播一次版本升级（算出全部下游要跟着同步的组件+改好所有文件），不写盘先看计划：make bump-version PLAN=<计划文件>；确认后加 APPLY=1 真的落地。计划文件格式与完整流程见 .claude/skills/version-bump-ship/SKILL.md 与 docs/en/01-conventions/01-development-workflow.md
 	@test -n "$(PLAN)" || { echo "用法：make bump-version PLAN=<计划文件> [APPLY=1]"; exit 1; }
 	@cd tools/be-acceptance && go build -o build/be-acceptance ./cmd/be-acceptance
 	@tools/be-acceptance/build/be-acceptance bump-version --root . --plan "$(PLAN)" $(if $(APPLY),--apply,)
@@ -131,7 +134,7 @@ test-cross:  ## 组件局部测试：只跑 ID 一个组件，强依赖 gRPC 指
 	@bash $(S)/test-cross.sh "$(ID)" $(ARGS)
 .PHONY: test-cross
 
-##@ 本地开发数据（只给本地用，不用于生产/CI；每个组件自己拥有种子数据，见 docs/seed-data.md）
+##@ 本地开发数据（只给本地用，不用于生产/CI；每个组件自己拥有种子数据，见 docs/en/03-seed-data.md）
 # ⚠️ 这里曾经是 infra/seed-data/ 的编排脚本（seed.sh/clean.sh）。等到每个
 # 组件都有了自己的 make seed（且互不需要装配层帮它们传 id/sub——各自反查
 # 依赖组件的 command_idempotency 表），编排层就只剩"按顺序调用谁"这一件

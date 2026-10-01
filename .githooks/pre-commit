@@ -1,8 +1,11 @@
 #!/usr/bin/env bash
 # 提交前检查：brickKit 官方的 restore 判据（submodule 结构与 deploy.yaml 的 mode 一致）
-# + 正式文档边界（Task 2 加入）。
+# + 正式文档边界（Task 2 加入）+ 中英文档树镜像。
 set -euo pipefail
 brickkit --log-level off restore --check
 if [ -x infra/scripts/docs-boundary.py ]; then
   python3 infra/scripts/docs-boundary.py
+fi
+if [ -x infra/scripts/docs-mirror.py ]; then
+  python3 infra/scripts/docs-mirror.py
 fi
