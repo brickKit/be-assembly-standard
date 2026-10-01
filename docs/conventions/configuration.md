@@ -22,8 +22,8 @@ Connection details are ordinary configuration items declared in each component's
 | `PG_HOST` | PostgreSQL host | `$var:PG_HOST` | no |
 | `PG_PORT` | PostgreSQL port | `$var:PG_PORT` | no |
 | `PG_DATABASE` | PostgreSQL database name | `$var:PG_DATABASE` | no |
-| `PG_USER` | Login role of this component | literal (its schema name) | no |
-| `PG_PASSWORD` | Password of that role | `${<SCOPE>_<NAME>_DB_PASSWORD}` | yes |
+| `PG_USER` | Login role of this component | literal, the `role` column of `registry/schemas.tsv` (`<schema>_rw`) | no |
+| `PG_PASSWORD` | Password of that role | `${<REPO>_DB_PASSWORD}` | yes |
 | `PG_SCHEMA` | Schema owned by this component | literal, copied from `registry/schemas.tsv` | no |
 | `NATS_URL` | Event bus URL | `$var:NATS_URL` | no |
 | `S3_URL` | Object storage URL (full URL) | `$var:S3_URL` | no |
@@ -40,9 +40,9 @@ Connection details are ordinary configuration items declared in each component's
 
 ## Database roles
 
-Every component has its own login role. `PG_USER` is the component's schema name from `registry/schemas.tsv`, and `PG_PASSWORD` is `${<SCOPE>_<NAME>_DB_PASSWORD}`. `PG_SCHEMA` is copied from `registry/schemas.tsv`, never invented.
+Every component has its own login role. `PG_USER` is the `role` column of `registry/schemas.tsv` (`<schema>_rw`, for example `erp_sales_rw`). `PG_PASSWORD` is `${<REPO>_DB_PASSWORD}`, where `<REPO>` is the repository name in upper snake case: `erp-sales` gives `PG_PASSWORD: ${ERP_SALES_DB_PASSWORD}`. `PG_SCHEMA` stays the schema name (`erp_sales`), copied from `registry/schemas.tsv`, never invented.
 
-A shell logs in with its own role and, for each member, switches to that member's role with `SET LOCAL ROLE`. The switch is always transaction-scoped.
+A shell logs in with its own role `shell_<name>` (for example `shell_go_core`, password `${SHELL_GO_CORE_PASSWORD}`) and, for each member, switches to that member's role with `SET LOCAL ROLE <member>_rw`. The switch is always transaction-scoped.
 
 ## Dependency addresses
 

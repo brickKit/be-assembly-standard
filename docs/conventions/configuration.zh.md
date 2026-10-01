@@ -22,8 +22,8 @@
 | `PG_HOST` | PostgreSQL 主机 | `$var:PG_HOST` | 否 |
 | `PG_PORT` | PostgreSQL 端口 | `$var:PG_PORT` | 否 |
 | `PG_DATABASE` | PostgreSQL 数据库名 | `$var:PG_DATABASE` | 否 |
-| `PG_USER` | 本组件的登录角色 | 字面量（即其 schema 名） | 否 |
-| `PG_PASSWORD` | 该角色的密码 | `${<SCOPE>_<NAME>_DB_PASSWORD}` | 是 |
+| `PG_USER` | 本组件的登录角色 | 字面量，取 `registry/schemas.tsv` 的 `role` 列（`<schema>_rw`） | 否 |
+| `PG_PASSWORD` | 该角色的密码 | `${<REPO>_DB_PASSWORD}` | 是 |
 | `PG_SCHEMA` | 本组件独占的 schema | 字面量，照抄 `registry/schemas.tsv` | 否 |
 | `NATS_URL` | 事件总线地址 | `$var:NATS_URL` | 否 |
 | `S3_URL` | 对象存储地址（完整 URL） | `$var:S3_URL` | 否 |
@@ -40,9 +40,9 @@
 
 ## 数据库角色
 
-每个组件有自己的登录角色。`PG_USER` 取 `registry/schemas.tsv` 中该组件的 schema 名，`PG_PASSWORD` 为 `${<SCOPE>_<NAME>_DB_PASSWORD}`。`PG_SCHEMA` 照抄 `registry/schemas.tsv`，不得自拟。
+每个组件有自己的登录角色。`PG_USER` 取 `registry/schemas.tsv` 的 `role` 列（`<schema>_rw`，例如 `erp_sales_rw`）。`PG_PASSWORD` 为 `${<REPO>_DB_PASSWORD}`，`<REPO>` 是仓库名转大写下划线：`erp-sales` 对应 `PG_PASSWORD: ${ERP_SALES_DB_PASSWORD}`。`PG_SCHEMA` 仍是 schema 名（`erp_sales`），照抄 `registry/schemas.tsv`，不得自拟。
 
-外壳用自己的角色登录，并对每个成员用 `SET LOCAL ROLE` 切换到该成员的角色。切换始终限定在事务内。
+外壳用自己的角色 `shell_<name>` 登录（例如 `shell_go_core`，密码 `${SHELL_GO_CORE_PASSWORD}`），并对每个成员用 `SET LOCAL ROLE <member>_rw` 切换到该成员的角色。切换始终限定在事务内。
 
 ## 依赖地址
 
