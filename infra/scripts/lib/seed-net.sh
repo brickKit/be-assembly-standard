@@ -61,9 +61,31 @@ component_version() {
 }
 service_name() { echo "$1-$(component_version "$1")" | tr '[:upper:]' '[:lower:]' | tr '/.' '--'; }
 
+# service_host <id> -> 组件实际所在的 compose 服务名（读 .brickkit/generated/compose.yaml）。
+# v1 里被外壳收编的成员，其版本化服务名只是外壳服务的网络别名；这里不自己按规则
+# 推断，而是在生成的 compose 里查：服务名恰好等于它，或它出现在某个服务的 aliases 里。
+# 生成文件不存在（还没 brickkit up/--dry-run 过）或查不到时，退回 service_name 的结果
+# ——别名机制保证两种形态用这个名字都能解析到。
+service_host() {
+  local want f="${COMPOSE_FILE_GENERATED:-$ROOT/.brickkit/generated/compose.yaml}"
+  want="$(service_name "$1")"
+  [ -f "$f" ] || { echo "$want"; return; }
+  python3 - "$f" "$want" <<'PY' 2>/dev/null || echo "$want"
+import sys, yaml
+d = yaml.safe_load(open(sys.argv[1])); want = sys.argv[2]
+for name, svc in (d.get("services") or {}).items():
+    nets = svc.get("networks") or {}
+    aliases = [a for v in (nets.values() if isinstance(nets, dict) else []) for a in ((v or {}).get("aliases") or [])]
+    if name == want or want in aliases:
+        print(name); break
+else:
+    print(want)
+PY
+}
+
 seed_net_check() {
   NET="${BRICKKIT_NET:-brickkit-$(basename "$ROOT")-net}"
-  docker network inspect "$NET" >/dev/null 2>&1 || die "docker 网络 $NET 不存在——先把本组件 brickkit up 起来（整套或只装这一个，servedBy 合并部署也可以）"
+  docker network inspect "$NET" >/dev/null 2>&1 || die "docker 网络 $NET 不存在——先把本组件 brickkit up 起来（整套或只装这一个，外壳合并部署也可以）"
 }
 
 # ⚠️ 真机踩到的坑：--user 必须跟宿主机当前用户一致——COOKIE_JAR 是 host
@@ -87,7 +109,7 @@ check_healthz() { # url label
 }
 
 CASDOOR_URL="${CASDOOR_URL:-http://host.docker.internal:8000}"
-IAM_URL="${IAM_URL:-http://$(service_name infra/iam-casdoor):8200}"
+IAM_URL="${IAM_URL:-http://$(service_host infra/iam-casdoor):8200}"
 SEED_PASSWORD="${SEED_PASSWORD:-DevSeed123!}"
 SEED_APP="${SEED_APP:-local-dev-seed-app}"
 

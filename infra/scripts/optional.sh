@@ -38,7 +38,7 @@ if [[ "$ACTION" == up ]]; then
       if [[ "$(docker inspect -f '{{.State.Status}}' "$ocont" 2>/dev/null)" == running ]]; then
         die "${me} 与 ${oname} 属于同一互斥组「${grp}」，同一环境只能装一个。
    先关掉它：make ${oname}-down（若它是默认资源，说明你要换的是默认实现，
-   还要同步改 brickkit.yaml 的 resources[].engine 或那份 compose）"
+   还要同步改 config/vars.yaml 里对应资源的连接配置，以及组件 config/ 里引用它的值）"
       fi
     done < <(read_rows all)
   done

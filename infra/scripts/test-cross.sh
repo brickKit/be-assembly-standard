@@ -24,6 +24,8 @@ DIR="$ROOT/components/$(echo "$REPO" | sed 's#-#/#')"   # 只换第一个 -：in
 [ -d "$DIR" ] || { echo "✗ 找不到组件目录：$DIR" >&2; exit 1; }
 [ -f "$DIR/component.yaml" ] || { echo "✗ $DIR 下没有 component.yaml" >&2; exit 1; }
 
+# 复用 seed-net.sh 的 component_version/service_host（读 brickkit.yaml 与 .brickkit/generated/compose.yaml）
+source "$ROOT/infra/scripts/lib/seed-net.sh"
 NET="${BRICKKIT_NET:-brickkit-$(basename "$ROOT")-net}"
 docker network inspect "$NET" >/dev/null 2>&1 || {
 	echo "✗ docker 网络 $NET 不存在——先 brickkit up（整套，或只装这个组件+强依赖树）" >&2
@@ -72,9 +74,11 @@ for dep in "${DEPS[@]}"; do
 	[ -n "$grpc_port" ] || { echo "✗ registry/ports.tsv 里找不到 $dep 的 grpc 端口" >&2; exit 1; }
 
 	slug="$(echo "$dep" | tr '/' '-')"                       # mdm/customer → mdm-customer
-	cname="$(docker ps --filter "name=${NET%-net}-${slug}-" --format '{{.Names}}' | head -1)"
+	# 依赖实际所在的服务（独立部署是它自己，外壳收编时是外壳服务），读 .brickkit/generated/compose.yaml
+	svc="$(service_host "$dep")"
+	cname="$(docker ps --filter "label=com.docker.compose.service=${svc}" --filter "label=com.docker.compose.project=${NET%-net}" --format '{{.Names}}' | head -1)"
 	[ -n "$cname" ] || {
-		echo "✗ 依赖容器没在跑：$dep（找不到名字含 ${NET%-net}-${slug}- 的容器）——先把它 brickkit up 起来" >&2
+		echo "✗ 依赖容器没在跑：$dep（compose 项目 ${NET%-net} 里找不到服务 $svc）——先把它 brickkit up 起来" >&2
 		exit 1
 	}
 

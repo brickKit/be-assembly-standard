@@ -58,14 +58,46 @@ for p in "${paths[@]}"; do
     bad=1
     continue
   fi
-  tagtype="$(git -C "$p" cat-file -t "$desc" 2>&1)"
-  if [[ "$tagtype" != "tag" ]]; then
-    echo "${C_RED}✗ $p：$desc 是轻量 tag（应为带注解的 \`git tag -a\`）——git submodule status 会显得像是漂移${C_OFF}"
+  # 双 tag：同一个提交可能同时有 2.0.0 与 v2.0.0（Go 组件两种格式并存），
+  # 每一个都必须是带注解的 tag，而不只是 describe 恰好挑中的那一个。
+  mapfile -t headtags < <(git -C "$p" tag --points-at HEAD)
+  [[ ${#headtags[@]} -eq 0 ]] && headtags=("$desc")
+  lightweight=""
+  for t in "${headtags[@]}"; do
+    [[ "$(git -C "$p" cat-file -t "$t" 2>&1)" != "tag" ]] && lightweight="$lightweight $t"
+  done
+  if [[ -n "$lightweight" ]]; then
+    echo "${C_RED}✗ $p：${lightweight# } 是轻量 tag（应为带注解的 \`git tag -a\`）——git submodule status 会显得像是漂移${C_OFF}"
     bad=1
   else
-    echo "${C_GRN}✓ $p：$desc${C_OFF}"
+    echo "${C_GRN}✓ $p：${headtags[*]}${C_OFF}"
   fi
 done
+
+# 外壳（shell/be/<name>/）不是 submodule，是父仓库自己的目录，tag 在父仓库里：
+# be-<name>/<version>（brickKit monorepo tag 格式 <scope>-<name>/<version>）。
+# 判据：该目录自最新 be-<name>/* tag 以来没有新提交；没有任何 tag 也算漂移。
+for d in shell/be/*/; do
+  [[ -d "$d" ]] || continue
+  name="$(basename "$d")"
+  latest="$(git tag --list "be-${name}/*" --sort=-v:refname | head -1)"
+  if [[ -z "$latest" ]]; then
+    echo "${C_RED}✗ ${d%/}：父仓库里没有任何 be-${name}/<版本> tag${C_OFF}"
+    bad=1
+    continue
+  fi
+  ahead="$(git log --oneline "${latest}..HEAD" -- "$d" | wc -l)"
+  if [[ "$ahead" -gt 0 ]]; then
+    echo "${C_RED}✗ ${d%/}：自 $latest 以来有 ${ahead} 个未打 tag 的提交${C_OFF}"
+    bad=1
+  elif [[ "$(git cat-file -t "$latest")" != "tag" ]]; then
+    echo "${C_RED}✗ ${d%/}：$latest 是轻量 tag${C_OFF}"
+    bad=1
+  else
+    echo "${C_GRN}✓ ${d%/}：$latest${C_OFF}"
+  fi
+done
+
 
 if [[ $bad -ne 0 ]]; then
   echo
@@ -73,4 +105,4 @@ if [[ $bad -ne 0 ]]; then
   exit 1
 fi
 echo
-echo "${C_GRN}✓ 全部 submodule HEAD 与最新 tag 一致${C_OFF}"
+echo "${C_GRN}✓ 全部 submodule 与外壳目录都与最新 tag 一致${C_OFF}"

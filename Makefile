@@ -70,73 +70,40 @@ docs-boundary:  ## 正式文档不得链接 dev/ 或 archive/
 	@python3 infra/scripts/docs-boundary.py
 .PHONY: registry-check docs-boundary
 
-##@ 军火库
-arsenal-check:  ## 检查 submodule 结构与 brickkit.yaml 是否自洽
-	@bash $(S)/arsenal.sh check
+##@ 校验
+lint:  ## brickKit 自身的三层 + 文档检查（严格模式）
+	@brickkit lint --strict
 
-arsenal-restore:  ## 把 enabled 与目录结构还原到与 brickkit.yaml 一致
-	@bash $(S)/arsenal.sh restore
-.PHONY: arsenal-check arsenal-restore
+docs-check:  ## 检查某个组件的四件套：make docs-check ID=mdm/customer
+	@test -n "$(ID)" || (echo "用法：make docs-check ID=<scope>/<name>"; exit 2)
+	@cd components/$(ID) && brickkit lint --strict
+.PHONY: lint docs-check
 
 ##@ 数据库
-db-init:  ## 执行 be-ops 产出的建库脚本（幂等，可重跑）
-	@cd tools/be-ops && go build -o build/be-ops ./cmd/be-ops
-	@tools/be-ops/build/be-ops db-script --root . --out build/db-init.sql
-	@set -a; . ./.env; set +a; \
-	docker exec -i be-postgres psql -v ON_ERROR_STOP=1 -U postgres \
-	  -v pw_shell_go_core="$$SHELL_GO_CORE_PASSWORD" \
-	  -v pw_shell_go_backoffice="$$SHELL_GO_BACKOFFICE_PASSWORD" \
-	  -v pw_shell_go_infra="$$SHELL_GO_INFRA_PASSWORD" \
-	  -v pw_shell_py_brain="$$SHELL_PY_BRAIN_PASSWORD" \
-	  -v pw_shell_py_render="$$SHELL_PY_RENDER_PASSWORD" \
-	  -f - < build/db-init.sql
-	@echo "✓ 建库脚本已执行（幂等，可重跑）"
-.PHONY: db-init
+db-init:  ## 执行 be-ops 产出的建库脚本（幂等，可重跑；.env 缺密码时报错并提示 make dev-env）
+	@bash $(S)/db-init.sh
+
+dev-env:  ## 补齐 .env 里各数据库登录角色的随机密码（只追加缺失项，不覆盖，只打印变量名）
+	@bash $(S)/dev-env.sh
+.PHONY: db-init dev-env
 
 test-db-init:  ## 建/刷新本地测试专用库 brickkit_test_db（跟真机演示数据用的 brickkit_db 物理分开，幂等可重跑）
 	@bash infra/scripts/test-db-init.sh
 .PHONY: test-db-init
 
-##@ 外壳（阶段四 Task 8，设计书 §13.8/§13.9；阶段四附加 Task 0.4/0.5：外壳态改用 brickKit 原生 servedBy 之后，shell-gen/shell-image/shell-up/shell-down 这几个手写编排目标已经退休——外壳跟独立组件现在是同一份 brickkit.yaml、同一条 `brickkit up`，"谁被 servedBy 收编谁没有"的区别，不再是两条互斥的部署路径。见 docs/plans/04b-验证记录.md Task 0.4/0.5）
-# 剩下这两个目标（teardown-up/teardown-down）仍然有存在的理由：验证
-# "组件真的能独立跑"（设计书 §13.7 拆回门禁、`make tier0`/`make tier1`
-# 的部分断言）需要把当前的 servedBy 临时去掉，让 12 个成员变回各自独立
-# 的容器——这跟"部署时到底选外壳态还是全拆态"是两件事，前者是本仓库
-# brickkit.yaml 目前唯一在用的真实部署形态，后者是"验证组件没有偷偷依赖
-# 合并"这条设计铁律专用的、一次性的临时测试状态。
-#
-# 阶段四附加 Task 0.6：brickKit v0.4.2 新增 `brickkit up --ignore-served-by`
-# （内存里清空全部 servedBy，不写回文件）之后，"删掉每个成员 servedBy 那
-# 一行"不再需要脚本自己动手改文件、也不再需要事后恢复。但资源绑定
-# （servingShellID 的等价关系只在 servedBy 指向外壳时成立，清空之后
-# 12 个成员必须每个都有自己的直接绑定）+ `expose: true`（12 个成员早就
-# 不是独立容器，这两个字段已被删掉）这两件事 `--ignore-served-by` 管不到，
-# 仍然需要 `infra/scripts/patch-teardown-bindings.py` 临时打补丁、
-# `teardown-down` 时 `git checkout` 恢复。完整推演（含真机 `--dry-run`
-# 验证过"只加 flag 不打补丁会 RESOURCE_UNBOUND"）见
-# `docs/plans/04b-验证记录.md` Task 0.6。
+##@ 拆回验证
+# 同一份 brickkit.yaml，`--ignore-shells` 让所有成员忽略 servedBy、各自独立成容器；
+# 部署文件 deploy.teardown.yaml 里把 authz/iam 地址换成它们自己的服务名。
+# 不再临时改 brickkit.yaml，也就没有"事后恢复"这一步。
+teardown-up:  ## 拆回验证：所有成员按独立组件部署（--ignore-shells + deploy.teardown.yaml）
+	@brickkit up -f deploy.teardown.yaml --ignore-shells
 
-teardown-up:  ## 临时切到全拆态：打上全拆态专用资源绑定、用 --ignore-served-by 验证"组件真的能独立跑"（设计书 §13.7 拆回门禁）
-	@if [ -n "$$(git status --porcelain brickkit.yaml)" ]; then \
-		echo "✗ brickkit.yaml 当前不干净——teardown-up 要临时改它、teardown-down 会用 git checkout 恢复，先处理掉这份未提交的改动再重跑" >&2; \
-		exit 1; \
-	fi
-	@echo "▸ 临时给 brickkit.yaml 打上全拆态专用的资源绑定 + expose:true、禁用 4 个外壳组件条目（不 commit，teardown-down 时原样恢复）"
-	@python3 infra/scripts/patch-teardown-bindings.py
-	@brickkit up --ignore-served-by
-	@echo "✓ 全拆态已启动：14 个组装态容器（12 个原 servedBy 成员各自独立 + 2 个本来就独立的 infra-bff-mobile/frontend-standard）。⚠️ brickkit.yaml 现在处于临时改过的状态，用 make teardown-down 恢复，不要在这期间提交它"
-.PHONY: teardown-up
-
-teardown-down:  ## 停掉全拆态的全部容器，并把 teardown-up 临时改过的 brickkit.yaml 还原
-	@brickkit down
-	@if [ -n "$$(git status --porcelain brickkit.yaml)" ]; then \
-		echo "▸ 恢复 brickkit.yaml 到 teardown-up 之前提交的样子"; \
-		git checkout -- brickkit.yaml; \
-	fi
-.PHONY: teardown-down
+teardown-down:  ## 停掉拆回验证的容器
+	@brickkit down -f deploy.teardown.yaml
+.PHONY: teardown-up teardown-down
 
 ##@ 门禁
-gates: docs-boundary  ## 跑全部验收门禁：铁律六 import 扫描 + SystemClient 误用 + 裸路由/裸 resolver + 事件契约破坏性变更 + 数据权限边界测试缺失 + 依赖版本号漂移（拆回门禁见阶段四）
+gates: docs-boundary  ## 跑全部验收门禁：铁律六 import 扫描 + SystemClient 误用 + 裸路由/裸 resolver + 事件契约破坏性变更 + 数据权限边界测试缺失 + 依赖版本号漂移（外壳 go.mod 钉与镜像 tag）+ brickkit up --dry-run（v1 自带的依赖/钉/成员漂移检查）
 	@cd tools/be-acceptance && go build -o build/be-acceptance ./cmd/be-acceptance
 	@tools/be-acceptance/build/be-acceptance gate import-scan --root .
 	@tools/be-acceptance/build/be-acceptance gate system-client-scan --root .
@@ -144,9 +111,11 @@ gates: docs-boundary  ## 跑全部验收门禁：铁律六 import 扫描 + Syste
 	@tools/be-acceptance/build/be-acceptance gate events-breaking-scan --root .
 	@tools/be-acceptance/build/be-acceptance gate data-scope-test-scan --root .
 	@tools/be-acceptance/build/be-acceptance gate dependency-version-scan --root .
+	@echo "▸ brickkit up --dry-run（v1 自带的漂移检查：依赖/版本钉/外壳成员；不启动任何容器）"
+	@brickkit up --dry-run
 .PHONY: gates
 
-version-check:  ## 扫全部 submodule：HEAD 是否领先最新 tag（阶段三 Task 3，阶段二复盘 §4 第 1 条）
+version-check:  ## 扫全部 submodule 与 shell/be/* 外壳目录：HEAD 是否领先最新 tag（兼容 2.0.0 与 v2.0.0 双 tag）（阶段三 Task 3，阶段二复盘 §4 第 1 条）
 	@bash infra/scripts/version-check.sh
 .PHONY: version-check
 
@@ -155,11 +124,6 @@ bump-version:  ## 自动传播一次版本升级（算出全部下游要跟着�
 	@cd tools/be-acceptance && go build -o build/be-acceptance ./cmd/be-acceptance
 	@tools/be-acceptance/build/be-acceptance bump-version --root . --plan "$(PLAN)" $(if $(APPLY),--apply,)
 .PHONY: bump-version
-
-docs-check:  ## 检查某个组件的四份文档：make docs-check REPO=mdm-customer
-	@test -n "$(REPO)" || { echo "用法：make docs-check REPO=<仓库名>"; exit 1; }
-	@bash $(S)/docs-check.sh "$(REPO)"
-.PHONY: docs-check
 
 test-cross:  ## 组件局部测试：只跑 REPO 一个组件，强依赖 gRPC 指向真实在跑的依赖容器（要求强依赖树在跑）。make test-cross REPO=crm-opportunity；带过滤直接 bash infra/scripts/test-cross.sh <repo> -run <名>
 	@test -n "$(REPO)" || { echo "用法：make test-cross REPO=<仓库名>"; exit 1; }
@@ -207,8 +171,8 @@ tier0:  ## 档 0 六项验收，每加一个组件都要重跑（§9.6.1 档 4�
 	@$(MAKE) -C tools/be-acceptance tier0
 .PHONY: tier0
 
-tier1:  ## 档 1 平台断言（brickKit 自身行为的回归测试，非业务），需要 brickkit up 先起好
-	@$(MAKE) -C tools/be-acceptance tier1
+tier1:  ## 【占位】档 1 平台断言：v1 下整体重写，06f 之前不做任何事
+	@echo "tier1 在 brickKit v1 下整体重写，推迟到 06f（platform/ 旧断言已随 be-acceptance 删除）；当前为占位，直接通过"
 .PHONY: tier1
 
 tier2:  ## 档 2 合并态专属断言（阶段四 Task 11），需要真实可达的 TEST_PG_DSN/TEST_NATS_URL
