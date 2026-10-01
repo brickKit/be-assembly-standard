@@ -39,7 +39,7 @@ brickkit.yaml           the components and their exact versions (the lock file)
 deploy.yaml             how they run: target, shells, exposed ports
 config/                 each component's values; vars.yaml for values shared by several
 components/<scope>/<name>/   one Git submodule per component
-shell/<scope>/<name>/   the shells: several components in one process, project code
+shell/<scope>/<name>/   one Git submodule per shell: several components in one process
 tools/                  be-sdk-go, be-sdk-python, be-sdk-ts, be-ops, be-acceptance
 registry/               ports, schemas, permission keys, data scopes
 infra/                  the base resources make up starts, and the project's scripts

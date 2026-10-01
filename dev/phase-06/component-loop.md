@@ -257,7 +257,7 @@ AUTHZ_BUNDLE_URL: $var:AUTHZ_BUNDLE_URL
 IAM_JWKS_URL: $var:IAM_JWKS_URL
 ```
 
-组件自有键：只有"组件的默认值在本项目里就是对的"那些键才保持注释（跟随组件默认，升级时新默认值能到达）；凡是本项目必须给出真实内容的键——权限目录、已装组件清单、首个管理员（§2.5）、`DEFAULT_WAREHOUSE_ID` 这类——一律显式写出（字面量、`${…}` 或 `file://`），并且在 `configSchema` 里不给默认值、进 `required`，这样漏填时 `up` 会拒绝启动，而不是带着空值悄悄跑起来。目前 `config/vars.yaml` 里的 `AUTHZ_BUNDLE_URL`/`IAM_JWKS_URL` 指向 `be-go-infra-1-0-0`——这个外壳要到 B3 才存在，B1–B2 期间的应对见附录 B。
+组件自有键：只有"组件的默认值在本项目里就是对的"那些键才保持注释（跟随组件默认，升级时新默认值能到达）；凡是本项目必须给出真实内容的键——权限目录、已装组件清单、首个管理员（§2.5）、`DEFAULT_WAREHOUSE_ID` 这类——一律显式写出（字面量、`${…}` 或 `file://`），并且在 `configSchema` 里不给默认值、进 `required`，这样漏填时 `up` 会拒绝启动，而不是带着空值悄悄跑起来。`config/vars.yaml` 里的 `AUTHZ_BUNDLE_URL`/`IAM_JWKS_URL` 用成员自己的服务名（`http://infra-authz-2-0-0:8223/authz/bundle`、`http://infra-iam-casdoor-2-0-0:8200/.well-known/jwks.json`，R29/R30）：独立部署、进外壳（外壳容器的网络别名）、拆回验证都能解析，任何部署文件都不用 `vars:` 覆盖；只在 authz/iam 发版时改，`make gates`（`service-hostname-scan`）核对。B1 期间 authz/iam 还没加入项目时的预期见附录 B。
 
 ### 2.5 由项目内容决定的配置值（authz / iam-casdoor，B2 落地；控制者裁定 R27）
 
@@ -611,7 +611,7 @@ TypeScript（infra/bff-mobile）对应项：`package.json` 的 `version` 改 `2.
   ```
   通过（scratch 实测的输出形态）：`➕ Adding <id>@2.0.0`、`✅ <id>@2.0.0`、`📝 Written: brickkit.yaml, deploy.yaml[, deploy.local.yaml]`、`📝 Config skeletons: config/$REPO.yaml`、`✏️ Fill in the required keys in config/$REPO.yaml: …`。若提示 `ℹ️ Not changed: deploy.teardown.yaml` 之类，下一步手工同步。`git diff AGENTS.md` 看到组件表多了一行（版本 2.0.0，Home 列是 `metadata.repository`）。
 - [ ] **7.3 填 `config/$REPO.yaml`**：按 §2.4。密钥写进 `.env`（`.env` 不提交）；多行密钥放 `.secrets/<repo>/`。`$var:` 后面没有空格。
-- [ ] **7.4 同步 `deploy.teardown.yaml`**：`brickkit add` 只维护 `deploy.yaml`（和存在时的 `deploy.local.yaml`），拆回验证用的 `deploy.teardown.yaml` 必须手工加同样的条目（结构与 `deploy.yaml` 一致，保留它自己的 `vars:`）。通过：`brickkit up -f deploy.teardown.yaml --ignore-shells --dry-run` 不报 `DEPLOY_INCONSISTENT`。
+- [ ] **7.4 同步 `deploy.teardown.yaml`**：`brickkit add` 只维护 `deploy.yaml`（和存在时的 `deploy.local.yaml`），拆回验证用的 `deploy.teardown.yaml` 必须手工加同样的条目（结构与 `deploy.yaml` 一致；它没有 `vars:` 覆盖，authz/iam 地址本来就是成员服务名，R30）。通过：`brickkit up -f deploy.teardown.yaml --ignore-shells --dry-run` 不报 `DEPLOY_INCONSISTENT`。
 - [ ] **7.5 生成检查**：`brickkit up --dry-run`。通过：`📋 Component state calculation` 里本组件 `starting (…)`；没有 `CONFIG_INVALID`（缺 required 值）、没有未定义 `$var:` / `${…}`；`📄 Generated: .brickkit/generated/compose.yaml`。`grep -n -A30 "$SVC:" .brickkit/generated/compose.yaml` 能看到 `PG_USER=$ROLE`、`extra_hosts: host.docker.internal:host-gateway`（配置里用了 `host.docker.internal` 时 brickKit 自动加）。
 - [ ] **7.6 V-07（只在 mdm/customer 做，7.5 之后缓存已生成）**：把 `$C/component.yaml` 的版本临时改成 `2.0.1`（不提交），跑 `cd $C && brickkit lint`、`cd $ROOT && brickkit lint 2>&1 | grep -n -i -A3 'mdm/customer'`、`brickkit up --dry-run`，原文记录三者是否发现"`brickkit.yaml` 钉 2.0.0、本地源是 2.0.1"的漂移；然后 `git -C $C checkout component.yaml` 复原，再跑一次 `brickkit up --dry-run` 确认恢复。结论写进 to-verify 的 V-07 行。
 - [ ] **7.7 构建镜像**：
@@ -711,19 +711,19 @@ TypeScript（infra/bff-mobile）对应项：`package.json` 的 `version` 改 `2.
 
 | 外壳 | 端口 | 登录角色 / 密码 | 成员（`shell.members`） | 语言要点 |
 |---|---|---|---|---|
-| `be/go-infra` | 8224 | `shell_go_infra` / `${SHELL_GO_INFRA_PASSWORD}` | `infra/authz@2.0.0`、`infra/iam-casdoor@2.0.0`、`infra/workflow@2.0.0`、`infra/notification@2.0.0`、`integration/im-dingtalk@2.0.0` | Go；`config/vars.yaml` 的 `AUTHZ_BUNDLE_URL`/`IAM_JWKS_URL` 从此真正可达 |
+| `be/go-infra` | 8224 | `shell_go_infra` / `${SHELL_GO_INFRA_PASSWORD}` | `infra/authz@2.0.0`、`infra/iam-casdoor@2.0.0`、`infra/workflow@2.0.0`、`infra/notification@2.0.0`、`integration/im-dingtalk@2.0.0` | Go；`config/vars.yaml` 的 `AUTHZ_BUNDLE_URL`/`IAM_JWKS_URL` 值不变，成员服务名从此由外壳容器的网络别名解析 |
 | `be/py-render` | 8402 | `shell_py_render` / `${SHELL_PY_RENDER_PASSWORD}` | `infra/print@2.0.0` | Python；镜像要带 WeasyPrint 的系统库与中文字体 |
 | `be/go-core` | 8090 | `shell_go_core` / `${SHELL_GO_CORE_PASSWORD}` | `mdm/customer@2.0.0`、`mdm/product@2.0.0`、`erp/inventory@2.0.0`、`erp/finance@2.0.0`、`erp/sales@2.0.0` | Go |
 | `be/go-backoffice` | 8116 | `shell_go_backoffice` / `${SHELL_GO_BACKOFFICE_PASSWORD}` | `crm/opportunity@2.0.0` | Go |
 
-以下用 `$SH=be/go-infra`、`$SHD=$ROOT/shell/be/go-infra`、`$SHN=go-infra` 举例。
+以下用 `$SH=be/go-infra`、`$SHD=$ROOT/shell/be/go-infra`、`$SHN=go-infra` 举例。外壳是独立仓库（`brickKit/be-$SHN`，0022），`$SHD` 是它在父仓库里的子模块检出：外壳文件在 `$SHD` 里提交、推送、发布，父仓库只提交子模块指针。
 
 ### 4.1 前置
 
 - [ ] 每个成员都已 2.0.0 发布并推送（Go 成员 `2.0.0` 与 `v2.0.0` 两个 tag 都在远端，`git -C <成员> ls-remote --tags origin v2.0.0` 有一行），且已作为独立组件加入项目、真机 healthy 过。
 - [ ] 每个 Go 成员的契约包 tag 已推送：`git -C <成员> ls-remote --tags origin "gen/*"` 里有成员根 `go.mod` require 的那个版本（第 4.3、8.3 步）。
-- [ ] 外壳 1.0.0 还没发布过：`git -C $ROOT tag -l "be-$SHN/*"` 为空（发布过的话版本改 1.1.0，走 4.7）。
-- [ ] 外壳目录没有别人未提交的改动：`git -C $ROOT status --short -- shell/be/$SHN`。
+- [ ] 外壳 1.0.0 还没发布过：`git -C $SHD tag -l` 为空（外壳的 tag 在外壳仓库里；发布过的话版本改 1.1.0，走 4.7）。
+- [ ] 外壳子模块干净且在 main 上：`git -C $SHD status --short` 为空；`git -C $ROOT submodule status shell/be/$SHN` 行首没有 `+`（检出的提交就是父仓库记录的指针）；子模块处于 detached HEAD 时先 `git -C $SHD switch main && git -C $SHD pull --ff-only`。
 
 ### 4.2 改外壳代码（成员清单三处一起改）
 
@@ -805,14 +805,14 @@ TypeScript（infra/bff-mobile）对应项：`package.json` 的 `version` 改 `2.
 
 ### 4.6 发布外壳 1.0.0
 
-- [ ] 父仓库提交外壳目录与项目文件（`shell/be/$SHN`、`brickkit.yaml`、`deploy.yaml`、`deploy.teardown.yaml`、`config/be-$SHN.yaml`、`AGENTS.md`），`git commit -F … -- <路径>`。
-- [ ] ⚠️ `brickkit release` 要求"分支有上游且没有未推送的提交"——外壳住在父仓库里，所以**发布外壳前父仓库必须整体推送**。第一次（B3）推之前**停下问用户**（父仓库当时可能领先 origin 很多提交）。
-- [ ] `cd $ROOT && brickkit release --path shell/be/$SHN --notes-file $S/notes-be-$SHN-1.0.0.md`。通过：tag `be-$SHN/1.0.0` 创建并推送（`git ls-remote --tags origin "be-$SHN/1.0.0"` 有一行，`git cat-file -t be-$SHN/1.0.0` 是 `tag`）。外壳的 Go 模块没有人 import，不打 `v` tag。
+- [ ] **在外壳仓库提交并推送**：`cd $SHD && git status --short`（只应有外壳自己的文件），`git add -A && git commit -F $S/msg-be-$SHN.txt && git log --oneline -1 && git push origin main`。
+- [ ] **在外壳仓库发布**：`cd $SHD && brickkit release --notes-file $S/notes-be-$SHN-1.0.0.md`（说明文件在外壳目录之外）。通过：tag `1.0.0` 创建并推送（`git -C $SHD ls-remote --tags origin 1.0.0` 有一行，`git -C $SHD cat-file -t 1.0.0` 是 `tag`）。外壳没有人 import，不打 `v` tag；绝不在父仓库用 `brickkit release --path` 发布、也不在父仓库打 `be-$SHN/*` tag。
+- [ ] **父仓库提交指针与项目文件**：`shell/be/$SHN`（子模块指针）、`brickkit.yaml`、`deploy.yaml`、`deploy.teardown.yaml`、`config/be-$SHN.yaml`、`AGENTS.md`，`git commit -F … -- <路径>`，`git show --stat HEAD` 核对；`git submodule status shell/be/$SHN` 显示 `(1.0.0)`；`make version-check` 里这个外壳一行是 `✓`。
 - [ ] 发布后镜像与提交一致：发布前又改过外壳的，`brickkit build $SH --force`。
 
 ### 4.7 以后再给已发布的外壳加成员 / 换成员版本
 
-外壳版本 +1（加成员 minor，换成员版本 patch），4.2–4.6 同样走一遍，项目侧用 `brickkit upgrade $SH@<新版本> --dry-run` 再去掉 `--dry-run`（不是 `add`），`brickkit up` 遇到旧镜像会报 `IMAGE_STALE`。成员版本变化时外壳必须跟着发版（[0022]）。
+外壳版本 +1（加成员 minor，换成员版本 patch），4.2–4.6 同样走一遍（外壳仓库里提交、发布 `<新版本>`，父仓库提交新指针），项目侧用 `brickkit upgrade $SH@<新版本> --dry-run` 再去掉 `--dry-run`（不是 `add`），`brickkit up` 遇到旧镜像会报 `IMAGE_STALE`。成员版本变化时外壳必须跟着发版（[0022]）。
 
 ---
 
@@ -1038,7 +1038,7 @@ for p in sorted(glob.glob(ROOT + 'components/*/*/component.yaml')):
 **过渡期现象**
 
 - 根目录 `brickkit lint` / `make lint` 在 06b 全程会因为还没重建的旧 `component.yaml`（`dependencies.resources` 等 v0 字段）报错；本地源里有非法的旧清单**不影响** `brickkit add` / `up` 其它组件（scratch 实测）。
-- `config/vars.yaml` 的 `AUTHZ_BUNDLE_URL` / `IAM_JWKS_URL` 指向 `be-go-infra-1-0-0`，这个外壳 B3 才存在。B1：受保护路由只验到 `401`（判定链在工作），不验 `200`。B2（authz、iam-casdoor 已独立运行、外壳还没有）：要验 `200` 时，在个人文件 `deploy.local.yaml`（`brickkit local on` 之后）加 `vars:`，覆盖成 `http://infra-authz-2-0-0:8223/authz/bundle` 与 `http://infra-iam-casdoor-2-0-0:8200/.well-known/jwks.json`（与 `deploy.teardown.yaml` 的 `vars:` 相同），不改 `config/vars.yaml`。focus 起的宿主机进程解析不了容器服务名，受保护路由在 focus 下只验 `401`。
+- `config/vars.yaml` 的 `AUTHZ_BUNDLE_URL` / `IAM_JWKS_URL` 用成员服务名 `infra-authz-2-0-0` / `infra-iam-casdoor-2-0-0`（R29/R30）。B1（authz、iam-casdoor 还没加入项目）：这两个主机名解析不到，受保护路由只验到 `401`（判定链在工作），不验 `200`；`service-hostname-scan` 对还没声明的组件只警告。B2 起 authz、iam-casdoor 作为独立组件加入项目，地址直接可达，验 `200`；B3 它们进 go-infra 外壳后由外壳容器的网络别名解析，值不变。任何阶段都不需要 `deploy.local.yaml` 或 `deploy.teardown.yaml` 的 `vars:` 覆盖，也不改 `config/vars.yaml`。focus 起的宿主机进程解析不了容器服务名，受保护路由在 focus 下只验 `401`。
 - `make tier1` 是占位（06f 重写）。`make tier0` 是 mdm/customer 专用、带 v0 假设的旧断言。
 - `make bump-version`：be-acceptance v0.4.1（父仓库的 `tools/be-acceptance` 已指向它）不再往 `component.yaml` 写历史注释，照常使用（控制者裁定 R26）。分工：首轮 1.x → 2.0.0 时，下游组件的依赖版本在它自己第 3 步整份重写 `component.yaml` 时直接写 `@2.0.0`（那时它的旧文件反正要整份换掉）；**一个组件发布 2.0.0 之后再有任何改动**（修 bug 发 2.0.1、补字段发 2.1.0），以及外壳的 `shell.members` / `go.mod` 跟着成员换版本，一律走 `make bump-version PLAN=<计划文件>`（先 dry-run 看级联，再 `APPLY=1`），一个批次写一份计划文件，然后按 `version-bump-ship` skill 逐个发布、`brickkit upgrade`。
 - `version-bump-ship` skill 和根 `Makefile` 的 `bump-version` 帮助文字还引用已归档的 `00-master-guide.md` SOP-W-11；以 development-workflow.md 为准。

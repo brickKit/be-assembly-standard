@@ -59,7 +59,7 @@
 - **先升版本，再动手。** 一开始就把 `metadata.version` 升上去，发布之前随便改；已经发布的版本绝不原地修改。
 - 版本号必须精确（`2.0.0`）。组件在 `2.x` 线上，外壳在 `1.x` 线上。
 - **Go 组件在同一个提交上打两个 tag**：给 brickKit 的 `2.0.0`（不带 `v`）和给 Go 工具链的 `v2.0.0`。模块路径以主版本结尾（`…/v2`），随主版本一起变。
-- **外壳**在本仓库的 `shell/<scope>/<name>/` 下，tag 是本仓库里的 `<scope>-<name>/<版本>`。
+- **外壳**是独立仓库，在本仓库里以 Git 子模块检出在 `shell/<scope>/<name>/`（[0022](../decisions/0022-one-repository-per-shell.zh.md)）。外壳和组件一样在它自己仓库的根目录发布，只打裸 tag（`1.0.0`）：没有人 import 外壳，所以不打 `v` tag。
 - **用工具传播，不手工找。** 把这次会话里真正改了的组件全部写进一份计划文件，先 `make bump-version PLAN=<文件>`（只打印连锁影响，不写盘），再 `make bump-version PLAN=<文件> APPLY=1`。它会改写下游组件的 `component.yaml`（`dependencies` 以及外壳的 `shell.members`）和外壳的 `go.mod`。项目这边先 `brickkit upgrade <id>@<版本> --dry-run`，再去掉 `--dry-run`；它会让 `brickkit.yaml`、部署文件和 `config/` 保持一致。最后跑 `brickkit up --dry-run`：能发现版本漂移的是这条命令。
 - 一批改动一份计划：每个组件单独跑一次工具，同一个下游会被升两次。
 
@@ -68,11 +68,13 @@
 按 `bump-version` 打印的顺序，逐个组件：
 
 1. 它自己的测试和门禁全绿。
-2. 在组件仓库提交并推送。
+2. 在组件仓库提交并推送（外壳就是外壳自己的仓库）。
 3. `brickkit release --notes-file <文件>`。说明文件放在组件目录之外（目录里的未跟踪文件过不了干净检查）。发布说明先写使用方必须做什么（某个键的含义变了、某个接口删了），再写新增了什么。
-4. Go 组件：`git tag -a v<版本> -F <同一份说明>`，再 `git push origin v<版本>`。
+4. Go 组件（外壳不做这一步）：`git tag -a v<版本> -F <同一份说明>`，再 `git push origin v<版本>`。
 5. `brickkit build <id>`。镜像只在本地构建，从不推送。
-6. 回到本仓库：提交 submodule 指针和 `brickkit upgrade` 改出的内容，真机跑一遍，`brickkit down`。发布了 infra/authz 或 infra/iam-casdoor 之后，还要把 `config/vars.yaml` 里的 `AUTHZ_BUNDLE_URL` / `IAM_JWKS_URL` 改成新的服务名；`brickkit upgrade` 不碰 `$var` 的值，两者对上之前 `make gates` 一直失败（[configuration.zh.md](configuration.zh.md#依赖地址)）。
+6. 回到本仓库：提交 submodule 指针（外壳的指针和组件一样）和 `brickkit upgrade` 改出的内容，真机跑一遍，`brickkit down`。发布了 infra/authz 或 infra/iam-casdoor 之后，还要把 `config/vars.yaml` 里的 `AUTHZ_BUNDLE_URL` / `IAM_JWKS_URL` 改成新的服务名；`brickkit upgrade` 不碰 `$var` 的值，两者对上之前 `make gates` 一直失败（[configuration.zh.md](configuration.zh.md#依赖地址)）。
+
+外壳排在它的成员之后：成员发布时，`make bump-version` 已经在外壳的子模块里改好了 `shell.members` 和 `go.mod`，外壳随后在它自己的仓库里走同样的步骤。绝不在本仓库发布外壳（`brickkit release --path`），也不在这里给外壳打 tag。
 
 `version-bump-ship` skill 会带着走完这一串，并写明什么时候该停下来问人而不是继续。
 

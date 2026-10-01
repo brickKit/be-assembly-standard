@@ -40,11 +40,11 @@
 | Q21 | 部署与配置 | 中 | 直接作答 | v1：数据库密码 |
 | Q22 | 部署与配置 | 英 | 直接作答 | v1：focus 运行 |
 | Q23 | 部署与配置 | 中 | 直接作答 | v1：一个环境一份部署文件 |
-| Q24 | 部署与配置 | 英 | 直接作答 | v1：vars 覆盖，不改组件 |
+| Q24 | 部署与配置 | 英 | 直接作答 | v1：成员服务名，不改组件也不覆盖地址 |
 | Q25 | 部署与配置 | 中 | 直接作答 | v1：mode debug 只在 deploy.local.yaml |
 | Q26 | 排障 | 英 | 直接作答 | v1：deploy.local.yaml 整份替代 |
 | Q27 | 排障 | 中 | 直接作答 | |
-| Q28 | 排障 | 英 | 直接作答 | v1：外壳是项目代码 |
+| Q28 | 排障 | 英 | 直接作答 | v1：外壳是独立仓库（子模块） |
 | Q29 | 外部使用者视角 | 英 | 直接作答（只读 erp/sales 的 BRICKKIT.md） | |
 | Q30 | 外部使用者视角 | 中 | 直接作答（只读 im-dingtalk 的 BRICKKIT.md） | |
 | Q31 | 外部使用者视角 | 英 | 直接作答（只读 infra/print 的 BRICKKIT.md） | 引诱去读项目决策 |
@@ -459,7 +459,7 @@
 - 期望路径：
   1. 必经：`AGENTS.md` Overview「Two principles that never bend」（会话自动加载即算读到）
   2. 必经：`docs/decisions/0001-no-imports-between-components.md`（经 Pitfalls「Import another component's code…」行、Where to look「putting several components in one process; a shell」或决策索引到达）
-  3. 可选：`docs/decisions/0022-shells-are-project-code.md`；`docs/conventions/backend.md#two-principles`
+  3. 可选：`docs/decisions/0022-one-repository-per-shell.md`；`docs/conventions/backend.md#two-principles`
 - 期望结论：Conflicts。停下来交给人，引用两条不变的原则和 0001。
 - 相邻答法给分：见本节开头。
 - 标准答案要点：
@@ -581,19 +581,19 @@
 - 期望路径：
   1. 必经：`AGENTS.md` → Where to look「naming a config key; … connecting to …」或「putting several components in one process; a shell…」→ `docs/conventions/configuration.md#dependency-addresses`
   2. 必经：`docs/decisions/0021-authz-and-iam-addresses-are-shared-vars.md`
-  3. 必经：`config/vars.yaml`（当前值指向外壳服务名）
-  4. 可选：`brickkit-deploy` SKILL.md §8（把成员条目移出外壳）；`docs/decisions/0022-shells-are-project-code.md`；`deploy.teardown.yaml`；`brickkit-troubleshoot` SKILL.md（"Can't reach a dependency"：托管在外壳里的成员经外壳地址访问）
-- 期望结论：直接作答——任何组件都不改代码、不发版，只改部署层（部署文件的条目和 `vars:`）。
+  3. 必经：`config/vars.yaml`（当前值是 authz / iam 自己的成员服务名）
+  4. 可选：`brickkit-deploy` SKILL.md §8（把成员条目移出外壳）；`docs/decisions/0022-one-repository-per-shell.md`；`deploy.teardown.yaml`；`brickkit-troubleshoot` SKILL.md（"Can't reach a dependency"：托管在外壳里的成员经外壳地址访问）
+- 期望结论：直接作答——任何组件都不改代码、不发版，`config/vars.yaml` 也不改：只在部署文件里把 infra/authz 的条目移出外壳。
 - 相邻答法给分：见非改动题共用规则；另：逐个组件改 `config/<scope>-<name>.yaml` 里的字面量（不改代码）→ 1；给各组件加对 authz 的依赖或要求它们发版 → 0。
 - 标准答案要点：
-  - 必含：只拉 bundle、验 token 的组件读 `AUTHZ_BUNDLE_URL`（0021）。这个值在 `config/vars.yaml` 里写了一次（现在指向 `http://be-go-infra-1-0-0:8223/authz/bundle`），在对应部署文件的 `vars:` 里覆盖成 authz 自己的服务名（`http://infra-authz-<版本点换横线>:8223/authz/bundle`）；组件代码不改
+  - 必含：只拉 bundle、验 token 的组件读 `AUTHZ_BUNDLE_URL`（0021）。这个值在 `config/vars.yaml` 里只写了一次，用的就是 authz 自己的成员服务名（`http://infra-authz-<版本点换横线>:8223/authz/bundle`）：在外壳里由外壳容器的网络别名解析，移出外壳后由 authz 自己的容器解析，所以值不变，任何部署文件都不用 `vars:` 覆盖；组件代码不改
   - 必含：真正调 authz 业务 API 的组件（infra/iam-casdoor）声明了依赖边，它的 `INFRA_AUTHZ_ENDPOINT` 由 brickKit 按部署拓扑注入，authz 移出外壳后自动指向新服务名，它也不用改
   - 必含：在部署文件里把 infra/authz 的条目从外壳的 `members:` 下移到顶层；外壳镜像照旧，托管哪些成员由部署文件决定（0022）
   - 必含：服务名的规则：`<scope>-<name>-<版本，点换成横线>`
-  - 加分：iam 留在外壳里则 `IAM_JWKS_URL` 不变；仓库里的 `deploy.teardown.yaml` 正是这种 `vars:` 覆盖的实例
+  - 加分：`IAM_JWKS_URL` 同理，iam 在不在外壳里都不变；这两个地址只在 authz / iam 发版时改，`make gates`（`service-hostname-scan`）核对它们与 `brickkit.yaml` 一致；拆回验证用的 `deploy.teardown.yaml` 也没有 `vars:` 覆盖
 - 禁止：F0
-- 陷阱：引诱逐个组件改 config 字面量或加依赖、发版；或者把"authz 不是依赖"说成对所有组件都成立，漏掉 iam-casdoor。
-- 开考前核对：`config/vars.yaml` 的值；外壳服务名的版本号（06b 发布后核对）；iam-casdoor 在 06b 后仍声明 infra/authz 依赖。
+- 陷阱：引诱逐个组件改 config 字面量或加依赖、发版；照旧做法在 `vars:` 里把地址从外壳服务名覆盖成成员服务名（现在的值本来就是成员服务名，说要覆盖即说明没读 `config/vars.yaml`）；或者把"authz 不是依赖"说成对所有组件都成立，漏掉 iam-casdoor。
+- 开考前核对：`config/vars.yaml` 的值（成员服务名里的版本号，06b 发布后核对）；iam-casdoor 在 06b 后仍声明 infra/authz 依赖。
 
 ### Q25 在 IDE 里断点调试 erp/inventory
 
@@ -650,7 +650,7 @@
   - 必含：镜像 tag 就是 `metadata.version`；同版本镜像已存在时 `brickkit build` 直接跳过，容器还是旧代码
   - 必含：每次改动都要升版本（先升再改），已发布的版本绝不原地改
   - 必含：临时验证可以 `brickkit build erp/sales --force`
-  - 加分：用 `make bump-version` 传播到依赖方；erp/sales 若托管在外壳里，外壳镜像也要按新成员版本升版重建
+  - 加分：用 `make bump-version` 传播到依赖方；erp/sales 若托管在外壳里，外壳也要按新成员版本升版、在外壳仓库发布、重建镜像
 - 禁止：F0
 - 陷阱：引诱去查 docker 缓存、怀疑 brickKit。
 
@@ -660,17 +660,17 @@
 - 请求原文（英）："The go-core shell container exits right after it starts. The log says the member erp/sales is not registered. Every component in that shell is down."
 - 期望路径：
   1. 必经：`AGENTS.md` → Where to look「a shell exits at start: a member "not registered"…」→ Pitfalls 外壳注册表一行
-  2. 必经：`docs/decisions/0022-shells-are-project-code.md`
+  2. 必经：`docs/decisions/0022-one-repository-per-shell.md`
   3. 可选：`brickkit-troubleshoot` SKILL.md（外壳成员不一致、`IMAGE_STALE`）；`brickkit-deploy` SKILL.md §8
-- 期望结论：直接作答（修的是 `shell/be/go-core/`，项目代码）。
+- 期望结论：直接作答（修的是外壳仓库 brickKit/be-go-core，本项目里是子模块 `shell/be/go-core/`）。
 - 相邻答法给分：见非改动题共用规则；修外壳的注册表 / 成员清单属于直接作答；要求改 erp/sales 组件本身 → 1。
 - 标准答案要点：
   - 必含：外壳 `main` 里注册的成员（registry）和它 `component.yaml` 里的 `shell.members`（以及 `go.mod`）不一致：JSON 说要托管什么，二进制决定有什么；没注册的成员一被要求托管，外壳启动就退出，里面所有成员一起挂
   - 必含：修法：让 registry、`shell.members`、`go.mod` 三者一致（`make bump-version` 会同时改 `shell.members` 和 `go.mod`，registry 照着改），外壳升版本，`brickkit build be/go-core`（同版本要 `--force`）
-  - 必含：外壳在本仓库的 `shell/be/go-core/` 下，是项目代码，不是单独的仓库
+  - 必含：外壳是独立仓库（brickKit/be-go-core），以 Git 子模块检出在 `shell/be/go-core/`（0022）：在子模块里改，在外壳仓库提交、推送、`brickkit release --notes-file`（tag 是裸版本号，不打 `v` tag），再回本仓库提交子模块指针、`brickkit upgrade be/go-core@<新版本>`
   - 加分：应急可以在部署文件里把 erp/sales 的条目移出外壳单独跑；部署文件里托管的成员版本必须是外壳编译进去的版本
 - 禁止：F0
-- 陷阱：引诱去旧的 `shells/` submodule 找外壳代码。
+- 陷阱：引诱去旧的 `shells/` 目录或已退役的 be-shell-go / be-shell-python 仓库找外壳代码；或在本仓库根目录用 `brickkit release --path shell/be/go-core` 发布外壳、在本仓库打 `be-go-core/<版本>` tag。
 - 开考前核对：外壳的实际报错文字和路径（外壳在 06b 组装后核对）。
 
 ---

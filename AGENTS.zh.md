@@ -13,7 +13,7 @@
 - **三个中枢**把其余组件串起来。`mdm/*` 被所有组件读，自己不调用任何组件。`erp/inventory` 是实物库存变动的唯一写入者。`erp/finance` 基本只接受命令、监听事件。CRM 与 ERP 之间没有同步调用边，只有事件；库存与财务之间没有任何边，由同一个上游（比如 `erp/sales`）并排触发。
 - **东西在哪。**
   - `components/<scope>/<name>/`：每个组件一个 Git 子模块；`.gitmodules` 记录每个组件的确切提交。
-  - `shell/<scope>/<name>/`：外壳（`be/go-core`、`be/go-infra`、`be/go-backoffice`、`be/py-render`），是本仓库的项目代码（[0022](docs/decisions/0022-shells-are-project-code.zh.md)）。
+  - `shell/<scope>/<name>/`：外壳（`be/go-core`、`be/go-infra`、`be/go-backoffice`、`be/py-render`）；每个都是独立仓库，像组件一样以 Git 子模块检出，供别的装配项目复用（[0022](docs/decisions/0022-one-repository-per-shell.zh.md)）。
   - `tools/`：`be-sdk-go`、`be-sdk-python`、`be-sdk-ts`（每个组件依托的运行时库）、`be-ops`（组装期生成：建库脚本、权限与数据范围登记表）、`be-acceptance`（`make gates` 背后的门禁）。
   - `registry/`（端口、schema、权限键、数据范围）、`config/`（组件配置值，共享值在 `vars.yaml`）、`infra/`（`make up` 启动的基础资源）、`docs/`（约定、决策、种子数据）。
 - **两条不可违背的原则。**
@@ -32,9 +32,9 @@
 - **测试**：L1–L4 与 FE-1–FE-4 分层；绝不为了让测试通过而改测试（[testing.zh.md](docs/conventions/testing.zh.md)）。
 - **数据**：种子数据给人用，测试数据给测试用，两个物理库（`brickkit_db`、`brickkit_test_db`）；依赖方缺能力就在源头补（[data.zh.md](docs/conventions/data.zh.md)）。
 - **登记表**：端口、schema、角色、权限键都从 `registry/` 抄，绝不自己编；`ports.tsv`、`schemas.tsv`、`permissions.tsv` 只追加：已有的行绝不修改、删除或回收再用（[registries.zh.md](docs/conventions/registries.zh.md#只追加)）。
-- **子模块映射**：`.gitmodules` 与子模块指针记录每个组件来自哪个仓库、哪一个确切提交；只通过 `git submodule` 命令改动，指针与需要它的那次 `brickkit upgrade` 一起提交（[development-workflow.zh.md](docs/conventions/development-workflow.zh.md#发布)）。
-- **每个组件两份清单**：`component.yaml` 只放 brickKit 读的内容；本项目自己的键（`permissions`、`data_scopes`、`menus`，以及 `domain`、`tier` 这类项目自己的元数据）放在旁边的 `assembly.yaml`，由 be-ops 读取（[backend.zh.md](docs/conventions/backend.zh.md#仓库结构)）。组件由哪个外壳托管，在部署文件里选（[0022](docs/decisions/0022-shells-are-project-code.zh.md)）。
-- **版本号**：每次改动都升版本，版本号是精确值，组件在 `2.x`、外壳在 `1.x`；Go 组件在同一个提交上打两个 tag（brickKit 用的 `2.0.0`、Go 用的 `v2.0.0`），模块路径以 `/v2` 结尾；用 `make bump-version` 传播（[development-workflow.zh.md](docs/conventions/development-workflow.zh.md#版本号)）。
+- **子模块映射**：`.gitmodules` 与子模块指针记录每个组件和外壳来自哪个仓库、哪一个确切提交；只通过 `git submodule` 命令改动，指针与需要它的那次 `brickkit upgrade` 一起提交（[development-workflow.zh.md](docs/conventions/development-workflow.zh.md#发布)）。
+- **每个组件两份清单**：`component.yaml` 只放 brickKit 读的内容；本项目自己的键（`permissions`、`data_scopes`、`menus`，以及 `domain`、`tier` 这类项目自己的元数据）放在旁边的 `assembly.yaml`，由 be-ops 读取（[backend.zh.md](docs/conventions/backend.zh.md#仓库结构)）。组件由哪个外壳托管，在部署文件里选（[0022](docs/decisions/0022-one-repository-per-shell.zh.md)）。
+- **版本号**：每次改动都升版本，版本号是精确值，组件在 `2.x`、外壳在 `1.x`；Go 组件在同一个提交上打两个 tag（brickKit 用的 `2.0.0`、Go 用的 `v2.0.0`），模块路径以 `/v2` 结尾；外壳在它自己的仓库发布，只打裸 tag（`1.0.0`）；用 `make bump-version` 传播（[development-workflow.zh.md](docs/conventions/development-workflow.zh.md#版本号)）。
 - **提交与发布**：提交信息用中文、写进文件、`git commit -F`，tag 一律带注释，按 `bump-version` 打印的顺序发布（[development-workflow.zh.md](docs/conventions/development-workflow.zh.md#发布)）。
 - **业务逻辑**：先自己设计，卡住才看参考实现，绝不照抄（[reference-implementations.zh.md](docs/conventions/reference-implementations.zh.md)）。
 - **按 AI 的尺寸写代码**：只在帮 AI 读懂时才用模式；函数、文件、一次会话的大小都有上限（[ai-development.zh.md](docs/conventions/ai-development.zh.md)）。
@@ -61,7 +61,7 @@
 | 金额、价格、钱的字段；列表分页 | [0010](docs/decisions/0010-money-as-strings-lists-by-cursor.zh.md) |
 | 加缓存；Redis；让权限检查更快 | [0004](docs/decisions/0004-no-redis.zh.md)、[0005](docs/decisions/0005-local-permission-bundle.zh.md) |
 | 外壳启动即退出：某成员"未登记" / 没编译进本外壳；外壳成员不一致 | 下方[易错点](#易错点)里外壳 registry 那一行；`brickkit` 自己打印的错误看 `brickkit-troubleshoot` 技能 |
-| 把几个组件放进一个进程；外壳；外壳托管哪些成员 | [0022](docs/decisions/0022-shells-are-project-code.zh.md)、`brickkit-component` 技能（外壳部分）、[development-workflow.zh.md](docs/conventions/development-workflow.zh.md#真机运行)（拆回验证） |
+| 把几个组件放进一个进程；外壳；外壳托管哪些成员 | [0022](docs/decisions/0022-one-repository-per-shell.zh.md)、`brickkit-component` 技能（外壳部分）、[development-workflow.zh.md](docs/conventions/development-workflow.zh.md#真机运行)（拆回验证） |
 | 该写什么测试、放哪一层；测试红了、卡住了 | [testing.zh.md](docs/conventions/testing.zh.md)、[卡住时](docs/conventions/testing.zh.md#卡住时) |
 | 对着真实依赖跑测试 | [testing.zh.md](docs/conventions/testing.zh.md#跨组件测试)、[testing.zh.md](docs/conventions/testing.zh.md#运行测试) |
 | 演示数据；测试账号；怎么登录 | [docs/seed-data.zh.md](docs/seed-data.zh.md) |
@@ -109,7 +109,7 @@
 | 用浮点数传金额，或 `List` 用 `offset` 分页 | 金额在语言之间丢精度；深翻页变慢且漏行 | 十进制字符串和游标（[0010](docs/decisions/0010-money-as-strings-lists-by-cursor.zh.md)） |
 | 为了让测试通过而改测试：注释掉、`t.Skip`、放宽断言 | 一切全绿，什么都没守住 | 改实现；测试确实错了，就单独一个提交改它，并说明原因（[testing.zh.md](docs/conventions/testing.zh.md#红绿节奏与铁律)） |
 | 改 Fork 组件的 `metadata.id` | 换了 ID，每个依赖方的 `<ID>_ENDPOINT` 变量整个消失 | Fork 保留 `metadata.id`，但版本照常走：每次改动都升 `metadata.version`，依赖方用 `brickkit upgrade` / `make bump-version` 移动版本钉；只有仓库名和目录名可以不同（[development-workflow.zh.md](docs/conventions/development-workflow.zh.md#发布)） |
-| 外壳 `main` 里登记的成员（它的 registry）与 `component.yaml` 的 `shell.members` 不一致，或 Go 外壳的 `go.mod` 与二者之一不一致 | 要托管的成员没登记：外壳启动即退出，里面所有成员一起下线。`go.mod` 没 require 的成员版本：镜像里跑的代码不是项目以为的那份，不报任何错 | JSON 说托管谁，二进制决定有谁；`make bump-version` 会同时改 `shell.members` 和 `go.mod`（[0022](docs/decisions/0022-shells-are-project-code.zh.md)） |
+| 外壳 `main` 里登记的成员（它的 registry）与 `component.yaml` 的 `shell.members` 不一致，或 Go 外壳的 `go.mod` 与二者之一不一致 | 要托管的成员没登记：外壳启动即退出，里面所有成员一起下线。`go.mod` 没 require 的成员版本：镜像里跑的代码不是项目以为的那份，不报任何错 | JSON 说托管谁，二进制决定有谁；`make bump-version` 会同时改 `shell.members` 和 `go.mod`（[0022](docs/decisions/0022-one-repository-per-shell.zh.md)） |
 | 以为 `deploy.local.yaml` 会和 `deploy.yaml` 合并 | 本地模式开着时，改 `deploy.yaml` 不起作用；团队后来的改动永远到不了你的副本，组件集合一不同 `up` 就拒绝 | 它整份替换 `deploy.yaml`。`brickkit up --focus` 会打开本地模式，`--all` 不会关掉。`brickkit local status` 显示开关；改 `deploy.yaml` 之前 `brickkit local off`，或改完之后 `brickkit local refresh`，它会列出你旧的改动供手工重放（[development-workflow.zh.md](docs/conventions/development-workflow.zh.md#真机运行)） |
 | 用外壳的服务名寻址 authz 或 iam，或者它们发版后 `AUTHZ_BUNDLE_URL` / `IAM_JWKS_URL` 还停在旧版本 | 每个组件的每条受保护路由都返回 `503` 或 `403`，而 `/healthz` 保持绿色 | `config/vars.yaml` 里用成员自己的服务名，authz 或 iam 发版时跟着改；与 `brickkit.yaml` 对不上时 `make gates`（`service-hostname-scan`）失败（[configuration.zh.md](docs/conventions/configuration.zh.md#依赖地址)） |
 | Go 组件发 `2.x` 时只打 brickKit 的 tag，或模块路径不带 `/v2` | 外壳的 Go 构建拉不到成员：`unknown revision v2.0.0`，或 "module path must match major version" | Go 需要带 `v` 的 tag 和路径里的主版本号；brickKit 的 tag 不带 `v`（[development-workflow.zh.md](docs/conventions/development-workflow.zh.md#版本号)） |

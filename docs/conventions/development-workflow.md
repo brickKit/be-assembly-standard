@@ -59,7 +59,7 @@ Answer these before the first line, every time:
 - **Bump first, then work.** Raise `metadata.version` at the start, edit freely until it is released, and never change a released version in place.
 - Versions are exact (`2.0.0`). Components are on the `2.x` line, shells on `1.x`.
 - **Go components carry two tags on the same commit**: `2.0.0` for brickKit (no `v`) and `v2.0.0` for the Go toolchain. The module path ends in the major version (`…/v2`), and changes with it.
-- **Shells** live in this repository under `shell/<scope>/<name>/`; their tags are `<scope>-<name>/<version>` here.
+- **Shells** are repositories of their own, checked out here as Git submodules under `shell/<scope>/<name>/` ([0022](../decisions/0022-one-repository-per-shell.md)). A shell is released from the root of its own repository like a component, with the bare tag only (`1.0.0`): nothing imports a shell, so it gets no `v` tag.
 - **Propagate with the tool, not by hand.** Write one plan file naming every component that really changed in this session, then `make bump-version PLAN=<file>` (prints the cascade, writes nothing) and `make bump-version PLAN=<file> APPLY=1`. It rewrites the dependents' `component.yaml` (their `dependencies` and a shell's `shell.members`) and the shells' `go.mod`. On the project side, `brickkit upgrade <id>@<version> --dry-run`, then without `--dry-run`; it keeps `brickkit.yaml`, the deploy files and `config/` in step. Finish with `brickkit up --dry-run`: it is the command that catches a version drift.
 - One plan per batch: running the tool once per component bumps the same dependents twice.
 
@@ -68,11 +68,13 @@ Answer these before the first line, every time:
 For each component, in the order `bump-version` printed:
 
 1. Its own tests and gates green.
-2. Commit and push the component repository.
+2. Commit and push the component's repository (for a shell, the shell's repository).
 3. `brickkit release --notes-file <file>`. The notes file lives outside the component directory (an untracked file fails the clean check). Notes lead with what a project must do (a key whose meaning changed, an endpoint removed), then what was added.
-4. Go components: `git tag -a v<version> -F <the same notes>` and `git push origin v<version>`.
+4. Go components, not shells: `git tag -a v<version> -F <the same notes>` and `git push origin v<version>`.
 5. `brickkit build <id>`. Images are built locally and never pushed.
-6. In this repository: commit the submodule pointer and what `brickkit upgrade` changed, run it for real, `brickkit down`. After a release of infra/authz or infra/iam-casdoor, also change `AUTHZ_BUNDLE_URL` / `IAM_JWKS_URL` in `config/vars.yaml` to the new service name; `brickkit upgrade` does not touch `$var` values, and `make gates` fails until they match ([configuration.md](configuration.md#dependency-addresses)).
+6. In this repository: commit the submodule pointer (a shell's like a component's) and what `brickkit upgrade` changed, run it for real, `brickkit down`. After a release of infra/authz or infra/iam-casdoor, also change `AUTHZ_BUNDLE_URL` / `IAM_JWKS_URL` in `config/vars.yaml` to the new service name; `brickkit upgrade` does not touch `$var` values, and `make gates` fails until they match ([configuration.md](configuration.md#dependency-addresses)).
+
+A shell comes after its members: when a member is released, `make bump-version` has already rewritten the shell's `shell.members` and `go.mod` in its submodule, and the shell then goes through the same steps in its own repository. Never release a shell from this repository (`brickkit release --path`) or tag it here.
 
 The `version-bump-ship` skill walks this sequence and says when to stop and ask instead of continuing.
 

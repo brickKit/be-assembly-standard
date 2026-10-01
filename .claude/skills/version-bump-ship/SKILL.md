@@ -50,7 +50,7 @@ make bump-version PLAN=<计划文件>            # dry-run，只打印
 make bump-version PLAN=<计划文件> APPLY=1    # 确认后落地
 ```
 
-它只传播三类文件：下游组件 `component.yaml` 里的依赖版本、外壳 `shell/be/<name>/component.yaml` 的 `shell.members`、外壳 `go.mod` 的 require（主版本变化时连 `/vN` 模块路径后缀一起改）。**它不碰项目的 `brickkit.yaml`、`deploy.yaml`、`config/`、`AGENTS.md`**，那些归 §4 的 `brickkit upgrade`。
+它只传播三类文件：下游组件 `component.yaml` 里的依赖版本、外壳 `shell/be/<name>/component.yaml` 的 `shell.members`、外壳 `go.mod` 的 require（主版本变化时连 `/vN` 模块路径后缀一起改）。外壳是子模块，后两类改动落在外壳仓库的工作区里，由 §3 第 9 步在那里提交。**它不碰项目的 `brickkit.yaml`、`deploy.yaml`、`config/`、`AGENTS.md`**，那些归 §4 的 `brickkit upgrade`。
 
 dry-run 时重点核对：
 - **有没有被拉进来的组件让你意外？** 有的话先停下搞清楚——通常是某个 `dependencies.components` 声明了一条不该有的边，比"赶紧发布"更值得处理。
@@ -80,13 +80,13 @@ dry-run 时重点核对：
    ```
 
    Python/TS 组件只要第 7 步的 tag。
-9. **外壳**住在装配仓库里（`shell/be/<name>/`），不是独立仓库：先把外壳目录的改动提交并推送，再在装配仓库根目录发布：
+9. **外壳**是独立仓库（`brickKit/be-<name>`），在装配仓库里以子模块挂在 `shell/be/<name>/`，和组件一样在**它自己的仓库根目录**收尾：第 1–7 步照做（`bump-version` 改的 `shell.members` / `go.mod` 就在子模块的工作区里；Go 外壳的"测试"是 `go build -o /dev/null ./...`，py-render 是装包后 `import main`），在子模块里提交、`git push origin main`、
 
    ```bash
-   brickkit release --path shell/be/<name> --notes-file <说明文件>
+   cd shell/be/<name> && brickkit release --notes-file <说明文件>
    ```
 
-   tag 形如 `be-<name>/<版本>`（子目录组件）；用 `brickkit release --help` 核对。外壳不被任何人 import，不打 `v` 前缀 tag；装配仓库上绝不打裸 `v` 标签。
+   tag 是裸的 `<版本>`（如 `1.0.1`），跳过第 8 步：外壳不被任何人 import，不打 `v` tag。绝不在装配仓库根目录用 `brickkit release --path shell/be/<name>` 发布，也不在装配仓库打 `be-<name>/<版本>` tag。外壳排在它的全部成员之后；它的子模块指针和成员的指针一起在 §4 第 4 步提交。
 10. **构建镜像**：`brickkit build <id>`（已有镜像会跳过，改了代码要重建加 `--force`）。构建失败就停下，不带着没验证的镜像往下走。**镜像不推送**，现阶段全部本地使用。
 
 **工具仓库**（`be-sdk-*`、`be-ops`、`be-acceptance`）不是 brickKit 组件，不走 `brickkit release`：测试通过、提交后 `git tag -a vX.Y.Z -F <说明文件>` 并 `git push origin vX.Y.Z`；Go 工具仓库升到 v2+ 时模块路径要同步加 `/v2`。
@@ -106,7 +106,7 @@ dry-run 时重点核对：
    - 先聚焦：`brickkit up --focus <id>`，再 `make test-cross ID=<scope>/<name>`（需要过滤时加 `ARGS="-run X"`）。⚠️ `--focus` 会打开本地模式（第一次会把 `deploy.yaml` 复制成 `deploy.local.yaml`），`brickkit up --all` 只清焦点、不关本地模式；之后要改 `deploy.yaml`（比如给外壳挂成员），先 `brickkit local off`，或改完 `brickkit local refresh`，否则改动不生效。
    - 改动跨组件（契约、事件、下游被级联）时，再起全套 `brickkit up`，确认全部 `running (healthy)`，挑一两个与改动直接相关的端点 curl（用状态码确认路由/鉴权链路）。
    - 验证完 `brickkit down`（不常年挂着，见根 `AGENTS.md`）。
-4. 提交装配仓库自己的改动：**只 add 你这次动过的路径**（子模块指针、`brickkit.yaml`、`deploy.yaml`、`config/`、`AGENTS.md` 受管块等），提交信息写文件，`git commit -F`，`git log --oneline -1` 确认后 `git push`。
+4. 提交装配仓库自己的改动：**只 add 你这次动过的路径**（子模块指针——组件和外壳的都算、`brickkit.yaml`、`deploy.yaml`、`config/`、`AGENTS.md` 受管块等），提交信息写文件，`git commit -F`，`git log --oneline -1` 确认后 `git push`。
 
 ## 什么时候要停下来问人，不能自己一路推到底
 

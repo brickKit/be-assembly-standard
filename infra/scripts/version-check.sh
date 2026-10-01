@@ -20,6 +20,9 @@
 # 才真的撞见 tools/be-sdk-go 卡在这个状态（v0.1.8/v0.1.9 当时打成了轻量
 # tag）。带注解的 tag 用 `git cat-file -t <tag>` 会返回 `tag`，轻量 tag
 # 返回 `commit`。
+#
+# 外壳（shell/be/<name>/）和组件一样是独立仓库、登记为 submodule，由上面同一个
+# 循环检查：tag 在外壳自己的仓库里，是裸 `<版本>`（如 1.0.0），没有 v 前缀 tag。
 set -uo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 cd "$ROOT"
@@ -74,35 +77,10 @@ for p in "${paths[@]}"; do
   fi
 done
 
-# 外壳（shell/be/<name>/）不是 submodule，是父仓库自己的目录，tag 在父仓库里：
-# be-<name>/<version>（brickKit monorepo tag 格式 <scope>-<name>/<version>）。
-# 判据：该目录自最新 be-<name>/* tag 以来没有新提交；没有任何 tag 也算漂移。
-for d in shell/be/*/; do
-  [[ -d "$d" ]] || continue
-  name="$(basename "$d")"
-  latest="$(git tag --list "be-${name}/*" --sort=-v:refname | head -1)"
-  if [[ -z "$latest" ]]; then
-    echo "${C_RED}✗ ${d%/}：父仓库里没有任何 be-${name}/<版本> tag${C_OFF}"
-    bad=1
-    continue
-  fi
-  ahead="$(git log --oneline "${latest}..HEAD" -- "$d" | wc -l)"
-  if [[ "$ahead" -gt 0 ]]; then
-    echo "${C_RED}✗ ${d%/}：自 $latest 以来有 ${ahead} 个未打 tag 的提交${C_OFF}"
-    bad=1
-  elif [[ "$(git cat-file -t "$latest")" != "tag" ]]; then
-    echo "${C_RED}✗ ${d%/}：$latest 是轻量 tag${C_OFF}"
-    bad=1
-  else
-    echo "${C_GRN}✓ ${d%/}：$latest${C_OFF}"
-  fi
-done
-
-
 if [[ $bad -ne 0 ]]; then
   echo
   echo "${C_RED}版本漂移检查未通过：给上面 ✗ 的仓库打新 tag 并 push${C_OFF}" >&2
   exit 1
 fi
 echo
-echo "${C_GRN}✓ 全部 submodule 与外壳目录都与最新 tag 一致${C_OFF}"
+echo "${C_GRN}✓ 全部 submodule（组件、外壳、工具仓库）都与最新 tag 一致${C_OFF}"

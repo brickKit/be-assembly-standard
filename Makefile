@@ -116,7 +116,7 @@ gates: docs-boundary  ## 跑全部验收门禁：组件互不 import + SystemCli
 	@brickkit up --dry-run
 .PHONY: gates
 
-version-check:  ## 扫全部 submodule 与 shell/be/* 外壳目录：HEAD 是否领先最新 tag（兼容 2.0.0 与 v2.0.0 双 tag）
+version-check:  ## 扫全部 submodule（组件、外壳、工具仓库）：HEAD 是否领先最新 tag（兼容 2.0.0 与 v2.0.0 双 tag）
 	@bash infra/scripts/version-check.sh
 .PHONY: version-check
 

@@ -39,7 +39,7 @@ brickkit.yaml           组件及其精确版本（锁文件）
 deploy.yaml             怎么运行：目标平台、外壳、对外端口
 config/                 各组件的配置值；多个组件共用的值在 vars.yaml
 components/<scope>/<name>/   每个组件一个 Git 子模块
-shell/<scope>/<name>/   外壳：多个组件放进一个进程，属于项目代码
+shell/<scope>/<name>/   每个外壳一个 Git 子模块：多个组件放进一个进程
 tools/                  be-sdk-go、be-sdk-python、be-sdk-ts、be-ops、be-acceptance
 registry/               端口、schema、权限键、数据范围
 infra/                  make up 启动的基础资源，以及项目脚本

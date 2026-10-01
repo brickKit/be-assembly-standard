@@ -35,4 +35,4 @@
 | [0019](0019-infrastructure-is-not-a-component.zh.md) | 事件总线、对象存储、网关、可观测性不是组件 | `infra/nats` 或网关组件；改一个设置就把 NATS 换成 Kafka |
 | [0020](0020-no-test-accounts-in-migrations.zh.md) | 测试账号不写进迁移；首个管理员来自 `BOOTSTRAP_ADMIN_SUB` | 默认管理员账号；迁移里放演示数据 |
 | [0021](0021-authz-and-iam-addresses-are-shared-vars.zh.md) | 拉权限 bundle 和验证 token 用共享变量，不建依赖；真正通过 gRPC 调用 authz / iam 的照常声明依赖 | 只为拉 bundle 或验 token 就对 `infra/authz` 或 IAM 组件建依赖边；不声明依赖就调用它们的 gRPC 接口 |
-| [0022](0022-shells-are-project-code.zh.md) | 外壳是项目代码：一个外壳、一个镜像、一份成员清单 | 每个外壳一个仓库；外壳里写逻辑；只升成员不升外壳 |
+| [0022](0022-one-repository-per-shell.zh.md) | 一个外壳、一个仓库（以子模块挂在 `shell/<scope>/<name>/`，在那里发布，tag 是裸 `<版本>`）、一个镜像、一份成员清单 | 把外壳代码提交在本仓库；在本仓库发布外壳；外壳里写逻辑；只升成员不升外壳 |
