@@ -8,7 +8,7 @@ A configuration key is an environment variable name: upper case, words joined by
 
 Never use these names; the platform reserves them and skips or rejects them:
 
-- `COMPONENT_ID`, `COMPONENT_VERSION`
+- `COMPONENT_ID`, `COMPONENT_VERSION`, `PORT`, `BRICKKIT_SERVED_MEMBERS`, `BRICKKIT_SERVED_MEMBERS_CONFIG` (exact names)
 - any name ending in `_ENDPOINT` (the platform injects dependency addresses under such names)
 
 Keys owned by a single component are named `<domain noun>_<meaning>`, for example `DEFAULT_WAREHOUSE_ID`. Keys shared by several components use the names in the next section and are never renamed per component.

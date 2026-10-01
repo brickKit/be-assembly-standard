@@ -8,7 +8,7 @@
 
 以下名字禁用，平台保留并会跳过或拒绝：
 
-- `COMPONENT_ID`、`COMPONENT_VERSION`
+- `COMPONENT_ID`、`COMPONENT_VERSION`、`PORT`、`BRICKKIT_SERVED_MEMBERS`、`BRICKKIT_SERVED_MEMBERS_CONFIG`（精确匹配）
 - 以 `_ENDPOINT` 结尾的任何名字（平台用这类名字注入依赖地址）
 
 仅属于单个组件的键命名为 `<领域名词>_<含义>`，例如 `DEFAULT_WAREHOUSE_ID`。多个组件共用的键使用下一节的名字，不按组件改名。

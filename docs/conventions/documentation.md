@@ -53,6 +53,7 @@ Every component and every shell carries:
 - **One fact, one home**: dependencies and configuration keys live in `component.yaml`, interfaces in `contracts/`, history in Git. Documents explain what those can't say.
 - **Two readers** for every component document: someone changing this component now (needs exact, current detail) and someone arriving cold to understand the project through this component (needs enough context to see why it exists and how it fits). Check both before calling a document finished.
 - **A component's `AGENTS.md` never copies a project-wide rule.** Its pitfalls are the ones only met while working on this component; a copy is a promise to keep two in step, and the stale one is what makes an AI confidently wrong.
+- **A component's `AGENTS.zh.md` contains a translated `## BrickKit` section** mirroring the heading of the brickKit-maintained block at the end of `AGENTS.md` (the block itself stays only in the primary file): `brickkit lint` counts that block's `## BrickKit` among the primary's sections when it checks translation parity.
 - **Rules for any AI-facing document**: no "see above" or "as mentioned before" (an AI may only see a fragment), and every prohibition carries its symptom and its reason (the symptom is the AI's only way to notice it got it wrong).
 - `docs/design.md` exists before work starts and changes with the design: when implementation shows the design was wrong, the document changes first.
 - The documents are part of the version: they change in the same commit as the code they describe.
