@@ -1,2 +1,21 @@
-# config/vars.yaml — values shared by several components.
-# A component config file refers to one with $var:NAME.
+# 全项目共享的配置值：多个组件重复用到的写在这里，组件的 config/<scope>-<name>.yaml
+# 用 $var:<名> 引用。某个组件需要不同的值，就在它自己的文件里写字面量覆盖。
+# 换环境 / 换拓扑：在对应部署文件（deploy.<env>.yaml）的 vars: 里覆盖，优先级高于本文件。
+
+# PostgreSQL（make up 起的 be-postgres；组件容器通过 host-gateway 访问宿主机）
+PG_HOST: host.docker.internal
+PG_PORT: "5432"
+PG_DATABASE: brickkit_db
+
+# NATS（make up 起的 be-nats）
+NATS_URL: nats://host.docker.internal:4222
+
+# 对象存储（RustFS，S3 兼容；值是完整 URL）
+S3_URL: http://host.docker.internal:9000
+
+# 可观测性（未开 obs 时留空，SDK 视为关闭导出）
+OTEL_BASE_URL: ""
+
+# 权限与身份：两者都在 be/go-infra 外壳里；拆回独立部署时在 deploy.teardown.yaml 的 vars: 覆盖
+AUTHZ_BUNDLE_URL: http://be-go-infra-1-0-0:8223/authz/bundle
+IAM_JWKS_URL: http://be-go-infra-1-0-0:8200/.well-known/jwks.json
