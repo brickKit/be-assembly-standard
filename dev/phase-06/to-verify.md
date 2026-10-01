@@ -24,3 +24,4 @@
 | 2026-10-01 | mode local / debug 的宿主机端口映射规则（优先 10000+容器端口，冲突时从 18080 递增）是否仍成立 | 06a Task 13 写 registries.md 的端口段划分 | brickKit 源码 internal/compose/local.go | brickkit-deploy skill 的 local/debug 一节写明宿主机端口如何分配、项目应避开哪个端口段 |
 | 2026-10-01 | BRICKKIT.zh.md 的章节标题必须用规定的中文名（组件定位/部署前准备/依赖说明/配置指南/契约索引/外壳声明），不能自由翻译 | 06a Task 8 写外壳文档 | 只能从 lint 报错反推（未读源码） | brickkit-component skill 的文档规则表列出每节的 en/zh 标准标题 |
 | 2026-10-01 | DOC_LINK_NOT_PORTABLE 也检查组件 AGENTS.md 里指向 `../` 的链接，不只 BRICKKIT.md | 06a Task 8 写外壳 AGENTS.md | 只能从 lint 报错反推 | 同上，在 skill 里写明哪些文件受这条约束 |
+| 2026-10-01 | focus / local 运行时组件的端口如何分配、`host.docker.internal` 在本机进程里如何解析、生成的服务名规则 | 06a Task 17 写单组件闭环清单的 focus 运行步骤 | brickKit 源码 internal/compose/local.go、internal/cli/up_local.go、internal/deploy/naming.go | brickkit-deploy skill 的 focus / local 一节补充：端口分配规则、本机进程如何访问容器里的依赖、服务名推导规则 |
