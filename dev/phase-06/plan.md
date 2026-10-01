@@ -19,6 +19,14 @@
 | 06e 部署矩阵 | `plan-06e.md` | 18 格矩阵 + 专项格的过程记录；local 文件与 debug 测试线；重写 `docs/ops/` | 矩阵完成后；local 测试线完成后 |
 | 06f 剩余功能与收尾 | `plan-06f.md` | 逐项功能测试记录；新的 tier1 断言；反馈信箱定稿；复盘；归档 `dev/` | 06f 完成后 |
 
+## 跨子阶段待办（防遗忘）
+
+做完一项就把 `[ ]` 改成 `[x]`，并写明在哪个提交完成。
+
+- [x] **同步两份开发文件到 R29**：authz/iam 地址改为成员服务名（`infra-authz-<ver>` / `infra-iam-casdoor-<ver>`），不再用外壳服务名，也不再在 teardown 部署文件里覆盖。改动范围：`component-loop.md`（:260、附录 B）和 `dev/routing-tests/questions.md` 的标准答案。外壳拆成独立仓库时已一并完成（父仓库 `298d1a2`，裁定 R30）。
+- [ ] **删除 06a 的 SDD 执行区**：`.superpowers/sdd/plan-06a/` 已被 git 忽略，里面有 ledger、各 Task 的审查报告和发布说明。写 `plan-06b.md` 时还要查阅，**`plan-06b.md` 写完并提交后再删**（`rm -rf .superpowers/sdd/plan-06a`）。要点已整理进 [`batches/06a.md`](batches/06a.md)，删除后不会丢失信息。
+- [ ] **写 `plan-06b.md` 时以这些为准**：外壳的组装和发布步骤，以决策 0022（外壳独立成仓）和 `component-loop.md` §4 为准；`spec.md`、`plan-06a.md`、`batches/06a.md` 里仍写着"外壳是项目代码"，属于历史记录，不要照抄。06b 的其余输入见 `batches/06a.md` §6，以及外壳拆仓审查留下的事项：外壳的 `BRICKKIT.md` 不得引用本项目的 `registry/ports.tsv` 和 `make db-init`，必须在外壳发布 1.0.0 之前改掉。
+
 ## 贯穿全阶段的规则
 
 - 以最终目的为主：过渡状态下的临时问题不修。06a 和 06b 期间，`brickkit lint` 在项目根目录会因为 `components/` 下还没重建的旧 `component.yaml` 报错，这是预期之中的，不处理；单个组件的验证在组件仓库里跑 `brickkit lint --strict`。
