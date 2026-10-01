@@ -103,7 +103,7 @@ dry-run 时重点核对：
    `upgrade` 会让 `brickkit.yaml`、`deploy.yaml`、`config/` 和 `AGENTS.md` 的受管块保持同步，不要手改这些。
 2. `make gates`、`make version-check`——两个都要绿。
 3. **真机验证**：
-   - 先聚焦：`brickkit up --focus <id>`，再 `make test-cross REPO=<仓库名>`（参数形式以 Makefile 当前为准）。
+   - 先聚焦：`brickkit up --focus <id>`，再 `make test-cross ID=<scope>/<name>`（需要过滤时加 `ARGS="-run X"`）。
    - 改动跨组件（契约、事件、下游被级联）时，再起全套 `brickkit up`，确认全部 `running (healthy)`，挑一两个与改动直接相关的端点 curl（用状态码确认路由/鉴权链路）。
    - 验证完 `brickkit down`（不常年挂着，见根 `AGENTS.md`）。
 4. 提交装配仓库自己的改动：**只 add 你这次动过的路径**（子模块指针、`brickkit.yaml`、`deploy.yaml`、`config/`、`AGENTS.md` 受管块等），提交信息写文件，`git commit -F`，`git log --oneline -1` 确认后 `git push`。
