@@ -43,7 +43,7 @@
 1. **核对题目前提。** 06b/06c 会补接口、改键名、写出 `BRICKKIT.md`，题目里的"现状"可能已经变了。逐题检查「开考前核对」一栏：
    - 期望路径里的文件和章节真实存在（尤其是 `components/<scope>/<name>/BRICKKIT.md` 的 Purpose / Dependencies / Configuration / Contracts / Before you deploy 各节）；
    - `AGENTS.md` 末尾的组件表（brickkit 维护的块）已经由 `brickkit add` 填好每个组件一行——几乎所有改动题的必经第 2 步都是"组件表 → `BRICKKIT.md`"，表是空的就不能开考；
-   - 题目假设"还没有"的能力确实还没有（例如 Q01 的调拨、Q04 的待办转交、Q07 的逾期查询）；已经被实现的，换一道同类题或把期望答案改成"已有，在哪里"；
+   - 题目假设"还没有"的能力确实还没有（例如 Q01 的调拨、Q04 的待办转交、Q07 的客户账期）；已经被实现的，换一道同类题或把期望答案改成"已有，在哪里"；
    - 配置键名以 06b 之后的实际 `configSchema` 为准（题目里的 `DEFAULT_WAREHOUSE_ID`、`DINGTALK_APP_SECRET` 等按约定推算）；
    - 决策原文变过的，按新原文核对相关题的要点（例如 0021 已收窄为"只拉 bundle / 验 token 不建边"，Q20、Q24 按它写）；
    - G 类（Q29–Q31）的「必含」逐条对照 06b 写成的 `BRICKKIT.md`：文件里没写的点**删掉**，不能留成必含，只读那一份文件的考生无从得知；

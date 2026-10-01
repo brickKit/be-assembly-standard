@@ -23,7 +23,7 @@
 | Q04 | 只改一个组件 | 中 | Fits one component（infra/workflow，+ 前端跟进） | |
 | Q05 | 只改一个组件 | 英 | Fits one component（crm/opportunity） | 听着像要改上游，其实上游已有 |
 | Q06 | 只改一个组件 | 英 | Fits one component（crm/opportunity，+ 前端跟进） | 引诱共享引擎 |
-| Q07 | 需要先改上游 | 中 | Provider first：erp/finance → erp/sales | 引诱 sales 自己算应收 |
+| Q07 | 需要先改上游 | 中 | Provider first：mdm/customer → erp/sales（erp/finance 不改） | 引诱固定天数或 sales 自己算应收 |
 | Q08 | 需要先改上游 | 英 | Provider first：erp/sales → erp/finance | 引诱跨 schema JOIN |
 | Q09 | 需要先改上游 | 中 | Provider first：crm/opportunity → erp/sales → erp/finance | CRM–ERP 无同步边 |
 | Q10 | 需要先改上游 | 英 | Provider first：erp/inventory → infra/notification | 不对族成员建边 |
@@ -194,27 +194,37 @@
 
 ## 二、需要先改上游
 
-### Q07 客户有逾期太久的应收，就不许再确认订单
+### Q07 按各客户的账期拦截逾期客户的新订单
 
 - 类别：需要先改上游
-- 请求原文（中）：「客户要是有超过 90 天还没收回来的款，就不许再给他确认新订单了。现在只看信用额度，拦不住这种老赖。」
+- 请求原文（中）：「我们给客户的账期不一样，有的月结 30 天，有的 60 天。客户只要有款过了账期还没收回来，就不许再给他确认新订单。现在只看信用额度，拦不住这种情况。」
 - 期望路径：
   1. 必经：`AGENTS.md` → Where to look「a new requirement…」→ `brickkit-plan-change` SKILL.md（§3、§4：先上游后消费方）
-  2. 必经：组件表 → `components/erp/sales/BRICKKIT.md` — Purpose、Dependencies（erp/finance 是它的依赖；确认订单时已查信用占用）
-  3. 必经：`components/erp/finance/BRICKKIT.md` — Purpose（应收台账归 finance）、Contracts（`GetCreditExposure` / `BatchGetCreditExposure` 只给已用额度，没有逾期账龄）
-  4. 必经：`docs/conventions/backend.md#contracts` 或 `docs/decisions/0011-contracts-are-additive-only.md`
-  5. 可选：`docs/conventions/backend.md#calling-other-components`；`docs/decisions/0002-one-schema-per-component.md`
-- 期望结论：Needs a provider's contract first：erp/finance（按客户给出逾期应收的 gRPC 查询，契约只增）→ erp/sales（确认订单时调用并拒绝）。
-- 相邻答法给分：finance 先、sales 后（前端只需展示新的拒绝原因，算跟进）→ 2；方向对但顺序反（先改 sales 再补 finance）→ 1；只改 sales，并认为 finance 现有的信用占用接口已够（没核对出缺账龄）→ 1；只改 sales，由 sales 自己根据订单推算应收或读 `erp_finance` 的表 → 0；让 finance 反过来调 sales → 0。
+  2. 必经：组件表 → `components/erp/sales/BRICKKIT.md` — Purpose、Dependencies（mdm/customer、erp/finance 都是它的依赖；确认订单时已查信用占用）
+  3. 必经：`components/erp/finance/BRICKKIT.md` — Contracts（`ListARLedger` 可按 `customer_id`、`created_before` 查应收行，每行有 `amount`、`reconciled_amount`、`created_at`）
+  4. 必经：`components/mdm/customer/BRICKKIT.md` — Purpose、Contracts（客户主数据的字段）
+  5. 必经：`docs/conventions/backend.md#contracts` 或 `docs/decisions/0011-contracts-are-additive-only.md`
+  6. 可选：`docs/conventions/backend.md#calling-other-components`；`docs/conventions/reference-implementations.md#which-project-to-read`（mdm/customer → `res.partner`）
+- 期望结论：Needs a provider's contract first：mdm/customer（客户加账期字段，契约只增）→ erp/sales（确认订单时取客户账期，用 erp/finance 现有的 `ListARLedger` 找出过了账期还没核销完的应收，有就拒绝）。erp/finance 不用改。
+- 依据（给阅卷人，不给考生）：已对照契约核实——`mdm/customer` 的 `Customer` 只有名称、税号、信用额度、状态、联系人、开票信息，没有账期；`erp/finance` 的 `ARLedgerEntry` 有金额、已核销金额、创建时间，但没有到期日或账期；`erp/sales` 的契约里也没有账期。全项目都没有"账期"这个数据，所以必须有一个上游先加；`ListARLedger` 已能提供应收行，所以 finance 不是必改项。
+- 相邻答法给分：
+  - mdm/customer → erp/sales（sales 用 `ListARLedger` 的未核销金额 + 创建时间 + 客户账期算逾期）→ 2
+  - mdm/customer 先加账期，再由 erp/sales 把账期随 `sales.order.created.v1` 带给 erp/finance、finance 在台账上存到期日并提供逾期查询，最后 erp/sales 调用（账期来源仍是 mdm/customer，顺序对）→ 2
+  - 账期只存在 erp/sales 自己（sales 建一张按客户的账期表），再用 `ListARLedger` 计算 → 1（能工作，但客户主数据放错了组件）
+  - 只改 erp/sales，用 `ListARLedger` 加一个**统一的**固定天数（配置键）判断、不管各客户账期 → 0（漏掉了"账期各不相同"这个需求本身）
+  - 判成 finance 先加逾期查询、sales 再调，但没有任何地方提供账期 → 1（链条形状对，账期来源没解决）
+  - 顺序颠倒 → 1
+  - erp/sales 读 `erp_finance` 的表，或自己根据订单推算应收 → 0
 - 标准答案要点：
-  - 必含：应收和收款只有 erp/finance 知道，逾期账龄归 finance 算；erp/sales 不能自己推算（它不知道收款），更不读 `erp_finance` 的表
-  - 必含：finance 先加一个只增的查询（按客户返回超过 N 天未收的金额或"是否有逾期"），金额是十进制字符串
-  - 必含：erp/sales 在确认订单时（与现有信用检查同一处）调用它，超期则拒绝并给出明确原因；erp/sales 本来就依赖 erp/finance，不新增依赖方向
-  - 必含：发布顺序：finance 先，sales 后
-  - 加分：90 天做成 erp/sales 的配置键（大写下划线）；用户请求路径上用 `UserClient`，注意 finance 的 `legal_entity` 数据范围对结果的影响，交给人确认；L2 测试覆盖"有逾期被拒 / 无逾期通过"
+  - 必含：账期是客户的商业条款，属于客户主数据：mdm/customer 先加账期字段（契约只增，客户事件也带上）
+  - 必含：应收行已经能从 erp/finance 的 `ListARLedger` 拿到（`customer_id` 过滤，`amount` − `reconciled_amount` > 0 且 `created_at` 早于"今天 − 账期"即逾期），finance 不用改；erp/sales 本来就依赖 erp/finance 和 mdm/customer，不新增依赖方向
+  - 必含：erp/sales 在确认订单时（与现有信用检查同一处）做这个判断，逾期就拒绝并给出明确原因；不读 `erp_finance` / `mdm_customer` 的表
+  - 必含：金额按十进制字符串计算；`ListARLedger` 按游标分页取完该客户的行
+  - 必含：发布顺序：mdm/customer 先，erp/sales 后
+  - 加分：用户请求路径上用 `UserClient` 调 finance 时，结果受 finance 的 `legal_entity` 数据范围限制，确认人看不到的法人的逾期可能漏掉——这个口径交给人决定（`SystemClient` 不能用在用户请求路径上）；L2 测试覆盖"有逾期被拒 / 未逾期通过 / 部分核销"；前端只需展示新的拒绝原因，属跟进
 - 禁止：F0
-- 陷阱：引诱让 erp/sales 自己算"欠款"，或拿现有信用占用凑合。
-- 开考前核对：06b 没有给 finance 加按客户的逾期查询（06b 计划给仪表盘加的应收汇总是 REST 汇总，若它已带按客户的账龄且有 gRPC，本题改为 Fits one component 或换题）。
+- 陷阱：引诱只在 erp/sales 里写一个固定天数，或让 sales 自己算应收；也可能误以为 finance 必须先加账龄接口。
+- 开考前核对：06b 后 mdm/customer、erp/finance、erp/sales 的契约里仍没有账期 / 到期日（若 06b 加了，本题改判或换题）；`ListARLedger` 的过滤参数和字段没变；06b 给仪表盘加的应收汇总若按账期算逾期，本题前提失效，需换题。
 
 ### Q08 Receivables broken down by sales department
 
