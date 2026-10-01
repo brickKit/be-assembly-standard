@@ -7,8 +7,8 @@
 ## 0. 先说结论（06b 要关注的缺口）
 
 1. **没有仪表盘聚合接口**：销售额/订单数、应收合计、库存预警、商机漏斗，全部缺失，需要在 erp-sales、erp-finance、erp-inventory、crm-opportunity 各补一个 `stats` 读端点。
-2. **客户/产品没有"删"**：契约只有停用（`status` DISABLED）。建议"删 = 停用"，不做物理删除（有订单/凭证引用，物理删除违背引用完整性）。需用户在 06b/06c 前确认；本表按"停用/启用"列。
-3. **选择器缺搜索**：客户、产品 List 没有关键字过滤（`q`）、产品没有 `status_filter`；建单、入库、商机建档都要选客户/产品，缺了就只能拉全量。
+2. **客户/产品没有"删"**：契约只有停用（`status` DISABLED）。已定（裁定 R8）：删 = 停用（软删除），不做物理删除端点（有订单/凭证引用）。客户用已有 `mdm.customer.set_status`，产品用 `mdm.product.set_status`（新键，见 §2.2、§2.11）。
+3. **选择器缺搜索**：客户、产品 List 没有关键字过滤（`q`）（产品已有 `status_filter`）；建单、入库、商机建档都要选客户/产品，缺了就只能拉全量。
 4. **库存没有"列出余额"与"列出仓库"**：只有按 `product_id + warehouse_id` 查单条余额。余额页、移动端库存查询、入库/调整的仓库下拉都卡在这里。
 5. **赢单转订单在前端不可见**：订单没有来源商机字段，商机没有关联订单字段。前端"赢单→订单"只能提交赢单、看不到转出的订单。
 6. **移动端现状没走 BFF**：`apps/mobile/src/api/*` 现在直接 REST 经网关调用 workflow、notification。BFF 目前只有 6 个只读 query，没有 mutation、没有通知、商机、库存列表。
@@ -31,13 +31,13 @@
 | PC | 客户 | 详情 | mdm/customer | `GET /mdm/customer/customers/{id}` | 已有 |
 | PC | 客户 | 新建 | mdm/customer | `POST /mdm/customer/customers`（`mdm.customer.create`） | 已有 |
 | PC | 客户 | 编辑 | mdm/customer | `PATCH /mdm/customer/customers/{id}`（`mdm.customer.update`） | 已有 |
-| PC | 客户 | 删除 = 停用/启用 | mdm/customer | `POST /mdm/customer/customers/{id}/status`（`mdm.customer.set_status`） | 已有（见 §0.2，待确认语义） |
+| PC | 客户 | 删除 = 停用/启用 | mdm/customer | `POST /mdm/customer/customers/{id}/status`（`mdm.customer.set_status`） | 已有（删 = 停用，见 §0.2） |
 | PC | 客户 | 新增联系人 | mdm/customer | `POST /mdm/customer/customers/{id}/contacts` | 已有 |
 | PC | 客户 | 编辑/删除联系人、增改开票信息 | mdm/customer | 无 | 缺失（详情页要编辑联系人与开票信息才需要；spec 未点名，列为可选） |
-| PC | 产品 | 列表 + 搜索 + 状态过滤 | mdm/product | `GET /mdm/product/products` | 需改（补 `q` 匹配 sku/name、`status_filter`） |
+| PC | 产品 | 列表 + 搜索 + 状态过滤 | mdm/product | `GET /mdm/product/products` | 需改（只缺 `q` 匹配 sku/name；`status_filter` 已有） |
 | PC | 产品 | 新建 | mdm/product | `POST /mdm/product/products`（`mdm.product.create`） | 已有 |
 | PC | 产品 | 编辑 | mdm/product | `PATCH /mdm/product/products/{id}`（`mdm.product.edit`） | 已有 |
-| PC | 产品 | 删除 = 停用/启用 | mdm/product | `POST /mdm/product/products/{id}/status`（`mdm.product.edit`） | 已有（见 §0.2） |
+| PC | 产品 | 删除 = 停用/启用 | mdm/product | `POST /mdm/product/products/{id}/status`（现 `mdm.product.edit`，改为新键 `mdm.product.set_status`） | 需改（权限键，见 §2.2） |
 | PC | 销售订单 | 列表（含状态/客户过滤） | erp/sales | `GET /erp/sales/orders` | 已有 |
 | PC | 销售订单 | 详情 | erp/sales | `GET /erp/sales/orders/{id}` | 需改（补 `source_opportunity_id`，见 §2） |
 | PC | 销售订单 | 新建（含实时试算） | erp/sales | `POST /erp/sales/orders`、`POST /erp/sales/price/dry-run`（`erp.sales.create`） | 已有（客户/产品选择器依赖上面两处 `q`） |
@@ -101,13 +101,12 @@ BFF 现状见 `contracts/schema.graphql`：只有 `customer(s)`、`product(s)`�
 
 - **改 `GET /customers`**：新增 query 参数 `q`（模糊匹配 `code`、`name`，大小写不敏感，前缀优先）。权限仍 `mdm.customer.view`。BFF 的客户搜索、PC 建单客户选择器、商机建档客户选择器都用它。
 - 可选：联系人 `PATCH/DELETE /customers/{id}/contacts/{contact_id}`（新键复用 `mdm.customer.update`，不新增键）、开票信息 `POST /customers/{id}/billing-infos`（同键）。spec 未点名，本期前端只做"新增联系人"，不强制。
-- 待确认：删除语义（§0.2）。若用户决定要物理删除，则新增 `DELETE /customers/{id}` + 新键 `mdm.customer.delete`（新），且需先检查订单/商机/应收引用，有引用时拒绝。
+- 删除语义已定（R8）：删 = 停用，用已有 `POST /customers/{id}/status` + `mdm.customer.set_status`，不新增 DELETE 端点。
 
 ### 2.2 mdm/product（`data_scopes: none`）
 
-- **改 `GET /products`**：新增 `q`（匹配 `sku`、`name`）、`status_filter`（ACTIVE/DISABLED，同 customer 的写法）。权限 `mdm.product.view`。
-- 说明：`POST /products/{id}/status` 用的是 `mdm.product.edit`，与 customer 的独立 `set_status` 键不对称。要保持两个 mdm 组件一致就新增 `mdm.product.set_status`（新）；不改也能用，仅是一致性问题，列为可选。
-- 待确认：删除语义（§2.1 同）。
+- **改 `GET /products`**：新增 `q`（匹配 `sku`、`name`）；`status_filter` 契约里已有，不用补。权限 `mdm.product.view`。
+- 删除语义已定（R8）：删 = 停用。`POST /products/{id}/status` 现用 `mdm.product.edit`，改绑新键 `mdm.product.set_status`（新，与 customer 对称），避免"能编辑就能停用"。不新增 DELETE 端点。
 
 ### 2.3 erp/inventory（数据范围：`warehouse`，`mode: in`）
 
@@ -177,8 +176,7 @@ BFF 现状见 `contracts/schema.graphql`：只有 `customer(s)`、`product(s)`�
 | `infra.bff-mobile.task.act` | action | infra/bff-mobile | 必须 |
 | `infra.bff-mobile.notification.view` | action | infra/bff-mobile | 必须 |
 | `infra.bff-mobile.opportunity.view` | action | infra/bff-mobile | 必须 |
-| `mdm.product.set_status` | action | mdm/product | 可选（一致性） |
-| `mdm.customer.delete` | action | mdm/customer | 仅在决定物理删除时 |
+| `mdm.product.set_status` | action | mdm/product | 必须（产品停用/启用） |
 
 PC 端新增接口全部复用已有 view 键（stats、warehouses、balances 列表、funnel、stage-history、versions 都是 `*.view`）。
 
