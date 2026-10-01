@@ -2,7 +2,7 @@
 
 > 开发文件（`dev/`），阶段结束后归档；正式文档不得链接本文件。
 > 用途：06b 重建 13 个后端组件（B1–B6）时，每个组件逐项照做、逐项勾选；某个批次补齐了一个外壳的成员时，再走 §4 外壳组装子清单。06c 的 `frontend/standard` 也按这份清单走（第 4 步换成前端测试）。
-> 依据（写本文件时逐个读过的现状）：spec §5/§10/§11、项目 `AGENTS.md`、`docs/en/01-conventions/{04-configuration,07-registries,02-backend,06-testing,05-data,08-documentation,01-development-workflow}.md`、`docs/en/02-decisions/` 的 0020–0022、5 个 brickKit skill + `version-bump-ship`、根 `Makefile` 与 `infra/scripts/`、三个 SDK 的 README、`dev/phase-06/frontend-needs.md`、`dev/phase-06/to-verify.md`、`components/mdm/customer` 与 `components/erp/sales` 的真实文件，以及在 scratch 项目里对 brickKit CLI v1.0.1 的实测（§9 附录 B）。
+> 依据（写本文件时逐个读过的现状）：spec §5/§10/§11、项目 `AGENTS.md`、`docs/en/01-conventions/{04-configuration,07-registries,02-backend,06-testing,05-data,08-documentation,01-development-workflow}.md`、`docs/en/02-decisions/` 的 0007、0008、0017、5 个 brickKit skill + `version-bump-ship`、根 `Makefile` 与 `infra/scripts/`、三个 SDK 的 README、`dev/phase-06/frontend-needs.md`、`dev/phase-06/to-verify.md`、`components/mdm/customer` 与 `components/erp/sales` 的真实文件，以及在 scratch 项目里对 brickKit CLI v1.0.1 的实测（§9 附录 B）。
 > 规则冲突时以正式文档为准，并在批次记录里写明冲突在哪；不要按本清单硬做。
 
 ---
@@ -267,7 +267,7 @@ IAM_JWKS_URL: $var:IAM_JWKS_URL
 |---|---|---|---|---|---|
 | `PERMISSION_CATALOG` | infra/authz | `file://registry/permissions.tsv` | `registry/permissions.tsv`（第 3.5 步用 be-ops 追加新键） | 解析器（`backend/internal/service/catalog.go` 的 `ParsePermissionCatalog`）现在只认 `key\|title\|type\|owner_component,…` 一行逗号串。改成解析 TSV：按行切；跳过空行、`#` 开头的行和表头行（第一列是 `key`）；按制表符切，至少 4 列（`key`、`title`、`type`、`owner_component`），第 5 列 `deprecated` 可空；`key` 为空报错并给出行号。**`deprecated` 非空的行也要同步**（已授出的旧键必须仍能在 `permissions` 表里解析到；同步本来就是 upsert、不删行）。旧的逗号格式不再支持（2.0.0 的发布说明写明"键的含义变了"）。先写 L2 测试（真实 TSV 片段，含中文标题、表头、`deprecated` 行）跑红，再改实现 | 新权限键进 `permissions.tsv` 后，下一次 `brickkit up` 生成时重新读文件，authz 容器（或 go-infra 外壳）因环境变化被重建，`Start()` 重新同步目录。不需要任何"再生成"步骤 |
 | `ENABLED_COMPONENTS` | infra/iam-casdoor | `file://brickkit.yaml` | 项目的 `brickkit.yaml`（`brickkit add`/`remove`/`upgrade` 维护） | 现在按逗号切 `enabledComponents`（`module.go` 的 `splitNonEmpty`）。改成解析 YAML：取 `components[].id`，跳过 `kind: shell` 的条目，去重（同一 ID 的 `requiredBy` 兼容版本只算一次），保持稳定排序。yaml.v3 已在依赖树里。L2 测试用真实形态的 `brickkit.yaml`（含外壳条目与 `requiredBy` 行）。BRICKKIT.md 写明"值是项目 `brickkit.yaml` 的内容"，别的项目同样用 `file://brickkit.yaml`。代价：iam-casdoor 因此依赖 brickKit 锁文件的格式（`components[].id`、`kind`）；备选是 be-ops 生成一个组件清单文件再 `file://` 引用，但那样多一个"每次 add/remove 后记得重新生成"的步骤，正是 R27 要消除的。B2 落地前确认取哪种 | 每次 `brickkit add`/`remove` 之后的下一次 `up` 自动生效 |
-| `BOOTSTRAP_ADMIN_SUB` | infra/authz | `${INFRA_AUTHZ_BOOTSTRAP_ADMIN_SUB:-}` | 部署者本人在 IAM 里的 `sub`（[0020]）；本地开发是 seed 账号 `dev.superuser` 的 `sub` | 无（键名已由 0020 定为 `BOOTSTRAP_ADMIN_SUB`）。保留 `default: ""`——空表示"首个管理员手工授权"，是合法状态 | 本地：iam-casdoor 的 `make seed` 建好 `dev.superuser` 之后，用 `source infra/scripts/lib/seed-net.sh` 里的 `sub_of dev.superuser` 查出 `sub`，写进 `.env` 的 `INFRA_AUTHZ_BOOTSTRAP_ADMIN_SUB=`，再 `brickkit up` 让 authz 重启授权。authz 的 `scripts/seed.sh` 第 ① 步目前因为"没配 bootstrapAdminSub"直接写库建全权限角色——配上之后这一步能不能改走 admin API，B2 顺带评估，不强求 |
+| `BOOTSTRAP_ADMIN_SUB` | infra/authz | `${INFRA_AUTHZ_BOOTSTRAP_ADMIN_SUB:-}` | 部署者本人在 IAM 里的 `sub`（[0017]）；本地开发是 seed 账号 `dev.superuser` 的 `sub` | 无（键名已由 0017 定为 `BOOTSTRAP_ADMIN_SUB`）。保留 `default: ""`——空表示"首个管理员手工授权"，是合法状态 | 本地：iam-casdoor 的 `make seed` 建好 `dev.superuser` 之后，用 `source infra/scripts/lib/seed-net.sh` 里的 `sub_of dev.superuser` 查出 `sub`，写进 `.env` 的 `INFRA_AUTHZ_BOOTSTRAP_ADMIN_SUB=`，再 `brickkit up` 让 authz 重启授权。authz 的 `scripts/seed.sh` 第 ① 步目前因为"没配 bootstrapAdminSub"直接写库建全权限角色——配上之后这一步能不能改走 admin API，B2 顺带评估，不强求 |
 
 要点与判据（写进 B2 两个组件的第 4、7 步）：
 
@@ -416,7 +416,7 @@ IAM_JWKS_URL: $var:IAM_JWKS_URL
   要点（每条都核对）：
   - 删掉全部版本历史注释、`deployment.image`、`dependencies.resources`；`metadata.name`/`description` 用英文（`BRICKKIT.md` 主文件是英文）。
   - `metadata.repository` = `https://github.com/brickKit/$REPO`（`git -C $C remote get-url origin` 核对）。
-  - 依赖全部写上游的 `@2.0.0`：必需依赖一行 `- erp/inventory@2.0.0`，可选依赖写成 `- id: infra/workflow@2.0.0` 加下一行 `optional: true`；aggregator（bff-mobile）全部 `optional: true`；不为了拉 bundle / 验 token 加 authz 或 iam 的依赖边（[0021]）——但 `infra/iam-casdoor → infra/authz` 是真实的 gRPC 业务调用，保留。
+  - 依赖全部写上游的 `@2.0.0`：必需依赖一行 `- erp/inventory@2.0.0`，可选依赖写成 `- id: infra/workflow@2.0.0` 加下一行 `optional: true`；aggregator（bff-mobile）全部 `optional: true`；不为了拉 bundle / 验 token 加 authz 或 iam 的依赖边（[0007]）——但 `infra/iam-casdoor → infra/authz` 是真实的 gRPC 业务调用，保留。
   - `startPeriodSeconds`：Go 不写（默认 60）；Python 120；Node 90。
   - `local.runCommand` 必须是数组（写成字符串 `add` 报 `MANIFEST_INVALID: local.runCommand=must be an array`，scratch 实测）。Python / TS 的写法在 B4 / B6 第一次 focus 时实测确定，记进批次记录。
 - [ ] **3.2 机器核对**（在 `$C` 下）：
@@ -440,7 +440,7 @@ IAM_JWKS_URL: $var:IAM_JWKS_URL
   通过：前六行全部 `无`；依赖都是 `@2.0.0`；`无版本注释`；端口与 registry 一致；`PG_SCHEMA` 默认值等于 `$SCHEMA`。
 - [ ] **3.3 组件级 lint**（`bash infra/scripts/component-lint.sh $C --` 不加 `--strict`，不要在 `$C` 下直接 `brickkit lint`：项目内它会 lint 整个项目，限定不到单个组件）：通过：输出里 `✅ component.yaml`，没有 `MANIFEST_INVALID`；此时只剩 `DOC_*` 警告（第 5 步清零）。
 - [ ] **3.4 改 `assembly.yaml`**：
-  - `id` 保留；删除 `version:`（版本只在 `component.yaml` 一处）；删除 `shell:` 键（由哪个外壳托管在部署文件里选，[0022]）；`data.role` 的注释改成"登录角色，`PG_USER` 的值"（v1 起组件以它登录，不再只是 `SET LOCAL ROLE` 的目标）。
+  - `id` 保留；删除 `version:`（版本只在 `component.yaml` 一处）；删除 `shell:` 键（由哪个外壳托管在部署文件里选，[0008]）；`data.role` 的注释改成"登录角色，`PG_USER` 的值"（v1 起组件以它登录，不再只是 `SET LOCAL ROLE` 的目标）。
   - `asset:`（旧的 fork 指引，提到"local 安装源遮蔽"等 v0 机制）与 `edge_routes:` 的去留：试点拍板项 P5。**拍板之前的默认做法：两者原样保留、不改**；`menus`、`domain`、`tier`、`data`、`data_scopes`、`permissions` 一律保留（`menus` 的结构扩展归 06c）。用户在 mdm/customer 检查点拍板后，后续组件照拍板结果做，mdm/customer 在下一次改版时补齐。
   - 按 §1.2 追加新权限键（`{ key, title, type }`，`key` 的域前缀等于组件域）；`data_scopes` 段必须在（无行级范围写 `data_scopes: none`）。
 - [ ] **3.5 新权限键汇总进登记表**（只在本组件新增了键时）：
@@ -716,7 +716,7 @@ TypeScript（infra/bff-mobile）对应项：`package.json` 的 `version` 改 `2.
 | `be/go-core` | 8090 | `shell_go_core` / `${SHELL_GO_CORE_PASSWORD}` | `mdm/customer@2.0.0`、`mdm/product@2.0.0`、`erp/inventory@2.0.0`、`erp/finance@2.0.0`、`erp/sales@2.0.0` | Go |
 | `be/go-backoffice` | 8116 | `shell_go_backoffice` / `${SHELL_GO_BACKOFFICE_PASSWORD}` | `crm/opportunity@2.0.0` | Go |
 
-以下用 `$SH=be/go-infra`、`$SHD=$ROOT/shell/be/go-infra`、`$SHN=go-infra` 举例。外壳是独立仓库（`brickKit/be-$SHN`，0022），`$SHD` 是它在父仓库里的子模块检出：外壳文件在 `$SHD` 里提交、推送、发布，父仓库只提交子模块指针。
+以下用 `$SH=be/go-infra`、`$SHD=$ROOT/shell/be/go-infra`、`$SHN=go-infra` 举例。外壳是独立仓库（`brickKit/be-$SHN`，0008），`$SHD` 是它在父仓库里的子模块检出：外壳文件在 `$SHD` 里提交、推送、发布，父仓库只提交子模块指针。
 
 ### 4.1 前置
 
@@ -812,7 +812,7 @@ TypeScript（infra/bff-mobile）对应项：`package.json` 的 `version` 改 `2.
 
 ### 4.7 以后再给已发布的外壳加成员 / 换成员版本
 
-外壳版本 +1（加成员 minor，换成员版本 patch），4.2–4.6 同样走一遍（外壳仓库里提交、发布 `<新版本>`，父仓库提交新指针），项目侧用 `brickkit upgrade $SH@<新版本> --dry-run` 再去掉 `--dry-run`（不是 `add`），`brickkit up` 遇到旧镜像会报 `IMAGE_STALE`。成员版本变化时外壳必须跟着发版（[0022]）。
+外壳版本 +1（加成员 minor，换成员版本 patch），4.2–4.6 同样走一遍（外壳仓库里提交、发布 `<新版本>`，父仓库提交新指针），项目侧用 `brickkit upgrade $SH@<新版本> --dry-run` 再去掉 `--dry-run`（不是 `add`），`brickkit up` 遇到旧镜像会报 `IMAGE_STALE`。成员版本变化时外壳必须跟着发版（[0008]）。
 
 ---
 
@@ -850,7 +850,7 @@ TypeScript（infra/bff-mobile）对应项：`package.json` 的 `version` 改 `2.
 | P2 | `PG_SCHEMA` 带默认值（= registry schema），同时在 `config/` 里写字面量 | 是 | 04-configuration.md 的值来源表 |
 | P3 | 契约包 `gen/<domain>/<name>`：一律是嵌套模块（形态 B 的 5 个组件拆出来），路径不带 `/v2`，tag `gen/<domain>/<name>/v1.<minor>.<patch>` 只在生成物变化时打；组件根 `go.mod` require 真实 tag（不再 `v0.0.0`）+ 本地 `replace` | 是（scratch 上两种形态都验证过，见 task-17 报告） | 第 4.0–4.4、8.3、8.5 步；conventions 里没有写契约包的 tag 规则，定了之后补进 01-development-workflow.md#versions |
 | P4 | 迁移入口的驱动：golang-migrate `pgx/v5`（与模块同一个 pgx）还是保留 lib/pq 显式带 `sslmode` | 倾向 `pgx/v5`，以 `make migrate-idempotent` 与 7.8 迁移容器真跑通过为准 | 第 4.6 步 |
-| P5 | `assembly.yaml` 清理：删 `version`、`shell`；`asset`、`edge_routes` 留不留 | 删 `version`、`shell`；`asset`/`edge_routes` 等用户定 | [0022]、"一个事实一个家" |
+| P5 | `assembly.yaml` 清理：删 `version`、`shell`；`asset`、`edge_routes` 留不留 | 删 `version`、`shell`；`asset`/`edge_routes` 等用户定 | [0008]、"一个事实一个家" |
 | P6 | 组件仓库是否提交 `brickkit skills update` 写入的 `.claude/skills/brickkit-component/` | 提交 | 第 2.5 步 |
 | P7 | 组件自有密钥的环境变量名 `${<UREPO>_<KEY>}` | 是（B2 首次用到时确认） | §2.3 第 5 条 |
 | P8 | focus 运行之前先跑容器形态（7.8 在 7.10 之前），与 spec 第 7 步写的顺序不同 | 是：focus 不跑迁移、不用镜像，先跑容器才验证得到镜像与迁移 | 第 7.10 步 |

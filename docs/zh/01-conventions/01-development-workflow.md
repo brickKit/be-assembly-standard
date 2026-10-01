@@ -59,7 +59,7 @@
 - **先升版本，再动手。** 一开始就把 `metadata.version` 升上去，发布之前随便改；已经发布的版本绝不原地修改。
 - 版本号必须精确（`2.0.0`）。组件在 `2.x` 线上，外壳在 `1.x` 线上。
 - **Go 组件在同一个提交上打两个 tag**：给 brickKit 的 `2.0.0`（不带 `v`）和给 Go 工具链的 `v2.0.0`。模块路径以主版本结尾（`…/v2`），随主版本一起变。
-- **外壳**是独立仓库，在本仓库里以 Git 子模块检出在 `shell/<scope>/<name>/`（[0022](../02-decisions/01-architecture/0022-one-repository-per-shell.md)）。外壳和组件一样在它自己仓库的根目录发布，只打裸 tag（`1.0.0`）：没有人 import 外壳，所以不打 `v` tag。
+- **外壳**是独立仓库，在本仓库里以 Git 子模块检出在 `shell/<scope>/<name>/`（[0008](../02-decisions/01-architecture/0008-one-repository-per-shell.md)）。外壳和组件一样在它自己仓库的根目录发布，只打裸 tag（`1.0.0`）：没有人 import 外壳，所以不打 `v` tag。
 - **用工具传播，不手工找。** 把这次会话里真正改了的组件全部写进一份计划文件，先 `make bump-version PLAN=<文件>`（只打印连锁影响，不写盘），再 `make bump-version PLAN=<文件> APPLY=1`。它会改写下游组件的 `component.yaml`（`dependencies` 以及外壳的 `shell.members`）和外壳的 `go.mod`。项目这边先 `brickkit upgrade <id>@<版本> --dry-run`，再去掉 `--dry-run`；它会让 `brickkit.yaml`、部署文件和 `config/` 保持一致。最后跑 `brickkit up --dry-run`：能发现版本漂移的是这条命令。
 - 一批改动一份计划：每个组件单独跑一次工具，同一个下游会被升两次。
 
