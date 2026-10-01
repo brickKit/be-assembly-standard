@@ -46,6 +46,7 @@ brickkit lint --strict             # 清单和文档
 |---|---|---|
 | 让 `shell.members` 为空，还指望清单能加载 | `brickkit lint` 和 `brickkit add` 拒绝它：`MANIFEST_INVALID`，"a shell must list at least one component compiled into it"；外壳加不进项目，也无法用 `brickkit build` 构建 | brickKit 要求至少编译进一个成员。一次部署一个成员都不托管仍然合法：这在部署文件里选择，此时 SDK 拿到的 `BRICKKIT_SERVED_MEMBERS_CONFIG` 是 `[]`，只提供 `/healthz` |
 | 从 `Dockerfile` 里去掉 `COPY component.yaml`，或改掉工作目录 | 容器立即退出："读外壳自己的 component.yaml 失败" | `shell.Main` 从 `./component.yaml` 的 `deployment.port` 读自己的端口（8090） |
+| 不给 `AUTHZ_BUNDLE_URL` 或 `IAM_JWKS_URL` 就运行外壳 | 进程启动即退出，消息里点名缺的键（"缺少权限地址配置"） | Go 外壳为整个进程只加载一次权限包和签名公钥；缺了它们，每个成员的每条受保护路由都会返回 `403` / `503`，所以拒绝启动 |
 
 ## 改代码之前
 

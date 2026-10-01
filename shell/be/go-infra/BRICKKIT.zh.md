@@ -30,8 +30,8 @@
 | `PG_PASSWORD` | 该登录角色的密码（secret） |
 | `NATS_URL` | 事件总线地址；外壳为全部成员只开一条共享连接 |
 | `OTEL_BASE_URL` | 遥测采集器基地址；留空即不导出 |
-| `AUTHZ_BUNDLE_URL` | 权限包地址，整个进程只加载一次 |
-| `IAM_JWKS_URL` | 身份提供方签名公钥地址，整个进程只加载一次 |
+| `AUTHZ_BUNDLE_URL` | 权限包地址，整个进程只加载一次；必填，缺了外壳拒绝启动 |
+| `IAM_JWKS_URL` | 身份提供方签名公钥地址，整个进程只加载一次；必填，缺了外壳拒绝启动 |
 
 这些是外壳自己的键，从外壳进程环境读取。成员的配置从不来自这里：brickKit 通过 `BRICKKIT_SERVED_MEMBERS_CONFIG` 逐个成员传入。
 

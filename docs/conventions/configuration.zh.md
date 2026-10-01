@@ -50,4 +50,8 @@
 
 权限策略包和身份公钥集刻意不是依赖边：给它们加精确版本锁，会让 authz 或 iam 每次发版都连带全部组件发版。它们的地址是普通配置：`$var:AUTHZ_BUNDLE_URL` 与 `$var:IAM_JWKS_URL`。通过 gRPC 调用 authz 或 iam 业务接口的组件（例如 `infra/iam-casdoor` → `infra/authz`），与其他依赖一样声明这条依赖，注入的 `*_ENDPOINT` 只用于这类调用。
 
-外壳服务名为 `<scope>-<name>-<版本，点换成横线>`，因此 `be/go-infra@1.0.0` 的地址主机名是 `be-go-infra-1-0-0`。这些值写在 `config/vars.yaml` 中，拓扑变化时在部署文件的 `vars:` 里覆盖。
+两者都用成员自己的服务名寻址，服务名为 `<scope>-<name>-<版本，点换成横线>`：`http://infra-authz-<版本>:8223/authz/bundle` 与 `http://infra-iam-casdoor-<版本>:8200/.well-known/jwks.json`。这个名字在任何拓扑下都能解析：组件独立运行时；被外壳托管时（brickKit 把每个成员的服务名设成外壳容器的网络别名，Kubernetes 上则是一个选中外壳 Pod 的成员 Service）；以及 `--ignore-shells` 下。所以这两个值只在 `config/vars.yaml` 里写一次，任何部署文件都不覆盖。不得用外壳的服务名寻址：它只在 Docker 上、成员已合并时存在，而且外壳每发一版就变。
+
+这两个值只在 infra/authz 或 infra/iam-casdoor 发版时改。`config/` 或部署文件 `vars:` 里的版本化服务名所写的版本，`brickkit.yaml` 没有声明时，`make gates`（`service-hostname-scan`）失败；`brickkit.yaml` 里还没有的组件只报警告。
+
+在 Kubernetes 上开启 `k8s.networkPolicy` 时，生成的策略只按依赖边放行，而这两类调用没有依赖边。authz 和 iam 的入站只放行依赖它们的组件；开启 `egress` 时，每个组件只能连自己的依赖。因此开启网络策略的部署文件要自己把两个方向都打开：`k8s.networkPolicy.egress.allowTo` 写上运行 authz 与 iam 的 Pod（`namespace`、`podSelector: {app: <该 Pod 的服务名>}`——独立运行时是成员自己的名字，被托管时是外壳的名字——以及 `ports: [8223]` / `[8200]`），入站则通过 `k8s.networkPolicy.allowFrom` 放行，brickKit 会把它加到每一个组件上。缺了任何一边，每条受保护路由都返回 `503`，而 `/healthz` 保持绿色。

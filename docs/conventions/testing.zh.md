@@ -90,7 +90,7 @@ L3 测这份实现的分支：错误路径、空指针和空字符串、并发�
 
 跨组件测试让这个组件真的调用它的必需依赖。`make test-cross ID=<scope>/<name>` 只跑这个组件的测试，把每个依赖的地址从真实的依赖容器桥接到宿主机上；测试进程留在宿主机，构建缓存和竞态检测照常可用。
 
-- 只需要这个组件和它的依赖树在跑：先 `brickkit up --focus <id>`。
+- 只需要这个组件和它的依赖树在跑：先 `brickkit up --focus <id>`。它会打开本地模式，`brickkit up --all` 也不会关掉，所以之后改 `deploy.yaml` 要等 `brickkit local off` 或 `brickkit local refresh` 之后才生效（[development-workflow.zh.md](development-workflow.zh.md#真机运行)）。
 - 按名字过滤，可以只跑某两个组件之间的测试；这就是跨组件测试要以对方组件命名的原因（见下面的命名一节）。
 - 范围是同步调用方向。别的组件消费这个组件发出的事件，走的是事件总线，按上面的消费者规则处理。
 - 测试需要依赖方有的数据，在测试里通过依赖方的真实 API 建（[data.zh.md](data.zh.md#依赖方缺数据或能力时)）。

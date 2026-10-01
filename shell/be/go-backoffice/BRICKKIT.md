@@ -30,8 +30,8 @@ None. The shell has no dependency edges of its own; each member keeps its own, a
 | `PG_PASSWORD` | Password of that login role (secret) |
 | `NATS_URL` | Event bus URL; the shell opens one shared connection for all its members |
 | `OTEL_BASE_URL` | Telemetry collector base URL; empty disables export |
-| `AUTHZ_BUNDLE_URL` | Permission bundle address, loaded once for the whole process |
-| `IAM_JWKS_URL` | Identity provider signing-key address, loaded once for the whole process |
+| `AUTHZ_BUNDLE_URL` | Permission bundle address, loaded once for the whole process; required, the shell refuses to start without it |
+| `IAM_JWKS_URL` | Identity provider signing-key address, loaded once for the whole process; required, the shell refuses to start without it |
 
 These are the shell's own keys, read from the shell's process environment. A member's configuration never comes from here: brickKit passes it per member in `BRICKKIT_SERVED_MEMBERS_CONFIG`.
 

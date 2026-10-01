@@ -16,6 +16,8 @@ S3_URL: http://host.docker.internal:9000
 # 可观测性（未开 obs 时留空，SDK 视为关闭导出）
 OTEL_BASE_URL: ""
 
-# 权限与身份：两者都在 be/go-infra 外壳里；拆回独立部署时在 deploy.teardown.yaml 的 vars: 覆盖
-AUTHZ_BUNDLE_URL: http://be-go-infra-1-0-0:8223/authz/bundle
-IAM_JWKS_URL: http://be-go-infra-1-0-0:8200/.well-known/jwks.json
+# 权限与身份：用 infra/authz、infra/iam-casdoor 自己的版本化服务名。独立部署、被外壳托管
+# （成员服务名是外壳容器的网络别名；K8s 上是指向外壳 Pod 的成员 Service）都能解析，换拓扑不用覆盖。
+# 只在这两个组件发版时改；与 brickkit.yaml 的版本对不上时 make gates（service-hostname-scan）报错。
+AUTHZ_BUNDLE_URL: http://infra-authz-2-0-0:8223/authz/bundle
+IAM_JWKS_URL: http://infra-iam-casdoor-2-0-0:8200/.well-known/jwks.json

@@ -47,7 +47,7 @@
 ## 真机运行
 
 - **先构建。** `brickkit up` 从不构建镜像。改了代码要 `brickkit build <id>`；镜像 tag 就是 `metadata.version`，版本号没升就会复用旧镜像（升版本，或者 `--force`）。
-- **一次只跑一个组件。** `brickkit up --focus <id>` 从源码拉起这个组件和它需要的一切；`brickkit up --all` 回到整个项目。
+- **一次只跑一个组件。** `brickkit up --focus <id>` 从源码拉起这个组件和它需要的一切；`brickkit up --all` 回到整个项目。`--focus` 把焦点写进 `deploy.local.yaml` 并打开本地模式（第一次会复制 `deploy.yaml`）；`--all` 清掉焦点，但本地模式仍开着。本地模式开着时，`up`、`down`、`status`、`build` 只读 `deploy.local.yaml`，之后改 `deploy.yaml` 不起作用：改 `deploy.yaml` 之前先 `brickkit local off`，或者改完之后 `brickkit local refresh`。
 - **然后对着它测。** `make test-cross ID=<scope>/<name>` 让组件的跨组件测试打到真实的依赖容器（[testing.zh.md](testing.zh.md#跨组件测试)）；项目里新加了组件之后跑 `make tier0`。
 - **容器默认关着。** `make up` 管的基础资源（PostgreSQL、NATS、Casdoor……）可以常开；项目的组件容器只在真机验证和演示时需要，用完 `brickkit down`（不删 volume）。一直开着的容器在下次改动后跑的是旧版本，还会和本地测试抢同一个 NATS subject 的消息。
 - **拆回验证。** 外壳合并之后，每个组件仍然必须能独立运行。`brickkit up --ignore-shells --dry-run` 不启动任何东西就能检查；`make teardown-up` / `make teardown-down` 把每个成员都当独立容器真的跑一遍。外壳的成员清单一变就跑。
@@ -72,7 +72,7 @@
 3. `brickkit release --notes-file <文件>`。说明文件放在组件目录之外（目录里的未跟踪文件过不了干净检查）。发布说明先写使用方必须做什么（某个键的含义变了、某个接口删了），再写新增了什么。
 4. Go 组件：`git tag -a v<版本> -F <同一份说明>`，再 `git push origin v<版本>`。
 5. `brickkit build <id>`。镜像只在本地构建，从不推送。
-6. 回到本仓库：提交 submodule 指针和 `brickkit upgrade` 改出的内容，真机跑一遍，`brickkit down`。
+6. 回到本仓库：提交 submodule 指针和 `brickkit upgrade` 改出的内容，真机跑一遍，`brickkit down`。发布了 infra/authz 或 infra/iam-casdoor 之后，还要把 `config/vars.yaml` 里的 `AUTHZ_BUNDLE_URL` / `IAM_JWKS_URL` 改成新的服务名；`brickkit upgrade` 不碰 `$var` 的值，两者对上之前 `make gates` 一直失败（[configuration.zh.md](configuration.zh.md#依赖地址)）。
 
 `version-bump-ship` skill 会带着走完这一串，并写明什么时候该停下来问人而不是继续。
 

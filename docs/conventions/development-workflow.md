@@ -47,7 +47,7 @@ Answer these before the first line, every time:
 ## Running it for real
 
 - **Build first.** `brickkit up` never builds. After a code change, `brickkit build <id>`; the image tag is `metadata.version`, so an unbumped version reuses the old image (bump, or `--force`).
-- **One component at a time.** `brickkit up --focus <id>` starts the component from its source plus everything it needs; `brickkit up --all` goes back to the whole project.
+- **One component at a time.** `brickkit up --focus <id>` starts the component from its source plus everything it needs; `brickkit up --all` goes back to the whole project. `--focus` writes the focus into `deploy.local.yaml` and turns local mode on (copying `deploy.yaml` the first time); `--all` clears the focus but leaves local mode on. While it is on, `up`, `down`, `status` and `build` read `deploy.local.yaml` only, so later edits to `deploy.yaml` have no effect: run `brickkit local off` before editing `deploy.yaml`, or `brickkit local refresh` after.
 - **Then test against it.** `make test-cross ID=<scope>/<name>` runs the component's cross-component tests against the real dependency containers ([testing.md](testing.md#cross-component-tests)); `make tier0` after a component is added to the project.
 - **Containers are off by default.** The base resources from `make up` (PostgreSQL, NATS, Casdoor…) may stay up; the project's component containers are for verification and demos. `brickkit down` when done (volumes are kept). A container left running serves a stale version after the next change, and competes with local tests for messages on the same NATS subject.
 - **Teardown check.** Every component must still run on its own after shells merge them. `brickkit up --ignore-shells --dry-run` checks it without starting anything; `make teardown-up` / `make teardown-down` runs every member as its own container. Run it whenever a shell's member list changes.
@@ -72,7 +72,7 @@ For each component, in the order `bump-version` printed:
 3. `brickkit release --notes-file <file>`. The notes file lives outside the component directory (an untracked file fails the clean check). Notes lead with what a project must do (a key whose meaning changed, an endpoint removed), then what was added.
 4. Go components: `git tag -a v<version> -F <the same notes>` and `git push origin v<version>`.
 5. `brickkit build <id>`. Images are built locally and never pushed.
-6. In this repository: commit the submodule pointer and what `brickkit upgrade` changed, run it for real, `brickkit down`.
+6. In this repository: commit the submodule pointer and what `brickkit upgrade` changed, run it for real, `brickkit down`. After a release of infra/authz or infra/iam-casdoor, also change `AUTHZ_BUNDLE_URL` / `IAM_JWKS_URL` in `config/vars.yaml` to the new service name; `brickkit upgrade` does not touch `$var` values, and `make gates` fails until they match ([configuration.md](configuration.md#dependency-addresses)).
 
 The `version-bump-ship` skill walks this sequence and says when to stop and ask instead of continuing.
 

@@ -46,6 +46,7 @@ The shell has no tests of its own: the launcher and its failure contract are tes
 |---|---|---|
 | Leave `shell.members` empty and expect the manifest to load | `brickkit lint` and `brickkit add` refuse it: `MANIFEST_INVALID`, "a shell must list at least one component compiled into it"; the shell cannot be added to the project or built with `brickkit build` | brickKit requires at least one compiled-in member. A deployment that hosts none of them is still legal: it is chosen in the deploy file, and the SDK then starts with `BRICKKIT_SERVED_MEMBERS_CONFIG` set to `[]` and serves only `/healthz` |
 | Drop `COPY component.yaml` from the `Dockerfile`, or change the working directory | The container exits at once: "读外壳自己的 component.yaml 失败" | `shell.Main` reads its own port (8224) from `deployment.port` in `./component.yaml` |
+| Run the shell without `AUTHZ_BUNDLE_URL` or `IAM_JWKS_URL` | The process exits at start with a message naming the missing key ("缺少权限地址配置") | The Go shell loads the permission bundle and the signing keys once for the whole process; without them every member would answer `403` / `503` on every protected route, so it refuses to start |
 | Read the 503s of protected routes as a broken shell while infra/authz is not hosted | Members answer `503` on protected routes; `/healthz` stays 200 | `AUTHZ_BUNDLE_URL` points at infra/authz, which this shell hosts itself; until it is hosted and its bundle has loaded once, no permission check can pass |
 
 ## Before changing code

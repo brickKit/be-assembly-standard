@@ -90,7 +90,7 @@ L3 tests the branches of this implementation: error paths, nil pointers and empt
 
 A cross-component test makes this component really call its required dependencies. `make test-cross ID=<scope>/<name>` runs only this component's tests, with each dependency's address bridged to the host from the real dependency containers; the test process stays on the host, so build cache and race detection work as usual.
 
-- Only this component and its dependency tree need to run: `brickkit up --focus <id>` first.
+- Only this component and its dependency tree need to run: `brickkit up --focus <id>` first. That turns local mode on and `brickkit up --all` leaves it on, so edits to `deploy.yaml` take effect only after `brickkit local off` or `brickkit local refresh` ([development-workflow.md](development-workflow.md#running-it-for-real)).
 - A name filter runs only the tests between two particular components; that is why cross-component tests are named after the other component (see the naming section below).
 - The scope is the synchronous call direction. Another component consuming this component's events goes through the event bus and follows the consumer rules above.
 - Data the test needs from a dependency is created through the dependency's real API, in the test ([data.md](data.md#when-a-dependency-lacks-what-you-need)).

@@ -93,7 +93,7 @@ test-db-init:  ## 建/刷新本地测试专用库 brickkit_test_db（跟真机�
 
 ##@ 拆回验证
 # 同一份 brickkit.yaml，`--ignore-shells` 让所有成员忽略 servedBy、各自独立成容器；
-# 部署文件 deploy.teardown.yaml 里把 authz/iam 地址换成它们自己的服务名。
+# -f deploy.teardown.yaml 只读这一份部署文件、忽略本地模式；authz/iam 地址本来就是成员自己的服务名，不用覆盖。
 # 不再临时改 brickkit.yaml，也就没有"事后恢复"这一步。
 teardown-up:  ## 拆回验证：所有成员按独立组件部署（--ignore-shells + deploy.teardown.yaml）
 	@brickkit up -f deploy.teardown.yaml --ignore-shells
@@ -103,7 +103,7 @@ teardown-down:  ## 停掉拆回验证的容器
 .PHONY: teardown-up teardown-down
 
 ##@ 门禁
-gates: docs-boundary  ## 跑全部验收门禁：铁律六 import 扫描 + SystemClient 误用 + 裸路由/裸 resolver + 事件契约破坏性变更 + 数据权限边界测试缺失 + 依赖版本号漂移（外壳 go.mod 钉与镜像 tag）+ brickkit up --dry-run（v1 自带的依赖/钉/成员漂移检查）
+gates: docs-boundary  ## 跑全部验收门禁：组件互不 import + SystemClient 误用 + 裸路由/裸 resolver + 事件契约破坏性变更 + 数据权限边界测试缺失 + 依赖版本号漂移（外壳 go.mod 钉与镜像 tag）+ 配置里的版本化服务名与 brickkit.yaml 一致 + brickkit up --dry-run（brickKit 自带的依赖/钉/成员漂移检查）
 	@cd tools/be-acceptance && go build -o build/be-acceptance ./cmd/be-acceptance
 	@tools/be-acceptance/build/be-acceptance gate import-scan --root .
 	@tools/be-acceptance/build/be-acceptance gate system-client-scan --root .
@@ -111,15 +111,16 @@ gates: docs-boundary  ## 跑全部验收门禁：铁律六 import 扫描 + Syste
 	@tools/be-acceptance/build/be-acceptance gate events-breaking-scan --root .
 	@tools/be-acceptance/build/be-acceptance gate data-scope-test-scan --root .
 	@tools/be-acceptance/build/be-acceptance gate dependency-version-scan --root .
-	@echo "▸ brickkit up --dry-run（v1 自带的漂移检查：依赖/版本钉/外壳成员；不启动任何容器）"
+	@tools/be-acceptance/build/be-acceptance gate service-hostname-scan --root .
+	@echo "▸ brickkit up --dry-run（brickKit 自带的漂移检查：依赖/版本钉/外壳成员；不启动任何容器）"
 	@brickkit up --dry-run
 .PHONY: gates
 
-version-check:  ## 扫全部 submodule 与 shell/be/* 外壳目录：HEAD 是否领先最新 tag（兼容 2.0.0 与 v2.0.0 双 tag）（阶段三 Task 3，阶段二复盘 §4 第 1 条）
+version-check:  ## 扫全部 submodule 与 shell/be/* 外壳目录：HEAD 是否领先最新 tag（兼容 2.0.0 与 v2.0.0 双 tag）
 	@bash infra/scripts/version-check.sh
 .PHONY: version-check
 
-bump-version:  ## 自动传播一次版本升级（算出全部下游要跟着同步的组件+改好所有文件），不写盘先看计划：make bump-version PLAN=<计划文件>；确认后加 APPLY=1 真的落地。计划文件格式与完整流程见 00-master-guide.md SOP-W-11
+bump-version:  ## 自动传播一次版本升级（算出全部下游要跟着同步的组件+改好所有文件），不写盘先看计划：make bump-version PLAN=<计划文件>；确认后加 APPLY=1 真的落地。计划文件格式与完整流程见 .claude/skills/version-bump-ship/SKILL.md 与 docs/conventions/development-workflow.md
 	@test -n "$(PLAN)" || { echo "用法：make bump-version PLAN=<计划文件> [APPLY=1]"; exit 1; }
 	@cd tools/be-acceptance && go build -o build/be-acceptance ./cmd/be-acceptance
 	@tools/be-acceptance/build/be-acceptance bump-version --root . --plan "$(PLAN)" $(if $(APPLY),--apply,)
@@ -130,7 +131,7 @@ test-cross:  ## 组件局部测试：只跑 ID 一个组件，强依赖 gRPC 指
 	@bash $(S)/test-cross.sh "$(ID)" $(ARGS)
 .PHONY: test-cross
 
-##@ 本地开发数据（只给本地用，不用于生产/CI；每个组件自己拥有种子数据——总纲 SOP-W-7）
+##@ 本地开发数据（只给本地用，不用于生产/CI；每个组件自己拥有种子数据，见 docs/seed-data.md）
 # ⚠️ 这里曾经是 infra/seed-data/ 的编排脚本（seed.sh/clean.sh）。等到每个
 # 组件都有了自己的 make seed（且互不需要装配层帮它们传 id/sub——各自反查
 # 依赖组件的 command_idempotency 表），编排层就只剩"按顺序调用谁"这一件
@@ -160,14 +161,14 @@ seed-data-clean:  ## 清空 seed-data 能清的部分（见下方哪些组件没
 	@$(MAKE) -C components/infra/authz seed-clean
 	@$(MAKE) -C components/infra/iam-casdoor seed-clean
 	@echo ""
-	@echo "⚠️ erp-inventory/erp-finance 没有 seed-clean，只有 db-reset（entry_no_seq/post_no 等计数器只增不回退，LockPeriod 是终态——逐行 DELETE 做不到干净复原，见总纲 SOP-W-7「delete 不是 reset」判据）：make -C components/erp/inventory db-reset / make -C components/erp/finance db-reset（会清空该组件全部数据，不止 seed 灌的那部分）"
+	@echo "⚠️ erp-inventory/erp-finance 没有 seed-clean，只有 db-reset（entry_no_seq/post_no 等计数器只增不回退，LockPeriod 是终态——逐行 DELETE 做不到干净复原）：make -C components/erp/inventory db-reset / make -C components/erp/finance db-reset（会清空该组件全部数据，不止 seed 灌的那部分）"
 	@echo "⚠️ infra-print 也没有 seed-clean——模板走版本管理，重跑 seed 只追加新版本，不需要撤销机制"
 	@echo "✓ 其余组件的种子数据已清空"
 .PHONY: seed-data-clean
 
 ##@ 验收
 # ⚠️ 会真的临时停掉 postgres、跑一次 brickkit down/up——先确认没有别人在用。
-tier0:  ## 档 0 六项验收，每加一个组件都要重跑（§9.6.1 档 4）
+tier0:  ## 档 0 六项验收，每加一个组件都要重跑
 	@$(MAKE) -C tools/be-acceptance tier0
 .PHONY: tier0
 
@@ -175,6 +176,6 @@ tier1:  ## 【占位】档 1 平台断言：v1 下整体重写，06f 之前不�
 	@echo "tier1 在 brickKit v1 下整体重写，推迟到 06f（platform/ 旧断言已随 be-acceptance 删除）；当前为占位，直接通过"
 .PHONY: tier1
 
-tier2:  ## 档 2 合并态专属断言（阶段四 Task 11），需要真实可达的 TEST_PG_DSN/TEST_NATS_URL
+tier2:  ## 档 2 合并态专属断言，需要真实可达的 TEST_PG_DSN/TEST_NATS_URL
 	@$(MAKE) -C tools/be-acceptance tier2
 .PHONY: tier2

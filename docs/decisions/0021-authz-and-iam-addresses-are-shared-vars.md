@@ -4,7 +4,7 @@
 
 ## Decision
 
-For the two things every component needs from authz and iam — polling the permission bundle and verifying tokens — components declare no dependency edge. They read the bundle address from `AUTHZ_BUNDLE_URL` and the identity provider's signing keys from `IAM_JWKS_URL`. Both are set once in `config/vars.yaml`, referenced as `$var:AUTHZ_BUNDLE_URL` / `$var:IAM_JWKS_URL` from each component's configuration, and overridden per topology in the deploy file's `vars:` (see [configuration conventions](../conventions/configuration.md#dependency-addresses)). A component that calls a business API of authz or iam over gRPC declares that dependency like any other — for example `infra/iam-casdoor` → `infra/authz` — and uses the injected `*_ENDPOINT` for that call only.
+For the two things every component needs from authz and iam — polling the permission bundle and verifying tokens — components declare no dependency edge. They read the bundle address from `AUTHZ_BUNDLE_URL` and the identity provider's signing keys from `IAM_JWKS_URL`. Both are set once in `config/vars.yaml` and referenced as `$var:AUTHZ_BUNDLE_URL` / `$var:IAM_JWKS_URL` from each component's configuration. The host is the member's own versioned service name (`infra-authz-<version>`, `infra-iam-casdoor-<version>`), which resolves standalone, inside a shell and on Kubernetes, so no deploy file overrides it; it changes only when authz or iam releases, and `make gates` fails while it disagrees with `brickkit.yaml` (see [configuration conventions](../conventions/configuration.md#dependency-addresses)). A component that calls a business API of authz or iam over gRPC declares that dependency like any other — for example `infra/iam-casdoor` → `infra/authz` — and uses the injected `*_ENDPOINT` for that call only.
 
 ## Why
 
@@ -18,6 +18,8 @@ Dependencies are pinned to exact versions. With an edge from every component to 
 - A literal bundle or JWKS URL in one component's `config/<scope>-<name>.yaml` when the shared value applies
 - Calling the IAM component on each request to validate a token
 - Expecting the platform to start authz or iam before components that only poll the bundle or verify tokens
+- Addressing authz or iam by a shell's service name: it exists only on Docker with the member merged, and changes with every release of that shell
+- Enabling Kubernetes `networkPolicy` without opening these two calls in the deploy file (`egress.allowTo` for the authz and iam Pods, `allowFrom` for their ingress): the generated policies follow dependency edges only, so every protected route answers `503`
 
 ## Revisit only if
 
