@@ -65,7 +65,10 @@ obs-down:     ; @bash $(S)/optional.sh obs down      ## 关闭可观测性 5 件
 ##@ 全局册子
 registry-check:  ## 校验端口册与 schema 册自洽
 	@bash $(S)/registry-check.sh
-.PHONY: registry-check
+
+docs-boundary:  ## 正式文档不得链接 dev/ 或 archive/
+	@python3 infra/scripts/docs-boundary.py
+.PHONY: registry-check docs-boundary
 
 ##@ 军火库
 arsenal-check:  ## 检查 submodule 结构与 brickkit.yaml 是否自洽
@@ -133,7 +136,7 @@ teardown-down:  ## 停掉全拆态的全部容器，并把 teardown-up 临时改
 .PHONY: teardown-down
 
 ##@ 门禁
-gates:  ## 跑全部验收门禁：铁律六 import 扫描 + SystemClient 误用 + 裸路由/裸 resolver + 事件契约破坏性变更 + 数据权限边界测试缺失 + 依赖版本号漂移（拆回门禁见阶段四）
+gates: docs-boundary  ## 跑全部验收门禁：铁律六 import 扫描 + SystemClient 误用 + 裸路由/裸 resolver + 事件契约破坏性变更 + 数据权限边界测试缺失 + 依赖版本号漂移（拆回门禁见阶段四）
 	@cd tools/be-acceptance && go build -o build/be-acceptance ./cmd/be-acceptance
 	@tools/be-acceptance/build/be-acceptance gate import-scan --root .
 	@tools/be-acceptance/build/be-acceptance gate system-client-scan --root .
