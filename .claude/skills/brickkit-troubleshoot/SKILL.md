@@ -120,7 +120,9 @@ one key and hides the conflict.
 | `INTERNAL` | Reading or writing a local file failed (disk full, no permission) — or, titled "Internal error", a CLI bug | Check disk space and permissions; report a bug with the whole output |
 
 Every command-ending error prints a JSON line on stderr with a stable `error_code` right after the
-`❌` block. Scripts decide on that code and the exit code, never on the human text. Only `NETWORK_UNREACHABLE` is worth retrying unchanged — the remote was never reached
+`❌` block — always when stderr is captured (your own runs, scripts, CI); a person typing at a terminal without
+`--log-level` / `BRICKKIT_LOG_LEVEL` doesn't get it, so when a pasted error has no JSON line, run the command yourself (your
+stderr is captured, so the line is there), or go by what the `❌` block says. Scripts decide on that code and the exit code, never on the human text. Only `NETWORK_UNREACHABLE` is worth retrying unchanged — the remote was never reached
 (offline, a host name that doesn't resolve). A Git remote that answered and refused is `AUTH_FAILED`.
 
 ## Where to check, and in what order
@@ -148,4 +150,4 @@ shell is reached at the shell's address. **To see the generated files** without 
 - The full specification and the reasoning behind each design choice:
   <https://github.com/brickKit/brickKit> and its root `AGENTS.md`
 
-<!-- brickkit:skill version=v1.0.0 sum=sha256:bc6bbf3cf7bf1ebfd03c4bcf017e57d941035923fdca453bc11219078ddabfec -->
+<!-- brickkit:skill version=v1.0.1 sum=sha256:29e465ef605c1d28a7eb42205a00e9fbc4728a760c8e0d2f9a7de11abe127c70 -->
