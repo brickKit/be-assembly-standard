@@ -77,9 +77,10 @@ docs-mirror:  ## 项目文档 docs/en/ 与 docs/zh/ 逐文件对应：路径相�
 lint:  ## brickKit 自身的三层 + 文档检查（严格模式）
 	@brickkit lint --strict
 
-docs-check:  ## 检查某个组件的四件套：make docs-check ID=mdm/customer
-	@test -n "$(ID)" || (echo "用法：make docs-check ID=<scope>/<name>"; exit 2)
-	@cd components/$(ID) && brickkit lint --strict
+docs-check:  ## 只检查一个组件或外壳（项目级 lint 限定不到单个组件）：make docs-check ID=mdm/customer | ID=be/go-core
+	@test -n "$(ID)" || (echo "用法：make docs-check ID=<scope>/<name>（外壳：ID=be/<name>）"; exit 2)
+	@d=components/$(ID); test -d "$$d" || d=shell/$(ID); test -d "$$d" || (echo "找不到 components/$(ID) 或 shell/$(ID)"; exit 2); \
+	  bash $(S)/component-lint.sh "$$d"
 .PHONY: lint docs-check
 
 ##@ 数据库

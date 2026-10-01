@@ -438,7 +438,7 @@ IAM_JWKS_URL: $var:IAM_JWKS_URL
   grep -nE '^\s+port:|port: [0-9]+\}' component.yaml
   ```
   通过：前六行全部 `无`；依赖都是 `@2.0.0`；`无版本注释`；端口与 registry 一致；`PG_SCHEMA` 默认值等于 `$SCHEMA`。
-- [ ] **3.3 `brickkit lint`**（在 `$C` 下，不加 `--strict`）：通过：输出里 `✅ component.yaml`，没有 `MANIFEST_INVALID`；此时只剩 `DOC_*` 警告（第 5 步清零）。
+- [ ] **3.3 组件级 lint**（`bash infra/scripts/component-lint.sh $C --` 不加 `--strict`，不要在 `$C` 下直接 `brickkit lint`：项目内它会 lint 整个项目，限定不到单个组件）：通过：输出里 `✅ component.yaml`，没有 `MANIFEST_INVALID`；此时只剩 `DOC_*` 警告（第 5 步清零）。
 - [ ] **3.4 改 `assembly.yaml`**：
   - `id` 保留；删除 `version:`（版本只在 `component.yaml` 一处）；删除 `shell:` 键（由哪个外壳托管在部署文件里选，[0022]）；`data.role` 的注释改成"登录角色，`PG_USER` 的值"（v1 起组件以它登录，不再只是 `SET LOCAL ROLE` 的目标）。
   - `asset:`（旧的 fork 指引，提到"local 安装源遮蔽"等 v0 机制）与 `edge_routes:` 的去留：试点拍板项 P5。**拍板之前的默认做法：两者原样保留、不改**；`menus`、`domain`、`tier`、`data`、`data_scopes`、`permissions` 一律保留（`menus` 的结构扩展归 06c）。用户在 mdm/customer 检查点拍板后，后续组件照拍板结果做，mdm/customer 在下一次改版时补齐。
@@ -524,7 +524,7 @@ IAM_JWKS_URL: $var:IAM_JWKS_URL
 - [ ] **4.7 `Makefile` 按 v1 改**（目标集合保持 06-testing.md 要求的那几个：`test`、`migrate-idempotent`、`contract-check`、`module-check`、`smoke`、`seed`/`seed-clean` 或 `db-reset`）：
   - `check-version`：不再查 `deployment.image`；HEAD 带 tag 时要求同时有 `$(VERSION)` 与 `v$(VERSION)`（Go）；`VERSION` 用 `yq` 或 `grep -m1 '^  version:'` 取 `metadata.version`。
   - `migrate-idempotent`：注释和用法改成 `PG_*`（`PG_HOST=localhost PG_PORT=5432 PG_DATABASE=brickkit_test_db PG_USER=… PG_PASSWORD=… PG_SCHEMA=$SCHEMA make migrate-idempotent`）。
-  - `docs-check`：改成 `brickkit lint --strict`（旧的 `infra/scripts/docs-check.sh` 已不存在）。
+  - `docs-check`：改成 `make docs-check ID=<scope>/<name>`（项目级 `brickkit lint` 限定不到单个组件，见 F06-004；旧的 `infra/scripts/docs-check.sh` 已不存在）。
   - `smoke`：`cd ../../.. && brickkit up --dry-run`。
   - `import-scan` 的自身白名单改成 `github.com/brickKit/$REPO/v2`。
   - `IMAGE := brickenterprise/<repo>` 与 `image` 目标删掉（镜像名由 brickKit 定为 `<repo>:<version>`，构建走第 7.7 步的 `brickkit build`）；`all` 不再依赖 `image`。需要"镜像里有 sh + wget"的检查时，`image` 改成 `cd ../../.. && brickkit build $(ID)` 再 `docker run --rm --entrypoint sh <repo>:$(VERSION) -c 'wget --version'`。
@@ -592,9 +592,9 @@ TypeScript（infra/bff-mobile）对应项：`package.json` 的 `version` 改 `2.
 ### 第 6 步　版本 2.0.0，`lint --strict` 零警告
 
 - [ ] **6.1 版本处处一致**：`grep -m1 -n 'version:' $C/component.yaml` → `2.0.0`；Go：`head -1 $C/go.mod` 以 `/v2` 结尾；Python：`pyproject.toml` 的 `version = "2.0.0"`；TS：`package.json` 的 `"version": "2.0.0"`。
-- [ ] **6.2 严格 lint**：`cd $C && brickkit lint --strict; echo "exit=$?"`。通过：`📋 Checked … files: 0 with errors, 0 warnings` 且 `exit=0`。常见警告与处理：`DOC_PLACEHOLDER`（骨架 TODO 没删）、`DOC_OUT_OF_STEP`（某个依赖 / required 键 / 契约文件文档没提）、`DOC_PATH_MISSING`（Code map 第一张表里的路径不存在）、`DOC_TRANSLATION_DRIFT`（小节数不一致，`AGENTS.zh.md` 漏了 `## BrickKit`）、`DOC_LINK_NOT_PORTABLE`（BRICKKIT*.md 或 AGENTS.md 里的相对 / `../` 链接）。
+- [ ] **6.2 严格 lint**：`make docs-check ID=<scope>/<name>; echo "exit=$?"`（项目根；项目内直接 `brickkit lint` 会 lint 整个项目，限定不到单个组件）。通过：`📋 Checked … files: 0 with errors, 0 warnings` 且 `exit=0`。常见警告与处理：`DOC_PLACEHOLDER`（骨架 TODO 没删）、`DOC_OUT_OF_STEP`（某个依赖 / required 键 / 契约文件文档没提）、`DOC_PATH_MISSING`（Code map 第一张表里的路径不存在）、`DOC_TRANSLATION_DRIFT`（小节数不一致，`AGENTS.zh.md` 漏了 `## BrickKit`）、`DOC_LINK_NOT_PORTABLE`（BRICKKIT*.md 或 AGENTS.md 里的相对 / `../` 链接）。
 - [ ] **6.3 组件门禁**：`cd $C && make check-version test migrate-idempotent contract-check import-scan module-check docs-check` 全绿（`check-version` 此时 HEAD 还没有 tag，只核对版本一致性）。
-- [ ] **6.4 V-01（只在 mdm/customer 做）**：在 `component.yaml` 里临时加一个驼峰键 `fooBar: {type: string, default: x}`，分别跑 `brickkit lint --strict`（组件目录）与 `brickkit up --dry-run`（项目根，第 7.2 步加入项目之后再跑这一半），原文记录有没有任何警告；然后删掉这个键、`git -C $C diff component.yaml` 确认复原。结论写进 to-verify 的 V-01 行（"静默接受"成立就转反馈候选）。
+- [ ] **6.4 V-01（只在 mdm/customer 做）**：在 `component.yaml` 里临时加一个驼峰键 `fooBar: {type: string, default: x}`，分别跑 `make docs-check ID=mdm/customer`与 `brickkit up --dry-run`（项目根，第 7.2 步加入项目之后再跑这一半），原文记录有没有任何警告；然后删掉这个键、`git -C $C diff component.yaml` 确认复原。结论写进 to-verify 的 V-01 行（"静默接受"成立就转反馈候选）。
 
 ### 第 7 步　接入项目、构建、真机验证
 
@@ -613,7 +613,7 @@ TypeScript（infra/bff-mobile）对应项：`package.json` 的 `version` 改 `2.
 - [ ] **7.3 填 `config/$REPO.yaml`**：按 §2.4。密钥写进 `.env`（`.env` 不提交）；多行密钥放 `.secrets/<repo>/`。`$var:` 后面没有空格。
 - [ ] **7.4 同步 `deploy.teardown.yaml`**：`brickkit add` 只维护 `deploy.yaml`（和存在时的 `deploy.local.yaml`），拆回验证用的 `deploy.teardown.yaml` 必须手工加同样的条目（结构与 `deploy.yaml` 一致；它没有 `vars:` 覆盖，authz/iam 地址本来就是成员服务名，R30）。通过：`brickkit up -f deploy.teardown.yaml --ignore-shells --dry-run` 不报 `DEPLOY_INCONSISTENT`。
 - [ ] **7.5 生成检查**：`brickkit up --dry-run`。通过：`📋 Component state calculation` 里本组件 `starting (…)`；没有 `CONFIG_INVALID`（缺 required 值）、没有未定义 `$var:` / `${…}`；`📄 Generated: .brickkit/generated/compose.yaml`。`grep -n -A30 "$SVC:" .brickkit/generated/compose.yaml` 能看到 `PG_USER=$ROLE`、`extra_hosts: host.docker.internal:host-gateway`（配置里用了 `host.docker.internal` 时 brickKit 自动加）。
-- [ ] **7.6 V-07（只在 mdm/customer 做，7.5 之后缓存已生成）**：把 `$C/component.yaml` 的版本临时改成 `2.0.1`（不提交），跑 `cd $C && brickkit lint`、`cd $ROOT && brickkit lint 2>&1 | grep -n -i -A3 'mdm/customer'`、`brickkit up --dry-run`，原文记录三者是否发现"`brickkit.yaml` 钉 2.0.0、本地源是 2.0.1"的漂移；然后 `git -C $C checkout component.yaml` 复原，再跑一次 `brickkit up --dry-run` 确认恢复。结论写进 to-verify 的 V-07 行。
+- [ ] **7.6 V-07（只在 mdm/customer 做，7.5 之后缓存已生成）**：把 `$C/component.yaml` 的版本临时改成 `2.0.1`（不提交），跑 `bash infra/scripts/component-lint.sh $C --`、`cd $ROOT && brickkit lint 2>&1 | grep -n -i -A3 'mdm/customer'`、`brickkit up --dry-run`，原文记录三者是否发现"`brickkit.yaml` 钉 2.0.0、本地源是 2.0.1"的漂移；然后 `git -C $C checkout component.yaml` 复原，再跑一次 `brickkit up --dry-run` 确认恢复。结论写进 to-verify 的 V-07 行。
 - [ ] **7.7 构建镜像**：
   ```bash
   cd $ROOT && brickkit build $ID
@@ -756,7 +756,7 @@ TypeScript（infra/bff-mobile）对应项：`package.json` 的 `version` 改 `2.
 
 - [ ] `BRICKKIT.md`/`.zh.md` 的 `Shell declaration` / `外壳声明` 列出与 `shell.members` 完全相同的成员；`Purpose` 里"currently compiles in no members"之类的过渡说法删掉。
 - [ ] `AGENTS.md`/`.zh.md` 的 Pitfalls 里"Leave `shell.members` empty…"那一行按现状改写或删除；Code map 不变。
-- [ ] `cd $SHD && brickkit lint --strict` → `0 with errors, 0 warnings`。
+- [ ] `make docs-check ID=be/<name>`（项目根；对应 `$SHD`）→ `0 with errors, 0 warnings`。
 - [ ] 外壳登录角色拿到成员授权：`cd $ROOT && make db-init`（GRANT 来自外壳清单），然后：
   ```bash
   docker exec be-postgres psql -U postgres -d brickkit_db -tAc \
