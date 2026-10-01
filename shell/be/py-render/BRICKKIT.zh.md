@@ -32,7 +32,6 @@
 | `OTEL_BASE_URL` | 遥测采集器基地址；留空即不导出 |
 | `AUTHZ_BUNDLE_URL` | 权限包地址，整个进程只加载一次；必填，缺了外壳拒绝启动 |
 | `IAM_JWKS_URL` | 身份提供方签名公钥地址，整个进程只加载一次；必填，缺了外壳拒绝启动 |
-| `SHELL_HEALTH_PORT` | 外壳自己 `/healthz` 的端口；默认值 8402 等于 `deployment.port`，不要填 |
 
 这些是外壳自己的键，从外壳进程环境读取。成员的配置从不来自这里：brickKit 通过 `BRICKKIT_SERVED_MEMBERS_CONFIG` 逐个成员传入。
 

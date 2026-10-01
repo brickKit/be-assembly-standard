@@ -345,3 +345,73 @@ Submodule 'shells/python' (git@github.com:brickKit/be-shell-python.git) unregist
 1. （brickKit）一个外壳零成员在运行期是合法的（SDK 拿到 `[]`；部署文件也可以一个成员都不托管），但清单层面必须至少列一个成员。后果是先建外壳骨架、再逐个迁入成员这种做法走不通：第一个成员加入之前，外壳既不能 `add` 也不能 `build`；放在本地源里还会让项目的 `lint` 一直报错。可以问一下是有意设计还是可以放宽（比如零成员只给警告）。
 2. （brickKit 文档）`BRICKKIT.zh.md` 的小节必须用固定的中文标题（组件定位 / 依赖说明 / 配置指南 / 契约索引），但已安装的 skill 里没写这几个名字，只能 lint 报错之后才知道。另外 `AGENTS.md` 里的相对链接只要跨出组件目录也会报 `DOC_LINK_NOT_PORTABLE`，而 skill 只说了 `BRICKKIT.md` 不能用相对链接。
 3. （项目内 SDK，不是 brickKit 的问题）be-sdk-python 的外壳 `/healthz` 端口应该和 Go 一样从自己的 `component.yaml` 读 `deployment.port`，而不是靠 `SHELL_HEALTH_PORT`/18889 兜底；目前靠 py-render 在 configSchema 里声明默认值 8402 来补。
+
+## 追加：裁定 R23（be-sdk-python v0.4.2）后的 py-render 复验
+
+### 目标
+
+be-sdk-python v0.4.2 的外壳改为在自己 `./component.yaml` 的 `deployment.port` 上提供 `/healthz`，不再读 `SHELL_HEALTH_PORT`。py-render 去掉这个键，依赖升到 `@v0.4.2`，然后复验：不设 `SHELL_HEALTH_PORT` 时零成员 `/healthz` 在 8402 返回 200。
+
+### 环境
+
+同上。v0.4.2 的实现看的是本地 `tools/be-sdk-python` 里 `git show v0.4.2:besdk/shell_runner.py` 和 `besdk/manifest.py`：`health_port=load_own_http_port(component_yaml)`；文件缺失，或端口缺失、非法、为 0，都直接报错，没有兜底端口。
+
+### 步骤
+
+1. 改动：`component.yaml` 删掉 `SHELL_HEALTH_PORT` 这条 configSchema；`pyproject.toml` 改成 `besdk @ git+https://github.com/brickKit/be-sdk-python.git@v0.4.2`；`BRICKKIT.md`/`.zh.md` 的配置表删掉这一行；`AGENTS.md`/`.zh.md` 易错点里关于 `SHELL_HEALTH_PORT` 的一行，换成"镜像工作目录里没有 `component.yaml` 时启动即退出"。`grep -rn "SHELL_HEALTH_PORT\|18889" shell/be` 无结果。3 个 Go 外壳的 `component.yaml` 里 `grep -n HEALTH` 也无结果：它们没有类似的键，一直从 `./component.yaml` 读端口。
+
+2. `docker build -q --no-cache -t task8-probe/be-py-render:1.0.0 shell/be/py-render`：
+
+```
+sha256:92077d1e2ea1f303f1942be90a715f35cd71b47dcf25af5469b289573866374c
+build exit=0
+```
+
+3. `docker run -d --add-host=host.docker.internal:host-gateway --env-file <scratch>/py-r23.env -p 29804:8402 ...`。env 文件与上次相同，只是没有 `SHELL_HEALTH_PORT`：`PG_*`（`shell_py_render`，密码取自 `.env`）、`NATS_URL`、`OTEL_BASE_URL=`、`AUTHZ_BUNDLE_URL`、`IAM_JWKS_URL`、`BRICKKIT_SERVED_MEMBERS=`、`BRICKKIT_SERVED_MEMBERS_CONFIG=[]`。
+
+```
+200 host:29804
+running exit=0
+{"ok":true} 8402 exit=0
+ 18889 exit=4
+Version: 0.4.2
+拉取 authz bundle 失败，沿用内存里已有的旧版本: [Errno -2] Name or service not known
+```
+
+（后三行分别是容器内 `wget` 8402、`wget` 18889、`pip show besdk`；最后一行是容器日志，authz 不可达是预期内的，原因同上。）
+
+4. 对照：工作目录换成 `/tmp`（找不到 `component.yaml`），`docker run --rm ... -w /tmp --entrypoint python ... /app/main.py`：
+
+```
+[be-py-render] 读自己的 component.yaml 失败：[Errno 2] No such file or directory: 'component.yaml'
+exit=1
+```
+
+5. `cd shell/be/py-render && brickkit lint --strict`（项目场景）里与 py-render 相关的只有：
+
+```
+   File: component.yaml
+   shell.members: a shell must list at least one component compiled into it
+   Suggestion: Full field reference: docs/en/11-reference/01-component-yaml-schema.md (swap en for zh for the Chinese version)
+...
+✅ ./ (docs)
+```
+
+scratch 副本（组件场景）：
+
+```
+📦 Component repository (has component.yaml, no brickkit.yaml): component.yaml and the component's docs are checked
+❌ Error: component.yaml failed validation
+   File: component.yaml
+   shell.members: a shell must list at least one component compiled into it
+   Suggestion: Full field reference: docs/en/11-reference/01-component-yaml-schema.md (swap en for zh for the Chinese version)
+✅ ./ (docs)
+
+📋 Checked 2 files: 1 with errors, 0 warnings
+```
+
+6. 删除了探针容器 `task8-probe-py-r23`、镜像 `task8-probe/be-py-render:1.0.0` 和含密码的 env 文件；`docker ps -a`、`docker images` 里都没有 task8 相关的残留。
+
+### 结论
+
+v0.4.2 之后 py-render 不再需要 `SHELL_HEALTH_PORT`：零成员时 `/healthz` 在 `deployment.port` 8402 返回 200，18889 不再监听；缺少 `component.yaml` 时会响亮退出。前文反馈候选 3 已在 SDK 侧解决。lint 只剩空成员这一条错误。

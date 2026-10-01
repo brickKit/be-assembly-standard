@@ -45,7 +45,7 @@ brickkit lint --strict                          # 清单和文档
 | 绝不 | 症状 | 原因 |
 |---|---|---|
 | 让 `shell.members` 为空，还指望清单能加载 | `brickkit lint` 和 `brickkit add` 拒绝它：`MANIFEST_INVALID`，"a shell must list at least one component compiled into it"；外壳加不进项目，也无法用 `brickkit build` 构建 | brickKit 要求至少编译进一个成员。一次部署一个成员都不托管仍然合法：这在部署文件里选择，此时 SDK 拿到的 `BRICKKIT_SERVED_MEMBERS_CONFIG` 是 `[]`，只提供 `/healthz` |
-| 去掉 `SHELL_HEALTH_PORT` 的默认值，或设成 8402 以外的值 | 日志显示外壳在运行；平台永远判它不健康，`up` 失败 | Python SDK 在 `SHELL_HEALTH_PORT` 上提供 `/healthz`（它自己的兜底是 18889），不读 `deployment.port`；健康检查探的是 8402 |
+| 不再把 `component.yaml` 复制进镜像的工作目录（`COPY . .` 到 `/app`），或从别的目录启动 `main.py` | 容器立即退出："[be-py-render] 读自己的 component.yaml 失败" | `besdk.shell_runner.main` 从 `./component.yaml` 的 `deployment.port` 读自己的端口（8402），没有兜底端口 |
 | 不给 `AUTHZ_BUNDLE_URL` 或 `IAM_JWKS_URL` 就运行外壳 | 进程启动即退出，消息里点名缺的键 | Python 外壳为整个进程只加载一次权限包，缺了就拒绝运行 |
 
 ## 改代码之前

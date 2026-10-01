@@ -45,7 +45,7 @@ The shell has no tests of its own: the launcher and its failure contract are tes
 | Never | Symptom | Why |
 |---|---|---|
 | Leave `shell.members` empty and expect the manifest to load | `brickkit lint` and `brickkit add` refuse it: `MANIFEST_INVALID`, "a shell must list at least one component compiled into it"; the shell cannot be added to the project or built with `brickkit build` | brickKit requires at least one compiled-in member. A deployment that hosts none of them is still legal: it is chosen in the deploy file, and the SDK then starts with `BRICKKIT_SERVED_MEMBERS_CONFIG` set to `[]` and serves only `/healthz` |
-| Remove the `SHELL_HEALTH_PORT` default or set it to anything but 8402 | Logs show the shell running; the platform marks it unhealthy forever and `up` fails | The Python SDK serves `/healthz` on `SHELL_HEALTH_PORT` (its own fallback is 18889) instead of reading `deployment.port`; the health check probes 8402 |
+| Stop copying `component.yaml` into the image's working directory (`COPY . .` into `/app`), or start `main.py` from another directory | The container exits at once: "[be-py-render] 读自己的 component.yaml 失败" | `besdk.shell_runner.main` reads its own port (8402) from `deployment.port` in `./component.yaml`; there is no fallback port |
 | Run the shell without `AUTHZ_BUNDLE_URL` or `IAM_JWKS_URL` | The process exits at start with a message naming the missing key | The Python shell loads the permission bundle once for the whole process and refuses to run without it |
 
 ## Before changing code

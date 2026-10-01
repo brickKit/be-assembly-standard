@@ -32,7 +32,6 @@ None. The shell has no dependency edges of its own; each member keeps its own, a
 | `OTEL_BASE_URL` | Telemetry collector base URL; empty disables export |
 | `AUTHZ_BUNDLE_URL` | Permission bundle address, loaded once for the whole process; required, the shell refuses to start without it |
 | `IAM_JWKS_URL` | Identity provider signing-key address, loaded once for the whole process; required, the shell refuses to start without it |
-| `SHELL_HEALTH_PORT` | Port of the shell's own `/healthz`; its default 8402 equals `deployment.port`, leave it unset |
 
 These are the shell's own keys, read from the shell's process environment. A member's configuration never comes from here: brickKit passes it per member in `BRICKKIT_SERVED_MEMBERS_CONFIG`.
 
