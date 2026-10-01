@@ -9,7 +9,7 @@ source "$ROOT/infra/scripts/lib/db-pw.sh"
 set -a; . ./.env; set +a
 # 口令以 \set 行写进 psql 的 stdin，不出现在 docker exec / psql 的命令行参数里
 PW_FILE="$(mktemp)"; chmod 600 "$PW_FILE"; trap 'rm -f "$PW_FILE"' EXIT
-db_pw_set_lines registry/schemas.tsv > "$PW_FILE"
+db_pw_set_lines "$ROOT" > "$PW_FILE"
 if [ ${#DB_PW_MISSING[@]} -gt 0 ]; then
   echo "✗ .env 缺少以下环境变量（${#DB_PW_MISSING[@]} 项）：" >&2
   printf '   %s\n' "${DB_PW_MISSING[@]}" >&2

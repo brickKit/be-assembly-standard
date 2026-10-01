@@ -29,7 +29,7 @@ tools/be-ops/build/be-ops db-script --root . --out tools/be-ops/build/test-db-in
 # 口令走 stdin 的 \set 行，不进 argv（与 db-init.sh 同一套）
 source "$ROOT/infra/scripts/lib/db-pw.sh"
 PW_FILE="$(mktemp)"; chmod 600 "$PW_FILE"; trap 'rm -f "$PW_FILE"' EXIT
-db_pw_set_lines registry/schemas.tsv > "$PW_FILE"
+db_pw_set_lines "$ROOT" > "$PW_FILE"
 if [ ${#DB_PW_MISSING[@]} -gt 0 ]; then
 	echo "✗ .env 缺少：${DB_PW_MISSING[*]}——运行 bash infra/scripts/dev-env.sh" >&2
 	exit 1

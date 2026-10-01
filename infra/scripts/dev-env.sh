@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # 补齐本地 .env（已 gitignore）里数据库登录角色的随机密码：
-#   <REPO>_DB_PASSWORD（schemas.tsv 每一行一个）与 SHELL_<NAME>_PASSWORD。
+#   <REPO>_DB_PASSWORD（schemas.tsv 每一行一个）与 SHELL_<NAME>_PASSWORD（每个外壳一个，同 be-ops）。
 # 只追加缺失的条目，绝不覆盖已有值；只打印变量名，不打印值。
 set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
@@ -14,7 +14,7 @@ while read -r _ var; do
     echo "${var}=$(openssl rand -hex 16)" >> "$ENVF"
     added+=("$var")
   fi
-done < <(db_pw_pairs "$ROOT/registry/schemas.tsv")
+done < <(db_pw_pairs "$ROOT")
 if [ ${#added[@]} -eq 0 ]; then
   echo "✓ .env 里的数据库密码已齐全，无需补充"
 else
