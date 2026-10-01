@@ -1,22 +1,118 @@
+[English](AGENTS.md) · [中文](AGENTS.zh.md)
+
 # be-assembly-standard
 
 The AI guide to this project: what it is, the rules every component here follows, where to look. The component table at the end is maintained by brickkit.
 
+> **Document language is not conversation language.** The formal documents are written in English so that an AI reads them efficiently. The maintainer of this project communicates only in Chinese, so every reply to them is in Chinese, whatever language the file, the code or the last tool output is in. Decide the reply language before writing the first word; checking it after writing has proved unreliable.
+
 ## Overview
 
-<!-- TODO: what this project is, its domains, how its components group -->
+- **What this is.** BrickEnterprise: an arsenal of ERP/CRM components plus the standard assembly template that puts them together with brickKit. It is also where brickKit's features are proved on real machines; a platform bug found here is reproduced and reported to brickKit, never worked around inside a component.
+- **Nine domains**, and a component ID is `<domain>/<name>` (repository `<domain>-<name>`): `infra`, `integration`, `mdm` (master data), `crm`, `erp`, `hrm`, `prj`, `ana`, `frontend`.
+- **Three hubs** hold the rest together. `mdm/*` is read by everyone and calls no one. `erp/inventory` is the only writer of physical stock movements. `erp/finance` is mostly commanded and listens to events. CRM and ERP have no synchronous edge between them, only events; inventory and finance have no edge at all, the same upstream (such as `erp/sales`) triggers both side by side.
+- **Where things live.**
+  - `components/<scope>/<name>/`: one Git submodule per component; `.gitmodules` records the exact commit of each.
+  - `shell/<scope>/<name>/`: the shells (`be/go-core`, `be/go-infra`, `be/go-backoffice`, `be/py-render`), project code in this repository ([0022](docs/decisions/0022-shells-are-project-code.md)).
+  - `tools/`: `be-sdk-go`, `be-sdk-python`, `be-sdk-ts` (the runtime every component builds on), `be-ops` (assembly-time generation: database setup script, permission and data-scope registries), `be-acceptance` (the gates behind `make gates`).
+  - `registry/` (ports, schemas, permission keys), `config/` (component values, `vars.yaml` for shared ones), `infra/` (the base resources `make up` starts), `docs/` (conventions, decisions, seed data).
+- **Two principles that never bend.**
+  1. **Every component is a complete brickKit component and runs on its own.** Every call to another component goes over real gRPC or HTTP, every port in `extraPorts` really listens, and `brickkit up --focus <id>` starts it with nothing but what it depends on. "They end up in the same shell, so call the function directly" breaks this, and the component can never be deployed on its own again.
+  2. **Merging happens only at deployment.** A shell turns N processes into one and does nothing else.
 
 ## Conventions
 
-<!-- TODO: the rules every component in this project follows: stack, port and schema registries, naming, review rules — components never repeat them -->
+One line each; the file linked is the rule in full. A request that breaks one is put to the person, quoting the file.
+
+- **Configuration**: keys are upper-snake environment variable names; shared connection keys are `PG_*`, `NATS_URL`, `S3_URL`, `OTEL_BASE_URL`, `AUTHZ_BUNDLE_URL`, `IAM_JWKS_URL`; nothing ends in `_ENDPOINT` ([configuration.md](docs/conventions/configuration.md)).
+- **Where values live**: a value shared by several components is written once in `config/vars.yaml` and referenced as `$var:NAME`; a component's own values go in `config/<scope>-<name>.yaml`; secrets are only ever `${NAME}` ([configuration.md](docs/conventions/configuration.md#where-values-live)).
+- **Workflow**: seven steps, contracts before business-rule tests before code, documents before code ([development-workflow.md](docs/conventions/development-workflow.md)); answer the questions in [Before writing code](docs/conventions/development-workflow.md#before-writing-code) every time.
+- **Backend**: one locked stack per language, one module entry, everything through `rt`, merge-safe by construction ([backend.md](docs/conventions/backend.md)).
+- **Frontend**: Vue 3, AntDV + vxe-table on PC, wot-design-uni on mobile, tokens as CSS variables, third-party UI only inside the ui-kits ([frontend.md](docs/conventions/frontend.md)).
+- **Testing**: layers L1–L4 and FE-1–FE-4; never change a test to make it pass ([testing.md](docs/conventions/testing.md)).
+- **Data**: seed data for people, test data for tests, two physical databases (`brickkit_db`, `brickkit_test_db`); a dependency that lacks a capability is fixed at the source ([data.md](docs/conventions/data.md)).
+- **Registries**: ports, schemas, roles and permission keys are copied from `registry/`, never invented; `ports.tsv`, `schemas.tsv` and `permissions.tsv` are append-only: a row is never edited, removed or recycled ([registries.md](docs/conventions/registries.md#append-only)).
+- **Submodule map**: `.gitmodules` and the submodule pointers say which repository and which exact commit each component is built from; they change only through `git submodule` commands, and a pointer is committed together with the `brickkit upgrade` that needs it ([development-workflow.md](docs/conventions/development-workflow.md#releasing)).
+- **Two manifests per component**: `component.yaml` holds only what brickKit reads; this project's own keys (`permissions`, `data_scopes`, `menus`, and other project metadata such as `domain` or `tier`) go in the sibling `assembly.yaml`, read by be-ops ([backend.md](docs/conventions/backend.md#repository-layout)). Which shell hosts a component is chosen in the deploy file ([0022](docs/decisions/0022-shells-are-project-code.md)).
+- **Versions**: every change gets a bump, versions are exact, components are on `2.x` and shells on `1.x`; a Go component carries two tags on one commit (`2.0.0` for brickKit, `v2.0.0` for Go) and its module path ends in `/v2`; propagate with `make bump-version` ([development-workflow.md](docs/conventions/development-workflow.md#versions)).
+- **Commits and releases**: Chinese messages written to a file and committed with `git commit -F`, annotated tags, release in the order `bump-version` prints ([development-workflow.md](docs/conventions/development-workflow.md#releasing)).
+- **Business logic**: design it yourself first, read a reference only where stuck, never copy ([reference-implementations.md](docs/conventions/reference-implementations.md)).
+- **AI-sized code**: patterns only where they help an AI read the code; limits on function, file and session size ([ai-development.md](docs/conventions/ai-development.md)).
+- **Documents**: English canonical with a `.zh.md` translation, same `##` sections; formal documents never link into `dev/` or `archive/` (`make docs-boundary`) ([documentation.md](docs/conventions/documentation.md)).
+- **Decisions**: [docs/decisions/](docs/decisions/README.md) says why the project is shaped this way and what not to propose; a decision wins over a convention.
+- **Containers are off by default**: base resources from `make up` may stay up; component containers go down with `brickkit down` after verification ([development-workflow.md](docs/conventions/development-workflow.md#running-it-for-real)).
 
 ## Where to look
 
-<!-- TODO: a table: what you are doing (the words you would search for) → the file to read first; last line: not here? the component table below, then the component's AGENTS.md -->
+| What you are doing (words you'd search for) | Read first |
+|---|---|
+| a new requirement, a feature, "where should this go", "is this a good idea", a change across components | the `brickkit-plan-change` skill ([SKILL.md](.claude/skills/brickkit-plan-change/SKILL.md)), then [docs/decisions/](docs/decisions/README.md) |
+| starting work on a component; what order to do things in; how much to do in one session | [development-workflow.md](docs/conventions/development-workflow.md#the-seven-step-loop), [ai-development.md](docs/conventions/ai-development.md#how-much-in-one-session) |
+| writing a new component; editing `component.yaml`; the repository layout | the `brickkit-component` skill ([SKILL.md](.claude/skills/brickkit-component/SKILL.md)), [backend.md](docs/conventions/backend.md#repository-layout) |
+| which port, schema, database role or permission key to use | [registries.md](docs/conventions/registries.md) |
+| naming a config key; reading a config value; connecting to PostgreSQL, NATS or object storage | [configuration.md](docs/conventions/configuration.md), [backend.md](docs/conventions/backend.md#the-runtime-is-the-only-way-in) |
+| which framework or library; writing `main`; the module entry | [backend.md](docs/conventions/backend.md#stack), [backend.md](docs/conventions/backend.md#module-entry), [0003](docs/decisions/0003-locked-stack-per-language.md) |
+| adding an endpoint; who can call it; a permission key | [backend.md](docs/conventions/backend.md#permissions) |
+| making a table show only some rows to some people ("sales sees only their own orders", "a warehouse keeper sees one warehouse") | [backend.md](docs/conventions/backend.md#data-scopes), [0008](docs/decisions/0008-data-scopes-ship-with-the-version.md), [0009](docs/decisions/0009-no-row-level-security.md) |
+| calling another component; showing data another component owns | [backend.md](docs/conventions/backend.md#calling-other-components) |
+| adding a table, a migration or a partition | [backend.md](docs/conventions/backend.md#database) |
+| publishing or consuming an event; a write across components; a timeout or a compensation | [backend.md](docs/conventions/backend.md#events-and-cross-component-writes) |
+| changing a contract: renaming a field, removing an rpc or an event | [backend.md](docs/conventions/backend.md#contracts), [0011](docs/decisions/0011-contracts-are-additive-only.md) |
+| amounts, prices, money fields; paging a list | [0010](docs/decisions/0010-money-as-strings-lists-by-cursor.md) |
+| adding a cache; Redis; making the permission check faster | [0004](docs/decisions/0004-no-redis.md), [0005](docs/decisions/0005-local-permission-bundle.md) |
+| putting several components in one process; a shell; which members a shell hosts | [0022](docs/decisions/0022-shells-are-project-code.md), the `brickkit-component` skill (shells), [development-workflow.md](docs/conventions/development-workflow.md#running-it-for-real) (teardown check) |
+| which test to write, in which layer; a test is red and I'm stuck | [testing.md](docs/conventions/testing.md), [When stuck](docs/conventions/testing.md#when-stuck) |
+| running tests against real dependencies | [testing.md](docs/conventions/testing.md#cross-component-tests), [testing.md](docs/conventions/testing.md#running-tests) |
+| demo data; test accounts; how to log in | [docs/seed-data.md](docs/seed-data.md) |
+| designing seed or test data; a dependency doesn't have the data I need | [data.md](docs/conventions/data.md) |
+| a frontend page, the component library, theme, menus, buttons only some users see | [frontend.md](docs/conventions/frontend.md) |
+| how should this business logic work; which open-source ERP to read | [reference-implementations.md](docs/conventions/reference-implementations.md) |
+| several reasonable ways to do one feature; "let the customer choose" | [reference-implementations.md](docs/conventions/reference-implementations.md#slot-family-signal), [0012](docs/decisions/0012-variants-become-slot-families.md) |
+| whether to use a design pattern; a file or function getting long | [ai-development.md](docs/conventions/ai-development.md#when-to-use-a-design-pattern) |
+| writing, splitting or translating a document; a component's documents | [documentation.md](docs/conventions/documentation.md) |
+| bumping a version; releasing; tagging; "ship it" | the `version-bump-ship` skill ([SKILL.md](.claude/skills/version-bump-ship/SKILL.md)), [development-workflow.md](docs/conventions/development-workflow.md#versions) |
+| how to install or deploy; who creates the database; secrets; Kubernetes; another environment | the `brickkit-deploy` skill ([SKILL.md](.claude/skills/brickkit-deploy/SKILL.md)); each component's `components/<scope>/<name>/BRICKKIT.md`, section "Before you deploy"; [registries.md](docs/conventions/registries.md#schemas-and-roles) (`make db-init`) |
+| debugging one component in an IDE; running only one component | [development-workflow.md](docs/conventions/development-workflow.md#running-it-for-real), the `brickkit-deploy` skill |
+| adding, removing or upgrading a component in the project; why a component isn't starting | the `brickkit-assemble` skill ([SKILL.md](.claude/skills/brickkit-assemble/SKILL.md)) |
+| a `brickkit` command printed an error or an `error_code` | the `brickkit-troubleshoot` skill ([SKILL.md](.claude/skills/brickkit-troubleshoot/SKILL.md)); flags: `brickkit <command> --help` |
+| "why not React / Java / RLS / a Deny rule / a config center…" | [docs/decisions/](docs/decisions/README.md) |
+| what one component does; changing one component | the component table below, then `components/<scope>/<name>/BRICKKIT.md` (what it owns) and its `AGENTS.md` (how to change it) |
+
+Not here? The component table below, then the component's `AGENTS.md`.
 
 ## Pitfalls
 
-<!-- TODO: a table: Never / Symptom / Why — mistakes that hold for every component in this project -->
+The mistakes that hold for every component. Most of them look correct, pass the tests, and show no symptom until much later.
+
+| Never | Symptom | Why |
+|---|---|---|
+| `SET ROLE` / `SET search_path` without `LOCAL` | The next borrower of the pooled connection runs its queries in your schema: no error, no crash, another component's data read and written | Without `LOCAL` the setting outlives the transaction. Use `besdk.WithTx` ([backend.md](docs/conventions/backend.md#database)) |
+| Read `os.Getenv` / `os.environ` in module code | Standalone everything is green; merged into a shell, members overwrite each other's `PG_SCHEMA` and every other key, and a module silently uses another's schema | One process has one environment. Configuration comes only from `rt.Config` ([backend.md](docs/conventions/backend.md#merge-safety)) |
+| Initialise anything process-wide in a module: `otel.SetTracerProvider`, `logging.basicConfig`, signal handlers, the default Prometheus registry, `gin.SetMode` | Merged: the last initialiser wins, every trace lands under one service name, one module's debug mode leaks stack traces for all; the default registry panics on the second module | Use `rt.Logger`, `rt.Tracer`, `rt.Meter`, `rt.Registry` ([backend.md](docs/conventions/backend.md#merge-safety)) |
+| `log.Fatal` / `os.Exit` / `sys.exit`, or `gin.New()` / `sql.Open()` / `Listen` in a module | One module's recoverable error takes the whole shell down; `gin.New()` silently loses tracing, metrics and PII redaction | Return an error; `besdk.NewGinEngine(rt)`, `rt.DB`; the caller listens ([backend.md](docs/conventions/backend.md#merge-safety)) |
+| Import another component's code, share a models package, or copy its generated contract code | Nothing breaks until the day a component must run alone and can't; copied generated code panics at start once caller and callee share a shell | Only `be-sdk-*` and the imported `gen/<domain>/<name>` package cross a boundary ([0001](docs/decisions/0001-no-imports-between-components.md)) |
+| Dial an injected `*_ENDPOINT` value as it is | It always starts with `http://`, gRPC ports included; the dial fails with an error about name resolution. With port name `""` a gRPC call reaches the HTTP port: TCP connects, then a protocol error | Use `rt.Config.Endpoint(dep, "grpc")` ([backend.md](docs/conventions/backend.md#the-runtime-is-the-only-way-in)) |
+| Treat an absent optional dependency as an empty value, or index the environment for it | The variable doesn't exist at all; indexing crashes at start | `Endpoint` returns `ok == false`; the module degrades ([backend.md](docs/conventions/backend.md#the-runtime-is-the-only-way-in)) |
+| Name a config key `*_ENDPOINT`, `COMPONENT_ID`, `COMPONENT_VERSION`, `PORT` or `BRICKKIT_SERVED_MEMBERS*` | The platform's value wins with only a warning; `up` is green and the component never gets your value | Those names belong to the platform ([configuration.md](docs/conventions/configuration.md#key-names)) |
+| Check the database, NATS, authz or another component in `/healthz` | One downstream hiccup marks every upstream unhealthy and restarts it; in a shell every member restarts at once | `/healthz` reports only that this process is alive ([backend.md](docs/conventions/backend.md#health-check-and-image)) |
+| Base the image on `scratch` or distroless | The component logs "ready" and the platform reports it unhealthy forever | The health check runs through `/bin/sh` and `wget` ([backend.md](docs/conventions/backend.md#health-check-and-image)) |
+| Register a business route with bare `r.GET` / `@app.get`, or an unwrapped resolver | The endpoint has no permission check at all, with zero symptom | The permission key is part of the route registration; `make gates` scans for it ([backend.md](docs/conventions/backend.md#permissions)) |
+| Use `besdk.SystemClient` on a path that serves a user request | The response silently contains more rows than the user may see | It carries the component's identity and bypasses data scopes; only `Start()` and event handlers ([backend.md](docs/conventions/backend.md#calling-other-components)) |
+| Omit `data_scopes` from `assembly.yaml` | be-ops rejects the component | Deliberate: a security setting may not default to off. No scoping is written `data_scopes: none` ([0008](docs/decisions/0008-data-scopes-ship-with-the-version.md)) |
+| Combine `owner` OR `org` with one operand left at "match all" | The whole condition matches everything; every user sees every row | Both operands must come from the caller's real scope ([backend.md](docs/conventions/backend.md#data-scopes)) |
+| Rename or reuse a released permission key | Every role granted it silently loses it; after an upgrade users suddenly can't use a button | Keys are persistent identifiers; retire one with the `deprecated` column ([registries.md](docs/conventions/registries.md#append-only)) |
+| Check only `features` in the frontend, not `permissions` | The menu item is visible and opens a full-page 403 | `features` says what is installed, `permissions` what this user may do ([frontend.md](docs/conventions/frontend.md#features-permissions-and-menus)) |
+| Write this project's keys (`permissions`, `data_scopes`, `menus`, and other project metadata such as `domain` or `tier`) into `component.yaml` | `brickkit lint` and `brickkit add` reject the whole manifest: `MANIFEST_INVALID`, `unknown field`; the component can't be added or started | `component.yaml` has no extension fields; those keys belong in `assembly.yaml` ([backend.md](docs/conventions/backend.md#repository-layout)) |
+| Move a registered port, rename a schema, or allocate a `1xxxx` port | Every dependent and every shell hosting the component breaks; a schema rename is a data migration; a `1xxxx` port collides with brickKit's host mapping for `mode: debug` / `local` | [registries.md](docs/conventions/registries.md#ports) |
+| Claim a queue row or an idempotency key with a plain `SELECT` and then a write | Two replicas publish every outbox row twice; two concurrent requests both execute | Claim atomically: `FOR UPDATE SKIP LOCKED`, `INSERT … ON CONFLICT DO NOTHING` ([backend.md](docs/conventions/backend.md#database)) |
+| Pass money as a float, or page a `List` with `offset` | Amounts lose precision between languages; deep pages get slow and skip rows | Decimal strings and cursors ([0010](docs/decisions/0010-money-as-strings-lists-by-cursor.md)) |
+| Change a test to make it pass: comment it out, `t.Skip`, loosen the assertion | Everything is green and guards nothing | Fix the implementation; a wrong test is changed in its own commit, saying why ([testing.md](docs/conventions/testing.md#red-green-and-the-iron-rule)) |
+| Change a forked component's `metadata.id` or `metadata.version` | With a new ID every dependent's `<ID>_ENDPOINT` variable disappears; with a new version the dependents' exact pins no longer reach the fork | A fork stands in for the standard component under the same `id@version`; only its repository and directory names may differ |
+| Let the members a shell's `main` registers (its registry) differ from `shell.members` in its `component.yaml`, or a Go shell's `go.mod` from either | A member to host that isn't registered: the shell exits at start and every member in it is down. A member version `go.mod` doesn't require: the image runs other code than the project believes, with no error | The JSON says what to host, the binary decides what exists; `make bump-version` rewrites `shell.members` and `go.mod` together ([0022](docs/decisions/0022-shells-are-project-code.md)) |
+| Expect `deploy.local.yaml` to merge with `deploy.yaml` | With local mode on, edits to `deploy.yaml` have no effect; the team's later changes never reach your copy, and `up` refuses once the component set differs | It replaces `deploy.yaml` wholesale. `brickkit local status` shows the switch; `brickkit local refresh` lists your old changes to re-apply (the `brickkit-deploy` skill) |
+| Release a Go component `2.x` with only the brickKit tag, or with a module path without `/v2` | The shell's Go build can't fetch the member: `unknown revision v2.0.0`, or "module path must match major version" | Go needs the `v` tag and the major version in the path; brickKit's tag has no `v` ([development-workflow.md](docs/conventions/development-workflow.md#versions)) |
+| Change code without bumping `metadata.version`, or change a released version in place | `brickkit build` skips the existing image and the container keeps running the old code, all green | The image tag is the version ([development-workflow.md](docs/conventions/development-workflow.md#versions)) |
+| `brickkit remove` a component with unpushed commits | Its source directory is deleted with it | Commit and push first ([development-workflow.md](docs/conventions/development-workflow.md#releasing)) |
 
 <!-- brickkit:managed:begin lang=en -->
 <!-- maintained by brickkit (init, add, remove, upgrade, skills update): edits between these markers are overwritten -->
