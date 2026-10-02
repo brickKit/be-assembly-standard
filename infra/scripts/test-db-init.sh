@@ -93,4 +93,7 @@ for c in "${COMPONENTS[@]}"; do
 	  make migrate-idempotent ) || { echo "✗ $c 迁移失败" >&2; exit 1; }
 done
 
+echo "▸ ③ 过渡：给快用完的周分区补窗口（SDK 接管分区创建后删）"
+docker exec -i be-postgres psql -v ON_ERROR_STOP=1 -U postgres -d brickkit_test_db -q < "$ROOT/infra/scripts/sql/extend-weekly-partitions.sql"
+
 echo "✓ brickkit_test_db 就绪——TEST_PG_DSN 现在该指向这个库，不是 brickkit_db"
