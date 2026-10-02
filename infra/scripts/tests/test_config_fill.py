@@ -380,6 +380,29 @@ def test_required_var_ref_to_empty_var_is_missing(tmp):
     assert values(root / "config/demo-app.yaml")["IAM_JWKS_URL"] == "$var:IAM_JWKS_URL"   # 引用照样写，值去 vars.yaml 补
 
 
+def test_required_var_ref_empty_falls_back_to_default(tmp):  # B2 审查 M-1：与 brickKit 一致，空 → 退回 schema 默认值
+    root = make_root(tmp)
+    m = root / "components/demo/app/component.yaml"
+    m.write_text(m.read_text(encoding="utf-8").replace("required: [PG_HOST,", "required: [PG_PORT, PG_HOST,"), encoding="utf-8")
+    vars_ = (root / "config/vars.yaml").read_text(encoding="utf-8")
+    (root / "config/vars.yaml").write_text(vars_.replace('PG_PORT: "5432"', 'PG_PORT: ""'), encoding="utf-8")
+    r = run(root, "demo/app", *OK_SETS)
+    assert r.returncode == 0, r.stdout + r.stderr                 # PG_PORT 有 default "5432"：brickKit 退回默认值
+    assert values(root / "config/demo-app.yaml")["PG_PORT"] == "$var:PG_PORT"
+    (root / "config/vars.yaml").write_text(vars_.replace('PG_PORT: "5432"', "PG_PORT:"), encoding="utf-8")
+    assert run(root, "demo/app", *OK_SETS).returncode == 0         # null 同样退回默认值
+
+
+def test_required_var_ref_null_reported_as_empty(tmp):  # B2 审查 M-1：显式写成 null 的变量是"为空"，不是"没有"
+    root = make_root(tmp)
+    vars_ = (root / "config/vars.yaml").read_text(encoding="utf-8")
+    (root / "config/vars.yaml").write_text(vars_.replace(
+        "IAM_JWKS_URL: http://infra-iam-casdoor-2-0-0:8200/.well-known/jwks.json", "IAM_JWKS_URL:"), encoding="utf-8")
+    r = run(root, "demo/app", *OK_SETS)
+    assert r.returncode == 3 and _missing(r) == ["IAM_JWKS_URL"], r.stdout + r.stderr
+    assert "IAM_JWKS_URL 为空" in r.stdout, r.stdout
+
+
 def test_required_var_ref_resolved_by_deploy_vars(tmp):  # 部署文件的 vars: 覆盖 config/vars.yaml 的同名变量
     root = make_root(tmp)
     vars_ = (root / "config/vars.yaml").read_text(encoding="utf-8")

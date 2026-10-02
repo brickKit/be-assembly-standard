@@ -11,8 +11,9 @@
   config/vars.yaml 有的键 → $var:KEY（组件有默认值也显式写，换环境时部署文件的 vars: 能覆盖到）
 其余键不动：组件自有可选键保持注释（跟随组件默认），其它密钥由人给值（会给出 ${<UREPO>_<KEY>} 的建议写法）。
 required 键最后仍没有值 → 列出键名，退出码 3（已能填的照样写盘）。参数或文件错误 → 退出码 2。
-required 键写成 $var:X 时，X 要真有值才算填了：deploy.yaml 的 vars: 有 X 用它（同名时优先，与 brickKit 一致），
-否则看 config/vars.yaml；X 两处都没有、或取到的是空串 → 同样算缺（引用照样写，值去 vars.yaml 补）。
+required 键写成 $var:X 时按 brickKit v1.1.0 的取值规则判断（internal/configdir/resolve.go）：deploy.yaml 的 vars:
+有 X 用它（同名时优先），否则看 config/vars.yaml；X 两处都没有 → 算缺（brickKit 加载时就报未定义）；X 是空串或 null
+→ brickKit 退回 schema 默认值，没有默认值才算缺。引用照样写，值去 vars.yaml 补。
 """
 import argparse
 import json
@@ -127,10 +128,12 @@ def var_ref(raw: str):
 
 
 def var_value(name: str, deploy_vars: dict, shared: dict):
-    """$var:NAME 实际取到的值：部署文件的 vars: 优先，其次 config/vars.yaml；都没有返回 None。"""
+    """$var:NAME 实际取到的值：部署文件的 vars: 优先，其次 config/vars.yaml。返回 (是否定义, 值)。"""
     if name in deploy_vars:
-        return deploy_vars[name]
-    return shared.get(name)
+        return True, deploy_vars[name]
+    if name in shared:
+        return True, shared[name]
+    return False, None
 
 
 def derive(key: str, *, shell: bool, name: str, repo: str, row, var_keys: set):
@@ -270,11 +273,14 @@ def main() -> int:
                 missing.append(k)
             continue
         name = var_ref(raw)
-        if name is not None:   # 显式的 $var: 引用盖过组件默认值：取到空也算缺
-            v = var_value(name, deploy_vars, shared)
-            if v is None or str(v) == "":
+        if name is not None:   # 未定义 → 缺；空串 / null → brickKit 退回 schema 默认值，没有默认值才缺
+            defined, v = var_value(name, deploy_vars, shared)
+            if not defined:
                 missing.append(k)
-                unresolved[k] = (name, "没有" if v is None else "为空")
+                unresolved[k] = (name, "没有")
+            elif (v is None or str(v) == "") and "default" not in props[k]:
+                missing.append(k)
+                unresolved[k] = (name, "为空")
     if missing:
         print(f"✗ {rel} 还有 {len(missing)} 个 required 键没有值，需要人给（再跑一次带 --set KEY=VALUE）：")
         for k in missing:
