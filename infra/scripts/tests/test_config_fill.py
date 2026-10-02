@@ -281,7 +281,7 @@ def test_key_absent_from_file_is_appended(tmp):
 def test_plaintext_secret_set_rejected(tmp):  # 修复轮 I-4
     root = make_root(tmp)
     before = (root / "config/demo-app.yaml").read_text(encoding="utf-8")
-    for bad in ("APP_TOKEN=s3cr3t-plain", "PG_PASSWORD=hunter2", "APP_TOKEN=", "APP_TOKEN=x${A}"):
+    for bad in ("APP_TOKEN=s3cr3t-plain", "PG_PASSWORD=hunter2", "APP_TOKEN=", "APP_TOKEN=x${A}", "APP_TOKEN=${X:-hunter2}"):
         r = run(root, "demo/app", "--set", bad, "--set", "DEFAULT_WAREHOUSE_ID=w")
         assert r.returncode == 2, (bad, r.stdout + r.stderr)
         assert "secret" in r.stdout + r.stderr and bad.split("=")[0] in r.stdout + r.stderr, r.stdout + r.stderr

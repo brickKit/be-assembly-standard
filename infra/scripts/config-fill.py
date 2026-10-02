@@ -23,8 +23,8 @@ import yaml
 KEY_RE = re.compile(r"^(?P<key>[A-Z][A-Z0-9_]*):(?P<rest>.*)$")
 COMMENTED_RE = re.compile(r"^#\s?(?P<key>[A-Z][A-Z0-9_]*):(?P<rest>.*)$")
 PG_SPECIAL = {"PG_USER", "PG_PASSWORD", "PG_SCHEMA"}
-# secret: true 的键只允许引用：${VAR}（可带 :-默认值）、file://…、$var:NAME——明文会被提交进 config/
-SECRET_REF = re.compile(r"^(\$\{[A-Za-z_][A-Za-z0-9_]*(:-[^}]*)?\}|file://\S+|\$var:[A-Za-z_][A-Za-z0-9_]*)$")
+# secret: true 的键只允许引用：${VAR}（只允许空默认值 :-，非空默认值等于明文）、file://…、$var:NAME——明文会被提交进 config/
+SECRET_REF = re.compile(r"^(\$\{[A-Za-z_][A-Za-z0-9_]*(:-)?\}|file://\S+|\$var:[A-Za-z_][A-Za-z0-9_]*)$")
 
 
 def die(msg: str, code: int = 2) -> None:

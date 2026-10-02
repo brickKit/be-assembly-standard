@@ -195,6 +195,7 @@ stop_focus() {  # 停掉 focus 的整个进程组（setsid 起的，自己一个
 on_exit() {  # 正常走完时什么都不做（CLEANED=1）；中断或中途退出时补做收尾
   [ "$CLEANED" = 1 ] && return
   CLEANED=1
+  trap '' INT TERM  # 收尾期间再来的 INT/TERM 不打断收尾
   stop_focus
   if [ -z "$KEEP" ]; then
     echo "▸ 中途退出，收尾：$( [ "$FOCUS_STARTED" = 1 ] && echo 'brickkit local off、')brickkit down -f deploy.verify.yaml" >&2
