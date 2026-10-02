@@ -26,6 +26,20 @@
 | I10 | JWT 的 `org_id` 与 `org` 维撞名 | iam 加 `tenant_id`，`org_id` 标弃用 | 维持 |
 | — | refresh token 能当 access token 用（安全） | 一期立即修：签发加 `typ`、三个 SDK 校验 | — |
 
+## 二·续、权限架构 v2（authz-architecture.md，按"分享必做、完整优先、槽位族验证替换"重做）
+
+整体：可见性 = (档位 × 维度规则) ∪ 共享 ∪ 关系派生；一个主体内纯并集，只沿委托链取交集（类似 permission boundary）。契约分两层：provider 契约 `infra.authz.v2`（槽位族每个成员都实现）+ 资源契约（SDK 在每个组件挂 `_authz/check`、`_authz/explain`、`_shares`）。列表过滤默认本地投影（`besdk_authz_acl` 表经 changefeed 同步）+ 图类型才远程 ListObjects。槽位族：`infra/authz`（原生，默认全能力）→ `infra/authz-static`（证明可替换与显式降级）→ `infra/authz-openfga` → cedar/OPA（有真实需求才建）；一致性测试 `be-acceptance/authzconf/`。上面 I1–I10 按新架构重答：只有 I2 改为"现在就加 `dept` 档"，其余维持。
+
+| # | 问题 | 推荐 | 备选 |
+|---|---|---|---|
+| ★A1 | 被共享一张单据但没有对应 view 键的人能否打开 | 查看类可以顺带，动作类（确认、取消、关闭）永远要角色键；各组件在 `relations.grants` 显式声明 | 一律还要角色键（Salesforce 式） |
+| ★A2 | 谁能共享 | 持有该类型的 share 键，且自己至少有要授出的那一级，不能转授高于自己的级别 | 只有负责人能共享 |
+| A3 | 看不见的记录对命令也答 404（不再 403） | 改 | 维持 R62 |
+| ★A4 | AI 代理的边界 | 默认只读 + 起草；不可逆动作的键标 `delegable: false`，由人在 workflow 确认；共享与授权管理永远不能下放 | — （要你定"永不下放"清单口径） |
+| ★A5 | 生产环境"以他人身份查看" | 允许但只读，单独键 `infra.authz.impersonate`，日志带 `act` 并通知被查看的人 | 只在开发环境开 |
+| ★A6 | openfga 成员什么时候建 | **06 内建**（控制者改判：用户明确要多实现互换验证，第二个真实实现越早越能逼出契约偏差）；顺序 static → openfga | 等 prj/project 或阶段 07 |
+| — | 先决条件 | 删掉 iam → authz 依赖边（槽位族成员不能被依赖，brickKit 09-patterns）；族契约放新仓库 `contract-infra-authz`（**需新建 GitHub 仓库，先征得同意**） | — |
+
 ## 三、数据层（data-layer.md）
 
 | # | 问题 | 推荐 | 备选 |
