@@ -173,7 +173,12 @@ def test_disabled_target_fails_early(tmp):  # 修复轮 M-8
 FAKE_BRICKKIT = """#!/bin/sh
 echo "brickkit $*" >> "$FAKE_CALLS"
 case "$1 $2" in
-  "up --focus") echo $$ > "$FAKE_FOCUS_PID"; exec sleep 300 ;;
+  "local status") echo "Local mode: ${FAKE_LOCAL_MODE:-off}" ;;
+  "local off") [ -n "$FAKE_LOCAL_OFF_FAIL" ] && exit 1 ;;
+  "local on") [ -f "$BE_ROOT/deploy.local.yaml" ] || cp "$BE_ROOT/deploy.yaml" "$BE_ROOT/deploy.local.yaml" ;;
+  "up --focus")
+    [ -n "$FAKE_FOCUS_SNAPSHOT" ] && { cp "$BE_ROOT/deploy.local.yaml" "$FAKE_FOCUS_SNAPSHOT"; exit 1; }
+    echo $$ > "$FAKE_FOCUS_PID"; exec sleep 300 ;;
 esac
 exit 0
 """
@@ -184,6 +189,7 @@ case "$1" in
   inspect) case "$*" in *RestartCount*) echo "0 running" ;; *) echo "running healthy" ;; esac ;;
   run)
     case "$*" in
+      *"getent hosts hgw"*) echo "172.17.0.1      hgw  hgw" ;;
       *" -d "*) echo toolbox ;;
       *Authorization*) printf 200 ;;
       *"/healthz") printf 200 ;;
@@ -215,7 +221,8 @@ def fake_env(tmp: pathlib.Path, **extra) -> dict:
         (b / name).chmod(0o755)
     env = {**os.environ, "PATH": f"{b}:{os.environ['PATH']}", "BE_ROOT": str(tmp), "OUT": str(tmp / "out"),
            "FAKE_CALLS": str(tmp / "calls"), "FAKE_FOCUS_PID": str(tmp / "focus.pid"),
-           "BE_PROJECT_LOCK": str(tmp / "lock"), "ROUTE": "", "FOCUS": "", "KEEP": ""}
+           "BE_PROJECT_LOCK": str(tmp / "lock"), "ROUTE": "", "FOCUS": "", "KEEP": "", "FAKE_FOCUS_SNAPSHOT": "",
+           "FAKE_LOCAL_MODE": "", "FAKE_LOCAL_OFF_FAIL": ""}
     env.pop("BE_PROJECT_LOCK_HELD", None)
     env.update(extra)
     return env
@@ -295,8 +302,10 @@ def test_normal_teardown_runs_once(tmp):  # 修复轮 I-2：trap 与正常收尾
     assert not (tmp / "deploy.verify.yaml").exists()
 
 
-def _interrupt_during_focus(tmp, keep: str, wrapper_only: bool = False):
+def _interrupt_during_focus(tmp, keep: str, wrapper_only: bool = False, setup=None):
     make(tmp, ALL, [{"id": i} for i in ALL])
+    if setup:
+        setup(tmp)
     extra = {} if wrapper_only else {"BE_PROJECT_LOCK_HELD": "1"}
     p = subprocess.Popen(["bash", str(SCRIPT), "mdm/product"], env=fake_env(tmp, FOCUS="1", KEEP=keep, **extra),
                          stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, start_new_session=True)
@@ -320,6 +329,97 @@ def _interrupt_during_focus(tmp, keep: str, wrapper_only: bool = False):
     except ProcessLookupError:
         alive = False
     return alive, calls(tmp)
+
+
+def test_focus_rewrites_host_docker_internal_and_removes_its_local_copy(tmp):
+    """focus 是宿主机进程：config/vars.yaml 里的 host.docker.internal 在宿主机解析不了，verify 在 deploy.local.yaml
+    的 vars: 里换成 host-gateway IP（容器与宿主机都能到）；deploy.local.yaml 是 verify 建的就在收尾时删掉。"""
+    make(tmp, ALL, [{"id": i} for i in ALL])
+    (tmp / "config").mkdir(exist_ok=True)
+    (tmp / "config" / "vars.yaml").write_text(
+        "PG_HOST: host.docker.internal\nNATS_URL: nats://host.docker.internal:4222\nOTEL_BASE_URL: ''\n", encoding="utf-8")
+    snap = tmp / "focus-local.yaml"
+    verify(tmp, "mdm/product", FOCUS="1", FAKE_FOCUS_SNAPSHOT=str(snap))
+    assert snap.exists(), calls(tmp)
+    v = (yaml.safe_load(snap.read_text(encoding="utf-8")) or {}).get("vars") or {}
+    assert v.get("NATS_URL") == "nats://172.17.0.1:4222", v
+    assert v.get("PG_HOST") == "h", v                    # deploy 文件里已有的 vars 不覆盖
+    assert "OTEL_BASE_URL" not in v, v
+    assert not (tmp / "deploy.local.yaml").exists(), "verify 建的 deploy.local.yaml 应在收尾时删掉"
+
+
+def test_focus_restores_existing_local_copy(tmp):
+    make(tmp, ALL, [{"id": i} for i in ALL])
+    (tmp / "config").mkdir(exist_ok=True)
+    (tmp / "config" / "vars.yaml").write_text("NATS_URL: nats://host.docker.internal:4222\n", encoding="utf-8")
+    before = "# 我的个人副本\ntarget: docker\ncomponents: []\n"
+    (tmp / "deploy.local.yaml").write_text(before, encoding="utf-8")
+    verify(tmp, "mdm/product", FOCUS="1", FAKE_FOCUS_SNAPSHOT=str(tmp / "snap.yaml"))
+    assert (tmp / "deploy.local.yaml").read_text(encoding="utf-8") == before
+
+
+VARS_HDI = "PG_HOST: host.docker.internal\nNATS_URL: nats://host.docker.internal:4222\n"
+USER_LOCAL = "# 我的个人副本\ntarget: docker\ncomponents: []\n"
+
+
+def _vars(tmp):
+    (tmp / "config").mkdir(exist_ok=True)
+    (tmp / "config" / "vars.yaml").write_text(VARS_HDI, encoding="utf-8")
+
+
+def _user_local(tmp):
+    _vars(tmp)
+    (tmp / "deploy.local.yaml").write_text(USER_LOCAL, encoding="utf-8")
+
+
+def test_focus_stale_local_copy_set_aside(tmp):
+    """本地模式关着却留有 deploy.local.yaml：focus 不沿用它，用从 deploy.yaml 新复制的一份；收尾放回原文。"""
+    make(tmp, ALL, [{"id": i} for i in ALL])
+    _user_local(tmp)
+    snap = tmp / "snap.yaml"
+    r = verify(tmp, "mdm/product", FOCUS="1", FAKE_FOCUS_SNAPSHOT=str(snap))
+    d = yaml.safe_load(snap.read_text(encoding="utf-8"))
+    assert [c["id"] for c in d["components"]] == ALL, d          # 来自 deploy.yaml，不是过期副本的 components: []
+    assert d["vars"]["NATS_URL"] == "nats://172.17.0.1:4222", d
+    assert "我的个人副本" not in snap.read_text(encoding="utf-8")
+    assert (tmp / "deploy.local.yaml").read_text(encoding="utf-8") == USER_LOCAL
+    assert "移到" in r.stdout, r.stdout
+
+
+def test_focus_local_mode_on_uses_and_restores_personal_copy(tmp):
+    make(tmp, ALL, [{"id": i} for i in ALL])
+    _user_local(tmp)
+    snap = tmp / "snap.yaml"
+    verify(tmp, "mdm/product", FOCUS="1", FAKE_FOCUS_SNAPSHOT=str(snap), FAKE_LOCAL_MODE="on")
+    d = yaml.safe_load(snap.read_text(encoding="utf-8"))
+    assert d["components"] == [] and d["vars"]["PG_HOST"] == "172.17.0.1", d   # 用的是正在用的个人副本
+    assert (tmp / "deploy.local.yaml").read_text(encoding="utf-8") == USER_LOCAL
+
+
+def test_local_off_failure_still_restores(tmp):
+    make(tmp, ALL, [{"id": i} for i in ALL])
+    _vars(tmp)
+    verify(tmp, "mdm/product", FOCUS="1", FAKE_FOCUS_SNAPSHOT=str(tmp / "s1.yaml"), FAKE_LOCAL_OFF_FAIL="1")
+    assert rows(tmp)["brickkit local off"][0] == "FAIL", rows(tmp)
+    assert not (tmp / "deploy.local.yaml").exists(), "local off 失败时也要删掉 verify 自己建的副本"
+    (tmp / "deploy.local.yaml").write_text(USER_LOCAL, encoding="utf-8")
+    verify(tmp, "mdm/product", FOCUS="1", FAKE_FOCUS_SNAPSHOT=str(tmp / "s2.yaml"), FAKE_LOCAL_OFF_FAIL="1",
+           FAKE_LOCAL_MODE="on")
+    assert (tmp / "deploy.local.yaml").read_text(encoding="utf-8") == USER_LOCAL
+
+
+def test_interrupt_removes_created_local_copy(tmp):
+    alive, c = _interrupt_during_focus(tmp, keep="", setup=_vars)
+    assert not alive, "focus 进程还活着"
+    assert not (tmp / "deploy.local.yaml").exists(), c
+
+
+def test_interrupt_with_keep_restores_local_copy(tmp):
+    alive, c = _interrupt_during_focus(tmp, keep="1", setup=_user_local)
+    assert not alive, "focus 进程还活着"
+    assert "brickkit down" not in c, c                       # KEEP 照样保留容器
+    assert "brickkit local off" in c, c
+    assert (tmp / "deploy.local.yaml").read_text(encoding="utf-8") == USER_LOCAL
 
 
 def test_interrupt_cleans_up(tmp):  # 修复轮 I-2

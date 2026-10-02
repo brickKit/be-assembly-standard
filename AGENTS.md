@@ -136,4 +136,5 @@ A component's documentation is `BRICKKIT.md` (translations `BRICKKIT.<lang>.md`)
 
 | Component | Version | What it does | Docs | Home |
 |---|---|---|---|---|
+| mdm/customer | 2.0.0 | Customer names, tax IDs, credit limits, status, contacts and billing details. | BRICKKIT.md +zh | https://github.com/brickKit/mdm-customer |
 <!-- brickkit:managed:end -->

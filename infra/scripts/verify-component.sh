@@ -6,9 +6,11 @@
 #   环境变量：
 #     ROUTE='<路径>' 或 '<METHOD> <路径>'  受保护路由（省略方法时 GET）；不带 token 期望 401/503，带 token 期望 200
 #     FOCUS=1        容器形态之后再跑一次 brickkit up --focus <id>（宿主机进程），结束后 brickkit local off
-#     KEEP=1         不收尾：容器留着（用完 brickkit down -f deploy.verify.yaml）；focus 进程照样停掉
+#     KEEP=1         不收尾：容器留着（用完 brickkit down -f deploy.verify.yaml）；focus 进程照样停掉，本地模式照样关、
+#                    deploy.local.yaml 照样还原
 #                    （FOCUS / KEEP 只有值为 1 才生效，0 或其它值等于没设）
-#   中断（Ctrl+C、SIGTERM、超时）时 EXIT 陷阱照样收尾：停 focus 进程组；除非 KEEP=1，local off、down、删 deploy.verify.yaml
+#   中断（Ctrl+C、SIGTERM、超时）时 EXIT 陷阱照样收尾：停 focus 进程组、local off、还原 deploy.local.yaml；
+#     除非 KEEP=1，再 down、删 deploy.verify.yaml
 #     FORCE_BUILD=1  本组件的镜像 brickkit build --force（版本没变但代码改过时）
 #     OUT=<目录>     输出目录，默认 $BE_SCRATCH/verify/<repo>-<时间>（没有 BE_SCRATCH 时用项目的 build/verify/）
 #     BE_ROOT        项目根（默认本仓库；测试用）
@@ -192,14 +194,69 @@ stop_focus() {  # 停掉 focus 的整个进程组（setsid 起的，自己一个
   kill -TERM -- "-$FPID" 2>/dev/null; sleep 1; kill -KILL -- "-$FPID" 2>/dev/null; wait "$FPID" 2>/dev/null
   FPID=""
 }
+# focus 进程跑在宿主机上：config/vars.yaml 里写的 host.docker.internal 在宿主机解析不了（brickKit 只改写它
+# 自己算出的 *_ENDPOINT，手写在 config 里的地址原样注入——brickkit docs 10-troubleshooting/02-local-debug-issues
+# "The process on this machine can't reach an address written in config"，修法是 deploy.local.yaml 的 vars:）。
+# 依赖容器与宿主机进程读的是同一份 vars:，所以不能写 localhost（容器里 localhost 是它自己），而写 Docker 的
+# host-gateway 实际映射到的 IP：容器里 host.docker.internal 本来就解析成它，宿主机上它是本机网卡地址。
+# 只在 Linux 原生 Docker 上验证过（Docker Desktop / rootless 下 host-gateway 的 IP 宿主机未必可达，那时 focus 大声 FAIL）。
+# deploy.local.yaml 的三种起点，收尾（含中断、KEEP=1、local off 失败）一律还原：
+#   不存在                → local on 从 deploy.yaml 复制一份；收尾时删掉（否则下一次 focus 会沿用这份副本）
+#   存在且本地模式开着    → 是正在用的个人副本：备份后在它上面加 vars:；收尾时原样恢复
+#   存在但本地模式关着    → 多半是过期副本（local on 会沿用它而不是重新复制）：移到 $OUT，让 local on 从
+#                           deploy.yaml 重新复制；收尾时放回原处
+LOCAL_FILE="$ROOT/deploy.local.yaml"; LOCAL_BACKUP=""; LOCAL_CREATED=0; LOCAL_TOUCHED=0
+focus_prepare() {  # focus_prepare <验证前 brickkit local status 的第一行>
+  LOCAL_TOUCHED=1
+  if [ ! -f "$LOCAL_FILE" ]; then
+    LOCAL_CREATED=1
+  elif [ "$1" = "Local mode: on" ]; then
+    LOCAL_BACKUP="$OUT/deploy.local.yaml.before"; cp "$LOCAL_FILE" "$LOCAL_BACKUP"
+  else
+    LOCAL_BACKUP="$OUT/deploy.local.yaml.stale"; mv "$LOCAL_FILE" "$LOCAL_BACKUP"; LOCAL_CREATED=1
+    echo "  本地模式关着却留有 deploy.local.yaml：先移到 $LOCAL_BACKUP，focus 用从 deploy.yaml 新复制的一份，收尾时放回"
+  fi
+  runlog "$(log local-on.log)" brickkit local on || true
+  local gw
+  gw="$(docker run --rm --add-host hgw:host-gateway alpine:3.20 getent hosts hgw 2>/dev/null | awk '{print $1}' | head -1)"
+  [[ "$gw" =~ ^[0-9]{1,3}(\.[0-9]{1,3}){3}$ ]] || { echo "  （查不到 host-gateway 的 IP，focus 不改写 host.docker.internal）"; return 0; }
+  [ -f "$LOCAL_FILE" ] || { echo "  （没有 deploy.local.yaml，focus 不改写 host.docker.internal）"; return 0; }
+  [ -f "$ROOT/config/vars.yaml" ] || { echo "  （没有 config/vars.yaml，focus 不改写 host.docker.internal）"; return 0; }
+  python3 - "$ROOT/config/vars.yaml" "$LOCAL_FILE" "$gw" <<'PY'
+import sys, yaml
+vars_file, local_file, gw = sys.argv[1:]
+shared = yaml.safe_load(open(vars_file, encoding="utf-8")) or {}
+local = yaml.safe_load(open(local_file, encoding="utf-8")) or {}
+v = local.get("vars") or {}
+changed = [k for k, val in shared.items() if isinstance(val, str) and "host.docker.internal" in val and k not in v]
+for k in changed:
+    v[k] = shared[k].replace("host.docker.internal", gw)
+if changed:
+    local["vars"] = v
+    with open(local_file, "w", encoding="utf-8") as f:
+        f.write("# brickkit local on 的副本；verify-component.sh 为 focus 运行临时加了 vars:（宿主机解析不了 host.docker.internal），收尾时删除或恢复\n")
+        yaml.safe_dump(local, f, allow_unicode=True, sort_keys=False)
+print("  focus 用 deploy.local.yaml 的 vars: 把 host.docker.internal 换成 host-gateway IP " + gw + "：" + (", ".join(changed) or "（没有要换的）"))
+PY
+}
+focus_restore() {
+  [ "$LOCAL_TOUCHED" = 1 ] || return 0
+  LOCAL_TOUCHED=0
+  if [ -n "$LOCAL_BACKUP" ]; then cp "$LOCAL_BACKUP" "$LOCAL_FILE"; elif [ "$LOCAL_CREATED" = 1 ]; then rm -f "$LOCAL_FILE"; fi
+}
 on_exit() {  # 正常走完时什么都不做（CLEANED=1）；中断或中途退出时补做收尾
   [ "$CLEANED" = 1 ] && return
   CLEANED=1
   trap '' INT TERM  # 收尾期间再来的 INT/TERM 不打断收尾
   stop_focus
+  # focus 进程已停：不管 KEEP，本地模式关掉、deploy.local.yaml 还原（KEEP 只保留容器）
+  if [ "$FOCUS_STARTED" = 1 ]; then
+    echo "▸ 中途退出，收尾：brickkit local off、还原 deploy.local.yaml" >&2
+    brickkit local off > "$OUT/local-off-on-exit.log" 2>&1
+  fi
+  focus_restore
   if [ -z "$KEEP" ]; then
-    echo "▸ 中途退出，收尾：$( [ "$FOCUS_STARTED" = 1 ] && echo 'brickkit local off、')brickkit down -f deploy.verify.yaml" >&2
-    [ "$FOCUS_STARTED" = 1 ] && brickkit local off > "$OUT/local-off-on-exit.log" 2>&1
+    echo "▸ 中途退出，收尾：brickkit down -f deploy.verify.yaml" >&2
     brickkit down -f "$VF" > "$OUT/down-on-exit.log" 2>&1
     rm -f "$VF"
   fi
@@ -378,9 +435,11 @@ if [ -z "$FOCUS" ]; then
   row "brickkit up --focus $ID" SKIP "没设 FOCUS=1"
 else
   was_local="$(brickkit local status 2>&1 | head -1)"
+  FOCUS_STARTED=1
+  focus_prepare "$was_local"
   # 非交互 shell 的后台进程默认忽略 SIGINT：恢复默认处理，Ctrl+C 等价的 INT 才能让 brickkit 正常停掉本地进程
   env --default-signal=INT,TERM setsid brickkit up --focus "$ID" > "$(log focus.log)" 2>&1 < /dev/null &
-  FPID=$!; FOCUS_STARTED=1
+  FPID=$!
   hp="$PORT"; code=""; ok=0
   for _ in $(seq 1 120); do
     p="$(grep -oE "$SVC +listening on port [0-9]+" "$(log focus.log)" | grep -oE '[0-9]+$' | tail -1)"
@@ -398,11 +457,12 @@ else
     || row "brickkit up --all --dry-run（清除 focus）" FAIL "见日志" "$(log focus-all-dry-run.log)"
   runlog "$(log local-status.log)" brickkit local status || true
   if runlog "$(log local-off.log)" brickkit local off; then
-    FOCUS_STARTED=0
-    row "brickkit local off" PASS "$(case "$was_local" in *on*) echo "验证前本地模式是开的，已关闭；需要时 brickkit local on" ;; esac)" "$(log local-off.log)"
+    row "brickkit local off" PASS "$( [ "$was_local" = "Local mode: on" ] && echo "验证前本地模式是开的，已关闭；需要时 brickkit local on")" "$(log local-off.log)"
   else
     row "brickkit local off" FAIL "见日志" "$(log local-off.log)"
   fi
+  FOCUS_STARTED=0
+  focus_restore   # local off 成败都还原 deploy.local.yaml
 fi
 
 # ---------- 7. 收尾 ----------
