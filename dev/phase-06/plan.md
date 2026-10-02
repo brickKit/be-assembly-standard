@@ -28,6 +28,9 @@
 - [ ] **写 `plan-06b.md` 时以这些为准**：外壳的组装和发布步骤，以决策 0108（外壳独立成仓）和 `component-loop.md` §4 为准；`spec.md`、`plan-06a.md`、`batches/06a.md` 里仍写着"外壳是项目代码"，属于历史记录，不要照抄。06b 的其余输入见 `batches/06a.md` §6，以及外壳拆仓审查留下的事项：外壳的 `BRICKKIT.md` 不得引用本项目的 `registry/ports.tsv` 和 `make db-init`，必须在外壳发布 1.0.0 之前改掉。
 
 - [ ] **SDK 注释里的旧文档路径**：be-sdk-go `connection.go`、be-sdk-python `connection.py` 的注释还写着 `docs/conventions/…`，06b 下次升 SDK 时顺手改成 `docs/en/01-conventions/…`。
+- [ ] **事件消费改为至少一次送达（06b 发现，06b 末尾裁定排期）**：be-sdk-go `Consume` 走 NATS 核心订阅，处理函数出错或消费者不在线时事件直接丢失（无重投、无死信；SDK 注释里早写了"范围声明"）。sales → finance / inventory 的事件链因此可能丢账。要做：决策文档（JetStream durable consumer、ack/nak、重投上限与 DLQ、多副本用 queue group）、be-sdk-go 新版本（`Consume` 签名尽量不变）、所有消费者组件 patch 升版。同批处理 SDK 的两个缺口：重复投递在 inbox 唯一冲突时记 ERROR；gRPC 不带用户身份时 `ScopeOf` panic → INTERNAL。
+- [ ] **会计期间开年（06b T11 发现）**：erp/finance 只预置到 FY2027；开新年度是业务动作，需要管理端点或提前开期的定时任务 + Q4 告警（写在 finance design.md 未决问题）。
+- [ ] **运维缺口（06b 发现）**：没有组件做旧分区归档与 outbox 清理；写进 `docs/{en,zh}/04-operations/`（06e）并评估是否进 SDK。
 - [ ] **阶段 06 结束时**：删掉 `docs/{en,zh}/02-decisions/README.md` 里"阶段 06 内决策可原地改写"那句说明（R33），之后推翻决策一律另起编号、旧文件标注 Superseded。
 
 ## 贯穿全阶段的规则
