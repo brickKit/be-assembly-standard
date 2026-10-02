@@ -1,23 +1,29 @@
 #!/usr/bin/env bash
 # 打印一个组件在 06b 闭环里用到的全部变量（component-loop §0.1），并建好它的 scratch 目录。
 #
-# 用法：eval "$(bash dev/phase-06/tools/env.sh <scope>/<name>)"
+# 用法：eval "$(bash dev/phase-06/tools/env.sh [--no-tools] <scope>/<name>)"
 #   BE_SCRATCH   必填：当前会话的 scratchpad 目录（系统提示里给出的 …/scratchpad）；S=$BE_SCRATCH/06b/$REPO
 #   BE_COMP_DIR  可选：组件目录，默认 $ROOT/components/<id>（测试用它指向 scratch 里的克隆）
 #   BE_DOTENV    可选：.env 的路径，默认 $ROOT/.env（测试用）
-#   BE_ENV_NO_TOOLS=1  只读核对（component-check.sh）用：不核对 brickkit / buf / .env，也不输出 TEST_PG_DSN / TEST_NATS_URL
+#   --no-tools   只读核对（component-check.sh）用：不核对 brickkit / buf / .env，也不输出 TEST_PG_DSN / TEST_NATS_URL。
+#                是命令行参数而不是环境变量：一个残留的 export 不能悄悄关掉 C1 的工具核对（继承来的
+#                BE_ENV_NO_TOOLS 只打一行 ⚠️，照常核对）
 # 输出的每一行都能被 bash / zsh eval：十个 `export NAME=值`；PATH 追加 $HOME/go/bin（追加在末尾，
 # 绝不放前面——~/go/bin 里有旧的 brickkit v0.4.6，放前面会遮住 ~/.local/bin 的 v1.1.0）；
 # TEST_PG_DSN / TEST_NATS_URL 在 eval 的那一刻才由 dotenv-pgpass.py 从 .env 只读 POSTGRES_PASSWORD 一行、
 # URL 编码后拼出来（.env 从不被当 shell 执行），输出里只有变量名、没有值（输出会出现在会话记录里）。
-# 先核对工具：PATH（追加 go/bin 之后）上的 `brickkit version` 第一行必须是 BrickKit CLI v1.1.0，buf 必须在。
+# 先核对工具：PATH（追加 go/bin 之后）上的 `brickkit version` 第一行必须是 infra/scripts/lib/require-brickkit.sh 的
+# BRICKKIT_REQUIRED（要求的版本只写在那一处），buf 必须在。
 # 出错时只往 stderr 写、退出码非零，所以 eval "$(…)" 不会吃进半截输出。
 set -euo pipefail
 
 die() { echo "❌ env.sh: $*" >&2; exit 2; }
 
+NO_TOOLS=""
+[ "${1:-}" = --no-tools ] && { NO_TOOLS=1; shift; }
+[ -n "${BE_ENV_NO_TOOLS:-}" ] && echo "⚠️  env.sh：环境里的 BE_ENV_NO_TOOLS 已不生效（改成命令行参数 --no-tools），照常核对工具" >&2
 ID=${1:-}
-[ -n "$ID" ] || die "用法：eval \"\$(bash env.sh <scope>/<name>)\""
+[ -n "$ID" ] || die "用法：eval \"\$(bash env.sh [--no-tools] <scope>/<name>)\""
 [[ $ID =~ ^[a-z0-9]+(-[a-z0-9]+)*/[a-z0-9]+(-[a-z0-9]+)*$ ]] || die "组件 ID 必须是 <scope>/<name>（小写），收到：$ID"
 [ -n "${BE_SCRATCH:-}" ] || die "请先设置 BE_SCRATCH=<当前会话的 scratchpad 目录>（临时文件不进仓库）"
 
@@ -34,12 +40,13 @@ ROLE=$(awk -F'\t' -v r="$REPO" '$1==r{print $3}' "$ROOT/registry/schemas.tsv")
 SVC=$REPO-2-0-0
 NET=brickkit-be-assembly-standard-net
 
-NO_TOOLS=${BE_ENV_NO_TOOLS:-}
 DOTENV=${BE_DOTENV:-$ROOT/.env}
 PGPASS=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/dotenv-pgpass.py
 if [ "$NO_TOOLS" != 1 ]; then
   # ── 工具版本（component-loop 1.4）：按 eval 之后的 PATH 查 ──
-  WANT_BK='BrickKit CLI v1.1.0'
+  # shellcheck source=../../../infra/scripts/lib/require-brickkit.sh
+  source "$ROOT/infra/scripts/lib/require-brickkit.sh"   # 只取 BRICKKIT_REQUIRED（被 source 时不做检查）
+  WANT_BK=$BRICKKIT_REQUIRED
   EPATH=$PATH:$HOME/go/bin
   bk=$(PATH=$EPATH command -v brickkit || true)
   [ -n "$bk" ] || die "PATH 上没有 brickkit（要 $WANT_BK，装在 ~/.local/bin）"
@@ -59,7 +66,7 @@ done
 # 下面几行原样输出（单引号），在 eval 的那一刻才展开：值不进会话记录
 printf '%s\n' 'case ":$PATH:" in *":$HOME/go/bin:"*) ;; *) export PATH="$PATH:$HOME/go/bin" ;; esac'
 if [ "$NO_TOOLS" = 1 ]; then
-  echo "ℹ️  env.sh（BE_ENV_NO_TOOLS=1）：没核对 brickkit / buf / .env，没有输出 TEST_PG_DSN / TEST_NATS_URL" >&2
+  echo "ℹ️  env.sh（--no-tools）：没核对 brickkit / buf / .env，没有输出 TEST_PG_DSN / TEST_NATS_URL" >&2
   exit 0
 fi
 printf 'export TEST_PG_DSN="postgres://postgres:$(python3 %q %q)@localhost:5432/brickkit_test_db?sslmode=disable"\n' "$PGPASS" "$DOTENV"

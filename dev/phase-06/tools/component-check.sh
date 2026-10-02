@@ -17,8 +17,8 @@ set -uo pipefail
 HERE=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 die() { echo "❌ component-check.sh: $*" >&2; exit 2; }
 [ $# = 1 ] && [ "${1#-}" = "$1" ] || die "用法：bash component-check.sh <scope>/<name>"
-# 只读核对不需要 brickkit / buf / .env：BE_ENV_NO_TOOLS=1 让 env.sh 跳过这些核对（task-8a 审查 Minor 3）
-envout=$(BE_ENV_NO_TOOLS=1 bash "$HERE/env.sh" "$1") || exit 2
+# 只读核对不需要 brickkit / buf / .env：--no-tools 让 env.sh 跳过这些核对（task-8a 审查 Minor 3；复审 Minor 4 起是参数，不是环境变量）
+envout=$(bash "$HERE/env.sh" --no-tools "$1") || exit 2
 eval "$envout"
 
 exec python3 - "$C" "$ID" "$HERE/migrate-manifest.py" <<'EOF'

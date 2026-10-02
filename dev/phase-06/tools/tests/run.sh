@@ -174,10 +174,14 @@ printf 'POSTGRES_PASSWORD=\n' >"$W/env-empty"
 BE_DOTENV=$W/env-empty bash "$TOOLS/env.sh" mdm/customer >"$LOG/env-empty.log" 2>&1; rc=$?
 check "POSTGRES_PASSWORD 为空 → exit 2" bash -c "[ $rc = 2 ] && grep -q '❌.*POSTGRES_PASSWORD' '$LOG/env-empty.log'"
 
-section "env.sh 修复轮 M3：BE_ENV_NO_TOOLS=1 不要求 brickkit / buf / .env"
-HOME=$W/fakehome PATH=/usr/bin:/bin BE_ENV_NO_TOOLS=1 BE_DOTENV=$W/no-such.env bash "$TOOLS/env.sh" mdm/customer >"$LOG/env-notools.out" 2>"$LOG/env-notools.err"; rc=$?
-check "BE_ENV_NO_TOOLS=1：没有 brickkit / buf / .env 也 exit 0" test $rc = 0
-check "BE_ENV_NO_TOOLS=1：仍是十个 export，不输出 TEST_PG_DSN" bash -c "[ \"\$(grep -cE '^export (ROOT|ID|REPO|UREPO|C|S|SCHEMA|ROLE|SVC|NET)=' '$LOG/env-notools.out')\" = 10 ] && ! grep -q TEST_PG_DSN '$LOG/env-notools.out'"
+section "env.sh 修复轮 M3 / 复审 Minor 4：--no-tools 不要求 brickkit / buf / .env；继承来的 BE_ENV_NO_TOOLS 不再生效"
+HOME=$W/fakehome PATH=/usr/bin:/bin BE_DOTENV=$W/no-such.env bash "$TOOLS/env.sh" --no-tools mdm/customer >"$LOG/env-notools.out" 2>"$LOG/env-notools.err"; rc=$?
+check "--no-tools：没有 brickkit / buf / .env 也 exit 0" test $rc = 0
+check "--no-tools：仍是十个 export，不输出 TEST_PG_DSN" bash -c "[ \"\$(grep -cE '^export (ROOT|ID|REPO|UREPO|C|S|SCHEMA|ROLE|SVC|NET)=' '$LOG/env-notools.out')\" = 10 ] && ! grep -q TEST_PG_DSN '$LOG/env-notools.out'"
+( export BE_ENV_NO_TOOLS=1; PATH=$W/fakebk:$PATH bash "$TOOLS/env.sh" mdm/customer ) >"$LOG/env-stray-notools.out" 2>"$LOG/env-stray-notools.err"; rc=$?
+check "export 了 BE_ENV_NO_TOOLS=1、PATH 上是旧 brickkit：照样核对、exit 2" bash -c "[ $rc = 2 ] && grep -q '❌.*v0.4.6' '$LOG/env-stray-notools.err' && [ ! -s '$LOG/env-stray-notools.out' ]"
+check "继承来的 BE_ENV_NO_TOOLS 打印 ⚠️（已不生效）" grep -q '⚠️.*BE_ENV_NO_TOOLS' "$LOG/env-stray-notools.err"
+check "env.sh 不自带 brickkit 版本字面量（取自 infra/scripts/lib/require-brickkit.sh，复审 B2 M-2）" bash -c "! grep -q 'BrickKit CLI v[0-9]' '$TOOLS/env.sh'"
 
 # ───────────────────────────────────────────────────────────────────────────
 section "migrate-manifest.py：全部 13 个组件（克隆）"
