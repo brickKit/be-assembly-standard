@@ -30,9 +30,10 @@ E=$(bash $ROOT/dev/phase-06/tools/env.sh $ID) && eval "$E" || exit 2     # 即 e
 
 `env.sh` 做的事（全部在打印之前，任一不过就 `❌` 一行、exit 2、stdout 为空，所以 `eval` 不会吃进半截输出）：
 
-- 核对工具：PATH（追加 `~/go/bin` 之后）上 `brickkit version` 第一行恰好是 `BrickKit CLI v1.1.0`，`buf` 在；`.env` 存在且有可用的 `POSTGRES_PASSWORD` 一行（没有就先 `make -C $ROOT dev-env`）。
+- 核对工具：PATH（追加 `~/go/bin` 之后）上 `brickkit version` 第一行恰好是 `BrickKit CLI v1.1.0`（版本取自 `infra/scripts/lib/require-brickkit.sh`，全仓只写那一处），`buf` 在；`.env` 存在且有可用的 `POSTGRES_PASSWORD` 一行（没有就先 `make -C $ROOT dev-env`）。
 - PATH **追加** `$HOME/go/bin`（buf、protoc-gen-go、protoc-gen-go-grpc、grpcurl 在那里），已经在 PATH 里就不再加；绝不前置（`~/go/bin/brickkit` 是旧的 v0.4.6，前置会遮住 `~/.local/bin` 的 v1.1.0）。
 - 导出 `TEST_PG_DSN`（`postgres://postgres:<口令>@localhost:5432/brickkit_test_db?sslmode=disable`，口令在 eval 那一刻由 `dotenv-pgpass.py` 从 `.env` 只读 `POSTGRES_PASSWORD` 一行、URL 编码后拼出，不 source `.env`）与 `TEST_NATS_URL=nats://localhost:4222`。输出和会话记录里只有变量名，没有值；不要 `echo $TEST_PG_DSN`。
+- 只读模式 `env.sh --no-tools <id>` 只给 `component-check.sh` 内部用（跳过上面的核对、不输出 `TEST_*`）；环境里残留的旧变量 `BE_ENV_NO_TOOLS` 不再生效，只打一行 ⚠️、照常核对。
 - 打印并建好下面这些变量：
 
 | 变量 | 含义 | 例（mdm/customer） |
@@ -457,7 +458,7 @@ bash $ROOT/dev/phase-06/tools/go-v2.sh $ID --sdk v0.4.0; echo "exit=$?"
 
 通过：`exit=0`。下面 4.0–4.4、4.6 的手工命令是脚本所做之事的原文，保留作排障参考与 diff 审读的对照；判据全集以脚本输出和 `dev/phase-06/tools/README.md` 的"go-v2.sh / 判据"为准（4.4 列出了全部判据）。脚本不做、仍要人做的：4.5、4.7、4.9 的修改（核对由 `component-check.sh` 做，4.18）；4.6 的读 diff、改 `migrations/embed.go` 的过时注释、核对 Dockerfile 的目的路径。
 
-**gen 判据先于一切**：脚本会把当前 `contracts/*.proto` `buf generate` 到 `$S` 下的临时目录，与组件的 `gen/` 逐个比（不写 `gen/`）。已知 **infra/workflow 在 v1.0.4 就不一致**（`gen/infra/workflow/v1/workflow_grpc.pb.go` 里 `ListTasks` 的注释改过 `.proto` 却没重新生成），它第一次跑就会在这条 FAIL：先在 `$C` 里 `buf generate`，读 `git diff --stat gen/`（应只有注释）、单独提交，再跑 `go-v2.sh`。只是重新生成按 4.0 的规则该升 **patch**，脚本却一律算成下一个 minor，而且每次运行（含 `--recheck`）都按这个规则重写根 `go.mod` 的 require、判据也按它判——手工改成 patch 会被改回去。所以照脚本算出的版本走，交接时把"只是重新生成、按规则应为 patch"告诉控制者，由控制者裁定。别的组件在这条 FAIL 时先核对 `command -v protoc-gen-go protoc-gen-go-grpc` 都在 `~/go/bin`——插件版本不对时每个组件都会 FAIL，这时**不要**照着 FAIL 去 `buf generate`（会用错版本的插件重写 `gen/`，凭空造出一次契约包升版），上报控制者。
+**gen 判据先于一切**：脚本会把当前 `contracts/*.proto` `buf generate` 到 `$S` 下的临时目录，与组件的 `gen/` 逐个比（不写 `gen/`）。已知 **infra/workflow 在 v1.0.4 就不一致**（`gen/infra/workflow/v1/workflow_grpc.pb.go` 里 `ListTasks` 的注释改过 `.proto` 却没重新生成），它第一次跑就会在这条 FAIL：先在 `$C` 里 `buf generate`，读 `git diff --stat gen/`（应只有注释）、单独提交，再跑 `go-v2.sh`。只是重新生成按 4.0 的规则升 **patch**：重新生成提交之后跑 `go-v2.sh $ID --recheck --gen-bump patch`（最新契约包 tag 是 `gen/infra/workflow/v1.0.3`，所以是 `v1.0.4`），交接时告诉控制者。别的组件在这条 FAIL 时先核对 `command -v protoc-gen-go protoc-gen-go-grpc` 都在 `~/go/bin`——插件版本不对时每个组件都会 FAIL，这时**不要**照着 FAIL 去 `buf generate`（会用错版本的插件重写 `gen/`，凭空造出一次契约包升版），上报控制者。
 
 - [ ] **4.0 先认清本组件 `gen/` 是哪种形态**（两种形态的改法不同，用错了不报任何错）：
   ```bash
@@ -526,7 +527,7 @@ bash $ROOT/dev/phase-06/tools/go-v2.sh $ID --sdk v0.4.0; echo "exit=$?"
 - [ ] **4.6 迁移入口**（be-sdk-go v0.4.0 的 `migrate` 包，P4；**由 `go-v2.sh --sdk v0.4.0` 完成，人工核对**）：
   - **脚本做的**（v0.4.0 起，在编译之前）：删掉 `backend/module/module.go` 的 `Migrations:` 一行；把 `backend/cmd/migrate/main.go` 改写成只剩 `func main() { migrate.Main(migrations.FS) }`（import `github.com/brickKit/be-sdk-go/migrate` 与本组件的 `…/v2/migrations`）；`migrations/embed.go`（`//go:embed *.sql` + `var FS embed.FS`）缺了就建；两处都核对，不符就 FAIL。连接串、`search_path`、`schema_migrations_<schema>` 表名、`up`/`down` 参数校验都由 SDK 负责（读 `PG_*`，缺键以 1 退出并点名；参数不对以 2 退出）；SDK 用 `database/pgx/v5`，不再有 lib/pq 与 `sslmode` 的问题。`component.yaml` 的 `migration.command` 不变（`["./migrate", "up"]`）。
   - **人要做的**：读脚本产生的 diff（`git -C $C diff -- backend/ migrations/`），确认 `module.go` 里随 `Migrations:` 一起不再用的 import 已清掉、`migrations/embed.go` 的注释不再说"挂到 `Module.Migrations`"；核对 `Dockerfile`（脚本已判"编译 `./backend/cmd/migrate` 并 `COPY --from` 进最终镜像"，人只看目的路径）：仍然 `go build … -o /out/migrate ./backend/cmd/migrate` 并拷成 `/app/migrate`（`WORKDIR /app`，`./migrate up` 才找得到），`COPY component.yaml /app/component.yaml` 保留；迁移文件已嵌进二进制，`COPY migrations /app/migrations` 不再需要，可以删。
-  - 通过：`go-v2.sh` `exit=0`；4.16 的 `make test-db-init` 里本组件 `✓ 迁移幂等`；`verify` 里迁移容器 `Exited (0)`。
+  - 通过：`go-v2.sh` `exit=0`；4.16 的 `make test-db-init ID=$ID` 输出 `✓ 迁移幂等`；`verify` 里迁移容器 `Exited (0)`。
 - [ ] **4.7 `Makefile`：Go 组件照抄 mdm/customer 的（R43）**：`cp $ROOT/components/mdm/customer/Makefile $C/Makefile`，然后只改组件特有的部分：
   - 顶部 `ID := <scope>/<name>`、`REPO := <repo>` 两行；`migrate-idempotent` 注释里的登录角色名（`$ROLE`）；
   - `dag-check`：模板判的是"没有任何依赖"（主数据组件）。有依赖的组件改成"列出 `dependencies.components` 并确认每一条都是 `@2.0.0`"（同样用 `python3 -c 'import yaml …'` 读，不数 `- ` 行），失败时说清是哪一条；
@@ -538,7 +539,7 @@ bash $ROOT/dev/phase-06/tools/go-v2.sh $ID --sdk v0.4.0; echo "exit=$?"
   - 配方里的说明注释写成 `@# …`：**`@#` 注释行绝不以 `\` 结尾**——续行符把下一行配方并进同一条 shell 命令，下一行开头的 `@` / `-` 不再被 make 当前缀处理：下一行也是 `@#` 时报 `/bin/sh: 2: @#: not found`（试点撞上过）；是普通命令时它照样执行，但继承了这一行的 `@`、不再回显。多行说明每行各自一个 `@#`、都不带 `\`。
   其余目标（`check-version` 的双 tag 判据、`docs-check` = `brickkit lint --strict $(ID)`、`smoke` = `brickkit up --dry-run`、`image` = `brickkit build` + 镜像里 sh/wget/`component.yaml` 检查）原样。Python / TS 组件不抄 Go 的 Makefile，按同样的目标集合与同样四条"不静默成功"的要求写各自的命令（`test` 同样要求 `TEST_PG_DSN`）。
   **Dockerfile**（Go）：照 mdm/customer 的写法——先 `COPY . .` 再 `go mod download`；`server` 与 `migrate` 两个二进制；`COPY migrations /app/migrations` 删掉（迁移已嵌进二进制）；`COPY component.yaml /app/component.yaml` 保留。
-- [ ] **4.8 父仓库的过渡脚本**（只核对，不改父仓库文件）：`infra/scripts/test-db-init.sh` 已由 Task 5 改为同时传 `PG_*`（以 `<schema>_rw` 登录）与旧的 `DATABASE_*`（T26 删）；本组件只核对 `make test-db-init` 绿，不改父仓库文件。
+- [ ] **4.8 父仓库的过渡脚本**（只核对，不改父仓库文件）：`infra/scripts/test-db-init.sh` 已由 Task 5 改为同时传 `PG_*`（以 `<schema>_rw` 登录）与旧的 `DATABASE_*`（T26 删）；本组件只核对 `make test-db-init ID=$ID` 绿（4.16），不改父仓库文件。
 - [ ] **4.9 脚本**：`scripts/seed.sh` 等里写死的旧版本服务名（`1-0-N`）与 `DATABASE_*` 改掉（服务名用 `infra/scripts/lib/seed-net.sh` 的 `service_name <id>` 现算，不写死版本）。核对是 `component-check.sh` 的 `4.9 scripts/` 一项（4.18）。
 
 Python（infra/print）对应项：`pyproject.toml` 的 `version` 改 `2.0.0`（旧值 1.0.2 与组件版本早已分叉）；besdk 钉到与 py-render 同一个 tag；`backend/app/module.py` 的 `string_or("pgSchema", …)` 换新键；`backend/app/migrate.py` 改读 `PG_*`（yoyo 的 `postgresql://` 后端用 psycopg2，注意 `sslmode`；be-sdk-python v0.4.4 的迁移助手以其 README 为准）；没有 `/v2` 这件事。
@@ -558,13 +559,13 @@ TypeScript（infra/bff-mobile）对应项：`package.json` 的 `version` 改 `2.
 **4C 补前端需要的接口（§1.2 本组件那一行）**
 
 - [ ] **4.13 先写设计**：边界 / 契约 / 事件有变化的，先改 `docs/design.md`（第 5 步的文件，可以先只写这一段）。涉及新的跨组件事件或改变已有事件语义的，除 plan-06b 预设裁定（P9）已定的方案外，由控制者裁定并记录（§7），不自行扩展。
-- [ ] **4.14 契约先行，只增不改**：改 `contracts/*.proto` / `*.openapi.yaml` / `events/*.json`。顺序固定：改 `.proto` → 在 `$C` 里 `buf generate` → `bash $ROOT/dev/phase-06/tools/go-v2.sh $ID --recheck`（重算根 `go.mod` require 的契约包版本、重跑 4.4 全部判据；只改 `.proto` 不生成就 `--recheck`，gen 判据 FAIL）。`git diff --stat gen/` 有变化就要打新的契约包 tag：把 `--recheck` 最后打印的 `📌 第 8.3 步需要打的契约包 tag`（或"不需要"）原文交给控制者。脚本一律升 minor，并且每次运行都把 require 重写成它算出的版本（手工改成 patch 会被 `--recheck` 改回去）；只是重新生成、按 4.0 应升 patch 时，照脚本走并在交接时告诉控制者。核对：`make contract-check`（proto，`--against` 必须是上一个发布 tag，见 4.7）绿；REST 契约由 `openapi-additive-scan` 对比上一个发布 tag 核对（6.5 的 `make gates`，发布前 `make ship` 再跑一次）。
+- [ ] **4.14 契约先行，只增不改**：改 `contracts/*.proto` / `*.openapi.yaml` / `events/*.json`。顺序固定：改 `.proto` → 在 `$C` 里 `buf generate` → `bash $ROOT/dev/phase-06/tools/go-v2.sh $ID --recheck`（重算根 `go.mod` require 的契约包版本、重跑 4.4 全部判据；只改 `.proto` 不生成就 `--recheck`，gen 判据 FAIL）。`git diff --stat gen/` 有变化就要打新的契约包 tag：把 `--recheck` 最后打印的 `📌 第 8.3 步需要打的契约包 tag`（或"不需要"）原文交给控制者。脚本默认升 minor（`--gen-bump minor`），每次运行都把 require 重写成它算出的版本，所以不要手工 `go mod edit` 改版本号（会被改回去）。`gen/` 的变化只是重新生成（例如只改了注释）时传 `--gen-bump patch`，由控制者裁定；已知的就是 infra/workflow（T13，见 4A 开头）。核对：`make contract-check`（proto，`--against` 必须是上一个发布 tag，见 4.7）绿；REST 契约由 `openapi-additive-scan` 对比上一个发布 tag 核对（6.5 的 `make gates`，发布前 `make ship` 再跑一次）。
   **R41：`.proto` 里的旧注释（归档引用、历史说法）本轮不清理**——改 `.proto` 注释会改 `gen/`、逼出一个没有实质变化的契约包 tag。等这个组件下一次真实的契约变更时一起改；本 Task 正好要改 `.proto`（§1.2 的新字段 / 新 rpc）时，只顺手改**被改动的那几条消息**附近的注释，不做全文清理。`component-check.sh` 的历史扫描本来就跳过 `*.proto` 与 `gen/`。
 - [ ] **4.15 红绿**：每条新规则先写 L2 测试并跑红（红的原因是"功能还不存在"），再写实现跑绿；一个循环一个提交。有数据范围的接口（warehouse、legal_entity、org/owner）必须有"别人的数据看不到"的测试（06-testing.md#l2）。新增路由一律 `besdk.GET(r, path, permKey, h)` 这类带权限键的注册。
 
 **4D 全部测试**
 
-- [ ] **4.16 测试库就绪、迁移幂等**：`make -C $ROOT test-db-init`（拿锁）。它先刷新 `brickkit_test_db` 的 schema 与授权，再对每个连库组件（含本组件）以 `<schema>_rw` 登录跑一遍 `make migrate-idempotent`。通过：输出里 `- $ID` 下面是 `✓ 迁移幂等`，最后一行 `✓ brickkit_test_db 就绪`。本组件的 `migrate-idempotent` 就以这一行为准——不要为了在组件目录里单跑它去 source `.env` 拿密码。脚本在别的组件上失败（并行的半成品）时，原文记录、上报控制者，不去改别人的组件。
+- [ ] **4.16 测试库就绪、迁移幂等**：`make -C $ROOT test-db-init ID=$ID`（拿锁）。它先刷新 `brickkit_test_db` 的 schema 与授权，再**只对本组件**以 `$ROLE` 登录跑 `make migrate-idempotent`（不带 `ID` 时跑全部连库组件，并行开发时会被别人的半成品挡住，组件 Task 一律带 `ID`）。通过：`- $ID` 下面是 `✓ 迁移幂等`，最后一行 `✓ brickkit_test_db 就绪`。本组件的 `migrate-idempotent` 就以这条命令为准，不在组件目录里直接跑它（那要自己提供 `PG_PASSWORD`，不为此 source `.env`）。不连库的组件不在它的清单里（exit 2），记"不连库"。
 - [ ] **4.17 跑测试**（在 `$C` 下；`TEST_PG_DSN` / `TEST_NATS_URL` 来自 §0.1 的 `env.sh`，同一次 Bash 调用里先 `eval`）：
   ```bash
   make test > $S/test.log 2>&1; echo "exit=$?"; tail -5 $S/test.log   # 没有 TEST_PG_DSN 时它大声失败，不会"全部 SKIP 显示 ok"；记录里贴全文
@@ -622,7 +623,7 @@ TypeScript（infra/bff-mobile）对应项：`package.json` 的 `version` 改 `2.
 
 - [ ] **6.1 版本处处一致**：`grep -m1 -n 'version:' $C/component.yaml` → `2.0.0`；Go：`head -1 $C/go.mod` 以 `/v2` 结尾；Python：`pyproject.toml` 的 `version = "2.0.0"`；TS：`package.json` 的 `"version": "2.0.0"`。
 - [ ] **6.2 严格 lint**：`make docs-check ID=<scope>/<name>; echo "exit=$?"`（项目根；严格档，只查这一个组件）。通过：`📋 Checked … files: 0 with errors, 0 warnings` 且 `exit=0`。常见警告与处理：`DOC_PLACEHOLDER`（骨架 TODO 没删）、`DOC_OUT_OF_STEP`（某个依赖 / required 键 / 契约文件文档没提）、`DOC_PATH_MISSING`（Code map 第一张表里的路径不存在——**任何一列**里含 `/` 的行内代码都算路径，见 5.1 的 AGENTS 一行）、`DOC_TRANSLATION_DRIFT`（两边小节数不一致）、`DOC_LINK_NOT_PORTABLE`（BRICKKIT*.md 或 AGENTS.md 里的相对 / `../` 链接）。
-- [ ] **6.3 组件门禁**（在 `$C` 下，同一次调用里先 `eval` env.sh）：`make check-version test dag-check contract-check import-scan module-check docs-check` 全绿（`check-version` 此时 HEAD 还没有 tag，只核对版本一致性；`migrate-idempotent` 以 4.16 的 `make -C $ROOT test-db-init` 为准，代码改过迁移就重跑它）。Python / TS 用各自的同名目标。
+- [ ] **6.3 组件门禁**（在 `$C` 下，同一次调用里先 `eval` env.sh）：`make check-version test dag-check contract-check import-scan module-check docs-check` 全绿（`check-version` 此时 HEAD 还没有 tag，只核对版本一致性；`migrate-idempotent` 不在这里跑，改为 `make -C $ROOT test-db-init ID=$ID` 绿，见 4.16）。Python / TS 用各自的同名目标。
 - [ ] **6.4 机械核对再跑一次**：`bash $ROOT/dev/phase-06/tools/component-check.sh $ID; echo "exit=$?"` → `exit=0`（第 5 步写完文档之后、交接提交之前的最后一次；`history_allow` 的 `ℹ️` 行原文进记录）。
 - [ ] **6.5 项目门禁**：
   ```bash
@@ -635,19 +636,19 @@ TypeScript（infra/bff-mobile）对应项：`package.json` 的 `version` 改 `2.
 
 > 两条命令（plan C7），都自己拿项目锁：
 > ```bash
-> make -C $ROOT integrate ID=$ID                                   # [OUT=<日志目录>]
+> make -C $ROOT integrate ID=$ID                                   # [INTEGRATE_OUT=<日志目录>]
 > make -C $ROOT verify ID=$ID ROUTE='<受保护路径>' FOCUS=1 SEED=1    # [KEEP=1] [FORCE_BUILD=1] [OUT=<输出目录>]
 > ```
 > `FOCUS` / `SEED` / `KEEP` / `FORCE_BUILD` 只有值为 `1` 才生效（`0` 或别的值等于没设）；`ROUTE` 可写 `'<METHOD> <路径>'`，省略方法时是 `GET`；组件没有 `seed` 目标时 `SEED=1` 记一行写明原因的 SKIP。两条命令开头都核对 `BrickKit CLI v1.1.0`（不对就 exit 2，不等锁）。7.1–7.4 是它们做了什么、看什么；每条后面的手工命令只用于排障。终端输出里的汇总表、输出目录路径原文贴进记录。
 
 - [ ] **7.1 `make integrate`**：依次做六步，任一步失败 exit 1 并写明第几步：
-  1. 连库组件（`registry/schemas.tsv` 有它）：`make dev-env db-init`。详细输出（约 1000 行 psql）写进 `<OUT>/db-init.log`，`OUT` 默认 `$BE_SCRATCH/integrate/$REPO-<时间>/`；终端只打 `✓` / `✗` / `⚠` 结果行与它们下面列出的变量名（只有名字）。失败时打日志最后 30 行。
+  1. 连库组件（`registry/schemas.tsv` 有它）：`make dev-env db-init`。详细输出（约 1000 行 psql）写进 `<INTEGRATE_OUT>/db-init.log`，`INTEGRATE_OUT` 默认 `$BE_SCRATCH/integrate/$REPO-<时间>/`（integrate 不读通用的 `OUT`：上一次 `make verify` 留在环境里的 `OUT` 不会把日志带偏）；终端只打 `✓` / `✗` / `⚠` 结果行与它们下面列出的变量名（只有名字）。失败时打日志最后 30 行。
   2. `brickkit add $ID@2.0.0 --yes`（`brickkit.yaml` 里已是这个版本就跳过；是别的版本就 `upgrade --dry-run` 再 `upgrade --yes`）。输出形态：`➕ Adding <id>@2.0.0`、`✅ <id>@2.0.0`、`📝 Written: brickkit.yaml, deploy.yaml[, deploy.local.yaml]`、`📝 Config skeletons: config/$REPO.yaml`；`git diff AGENTS.md` 里组件表多一行（版本 2.0.0，Home 列是 `metadata.repository`）。`brickkit add` 会重排 `brickkit.yaml` / `deploy.yaml` 的注释（V-13），不影响行为。
   3. `config-fill.py $ID`：按 §2.4 填 `config/$REPO.yaml`。需要人给值的 required 键会被列出、exit 3（integrate 停在这一步）——按本 Task 的"配置值"一栏给值后重跑 `integrate`（已加入的不会重复 add，已有值的键不会被覆盖）：
      ```bash
      bash $ROOT/infra/scripts/project-lock.sh -- python3 $ROOT/infra/scripts/config-fill.py $ID --set 'KEY=VALUE' …   # 值里有 $ 时用单引号
      ```
-     写成 `$var:X` 的 required 键，`X` 在 `deploy.yaml` 的 `vars:` 与 `config/vars.yaml` 里都没有、或取到空串，同样算缺值（引用照样写，去 `config/vars.yaml` 补值）。`secret: true` 的键只接受 `${VAR}` / `file://…` / `$var:`，明文会被拒绝；密钥值进 `.env`（不提交），多行密钥进 `.secrets/<repo>/`。
+     写成 `$var:X` 的 required 键按 brickKit 的取值规则判：`X` 在 `deploy.yaml` 的 `vars:`（同名优先）与 `config/vars.yaml` 里都没有 → 算缺；`X` 是空串或 null → brickKit 退回 schema 默认值，没有默认值才算缺（引用照样写，去 `config/vars.yaml` 补值）。`secret: true` 的键只接受 `${VAR}` / `file://…` / `$var:`，明文会被拒绝；密钥值进 `.env`（不提交），多行密钥进 `.secrets/<repo>/`。
   4. `teardown-sync.py`：让 `deploy.teardown.yaml` 与 `deploy.yaml` 一致（`brickkit add` 不维护它）。之后单独核对用 `make -C $ROOT teardown-sync CHECK=1`（拿锁；不一致 exit 1 并打印差异），不要直接跑 `python3 infra/scripts/teardown-sync.py`（不拿锁）。
   5. `brickkit lint --strict $ID`（重复键、未定义的 `$var:`、`.env` 缺变量、文档警告）。
   6. `brickkit up --dry-run`：本组件 `starting (…)`，没有 `CONFIG_INVALID`、没有未定义的 `$var:` / `${…}`。
@@ -673,7 +674,7 @@ TypeScript（infra/bff-mobile）对应项：`package.json` 的 `version` 改 `2.
 
 ### 第 8 步　交接与发布
 
-> 实现者只做 8.1、8.2（提交不推送）并交接。`make ship` **只有控制者运行**（`make -C $ROOT ship DIR=components/$ID NOTES=$S/notes-2.0.0.md`，`DRY_RUN=1` 只做只读检查）：它先跑**发布前门禁**——`openapi-additive-scan` 与 `config-key-scan --strict`，限定在本组件——并在发布基线或门禁工具本身不可信时拒绝发布（本地缺了远端已有的上一个发布 tag、`tools/be-acceptance` 有改动或不在父仓库钉的提交上）；门禁红了就停，此时还没推 `main`、没打任何 tag。然后按顺序推 `main`、打契约包 tag（Go，需要时）、`brickkit release`、`v` tag（Go）、外壳视角拉取检查（Go），第一处失败即停，已推送的东西绝不回滚、删除或移动。8.3–8.5 的手工命令保留作排障与原理参考，实现者不要执行任何推送类命令。所以 8.1 的发布说明与 6.5 的 `make gates` 要在交接前就是干净的：ship 的门禁与 `make gates` 里的同名门禁判的是同一件事，只是更严、只看本组件。
+> 实现者只做 8.1、8.2（提交不推送）并交接。`make ship` **只有控制者运行**（`make -C $ROOT ship DIR=components/$ID NOTES=$S/notes-2.0.0.md`，`DRY_RUN=1` 只做只读检查）：它先跑**发布前门禁**（`openapi-additive-scan` 与 `config-key-scan`，`--only $ID --strict`，看退出码），发布基线或门禁工具不可信时拒绝（远端最高的、不在 HEAD 上的发布 tag 本地没有 / 指向别的提交 / 不是 HEAD 的祖先；`tools/be-acceptance` 有改动或不是父仓库钉的提交）；拒绝或门禁红时还没推 `main`、没打任何 tag。全是控制者侧的事。然后按顺序推 `main`、打契约包 tag（Go，需要时）、`brickkit release`、`v` tag（Go）、外壳视角拉取检查（Go），第一处失败即停，已推送的东西绝不回滚、删除或移动。8.3–8.5 的手工命令保留作排障与原理参考，实现者不要执行任何推送类命令。所以 8.1 的发布说明与 6.5 的 `make gates` 要在交接前就是干净的：ship 的门禁与 `make gates` 里的同名门禁判的是同一件事，只是更严、只看本组件。
 
 - [ ] **8.1 发布说明**（放组件目录**外**，否则 release 的"目录干净"检查不过）：`$S/notes-2.0.0.md`。它会变成 `2.0.0`、`v2.0.0`、契约包三个 tag 的注释，**推送后改不了**。骨架由 3.0 的 `migrate-manifest.py --write` 写好（只在不存在时写一次），人只补后两节：
   ```markdown
@@ -1090,7 +1091,7 @@ for p in sorted(glob.glob(ROOT + 'components/*/*/component.yaml')):
 - 根目录 `brickkit lint --all` / `make lint` 在 06b 全程会因为还没重建的旧 `component.yaml`（`dependencies.resources` 等 v0 字段）报错；本地源里有非法的旧清单**不影响** `brickkit add` / `up` 其它组件。只查一个组件用 `brickkit lint <id>`（或在组件目录里不带参数；`make docs-check ID=<id>` 是它的严格档），`--all` 才查全项目。
 - `make gates` 在 06b 期间：`config-key-scan` 对还在 1.x 的组件只警告（72 条左右，随迁移减少），2.x 组件与外壳判红；`openapi-additive-scan` 对比各组件本地最近的发布 tag；遇到第一个红的门禁就停（读法见 6.5）。
 - `config/vars.yaml` 的 `AUTHZ_BUNDLE_URL` / `IAM_JWKS_URL` 用成员服务名 `infra-authz-2-0-0` / `infra-iam-casdoor-2-0-0`（R29/R30）。authz、iam-casdoor 还没都加入项目时：这两个主机名解析不到，受保护路由只验到 `401` / `503`（判定链在工作），带 token 一项 SKIP；`service-hostname-scan` 对还没声明的组件只警告。两者作为独立组件加入项目后地址直接可达，带 token 验 `200`；进 go-infra 外壳后由外壳容器的网络别名解析，值不变。任何阶段都不需要 `deploy.local.yaml` 或 `deploy.teardown.yaml` 的 `vars:` 覆盖，也不改 `config/vars.yaml`。focus 起的宿主机进程解析不了容器服务名，focus 下只验 `/healthz`（7.4）。
-- `make test-db-init` 对每个连库组件跑 `migrate-idempotent`，同时传 `PG_*` 与旧的 `DATABASE_*`（T26 删掉后者）。
+- `make test-db-init` 不带 `ID` 时对每个连库组件跑 `migrate-idempotent`（带 `ID` 只跑那一个，4.16），同时传 `PG_*` 与旧的 `DATABASE_*`（T26 删掉后者）。
 - `make tier1` 仍是占位（06f 重写）。`make tier0` 是 mdm/customer 专用、带 v0 假设的旧断言。
 - `make bump-version`：be-acceptance（v0.4.1 起）不再往 `component.yaml` 写历史注释，照常使用（R26）。分工：首轮 1.x → 2.0.0 时，下游组件的依赖版本在它自己第 3 步整份重写 `component.yaml` 时直接写 `@2.0.0`；**一个组件发布 2.0.0 之后再有任何改动**（修 bug 发 2.0.1、补字段发 2.1.0），以及外壳的 `shell.members` / `go.mod` 跟着成员换版本，一律走 `make bump-version PLAN=<计划文件>`（先 dry-run 看级联，再 `APPLY=1`），一轮改动写一份计划文件，然后按 `version-bump-ship` skill 逐个发布（`make ship`）、`make integrate ID=<id> VERSION=<新版本>`（内部是 `brickkit upgrade`）。
 - `make test-cross` 只跑 Go（`go test`）。
