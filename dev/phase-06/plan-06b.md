@@ -157,6 +157,7 @@ E=$(bash $ROOT/dev/phase-06/tools/env.sh $ID) && eval "$E" || exit 2   # 核对 
   通过：`$C` 下有 `BRICKKIT.md`/`BRICKKIT.zh.md`/`AGENTS.md`/`AGENTS.zh.md`/`README.md`/`README.zh.md`/`docs/design.md`/`docs/design.zh.md`/`CLAUDE.md`（恰好 `@AGENTS.md`），`AGENTS.md` 末尾有 `<!-- brickkit:managed:begin lang=en -->`；旧文件已留底在 `$S/old/`（脚本做）。
 - [ ] **C3 清单**（第 3 步）：
   ```bash
+  cd $ROOT
   python3 $ROOT/dev/phase-06/tools/migrate-manifest.py $ID --write
   python3 $ROOT/dev/phase-06/tools/migrate-manifest.py $ID --check; echo "exit=$?"
   brickkit lint $ID 2>&1 | tee $S/lint-c3.log
@@ -166,7 +167,7 @@ E=$(bash $ROOT/dev/phase-06/tools/env.sh $ID) && eval "$E" || exit 2   # 核对 
   ```bash
   bash $ROOT/dev/phase-06/tools/go-v2.sh $ID --sdk v0.4.0; echo "exit=$?"     # 只 Go 组件
   ```
-  通过：`exit=0`（脚本最后跑 component-loop 4.4 的全部判据，含"gen 是当前 .proto 的生成结果"，任一不满足就非零退出）。`--sdk v0.4.0` 起，脚本顺带把迁移入口改成 SDK 的一行（`migrate.Main(migrations.FS)`）并删掉 `module.go` 的 `Migrations:`，人工只读 diff、核对 Dockerfile 的目的路径。然后：`Makefile` 照抄 mdm/customer 的模板（R43，component-loop 4.7）；脚本按 4.9；审查按 4.10–4.12（本 Task 的"重构重点"）；补接口按 4.13–4.15（契约先改：`.proto` → `buf generate` → `go-v2.sh $ID --recheck`，让根 `go.mod` require 正确的契约包版本）；测试按 4.16–4.17：`make -C $ROOT test-db-init ID=$ID`（拿锁，只跑本组件的 migrate-idempotent）、`cd $C && make test`（`TEST_PG_DSN` 由开头三行提供；没设时 `make test` 会大声失败，而不是全部 SKIP 显示 ok）。每个红绿循环一个提交（组件仓库）。C4 结束跑一次 `bash $ROOT/dev/phase-06/tools/component-check.sh $ID`（旧键读取、种子脚本、历史引用、文档对称共十项），FAIL 的先修。
+  通过：`exit=0`（脚本最后跑 component-loop 4.4 的全部判据，含"gen 是当前 .proto 的生成结果"，任一不满足就非零退出）。`--sdk v0.4.0` 起，脚本顺带把迁移入口改成 SDK 的一行（`migrate.Main(migrations.FS)`）并删掉 `module.go` 的 `Migrations:`，人工只读 diff、核对 Dockerfile 的目的路径。然后：`Makefile` 照抄 mdm/customer 的模板（R43，component-loop 4.7）；脚本按 4.9；审查按 4.10–4.12（本 Task 的"重构重点"）；补接口按 4.13–4.15（契约先改：`.proto` → `buf generate` → `go-v2.sh $ID --recheck`，让根 `go.mod` require 正确的契约包版本）；测试按 4.16–4.17：`make -C $ROOT test-db-init ID=$ID`（拿锁，只跑本组件的 migrate-idempotent）、`cd $C && make test`（`TEST_PG_DSN` 由开头三行提供；没设时 `make test` 会大声失败，而不是全部 SKIP 显示 ok）。每个红绿循环一个提交（组件仓库）。C4 结束跑一次 `bash $ROOT/dev/phase-06/tools/component-check.sh $ID`（旧键读取、种子脚本、历史引用、文档对称共十项）：第 1–9 项的 FAIL 先修；第 10 项（文档占位符）此时一定 FAIL（文档还是骨架，C5 才填），原文记录即可；C5 / C6 之后十项全部 PASS（component-loop 4.18）。
 - [ ] **C5 文档**（第 5 步）：按 component-loop 5.1 写满八份文件，`docs/design.md` 从 `archive/pre-v1/docs/dev/design/$REPO.md` 只提取结论，加上 `$S/assembly-removed-comments.txt` 里仍然成立的结论，并写进本 Task 引入的新设计（新接口、事件方案）。旧键 → 新键对照只写在发布说明里，不写进 BRICKKIT.md（R42）。
 - [ ] **C6 版本与门禁**（第 6 步）：
   - `make -C $ROOT docs-check ID=$ID; echo "exit=$?"` → `0 with errors, 0 warnings` 且 `exit=0`；
@@ -180,7 +181,7 @@ E=$(bash $ROOT/dev/phase-06/tools/env.sh $ID) && eval "$E" || exit 2   # 核对 
   ```
   `integrate` 列出"需要人给值"的 required 键而失败时（`config-fill.py` 退出 3），按本 Task 的"配置值"一栏直接给值，再重跑 `integrate`（已加入的组件不会重复 add，已有值的键不会被覆盖）：
   ```bash
-  bash $ROOT/infra/scripts/project-lock.sh -- python3 $ROOT/infra/scripts/config-fill.py $ID --set 'KEY=VALUE' …   # 值里有 $ 时用单引号；secret 键只收 ${VAR} / file:// / $var:
+  bash $ROOT/infra/scripts/project-lock.sh -- python3 $ROOT/infra/scripts/config-fill.py $ID --set 'KEY1=VALUE1' --set 'KEY2=VALUE2'   # 每个键一个 --set；值里有 $ 时用单引号；secret 键只收 ${VAR} / file:// / $var:
   ```
   通过：两条命令都 `exit=0`，`verify` 打印的汇总表每行都是 `PASS` 或写明原因的 `SKIP`（例如"authz/iam 尚未加入项目，只验 401"）；汇总表和输出目录路径贴进记录。
 - [ ] **C8 交接发布**（第 8 步）：补全 `$S/notes-2.0.0.md`（C3 生成的骨架；补"新增 / 修复"两节，确认 `--write` 没有打印 ⚠️ 漂移；格式见 component-loop 8.1），组件仓库提交（文档 + 版本），`git -C $C log --oneline -3` 贴进记录。**不推送、不打 tag**。向控制者交付（component-loop 8.2）：提交 SHA、发布说明路径、`verify` 汇总表、契约包是否需要新 tag 及版本号。控制者审查通过后执行 `make -C $ROOT ship DIR=components/$ID NOTES=$S/notes-2.0.0.md`（发布前先跑本组件范围的 `openapi-additive-scan` 与 `config-key-scan --strict`），然后在父仓库按路径提交该组件的指针与项目文件。
@@ -559,7 +560,7 @@ docker exec be-postgres psql -U postgres -d brickkit_db -tAc "select nspname, pg
 **Interfaces:**
 - Produces: `mdm/product@2.0.0`；**契约包 `gen/mdm/product/v1.1.0`**（gRPC `List` 新增 `q`，T20 的 BFF 用）；`GET /mdm/product/products?q=`；`POST /mdm/product/products/{id}/status` 改绑新键。
 
-**要补的接口**（frontend-needs §2.2）：REST `GET /products` 加 `q`（匹配 `sku`、`name`，规则与 T7 的客户 `q` 相同，复用同样的 L2 测试思路，不复用代码）；`.proto` 的 `ListProductsRequest` 追加字段 `q`（新字段号，只增），gRPC 实现同样过滤；`POST /products/{id}/status` 的权限键从 `mdm.product.edit` 改成新键 `mdm.product.set_status`。
+**要补的接口**（frontend-needs §2.2）：REST `GET /products` 加 `q`（匹配 `sku`、`name`，规则与 T7 的客户 `q` 相同，复用同样的 L2 测试思路，不复用代码）；`.proto` 的 `ListRequest` 追加字段 `string q = 6;`（1–5 已占用，只增），gRPC 实现同样过滤；`POST /products/{id}/status` 的权限键从 `mdm.product.edit` 改成新键 `mdm.product.set_status`。
 
 **新权限键**：`{ key: mdm.product.set_status, title: 启用/停用产品, type: action }` → `make permissions`。
 

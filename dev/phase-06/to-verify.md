@@ -16,6 +16,7 @@
 | V-11 | `brickkit add` 一个能托管已有组件的外壳时，v1.1.0 代码（`internal/install/add.go` 的 `nestExisting`）会把已在项目里的成员挪进外壳的 `members:`（打印 `🔗 <member> moved into shell`），而 `brickkit docs 04-shell/04-members-management` 写的是"对外壳出现之前就已在项目里的组件，`add` **不会**把它挪进外壳"。文档与行为不一致（来源：06b T6 审查读源码） | 06b T21–T24 第一个外壳 `make integrate` | 原文记录 add 输出有无 🔗 行、`deploy.yaml` 里成员的位置；与文档对照，成立则写反馈 | |
 | V-12 | focus / `mode: local` 的本机进程与它依赖的容器共用 `vars:`：`host.docker.internal` 在 Linux 宿主机进程里解析不了，文档的修法（deploy.local.yaml 的 vars 写 localhost）又会弄坏依赖容器。本项目 `make verify` 用 host-gateway 实际 IP 绕过（R39，仅 Linux 原生 Docker） | 06b 第一个有容器依赖的组件 focus（erp/sales，T18） | 看绕法是否够用；Docker Desktop / Podman 在 06e 再验；成立则写反馈：建议本机进程把 host.docker.internal 换成 localhost，或提供只作用于本机进程的 vars | |
 | V-13 | `brickkit add` 重排 `brickkit.yaml` 的注释（缩进注释挪到行首、行尾注释对齐压成一个空格），diff 变脏 | 06b 再观察 `remove` / `upgrade` | 原文记录前后 diff | |
+| V-14 | `brickkit.yaml` 里某个本地源的 `path` 不存在（如 `./shell` 目录缺失）时，`brickkit lint <id>` 报 `COMPONENT_NOT_FOUND: <id> is not in this project`，而不是指出缺失的源目录；`mkdir` 之后同一命令正常（来源：06b T8c 审查在 scratch 项目里复现） | 06b 期间顺手在真实项目复现一次 | 临时把一个本地源 path 改成不存在的目录，原文记录 lint 输出；成立则写反馈（报错应点名缺失的源目录） | |
 | V-04 | 知识缺口：只靠已安装的 5 个 skill、项目 AGENTS.md 的 CLI 维护块、`.brickkit/manifests/` 缓存和 `--help`，能不能完成组件开发和部署 | 06a 用 `brickkit init` / `skills update` / `new` 重新生成之后，贯穿 06b–06f | 每次不得不去翻 brickKit 仓库，就在下面的缺口记录里追加一行；阶段末整理成反馈 | |
 
 ## 知识缺口记录（V-04）
