@@ -7,6 +7,8 @@
   --check    对当前工作区跑 component-loop 3.2 的全部检查 + 代码里的驼峰键读取；任一项不是"无"就 exit 1
   --force    与 --write 一起：覆盖手改过的文件（默认拒绝，见下）
   两个一起给：先写，再查。
+  --write 还会：去掉 assembly.yaml 注释里的归档 / 历史引用（HIST_RE，与 component-check.sh 同一个模式）；
+  在 $BE_SCRATCH/06b/<repo>/notes-2.0.0.md 还不存在时写出发布说明骨架（component-loop 8.1）。
 
 手改保护：--write 写盘前逐个核对 component.yaml / assembly.yaml——工作区文件既不是 tag 原文、也不是本次会
 生成的内容、也不是本脚本上次在这个检出里写出的内容（sha1 记在组件仓库的 git 目录 be-migrate-manifest/ 下，
@@ -43,12 +45,16 @@ SECRET_RE = re.compile(r'PASSWORD|SECRET|SIGNING_KEY')
 RESERVED = {'COMPONENT_ID', 'COMPONENT_VERSION', 'PORT', 'BRICKKIT_SERVED_MEMBERS', 'BRICKKIT_SERVED_MEMBERS_CONFIG'}
 KEY_RE = re.compile(r'[A-Z][A-Z0-9_]*')
 OVERRIDE_FIELDS = {'name', 'description', 'tags', 'add_properties', 'required_add', 'drop_default', 'deps_add',
-                   'start_period_seconds', 'migration_command', 'local'} | {f'{k}_add' for k in ('permissions', 'menus', 'edge_routes')}
+                   'start_period_seconds', 'migration_command', 'local', 'history_allow'} | \
+    {f'{k}_add' for k in ('permissions', 'menus', 'edge_routes')}
 # assembly.yaml 里允许由 overrides 追加条目的列表（每个任务新增的权限键、菜单、网关路由），以及条目的身份键
 ASSEMBLY_LISTS = {'permissions': 'key', 'menus': 'key', 'edge_routes': 'path'}
 KNOWN_TOP = ['apiVersion', 'kind', 'metadata', 'tags', 'artifacts', 'dependencies', 'configSchema',
              'deployment', 'migration', 'healthCheck', 'local']
 ROLE_COMMENT = '# 登录角色，`PG_USER` 的值'
+# 归档 / 历史引用（component-loop 5.1"不写历史"）：assembly.yaml 注释清理与 component-check.sh 的 (b) 共用
+HIST_RE = re.compile(r'§|决策 ?[0-9]|设计计划|设计书|阶段[一二三四五六0-9]|总纲|手册|铁律|Task ?[0-9]|docs/plans/|archive/')
+NOTES_NAME = 'notes-2.0.0.md'
 
 # 代码里读配置的方法（SDK 的 Config API）。Go：rt.Config.X("k"；Python：rt.config.x("k"；TS：config.x("k"
 CODE_LANGS = {
@@ -130,6 +136,13 @@ def load_override(cid):
             continue
         if not isinstance(items, list) or not all(isinstance(x, dict) and x.get(ident) for x in items):
             raise Fatal(f'manifest-overrides.yaml 的 {cid}.{lst}_add 必须是映射列表，每项带 {ident}')
+    allow = ov.get('history_allow')
+    if allow is not None:
+        if not isinstance(allow, list) or not all(
+                isinstance(x, dict) and set(x) == {'path', 'text', 'why'} and all(isinstance(x[k], str) and x[k].strip() for k in x)
+                for x in allow):
+            raise Fatal(f'manifest-overrides.yaml 的 {cid}.history_allow 每项必须恰好有 path / text / why 三个非空字符串'
+                        f'（why 写明为什么这处引用必须留着）：{allow!r}')
     loc = ov['local']
     if not isinstance(loc, dict) or not isinstance(loc.get('runCommand'), list) or not loc.get('language'):
         raise Fatal(f'manifest-overrides.yaml 的 {cid}.local 必须有 language 和数组形式的 runCommand')
@@ -397,7 +410,7 @@ def edit_assembly(text, cx, adds=None):
             ln = f'{rm.group(1)}{rm.group(2)}{rm.group(3)}{gap or "  "}{ROLE_COMMENT}\n'
         out.append(ln)
         i += 1
-    new = re.sub(r'\n{3,}', '\n\n', ''.join(out)).strip('\n') + '\n'
+    new = re.sub(r'\n{3,}', '\n\n', clean_hist_comments(''.join(out))).strip('\n') + '\n'
     old_doc = yaml.safe_load(text) or {}
     want = {k: v for k, v in old_doc.items() if k not in ('version', 'shell', 'asset')}
     for lst, items in (adds or {}).items():
@@ -417,6 +430,109 @@ def edit_assembly(text, cx, adds=None):
     if (yaml.safe_load(new) or {}) != want:
         raise Fatal('assembly.yaml 文本编辑后语义不对（脚本 bug），不写盘')
     return new, removed
+
+
+def comment_start(line):
+    """行内注释的 # 位置（引号外、前面是空白或行首）；没有就 None。"""
+    q, i, n = None, 0, len(line)
+    while i < n:
+        ch = line[i]
+        if q == '"':
+            if ch == '\\':
+                i += 2
+                continue
+            if ch == '"':
+                q = None
+        elif q == "'":
+            if ch == "'":
+                if i + 1 < n and line[i + 1] == "'":
+                    i += 2
+                    continue
+                q = None
+        elif ch in '"\'' and (i == 0 or line[i - 1] in ' \t[{,:'):
+            q = ch
+        elif ch == '#' and (i == 0 or line[i - 1] in ' \t'):
+            return i
+        i += 1
+    return None
+
+
+PUNCT_ONLY = re.compile(r'[\s。，、；：,.;:!?！？—–-]*')
+PAREN = re.compile(r'（[^（）]*）|\([^()]*\)')
+
+
+def clean_hist_text(s):
+    """去掉含历史引用的括号（"（设计计划 §1）"）；返回 (清理后的正文, 是否仍有引用)。"""
+    s2 = PAREN.sub(lambda m: '' if HIST_RE.search(m.group(0)) else m.group(0), s).rstrip()
+    if s2 != s.rstrip():               # 括号在开头被删掉时，后面紧跟的"，"之类也去掉
+        s2 = re.sub(r'^(\s*)[，、；：,;:]\s*', r'\1', s2)
+    return s2, bool(HIST_RE.search(s2))
+
+
+def clean_hist_comments(text):
+    """assembly.yaml 注释里的归档 / 历史引用（HIST_RE）：先去掉含引用的括号，去掉后只剩标点的注释行删掉；
+    去掉括号仍有引用的——整行注释删掉它所在的整块（连续的 # 行），行尾注释删掉注释本身（连同下面几行的续行）。
+    块标量（`|` / `>`）里的内容与引号里的 # 不是注释，不动。输出只由输入决定，所以 --write 重跑结果相同。"""
+    lines = text.split('\n')
+    kinds = []                        # 每行：('block', None) 块标量内容；('full', col)；('trail', col)；('plain', None)
+    block_indent = None
+    for ln in lines:
+        ind = len(ln) - len(ln.lstrip(' '))
+        if block_indent is not None:
+            if ln.strip() == '' or ind > block_indent:
+                kinds.append(('block', None))
+                continue
+            block_indent = None
+        if ln.lstrip().startswith('#'):
+            kinds.append(('full', ind))
+            continue
+        c = comment_start(ln)
+        body = ln if c is None else ln[:c]
+        if re.search(r'(:|^\s*-)\s*[|>][+-]?[0-9]?[+-]?\s*$', body):
+            block_indent = ind
+        kinds.append(('trail', c) if c is not None else ('plain', None))
+    groups, i = [], 0                 # 每组：[(行号, # 的列)…]，第一项是组首
+    while i < len(lines):
+        k, col = kinds[i]
+        if k == 'trail':
+            g = [(i, col)]
+            j = i + 1
+            while j < len(lines) and kinds[j][0] == 'full' and abs(kinds[j][1] - col) <= 2:
+                g.append((j, kinds[j][1]))
+                j += 1
+            groups.append(('trail', g))
+            i = j
+        elif k == 'full':
+            g = []
+            while i < len(lines) and kinds[i][0] == 'full':
+                g.append((i, kinds[i][1]))
+                i += 1
+            groups.append(('full', g))
+        else:
+            i += 1
+    drop = set()
+    for kind, g in groups:
+        texts = [lines[n][col + 1:] for n, col in g]
+        cleaned = [clean_hist_text(s) for s in texts]
+        if not any(HIST_RE.search(s) for s in texts):
+            continue
+        if any(still for _, still in cleaned):
+            if kind == 'trail':
+                n0, c0 = g[0]
+                lines[n0] = lines[n0][:c0].rstrip()
+                drop.update(n for n, _ in g[1:])
+            else:
+                drop.update(n for n, _ in g)
+            continue
+        for (n, col), (s2, _) in zip(g, cleaned):
+            if PUNCT_ONLY.fullmatch(s2):
+                if kind == 'trail' and n == g[0][0]:
+                    lines[n] = lines[n][:col].rstrip()
+                else:
+                    drop.add(n)
+            else:
+                lines[n] = lines[n][:col + 1] + s2
+    return '\n'.join(ln for n, ln in enumerate(lines) if n not in drop)
 
 
 def append_items(text, key, items):
@@ -692,6 +808,80 @@ def generate(cx):
     return tag, new_c, text_c, text_a, removed, mapping, old_c_text, old_a_text, adds
 
 
+def notes_path(cx):
+    sc = os.environ.get('BE_SCRATCH')
+    if not sc:
+        raise Fatal(f'--write 要把发布说明骨架写到 $BE_SCRATCH/06b/{cx["repo"]}/{NOTES_NAME}：请先设置 BE_SCRATCH'
+                    '=<当前会话的 scratchpad 目录>（见 env.sh），什么都没写')
+    return os.path.join(sc, '06b', cx['repo'], NOTES_NAME)
+
+
+def fmt_default(v):
+    return '为空' if v in ('', None) else f'`{v}`'
+
+
+def notes_skeleton(cx, old_c, new_c, mapping):
+    """component-loop 8.1 的发布说明骨架：破坏性变更一节由脚本按 tag 版与生成结果写全，新增 / 修复留空给人填。"""
+    ocs = old_c.get('configSchema') or {}
+    oprops, oreq = ocs.get('properties') or {}, set(ocs.get('required') or [])
+    ncs = new_c['configSchema']
+    nprops, nreq = ncs['properties'], set(ncs.get('required') or [])
+    back = {SHARED.get(k, snake(k)): k for k in oprops}          # 新键 → 旧键
+    res = {r.get('kind') for r in ((old_c.get('dependencies') or {}).get('resources') or [])}
+    platform = [x for x, kind in (('DATABASE_*', 'database'), ('MQ_*', 'mq')) if kind in res]
+    out = [f'{cx["id"]} 2.0.0', '', '## 升级前必须做（破坏性变更）', '']
+    if mapping:
+        pairs = '，'.join(f'`{o}` → `{n}`' for o, n in mapping.items())
+        out.append(f'- 配置键全部改为大写下划线的环境变量名，`config/{cx["repo"]}.yaml` 要按新键重写：{pairs}。'
+                   + (f'不再读取平台注入的 {" / ".join(f"`{x}`" for x in platform)}。' if platform else ''))
+    elif platform:
+        out.append(f'- 不再读取平台注入的 {" / ".join(f"`{x}`" for x in platform)}。')
+    if 'database' in res:
+        nats = '、`NATS_URL`' if 'mq' in res else ''
+        out.append(f'- 数据库{"与消息" if nats else ""}改为组件自己声明的配置：`PG_HOST`、`PG_PORT`（默认 5432）、`PG_DATABASE`、'
+                   f'`PG_USER`（登录角色 `{cx["role"]}`）、`PG_PASSWORD`（secret）、`PG_SCHEMA`（默认 `{cx["schema"]}`）{nats}。'
+                   f'迁移也以 `PG_USER` 登录运行并建表——该角色需要 `{cx["schema"]}` 上的 USAGE 与 CREATE。')
+    elif 'mq' in res:
+        out.append('- 消息改为组件自己声明的配置：`NATS_URL`（必填）。')
+    from_res = {'PG_HOST', 'PG_PORT', 'PG_DATABASE', 'PG_USER', 'PG_PASSWORD', 'PG_SCHEMA', 'NATS_URL'} if 'database' in res else \
+        ({'NATS_URL'} if 'mq' in res else set())
+    loose, became = [], []
+    for k in nprops:
+        ok = back.get(k)
+        if k in from_res and ok is None:
+            continue
+        if ok is None:
+            d = nprops[k].get('default')
+            became.append(f'- 新增配置键 `{k}`' + ('（必填）。' if k in nreq else f'（默认 {fmt_default(d)}，不配也能跑）。'))
+            continue
+        was_req, od = ok in oreq, (oprops.get(ok) or {}).get('default')
+        if k in nreq and not was_req:
+            if od is None:
+                loose.append(k)
+            else:
+                became.append(f'- `{k}` 改为必填（1.x 默认{fmt_default(od) if od == "" else " " + fmt_default(od)}）。')
+        elif was_req and k not in nreq:
+            became.append(f'- `{k}` 改为可选（默认 {fmt_default(nprops[k].get("default"))}）。')
+    if loose:
+        out.append(f'- 改为必填（1.x 可以不配）：{"、".join(f"`{k}`" for k in loose)}。')
+    out += became
+    if os.path.isfile(os.path.join(cx['dir'], 'go.mod')):
+        out.append(f'- Go 模块路径改为 `github.com/brickKit/{cx["repo"]}/v2`（外壳的 import 与 go.mod require 都要带 /v2）。')
+    out.append(f'- 镜像由 `brickkit build` 构建（`deployment.build`），名称 `{cx["repo"]}:2.0.0`。')
+    out += ['', '## 新增', '', '## 修复', '']
+    return '\n'.join(out)
+
+
+def write_notes(cx, tag_c, new_c, mapping):
+    p = notes_path(cx)
+    if os.path.exists(p):
+        print(f'  ⏭  发布说明 {p}：已存在，不覆盖（骨架只在第一次 --write 时写）')
+        return
+    os.makedirs(os.path.dirname(p), exist_ok=True)
+    open(p, 'w', encoding='utf-8').write(notes_skeleton(cx, yaml.safe_load(tag_c), new_c, mapping))
+    print(f'  📝 发布说明骨架：{p}（"升级前必须做"已按旧键 → 新键写好，人补"## 新增""## 修复"并核对）')
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__.split('\n')[0])
     ap.add_argument('id')
@@ -704,6 +894,8 @@ def main():
     cx = context(a.id)
     c = cx['dir']
     rc = 0
+    if a.write:
+        notes_path(cx)                   # 没设 BE_SCRATCH 就在写任何东西之前失败
     if a.write or not a.check:
         tag, new_c, text_c, text_a, removed, mapping, tag_c, tag_a, adds = generate(cx)
         cur_c = open(os.path.join(c, 'component.yaml'), encoding='utf-8').read()
@@ -764,6 +956,7 @@ def main():
             if not changes:
                 print('  代码里的配置键读取：未改动（没有旧键读法）')
             print_mentions(c, mapping)
+            write_notes(cx, tag_c, new_c, mapping)
     if a.check:
         text = open(os.path.join(c, 'component.yaml'), encoding='utf-8').read()
         try:

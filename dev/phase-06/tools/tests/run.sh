@@ -14,6 +14,7 @@ W=$BE_SCRATCH/06b-tools-test
 SDK=${TEST_SDK:-v0.3.2}
 LOG=$W/logs
 export BE_SCRATCH=$W/scratch          # 工具自己的 $S 也放进测试目录
+export PATH=$PATH:$HOME/go/bin        # buf / protoc-gen-go 在 ~/go/bin（追加在末尾：前面放会让旧 brickkit 遮住新版）
 
 PASS=0; FAIL=0; FAILED=()
 ok()  { echo "  ✅ $*"; PASS=$((PASS+1)); }
@@ -38,13 +39,24 @@ log_has() { grep -qE -- "$2" "$LOG/$1.log"; }
 clean_tree() { [ -z "$(git -C "$1" status --short)" ]; }
 commit_all() { git -C "$1" add -A && git -C "$1" -c user.name=t -c user.email=t@t commit -qm "$2"; }
 
+# 历史 / 归档引用（component-check.sh 的 (b) 与 migrate-manifest.py 的 assembly.yaml 注释清理用同一个模式）
+HIST='§|决策 ?[0-9]|设计计划|设计书|阶段[一二三四五六0-9]|总纲|手册|铁律|Task ?[0-9]|docs/plans/|archive/'
+
 ALL13="crm/opportunity erp/finance erp/inventory erp/sales infra/authz infra/bff-mobile infra/iam-casdoor
 infra/notification infra/print infra/workflow integration/im-dingtalk mdm/customer mdm/product"
 
-clone() {  # clone <id> <目标目录>：本机克隆（带全部 tag），不经过网络
+clone_head() {  # clone_head <id> <目标目录>：本机克隆（带全部 tag），停在子模块当前的 HEAD，不经过网络
   local id=$1 dst=$2
   # --no-hardlinks：scratch 与仓库可能不在同一个文件系统上，--local 的硬链接会失败
   git clone -q --no-hardlinks "$ROOT/components/$id" "$dst" || { echo "克隆 $id 失败" >&2; exit 2; }
+}
+clone() {  # clone <id> <目标目录>：迁移前的夹具——克隆后退回最后一个 1.x tag
+  # 组件迁移完成（HEAD 已是 2.0.0）后，"迁移前"的测试仍要从 1.x 出发；退回 tag 让夹具不随迁移进度漂移
+  local id=$1 dst=$2 tag
+  clone_head "$id" "$dst"
+  tag=$(git -C "$dst" tag -l '1.*' 'v1.*' | grep -E '^v?1\.[0-9]+\.[0-9]+$' | sort -V | tail -1)
+  [ -n "$tag" ] || { echo "$id 没有 1.x tag" >&2; exit 2; }
+  git -C "$dst" reset -q --hard "$tag"
 }
 
 if [ "${TEST_KEEP:-}" != 1 ] || [ ! -d "$W" ]; then
@@ -57,6 +69,13 @@ if [ "${TEST_KEEP:-}" != 1 ] || [ ! -d "$W" ]; then
   clone infra/print        "$W/infra-print"
   clone mdm/customer            "$W/v4-mdm-customer"
   clone integration/im-dingtalk "$W/v4-integration-im-dingtalk"
+  # component-check.sh 的夹具：迁移后（mdm/customer 当前 HEAD）、试点漏掉三处归档引用的那个提交、迁移前（mdm/product 1.x）
+  clone_head mdm/customer "$W/cc-post"
+  clone_head mdm/customer "$W/cc-prefix"
+  fix=$(git -C "$W/cc-prefix" log --format=%H --grep='go.mod / buf.yaml / LICENSE' -1)
+  [ -n "$fix" ] || { echo "mdm/customer 里找不到去掉 go.mod / buf.yaml / LICENSE 归档引用的那个提交" >&2; exit 2; }
+  git -C "$W/cc-prefix" reset -q --hard "$fix^"
+  clone mdm/product "$W/cc-old"
 fi
 mkdir -p "$LOG"
 
@@ -83,16 +102,63 @@ else
   bad "env.sh infra/notification 失败"; cat "$LOG/env.err"
 fi
 
+section "env.sh：PATH 追加 go/bin、核对 brickkit v1.1.0 与 buf、TEST_PG_DSN 不打印值（T8）"
+BK=$(command -v brickkit)
+out=$(bash "$TOOLS/env.sh" mdm/customer 2>"$LOG/env-t8.err"); rc=$?
+printf '%s\n' "$out" >"$LOG/env-t8.out"
+check "env.sh 正常时 exit 0" test $rc = 0
+check "PATH 行把 \$HOME/go/bin 追加在末尾（不放前面）" bash -c "grep -qF 'export PATH=\"\$PATH:\$HOME/go/bin\"' '$LOG/env-t8.out' && ! grep -qF '\$HOME/go/bin:\$PATH' '$LOG/env-t8.out'"
+check "仍然输出十个 export 变量" bash -c "[ \"\$(grep -cE '^export (ROOT|ID|REPO|UREPO|C|S|SCHEMA|ROLE|SVC|NET)=' '$LOG/env-t8.out')\" = 10 ]"
+pwlen=$( set +u; . "$ROOT/.env" >/dev/null 2>&1; printf %s "${#POSTGRES_PASSWORD}" )
+# 口令本身不进任何输出（只在子 shell 里比对，不打印）
+leak=$( set +u; . "$ROOT/.env" >/dev/null 2>&1; cat "$LOG/env-t8.out" "$LOG/env-t8.err" | grep -cF -- "$POSTGRES_PASSWORD" )
+check "输出（stdout + stderr）里没有 POSTGRES_PASSWORD 的值" test "${leak:-0}" = 0 -a "${pwlen:-0}" -gt 0
+(
+  PATH=/usr/bin:/bin:$(dirname "$BK"); unset TEST_PG_DSN TEST_NATS_URL
+  eval "$out"; eval "$out"            # 连 eval 两次：PATH 不重复追加
+  n=$(printf '%s' ":$PATH:" | grep -o ":$HOME/go/bin:" | wc -l)
+  [ "$n" = 1 ] && [ "${PATH##*:}" = "$HOME/go/bin" ] || { echo "PATH=$PATH"; exit 1; }
+  [ "$(command -v brickkit)" = "$BK" ] || { echo "brickkit 解析到 $(command -v brickkit)"; exit 1; }
+  command -v buf >/dev/null || { echo "eval 之后没有 buf"; exit 1; }
+  case $TEST_PG_DSN in postgres://postgres:?*@localhost:5432/brickkit_test_db\?sslmode=disable) ;; *) echo "TEST_PG_DSN 形状不对"; exit 1;; esac
+  p=${TEST_PG_DSN#postgres://postgres:}; p=${p%@localhost:5432/*}
+  [ "${#p}" = "$pwlen" ] || { echo "TEST_PG_DSN 里的口令长度不对"; exit 1; }
+  [ "$TEST_NATS_URL" = nats://localhost:4222 ] || exit 1
+) >"$LOG/env-t8-eval.log" 2>&1
+check "eval 之后：PATH 末尾恰好一个 go/bin、brickkit 仍是 $BK、buf 可用、TEST_PG_DSN 指向 brickkit_test_db、TEST_NATS_URL" test $? = 0
+# 反向：~/go/bin 放在 PATH 前面（component-loop 旧 1.4 的写法）→ 旧 brickkit v0.4.6 遮住新版
+if [ -x "$HOME/go/bin/brickkit" ]; then
+  PATH=$HOME/go/bin:$PATH bash "$TOOLS/env.sh" mdm/customer >"$LOG/env-oldbk.log" 2>&1; rc=$?
+  check "~/go/bin 在前（真 v0.4.6）→ exit 2，❌ 点名 PATH 上的 brickkit 与要的版本" bash -c "[ $rc = 2 ] && grep -q '❌' '$LOG/env-oldbk.log' && grep -qF '$HOME/go/bin/brickkit' '$LOG/env-oldbk.log' && grep -qF 'BrickKit CLI v1.1.0' '$LOG/env-oldbk.log'"
+  check "失败时 stdout 为空（eval 不会吃进半截输出）" bash -c "PATH=$HOME/go/bin:\$PATH bash '$TOOLS/env.sh' mdm/customer 2>/dev/null | grep -q . && exit 1 || exit 0"
+fi
+mkdir -p "$W/fakebk"; printf '#!/bin/sh\necho "BrickKit CLI v0.4.6"\n' >"$W/fakebk/brickkit"; chmod +x "$W/fakebk/brickkit"
+PATH=$W/fakebk:$PATH bash "$TOOLS/env.sh" mdm/customer >"$LOG/env-fakebk.log" 2>&1; rc=$?
+check "假 brickkit 报 v0.4.6 → exit 2 并说明" bash -c "[ $rc = 2 ] && grep -q '❌.*v0.4.6' '$LOG/env-fakebk.log'"
+mkdir -p "$W/fakehome" "$W/onlybk"; ln -sf "$BK" "$W/onlybk/brickkit"
+HOME=$W/fakehome PATH=$W/onlybk:/usr/bin:/bin bash "$TOOLS/env.sh" mdm/customer >"$LOG/env-nobuf.log" 2>&1; rc=$?
+check "PATH（含 \$HOME/go/bin）上没有 buf → exit 2 并说明" bash -c "[ $rc = 2 ] && grep -q '❌.*buf' '$LOG/env-nobuf.log'"
+printf 'MQ_USER=x\n' >"$W/env-nopg"
+BE_DOTENV=$W/env-nopg bash "$TOOLS/env.sh" mdm/customer >"$LOG/env-nopg.log" 2>&1; rc=$?
+check ".env 里没有 POSTGRES_PASSWORD → exit 2 并点名这个键" bash -c "[ $rc = 2 ] && grep -q '❌.*POSTGRES_PASSWORD' '$LOG/env-nopg.log'"
+BE_DOTENV=$W/no-such.env bash "$TOOLS/env.sh" mdm/customer >"$LOG/env-nodotenv.log" 2>&1; rc=$?
+check "没有 .env → exit 2" bash -c "[ $rc = 2 ] && grep -q '❌' '$LOG/env-nodotenv.log'"
+
 # ───────────────────────────────────────────────────────────────────────────
 section "migrate-manifest.py：全部 13 个组件（克隆）"
 for id in $ALL13; do
   d=$W/all/${id/\//-}; n=${id/\//-}
   run_tool "mm-dry-$n" "$d" python3 "$TOOLS/migrate-manifest.py" "$id"; rc=$?
   if [ $rc = 0 ] && clean_tree "$d"; then ok "$id 预览 exit=0 且没有写盘"; else bad "$id 预览 exit=$rc / 工作区有改动"; show_log "mm-dry-$n"; fi
+  check "$id 预览不写发布说明骨架" test ! -e "$BE_SCRATCH/06b/$n/notes-2.0.0.md"
   run_tool "mm-check-old-$n" "$d" python3 "$TOOLS/migrate-manifest.py" "$id" --check; rc=$?
   if [ $rc = 1 ]; then ok "$id 旧清单 --check 失败（exit=1）"; else bad "$id 旧清单 --check 应为 exit=1，实际 $rc"; show_log "mm-check-old-$n"; fi
   expect_rc 0 "mm-write-$n" "$d" python3 "$TOOLS/migrate-manifest.py" "$id" --write
   expect_rc 0 "mm-check-$n" "$d" python3 "$TOOLS/migrate-manifest.py" "$id" --check
+  N=$BE_SCRATCH/06b/$n/notes-2.0.0.md
+  check "$id --write 写出发布说明骨架（三节）" bash -c "grep -qx '## 升级前必须做（破坏性变更）' '$N' && grep -qx '## 新增' '$N' && grep -qx '## 修复' '$N'"
+  check "$id 发布说明不写'不再有默认值'" bash -c "! grep -q '不再有默认值' '$N'"
+  check "$id --write 之后 assembly.yaml 没有归档 / 历史引用" bash -c "! grep -nE '$HIST' '$d/assembly.yaml'"
   before=$(git -C "$d" diff | sha1sum)
   run_tool "mm-write2-$n" "$d" python3 "$TOOLS/migrate-manifest.py" "$id" --write >/dev/null
   after=$(git -C "$d" diff | sha1sum)
@@ -163,8 +229,40 @@ check "customer：component.yaml 无任何注释"               bash -c "! grep 
 check "customer：assembly.yaml 删了 version/shell/asset" bash -c "! grep -qE '^(version|shell|asset):' '$d/assembly.yaml'"
 check "customer：assembly.yaml 保留 edge_routes/menus 与注释" bash -c "grep -q '^edge_routes:' '$d/assembly.yaml' && grep -q '# 必须与 component.yaml 一致' '$d/assembly.yaml'"
 check "customer：data.role 注释改成登录角色"               grep -qE '^  role: +mdm_customer_rw +# 登录角色，`PG_USER` 的值$' "$d/assembly.yaml"
-# assembly.yaml 的 diff 只有删除行与 role 那一行的改动
-check "customer：assembly.yaml 只删不加（role 行除外）"    bash -c "[ \"\$(git -C '$d' diff -U0 assembly.yaml | grep '^+[^+]' | grep -vc 'role:')\" = 0 ]"
+# assembly.yaml 的 diff：删除行，role 那一行，以及去掉归档引用的注释行（值部分与某条删掉的行逐字相同）
+check "customer：assembly.yaml 只删不加（role 行与注释清理除外）" python3 - "$d" <<'PYEOF'
+import subprocess, sys, re
+d = subprocess.run(['git', '-C', sys.argv[1], 'diff', '-U0', 'assembly.yaml'], capture_output=True, text=True).stdout.splitlines()
+minus = [l[1:] for l in d if l.startswith('-') and not l.startswith('---')]
+plus = [l[1:] for l in d if l.startswith('+') and not l.startswith('+++')]
+val = lambda l: re.sub(r'\s+#.*$', '', l).rstrip()
+for l in plus:
+    assert 'role:' in l or any(val(l) == val(m) for m in minus), l
+PYEOF
+check "customer：data_scopes 的注释去掉了'（设计书 §14.2.2：…）'，保留正文" grep -qx 'data_scopes: none                    # 客户主数据全员可见' "$d/assembly.yaml"
+N=$BE_SCRATCH/06b/mdm-customer/notes-2.0.0.md
+check "customer 发布说明：旧键 → 新键逐条列出" bash -c "for p in 'pgSchema\` → \`PG_SCHEMA' 'iamJwksUrl\` → \`IAM_JWKS_URL' 'authzBundleUrl\` → \`AUTHZ_BUNDLE_URL' 'otelBaseUrl\` → \`OTEL_BASE_URL'; do grep -qF \"\$p\" '$N' || exit 1; done"
+check "customer 发布说明：AUTHZ_BUNDLE_URL / IAM_JWKS_URL 改为必填（1.x 可以不配）" bash -c "grep -E '改为必填（1\.x 可以不配）' '$N' | grep -q AUTHZ_BUNDLE_URL && grep -E '改为必填（1\.x 可以不配）' '$N' | grep -q IAM_JWKS_URL"
+check "customer 发布说明：PG_* / NATS_URL、登录角色、/v2、不再读 DATABASE_*" bash -c "grep -q 'mdm_customer_rw' '$N' && grep -q 'NATS_URL' '$N' && grep -q 'github.com/brickKit/mdm-customer/v2' '$N' && grep -q 'DATABASE_\*' '$N'"
+check "customer 发布说明：新增 / 修复两节是空的（留给人填）" python3 -c "
+t=open('$N').read(); i=t.index('## 新增'); j=t.index('## 修复')
+assert t[i+len('## 新增'):j].strip()=='' and t[j+len('## 修复'):].strip()=='', t[i:]"
+check "authz 发布说明：PERMISSION_CATALOG 改为必填，写出 1.x 的默认值" bash -c "grep '改为必填' '$BE_SCRATCH/06b/infra-authz/notes-2.0.0.md' | grep -q 'PERMISSION_CATALOG'"
+check "inventory 发布说明：新增键 LOW_STOCK_THRESHOLD（默认 10）" bash -c "grep 'LOW_STOCK_THRESHOLD' '$BE_SCRATCH/06b/erp-inventory/notes-2.0.0.md' | grep -q '10'"
+check "print（Python）发布说明：不提 /v2" bash -c "! grep -q '/v2' '$BE_SCRATCH/06b/infra-print/notes-2.0.0.md'"
+echo "人工补的新增条目" >>"$N"; nsum=$(sha1sum <"$N")
+expect_rc 0 mm-notes-keep "$d" python3 "$TOOLS/migrate-manifest.py" mdm/customer --write
+check "发布说明已存在 → 不覆盖（并提示）" bash -c "[ \"\$(sha1sum <'$N')\" = '$nsum' ] && grep -q 'notes-2.0.0.md.*已存在' '$LOG/mm-notes-keep.log'"
+expect_rc 2 mm-notes-noscratch "$d" env -u BE_SCRATCH python3 "$TOOLS/migrate-manifest.py" mdm/customer --write
+check "--write 没设 BE_SCRATCH → 大声失败" log_has mm-notes-noscratch 'BE_SCRATCH'
+d=$W/all/crm-opportunity
+check "opportunity：括号里的出处删掉、注释正文保留；只剩标点的注释行删掉" bash -c "grep -q '^# org（dept_path 前缀）+ owner（owner_id 相等）两维，$' '$d/assembly.yaml' && grep -q '与 erp-sales 完全一致' '$d/assembly.yaml' && ! grep -qE '^ *# *[。，、；：]*$' '$d/assembly.yaml'"
+check "opportunity：权限键之间的注释去掉出处后保留，权限条目保留" bash -c "grep -q '有下游财务影响的动作。$' '$d/assembly.yaml' && grep -q 'crm.opportunity.win' '$d/assembly.yaml'"
+check "iam-casdoor：行尾注释与它的续行（下面几行缩进的 # 行）一起处理：出处去掉、续行保留" bash -c "grep -q '不存角色，refresh_tokens/$' '$W/all/infra-iam-casdoor/assembly.yaml' && grep -q 'signing_keys/webhook_deliveries' '$W/all/infra-iam-casdoor/assembly.yaml'"
+check "bff-mobile：去掉出处后仍有历史引用的行尾注释整条删掉，值保留" grep -qx 'tier: backend' "$W/all/infra-bff-mobile/assembly.yaml"
+check "bff-mobile：跨行括号里的出处 → 整块注释删掉" bash -c "! grep -q '零持久化数据' '$W/all/infra-bff-mobile/assembly.yaml'"
+check "finance：写阶段历史的整块注释删掉" bash -c "! grep -q '默认法人' '$W/all/erp-finance/assembly.yaml'"
+d=$W/all/mdm-customer
 d=$W/all/infra-notification
 check "notification：IM_TARGET_ADAPTERS 读取已改"         grep -q 'StringOr("IM_TARGET_ADAPTERS", "dingtalk")' "$d/backend/module/module.go"
 d=$W/all/infra-print
@@ -271,6 +369,30 @@ print('role-unit-ok')
 EOF
 check "data.role 注释只改 data 的直接子键（嵌套的 role 不动）" log_has mm-role-unit 'role-unit-ok'
 
+python3 - "$TOOLS/migrate-manifest.py" >"$LOG/mm-comment-unit.log" 2>&1 <<'PYEOF'
+import importlib.util, sys
+spec = importlib.util.spec_from_file_location('mm', sys.argv[1]); mm = importlib.util.module_from_spec(spec); spec.loader.exec_module(mm)
+src = ('id: x/y   # 必须一致（设计计划 §1）\n'
+       'note: |\n  块标量里的 §3 与 # 不是注释（阶段三）\n'
+       'title: "带 # §2 的引号值"   # 普通注释\n'
+       '# 整块：第一行没问题\n# 第二行写阶段二的历史\n'
+       'data_scopes: none     # 正文（§1），续\n'
+       '                       # 续行（设计书 §2）\n'
+       '                       # 续行没问题\n'
+       'tags: [a]   # Task 7 加的\n')
+out, _ = mm.edit_assembly(src, {'id': 'x/y'})
+assert out.startswith('id: x/y   # 必须一致\n'), out
+assert '  块标量里的 §3 与 # 不是注释（阶段三）\n' in out, out
+assert 'title: "带 # §2 的引号值"   # 普通注释\n' in out, out
+assert '整块' not in out and '阶段二' not in out, out
+assert 'data_scopes: none     # 正文，续\n                       # 续行\n                       # 续行没问题\n' in out, out
+assert 'tags: [a]\n' in out, out
+out2, _ = mm.edit_assembly(src, {'id': 'x/y'})
+assert out2 == out
+print('comment-unit-ok')
+PYEOF
+check "assembly.yaml 注释清理：括号出处去掉、整块删、续行、块标量与引号里的 # 不动、确定性" log_has mm-comment-unit 'comment-unit-ok'
+
 section "修复轮 M-4：旧键名提示只看字符串与注释"
 check "iam-casdoor：报错文案里的旧键名被列出" log_has mm-write-infra-iam-casdoor 'appTokenPreviousPublicKeyPem'
 check "iam-casdoor：纯 Go 变量名不再刷屏" bash -c "! sed -n '/ℹ️/,\$p' '$LOG/mm-write-infra-iam-casdoor.log' | grep -qE ':= rt\.Config\.'"
@@ -332,6 +454,82 @@ check "brickkit lint：只剩占位符与'文档没提到'两类警告" bash -c 
 check "brickkit lint：占位符被报出（中英两边都有）" bash -c "grep -A1 'a placeholder' '$LOG/skel-lint.log' | grep -q 'BRICKKIT.zh.md' && grep -A1 'a placeholder' '$LOG/skel-lint.log' | grep -q 'File: BRICKKIT.md'"
 
 # ───────────────────────────────────────────────────────────────────────────
+section "component-check.sh：迁移后的 mdm/customer（当前 HEAD）全部 PASS"
+CC="bash $TOOLS/component-check.sh"
+d=$W/cc-post
+expect_rc 0 cc-post "$d" $CC mdm/customer
+check "每项检查都打印 PASS，没有 FAIL" bash -c "[ \"\$(grep -c '^  PASS' '$LOG/cc-post.log')\" -ge 10 ] && ! grep -q '^  FAIL' '$LOG/cc-post.log'"
+for k in '4.5' '4.9' '历史' '小节数' '首行互链' '\.\./' 'BRICKKIT' 'TODO'; do
+  check "cc-post 报出了这一项：$k" bash -c "grep '^  PASS' '$LOG/cc-post.log' | grep -q -- '$k'"
+done
+check "component-check 不改工作区" clean_tree "$d"
+
+section "component-check.sh：试点漏掉的 go.mod / buf.yaml / LICENSE 归档引用（红例）"
+d=$W/cc-prefix
+expect_rc 1 cc-prefix "$d" $CC mdm/customer
+for f in go.mod buf.yaml LICENSE; do check "历史扫描点名 $f" log_has cc-prefix "^      $f:[0-9]+:"; done
+check "只有历史扫描这一项 FAIL" bash -c "[ \"\$(grep -c '^  FAIL' '$LOG/cc-prefix.log')\" = 1 ] && grep '^  FAIL' '$LOG/cc-prefix.log' | grep -q '历史'"
+OVA=$W/overrides-allow.yaml
+python3 - "$TOOLS/manifest-overrides.yaml" "$OVA" <<'PYEOF'
+import sys, yaml
+d = yaml.safe_load(open(sys.argv[1]))
+d['mdm/customer']['history_allow'] = [
+  {'path': 'go.mod', 'text': '阶段四调研记录', 'why': '测试：放行'},
+  {'path': 'buf.yaml', 'text': '设计计划 §3', 'why': '测试：放行'},
+  {'path': 'LICENSE', 'text': 'docs/plans/00-总纲.md', 'why': '测试：放行'}]
+yaml.safe_dump(d, open(sys.argv[2], 'w'), allow_unicode=True, sort_keys=False)
+PYEOF
+expect_rc 0 cc-allow "$d" env BE_OVERRIDES="$OVA" $CC mdm/customer
+check "history_allow 放行的命中打印成 ℹ️（带理由），不算 FAIL" bash -c "grep -q 'ℹ️.*go.mod.*测试：放行' '$LOG/cc-allow.log'"
+expect_rc 0 mm-allow-field "$W/all/mdm-customer" env BE_OVERRIDES="$OVA" python3 "$TOOLS/migrate-manifest.py" mdm/customer --check
+python3 - "$OVA" <<'PYEOF'
+import sys, yaml
+d = yaml.safe_load(open(sys.argv[1])); d['mdm/customer']['history_allow'] = [{'path': 'go.mod', 'text': '阶段四'}]
+yaml.safe_dump(d, open(sys.argv[1], 'w'), allow_unicode=True, sort_keys=False)
+PYEOF
+expect_rc 2 cc-allow-nowhy "$d" env BE_OVERRIDES="$OVA" $CC mdm/customer
+check "history_allow 条目缺 why → 大声失败" log_has cc-allow-nowhy 'why'
+
+section "component-check.sh：迁移前的 mdm/product（1.x）"
+d=$W/cc-old
+expect_rc 1 cc-old "$d" $CC mdm/product
+check "4.5：报出驼峰键读取" bash -c "grep '^  FAIL' '$LOG/cc-old.log' | grep -q '4.5.*驼峰'"
+check "历史扫描 FAIL" bash -c "grep '^  FAIL' '$LOG/cc-old.log' | grep -q '历史'"
+check "文档：缺 .zh.md 的那几对 FAIL" bash -c "grep '^  FAIL' '$LOG/cc-old.log' | grep -q '小节数' && grep -q 'BRICKKIT.zh.md' '$LOG/cc-old.log'"
+expect_rc 1 cc-python "$W/infra-print" $CC infra/print
+check "Python 组件也能跑（FAIL 而不是用法错误）" bash -c "grep -q '^  FAIL' '$LOG/cc-python.log'"
+expect_rc 2 cc-noargs "$W/cc-post" $CC
+check "没有 ID 时说明用法" log_has cc-noargs '用法'
+
+section "component-check.sh：逐项反例（在迁移后的克隆上改一处、跑、复原）"
+d=$W/cc-post
+cc_neg() {  # cc_neg <名字> <期望 FAIL 的检查项关键字> <改动命令>：改 → 跑 → 断言 → git 复原
+  local name=$1 key=$2; shift 2
+  ( cd "$d" && eval "$*" )
+  run_tool "cc-neg-$name" "$d" $CC mdm/customer; local rc=$?
+  if [ $rc = 1 ] && grep '^  FAIL' "$LOG/cc-neg-$name.log" | grep -q -- "$key"; then ok "反例 $name → FAIL（$key）"
+  else bad "反例 $name 应 FAIL（$key），exit=$rc"; show_log "cc-neg-$name"; fi
+  git -C "$d" checkout -q -- . && git -C "$d" clean -qfd
+}
+cc_neg camel-go   '4.5.*驼峰'      "printf '\nfunc probe(rt interface{ StringOr(string, string) string }) string { return rt.StringOr(\"fooBar\", \"x\") }\n' >>backend/module/module.go"
+cc_neg database   '4.5.*旧平台'    "printf 'echo \$DATABASE_URL\n' >>scripts/seed.sh"
+cc_neg svc-1-0    '4.9'            "printf '# curl http://mdm-customer-1-0-9:8080\n' >>scripts/seed.sh"
+cc_neg hist-new   '历史'            "printf '这是阶段三的做法\n' >notes.txt"
+cc_neg hist-doc   '历史'            "printf '\nSee Task 7.\n' >>docs/design.md"
+cc_neg h2-count   '小节数.*README'  "printf '\n## Extra\n' >>README.md"
+cc_neg first-line '首行互链.*README.zh.md' "sed -i '1s/.*/# 没有互链/' README.zh.md"
+cc_neg dotdot     '\.\./'           "printf '\n[x](../other/AGENTS.md)\n' >>AGENTS.md"
+cc_neg bk-rel     'BRICKKIT'        "printf '\n[d](docs/design.md)\n' >>BRICKKIT.md"
+cc_neg todo       'TODO'            "printf '\nTODO: fill in\n' >>docs/design.zh.md"
+cc_neg tbd        'TODO'            "printf '\nTBD\n' >>README.md"
+cc_neg boundary   '越界'            "printf '\nsee dev/phase-06/component-loop.md\n' >>AGENTS.zh.md"
+( cd "$d" && printf '\n```bash\n## 代码块里的井号不是小节\n```\n' >>README.md )
+expect_rc 0 cc-fence "$d" $CC mdm/customer
+check "代码块里的 ## 不算小节" bash -c "grep '^  PASS' '$LOG/cc-fence.log' | grep -q '小节数'"
+git -C "$d" checkout -q -- .
+check "反例都复原了" clean_tree "$d"
+
+# ───────────────────────────────────────────────────────────────────────────
 section "go-v2.sh：形态 A（mdm/customer）"
 d=$W/mdm-customer
 expect_rc 0 go-a-1 "$d" bash "$TOOLS/go-v2.sh" mdm/customer --sdk "$SDK"
@@ -344,9 +542,14 @@ check "报告第 8.3 步不需要打契约包 tag"    log_has go-a-1 '第 8.3 �
 commit_all "$d" "go-v2 第一次"
 expect_rc 0 go-a-2 "$d" bash "$TOOLS/go-v2.sh" mdm/customer --sdk "$SDK"
 check "重复运行无改动（git status --short 为空）" clean_tree "$d"
-# 模拟契约有新增：改一处生成物后 --recheck → 下一个 minor
-echo "// probe: 契约新增" >>"$(ls "$d"/gen/mdm/customer/v1/*.pb.go | head -1)"
+# 模拟契约有新增：改 .proto 并 buf generate 后 --recheck → 下一个 minor
+# （T8 之前这里直接往 *.pb.go 末尾追加一行；现在 --recheck 判 gen/ 是否由当前 .proto 生成，手改生成物就是 FAIL，见下面的反例）
+PROTO=$(cd "$d" && git ls-files 'contracts/*.proto' | head -1)
+printf '\n// probe: 契约新增\nmessage ProbeAdded { string probe = 1; }\n' >>"$d/$PROTO"
+( cd "$d" && buf generate --template buf.gen.yaml ) >"$LOG/go-a-bufgen.log" 2>&1
+check "夹具：改 .proto 后 buf generate 成功、gen/ 有变化" bash -c "grep -q ProbeAdded '$d'/gen/mdm/customer/v1/*.pb.go"
 expect_rc 0 go-a-recheck "$d" bash "$TOOLS/go-v2.sh" mdm/customer --recheck
+check "--recheck：gen/ 是当前 .proto 生成的 → PASS" log_has go-a-recheck 'PASS.*gen/.*buf generate'
 check "--recheck：gen 有变化 → require v1.1.0" grep -qE 'github.com/brickKit/mdm-customer/gen/mdm/customer v1\.1\.0$' "$d/go.mod"
 check "--recheck：报出第 8.3 步要打 gen/mdm/customer/v1.1.0" log_has go-a-recheck 'gen/mdm/customer/v1\.1\.0'
 
@@ -363,6 +566,25 @@ expect_rc 1 go-bare-import "$d" bash "$TOOLS/go-v2.sh" mdm/customer --recheck
 check "裸导入旧根包（不带子路径）→ FAIL" log_has go-bare-import 'FAIL.*import'
 rm -f "$d/backend/probe_ignore.go"
 expect_rc 0 go-a-recheck-clean "$d" bash "$TOOLS/go-v2.sh" mdm/customer --recheck
+
+section "go-v2.sh --recheck：gen/ 不是当前 .proto 生成的 → FAIL（T8；审查 Minor 8）"
+d=$W/mdm-customer; PB=$(ls "$d"/gen/mdm/customer/v1/*.pb.go | head -1)
+cp "$PB" "$W/pb.bak"; echo "// 手改生成物" >>"$PB"
+expect_rc 1 go-gen-handedit "$d" bash "$TOOLS/go-v2.sh" mdm/customer --recheck
+check "生成物被手改 → FAIL 并点名文件" bash -c "grep -q 'FAIL.*gen/.*buf generate' '$LOG/go-gen-handedit.log' && grep -q '$(basename "$PB")' '$LOG/go-gen-handedit.log'"
+cp "$W/pb.bak" "$PB"
+cp "$d/$PROTO" "$W/proto.bak"
+printf '\nmessage ProbeNotGenerated { string x = 1; }\n' >>"$d/$PROTO"
+expect_rc 1 go-gen-stale "$d" bash "$TOOLS/go-v2.sh" mdm/customer --recheck
+check "改了 .proto 忘了 buf generate → FAIL" log_has go-gen-stale 'FAIL.*gen/.*buf generate'
+cp "$W/proto.bak" "$d/$PROTO"
+touch "$d/gen/mdm/customer/v1/orphan.pb.go"
+expect_rc 1 go-gen-orphan "$d" bash "$TOOLS/go-v2.sh" mdm/customer --recheck
+check "gen/ 里多出 .proto 生成不出来的 *.pb.go → FAIL" log_has go-gen-orphan 'orphan.pb.go'
+rm -f "$d/gen/mdm/customer/v1/orphan.pb.go"
+gsum=$(cd "$d" && find gen -type f | sort | xargs sha1sum | sha1sum)
+expect_rc 0 go-gen-restored "$d" bash "$TOOLS/go-v2.sh" mdm/customer --recheck
+check "--recheck 不写 gen/（buf generate 只写临时目录）" test "$(cd "$d" && find gen -type f | sort | xargs sha1sum | sha1sum)" = "$gsum"
 
 section "go-v2.sh：形态 B（infra/notification）"
 d=$W/infra-notification

@@ -15,6 +15,8 @@
 #   permissions_add       追加到 assembly.yaml 的 permissions 末尾（{key, title, type}；本次新增的权限键）
 #   menus_add             追加到 menus 末尾（{key, title, permission}）
 #   edge_routes_add       追加到 edge_routes 末尾（{path, auth}）
+#   history_allow         component-check.sh 的历史 / 归档引用扫描放行的命中（{path: glob, text: 命中行里的一段原文,
+#                         why: 为什么必须留着}，三个都必填）；migrate-manifest.py 不用它
 #
 # 规则：C3 之后对 component.yaml / assembly.yaml 的**任何**增量都写在这里，再重跑 `--write`，不要手改那两个文件。
 # 手改过的文件 `--write` 会拒绝覆盖（exit 3，打印会丢掉的 diff）；`--force` 才覆盖。

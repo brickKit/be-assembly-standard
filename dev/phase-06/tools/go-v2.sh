@@ -13,8 +13,9 @@
 #   4.2 go mod edit -module …/v2；改写全部自引用 import（契约包 …/<repo>/gen/… 不改）
 #   4.3 契约包版本：本地 gen/ 与最新 gen/* tag 一致 → require 那个 tag；不一致 → 下一个 minor；没有 tag（形态 B）→ v1.0.0
 #   4.4 go get be-sdk-go@<tag>、go mod tidy、go build ./...、go vet ./...，然后跑判据
-# --recheck：契约改动并 buf generate 之后用，只重算 4.3 并重跑 tidy/build/vet 与判据（不拆、不改 import、不升 SDK、
+# --recheck：契约改动（改 .proto → buf generate）之后用，只重算 4.3 并重跑 tidy/build/vet 与判据（不拆、不改 import、不升 SDK、
 #   不清 C-1 残留——让判据把它报出来）；最后打印第 8.3 步需要打的契约包 tag（或"不需要"）。
+# 判据还核对 gen/ 是不是当前 .proto 的生成结果（buf generate 到 $S 下的临时目录比对，不写 gen/）。
 # 退出码：0 全部 PASS；1 有判据 FAIL；2 用法错误或某一步执行失败。
 set -uo pipefail
 
@@ -193,6 +194,37 @@ crit() {  # crit <PASS|FAIL> <说明>
 pf() { if "$@"; then echo PASS; else echo FAIL; fi; }
 
 crit $BUILD "go mod tidy + go build ./... + go vet ./... 通过（BUILD_OK）"
+# gen/ 是否由当前 .proto 生成（task-7 审查 Minor 8）：改了 .proto 忘了 buf generate、或手改了 *.pb.go，4.3 会把旧 gen
+# 当成"与上一个 tag 一致"，所有判据照绿。buf generate 写到 $S 下的临时目录（不碰 gen/），与 gen/ 的 *.pb.go 逐个比；
+# 本项目的 buf.gen.yaml 只用本机插件（local: protoc-gen-go / protoc-gen-go-grpc）、buf.yaml 没有 deps，离线可跑。
+gen_probs() {
+  [ -f buf.gen.yaml ] || { echo "没有 buf.gen.yaml，无法核对"; return; }
+  command -v buf >/dev/null || { echo "PATH 上没有 buf（env.sh 会把 \$HOME/go/bin 追加进 PATH）"; return; }
+  local tmp; tmp=$(mktemp -d "$S/gen-check.XXXXXX") || { echo "建不了临时目录"; return; }
+  if ! buf generate --template buf.gen.yaml -o "$tmp" >"$tmp/buf.log" 2>&1; then
+    echo "buf generate 失败：$(head -3 "$tmp/buf.log" | tr '\n' ' ')"
+  else
+    python3 - gen "$tmp/gen" <<'PYEOF'
+import os, sys
+a, b = sys.argv[1:3]
+def pbs(root):
+    return {os.path.relpath(os.path.join(d, f), root) for d, _, fs in os.walk(root) for f in fs if f.endswith('.pb.go')} \
+        if os.path.isdir(root) else set()
+ga, gb = pbs(a), pbs(b)
+for p in sorted(ga - gb):
+    print(f'gen/{p}：在 gen/ 里，但当前 .proto 生成不出它（删掉的 .proto 留下的，或手工加的）')
+for p in sorted(gb - ga):
+    print(f'gen/{p}：当前 .proto 会生成它，但 gen/ 里没有（忘了 buf generate）')
+for p in sorted(ga & gb):
+    if open(os.path.join(a, p), 'rb').read() != open(os.path.join(b, p), 'rb').read():
+        print(f'gen/{p}：内容与 buf generate 的结果不同（改了 .proto 没重新生成，或手改了生成物）')
+PYEOF
+  fi
+  rm -rf "$tmp"
+}
+gprob=$(gen_probs)
+crit "$(pf test -z "$gprob")" "gen/ 是当前 contracts/*.proto 的生成结果（buf generate 到临时目录比对）"
+[ -n "$gprob" ] && echo "$gprob" | head -10 | sed 's/^/        │ /'
 crit "$(pf test "$(head -1 go.mod)" = "module $M/v2")" "go.mod 第一行是 module $M/v2（实际：$(head -1 go.mod)）"
 old=$(grep -nE "^[[:space:]]*(require[[:space:]]+)?$MQ[[:space:]]+v" go.mod || true)
 crit "$(pf test -z "$old")" "go.mod 没有 require 自己的旧路径 $M v1.x.y${old:+（实际：$old）}"
