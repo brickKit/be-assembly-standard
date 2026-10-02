@@ -291,6 +291,9 @@ def test_plaintext_secret_set_rejected(tmp):  # 修复轮 I-4
 
 def test_secret_references_accepted(tmp):
     root = make_root(tmp)
+    # $var:APP_TOKEN 要在 config/vars.yaml 里真有值才算填了（required 键）；这里测的只是"引用写法不被当成明文拒绝"
+    with open(root / "config/vars.yaml", "a", encoding="utf-8") as f:
+        f.write("APP_TOKEN: ${DEMO_APP_APP_TOKEN}\n")
     for ok in ("APP_TOKEN=${DEMO_APP_APP_TOKEN}", "APP_TOKEN=file://.secrets/demo-app/token",
                "APP_TOKEN=$var:APP_TOKEN", "APP_TOKEN=${X:-}"):
         r = run(root, "demo/app", "--set", ok, "--set", "DEFAULT_WAREHOUSE_ID=w")
