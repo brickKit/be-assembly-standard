@@ -1,0 +1,93 @@
+# migrate-manifest.py 的人工输入：每个组件一段，键是组件 ID。
+# 其余一切（键名、required、secret、依赖版本、端口、标签……）由脚本从组件最后一个 1.x tag 的
+# component.yaml 按 component-loop §2.2 / §2.3 推导，不在这里重复。
+#
+# 可用字段（写了别的字段脚本会报错退出）：
+#   name / description    英文（BRICKKIT.md 主文件是英文），必填
+#   tags                  不写就沿用旧值
+#   add_properties        新增的配置键 → schema（如 inventory 的 LOW_STOCK_THRESHOLD）
+#   required_add          额外进 required 的键（必须已声明、且没有 default）
+#   drop_default          去掉旧默认值、改成 required 的键（R27：值由项目内容决定，不能悄悄为空）
+#   deps_add              新增依赖，写法同 component.yaml（版本必须是 2.0.0）
+#   start_period_seconds  healthCheck.startPeriodSeconds（不写就沿用旧值；Go 不写，默认 60）
+#   migration_command     替换 migration.command（数组；不写就沿用旧值）
+#   local                 {language, runCommand（数组）}，必填
+#
+# Python / TS 的 local.runCommand 是初稿：T16（infra/print）、T20（infra/bff-mobile）在
+# `make verify FOCUS=1` 真机确定后改这里，再重跑 `migrate-manifest.py <id> --write`。
+
+crm/opportunity:
+  name: Opportunities
+  description: Opportunity lifecycle, sales funnel and win-forecast data; publishes won, lost and stage-changed events.
+  local: {language: go, runCommand: [go, run, ./backend/cmd/server]}
+
+erp/finance:
+  name: Finance
+  description: Chart of accounts, general ledger entries, receivable and payable ledgers, period locks and reconciliation.
+  local: {language: go, runCommand: [go, run, ./backend/cmd/server]}
+
+erp/inventory:
+  name: Inventory
+  description: Stock balances, movements and reservations, with oversell protection; the only writer of physical stock movements.
+  add_properties:
+    LOW_STOCK_THRESHOLD: {type: string, default: "10"}
+  local: {language: go, runCommand: [go, run, ./backend/cmd/server]}
+
+erp/sales:
+  name: Sales
+  description: Sales quotations and the order lifecycle, pricing, and the compensating orchestration of stock reservation and receivables.
+  local: {language: go, runCommand: [go, run, ./backend/cmd/server]}
+
+infra/authz:
+  name: Authorization
+  description: Permission key catalogue, roles as plain unions, the policy bundle served at /authz/bundle, and login-time claims.
+  drop_default: [PERMISSION_CATALOG]       # R27：值是 file://registry/permissions.tsv
+  local: {language: go, runCommand: [go, run, ./backend/cmd/server]}
+
+infra/bff-mobile:
+  name: Mobile BFF
+  description: GraphQL backend-for-frontend for the mobile app; a schema cut to the pages, batched loading, no business logic and no database.
+  deps_add:                                # P11：BFF 经注入地址调它们的 REST，缺席时对应字段不注册
+    - {id: infra/notification@2.0.0, optional: true}
+    - {id: crm/opportunity@2.0.0, optional: true}
+  start_period_seconds: 90
+  local: {language: node, runCommand: [sh, -c, npm run build && node dist/main.js]}   # 初稿，T20 真机确定
+
+infra/iam-casdoor:
+  name: IAM adapter for Casdoor
+  description: A thin adapter in front of Casdoor; issues and refreshes application tokens, serves /api/tenant/features and bridges Casdoor webhooks.
+  drop_default: [ENABLED_COMPONENTS]       # R27：值是 file://brickkit.yaml
+  local: {language: go, runCommand: [go, run, ./backend/cmd/server]}
+
+infra/notification:
+  name: Notifications
+  description: Takes notification intents from business components and routes them to the installed channel adapters by each user's preferences.
+  local: {language: go, runCommand: [go, run, ./backend/cmd/server]}
+
+infra/print:
+  name: Print rendering
+  description: A pure rendering service; a template ID plus JSON data becomes a PDF byte stream or a ZPL command stream, with no business logic.
+  start_period_seconds: 120
+  # T16 的目标形态：业务包从 app 改名为 infra_print（外壳 py-render 里与其它 Python 成员不撞名）
+  migration_command: [python, -m, infra_print.migrate, apply]
+  local: {language: python, runCommand: [python, -m, infra_print.main]}   # 初稿，T16 真机确定
+
+infra/workflow:
+  name: Workflow inbox
+  description: A light task inbox; business components register approval and exception tasks, and completion is reported back by event.
+  local: {language: go, runCommand: [go, run, ./backend/cmd/server]}
+
+integration/im-dingtalk:
+  name: DingTalk channel adapter
+  description: The DingTalk member of the IM channel family; sends work notifications for IM dispatch events and publishes the delivery results.
+  local: {language: go, runCommand: [go, run, ./backend/cmd/server]}
+
+mdm/customer:
+  name: Customer master data
+  description: Customer names, tax IDs, credit limits, status, contacts and billing details.
+  local: {language: go, runCommand: [go, run, ./backend/cmd/server]}
+
+mdm/product:
+  name: Product master data
+  description: SKUs, categories, unit-of-measure conversions, batch and serial tracking policies, and standard costs.
+  local: {language: go, runCommand: [go, run, ./backend/cmd/server]}
