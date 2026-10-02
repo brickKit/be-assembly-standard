@@ -276,3 +276,75 @@ ship 前修完审查列出的 pre-ship 项与控制者点名的模板项，免�
 ### 反馈候选
 
 本轮无新增；审查 Part 3 的 T8 回灌项（版本断言、seed 并进 verify、历史引用扫描脚本化等）由 T8 处理。
+
+## 2.0.1（已发布试点的补丁）
+
+### 目标
+
+在 2.0.0（70eb317）之上修掉试点的已知缺陷，出 2.0.1：credit_limit 的 NaN 类问题（主修）、BRICKKIT 关于 NATS 的错误说法、AGENTS 里 source .env 的测试命令、测试里写死的幂等键、R51（调用方错误记 ERROR）、R49（契约声明的 409 要有 REST 测试）、空 q 测试在包并行时偶发失败。
+
+### 环境
+
+- 日期：2026-10-02；`brickkit version`：`BrickKit CLI v1.1.0`；be-sdk-go v0.4.0；部署目标 docker；拓扑：独立（verify 闭包：mdm/customer、infra/authz、infra/iam-casdoor）。
+- 开始时：组件仓库干净、HEAD = 70eb317（2.0.0 / v2.0.0）；本地模式 off，没有项目容器。
+- 日志目录：`$S/p201/`（$S = $BE_SCRATCH/06b/mdm-customer）。
+
+### 步骤
+
+- 基线：`make test`（env.sh 前导）五个包全部 ok（`p201/baseline.log`）。
+- 1 写死的幂等键（b0cb0a1，test）：测试库里实查 `command_idempotency`，`svc-status-002`、`svc-event-002`、`svc-reenable-003`、`test-contact-001`、`test-concurrent-idem-001`、`test-idem-001` 都是 2026-09-12 写下的——从第二次运行起这些命令全部命中回放，写路径不执行。三个测试包各加 `runKey(prefix)`，幂等键与显式 code 每次运行唯一；断言未动。
+- 2 NaN（a2e7efd，fix）：先写 service（19 种写法 × Create/Update）、REST（经 `besdk.NewGinEngine`）、gRPC（bufconn 上真的 grpc.Server）三层测试。红（原文摘录，`p201/nan-red.log`）：
+  - `grpc_test.go:83: Create credit_limit="NaN" 应该是 InvalidArgument，实际 OK（<nil>）`
+  - `grpc_test.go:98: 被拒绝的 Update 不该改库，期望 100.00 / version 1，实际 NaN / 2`
+  - `http_test.go:210: POST /customers credit_limit="Inf" 应返回 400，实际 500：{"error":"insert customers: ERROR: numeric field overflow (SQLSTATE 22003)"}`
+  - `http_test.go:210: POST /customers credit_limit="1.234" 应返回 400，实际 200：{…"credit_limit":"1.23"…}`
+  改成 `^[0-9]{1,16}(\.[0-9]{1,2})?$`（照 erp/inventory 的 validateQty），绿（`p201/nan-green.log`）。
+- 3 R49 + 404（d584a44，fix）：REST 测试 PATCH / POST /status 带过期 version → 409（原本就对，一次绿）；新发现并修掉：重复 code 实际 500（customers_code_uniq，SQLSTATE 23505）→ 409 AlreadyExists；不存在的 id 的 PATCH / status 实际 409 → 404；AddContact 不存在的客户实际 500（23503）→ 404；不是数字的 id（abc）四条路由实际 500（22P02）→ 404（`p201/4xx-red.log` / `4xx-green.log`）。
+- 4 非法状态（80f7854，fix）：REST `status="FOO"` 实际 200 且库里真的写成 FOO；gRPC 漏填 status 实际把已停用的客户启用（`p201/status-red.log`）→ 都是 400 / InvalidArgument。
+- 5 R51（dd9ceac，fix）：红（`p201/log-red.log`）`level=ERROR msg=更新客户失败 id=528 error="version 冲突：与库里当前值不一致"`、`level=ERROR msg=创建客户失败 code="" error="context canceled"`、分区循环 `level=ERROR msg=分区维护失败 error="context canceled"`。改成 logFailure：Internal → ERROR，取消 / 超时 → Warn，其余 → Info；分区循环 ctx 已取消时不记。对照组（连接池已关闭）仍是 ERROR。
+- 6 空 q 测试（a251d50，test）：复现：6 轮 `go test ./backend/... -race -count=3` 里 2 轮 `search_test.go:100: q="" 应该等于不过滤：期望 935,934,…，实际 936,935,934,…`（`p201/flaky-red.log`）。改成把本测试的两行挪到十年前、精确到微秒的同一刻，窗口 ±1ms；断言未动，加一句夹具自检。10 轮 × -count=3 全 ok（`p201/flaky-green.log`）。
+- 7 契约（c18236f）：OpenAPI 补 400 / 404 / 409 响应与 credit_limit 写法说明，info.version 2.0.1；`be-acceptance gate openapi-additive-scan --only mdm/customer --strict` 0 条违规、exit 0；config-key-scan 同样 0 条。.proto 未动，gen 仍 v1.0.6。
+- 8 文档（d1431ba）：BRICKKIT（中英）NATS 改成"启动时必须可达，连不上进程退出；运行中发不出去的事件留在 Outbox 重试"（依据 be-sdk-go v0.4.0 standalone.go 的 `nats.Connect` 失败即 exitf）；AGENTS（中英）测试命令改成 `<password>` 占位 + TEST_NATS_URL，与 infra/notification 一致；BRICKKIT Contracts、docs/design 契约面写明错误码；AGENTS 易错点加 ParseFloat 与 ERROR 两行。
+- 9 版本号（0268c72）：component.yaml 2.0.1、README 的 `brickkit add` 例子 2.0.1；模块路径仍 /v2。
+- 发布说明：`$S/notes-2.0.1.md`（只写 2.0.0 之后的变化）。
+- 核对：`component-check.sh mdm/customer` exit=0、10 项 PASS（没有 history_allow）；`make -C $ROOT docs-check ID=mdm/customer` 0 with errors, 0 warnings；`make test` 五个包 ok、40 个 PASS、0 个 SKIP；组件门禁 `make check-version dag-check contract-check import-scan module-check docs-check` 全部 ✓（`p201/gates-comp.log`）；项目 `make gates` exit 0（`p201/root-gates.log`，只有 frontend/standard 1.x 的 3 条 naming 警告，与本组件无关）。
+- `make integrate ID=mdm/customer VERSION=2.0.1` exit 0（`p201/integrate.log`）：版本变化摘要 `mdm/customer: 2.0.0 → 2.0.1`，依赖、配置项、artifacts 都无变化。
+- `make verify ID=mdm/customer ROUTE=/mdm/customer/customers FORCE_BUILD=1`（`p201/verify.log`，输出目录 `p201/verify`）：除"带 token → 200 实际 503"外全部 PASS。
+
+### 现象
+
+- 符合预期的：每个修复都先红后绿；镜像 mdm-customer:2.0.1 构建通过；迁移容器 3 个 Exited (0)；healthy；不带 token 401；test-cross PASS；收尾后没有项目容器、local mode off、项目根没有 deploy.verify.yaml。
+- 不符合预期的：verify 的"带 token → 200"实际 503。这是第一次真的跑到这一项（iam-casdoor 刚由别的工作线加入项目；2.0.0 时这一项是 SKIP）。
+
+### 卡点与绕过
+
+- 503 的排查：容器日志第一行就是 `拉取 authz bundle 失败，沿用内存里已有的旧版本 … dial tcp 172.23.0.4:8223: connect: connection refused`——mdm/customer 不依赖 infra/authz（authz 地址是配置不是依赖），两者同时起，组件的第一次拉取早于 authz 开始监听；be-sdk-go 的 bundle 轮询间隔 15 秒（bundle.go 的 bundlePollInterval），这 15 秒内一直是"bundle 从没拉到过"→ 503（fail-closed）。verify 在 healthy 之后立刻带 token 请求，落在这个窗口里。
+- 复核（同一次持锁里，`project-lock.sh -- bash -c 'make verify … KEEP=1; token-recheck.sh; brickkit down -f deploy.verify.yaml; rm -f deploy.verify.yaml'`，日志 `p201/token-recheck.log`、`p201/verify-keep.log`）：verify 那一刻照样 503；容器 11:41:00 启动，11:41:21 带 dev.superuser 的 token 再打 → 200。所以组件与权限链路是对的，失败的是 verify 的时序。没有改 verify 脚本（父仓库文件，不在本工作线）。
+- 读了 be-sdk-go v0.4.0 的 bundle.go（轮询间隔）、standalone.go（NATS 启动行为）、gin.go（错误码映射）；没有翻 brickKit 仓库。
+
+### 结论
+
+完成（带一项待控制者裁定）：组件仓库 9 个提交（b0cb0a1..0268c72），未推送、未打 tag；verify 只有"带 token → 200"一项因启动时序 FAIL，持锁复核 200。
+
+### 反馈候选
+
+- verify-component.sh 的"带 token → 200"：拿到 503 时应在 bundle 轮询间隔内重试（例如每 3 秒、最多 20 秒），否则凡是不依赖 authz 的组件（多数）都会在这一项上必然失败 → 本仓库脚本修复，交控制者。
+- be-sdk-go：第一次拉 bundle 失败后按 15 秒周期等下一次，启动后最长 15 秒所有受保护路由 503；可以考虑"从没拉到过时"用更短的退避重试 → to-verify / SDK 改进候选，不是 brickKit 平台问题。
+- 下游钉版本：crm/opportunity、erp/sales、infra/bff-mobile 的 component.yaml 仍钉 mdm/customer@2.0.0（外壳 shell/be/*/ 里没有钉它），由控制者 `make bump-version` 传播（本工作线没碰别的组件）。
+
+### 审查修复轮（ship 前；审查 `customer-201-review.md` 的 I1 与 M3 / M4 / M6）
+
+- 目标：I1——不带 code 的 Create 在序列走到已被显式 code 占用的 `C%06d` 时答 409"code 已被占用"、记 Info；按设计修，而不是只改错误映射。顺带三条一行的 Minor：发布说明里 BatchGet "500" → INTERNAL（M6）、AGENTS 删掉没有测试读的 `TEST_NATS_URL` 导出（M3）、BRICKKIT 的"不会丢"按 core NATS 缓冲改弱（M4）。M1（拒收自动编号形状的显式 code）、M2、M5 留给 T26。
+- 环境：同上；开始时组件 HEAD 0268c72、仓库干净；日志目录 `$S/p201/i1/`。
+- 设计（refactor licence）：自动编号与显式 code 共用一个编号空间，撞车是服务端的事。`insertAutoCode` 用 `INSERT … ON CONFLICT (code) DO NOTHING RETURNING …`：撞车时一行不插、事务不进入出错状态（不用保存点），取下一个 nextval 再试，同一请求最多 `autoCodeAttempts`=5 次；耗尽时返回不带哨兵的错误 → Internal → logFailure 记 ERROR。`Create` 只在 `in.Code != ""` 时 `classifyWriteErr`。原因写进 docs/design（中英）"Owned data"一节，AGENTS（中英）易错点加一行。
+- 测试与简报的偏差：简报说"显式占用 last_value+1 与 last_value+2 再自动 Create"。显式 Create 自己也消耗序列（id 是 BIGSERIAL），这样建完两条后序列已越过这两个值，自动 Create 一次就成——测试在旧代码上也绿，守不住任何东西。改成：读 last_value=L，跳板 base=L+100（给并行的别的测试包留余量），先显式建 `C%06d(base+1)`、`(base+2)`，再 `setval(base)`（只往前拨），然后自动 Create；Cleanup 把序列推过占用区。耗尽测试占 10 个（比 5 次重试多，并行偷走几个值也照样耗尽），断言 Internal + `level=ERROR`。
+- 红（`p201/i1/red.log`，原文）：
+  - `autocode_test.go:86: 没传 code 的 Create 不该失败，实际 code 已被占用：Key (code)=(C003439) already exists.（gRPC 码 AlreadyExists）`，日志 `level=INFO msg=创建客户失败 code="" error="code 已被占用：Key (code)=(C003439) already exists."`
+  - `autocode_test.go:116: 没传 code 却撞车，应是 Internal，实际 AlreadyExists：code 已被占用：Key (code)=(C003541) already exists.`
+  - `TestCreate_显式重复code仍是AlreadyExists` 一开始就 PASS（守住"修过头"）；REST 层的显式重复 409 仍由原有 `TestCreate_REST重复code答409` 覆盖。
+- 绿（`p201/i1/green.log`）：三条 PASS。`make test`（env.sh 前导，-race）五个包 ok；`go test ./... -count=1 -v`：PASS 43、SKIP 0、FAIL 0（`p201/i1/test.log`、`test-v.log`）。
+- 核对：`component-check.sh mdm/customer` exit=0、10 项 PASS；`make -C $ROOT docs-check ID=mdm/customer` exit=0、`0 with errors, 0 warnings`；组件门禁 `make check-version dag-check contract-check import-scan module-check docs-check` 全部 ✓（`--against '.git#tag=v2.0.0'`，`p201/i1/gates-comp.log`）；`be-acceptance gate config-key-scan` / `openapi-additive-scan --only mdm/customer --strict` 都是 0 条违规、exit 0；`go mod tidy -diff` 干净。契约、gen、迁移、配置都没动，版本仍 2.0.1（未发布，不用再升）。
+- 真机：同一次持锁里 `make verify ID=mdm/customer ROUTE=/mdm/customer/customers FORCE_BUILD=1 KEEP=1 OUT=$S/p201/i1/verify` → token 复核脚本 → `brickkit down -f deploy.verify.yaml` → 删 `deploy.verify.yaml`（`p201/i1/token-recheck.log`、`verify.log`）。`verify_exit=0`，汇总表除 seed / focus / down（KEEP=1）三条 SKIP 外全部 PASS，**这次"带 token → 200"在 verify 里就是 PASS**；复核：容器 12:30:55Z 启动，首条日志仍是 WARN `拉取 authz bundle 失败 … connection refused`，12:31:18Z 带 dev.superuser 的 token → 200；`down_exit=0`。收尾后没有项目容器、local mode off。14:31:20 项目根又出现一个 `deploy.verify.yaml`：那是紧接着拿到锁的 infra/iam-casdoor 工作线的 verify 写的（`verify-component.sh infra/iam-casdoor` 进程在跑），不是本次遗留，没去动它。
+- 发布说明 `$S/notes-2.0.1.md`：修复一节加 I1 一条（原来 500，2.0.1 未发布的补丁里一度是 409）；BatchGet 改成"原来整个调用 INTERNAL"；其它一节补 TEST_NATS_URL 与 BRICKKIT"不会丢"的更正。
+- 提交（组件仓库，未推送、未打 tag）：4d623b6 fix（I1 + AGENTS 的 M3，同一文件）、e788477 docs（BRICKKIT M4、Makefile 帮助不再提 TEST_NATS_URL）。
+- 结论：I1 已按设计修完、先红后绿；三条 Minor 已做；verify 全绿。反馈候选：无新增（verify 的 503 时序这次没出现，原有候选不变）。

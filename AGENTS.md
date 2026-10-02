@@ -136,7 +136,7 @@ A component's documentation is `BRICKKIT.md` (translations `BRICKKIT.<lang>.md`)
 
 | Component | Version | What it does | Docs | Home |
 |---|---|---|---|---|
-| mdm/customer | 2.0.0 | Customer names, tax IDs, credit limits, status, contacts and billing details. | BRICKKIT.md +zh | https://github.com/brickKit/mdm-customer |
+| mdm/customer | 2.0.1 | Customer names, tax IDs, credit limits, status, contacts and billing details. | BRICKKIT.md +zh | https://github.com/brickKit/mdm-customer |
 | infra/authz | 2.0.0 | Permission key catalogue, roles as plain unions, the policy bundle served at /authz/bundle, and login-time claims. | BRICKKIT.md +zh | https://github.com/brickKit/infra-authz |
 | infra/notification | 2.0.0 | Takes notification intents from business components and routes them to the installed channel adapters by each user's preferences. | BRICKKIT.md +zh | https://github.com/brickKit/infra-notification |
 | infra/workflow | 2.0.0 | A light task inbox; business components register approval and exception tasks, and completion is reported back by event. | BRICKKIT.md +zh | https://github.com/brickKit/infra-workflow |
