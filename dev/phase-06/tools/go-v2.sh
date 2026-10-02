@@ -183,6 +183,11 @@ r=[x['Version'] for x in d.get('Require') or [] if x['Path']=='$GM']
 p=[x['New']['Path'] for x in d.get('Replace') or [] if x['Old']['Path']=='$GM' and not x['Old'].get('Version')]
 print((r[0] if r else '-')+' '+(p[0] if p else '-'))")
 crit "$(pf test "$req" = "${GV:-?} ./$G")" "根 go.mod require $GM ${GV:-?}（不是 v0.0.0）+ replace => ./$G（实际：$req）"
+# 契约包之外的 replace（例如为了先用上未发布的 SDK 指到本机 tools/be-sdk-go）：本机全绿，brickkit build 时路径不在构建上下文里才失败
+stray=$(go mod edit -json 2>/dev/null | python3 -c "
+import json,sys; d=json.load(sys.stdin)
+print(' '.join(x['Old']['Path']+'=>'+x['New']['Path'] for x in d.get('Replace') or [] if x['Old']['Path']!='$GM'))")
+crit "$(pf test -z "$stray")" "根 go.mod 里除契约包外没有别的 replace${stray:+（多出：$stray）}"
 
 mods=$(go list -m all 2>/dev/null | awk -v m="$M" '$1==m || index($1, m"/")==1' | sort)
 want=$(printf '%s\n%s\n' "$M/v2" "$GM ${GV:-?} => ./$G" | sort)
@@ -191,9 +196,10 @@ echo "$mods" | sed 's/^/        │ /'
 deps=$(go list -deps -test -f '{{if .Module}}{{.Module.Path}}{{end}}' ./... 2>/dev/null | sort -u | awk -v m="$M" '$1==m || index($1, m"/")==1')
 extra=$(echo "$deps" | grep -vxF -e "$M/v2" -e "$GM" | grep -v '^$' || true)
 crit "$(pf test -z "$extra" -a -n "$(echo "$deps" | grep -xF "$M/v2")")" "go list -deps 里的本仓库模块只有 $M/v2 与 $GM${extra:+（多出：$(echo $extra)）}"
-bad_imp=$(grep -rn --include='*.go' "\"$M/" . | grep -v -e "\"$M/v2/" -e "\"$M/gen/" || true)
-bad_gen=$(grep -rn --include='*.go' "\"$M/v2/gen/" . || true)
-crit "$(pf test -z "$bad_imp$bad_gen")" "import 全部带 /v2（契约包 $M/gen/… 除外，且没有 $M/v2/gen/…）"
+# 含不带子路径的裸导入 "$M"（旧根包）；也查 //go:build ignore 之类不参与编译的文件
+bad_imp=$(grep -rnE --include='*.go' "\"$MQ(/|\")" . | grep -vE -e "\"$MQ/v2/" -e "\"$MQ/gen/" || true)
+bad_gen=$(grep -rnE --include='*.go' "\"$MQ/v2/gen/" . || true)
+crit "$(pf test -z "$bad_imp$bad_gen")" "import 全部带 /v2（契约包 $M/gen/… 除外；没有裸导入 \"$M\"，也没有 $M/v2/gen/…）"
 [ -n "$bad_imp$bad_gen" ] && printf '%s\n%s\n' "$bad_imp" "$bad_gen" | grep -v '^$' | head -10 | sed 's/^/        │ /'
 if [ -f Dockerfile ]; then
   crit "$(pf awk '/^RUN.*go mod download/{if(!d)d=NR} /^COPY[ \t]+\.[ \t]+\./{if(!c)c=NR} END{exit !(d==0 || (c && c<d))}' Dockerfile)" \

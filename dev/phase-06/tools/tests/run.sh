@@ -198,6 +198,81 @@ check "--check 报出驼峰键 / 未标 secret / 未进 required / 版本注释"
 cp "$W/cy.bak" "$d/component.yaml"
 expect_rc 0 mm-check-restored "$d" python3 "$TOOLS/migrate-manifest.py" mdm/customer --check
 
+section "修复轮 C-1：--write 不覆盖手改（既不等于 tag 版也不等于本次生成结果）"
+d=$W/all/mdm-product
+printf '  - { key: mdm.product.hand_edit, title: 手改的键, type: action }\n' >>"$d/assembly.yaml"
+sum_a=$(sha1sum <"$d/assembly.yaml"); sum_c=$(sha1sum <"$d/component.yaml")
+expect_rc 3 mm-refuse-asm "$d" python3 "$TOOLS/migrate-manifest.py" mdm/product --write
+check "拒绝时 assembly.yaml 原样不动"            test "$(sha1sum <"$d/assembly.yaml")" = "$sum_a"
+check "拒绝时 component.yaml 也不写（全有或全无）" test "$(sha1sum <"$d/component.yaml")" = "$sum_c"
+check "拒绝时点名文件并提示 --force"             bash -c "grep -q 'assembly.yaml' '$LOG/mm-refuse-asm.log' && grep -q -- '--force' '$LOG/mm-refuse-asm.log'"
+check "拒绝时列出会丢掉的手改内容"               log_has mm-refuse-asm 'hand_edit'
+sed -i 's/^  version: 2\.0\.0$/  version: 2.0.1/' "$d/component.yaml"
+expect_rc 3 mm-refuse-cy "$d" python3 "$TOOLS/migrate-manifest.py" mdm/product --write
+check "component.yaml 手改也被拒绝且原样不动"   grep -q '^  version: 2.0.1$' "$d/component.yaml"
+expect_rc 0 mm-force "$d" python3 "$TOOLS/migrate-manifest.py" mdm/product --write --force
+check "--force 覆盖：手改消失"                  bash -c "! grep -q hand_edit '$d/assembly.yaml' && grep -q '^  version: 2.0.0$' '$d/component.yaml'"
+expect_rc 0 mm-after-force "$d" python3 "$TOOLS/migrate-manifest.py" mdm/product --write
+check "--force 之后再 --write 是未改动"          log_has mm-after-force 'assembly.yaml：未改动'
+
+section "修复轮 C-1：overrides 的 permissions_add / menus_add / edge_routes_add"
+check "mdm/product 的 set_status 由 overrides 写进 assembly.yaml" grep -qE 'key: mdm\.product\.set_status' "$W/all/mdm-product/assembly.yaml"
+check "bff-mobile 的三个新键由 overrides 写进 assembly.yaml" bash -c "for k in task.act notification.view opportunity.view; do grep -q \"key: infra.bff-mobile.\$k\" '$W/all/infra-bff-mobile/assembly.yaml' || exit 1; done"
+OV=$W/overrides-test.yaml
+python3 - "$TOOLS/manifest-overrides.yaml" "$OV" <<'EOF'
+import sys, yaml
+d = yaml.safe_load(open(sys.argv[1]))
+d['mdm/customer']['permissions_add'] = [{'key': 'mdm.customer.probe_add', 'title': '探针权限', 'type': 'action'}]
+d['mdm/customer']['menus_add'] = [{'key': 'mdm.customer.probe', 'title': '探针菜单', 'permission': 'mdm.customer.probe_add'}]
+d['mdm/customer']['edge_routes_add'] = [{'path': '/mdm/customer/probe/**', 'auth': 'required'}]
+yaml.safe_dump(d, open(sys.argv[2], 'w'), allow_unicode=True, sort_keys=False)
+EOF
+d=$W/all/mdm-customer; cp "$d/assembly.yaml" "$W/asm-before-add.yaml"
+expect_rc 0 mm-add "$d" env BE_OVERRIDES="$OV" python3 "$TOOLS/migrate-manifest.py" mdm/customer --write
+check "*_add 追加进对应列表的末尾" python3 -c "
+import yaml; a=yaml.safe_load(open('$d/assembly.yaml'))
+assert a['permissions'][-1]['key']=='mdm.customer.probe_add' and a['permissions'][-1]['title']=='探针权限', a['permissions']
+assert a['menus'][-1]['key']=='mdm.customer.probe' and a['edge_routes'][-1]['path']=='/mdm/customer/probe/**'"
+check "*_add 只加不删（原有行与注释逐字保留）" bash -c "[ \"\$(diff '$W/asm-before-add.yaml' '$d/assembly.yaml' | grep -c '^<')\" = 0 ]"
+expect_rc 0 mm-add-2 "$d" env BE_OVERRIDES="$OV" python3 "$TOOLS/migrate-manifest.py" mdm/customer --write
+check "带 *_add 重复 --write 未改动" log_has mm-add-2 'assembly.yaml：未改动'
+expect_rc 0 mm-add-check "$d" env BE_OVERRIDES="$OV" python3 "$TOOLS/migrate-manifest.py" mdm/customer --check
+printf '  - { key: mdm.customer.hand_edit, title: 手改, type: action }\n' >>"$d/assembly.yaml"
+expect_rc 3 mm-add-hand "$d" env BE_OVERRIDES="$OV" python3 "$TOOLS/migrate-manifest.py" mdm/customer --write
+check "在 *_add 生成的文件上再手改 → 拒绝" log_has mm-add-hand 'hand_edit'
+sed -i '/mdm.customer.hand_edit/d' "$d/assembly.yaml"
+expect_rc 0 mm-add-dropped "$d" python3 "$TOOLS/migrate-manifest.py" mdm/customer --write
+check "改 overrides（去掉 *_add）后重跑：照 overrides 重写，diff 里列出去掉的行" bash -c "grep -q -- '^-.*probe_add' '$LOG/mm-add-dropped.log' && ! grep -q probe_add '$d/assembly.yaml'"
+python3 - "$OV" <<'EOF'
+import sys, yaml
+d = yaml.safe_load(open(sys.argv[1])); d['mdm/customer']['permissions_add'] = [{'key': 'mdm.customer.view', 'title': '重复', 'type': 'page'}]
+yaml.safe_dump(d, open(sys.argv[1], 'w'), allow_unicode=True, sort_keys=False)
+EOF
+expect_rc 2 mm-add-dup "$d" env BE_OVERRIDES="$OV" python3 "$TOOLS/migrate-manifest.py" mdm/customer --write
+check "permissions_add 与已有键重复时大声失败" log_has mm-add-dup 'mdm.customer.view'
+cp "$W/asm-before-add.yaml" "$d/assembly.yaml"
+
+section "修复轮：assembly.yaml 的 --check 反向路径、data.role 只改 data 的直接子键"
+cp "$d/assembly.yaml" "$W/asm.bak"
+sed -i '/^data_scopes:/d' "$d/assembly.yaml"; echo 'shell: go-core' >>"$d/assembly.yaml"
+expect_rc 1 mm-neg-asm "$d" python3 "$TOOLS/migrate-manifest.py" mdm/customer --check
+check "--check 报出残留 shell 与缺 data_scopes" bash -c "grep -q '残留 shell' '$LOG/mm-neg-asm.log' && grep -q '缺 data_scopes' '$LOG/mm-neg-asm.log'"
+cp "$W/asm.bak" "$d/assembly.yaml"
+python3 - "$TOOLS/migrate-manifest.py" >"$LOG/mm-role-unit.log" 2>&1 <<'EOF'
+import importlib.util, sys
+spec = importlib.util.spec_from_file_location('mm', sys.argv[1]); mm = importlib.util.module_from_spec(spec); spec.loader.exec_module(mm)
+src = 'id: x/y\ndata:\n  schema: x_y\n  role:   x_y_rw     # 旧注释\n  extra:\n    role: other     # 保留\ndata_scopes: none\n'
+out, _ = mm.edit_assembly(src, {'id': 'x/y'})
+assert '  role:   x_y_rw     ' + mm.ROLE_COMMENT in out, out
+assert '    role: other     # 保留' in out, out
+print('role-unit-ok')
+EOF
+check "data.role 注释只改 data 的直接子键（嵌套的 role 不动）" log_has mm-role-unit 'role-unit-ok'
+
+section "修复轮 M-4：旧键名提示只看字符串与注释"
+check "iam-casdoor：报错文案里的旧键名被列出" log_has mm-write-infra-iam-casdoor 'appTokenPreviousPublicKeyPem'
+check "iam-casdoor：纯 Go 变量名不再刷屏" bash -c "! sed -n '/ℹ️/,\$p' '$LOG/mm-write-infra-iam-casdoor.log' | grep -qE ':= rt\.Config\.'"
+
 # ───────────────────────────────────────────────────────────────────────────
 section "docs-skel.sh（mdm/customer）"
 d=$W/mdm-customer; S=$BE_SCRATCH/06b/mdm-customer
@@ -233,6 +308,19 @@ expect_rc 0 skel-3 "$d" bash "$TOOLS/docs-skel.sh" mdm/customer
 check "已填写的文件不被覆盖（并提示 --force）" bash -c "[ \"\$(sha1sum <'$d/BRICKKIT.md')\" = '$filled' ] && grep -q -- '--force' '$LOG/skel-3.log'"
 expect_rc 0 skel-force "$d" bash "$TOOLS/docs-skel.sh" mdm/customer --force
 check "--force 覆盖回骨架" bash -c "! grep -q '已填写的内容' '$d/BRICKKIT.md'"
+
+section "修复轮 I-1：换会话 / 清空 \$S 后 docs-skel 不覆盖已填写的文档"
+d=$W/mdm-customer; TAG=$(git -C "$d" tag -l 'v1.*' | sort -V | tail -1)
+echo "FILLED BY C5 - real content" >>"$d/AGENTS.md"; echo "FILLED BY C5 - real content" >>"$d/README.md"
+fa=$(sha1sum <"$d/AGENTS.md"); fr=$(sha1sum <"$d/README.md")
+expect_rc 0 skel-session2 "$d" env BE_SCRATCH="$W/scratch2" bash "$TOOLS/docs-skel.sh" mdm/customer
+check "新会话：已填写的 AGENTS.md / README.md 不被覆盖" bash -c "[ \"\$(sha1sum <'$d/AGENTS.md')\" = '$fa' ] && [ \"\$(sha1sum <'$d/README.md')\" = '$fr' ]"
+check "新会话：留底取自 $TAG（不是已填写的文件）" bash -c "git -C '$d' show '$TAG:AGENTS.md' | cmp -s - '$W/scratch2/06b/mdm-customer/old/AGENTS.md'"
+rm -rf "$BE_SCRATCH/06b/mdm-customer"
+expect_rc 0 skel-cleaned "$d" bash "$TOOLS/docs-skel.sh" mdm/customer
+check "清空 \$S 后：已填写的文档不被覆盖" bash -c "[ \"\$(sha1sum <'$d/AGENTS.md')\" = '$fa' ] && [ \"\$(sha1sum <'$d/README.md')\" = '$fr' ]"
+check "清空 \$S 后：留底重新取自 tag" bash -c "git -C '$d' show '$TAG:README.md' | cmp -s - '$BE_SCRATCH/06b/mdm-customer/old/README.md'"
+expect_rc 0 skel-restore "$d" bash "$TOOLS/docs-skel.sh" mdm/customer --force
 # 组件仓库里的 brickkit lint：结构类问题必须为零，只剩占位符（C5 去填）
 ( cd "$d" && BE_COMP_DIR=$d python3 "$TOOLS/migrate-manifest.py" mdm/customer --write >/dev/null 2>&1 && brickkit lint ) >"$LOG/skel-lint.log" 2>&1
 # lint 不打印错误码，只打印文字：允许的只有占位符（DOC_PLACEHOLDER）与"文档还没提到某个键 / 契约"（DOC_OUT_OF_STEP），
@@ -259,6 +347,20 @@ echo "// probe: 契约新增" >>"$(ls "$d"/gen/mdm/customer/v1/*.pb.go | head -1
 expect_rc 0 go-a-recheck "$d" bash "$TOOLS/go-v2.sh" mdm/customer --recheck
 check "--recheck：gen 有变化 → require v1.1.0" grep -qE 'github.com/brickKit/mdm-customer/gen/mdm/customer v1\.1\.0$' "$d/go.mod"
 check "--recheck：报出第 8.3 步要打 gen/mdm/customer/v1.1.0" log_has go-a-recheck 'gen/mdm/customer/v1\.1\.0'
+
+section "修复轮 M-2 / M-3：多余的 replace、裸导入旧根包"
+d=$W/mdm-customer
+SDKSRC=$(go env GOMODCACHE)/github.com/brick\!kit/be-sdk-go@$SDK
+rm -rf "$W/sdk-local"; cp -r "$SDKSRC" "$W/sdk-local"; chmod -R u+w "$W/sdk-local"
+( cd "$d" && go mod edit -replace=github.com/brickKit/be-sdk-go="$W/sdk-local" )
+expect_rc 1 go-stray-replace "$d" bash "$TOOLS/go-v2.sh" mdm/customer --recheck
+check "根 go.mod 里契约包之外的 replace → FAIL" log_has go-stray-replace 'FAIL.*replace'
+( cd "$d" && go mod edit -dropreplace=github.com/brickKit/be-sdk-go && go mod tidy >/dev/null 2>&1 )
+printf '//go:build ignore\n\npackage probe\n\nimport _ "github.com/brickKit/mdm-customer"\n' >"$d/backend/probe_ignore.go"
+expect_rc 1 go-bare-import "$d" bash "$TOOLS/go-v2.sh" mdm/customer --recheck
+check "裸导入旧根包（不带子路径）→ FAIL" log_has go-bare-import 'FAIL.*import'
+rm -f "$d/backend/probe_ignore.go"
+expect_rc 0 go-a-recheck-clean "$d" bash "$TOOLS/go-v2.sh" mdm/customer --recheck
 
 section "go-v2.sh：形态 B（infra/notification）"
 d=$W/infra-notification

@@ -12,7 +12,12 @@
 #   start_period_seconds  healthCheck.startPeriodSeconds（不写就沿用旧值；Go 不写，默认 60）
 #   migration_command     替换 migration.command（数组；不写就沿用旧值）
 #   local                 {language, runCommand（数组）}，必填
+#   permissions_add       追加到 assembly.yaml 的 permissions 末尾（{key, title, type}；本次新增的权限键）
+#   menus_add             追加到 menus 末尾（{key, title, permission}）
+#   edge_routes_add       追加到 edge_routes 末尾（{path, auth}）
 #
+# 规则：C3 之后对 component.yaml / assembly.yaml 的**任何**增量都写在这里，再重跑 `--write`，不要手改那两个文件。
+# 手改过的文件 `--write` 会拒绝覆盖（exit 3，打印会丢掉的 diff）；`--force` 才覆盖。
 # Python / TS 的 local.runCommand 是初稿：T16（infra/print）、T20（infra/bff-mobile）在
 # `make verify FOCUS=1` 真机确定后改这里，再重跑 `migrate-manifest.py <id> --write`。
 
@@ -51,6 +56,10 @@ infra/bff-mobile:
     - {id: infra/notification@2.0.0, optional: true}
     - {id: crm/opportunity@2.0.0, optional: true}
   start_period_seconds: 90
+  permissions_add:                         # frontend-needs §2.10 / §2.11，标题初稿，T20 可改
+    - {key: infra.bff-mobile.task.act, title: 处理我的待办（移动端）, type: action}
+    - {key: infra.bff-mobile.notification.view, title: 查询我的通知（移动端）, type: action}
+    - {key: infra.bff-mobile.opportunity.view, title: 查询我的商机（移动端）, type: action}
   local: {language: node, runCommand: [sh, -c, npm run build && node dist/main.js]}   # 初稿，T20 真机确定
 
 infra/iam-casdoor:
@@ -90,4 +99,6 @@ mdm/customer:
 mdm/product:
   name: Product master data
   description: SKUs, categories, unit-of-measure conversions, batch and serial tracking policies, and standard costs.
+  permissions_add:                         # frontend-needs §2.2 / §2.11（R8：删 = 停用），标题初稿，T9 可改
+    - {key: mdm.product.set_status, title: 启用/停用产品, type: action}
   local: {language: go, runCommand: [go, run, ./backend/cmd/server]}

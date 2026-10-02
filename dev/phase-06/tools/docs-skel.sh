@@ -6,11 +6,12 @@
 # 做什么：
 #   1. rm -rf $S/skel && brickkit new <id> --path $S/skel
 #   2. 留底到 $S/old/：AGENTS.md README.md CLAUDE.md docs/手册.md component.yaml assembly.yaml Makefile Dockerfile
-#      （只留第一次的：$S/old/ 里已有同名文件就不覆盖，所以重复运行不会把骨架当成"旧文件"留底）
+#      **取自组件最后一个 1.x tag**（git show <tag>:<文件>），与工作区、与会话无关：换会话、清空 $S 后留底不变
 #   3. 写出 BRICKKIT.md AGENTS.md README.md（取骨架；后两个加首行互链）及其 .zh.md（固定中文标题、首行互链、正文待填），
 #      docs/design.md + .zh.md（component-loop 5.1 的 design 小节），CLAUDE.md 恰好 `@AGENTS.md`
-# 覆盖规则：目标文件不存在、与将写出的内容相同、或与留底的旧文件相同（即还没人动过）时才写；
-#   否则（已经填写过）跳过并提示，--force 才覆盖。CLAUDE.md 例外：总是写成恰好 `@AGENTS.md`。
+# 覆盖规则：目标文件不存在、与将写出的内容相同、或与 tag 上的同名文件相同（即还没人动过）时才写；
+#   否则（已经填写过）跳过并提示，--force 才覆盖。判断不依赖 $S，所以换会话重跑也不会覆盖已填写的文档。
+#   CLAUDE.md 例外：总是写成恰好 `@AGENTS.md`。
 # 骨架与 .zh.md 里的 `<!-- TODO … -->` 会被 brickkit lint 报 DOC_PLACEHOLDER——这是第 5 步（C5）要填的。
 set -euo pipefail
 
@@ -41,13 +42,17 @@ done
 grep -q 'brickkit:managed:begin' "$S/skel/AGENTS.md" || die "骨架的 AGENTS.md 没有 brickkit 维护块（brickKit 行为变了？）"
 echo "  ✅ brickkit new $ID --path $S/skel"
 
-# ── 2. 留底 ──
+# ── 2. 留底（取自最后一个 1.x tag） ──
+TAG=$(git -C "$C" tag -l '1.*' 'v1.*' | grep -E '^v?1\.[0-9]+\.[0-9]+$' | sort -V | tail -1)
+[ -n "$TAG" ] || die "$C 没有任何 1.x tag，无法判断哪些文档还没被动过"
+at_tag() { git -C "$C" cat-file -e "$TAG:$1" 2>/dev/null; }      # tag 上有没有这个文件
 mkdir -p "$S/old"
 for rel in AGENTS.md README.md CLAUDE.md docs/手册.md component.yaml assembly.yaml Makefile Dockerfile; do
-  src=$C/$rel; dst=$S/old/$(basename "$rel")
-  [ -e "$src" ] || continue
-  if [ -e "$dst" ]; then echo "  ⏭  留底已有 $dst（保留第一次的，不覆盖）"
-  else cp -p "$src" "$dst"; echo "  📦 留底 $rel → $dst"; fi
+  dst=$S/old/$(basename "$rel")
+  at_tag "$rel" || continue
+  git -C "$C" show "$TAG:$rel" >"$dst.tmp" || die "git show $TAG:$rel 失败"
+  if [ -e "$dst" ] && cmp -s "$dst" "$dst.tmp"; then rm -f "$dst.tmp"; echo "  ·  留底已是 $TAG:$rel"
+  else mv "$dst.tmp" "$dst"; echo "  📦 留底 $TAG:$rel → $dst"; fi
 done
 
 # ── 3. 生成要写出的内容 ──
@@ -107,13 +112,14 @@ done
 # ── 4. 写出 ──
 SKIPPED=0; CHANGED=0
 place() {  # place <相对路径>
-  local rel=$1 src=$G/$1 dst=$C/$1 bak=$S/old/$(basename "$1")
+  local rel=$1 src=$G/$1 dst=$C/$1
   mkdir -p "$(dirname "$dst")"
   if [ ! -e "$dst" ]; then cp "$src" "$dst"; echo "  ✏️  新建 $rel"; CHANGED=$((CHANGED+1))
   elif cmp -s "$src" "$dst"; then echo "  ·  未改动 $rel"
   elif [ $FORCE = 1 ]; then cp "$src" "$dst"; echo "  ✏️  覆盖 $rel（--force）"; CHANGED=$((CHANGED+1))
-  elif [ -e "$bak" ] && cmp -s "$bak" "$dst"; then cp "$src" "$dst"; echo "  ✏️  用骨架替换 $rel（旧文件已留底 $bak）"; CHANGED=$((CHANGED+1))
-  else echo "  ⚠️  跳过 $rel：已有内容（既不是骨架也不是留底的旧文件），要覆盖加 --force"; SKIPPED=$((SKIPPED+1))
+  elif at_tag "$rel" && git -C "$C" show "$TAG:$rel" | cmp -s - "$dst"; then
+    cp "$src" "$dst"; echo "  ✏️  用骨架替换 $rel（与 $TAG 上的原文相同，还没人动过；原文已留底）"; CHANGED=$((CHANGED+1))
+  else echo "  ⚠️  跳过 $rel：已有内容（既不是骨架也不是 $TAG 上的原文），要覆盖加 --force"; SKIPPED=$((SKIPPED+1))
   fi
 }
 for rel in BRICKKIT.md BRICKKIT.zh.md AGENTS.md AGENTS.zh.md README.md README.zh.md docs/design.md docs/design.zh.md; do place "$rel"; done
