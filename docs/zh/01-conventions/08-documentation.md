@@ -53,11 +53,10 @@
 | `README.md`（+ `.zh.md`） | GitHub 上的人 | Use it in a project、Documentation（哪个文件回答哪个问题）、Development |
 | `docs/design.md`（+ `.zh.md`） | 修改设计的人 | 只写结论：边界（以及明确不归这个组件的东西）；拥有的数据（表、分区、终态）；契约面（含 `batchGet` 的 rpc、带权限键的 REST 路径、幂等接口、状态查询接口）；发布和消费的事件；依赖，以及为什么不依赖某个读者会以为它该依赖的东西；它在同步调用图里的位置；分区与归档；数据范围或为什么没有；参考实现（[10-reference-implementations.md](10-reference-implementations.md#记录参考了什么)）；未决问题 |
 
-- `brickkit lint --strict` 检查结构（用 `make docs-check ID=<scope>/<name>` 跑，外壳用 `ID=be/<name>`，不要在组件目录里直接 `brickkit lint`：项目内它会向上找到 `brickkit.yaml` 并 lint 整个项目，又没有限定到单个组件的开关，所以这个目标改为 lint 项目外的一份组件临时副本），必须零警告。
+- `brickkit lint --strict <id>` 检查单个组件或外壳的结构（跑 `brickkit lint --strict <scope>/<name>` 或 `make docs-check ID=<scope>/<name>`，外壳用 `ID=be/<name>`；`--all` 检查整个项目），必须零警告。
 - **一个事实只放一处**：依赖和配置键在 `component.yaml`，接口在 `contracts/`，历史在 Git。文档解释它们说不清的东西。
 - 每份组件文档都有**两类读者**：此刻正在改这个组件的人（需要精确、最新的细节），以及冷启动、想通过这个组件理解整个项目的人（需要足够的上下文看懂它为什么存在、怎么嵌进整体）。两个角度都检查过，文档才算写完。
 - **组件的 `AGENTS.md` 从不抄项目级规则。** 它的易错点只写在这个组件上才会遇到的；抄一份就是承诺维护两份，过时的那份正是让 AI 自信写错的原因。
-- **组件的 `AGENTS.zh.md` 要有一节翻译过的 `## BrickKit`**，对应 `AGENTS.md` 末尾 brickKit 维护块的标题（维护块本身只留在主文件里）：`brickkit lint` 检查译本对等时，会把维护块里的 `## BrickKit` 算进主文件的小节。
 - **面向 AI 的文档的规则**：不写"见上文""如前所述"（AI 可能只拿到一个片段）；每条禁令都带症状和理由（症状是 AI 发现自己写错的唯一依据）。
 - `docs/design.md` 在开工之前就存在，并随设计一起变：实现证明设计错了时，先改文档。
 - 文档是版本的一部分：和它描述的代码在同一个提交里改。

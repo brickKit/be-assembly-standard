@@ -76,7 +76,8 @@ One line each; the file linked is the rule in full. A request that breaks one is
 | debugging one component in an IDE; running only one component | [01-development-workflow.md](docs/en/01-conventions/01-development-workflow.md#running-it-for-real), the `brickkit-deploy` skill |
 | adding, removing or upgrading a component in the project; why a component isn't starting | the `brickkit-assemble` skill ([SKILL.md](.claude/skills/brickkit-assemble/SKILL.md)) |
 | a `brickkit` command printed an error or an `error_code` | the `brickkit-troubleshoot` skill ([SKILL.md](.claude/skills/brickkit-troubleshoot/SKILL.md)); flags: `brickkit <command> --help` |
-| "why not React / Java / RLS / a Deny rule / a config center…" | [docs/en/02-decisions/](docs/en/02-decisions/README.md) |
+| a change that may conflict with a recorded decision; "why not React / Java / RLS / a Deny rule / a config center…" | [docs/en/02-decisions/](docs/en/02-decisions/README.md) (read it before proposing; a decision wins over a convention) |
+| the full text of any one-line convention above; going live, backups, rotating secrets, production failures (operations documents, not written yet: they will live in `docs/en/operations/`) | conventions: [docs/en/01-conventions/](docs/en/01-conventions/); decisions: [docs/en/02-decisions/](docs/en/02-decisions/README.md); operations: `docs/en/operations/` once it exists, until then the `brickkit-deploy` skill |
 | what one component does; changing one component | the component table below, then `components/<scope>/<name>/BRICKKIT.md` (what it owns) and its `AGENTS.md` (how to change it) |
 
 Not here? The component table below, then the component's `AGENTS.md`.

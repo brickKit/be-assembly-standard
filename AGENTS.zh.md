@@ -76,7 +76,8 @@
 | 在 IDE 里调试一个组件；只跑一个组件 | [01-development-workflow.md](docs/zh/01-conventions/01-development-workflow.md#真机运行)、`brickkit-deploy` 技能 |
 | 在项目里加、删、升级组件；某个组件为什么没起来 | `brickkit-assemble` 技能（[SKILL.md](.claude/skills/brickkit-assemble/SKILL.md)） |
 | 某条 `brickkit` 命令报错或打出 `error_code` | `brickkit-troubleshoot` 技能（[SKILL.md](.claude/skills/brickkit-troubleshoot/SKILL.md)）；参数：`brickkit <命令> --help` |
-| "为什么不用 React / Java / RLS / Deny 规则 / 配置中心……" | [docs/zh/02-decisions/](docs/zh/02-decisions/README.md) |
+| 一个可能与已记录的决策冲突的改动；"为什么不用 React / Java / RLS / Deny 规则 / 配置中心……" | [docs/zh/02-decisions/](docs/zh/02-decisions/README.md)（提议前先读；决策与约定冲突时决策为准） |
+| 上面某条一行约定的完整规则；上线、备份、轮换密钥、生产故障（运维文档，尚未编写：将放在 `docs/zh/operations/`） | 约定：[docs/zh/01-conventions/](docs/zh/01-conventions/)；决策：[docs/zh/02-decisions/](docs/zh/02-decisions/README.md)；运维：`docs/zh/operations/` 建好之前看 `brickkit-deploy` 技能 |
 | 某个组件是做什么的；改某个组件 | 英文版 [AGENTS.md](AGENTS.md) 末尾的组件表，再看 `components/<scope>/<name>/BRICKKIT.md`（它拥有什么）和它的 `AGENTS.md`（怎么改它） |
 
 这里没有？看组件表，再看那个组件的 `AGENTS.md`。

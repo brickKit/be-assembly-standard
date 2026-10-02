@@ -42,7 +42,7 @@
 - 以 `_infra-` 开头的行是带外容器（PostgreSQL、NATS、Traefik、Casdoor、对象存储、可观测性），不是组件。它们和组件处在同一个宿主机端口空间里，所以也要登记。
 - **共用端口的唯一例外**：前端槽位族共用 80（同时只会装一个）；互斥的带外容器两两共用端口（RustFS / MinIO 都是 9000，Traefik / Nginx 都是 80）。`make registry-check` 只放行这两类。
 - 每个端口在所有组件之间唯一，包括永不同时运行的槽位成员和还没开发的蓝图：预留一行不花成本，晚发现的冲突要所有依赖方买单。
-- **`1xxxx` 整段归 brickKit。** 对 `mode: debug` 和 `mode: local`，brickKit 把容器端口映射到宿主机的 `10000 + 端口`（5432 → 15432，8080 → 18080），被占时从 `18080` 起递增。绝不分配 `1xxxx` 端口。带外容器的默认端口不和任何东西撞时保持不变（PostgreSQL 5432、NATS 4222、Casdoor 8000）；会撞组件端口或 `1xxxx` 段的默认端口或 `exposePort` 宿主机端口，挪到 `2xxxx` 段（Traefik 面板 28080、Keycloak 28081、Prometheus 29090、Kafka 29092、前端 28090、BFF 28500）。它们都登记在 `ports.tsv` 里。
+- **`1xxxx` 整段归 brickKit。** 对 `mode: debug`、`mode: local` 和 focus 运行，brickKit 把本地进程依赖的容器映射到宿主机的 `10000 + 容器端口`（5432 → 15432，8080 → 18080），被占时从 `18080` 起递增。绝不登记 `1xxxx` 端口或这种形式的宿主机端口。本地进程自己监听 `localPort`，没写就用它自己的 `deployment.port`；该端口被占时从 `8081` 起上移到第一个空闲端口，那可能恰好是另一个已登记的端口，所以本地同时跑多个组件时，在 `deploy.local.yaml` 里把 `localPort` 设成空闲的数字（见 `brickkit docs 02-project-guide/03-local-debug-workflow` 的 “Ports on your machine”）。带外容器的默认端口不和任何东西撞时保持不变（PostgreSQL 5432、NATS 4222、Casdoor 8000）；会撞组件端口或 `1xxxx` 段的默认端口或 `exposePort` 宿主机端口，挪到 `2xxxx` 段（Traefik 面板 28080、Keycloak 28081、Prometheus 29090、Kafka 29092、前端 28090、BFF 28500）。它们都登记在 `ports.tsv` 里。
 
 ## schema 与角色
 

@@ -35,5 +35,5 @@
 - 以最终目的为主：过渡状态下的临时问题不修。06a 和 06b 期间，`brickkit lint` 在项目根目录会因为 `components/` 下还没重建的旧 `component.yaml` 报错，这是预期之中的，不处理；单个组件的验证在组件仓库里跑 `brickkit lint --strict`。
 - 所有测试都按 spec §10 的格式写过程记录。
 - 未验证的疑问记入 [`to-verify.md`](to-verify.md)。只有在重建后的结构上验证成立的问题，才写进 `brickkit-feedback/phase-06.md`。
-- 每次不得不去翻 brickKit 仓库才能继续时，在 `to-verify.md` 的知识缺口记录（V-04）里追加一行。这项记录从 06a Task 1 完成后开始。
+- 技能里缺了某个知识时：先试 `brickkit docs <页面>`；只有它也答不了、不得不去翻 brickKit 源码时，才在 `to-verify.md` 的知识缺口记录（V-04）里追加一行。这项记录从 06a Task 1 完成后开始。
 - 新建或删除 GitHub 仓库之前先提醒用户；镜像不推送；测试用的版本只打本地 tag。
