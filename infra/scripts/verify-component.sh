@@ -6,7 +6,9 @@
 #   环境变量：
 #     ROUTE='<路径>' 或 '<METHOD> <路径>'  受保护路由（省略方法时 GET）；不带 token 期望 401/503，带 token 期望 200
 #     FOCUS=1        容器形态之后再跑一次 brickkit up --focus <id>（宿主机进程），结束后 brickkit local off
-#     KEEP=1         不收尾：容器留着（用完 brickkit down -f deploy.verify.yaml）
+#     KEEP=1         不收尾：容器留着（用完 brickkit down -f deploy.verify.yaml）；focus 进程照样停掉
+#                    （FOCUS / KEEP 只有值为 1 才生效，0 或其它值等于没设）
+#   中断（Ctrl+C、SIGTERM、超时）时 EXIT 陷阱照样收尾：停 focus 进程组；除非 KEEP=1，local off、down、删 deploy.verify.yaml
 #     FORCE_BUILD=1  本组件的镜像 brickkit build --force（版本没变但代码改过时）
 #     OUT=<目录>     输出目录，默认 $BE_SCRATCH/verify/<repo>-<时间>（没有 BE_SCRATCH 时用项目的 build/verify/）
 #     BE_ROOT        项目根（默认本仓库；测试用）
@@ -75,6 +77,10 @@ def closure(start):
 
 tver = default[target]
 tm = manifest(target, tver)
+for e in (load(root / "deploy.yaml").get("components") or []):
+    for x in [e] + list(e.get("members") or []):
+        if split(x["id"]) == (target, tver) and x.get("mode") == "disable":
+            sys.exit(f"✗ {target} 在 deploy.yaml 里是 mode: disable——verify 不改团队的决定；要验证它先去掉这一行")
 start = [(target, tver)] + [(c, default[c]) for c in ("infra/authz", "infra/iam-casdoor") if c in default]
 keep = closure(start)
 
@@ -120,6 +126,8 @@ print(f"PROJECT={shlex.quote(str(bk.get('project', root.name)))}")
 print(f"KEEP_IDS={shlex.quote(' '.join(sorted(f'{c}@{ver}' for c, ver in keep)))}")
 print(f"DISABLED={shlex.quote(' '.join(disabled))}")
 print(f"MEMBERS={shlex.quote(' '.join(members))}")
+mig = bool(tm.get("migration")) or any(manifest(*split(x)).get("migration") for x in (tm.get("shell") or {}).get("members") or [])
+print(f"HAS_MIG={1 if mig else 0}")
 PY
 }
 
@@ -138,7 +146,8 @@ fi
 mkdir -p "$OUT"
 NET="brickkit-$PROJECT-net"
 CP="brickkit-$PROJECT"   # compose 项目名
-ROUTE="${ROUTE:-}"; FOCUS="${FOCUS:-}"; KEEP="${KEEP:-}"
+ROUTE="${ROUTE:-}"
+FOCUS="$( [ "${FOCUS:-}" = 1 ] && echo 1 )"; KEEP="$( [ "${KEEP:-}" = 1 ] && echo 1 )"   # 只有 1 算开
 IS_GO=0; [ "$IS_SHELL" = 0 ] && [ -f "$ROOT/components/$ID/go.mod" ] && IS_GO=1
 
 ROWS=()
@@ -175,10 +184,31 @@ echo "  闭包：$KEEP_IDS"
 [ -n "$DISABLED" ] && echo "  deploy.verify.yaml 里停用：$DISABLED"
 cp "$VF" "$OUT/deploy.verify.yaml"
 UP_OK=0
+FPID=""; FOCUS_STARTED=0; CLEANED=0
+stop_focus() {  # 停掉 focus 的整个进程组（setsid 起的，自己一个会话）
+  [ -n "$FPID" ] || return 0
+  kill -INT -- "-$FPID" 2>/dev/null
+  for _ in $(seq 1 20); do kill -0 "$FPID" 2>/dev/null || break; sleep 1; done
+  kill -TERM -- "-$FPID" 2>/dev/null; sleep 1; kill -KILL -- "-$FPID" 2>/dev/null; wait "$FPID" 2>/dev/null
+  FPID=""
+}
+on_exit() {  # 正常走完时什么都不做（CLEANED=1）；中断或中途退出时补做收尾
+  [ "$CLEANED" = 1 ] && return
+  CLEANED=1
+  stop_focus
+  if [ -z "$KEEP" ]; then
+    echo "▸ 中途退出，收尾：$( [ "$FOCUS_STARTED" = 1 ] && echo 'brickkit local off、')brickkit down -f deploy.verify.yaml" >&2
+    [ "$FOCUS_STARTED" = 1 ] && brickkit local off > "$OUT/local-off-on-exit.log" 2>&1
+    brickkit down -f "$VF" > "$OUT/down-on-exit.log" 2>&1
+    rm -f "$VF"
+  fi
+}
+trap on_exit EXIT
+trap 'echo "✗ verify 被中断" >&2; exit 130' INT TERM
 
 # ---------- 1. 构建与镜像检查 ----------
 echo; echo "▸ 1. 构建镜像"
-if runlog "$(log build.log)" brickkit build "$ID" ${FORCE_BUILD:+--force}; then
+if runlog "$(log build.log)" brickkit build "$ID" $( [ "${FORCE_BUILD:-}" = 1 ] && echo --force ); then
   row "brickkit build $ID" PASS "" "$(log build.log)"
 else
   row "brickkit build $ID" FAIL "构建失败" "$(log build.log)"
@@ -226,7 +256,8 @@ while IFS=$'\t' read -r name service; do
   st="$(docker inspect -f '{{.State.Status}} {{.State.ExitCode}}' "$name")"
   [ "$st" = "exited 0" ] || mig_bad="$mig_bad $service($st)"
 done < <(docker ps -a --filter "label=com.docker.compose.project=$CP" --format '{{.Names}}	{{.Label "com.docker.compose.service"}}' | awk -F'\t' '$2 ~ /-migration$/')
-if [ "$mig_n" = 0 ]; then row "迁移容器 Exited (0)" SKIP "闭包里没有迁移容器"
+if [ "$mig_n" = 0 ] && [ "$HAS_MIG" = 1 ]; then row "迁移容器 Exited (0)" FAIL "$ID 声明了 migration，却没找到 *-migration 容器"
+elif [ "$mig_n" = 0 ]; then row "迁移容器 Exited (0)" SKIP "闭包里没有迁移容器"
 elif [ -z "$mig_bad" ]; then row "迁移容器 Exited (0)（$mig_n 个）" PASS "" "$OUT/migration-*.log"
 else row "迁移容器 Exited (0)" FAIL "$mig_bad" "$OUT/migration-*.log"; fi
 
@@ -265,13 +296,16 @@ elif [ "$IS_SHELL" = 0 ]; then
       *) row "$M $RP 不带 token → 401/503" FAIL "实际 $code" "$(log http.log)" ;;
     esac
     if has infra/authz && has infra/iam-casdoor; then
-        TOKEN="$(export ROOT; NET="$NET"; source "$S/lib/seed-net.sh"; with_toolbox "$NET"
-                 [ -n "$(sub_of dev.superuser)" ] || exit 4
-                 get_app_jwt dev.superuser)" 2> "$(log token.log)"; trc=$?
+        # 只有 Casdoor 明确回答"没有这个用户"（data: null → sub_of 成功但为空）才算种子未灌；其余失败一律 FAIL
+        TL="$(log token.log)"
+        TOKEN="$( { export ROOT; source "$S/lib/seed-net.sh"; with_toolbox "$NET"
+                    sub="$(sub_of dev.superuser)" || { echo "sub_of dev.superuser 失败（Casdoor 不可达或返回不是 JSON）" >&2; exit 5; }
+                    [ -n "$sub" ] || exit 4
+                    get_app_jwt dev.superuser; } 2> "$TL" )"; trc=$?
         if [ $trc = 4 ]; then
           row "$M $RP 带 token → 200" SKIP "iam 种子还没灌（Casdoor 里没有 dev.superuser；先 make -C components/infra/iam-casdoor seed）"
         elif [ $trc != 0 ] || [ -z "$TOKEN" ]; then
-          row "$M $RP 带 token → 200" FAIL "get_app_jwt dev.superuser 失败" "$(log token.log)"
+          row "$M $RP 带 token → 200" FAIL "取 dev.superuser 的 token 失败（rc=$trc）" "$TL"
         else
           code="$(curl_in_net "http://$SVC:$PORT$RP" -X "$M" -H "Authorization: Bearer $TOKEN")"
           echo "$M http://$SVC:$PORT$RP（带 dev.superuser 的 token）→ $code" >> "$(log http.log)"
@@ -322,6 +356,7 @@ PY
     [ "$code" = 200 ] && row "成员 $ms /healthz（按自己的服务名）→ 200" PASS "" "$(log http.log)" \
                       || row "成员 $ms /healthz（按自己的服务名）→ 200" FAIL "实际 $code" "$(log http.log)"
   done
+  row "成员受保护路由带 token → 200" SKIP "外壳分支只查 /healthz 与运行期核对；每个成员经外壳带真 token 打受保护路由由全栈集成（06b T25）覆盖"
 fi
 
 # ---------- 5. 跨组件测试 ----------
@@ -342,8 +377,9 @@ if [ -z "$FOCUS" ]; then
   row "brickkit up --focus $ID" SKIP "没设 FOCUS=1"
 else
   was_local="$(brickkit local status 2>&1 | head -1)"
-  setsid brickkit up --focus "$ID" > "$(log focus.log)" 2>&1 < /dev/null &
-  FPID=$!
+  # 非交互 shell 的后台进程默认忽略 SIGINT：恢复默认处理，Ctrl+C 等价的 INT 才能让 brickkit 正常停掉本地进程
+  env --default-signal=INT,TERM setsid brickkit up --focus "$ID" > "$(log focus.log)" 2>&1 < /dev/null &
+  FPID=$!; FOCUS_STARTED=1
   hp="$PORT"; code=""; ok=0
   for _ in $(seq 1 120); do
     p="$(grep -oE "$SVC +listening on port [0-9]+" "$(log focus.log)" | grep -oE '[0-9]+$' | tail -1)"
@@ -355,14 +391,13 @@ else
   done
   [ "$ok" = 1 ] && row "focus：宿主机 http://localhost:$hp/healthz → 200" PASS "" "$(log focus.log)" \
                 || row "focus：宿主机 http://localhost:$hp/healthz → 200" FAIL "实际 ${code:-无}$(kill -0 "$FPID" 2>/dev/null || echo '；focus 进程已退出')" "$(log focus.log)"
-  kill -INT -- "-$FPID" 2>/dev/null
-  for _ in $(seq 1 20); do kill -0 "$FPID" 2>/dev/null || break; sleep 1; done
-  kill -TERM -- "-$FPID" 2>/dev/null; sleep 1; kill -KILL -- "-$FPID" 2>/dev/null; wait "$FPID" 2>/dev/null
+  stop_focus
   runlog "$(log focus-all-dry-run.log)" brickkit up --all --dry-run \
     && row "brickkit up --all --dry-run（清除 focus）" PASS "" "$(log focus-all-dry-run.log)" \
     || row "brickkit up --all --dry-run（清除 focus）" FAIL "见日志" "$(log focus-all-dry-run.log)"
   runlog "$(log local-status.log)" brickkit local status || true
   if runlog "$(log local-off.log)" brickkit local off; then
+    FOCUS_STARTED=0
     row "brickkit local off" PASS "$(case "$was_local" in *on*) echo "验证前本地模式是开的，已关闭；需要时 brickkit local on" ;; esac)" "$(log local-off.log)"
   else
     row "brickkit local off" FAIL "见日志" "$(log local-off.log)"
@@ -371,6 +406,7 @@ fi
 
 # ---------- 7. 收尾 ----------
 echo; echo "▸ 6. 收尾"
+CLEANED=1   # 从这里起由正常路径收尾，EXIT 陷阱不再重复
 if [ -n "$KEEP" ]; then
   row "brickkit down" SKIP "KEEP=1：容器保留，用完 brickkit down -f deploy.verify.yaml"
 else

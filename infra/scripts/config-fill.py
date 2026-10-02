@@ -23,6 +23,8 @@ import yaml
 KEY_RE = re.compile(r"^(?P<key>[A-Z][A-Z0-9_]*):(?P<rest>.*)$")
 COMMENTED_RE = re.compile(r"^#\s?(?P<key>[A-Z][A-Z0-9_]*):(?P<rest>.*)$")
 PG_SPECIAL = {"PG_USER", "PG_PASSWORD", "PG_SCHEMA"}
+# secret: true 的键只允许引用：${VAR}（可带 :-默认值）、file://…、$var:NAME——明文会被提交进 config/
+SECRET_REF = re.compile(r"^(\$\{[A-Za-z_][A-Za-z0-9_]*(:-[^}]*)?\}|file://\S+|\$var:[A-Za-z_][A-Za-z0-9_]*)$")
 
 
 def die(msg: str, code: int = 2) -> None:
@@ -157,6 +159,10 @@ def main() -> int:
         if k not in props:
             die(f"--set {k}：{cid} 的 configSchema 没有这个键（有：{', '.join(sorted(props))}）")
         sets[k] = v
+    bad = [k for k, v in sets.items() if props[k].get("secret") and not SECRET_REF.match(v)]
+    if bad:
+        die(f"--set {', '.join(bad)}：secret 键的值只能是引用 ${{VAR}}（值放 .env）、file://<路径> 或 $var:<名>，"
+            f"不能写明文（config/ 会被提交）。例：--set '{bad[0]}=${{{urepo}_{bad[0]}}}'")
 
     cfg = root / "config" / f"{repo}.yaml"
     if not cfg.exists():
@@ -167,7 +173,7 @@ def main() -> int:
     ctx = dict(shell=shell, name=name, repo=repo, row=row, var_keys=var_keys)
 
     lines = cfg.read_text(encoding="utf-8").splitlines()
-    seen, final, changed = set(), {}, []
+    seen, final, changed, plain = set(), {}, [], []
     for i, line in enumerate(lines):
         m = KEY_RE.match(line)
         if m and m["key"] in props:
@@ -178,6 +184,8 @@ def main() -> int:
                 new = yaml_scalar(sets[key])
             elif not is_empty(raw):
                 final[key] = raw
+                if props[key].get("secret") and not SECRET_REF.match(str(yaml.safe_load(f"k: {raw}")["k"])):
+                    plain.append(key)
                 continue
             else:
                 d = derive(key, **ctx)
@@ -220,6 +228,9 @@ def main() -> int:
         changed.append(key)
         final[key] = new
 
+    if plain:
+        die(f"{cfg.relative_to(root)} 里 secret 键 {', '.join(plain)} 写的是明文：改成 ${{VAR}}（值放 .env）、file://<路径> 或 $var:<名>"
+            f"（可用 --set 覆盖），本次没有写盘")
     text = "\n".join(lines) + "\n"
     rel = cfg.relative_to(root)
     if text != cfg.read_text(encoding="utf-8"):

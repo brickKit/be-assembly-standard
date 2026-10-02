@@ -4,7 +4,8 @@
 # 可以重跑：已在 HEAD 上的 tag 视为已完成；已推送却不在 HEAD 上的 tag 一律 FAIL（发新版本，不移动 tag）。
 #
 # 用法：bash infra/scripts/ship.sh [--dry-run] <组件目录：components/<scope>/<name> | shell/be/<name>> <发布说明文件>
-#   --dry-run  只读检查照做（干净、分支、远端 tag、契约包 N-3 校验），改动类命令（push、tag、release、拉取探针）只打印
+#   --dry-run  只读检查照做（干净、分支、远端 tag、契约包 N-3 校验；为比较可能从远端取回提交对象，但不建任何本地引用），
+#              改动类命令（push、tag、release、拉取探针）只打印
 # 环境变量：SHIP_PROBE_RETRIES（拉取探针次数，默认 3）、SHIP_PROBE_INTERVAL（间隔秒数，默认 30）
 set -uo pipefail
 
@@ -13,7 +14,7 @@ DRY=0
 [ $# -eq 2 ] || { echo "用法：ship.sh [--dry-run] <components/<scope>/<name> | shell/be/<name>> <发布说明文件>" >&2; exit 2; }
 ROOT="${BE_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)}"
 case "$1" in /*) D="$1" ;; *) D="$ROOT/$1" ;; esac
-D="$(cd "$D" 2>/dev/null && pwd)" || { echo "✗ 目录不存在：$1" >&2; exit 2; }
+D="$(cd "$D" 2>/dev/null && pwd -P)" || { echo "✗ 目录不存在：$1" >&2; exit 2; }
 NOTES="$(realpath -m "$2")"
 [ -f "$NOTES" ] || { echo "✗ 发布说明文件不存在：$2" >&2; exit 2; }
 case "$NOTES" in "$D"/*) echo "✗ 发布说明必须放在组件目录之外（目录里的文件过不了 brickkit release 的干净检查）：$NOTES" >&2; exit 2 ;; esac
@@ -21,13 +22,16 @@ case "$NOTES" in "$D"/*) echo "✗ 发布说明必须放在组件目录之外（
 PROBE_RETRIES="${SHIP_PROBE_RETRIES:-3}"
 PROBE_INTERVAL="${SHIP_PROBE_INTERVAL:-30}"
 
-read -r ID VER IS_SHELL < <(python3 - "$D/component.yaml" <<'PY'
+meta="$(python3 - "$D/component.yaml" <<'PY'
 import sys, yaml
 m = yaml.safe_load(open(sys.argv[1], encoding="utf-8")) or {}
 md = m.get("metadata") or {}
-print(md.get("id", "?"), md.get("version", "?"), "1" if "shell" in m else "0")
+print(md.get("id", ""), md.get("version", ""), "1" if "shell" in m else "0")
 PY
-)
+)" || { echo "✗ 读不了 $D/component.yaml" >&2; exit 2; }
+read -r ID VER IS_SHELL <<< "$meta"
+[[ "$ID" =~ ^[a-z0-9-]+/[a-z0-9-]+$ ]] || { echo "✗ component.yaml 的 metadata.id 不是 <scope>/<name>：'${ID}'" >&2; exit 2; }
+[[ "$VER" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo "✗ component.yaml 的 metadata.version 不是精确版本 x.y.z：'${VER}'" >&2; exit 2; }
 REPO="${ID//\//-}"
 IS_GO=0
 [ -f "$D/go.mod" ] && [ "$IS_SHELL" = 0 ] && IS_GO=1
@@ -57,6 +61,8 @@ remote_tag_commit() {
   if [ -n "$peeled" ]; then echo "$peeled"; else echo "$out" | awk -v r="refs/tags/$1" '$2==r {print $1}'; fi
 }
 local_tag_commit() { g rev-parse -q --verify "refs/tags/$1^{commit}" 2>/dev/null || true; }
+# 确保本地有这个提交对象（比较用）；只取对象、不建 tag 引用，dry-run 下也安全
+have_commit() { g cat-file -e "$1^{commit}" 2>/dev/null || g fetch -q --no-tags origin "$1" 2>/dev/null || g fetch -q --no-tags origin "refs/tags/$2" 2>/dev/null; g cat-file -e "$1^{commit}" 2>/dev/null; }
 
 echo "▶ 发布 $ID@$VER（$KIND）：$D$( [ "$DRY" = 1 ] && echo '  〔dry-run：改动类命令只打印〕')"
 HEAD_SHA=""
@@ -100,9 +106,12 @@ else
         || fail "根 go.mod require 的 $pkg $cver 不是一个可发布的契约包版本（占位 v0.0.0 或伪版本）：先让它 require 真实版本（go-v2.sh --recheck）"
       rsha="$(remote_tag_commit "$tag")" || fail "git ls-remote origin 失败"
       if [ -n "$rsha" ]; then
-        [ -n "$(local_tag_commit "$tag")" ] || g fetch -q origin "refs/tags/$tag:refs/tags/$tag" || fail "取回远端 tag $tag 失败"
-        if ! g diff --quiet "$tag" HEAD -- "$sub"; then
-          g diff --stat "$tag" HEAD -- "$sub" | sed 's/^/    /'
+        lsha="$(local_tag_commit "$tag")"
+        [ -z "$lsha" ] || [ "$lsha" = "$rsha" ] \
+          || fail "本地 tag $tag 指向 $lsha，与已发布的 $rsha 不同——以远端为准；本地这个 tag 是旧尝试或手工打的，核对后人工处理（不自动删）"
+        have_commit "$rsha" "$tag" || fail "取不回已发布的 $tag（$rsha）"
+        if ! g diff --quiet "$rsha" HEAD -- "$sub"; then
+          g diff --stat "$rsha" HEAD -- "$sub" | sed 's/^/    /'
           fail "已发布的契约包 $tag 与 HEAD 的 $sub/ 不一致：已发布的契约包不能改，契约有变化就在根 go.mod require 一个新版本（go-v2.sh --recheck）再发布"
         fi
         msgs+=("$tag 已发布且与 HEAD 一致")
@@ -159,9 +168,9 @@ else
     run g push origin "refs/tags/$VT" || fail "git push origin $VT 失败"
   fi
   if [ "$DRY" = 0 ]; then
-    a="$(g rev-parse "$VER^{commit}")"; b="$(g rev-parse "$VT^{commit}")"
-    [ "$a" = "$b" ] && [ "$a" = "$HEAD_SHA" ] || fail "$VER→$a，$VT→$b，HEAD→$HEAD_SHA：两个 tag 不在同一提交"
-    [ "$(remote_tag_commit "$VT")" = "$HEAD_SHA" ] || fail "远端 $VT 不在 HEAD"
+    # 以远端为准（新 clone、或上次中断后本地没有 tag 引用时也成立）
+    a="$(remote_tag_commit "$VER")"; b="$(remote_tag_commit "$VT")"
+    [ "$a" = "$b" ] && [ "$a" = "$HEAD_SHA" ] || fail "远端 $VER→${a:-无}，$VT→${b:-无}，HEAD→$HEAD_SHA：两个 tag 不在同一提交"
     pass "$VER 与 $VT 在同一提交 $HEAD_SHA"
   else
     pass "dry-run：未执行"

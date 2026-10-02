@@ -99,7 +99,7 @@ integrate:  ## 接入一个组件或外壳：dev-env/db-init → add 或 upgrade
 	@test -n "$(ID)" || { echo "用法：make integrate ID=<scope>/<name> [VERSION=<版本>]（外壳 ID=be/<name>，版本默认 1.0.0）"; exit 2; }
 	@bash $(S)/integrate.sh "$(ID)" $(VERSION)
 
-verify:  ## 真机验证一个组件或外壳：build → 只起闭包 → 迁移/健康/鉴权 → test-cross → [focus] → 收尾。make verify ID=<id> [ROUTE='GET /路径'] [FOCUS=1] [KEEP=1] [FORCE_BUILD=1]
+verify:  ## 真机验证一个组件或外壳：build → 只起闭包 → 迁移/健康/鉴权 → test-cross → [focus] → 收尾。make verify ID=<id> [ROUTE='GET /路径'] [FOCUS=1] [KEEP=1] [FORCE_BUILD=1]（FOCUS/KEEP/FORCE_BUILD 只有 =1 才生效）
 	@test -n "$(ID)" || { echo "用法：make verify ID=<scope>/<name> [ROUTE='<METHOD> <路径>'] [FOCUS=1] [KEEP=1] [FORCE_BUILD=1] [OUT=<目录>]"; exit 2; }
 	@ROUTE="$(ROUTE)" FOCUS="$(FOCUS)" KEEP="$(KEEP)" FORCE_BUILD="$(FORCE_BUILD)" OUT="$(OUT)" bash $(S)/verify-component.sh "$(ID)"
 
@@ -110,7 +110,7 @@ ship:  ## 【只有控制者】发布：推 main → 契约包 tag → brickkit 
 teardown-sync:  ## 让 deploy.teardown.yaml 与 deploy.yaml 一致（target、components；不带 vars:）。make teardown-sync [CHECK=1] 只核对
 	@bash $(S)/project-lock.sh -- python3 $(S)/teardown-sync.py $(if $(CHECK),--check,)
 
-permissions:  ## 从各组件 assembly.yaml 重新产出 registry/permissions.tsv 与 data-scopes.tsv，再 registry-check；permissions.tsv 只增不删
+permissions:  ## 从各组件 assembly.yaml 重新产出 registry/permissions.tsv 与 data-scopes.tsv，再 registry-check；permissions.tsv 相对 HEAD 只增不删
 	@bash $(S)/project-lock.sh -- $(MAKE) --no-print-directory _permissions-locked
 
 _permissions-locked:
@@ -119,9 +119,9 @@ _permissions-locked:
 	  tools/be-ops/build/be-ops permissions --root .; \
 	  tools/be-ops/build/be-ops data-scopes --root .; \
 	  $(MAKE) --no-print-directory registry-check; \
-	  removed="$$(git diff -- registry/permissions.tsv | grep '^-[^-]' || true)"; \
+	  removed="$$(git diff HEAD -- registry/permissions.tsv | grep '^-[^-]' || true)"; \
 	  if [ -n "$$removed" ]; then echo "✗ registry/permissions.tsv 只增不删，下面这些已有行被改或删了（键是持久标识，退役用 deprecated 列）："; echo "$$removed"; exit 1; fi; \
-	  echo "✓ registry/permissions.tsv 只有新增（git diff -- registry/ 看改动）"
+	  echo "✓ registry/permissions.tsv 相对 HEAD 只有新增（git diff HEAD -- registry/ 看改动）"
 .PHONY: integrate verify ship teardown-sync permissions _permissions-locked
 
 ##@ 拆回验证

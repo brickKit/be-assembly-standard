@@ -27,8 +27,9 @@ echo "▶ integrate $ID@$VER（项目 $ROOT）"
 
 # 1. 连库组件（registry/schemas.tsv 有它的行）与外壳：先补 .env 密码、建角色与 schema
 step "数据库角色与密码（make dev-env db-init）"
+[ -r registry/schemas.tsv ] || die "读不到 registry/schemas.tsv（判断是否连库要用它；不当成\"不连库\"悄悄跳过）"
 needs_db=0
-if [ "${ID%%/*}" = be ] || awk -F'\t' -v r="$REPO" '!/^#/ && $1==r {f=1} END{exit !f}' registry/schemas.tsv 2>/dev/null; then needs_db=1; fi
+if [ "${ID%%/*}" = be ] || awk -F'\t' -v r="$REPO" '!/^#/ && $1==r {f=1} END{exit !f}' registry/schemas.tsv; then needs_db=1; fi
 if [ "$needs_db" = 0 ]; then
   echo "  不连库（registry/schemas.tsv 没有 $REPO），跳过"
 elif [ -n "${BE_SKIP_DB_INIT:-}" ]; then

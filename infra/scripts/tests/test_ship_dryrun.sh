@@ -148,5 +148,41 @@ done
 if [ $rc -ne 0 ] && [ $all_at_head = 1 ] && echo "$out" | grep -q '▸ 第 4 步.*PASS' && echo "$out" | grep -q '▸ 第 5 步.*FAIL' \
    && [ "$(echo "$out" | steps_order)" = "12345" ]; then ok "J Go 真跑：三个 tag 在 HEAD，探针失败停在第 5 步"; else bad "J rc=$rc at_head=$all_at_head\n$out"; fi
 
+# ---------- K（修复轮 I-1）. 远端契约包 tag 在旧提交，本地同名 tag 却在 HEAD → 必须按远端比较并 FAIL ----------
+W="$(fixture k go)"
+git -C "$W" tag -a gen/demo/thing/v1.0.0 -m t && git -C "$W" push -q origin gen/demo/thing/v1.0.0
+printf 'package thing\n\nconst V = 2\n' > "$W/gen/demo/thing/thing.go"
+git -C "$W" commit -q -am "改了契约" && git -C "$W" push -q origin main
+git -C "$W" tag -d gen/demo/thing/v1.0.0 >/dev/null && git -C "$W" tag -a gen/demo/thing/v1.0.0 -m local HEAD
+out="$(bash "$SHIP" --dry-run "$W" "$T/notes.md" 2>&1)"; rc=$?
+if [ $rc -ne 0 ] && echo "$out" | grep -q '▸ 第 2 步.*FAIL' && [ "$(echo "$out" | steps_order)" = "12" ]; then ok "K 本地同名 tag 与已发布的不同：第 2 步 FAIL"; else bad "K rc=$rc\n$out"; fi
+# K2：本地没有这个 tag、远端有且与 HEAD 一致 → dry-run 照样 PASS，并且不在本地建 tag 引用
+W="$(fixture k2 go)"
+git -C "$W" tag -a gen/demo/thing/v1.0.0 -m t && git -C "$W" push -q origin gen/demo/thing/v1.0.0
+git -C "$W" tag -d gen/demo/thing/v1.0.0 >/dev/null
+echo "// x" >> "$W/backend/module/module.go"; git -C "$W" commit -q -am x && git -C "$W" push -q origin main
+out="$(bash "$SHIP" --dry-run "$W" "$T/notes.md" 2>&1)"; rc=$?
+if [ $rc -eq 0 ] && echo "$out" | grep -q '▸ 第 2 步.*PASS' && [ -z "$(git -C "$W" tag -l)" ]; then ok "K2 按远端 tag 比较，dry-run 不建本地 tag"; else bad "K2 rc=$rc tags=$(git -C "$W" tag -l)\n$out"; fi
+
+# ---------- L（M-2）. component.yaml 没有 metadata.version → 第 1 步之前就失败 ----------
+W="$(fixture l python)"
+sed -i '/^  version:/d' "$W/component.yaml" && git -C "$W" commit -q -am "无版本" && git -C "$W" push -q origin main
+out="$(bash "$SHIP" --dry-run "$W" "$T/notes.md" 2>&1)"; rc=$?
+if [ $rc -ne 0 ] && echo "$out" | grep -q 'metadata.version' && [ -z "$(echo "$out" | steps_order)" ]; then ok "L 没有版本号：开始前即拒绝"; else bad "L rc=$rc\n$out"; fi
+
+# ---------- M（M-4）. 经符号链接路径调用 → 第 1 步照样 PASS ----------
+W="$(fixture m python)"
+ln -s "$W" "$T/m-link"
+out="$(bash "$SHIP" --dry-run "$T/m-link" "$T/notes.md" 2>&1)"; rc=$?
+if [ $rc -eq 0 ] && echo "$out" | grep -q '▸ 第 1 步.*PASS'; then ok "M 符号链接路径可用"; else bad "M rc=$rc\n$out"; fi
+
+# ---------- N（M-3）. J 发布后本地 tag 全删（如新 clone）再重跑 → 第 2–4 步按远端判定 PASS ----------
+W="$T/j/work"
+git -C "$W" tag -d 2.0.0 v2.0.0 gen/demo/thing/v1.0.0 >/dev/null
+: > "$FAKE_CALLS"
+out="$(bash "$SHIP" "$W" "$T/notes.md" 2>&1)"; rc=$?
+if echo "$out" | grep -q '▸ 第 2 步.*PASS' && echo "$out" | grep -q '▸ 第 3 步.*PASS' && echo "$out" | grep -q '▸ 第 4 步.*PASS' \
+   && [ ! -s "$FAKE_CALLS" ]; then ok "N 只有远端 tag 时重跑：2–4 步 PASS、不再 release"; else bad "N rc=$rc calls=$(cat "$FAKE_CALLS")\n$out"; fi
+
 [ $fail -eq 0 ] && echo "全部通过" || echo "有失败"
 exit $fail

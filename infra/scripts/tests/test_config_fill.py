@@ -278,6 +278,50 @@ def test_key_absent_from_file_is_appended(tmp):
     assert values(root / "config/demo-app.yaml")["PG_SCHEMA"] == "demo_app"
 
 
+def test_plaintext_secret_set_rejected(tmp):  # 修复轮 I-4
+    root = make_root(tmp)
+    before = (root / "config/demo-app.yaml").read_text(encoding="utf-8")
+    for bad in ("APP_TOKEN=s3cr3t-plain", "PG_PASSWORD=hunter2", "APP_TOKEN=", "APP_TOKEN=x${A}"):
+        r = run(root, "demo/app", "--set", bad, "--set", "DEFAULT_WAREHOUSE_ID=w")
+        assert r.returncode == 2, (bad, r.stdout + r.stderr)
+        assert "secret" in r.stdout + r.stderr and bad.split("=")[0] in r.stdout + r.stderr, r.stdout + r.stderr
+        assert "s3cr3t" not in r.stdout + r.stderr and "hunter2" not in r.stdout + r.stderr   # 不回显明文
+        assert (root / "config/demo-app.yaml").read_text(encoding="utf-8") == before
+
+
+def test_secret_references_accepted(tmp):
+    root = make_root(tmp)
+    for ok in ("APP_TOKEN=${DEMO_APP_APP_TOKEN}", "APP_TOKEN=file://.secrets/demo-app/token",
+               "APP_TOKEN=$var:APP_TOKEN", "APP_TOKEN=${X:-}"):
+        r = run(root, "demo/app", "--set", ok, "--set", "DEFAULT_WAREHOUSE_ID=w")
+        assert r.returncode == 0, (ok, r.stdout + r.stderr)
+
+
+def test_plaintext_secret_already_in_file_rejected(tmp):
+    skel = APP_SKELETON.replace('APP_TOKEN: ""', "APP_TOKEN: plain-in-file")
+    root = make_root(tmp, skel)
+    r = run(root, "demo/app", "--set", "DEFAULT_WAREHOUSE_ID=w")
+    assert r.returncode == 2, r.stdout + r.stderr
+    assert "APP_TOKEN" in r.stdout + r.stderr and "plain-in-file" not in r.stdout + r.stderr
+
+
+def test_integrate_refuses_missing_schemas_tsv(tmp):  # 修复轮 M-10：integrate.sh 不把"读不到 schemas.tsv"当成"不连库"
+    import os
+    root = make_root(tmp)
+    (root / "registry/schemas.tsv").unlink()
+    fake = tmp / "bin"
+    fake.mkdir()
+    (fake / "brickkit").write_text('#!/bin/sh\necho "brickkit $*" >> "$FAKE_CALLS"\n', encoding="utf-8")
+    (fake / "brickkit").chmod(0o755)
+    env = {**os.environ, "PATH": f"{fake}:{os.environ['PATH']}", "BE_ROOT": str(root),
+           "FAKE_CALLS": str(tmp / "calls"), "BE_PROJECT_LOCK": str(tmp / "lock")}
+    env.pop("BE_PROJECT_LOCK_HELD", None)
+    r = subprocess.run(["bash", str(SCRIPT.parent / "integrate.sh"), "demo/app"], capture_output=True, text=True, env=env)
+    assert r.returncode == 1, r.stdout + r.stderr
+    assert "第 1 步失败" in r.stderr and "schemas.tsv" in r.stderr, r.stdout + r.stderr
+    assert not (tmp / "calls").exists(), (tmp / "calls").read_text()
+
+
 def main() -> int:
     tests = [(n, f) for n, f in sorted(globals().items()) if n.startswith("test_") and callable(f)]
     failed = 0
