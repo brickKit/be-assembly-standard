@@ -10,7 +10,9 @@
 # migrate-idempotent 目标（golang-migrate/yoyo 的 up 本来就设计成可以
 # 重复调用）。
 #
-# 用法：infra/scripts/test-db-init.sh
+# 用法：infra/scripts/test-db-init.sh [<scope>/<name>]
+#   不带参数：建库 + 全部组件跑 migrate-idempotent；带组件 ID：建库 + 只跑这一个
+#   （并行开发时别的组件半成品的迁移挡不住你）。
 set -euo pipefail
 # 整个脚本在项目锁里执行（写共享的库/.env；已持锁时直通）
 [ -n "${BE_PROJECT_LOCK_HELD:-}" ] || exec bash "$(dirname "${BASH_SOURCE[0]}")/project-lock.sh" -- bash "${BASH_SOURCE[0]}" "$@"
@@ -45,6 +47,13 @@ COMPONENTS=(
 	infra/authz infra/iam-casdoor infra/workflow infra/notification
 	integration/im-dingtalk infra/print crm/opportunity
 )
+
+if [ $# -gt 0 ]; then
+	want="$1"; found=
+	for c in "${COMPONENTS[@]}"; do [ "$c" = "$want" ] && found=1; done
+	[ -n "$found" ] || { echo "✗ $want 不在有数据库的组件清单里：${COMPONENTS[*]}" >&2; exit 2; }
+	COMPONENTS=("$want")
+fi
 
 echo "▸ ② 对 ${#COMPONENTS[@]} 个已建组件各跑一遍 migrate-idempotent，目标 brickkit_test_db"
 for c in "${COMPONENTS[@]}"; do

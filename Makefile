@@ -92,8 +92,8 @@ dev-env:  ## 补齐 .env 里各数据库登录角色的随机密码（只追加�
 	@bash $(S)/dev-env.sh
 .PHONY: db-init dev-env
 
-test-db-init:  ## 建/刷新本地测试专用库 brickkit_test_db（跟真机演示数据用的 brickkit_db 物理分开，幂等可重跑）
-	@bash infra/scripts/test-db-init.sh
+test-db-init:  ## 建/刷新本地测试专用库 brickkit_test_db（跟真机演示数据用的 brickkit_db 物理分开，幂等可重跑）。make test-db-init [ID=<id>]：带 ID 只跑这一个组件的 migrate-idempotent
+	@bash infra/scripts/test-db-init.sh $(ID)
 .PHONY: test-db-init
 
 ##@ 组件接入、真机验证与发布（integrate / verify / permissions 自己拿项目锁，见 infra/scripts/project-lock.sh）
