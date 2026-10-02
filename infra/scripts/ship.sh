@@ -1,11 +1,16 @@
 #!/usr/bin/env bash
-# 发布一个组件或外壳：推送 main → 契约包 tag（Go）→ brickkit release → v tag（Go）→ 外壳视角拉取检查（Go）→ 打印父仓库要提交的路径。
+# 发布一个组件或外壳：发布前门禁 → 推送 main → 契约包 tag（Go）→ brickkit release → v tag（Go）→ 外壳视角拉取检查（Go）
+# → 打印父仓库要提交的路径。
 # 只有控制者运行。按顺序执行，第一处失败即停；已经推送的东西绝不回滚、删除或移动，只报告停在哪一步。
 # 可以重跑：已在 HEAD 上的 tag 视为已完成；已推送却不在 HEAD 上的 tag 一律 FAIL（发新版本，不移动 tag）。
 #
 # 用法：bash infra/scripts/ship.sh [--dry-run] <组件目录：components/<scope>/<name> | shell/be/<name>> <发布说明文件>
-#   --dry-run  只读检查照做（干净、分支、远端 tag、契约包 N-3 校验；为比较可能从远端取回提交对象，但不建任何本地引用），
-#              改动类命令（push、tag、release、拉取探针）只打印
+#   --dry-run  只读检查照做（干净、分支、发布前门禁、远端 tag、契约包 N-3 校验；为比较可能从远端取回提交对象，但不建任何
+#              本地引用），改动类命令（push、tag、release、拉取探针）只打印
+# 发布前门禁（第 1 步，推 main 之前）：openapi-additive-scan 与 config-key-scan --strict，只看本组件的违规。
+#   openapi 的基线是"上一个发布 tag"：破坏一旦打进 tag 就成了新基线、以后再也报不出来，所以必须在打 tag 之前拦。
+#   项目根取组件目录往上三层（<根>/components/<scope>/<name>、<根>/shell/<scope>/<name>）；be-acceptance 从本仓库
+#   tools/be-acceptance 构建（与 make gates 同一条 go build，输出到临时目录）。
 # 环境变量：SHIP_PROBE_RETRIES（拉取探针次数，默认 3）、SHIP_PROBE_INTERVAL（间隔秒数，默认 30）
 set -uo pipefail
 # brickkit release 交给旧 CLI 不会报错：dry-run 也先核对版本，不对就退出 2，一步都不走
@@ -66,11 +71,50 @@ local_tag_commit() { g rev-parse -q --verify "refs/tags/$1^{commit}" 2>/dev/null
 # 确保本地有这个提交对象（比较用）；只取对象、不建 tag 引用，dry-run 下也安全
 have_commit() { g cat-file -e "$1^{commit}" 2>/dev/null || g fetch -q --no-tags origin "$1" 2>/dev/null || g fetch -q --no-tags origin "refs/tags/$2" 2>/dev/null; g cat-file -e "$1^{commit}" 2>/dev/null; }
 
+# gate_scoped <门禁名> <本组件违规行前缀> <本组件提示行前缀> <命令…>：跑整个项目的门禁，只有本组件的 ✗ 才判红。
+# 门禁没有按组件筛选的参数；别的组件（例如还在 1.x、--strict 下也是 ✗ 的组件）的违规只计数、不挡本次发布。
+# 门禁退出非零、最后一行却不是"发现 N 条…"汇总时，是门禁自己出错（没扫完），一律判红。
+gate_scoped() {
+  local name="$1" pfx="$2" npfx="$3"; shift 3
+  local out rc last mine others
+  echo "  \$ ${*}"
+  out="$("$@" 2>&1)"; rc=$?
+  mine="$(printf '%s\n' "$out" | awk -v p="✗ $pfx" 'index($0, p) == 1')"
+  printf '%s\n' "$out" | awk -v p="ℹ $npfx" 'index($0, p) == 1' | sed 's/^/    /'
+  if [ $rc -eq 0 ]; then echo "    ✓ $name：本组件 0 条违规"; return 0; fi
+  last="$(printf '%s\n' "$out" | tail -1)"
+  if ! [[ "$last" =~ ^✗\ $name\ 发现\ [0-9]+\ 条 ]]; then
+    printf '%s\n' "$out" | tail -5 | sed 's/^/    /'
+    GATE_WHY="$name 自己出错（没扫完，没法确认本组件）：$last"; return 1
+  fi
+  if [ -n "$mine" ]; then
+    printf '%s\n' "$mine" | sed 's/^/    /'
+    GATE_WHY="$name：本组件 $(printf '%s\n' "$mine" | wc -l) 条违规（见上）"; return 1
+  fi
+  others="$(printf '%s\n' "$out" | grep -c '^✗ ' )"; others=$((others - 1))
+  echo "    ✓ $name：本组件 0 条违规（别的组件 $others 条违规，不挡本次发布）"
+}
+release_gates() {
+  local groot rel acc bin
+  groot="$(cd "$D/../../.." && pwd -P)"; rel="${D#"$groot"/}"
+  case "$rel" in components/*/*|shell/*/*) ;; *) fail "组件目录不在 <项目根>/components/<scope>/<name> 或 <项目根>/shell/<scope>/<name> 下，发布前门禁扫不到它：$D" ;; esac
+  acc="$ROOT/tools/be-acceptance"; bin="$(mktemp -d)/be-acceptance"
+  echo "  发布前门禁（项目根 $groot，只看 $rel）："
+  echo "  \$ (cd $acc && go build -o $bin ./cmd/be-acceptance)"
+  (cd "$acc" && go build -o "$bin" ./cmd/be-acceptance) > "$bin.build.log" 2>&1 \
+    || { sed 's/^/    /' "$bin.build.log" | tail -10; fail "构建 be-acceptance 失败（$acc），发布前门禁跑不了"; }
+  GATE_WHY=""
+  gate_scoped openapi-additive-scan "${rel#*/}/contracts/" "${rel#*/}" "$bin" gate openapi-additive-scan --root "$groot" \
+    && gate_scoped config-key-scan "$rel/component.yaml:" "$rel" "$bin" gate config-key-scan --root "$groot" --strict \
+    || { rm -rf "$(dirname "$bin")"; fail "发布前门禁 $GATE_WHY；修好再发布（还没推 main、没打任何 tag）"; }
+  rm -rf "$(dirname "$bin")"
+}
+
 echo "▶ 发布 $ID@$VER（$KIND）：$D$( [ "$DRY" = 1 ] && echo '  〔dry-run：改动类命令只打印〕')"
 HEAD_SHA=""
 
 # ---------- 第 1 步 ----------
-step 1 "目录干净、在 main、推送 main"
+step 1 "目录干净、在 main、发布前门禁、推送 main"
 top="$(g rev-parse --show-toplevel 2>/dev/null)" || fail "不是 Git 仓库"
 [ "$top" = "$D" ] || fail "组件目录必须是仓库根目录（brickkit release 才打裸 tag <版本>）：仓库根是 $top"
 dirty="$(g status --porcelain)"
@@ -78,6 +122,7 @@ dirty="$(g status --porcelain)"
 br="$(g rev-parse --abbrev-ref HEAD)"
 [ "$br" = main ] || fail "当前分支是 $br，不是 main"
 HEAD_SHA="$(g rev-parse HEAD)"
+release_gates || exit 1
 run g push origin main || fail "git push origin main 失败（不强推；先处理远端分叉）"
 if [ "$DRY" = 0 ]; then
   rm_sha="$(g ls-remote origin refs/heads/main | awk '{print $1}')"

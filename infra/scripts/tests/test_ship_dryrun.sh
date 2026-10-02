@@ -33,9 +33,11 @@ export PATH="$T/bin:$PATH" FAKE_CALLS="$T/calls"
 : > "$FAKE_CALLS"
 printf '## 新增\n- 测试发布\n' > "$T/notes.md"
 
-# fixture <名字> <go|python|shell>：建 bare 远端 + clone，提交并推送 main，回显工作目录
+# fixture <名字> <go|python|shell>：建 bare 远端 + clone，提交并推送 main，回显工作目录。
+# 工作目录放在 $T/<名字>/components/demo/thing（外壳：shell/be/x）：ship 的发布前门禁以组件目录往上三层为项目根
 fixture() {
-  local name="$1" kind="$2" w="$T/$1/work" r="$T/$1/remote.git"
+  local name="$1" kind="$2" w="$T/$1/components/demo/thing" r="$T/$1/remote.git"
+  [ "$kind" = shell ] && w="$T/$1/shell/be/x"
   git init -q --bare -b main "$r"
   git clone -q "$r" "$w" 2>/dev/null
   git -C "$w" checkout -q -b main 2>/dev/null || true
@@ -64,6 +66,8 @@ W="$(fixture a go)"
 out="$(bash "$SHIP" --dry-run "$W" "$T/notes.md" 2>&1)"; rc=$?
 if [ $rc -eq 0 ] && [ "$(echo "$out" | steps_order)" = "123456" ]; then ok "A dry-run 六步按顺序"; else bad "A rc=$rc order=$(echo "$out" | steps_order)\n$out"; fi
 echo "$out" | grep -q '\[dry-run\] git push origin main' && ok "A 打印 push main" || bad "A 没打印 push main"
+echo "$out" | grep -q "gate config-key-scan --root $T/a --strict" && echo "$out" | grep -q "gate openapi-additive-scan --root $T/a" \
+  && ok "A 发布前门禁照跑并打印命令（dry-run 也跑）" || bad "A 没打印发布前门禁命令:\n$out"
 echo "$out" | grep -q '\[dry-run\] git tag -a gen/demo/thing/v1.0.0' && ok "A 打印契约包 tag" || bad "A 没打印契约包 tag:\n$out"
 echo "$out" | grep -q '\[dry-run\] brickkit release --notes-file' && ok "A 打印 brickkit release" || bad "A 没打印 release"
 echo "$out" | grep -q '\[dry-run\] git tag -a v2.0.0' && ok "A 打印 v tag" || bad "A 没打印 v tag"
@@ -179,7 +183,7 @@ out="$(bash "$SHIP" --dry-run "$T/m-link" "$T/notes.md" 2>&1)"; rc=$?
 if [ $rc -eq 0 ] && echo "$out" | grep -q '▸ 第 1 步.*PASS'; then ok "M 符号链接路径可用"; else bad "M rc=$rc\n$out"; fi
 
 # ---------- N（M-3）. J 发布后本地 tag 全删（如新 clone）再重跑 → 第 2–4 步按远端判定 PASS ----------
-W="$T/j/work"
+W="$T/j/components/demo/thing"
 git -C "$W" tag -d 2.0.0 v2.0.0 gen/demo/thing/v1.0.0 >/dev/null
 : > "$FAKE_CALLS"
 out="$(bash "$SHIP" "$W" "$T/notes.md" 2>&1)"; rc=$?
@@ -196,6 +200,40 @@ for mode in --dry-run ""; do
     ok "O 旧版 brickkit（${mode:-真跑}）：exit 2、点名 $T/bin/brickkit、一步都不走"
   else bad "O ${mode:-真跑} rc=$rc calls=$(cat "$FAKE_CALLS")\n$out"; fi
 done
+
+# ---------- P（T8b1 审查 Important 2）. 本组件 configSchema 键名违规 → 第 1 步 FAIL，推 main / 打 tag 之前就停 ----------
+W="$(fixture p python)"
+printf 'configSchema:\n  properties:\n    pgSchema: {type: string}\n' >> "$W/component.yaml"
+git -C "$W" commit -q -am "驼峰键"          # 不推：真跑时必须连 main 都不推
+for mode in --dry-run ""; do
+  : > "$FAKE_CALLS"
+  out="$(bash "$SHIP" $mode "$W" "$T/notes.md" 2>&1)"; rc=$?
+  if [ $rc -ne 0 ] && echo "$out" | grep -q '▸ 第 1 步.*FAIL.*config-key-scan' && echo "$out" | grep -q 'pgSchema \[naming\]' \
+     && ! echo "$out" | grep -q 'git push origin main' && [ "$(echo "$out" | steps_order)" = "1" ] && [ ! -s "$FAKE_CALLS" ] \
+     && [ -z "$(git -C "$W" ls-remote --tags origin)" ] \
+     && [ "$(git -C "$W" ls-remote origin refs/heads/main | cut -f1)" != "$(git -C "$W" rev-parse HEAD)" ]; then
+    ok "P config-key-scan 红（${mode:-真跑}）：停在第 1 步，没推 main、没打 tag、没调 release"
+  else bad "P ${mode:-真跑} rc=$rc calls=$(cat "$FAKE_CALLS")\n$out"; fi
+done
+
+# ---------- Q. 本组件 openapi 相对上一个发布 tag 删了路径 → 第 1 步 FAIL ----------
+W="$(fixture q python)"
+mkdir -p "$W/contracts"
+printf 'openapi: 3.0.3\ninfo: {title: t, version: 1.0.0}\npaths:\n  /a:\n    get:\n      responses:\n        "200": {description: ok}\n  /b:\n    get:\n      responses:\n        "200": {description: ok}\n' > "$W/contracts/thing.openapi.yaml"
+git -C "$W" add -A && git -C "$W" commit -q -m "1.x 契约" && git -C "$W" tag -a 1.0.0 -m 1.0.0
+sed -i '/\/b:/,$d' "$W/contracts/thing.openapi.yaml"
+git -C "$W" commit -q -am "删了 /b" && git -C "$W" push -q origin main
+out="$(bash "$SHIP" --dry-run "$W" "$T/notes.md" 2>&1)"; rc=$?
+if [ $rc -ne 0 ] && echo "$out" | grep -q '▸ 第 1 步.*FAIL.*openapi-additive-scan' && echo "$out" | grep -q 'GET /b \[removed\]' \
+   && [ "$(echo "$out" | steps_order)" = "1" ]; then ok "Q openapi-additive-scan 红：停在第 1 步"; else bad "Q rc=$rc\n$out"; fi
+
+# ---------- R. 同一项目里别的 1.x 组件有违规（--strict 下也是 ✗）→ 只看本组件，不挡发布 ----------
+W="$(fixture r python)"
+mkdir -p "$T/r/components/old/legacy"
+printf 'apiVersion: brickkit/v1\nkind: Component\nmetadata:\n  id: old/legacy\n  version: 1.0.0\nconfigSchema:\n  properties:\n    pgSchema: {type: string}\n' > "$T/r/components/old/legacy/component.yaml"
+out="$(bash "$SHIP" --dry-run "$W" "$T/notes.md" 2>&1)"; rc=$?
+if [ $rc -eq 0 ] && echo "$out" | grep -q '▸ 第 1 步.*PASS' && echo "$out" | grep -q '别的组件.*不挡本次发布'; then ok "R 别的组件的违规不挡本组件发布"
+else bad "R rc=$rc\n$out"; fi
 
 [ $fail -eq 0 ] && echo "全部通过" || echo "有失败"
 exit $fail
