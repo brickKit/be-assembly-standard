@@ -6,6 +6,7 @@
 # 用法：bash infra/scripts/verify-component.sh <id>        （make verify ID=<id> [ROUTE=…] [FOCUS=1] [SEED=1] [KEEP=1]）
 #   环境变量：
 #     ROUTE='<路径>' 或 '<METHOD> <路径>'  受保护路由（省略方法时 GET）；不带 token 期望 401/503，带 token 期望 200
+#     ROUTE_BODY='<JSON>'                 受保护路由要请求体时给（两次请求都带）；带 token 那次遇到 503（bundle 未就绪）最多重试 30 秒
 #     FOCUS=1        容器形态之后再跑一次 brickkit up --focus <id>（宿主机进程），结束后 brickkit local off
 #     SEED=1         健康检查通过后、收尾之前跑 make -C <组件目录> seed（组件 Makefile 有 seed 目标时；没有就 SKIP 写明原因；
 #                    seed 失败算 FAIL）。种子灌进 brickkit_db，收尾 down 之后数据还在
@@ -353,7 +354,10 @@ elif [ "$IS_SHELL" = 0 ]; then
     row "受保护路由" SKIP "没给 ROUTE"
   else
     if [[ "$ROUTE" =~ ^([A-Z]+)[[:space:]]+(.+)$ ]]; then M="${BASH_REMATCH[1]}"; RP="${BASH_REMATCH[2]}"; else M=GET; RP="$ROUTE"; fi
-    code="$(curl_in_net "http://$SVC:$PORT$RP" -X "$M")"
+    # ROUTE_BODY：受保护路由要请求体时（如 logout 要 refresh_token、GraphQL 要持久化查询）给一段 JSON，两次请求都带上
+    BODY_ARGS=()
+    [ -n "${ROUTE_BODY:-}" ] && BODY_ARGS=(-H "Content-Type: application/json" --data-raw "$ROUTE_BODY")
+    code="$(curl_in_net "http://$SVC:$PORT$RP" -X "$M" "${BODY_ARGS[@]}")"
     echo "$M http://$SVC:$PORT$RP（不带 token）→ $code" >> "$(log http.log)"
     case "$code" in
       401|503) row "$M $RP 不带 token → 401/503" PASS "实际 $code" "$(log http.log)" ;;
@@ -372,8 +376,13 @@ elif [ "$IS_SHELL" = 0 ]; then
         elif [ $trc != 0 ] || [ -z "$TOKEN" ]; then
           row "$M $RP 带 token → 200" FAIL "取 dev.superuser 的 token 失败（rc=$trc）" "$TL"
         else
-          code="$(curl_in_net "http://$SVC:$PORT$RP" -X "$M" -H "Authorization: Bearer $TOKEN")"
-          echo "$M http://$SVC:$PORT$RP（带 dev.superuser 的 token）→ $code" >> "$(log http.log)"
+          # 503 = 权限 bundle 还没拉到（组件与 authz 同时启动的时序），最多等 30 秒；其余状态码不重试
+          for i in $(seq 1 10); do
+            code="$(curl_in_net "http://$SVC:$PORT$RP" -X "$M" -H "Authorization: Bearer $TOKEN" "${BODY_ARGS[@]}")"
+            echo "$M http://$SVC:$PORT$RP（带 dev.superuser 的 token，第 $i 次）→ $code" >> "$(log http.log)"
+            [ "$code" = 503 ] || break
+            sleep 3
+          done
           [ "$code" = 200 ] && row "$M $RP 带 token → 200" PASS "" "$(log http.log)" || row "$M $RP 带 token → 200" FAIL "实际 $code" "$(log http.log)"
         fi
     else

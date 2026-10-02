@@ -101,7 +101,7 @@ integrate:  ## 接入一个组件或外壳：dev-env/db-init → add 或 upgrade
 	@test -n "$(ID)" || { echo "用法：make integrate ID=<scope>/<name> [VERSION=<版本>]（外壳 ID=be/<name>，版本默认 1.0.0）"; exit 2; }
 	@bash $(S)/integrate.sh "$(ID)" $(VERSION)
 
-verify:  ## 真机验证一个组件或外壳：build → 只起闭包 → 迁移/健康/鉴权 → test-cross → [focus] → 收尾。make verify ID=<id> [ROUTE='GET /路径'] [FOCUS=1] [KEEP=1] [FORCE_BUILD=1] [SEED=1]（只有 =1 才生效；SEED=1 在健康检查之后灌组件的 make seed）
+verify:  ## 真机验证一个组件或外壳：build → 只起闭包 → 迁移/健康/鉴权 → test-cross → [focus] → 收尾。make verify ID=<id> [ROUTE='GET /路径'] [FOCUS=1] [KEEP=1] [FORCE_BUILD=1] [SEED=1] [ROUTE_BODY='<JSON>']（只有 =1 才生效；SEED=1 在健康检查之后灌组件的 make seed；ROUTE_BODY 是受保护路由的请求体，经环境传入）
 	@test -n "$(ID)" || { echo "用法：make verify ID=<scope>/<name> [ROUTE='<METHOD> <路径>'] [FOCUS=1] [KEEP=1] [FORCE_BUILD=1] [SEED=1] [OUT=<目录>]"; exit 2; }
 	@ROUTE="$(ROUTE)" FOCUS="$(FOCUS)" KEEP="$(KEEP)" FORCE_BUILD="$(FORCE_BUILD)" SEED="$(SEED)" OUT="$(OUT)" bash $(S)/verify-component.sh "$(ID)"
 
