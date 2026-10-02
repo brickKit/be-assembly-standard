@@ -17,11 +17,12 @@ set -uo pipefail
 HERE=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 die() { echo "❌ component-check.sh: $*" >&2; exit 2; }
 [ $# = 1 ] && [ "${1#-}" = "$1" ] || die "用法：bash component-check.sh <scope>/<name>"
-envout=$(bash "$HERE/env.sh" "$1") || exit 2
+# 只读核对不需要 brickkit / buf / .env：BE_ENV_NO_TOOLS=1 让 env.sh 跳过这些核对（task-8a 审查 Minor 3）
+envout=$(BE_ENV_NO_TOOLS=1 bash "$HERE/env.sh" "$1") || exit 2
 eval "$envout"
 
 exec python3 - "$C" "$ID" "$HERE/migrate-manifest.py" <<'EOF'
-import fnmatch, importlib.util, os, re, subprocess, sys
+import importlib.util, os, re, subprocess, sys
 
 C, ID, MM = sys.argv[1:4]
 sys.dont_write_bytecode = True             # 只读：不在工具目录里留 __pycache__
@@ -44,7 +45,9 @@ SKIP = tuple(mm.SKIP_DIRS) + ('.claude/',)
 
 
 def skipped(p):
-    return p.startswith(SKIP) or any(f'/{d}' in p for d in mm.SKIP_DIRS)
+    # 只跳过顶层目录（task-8a 审查 Minor 4）：被 .gitignore 忽略的文件 git ls-files 已经去掉了，
+    # 嵌套的 backend/vendor/ 之类是组件自己的源码，照查
+    return p.startswith(SKIP)
 
 
 _cache = {}
@@ -108,12 +111,19 @@ for p in scope:
     cand = [(0, f'（文件名）{p}')] if mm.HIST_RE.search(p) else []
     cand += [(n, ln) for n, ln in enumerate(lines_of(p) or [], 1) if mm.HIST_RE.search(ln)]
     for n, ln in cand:
-        a = next((i for i, x in enumerate(allow) if fnmatch.fnmatch(p, x['path']) and x['text'] in ln), None)
-        if a is None:
+        # 放行（task-8a 审查 Important 1）：path 必须恰好是这个文件；这一行的**每一处**命中都要落在某个
+        # 放行 text 在这一行里的出现范围内——一条放行盖不住同一行的第二处引用
+        mine = [(i, x) for i, x in enumerate(allow) if x['path'] == p]
+        spans = [(m.start(), m.end(), i) for i, x in mine for m in re.finditer(re.escape(x['text']), ln)]
+        covered = []
+        for h in mm.HIST_RE.finditer(ln):
+            c = next((i for s, e, i in spans if s <= h.start() and h.end() <= e), None)
+            covered.append(c)
+        if not covered or None in covered:
             hits.append(f'{p}:{n}: {ln.strip()[:160]}')
         else:
-            used.add(a)
-            info.append(f'{p}:{n}: history_allow 放行（{allow[a]["why"]}）')
+            used.update(covered)
+            info.append(f'{p}:{n}: history_allow 放行（{"；".join(sorted({allow[i]["why"] for i in covered}))}）')
 info += [f'history_allow 没用上（可以删掉）：{x}' for i, x in enumerate(allow) if i not in used]
 crit('历史 / 归档引用（§、决策 N、设计计划、阶段…、Task N、docs/plans/、archive/；除 gen/ *.proto migrations/*.sql .claude/）',
      hits, info)

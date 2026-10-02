@@ -204,7 +204,8 @@ gen_probs() {
   if ! buf generate --template buf.gen.yaml -o "$tmp" >"$tmp/buf.log" 2>&1; then
     echo "buf generate 失败：$(head -3 "$tmp/buf.log" | tr '\n' ' ')"
   else
-    python3 - gen "$tmp/gen" <<'PYEOF'
+    # 比对脚本自己出错（读不了生成物、解码失败）也是问题：退出码非零就记一条，stderr 一并收进 gprob（审查 Minor 1）
+    python3 - gen "$tmp/gen" <<'PYEOF' || echo "gen/ 比对脚本出错（exit $?），无法确认 gen/ 是最新的"
 import os, sys
 a, b = sys.argv[1:3]
 def pbs(root):
@@ -222,7 +223,7 @@ PYEOF
   fi
   rm -rf "$tmp"
 }
-gprob=$(gen_probs)
+gprob=$(gen_probs 2>&1)
 crit "$(pf test -z "$gprob")" "gen/ 是当前 contracts/*.proto 的生成结果（buf generate 到临时目录比对）"
 [ -n "$gprob" ] && echo "$gprob" | head -10 | sed 's/^/        │ /'
 crit "$(pf test "$(head -1 go.mod)" = "module $M/v2")" "go.mod 第一行是 module $M/v2（实际：$(head -1 go.mod)）"

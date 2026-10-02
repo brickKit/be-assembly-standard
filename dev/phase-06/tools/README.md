@@ -13,6 +13,7 @@
 | `manifest-overrides.yaml` | 第 3 步 | 每个组件的人工输入（英文名称与描述、R27、P11、新键、`local`、`history_allow`） |
 | `go-v2.sh` | 4.0–4.4、4.6 / C4 | 契约包统一成嵌套模块、`/v2`、契约包真实版本、升 SDK、（SDK ≥ v0.4.0 时）迁移入口改成一行，最后跑判据 |
 | `migrate-entry.py` | 4.6 | 由 `go-v2.sh` 调用：迁移入口一行化、删 `Module.Migrations` 字段；也可单独 `--check` |
+| `dotenv-pgpass.py` | 4.17 | 由 `env.sh` 输出的那一行在 eval 时调用：从 `.env` 只取 `POSTGRES_PASSWORD`、去引号、URL 编码 |
 | `component-check.sh` | 4.5、4.9、5.1、5.2 | 只读核对：旧键 / 旧平台变量 grep、历史与归档引用扫描、文档小节数 / 互链 / 链接 / 占位符，每项 PASS/FAIL |
 | `tests/run.sh` | — | 在 scratch 克隆上跑全部脚本并断言（含 C-1） |
 
@@ -28,11 +29,12 @@ eval "$(bash $ROOT/dev/phase-06/tools/env.sh mdm/customer)"
 - 输出 `ROOT ID REPO UREPO C S SCHEMA ROLE SVC NET` 十个 `export` 行（取值规则同 component-loop §0.1），并 `mkdir -p $S`。`SCHEMA`/`ROLE` 取自 `registry/schemas.tsv`，不连库的组件为空。
 - 另外三行（原样输出，eval 的那一刻才展开）：
   - `case ":$PATH:" in *":$HOME/go/bin:"*) ;; *) export PATH="$PATH:$HOME/go/bin" ;; esac`——`~/go/bin`（buf、protoc-gen-go、grpcurl）**追加在末尾**，绝不放前面：`~/go/bin/brickkit` 是旧的 v0.4.6，放前面会遮住 `~/.local/bin` 的 v1.1.0（task-7 审查 Important 2：`make ship` 的 `brickkit release` 会交给旧 CLI）。已经在 PATH 里就不再加，eval 几次都只有一份。
-  - `export TEST_PG_DSN="postgres://postgres:$( . <ROOT>/.env …; printf %s "$POSTGRES_PASSWORD" )@localhost:5432/brickkit_test_db?sslmode=disable"`——口令在 eval 时从 `.env` 读（子 shell 里 source，只取 `POSTGRES_PASSWORD`，别的 `.env` 变量不进当前 shell），**输出与会话记录里只有变量名**。总是覆盖已有的 `TEST_PG_DSN`（测试只连 `brickkit_test_db`）。
+  - `export TEST_PG_DSN="postgres://postgres:$(python3 <tools>/dotenv-pgpass.py <ROOT>/.env)@localhost:5432/brickkit_test_db?sslmode=disable"`——口令在 eval 时读，**输出与会话记录里只有变量名**。`dotenv-pgpass.py` **不把 `.env` 当 shell 执行**（修复轮 M2：Compose 的 `.env` 语法不是 shell 语法，source 会把 `$(…)` 之类当命令跑）：逐行找到第一行 `POSTGRES_PASSWORD=`（允许 `export ` 前缀）就停，别的键（含多行 PEM）只被跳过；成对的单 / 双引号去掉，不带引号时 ` #` 起是行内注释；用 `urllib.parse.quote(safe="")` 编码，解码结果与 be-sdk-go `PGDSN`（`url.UserPassword`）相同，所以含 `@ : / %`、空格的口令也能用。不支持跨行的口令值、双引号里的转义序列（原样保留）。总是覆盖已有的 `TEST_PG_DSN`（测试只连 `brickkit_test_db`）。
   - `export TEST_NATS_URL=nats://localhost:4222`。
   有了这三行，C1、4.17 不用再手工 `set -a; . .env`，`make test` 也不会因为没设 `TEST_PG_DSN` 全部 SKIP。
-- 打印之前先核对（按追加 `~/go/bin` 之后的 PATH）：`brickkit version` 第一行恰好是 `BrickKit CLI v1.1.0`、`buf` 在；`.env`（`BE_DOTENV` 可换路径，测试用）存在、有 `POSTGRES_PASSWORD` 这个键、值非空且不含 URL 要转义的字符（只在子 shell 里判断，不打印）。任一不过：`❌` 一行写明 PATH 上的是哪个 brickkit、什么版本，退出码 2。stderr 另有一行 `ℹ️` 摘要（只有版本与键名）。
-- 失败（没设 `BE_SCRATCH`、ID 不是 `<scope>/<name>`、组件目录里没有 `component.yaml`、上面的工具核对）只写 stderr、退出码 2，`eval "$(…)"` 不会吃进半截输出。`docs-skel.sh`、`go-v2.sh`、`component-check.sh` 都先调 `env.sh`，所以它们也会因为旧 brickkit / 没有 buf 而失败。
+- 打印之前先核对（按追加 `~/go/bin` 之后的 PATH）：`brickkit version` 第一行恰好是 `BrickKit CLI v1.1.0`、`buf` 在；`.env`（`BE_DOTENV` 可换路径，测试用）存在、`dotenv-pgpass.py --check` 通过（有这一行、值非空、引号成对；不打印）。任一不过：`❌` 一行写明 PATH 上的是哪个 brickkit、什么版本，退出码 2。stderr 另有一行 `ℹ️` 摘要（只有版本与键名）。
+- 失败（没设 `BE_SCRATCH`、ID 不是 `<scope>/<name>`、组件目录里没有 `component.yaml`、上面的工具核对）只写 stderr、退出码 2，`eval "$(…)"` 不会吃进半截输出。`docs-skel.sh`、`go-v2.sh` 先调 `env.sh`，所以它们也会因为旧 brickkit、没有 buf、没有可用的 `.env` 而失败。
+- **`BE_ENV_NO_TOOLS=1`**（修复轮 M3）：跳过 brickkit / buf / `.env` 的核对，也不输出 `TEST_PG_DSN` / `TEST_NATS_URL` 两行（十个变量与 PATH 行照旧），stderr 一行 `ℹ️` 说明。给只读、不需要这些工具的脚本用：`component-check.sh` 总是这样调 `env.sh`，所以它在没有 brickkit、buf、`.env` 的机器上也能跑。
 - `ROOT` 由脚本位置推出，不读环境变量。
 
 ## docs-skel.sh
@@ -74,10 +76,10 @@ python3 $ROOT/dev/phase-06/tools/migrate-manifest.py <id> --check; echo "exit=$?
 - 先去掉含引用的括号：`# 客户主数据全员可见（设计书 §14.2.2：…）` → `# 客户主数据全员可见`；括号在开头时紧跟的"，"一起去掉；去掉后只剩标点的注释行删掉。
 - 去掉括号仍有引用的：整行注释删掉它所在的**整块**（连续的 `#` 行，空行为界）；行尾注释删掉注释本身（值保留，`tier: backend   # 设计书 §3.5.1 …` → `tier: backend`），连同它下面几行的续行（`#` 列与它相差不超过 2 的整行注释）。
 - 块标量（`|` / `>`）里的内容、引号里的 `#` 不是注释，不动；语义自检照旧（解析结果必须等于"旧文件去掉三个键、加上追加的条目"）。
-- 输出只由 tag 原文 + overrides 决定，所以重跑仍是"未改动"，手改保护照常工作——**不要再手工清这些注释**（试点就是手清之后撞上了 exit 3）。删掉的注释里还成立的结论写进 `docs/design.md`；原文在 `docs-skel.sh` 留底的 `$S/old/assembly.yaml`。
+- 输出只由 tag 原文 + overrides 决定，所以重跑仍是"未改动"，手改保护照常工作——**不要再手工清这些注释**（试点就是手清之后撞上了 exit 3）。摘要行打印 `assembly.yaml：去掉 N 行归档引用注释`；`--write` 把每一行写进 **`$S/assembly-removed-comments.txt`**（`删  <原文>` / `改  <原文>` + `→ <现在>`，每次 `--write` 重写，修复轮 M6）——C5 照这份清单把仍成立的结论（不带出处）写进 `docs/design.md`，不用再去 diff `$S/old/assembly.yaml`。
 - 选的是"脚本自己清"而不是"最后一次 `--write` 之后人工清、再 `--force`"：后者每次改 overrides 重跑都要重新手清一遍，而且 `--force` 会顺手吞掉别的手改。
 
-**发布说明骨架（`--write`，component-loop 8.1）**：`$BE_SCRATCH/06b/<repo>/notes-2.0.0.md` **不存在时**写出，已存在就跳过（`⏭ … 已存在，不覆盖`），所以人补过的内容不会被冲掉；要重新生成就先删掉它。`--write` 没设 `BE_SCRATCH` 时在写任何文件之前 exit 2。内容：
+**发布说明骨架（`--write`，component-loop 8.1）**：每次 `--write` 都重写 `$BE_SCRATCH/06b/<repo>/notes-2.0.0.generated.md`；`notes-2.0.0.md` 只在**不存在时**写（内容与 generated 相同），已存在就跳过（`⏭ … 已存在，不覆盖`），所以人补过的内容不会被冲掉。已存在且它的 `## 升级前必须做` 一节与重新生成的不同（例如第一次 `--write` 之后 overrides 又加了 `add_properties` / `drop_default`），打印 `⚠️ … 升级前必须做 … 对照 …notes-2.0.0.generated.md 更新`（修复轮 M5）——这一节会变成 tag 注释，过期了不会再有人发现。`ship` 前确认没有这条 ⚠️。`--write` 没设 `BE_SCRATCH` 时在写任何文件之前 exit 2。内容：
 - 第一行 `<id> 2.0.0`（tag 注释的标题）；`## 升级前必须做（破坏性变更）`：
   - 旧键 → 新键逐条（`` `pgSchema` → `PG_SCHEMA` ``，…，即 `--write` 打印的映射），`config/<repo>.yaml` 要按新键重写；不再读取平台注入的 `DATABASE_*` / `MQ_*`（按旧 `resources` 有哪种）；
   - 连库组件：`PG_*` 与 `NATS_URL` 改为组件自己声明，登录角色 `<role>`、`PG_SCHEMA` 默认值、角色要在 schema 上有 USAGE + CREATE；
@@ -103,7 +105,7 @@ python3 $ROOT/dev/phase-06/tools/migrate-manifest.py <id> --check; echo "exit=$?
 
 ## manifest-overrides.yaml
 
-每个组件一段，字段：`name`、`description`（英文，必填）、`tags`、`add_properties`、`required_add`、`drop_default`、`deps_add`、`start_period_seconds`、`migration_command`、`local`（必填：`language` + 数组 `runCommand`）、`permissions_add`、`menus_add`、`edge_routes_add`、`history_allow`（`component-check.sh` 用：`[{path: <glob>, text: <命中行里的一段原文>, why: <为什么必须留着>}]`，三个键都必填且非空）。写了别的字段脚本就失败。**本文件是 C3 之后所有清单增量的唯一入口**：改这里，再重跑 `--write`。初稿按 component-loop §2.2 写全 13 个组件：
+每个组件一段，字段：`name`、`description`（英文，必填）、`tags`、`add_properties`、`required_add`、`drop_default`、`deps_add`、`start_period_seconds`、`migration_command`、`local`（必填：`language` + 数组 `runCommand`）、`permissions_add`、`menus_add`、`edge_routes_add`、`history_allow`（`component-check.sh` 用：`[{path: <确切的文件路径>, text: <命中行里的一段原文>, why: <为什么必须留着>}]`，三个键都必填且非空；`path` 不许带 `* ? [`，`text` 至少 6 个字符且本身含 `HIST_RE` 命中——否则 exit 2，修复轮 I1）。写了别的字段脚本就失败。**本文件是 C3 之后所有清单增量的唯一入口**：改这里，再重跑 `--write`。初稿按 component-loop §2.2 写全 13 个组件：
 
 - `infra/authz` `drop_default: [PERMISSION_CATALOG]`、`infra/iam-casdoor` `drop_default: [ENABLED_COMPONENTS]`（R27）。
 - `erp/inventory` `add_properties: LOW_STOCK_THRESHOLD {type: string, default: "10"}`（plan-06b T10）。
@@ -118,14 +120,14 @@ python3 $ROOT/dev/phase-06/tools/migrate-manifest.py <id> --check; echo "exit=$?
 bash $ROOT/dev/phase-06/tools/component-check.sh <id>; echo "exit=$?"
 ```
 
-只读，一条命令跑完清单里原来手工 grep 的几项；每项一行 `PASS` / `FAIL`，`FAIL` 下面逐处列出 `文件:行: 原文`（最多 40 处）；任一 `FAIL` 就 exit 1，用法错误 / overrides 写错 exit 2。范围是 `git ls-files -co --exclude-standard`（已跟踪 + 未跟踪但没被忽略：提交前就能查），跳过 `gen/ node_modules/ dist/ .venv/ build/ vendor/ .claude/` 与二进制文件。建议在第 4 步改完代码、第 5 步写完文档、提交之前各跑一次（C4 / C5 的判据之一：`exit=0`）。
+只读，一条命令跑完清单里原来手工 grep 的几项；每项一行 `PASS` / `FAIL`，`FAIL` 下面逐处列出 `文件:行: 原文`（最多 40 处）；任一 `FAIL` 就 exit 1，用法错误 / overrides 写错 exit 2。范围是 `git ls-files -co --exclude-standard`（已跟踪 + 未跟踪但没被忽略：提交前就能查），跳过二进制文件。两套排除范围（修复轮 M7）：4.5、4.9 与文档几项跳过**顶层**的 `gen/ node_modules/ dist/ .venv/ build/ vendor/ .claude/`（只认顶层：被 `.gitignore` 忽略的文件 `ls-files` 已经去掉了，嵌套的 `backend/vendor/` 之类是组件自己的源码，照查，修复轮 M4）；历史扫描另有自己的排除，见表里那一行。建议在第 4 步改完代码、第 5 步写完文档、提交之前各跑一次（C4 / C5 的判据之一：`exit=0`）。
 
 | 检查项 | 出处 | 规则 |
 |---|---|---|
 | 4.5 无驼峰键读取 | 4.5 第一条 grep | Go `(String\|StringOr\|MustString\|Int\|IntOr\|Bool\|BoolOr)\("[a-z]`；Python / TS 对应的 `.string_or("x` / `.stringOr("x` 等（扩到三种语言） |
 | 4.5 无旧平台变量 / 旧 API | 4.5 第二条 grep | `besdk.(Endpoint\|MustEndpoint)(`、`StorageEndpoint`、`STORAGE_ENDPOINT`、`DATABASE_`、`MQ_(HOST\|PORT\|USER\|PASSWORD)`；`*.go *.py *.ts *.js *.sh *.mk Makefile`（清单原文只查 Go / sh / Makefile） |
 | 4.9 scripts/ | 4.9 | `scripts/` 下 `1-0-[0-9]+`（旧版本服务名）或 `DATABASE_` |
-| 历史 / 归档引用 | 5.1"不写历史"；审查 Part 3 (c)-6 | `HIST_RE`（见 migrate-manifest.py 一节）扫除 `gen/`、`*.proto`、`migrations/*.sql`、`.claude/` 以外的**全部**文件的每一行，外加文件名本身（残留的 `docs/手册.md`）；`go.mod`、`buf.yaml`、`LICENSE`、`Makefile`、`Dockerfile` 都在范围里（试点人工 grep 漏掉的就是前三个）。确有理由留着的命中写进 overrides 的 `history_allow`：打印成 `ℹ️ … history_allow 放行（why）`，不算 FAIL；没用上的条目也用 `ℹ️` 列出 |
+| 历史 / 归档引用 | 5.1"不写历史"；审查 Part 3 (c)-6 | `HIST_RE`（见 migrate-manifest.py 一节）扫除 `gen/`、`*.proto`、`migrations/*.sql`、`.claude/` 以外的**全部**文件的每一行，外加文件名本身（残留的 `docs/手册.md`）；`go.mod`、`buf.yaml`、`LICENSE`、`Makefile`、`Dockerfile` 都在范围里（试点人工 grep 漏掉的就是前三个）。排除只有顶层 `gen/`、`.claude/` 与任意位置的 `*.proto`、`migrations/*.sql`。确有理由留着的命中写进 overrides 的 `history_allow`：`path` 必须等于这个文件，而且这一行的**每一处** `HIST_RE` 命中都要落在某条放行 `text` 在这一行里的出现范围内（一条放行盖不住同一行的第二处引用）；放行的行打印成 `ℹ️ … history_allow 放行（why）`，不算 FAIL；没用上的条目也用 `ℹ️` 列出 |
 | en/zh `##` 小节数 | 5.2 第一行 | `BRICKKIT`、`AGENTS`、`README`、`docs/design` 四对，缺文件即 FAIL；代码块（```` ``` ```` / `~~~`）与 brickKit 维护块（`brickkit:managed:begin`…`end`）里的不计 |
 | 首行互链 | 5.1 | `AGENTS` / `README` / `docs/design` 两种语言的第一行都含 `[English](X.md)` 与 `[中文](X.zh.md)`（`BRICKKIT*.md` 不许有相对链接，所以不查） |
 | 没有 `../` 链接 | 5.1、`DOC_LINK_NOT_PORTABLE` | 全部组件 `*.md`：`](../…` 或引用式 `[x]: ../…` |
@@ -158,7 +160,7 @@ bash $ROOT/dev/phase-06/tools/go-v2.sh <id> --recheck; echo "exit=$?"
    - Dockerfile 不用改：`go build -o /out/migrate ./backend/cmd/migrate` + `COPY --from=build /out/migrate /app/migrate` 照旧，`.sql` 已嵌进二进制（`COPY migrations /app/migrations` 留着无害）。实测（mdm/customer 克隆，v0.4.0）：`docker build` 通过；镜像里 `./migrate` 无参数 → `用法：migrate up|down（收到 []）`、exit 2；`./migrate up` 不给 `PG_*` → `缺少数据库连接配置：PG_HOST, …`、exit 1。
 8. `go mod tidy`（`lib/pq`、旧入口的 `source/file` 随之消失；golang-migrate 只剩 SDK 带进来的 indirect）、`go build ./...`、`go vet ./...`。
 
-**判据**（每条 `PASS`/`FAIL`，任一 FAIL 就 exit 1）：BUILD_OK；`go.mod` 第一行 `module …/v2`；`go.mod` 不 require 自己的旧路径；契约包是嵌套模块且模块路径不带 `/v2`；根 `go.mod` require 的契约包版本 = 4.3 算出的版本（不是 `v0.0.0`）且有本地 replace；根 `go.mod` 里**除契约包外没有别的 replace**（例如为了先用上未发布的 SDK 指到本机 `tools/be-sdk-go`：本机全绿，`brickkit build` 时路径不在构建上下文里才失败）；`go list -m all` 里本仓库模块**恰好**两行（`…/v2` 与 `…/gen/<d>/<n> vX => ./gen/<d>/<n>`）；`go list -deps -test` 里本仓库模块只有这两个；import 全部带 `/v2`（契约包除外；没有不带子路径的裸导入 `"github.com/brickKit/<repo>"`，也没有 `…/v2/gen/…`；`//go:build ignore` 的文件也查）；Dockerfile 先 `COPY . .` 再 `go mod download`；Dockerfile 编译 `./backend/cmd/migrate` 并把二进制 `COPY --from` 进最终镜像；SDK ≥ v0.4.0 时 `cmd/migrate/main.go` 恰好是那一行入口、非 gen 代码里没有 `Migrations:` 字段（`--recheck` 按 `go.mod` 里的 SDK 版本判断要不要查这条）；给了 `--sdk` 时 be-sdk-go 版本一致。**gen/ 是当前 `.proto` 的生成结果**（task-7 审查 Minor 8；完整运行与 `--recheck` 都判）：`buf generate --template buf.gen.yaml -o <$S 下的临时目录>`，把生成的 `gen/**/*.pb.go` 与组件的 `gen/` 逐个比——只在 `gen/` 里有（删掉的 `.proto` 留下的、手工加的）、只在生成结果里有（忘了生成）、内容不同（改了 `.proto` 没重新生成、手改了生成物）都 FAIL 并点名文件；不写 `gen/`。本项目 11 个 Go 组件的 `buf.gen.yaml` 都只用本机插件（`local: protoc-gen-go` / `protoc-gen-go-grpc`，在 `~/go/bin`）、`buf.yaml` 没有 `deps`，所以离线可跑；`buf` / `buf.gen.yaml` 缺失也是 FAIL，不跳过。实测（T8，组件当前检出）：10 个一致，**`infra/workflow` 的 `gen/infra/workflow/v1/workflow_grpc.pb.go` 与 `.proto` 不一致**（`ListTasks` 的注释改过、没重新生成）——它的 Task 跑 `go-v2.sh` 会在这条 FAIL，先 `buf generate`（只是注释，按 4.0 升 patch）。
+**判据**（每条 `PASS`/`FAIL`，任一 FAIL 就 exit 1）：BUILD_OK；`go.mod` 第一行 `module …/v2`；`go.mod` 不 require 自己的旧路径；契约包是嵌套模块且模块路径不带 `/v2`；根 `go.mod` require 的契约包版本 = 4.3 算出的版本（不是 `v0.0.0`）且有本地 replace；根 `go.mod` 里**除契约包外没有别的 replace**（例如为了先用上未发布的 SDK 指到本机 `tools/be-sdk-go`：本机全绿，`brickkit build` 时路径不在构建上下文里才失败）；`go list -m all` 里本仓库模块**恰好**两行（`…/v2` 与 `…/gen/<d>/<n> vX => ./gen/<d>/<n>`）；`go list -deps -test` 里本仓库模块只有这两个；import 全部带 `/v2`（契约包除外；没有不带子路径的裸导入 `"github.com/brickKit/<repo>"`，也没有 `…/v2/gen/…`；`//go:build ignore` 的文件也查）；Dockerfile 先 `COPY . .` 再 `go mod download`；Dockerfile 编译 `./backend/cmd/migrate` 并把二进制 `COPY --from` 进最终镜像；SDK ≥ v0.4.0 时 `cmd/migrate/main.go` 恰好是那一行入口、非 gen 代码里没有 `Migrations:` 字段（`--recheck` 按 `go.mod` 里的 SDK 版本判断要不要查这条）；给了 `--sdk` 时 be-sdk-go 版本一致。**gen/ 是当前 `.proto` 的生成结果**（task-7 审查 Minor 8；完整运行与 `--recheck` 都判）：`buf generate --template buf.gen.yaml -o <$S 下的临时目录>`，把生成的 `gen/**/*.pb.go` 与组件的 `gen/` 逐个比——只在 `gen/` 里有（删掉的 `.proto` 留下的、手工加的）、只在生成结果里有（忘了生成）、内容不同（改了 `.proto` 没重新生成、手改了生成物）都 FAIL 并点名文件；不写 `gen/`。本项目 11 个 Go 组件的 `buf.gen.yaml` 都只用本机插件（`local: protoc-gen-go` / `protoc-gen-go-grpc`，在 `~/go/bin`）、`buf.yaml` 没有 `deps`，所以离线可跑；`buf` / `buf.gen.yaml` 缺失、比对脚本自己出错（读不了生成物等，修复轮 M1）也是 FAIL，不跳过。插件用的是 PATH 上**第一个** `protoc-gen-go` / `protoc-gen-go-grpc`；`~/go/bin` 现在是追加在末尾的，如果系统里另装了别的版本、排在前面，生成物的版本头不同，所有组件都会在这条 FAIL（大声失败，修复轮 M8）——这时先核对 `command -v protoc-gen-go` 是 `~/go/bin` 里那个，**不要**照着 FAIL 去 `buf generate`（会用错版本的插件重写 `gen/`，凭空造出一次契约包升版）。实测（T8，组件当前检出）：10 个一致，**`infra/workflow` 的 `gen/infra/workflow/v1/workflow_grpc.pb.go` 与 `.proto` 不一致**（`ListTasks` 的注释改过、没重新生成）——它的 Task 跑 `go-v2.sh` 会在这条 FAIL，先 `buf generate`（只是注释，按 4.0 升 patch）。
 最后打印 `📌 第 8.3 步需要打的契约包 tag：gen/<d>/<n>/vX`，或"不需要"。
 
 `--recheck` 只做 4.3 + tidy/build/vet + 判据：不拆模块、不改 import、不升 SDK、**不清 C-1 残留**（让判据报出来）。`--sdk` 可选（给了就核对版本）。契约改动的顺序：改 `.proto` → `buf generate` → `--recheck`（gen 判据 PASS、4.3 升到下一个 minor）；只改 `.proto` 就 `--recheck` 会在 gen 判据 FAIL。
@@ -185,6 +187,7 @@ BE_SCRATCH=<会话 scratchpad> bash dev/phase-06/tools/tests/run.sh      # 约 2
 - `go-v2.sh`：形态 A（mdm/customer，`v1.0.6`）、形态 B（infra/notification，拆出 `v1.0.0`、Dockerfile）、两者提交后重复运行 `git status --short` 为空、`--recheck` 在契约有变化时升到 `v1.1.0` 并报出要打的 tag、C-1 复现与捕获、Python 组件被拒绝。
 - §4.6：真 v0.4.0 下的 mdm/customer（形态 A，已有嵌入包）与 im-dingtalk（形态 B，删掉嵌入包、由脚本新建）：exit 0、`main.go` 逐字等于一行入口、没有 `Migrations` 字段与 migrations import、`role` 保留、gofmt、`lib/pq` 消失、`go build ./... && go vet ./...`、两条判据 PASS、提交后重跑无改动；`main.go` 多一行或 Dockerfile 不拷 migrate 二进制 → `--recheck` FAIL；v0.3.2 的组件不做 §4.6。
 - T8 `migrate-manifest.py`：13 个组件预览不写发布说明、`--write` 写出三节骨架、不出现"不再有默认值"、`assembly.yaml` 没有 `HIST_RE` 命中；customer 的四条旧键 → 新键、`改为必填（1.x 可以不配）`、角色 / NATS / `/v2` / `DATABASE_*`、新增 / 修复两节为空；authz 的 `PERMISSION_CATALOG`、inventory 的 `LOW_STOCK_THRESHOLD`、Python 组件不提 `/v2`；已存在不覆盖；没设 `BE_SCRATCH` exit 2；注释清理在真实组件上（opportunity 括号出处、iam-casdoor 续行、bff-mobile 整条行尾注释与跨行括号、finance 整块）与单元测试（块标量、引号里的 `#`、续行、确定性）；"只删不加"放宽为"加的行只能是 role 行或去掉注释后与某条删掉的行相同"。
+- 修复轮：env.sh 含 `@ : / %` 与空格的口令编码后解码回原值、`.env` 里的 `$(…)` 不被执行、假口令与 PEM 不进输出、单引号去掉、行内注释去掉、空值 exit 2、`BE_ENV_NO_TOOLS=1` 没有 brickkit / buf / `.env` 也 exit 0 且不输出 `TEST_PG_DSN`；13 个组件都写出 generated 且第一次与 notes 相同、打印去掉了几行注释；去掉的注释清单（customer、opportunity）；只改新增 / 修复不报漂移、改了升级前一节 ⚠️ 且不动 notes；`history_allow` 带通配符 / text 不含引用 / 太短 / 只有 `/` → exit 2，同一行第二处引用没盖住、path 是别的文件 → 仍 FAIL；component-check 在没有 brickkit / buf / `.env` 时十项 PASS；嵌套的 `backend/vendor/x.go` 里的驼峰读取 FAIL；go-v2 读不了生成物（`chmod 000`）→ gen 判据 FAIL。
 - T8 `component-check.sh`：迁移后的 mdm/customer（当前 HEAD）十项全部 PASS 且不改工作区；试点漏掉的那个提交只在历史扫描 FAIL、点名 `go.mod` / `buf.yaml` / `LICENSE`；`history_allow` 放行（`ℹ️` + 理由）、缺 `why` exit 2、`migrate-manifest.py` 接受这个字段；迁移前的 mdm/product 在 4.5 / 历史 / 小节数 FAIL；Python 组件能跑；12 个逐项反例（驼峰读取、`DATABASE_`、`1-0-N`、未跟踪文件里的历史、文档里的 `Task 7`、小节数、首行、`../`、BRICKKIT 相对链接、`TODO`、`TBD`、`dev/phase-06`）各自 FAIL；代码块里的 `##` 不计。
 - T8 `go-v2.sh`：改 `.proto` 并 `buf generate` 后 `--recheck` gen 判据 PASS、升 `v1.1.0`（原来的夹具是直接往 `*.pb.go` 追加一行，现在这本身就是 FAIL）；手改 `*.pb.go`、改了 `.proto` 没生成、`gen/` 里多一个 `*.pb.go` 都 FAIL 并点名；`--recheck` 不写 `gen/`；形态 A / B 与 §4.6 的完整运行里这条都 PASS。
 - 修复轮：`--write` 遇到手改（assembly.yaml 追加一行、component.yaml 改版本）exit 3、两个文件都不写、diff 里列出会丢的行，`--force` 覆盖；overrides 的 `permissions_add` / `menus_add` / `edge_routes_add` 追加、只加不删、重复运行未改动、与 tag 版已有键重复时 exit 2、在 `*_add` 生成的文件上再手改也拒绝、改 overrides 后重跑照常；`--check` 对 assembly.yaml 的反向路径（残留 `shell`、缺 `data_scopes`）；`data.role` 只改 `data` 的直接子键（单元测试）；旧键名提示只看字符串与注释；docs-skel 换一个 `BE_SCRATCH`、清空 `$S` 之后重跑都不覆盖已填写的 `AGENTS.md` / `README.md`，留底取自 tag；go-v2 的多余 `replace` 与裸导入旧根包都 FAIL。

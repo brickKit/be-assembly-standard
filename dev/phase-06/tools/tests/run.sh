@@ -144,6 +144,41 @@ check ".env 里没有 POSTGRES_PASSWORD → exit 2 并点名这个键" bash -c "
 BE_DOTENV=$W/no-such.env bash "$TOOLS/env.sh" mdm/customer >"$LOG/env-nodotenv.log" 2>&1; rc=$?
 check "没有 .env → exit 2" bash -c "[ $rc = 2 ] && grep -q '❌' '$LOG/env-nodotenv.log'"
 
+section "env.sh 修复轮 M2：只读 POSTGRES_PASSWORD 这一行、去引号、URL 编码；绝不当 shell 执行 .env"
+PWNED=$W/pwned; rm -f "$PWNED"
+cat >"$W/env-special" <<XEOF
+# 注释
+OTHER=1
+APP_TOKEN_SIGNING_KEY_PEM="-----BEGIN PRIVATE KEY-----
+MIIfake\$(touch $PWNED)
+-----END PRIVATE KEY-----"
+TRAP=\$(touch $PWNED)
+POSTGRES_PASSWORD="p@ss:w/rd%x y"
+XEOF
+# env_pw <dotenv>：eval env.sh 的输出，打印 TEST_PG_DSN 里口令段解码后的值（只给测试夹具里的假口令用）
+env_pw() {
+  ( out=$(BE_DOTENV=$1 bash "$TOOLS/env.sh" mdm/customer 2>/dev/null) || exit 9
+    eval "$out"; p=${TEST_PG_DSN#postgres://postgres:}; p=${p%@localhost:5432/brickkit_test_db?sslmode=disable}
+    case $p in *[@:/\ ]*) echo "口令段没编码：$p"; exit 8;; esac
+    python3 -c 'import sys, urllib.parse; print(urllib.parse.unquote(sys.argv[1]), end="")' "$p" )
+}
+check "含 @ : / % 和空格的口令：编码进 DSN、解码回原值" test "$(env_pw "$W/env-special")" = 'p@ss:w/rd%x y'
+check ".env 不被当 shell 执行（\$(…) 没有跑）" test ! -e "$PWNED"
+BE_DOTENV=$W/env-special bash "$TOOLS/env.sh" mdm/customer >"$LOG/env-special.out" 2>"$LOG/env-special.err"
+check "特殊口令也不出现在 env.sh 的输出里" bash -c "! grep -qF 'p@ss' '$LOG/env-special.out' '$LOG/env-special.err' && ! grep -qF 'MIIfake' '$LOG/env-special.out' '$LOG/env-special.err'"
+printf "POSTGRES_PASSWORD='a:b\"c'\n" >"$W/env-single"
+check "单引号口令：去掉成对的引号" test "$(env_pw "$W/env-single")" = 'a:b"c'
+printf 'POSTGRES_PASSWORD=abc # 行内注释\n' >"$W/env-comment"
+check "不带引号的口令：去掉行内注释" test "$(env_pw "$W/env-comment")" = abc
+printf 'POSTGRES_PASSWORD=\n' >"$W/env-empty"
+BE_DOTENV=$W/env-empty bash "$TOOLS/env.sh" mdm/customer >"$LOG/env-empty.log" 2>&1; rc=$?
+check "POSTGRES_PASSWORD 为空 → exit 2" bash -c "[ $rc = 2 ] && grep -q '❌.*POSTGRES_PASSWORD' '$LOG/env-empty.log'"
+
+section "env.sh 修复轮 M3：BE_ENV_NO_TOOLS=1 不要求 brickkit / buf / .env"
+HOME=$W/fakehome PATH=/usr/bin:/bin BE_ENV_NO_TOOLS=1 BE_DOTENV=$W/no-such.env bash "$TOOLS/env.sh" mdm/customer >"$LOG/env-notools.out" 2>"$LOG/env-notools.err"; rc=$?
+check "BE_ENV_NO_TOOLS=1：没有 brickkit / buf / .env 也 exit 0" test $rc = 0
+check "BE_ENV_NO_TOOLS=1：仍是十个 export，不输出 TEST_PG_DSN" bash -c "[ \"\$(grep -cE '^export (ROOT|ID|REPO|UREPO|C|S|SCHEMA|ROLE|SVC|NET)=' '$LOG/env-notools.out')\" = 10 ] && ! grep -q TEST_PG_DSN '$LOG/env-notools.out'"
+
 # ───────────────────────────────────────────────────────────────────────────
 section "migrate-manifest.py：全部 13 个组件（克隆）"
 for id in $ALL13; do
@@ -157,6 +192,8 @@ for id in $ALL13; do
   expect_rc 0 "mm-check-$n" "$d" python3 "$TOOLS/migrate-manifest.py" "$id" --check
   N=$BE_SCRATCH/06b/$n/notes-2.0.0.md
   check "$id --write 写出发布说明骨架（三节）" bash -c "grep -qx '## 升级前必须做（破坏性变更）' '$N' && grep -qx '## 新增' '$N' && grep -qx '## 修复' '$N'"
+  check "$id --write 同时写出 notes-2.0.0.generated.md（第一次与 notes-2.0.0.md 相同）" cmp -s "$N" "${N%.md}.generated.md"
+  check "$id --write 打印去掉了几行归档引用注释" log_has "mm-write-$n" 'assembly.yaml：去掉 [0-9]+ 行归档引用注释'
   check "$id 发布说明不写'不再有默认值'" bash -c "! grep -q '不再有默认值' '$N'"
   check "$id --write 之后 assembly.yaml 没有归档 / 历史引用" bash -c "! grep -nE '$HIST' '$d/assembly.yaml'"
   before=$(git -C "$d" diff | sha1sum)
@@ -250,9 +287,17 @@ assert t[i+len('## 新增'):j].strip()=='' and t[j+len('## 修复'):].strip()=='
 check "authz 发布说明：PERMISSION_CATALOG 改为必填，写出 1.x 的默认值" bash -c "grep '改为必填' '$BE_SCRATCH/06b/infra-authz/notes-2.0.0.md' | grep -q 'PERMISSION_CATALOG'"
 check "inventory 发布说明：新增键 LOW_STOCK_THRESHOLD（默认 10）" bash -c "grep 'LOW_STOCK_THRESHOLD' '$BE_SCRATCH/06b/erp-inventory/notes-2.0.0.md' | grep -q '10'"
 check "print（Python）发布说明：不提 /v2" bash -c "! grep -q '/v2' '$BE_SCRATCH/06b/infra-print/notes-2.0.0.md'"
+RC=$BE_SCRATCH/06b/mdm-customer/assembly-removed-comments.txt
+check "M6：去掉的注释写进 \$S/assembly-removed-comments.txt（C5 的清单）" grep -q '设计书 §14.2.2' "$RC"
+check "M6：opportunity 的清单里有整块删掉 / 去掉括号的原文" grep -q '设计计划 §1' "$BE_SCRATCH/06b/crm-opportunity/assembly-removed-comments.txt"
 echo "人工补的新增条目" >>"$N"; nsum=$(sha1sum <"$N")
 expect_rc 0 mm-notes-keep "$d" python3 "$TOOLS/migrate-manifest.py" mdm/customer --write
 check "发布说明已存在 → 不覆盖（并提示）" bash -c "[ \"\$(sha1sum <'$N')\" = '$nsum' ] && grep -q 'notes-2.0.0.md.*已存在' '$LOG/mm-notes-keep.log'"
+check "M5：只改了新增 / 修复 → 不报升级前一节漂移" bash -c "! grep -q '⚠️.*升级前必须做' '$LOG/mm-notes-keep.log'"
+cp "$N" "$W/notes.bak"; sed -i '/改为必填（1.x 可以不配）/d' "$N"; nsum2=$(sha1sum <"$N")
+expect_rc 0 mm-notes-drift "$d" python3 "$TOOLS/migrate-manifest.py" mdm/customer --write
+check "M5：升级前一节与重新生成的不同 → ⚠️ 点名 generated 文件，且不改 notes" bash -c "grep -q '⚠️.*升级前必须做.*notes-2.0.0.generated.md' '$LOG/mm-notes-drift.log' && [ \"\$(sha1sum <'$N')\" = '$nsum2' ] && grep -q '改为必填（1.x 可以不配）' '${N%.md}.generated.md'"
+cp "$W/notes.bak" "$N"
 expect_rc 2 mm-notes-noscratch "$d" env -u BE_SCRATCH python3 "$TOOLS/migrate-manifest.py" mdm/customer --write
 check "--write 没设 BE_SCRATCH → 大声失败" log_has mm-notes-noscratch 'BE_SCRATCH'
 d=$W/all/crm-opportunity
@@ -474,9 +519,9 @@ python3 - "$TOOLS/manifest-overrides.yaml" "$OVA" <<'PYEOF'
 import sys, yaml
 d = yaml.safe_load(open(sys.argv[1]))
 d['mdm/customer']['history_allow'] = [
-  {'path': 'go.mod', 'text': '阶段四调研记录', 'why': '测试：放行'},
+  {'path': 'go.mod', 'text': '阶段四调研记录 04 §13', 'why': '测试：放行'},
   {'path': 'buf.yaml', 'text': '设计计划 §3', 'why': '测试：放行'},
-  {'path': 'LICENSE', 'text': 'docs/plans/00-总纲.md', 'why': '测试：放行'}]
+  {'path': 'LICENSE', 'text': 'docs/plans/00-总纲.md §8', 'why': '测试：放行'}]
 yaml.safe_dump(d, open(sys.argv[2], 'w'), allow_unicode=True, sort_keys=False)
 PYEOF
 expect_rc 0 cc-allow "$d" env BE_OVERRIDES="$OVA" $CC mdm/customer
@@ -489,6 +534,26 @@ yaml.safe_dump(d, open(sys.argv[1], 'w'), allow_unicode=True, sort_keys=False)
 PYEOF
 expect_rc 2 cc-allow-nowhy "$d" env BE_OVERRIDES="$OVA" $CC mdm/customer
 check "history_allow 条目缺 why → 大声失败" log_has cc-allow-nowhy 'why'
+# 修复轮 I1：放行项不能宽到让整个扫描失效
+cc_allow() {  # cc_allow <名字> <期望退出码> <python 字面量：history_allow 列表>
+  python3 - "$TOOLS/manifest-overrides.yaml" "$W/ov-$1.yaml" "$3" <<'PYEOF'
+import ast, sys, yaml
+d = yaml.safe_load(open(sys.argv[1])); d['mdm/customer']['history_allow'] = ast.literal_eval(sys.argv[3])
+yaml.safe_dump(d, open(sys.argv[2], 'w'), allow_unicode=True, sort_keys=False)
+PYEOF
+  expect_rc "$2" "cc-allow-$1" "$d" env BE_OVERRIDES="$W/ov-$1.yaml" $CC mdm/customer
+}
+cc_allow glob 2 "[{'path': '*', 'text': '阶段四调研记录 04 §13', 'why': 'x'}]"
+check "I1：path 带通配符 → exit 2" log_has cc-allow-glob '❌.*history_allow.*path'
+cc_allow nohist 2 "[{'path': 'go.mod', 'text': '那条注释的取舍', 'why': 'x'}]"
+check "I1：text 本身不含历史引用 → exit 2" log_has cc-allow-nohist '❌.*history_allow.*text'
+cc_allow short 2 "[{'path': 'go.mod', 'text': '§13', 'why': 'x'}]"
+check "I1：text 太短（< 6 个字符）→ exit 2" log_has cc-allow-short '❌.*history_allow.*text'
+cc_allow slash 2 "[{'path': 'go.mod', 'text': '/', 'why': 'x'}]"
+cc_allow partial 1 "[{'path': 'go.mod', 'text': '阶段四调研记录', 'why': 'x'}, {'path': 'buf.yaml', 'text': '设计计划 §3', 'why': 'x'}, {'path': 'LICENSE', 'text': 'docs/plans/00-总纲.md §8', 'why': 'x'}]"
+check "I1：同一行的第二处引用（§13）不在放行的 text 里 → 仍 FAIL 并点名 go.mod" bash -c "grep -qE '^      go.mod:[0-9]+:' '$LOG/cc-allow-partial.log' && ! grep -qE '^      (buf.yaml|LICENSE):' '$LOG/cc-allow-partial.log'"
+cc_allow otherfile 1 "[{'path': 'buf.yaml', 'text': '阶段四调研记录 04 §13', 'why': 'x'}]"
+check "I1：path 是别的文件 → 不放行" log_has cc-allow-otherfile '^      go.mod:[0-9]+:'
 
 section "component-check.sh：迁移前的 mdm/product（1.x）"
 d=$W/cc-old
@@ -500,6 +565,8 @@ expect_rc 1 cc-python "$W/infra-print" $CC infra/print
 check "Python 组件也能跑（FAIL 而不是用法错误）" bash -c "grep -q '^  FAIL' '$LOG/cc-python.log'"
 expect_rc 2 cc-noargs "$W/cc-post" $CC
 check "没有 ID 时说明用法" log_has cc-noargs '用法'
+expect_rc 0 cc-notools "$W/cc-post" env HOME="$W/fakehome" PATH=/usr/bin:/bin BE_DOTENV="$W/no-such.env" $CC mdm/customer
+check "M3：component-check 不要求 brickkit / buf / .env" bash -c "grep -q '10 项全部 PASS' '$LOG/cc-notools.log'"
 
 section "component-check.sh：逐项反例（在迁移后的克隆上改一处、跑、复原）"
 d=$W/cc-post
@@ -523,6 +590,7 @@ cc_neg bk-rel     'BRICKKIT'        "printf '\n[d](docs/design.md)\n' >>BRICKKIT
 cc_neg todo       'TODO'            "printf '\nTODO: fill in\n' >>docs/design.zh.md"
 cc_neg tbd        'TODO'            "printf '\nTBD\n' >>README.md"
 cc_neg boundary   '越界'            "printf '\nsee dev/phase-06/component-loop.md\n' >>AGENTS.zh.md"
+cc_neg nested-vendor '4.5.*驼峰'   "mkdir -p backend/vendor && printf 'package vendor\n\nfunc f(c interface{ String(string) string }) string { return c.String(\"pgSchema\") }\n' >backend/vendor/x.go"
 ( cd "$d" && printf '\n```bash\n## 代码块里的井号不是小节\n```\n' >>README.md )
 expect_rc 0 cc-fence "$d" $CC mdm/customer
 check "代码块里的 ## 不算小节" bash -c "grep '^  PASS' '$LOG/cc-fence.log' | grep -q '小节数'"
@@ -582,6 +650,10 @@ touch "$d/gen/mdm/customer/v1/orphan.pb.go"
 expect_rc 1 go-gen-orphan "$d" bash "$TOOLS/go-v2.sh" mdm/customer --recheck
 check "gen/ 里多出 .proto 生成不出来的 *.pb.go → FAIL" log_has go-gen-orphan 'orphan.pb.go'
 rm -f "$d/gen/mdm/customer/v1/orphan.pb.go"
+chmod 000 "$PB"
+expect_rc 1 go-gen-crash "$d" bash "$TOOLS/go-v2.sh" mdm/customer --recheck
+check "M1：比对脚本自己出错（读不了生成物）→ FAIL，不是 PASS" log_has go-gen-crash 'FAIL.*gen/.*buf generate'
+chmod 644 "$PB"
 gsum=$(cd "$d" && find gen -type f | sort | xargs sha1sum | sha1sum)
 expect_rc 0 go-gen-restored "$d" bash "$TOOLS/go-v2.sh" mdm/customer --recheck
 check "--recheck 不写 gen/（buf generate 只写临时目录）" test "$(cd "$d" && find gen -type f | sort | xargs sha1sum | sha1sum)" = "$gsum"

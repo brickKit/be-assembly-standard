@@ -55,6 +55,9 @@ ROLE_COMMENT = '# 登录角色，`PG_USER` 的值'
 # 归档 / 历史引用（component-loop 5.1"不写历史"）：assembly.yaml 注释清理与 component-check.sh 的 (b) 共用
 HIST_RE = re.compile(r'§|决策 ?[0-9]|设计计划|设计书|阶段[一二三四五六0-9]|总纲|手册|铁律|Task ?[0-9]|docs/plans/|archive/')
 NOTES_NAME = 'notes-2.0.0.md'
+NOTES_GEN = 'notes-2.0.0.generated.md'
+REMOVED_COMMENTS = 'assembly-removed-comments.txt'
+ALLOW_MIN_TEXT = 6                        # history_allow.text 的最短长度
 
 # 代码里读配置的方法（SDK 的 Config API）。Go：rt.Config.X("k"；Python：rt.config.x("k"；TS：config.x("k"
 CODE_LANGS = {
@@ -143,6 +146,13 @@ def load_override(cid):
                 for x in allow):
             raise Fatal(f'manifest-overrides.yaml 的 {cid}.history_allow 每项必须恰好有 path / text / why 三个非空字符串'
                         f'（why 写明为什么这处引用必须留着）：{allow!r}')
+        # 放行项不能宽到让整个扫描失效（task-8a 审查 Important 1）
+        for x in allow:
+            if re.search(r'[*?\[]', x['path']):
+                raise Fatal(f'manifest-overrides.yaml 的 {cid}.history_allow 的 path 必须是确切的文件路径，不能带通配符：{x["path"]!r}')
+            if len(x['text']) < ALLOW_MIN_TEXT or not HIST_RE.search(x['text']):
+                raise Fatal(f'manifest-overrides.yaml 的 {cid}.history_allow 的 text 必须是命中行里至少 {ALLOW_MIN_TEXT} 个字符、'
+                            f'本身含历史引用（HIST_RE）的一段原文：{x["text"]!r}')
     loc = ov['local']
     if not isinstance(loc, dict) or not isinstance(loc.get('runCommand'), list) or not loc.get('language'):
         raise Fatal(f'manifest-overrides.yaml 的 {cid}.local 必须有 language 和数组形式的 runCommand')
@@ -375,8 +385,9 @@ def render(doc):
 
 # ───────────────────────────── assembly.yaml（文本级编辑） ─────────────────────────────
 
-def edit_assembly(text, cx, adds=None):
-    """删 version/shell/asset，改 data.role 的注释，按 overrides 的 *_add 往列表末尾追加条目；其余逐字保留。"""
+def edit_assembly(text, cx, adds=None, dropped=None):
+    """删 version/shell/asset，改 data.role 的注释，去掉注释里的归档引用（dropped 不是 None 时把去掉 / 改掉的注释行
+    记进去），按 overrides 的 *_add 往列表末尾追加条目；其余逐字保留。"""
     lines = text.splitlines(keepends=True)
     out, removed, i = [], [], 0
     in_data, data_indent = False, None
@@ -410,7 +421,7 @@ def edit_assembly(text, cx, adds=None):
             ln = f'{rm.group(1)}{rm.group(2)}{rm.group(3)}{gap or "  "}{ROLE_COMMENT}\n'
         out.append(ln)
         i += 1
-    new = re.sub(r'\n{3,}', '\n\n', clean_hist_comments(''.join(out))).strip('\n') + '\n'
+    new = re.sub(r'\n{3,}', '\n\n', clean_hist_comments(''.join(out), dropped)).strip('\n') + '\n'
     old_doc = yaml.safe_load(text) or {}
     want = {k: v for k, v in old_doc.items() if k not in ('version', 'shell', 'asset')}
     for lst, items in (adds or {}).items():
@@ -469,7 +480,7 @@ def clean_hist_text(s):
     return s2, bool(HIST_RE.search(s2))
 
 
-def clean_hist_comments(text):
+def clean_hist_comments(text, dropped=None):
     """assembly.yaml 注释里的归档 / 历史引用（HIST_RE）：先去掉含引用的括号，去掉后只剩标点的注释行删掉；
     去掉括号仍有引用的——整行注释删掉它所在的整块（连续的 # 行），行尾注释删掉注释本身（连同下面几行的续行）。
     块标量（`|` / `>`）里的内容与引号里的 # 不是注释，不动。输出只由输入决定，所以 --write 重跑结果相同。"""
@@ -510,7 +521,7 @@ def clean_hist_comments(text):
             groups.append(('full', g))
         else:
             i += 1
-    drop = set()
+    drop, orig = set(), list(lines)
     for kind, g in groups:
         texts = [lines[n][col + 1:] for n, col in g]
         cleaned = [clean_hist_text(s) for s in texts]
@@ -532,6 +543,12 @@ def clean_hist_comments(text):
                     drop.add(n)
             else:
                 lines[n] = lines[n][:col + 1] + s2
+    if dropped is not None:                 # 给 C5 的清单：删掉的整行、改掉的行（原文 → 现在）
+        for n, (a, b) in enumerate(zip(orig, lines)):
+            if n in drop:
+                dropped.append(f'删  {a.strip()}')
+            elif a != b:
+                dropped.append(f'改  {a.strip()}\n    → {b.strip()}')
     return '\n'.join(ln for n, ln in enumerate(lines) if n not in drop)
 
 
@@ -572,8 +589,9 @@ def code_files(c):
     if r.returncode != 0:
         raise Fatal(f'git ls-files 失败：{r.stderr.strip()}')
     for p in r.stdout.split('\n'):
+        # 只跳过顶层目录（被忽略的文件 ls-files 已经去掉；task-8a 审查 Minor 4）
         if p and os.path.splitext(p)[1] in CODE_LANGS and not p.startswith(SKIP_DIRS) and \
-                not any(f'/{d}' in p for d in SKIP_DIRS) and os.path.isfile(os.path.join(c, p)):
+                os.path.isfile(os.path.join(c, p)):
             yield p
 
 
@@ -802,10 +820,11 @@ def generate(cx):
     if yaml.safe_load(text_c) != new_c:
         raise Fatal('生成的 component.yaml 解析回来与推导结果不一致（脚本的 YAML 输出有 bug），不写盘')
     adds = {lst: ov.get(f'{lst}_add') or [] for lst in ASSEMBLY_LISTS}
-    text_a, removed = edit_assembly(old_a_text, cx, adds)
+    cleaned = []
+    text_a, removed = edit_assembly(old_a_text, cx, adds, dropped=cleaned)
     mapping = {k: SHARED.get(k, snake(k)) for k in ((old_c.get('configSchema') or {}).get('properties') or {})}
     mapping = {k: v for k, v in mapping.items() if k != v}
-    return tag, new_c, text_c, text_a, removed, mapping, old_c_text, old_a_text, adds
+    return tag, new_c, text_c, text_a, removed, mapping, old_c_text, old_a_text, adds, cleaned
 
 
 def notes_path(cx):
@@ -872,14 +891,36 @@ def notes_skeleton(cx, old_c, new_c, mapping):
     return '\n'.join(out)
 
 
+def breaking_section(text):
+    """发布说明里"## 升级前必须做"那一节（到下一个 ## 为止），首尾空白去掉。"""
+    m = re.search(r'^## 升级前必须做[^\n]*\n(.*?)(?=^## |\Z)', text, re.S | re.M)
+    return m.group(1).strip() if m else None
+
+
 def write_notes(cx, tag_c, new_c, mapping):
+    """每次 --write 都重写 notes-2.0.0.generated.md；notes-2.0.0.md 只在不存在时写（人补过的内容不冲掉），
+    已存在且"升级前必须做"一节与重新生成的不同（overrides 改过）就 ⚠️（task-8a 审查 Minor 5）。"""
     p = notes_path(cx)
-    if os.path.exists(p):
-        print(f'  ⏭  发布说明 {p}：已存在，不覆盖（骨架只在第一次 --write 时写）')
-        return
+    g = os.path.join(os.path.dirname(p), NOTES_GEN)
+    text = notes_skeleton(cx, yaml.safe_load(tag_c), new_c, mapping)
     os.makedirs(os.path.dirname(p), exist_ok=True)
-    open(p, 'w', encoding='utf-8').write(notes_skeleton(cx, yaml.safe_load(tag_c), new_c, mapping))
-    print(f'  📝 发布说明骨架：{p}（"升级前必须做"已按旧键 → 新键写好，人补"## 新增""## 修复"并核对）')
+    open(g, 'w', encoding='utf-8').write(text)
+    if not os.path.exists(p):
+        open(p, 'w', encoding='utf-8').write(text)
+        print(f'  📝 发布说明骨架：{p}（"升级前必须做"已按旧键 → 新键写好，人补"## 新增""## 修复"并核对）')
+        return
+    print(f'  ⏭  发布说明 {p}：已存在，不覆盖（重新生成的骨架在 {g}）')
+    if breaking_section(open(p, encoding='utf-8').read()) != breaking_section(text):
+        print(f'  ⚠️  {NOTES_NAME} 的"## 升级前必须做"一节与重新生成的不同（overrides 改过，或人改过这一节）：'
+              f'对照 {g} 更新，它会变成 tag 注释')
+
+
+def write_removed_comments(cx, tag, cleaned):
+    p = os.path.join(os.path.dirname(notes_path(cx)), REMOVED_COMMENTS)
+    head = (f'# {cx["id"]}：migrate-manifest.py --write 从 assembly.yaml（输入 tag {tag}）去掉 / 改掉的归档引用注释，'
+            f'共 {len(cleaned)} 行。\n# C5：其中仍成立的结论写进 docs/design.md（不带出处）；历史本身不写。\n')
+    open(p, 'w', encoding='utf-8').write(head + ''.join(x + '\n' for x in cleaned))
+    print(f'  📋 去掉的注释清单：{p}（{len(cleaned)} 行）')
 
 
 def main():
@@ -897,11 +938,13 @@ def main():
     if a.write:
         notes_path(cx)                   # 没设 BE_SCRATCH 就在写任何东西之前失败
     if a.write or not a.check:
-        tag, new_c, text_c, text_a, removed, mapping, tag_c, tag_a, adds = generate(cx)
+        tag, new_c, text_c, text_a, removed, mapping, tag_c, tag_a, adds, cleaned = generate(cx)
         cur_c = open(os.path.join(c, 'component.yaml'), encoding='utf-8').read()
         cur_a = open(os.path.join(c, 'assembly.yaml'), encoding='utf-8').read()
         print(f'📦 {cx["id"]}：输入 = tag {tag} 的 component.yaml / assembly.yaml + manifest-overrides.yaml')
         print(f'   assembly.yaml 删除的键：{removed or "无"}；data.role 注释 → {ROLE_COMMENT}')
+        print(f'   assembly.yaml：去掉 {len(cleaned)} 行归档引用注释（删掉或去掉括号出处；--write 把原文写进 '
+              f'$S/{REMOVED_COMMENTS}，C5 照它把仍成立的结论搬进 docs/design.md）')
         print(f'   旧键 → 新键：{mapping or "无"}')
         print(f'   assembly.yaml 追加：{ {k: [x[ASSEMBLY_LISTS[k]] for x in v] for k, v in adds.items() if v} or "无"}')
         bad = print_checks(manifest_checks(new_c, text_c, cx) + assembly_checks(yaml.safe_load(text_a), cx),
@@ -957,6 +1000,7 @@ def main():
                 print('  代码里的配置键读取：未改动（没有旧键读法）')
             print_mentions(c, mapping)
             write_notes(cx, tag_c, new_c, mapping)
+            write_removed_comments(cx, tag, cleaned)
     if a.check:
         text = open(os.path.join(c, 'component.yaml'), encoding='utf-8').read()
         try:
