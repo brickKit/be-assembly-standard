@@ -11,6 +11,8 @@
   config/vars.yaml 有的键 → $var:KEY（组件有默认值也显式写，换环境时部署文件的 vars: 能覆盖到）
 其余键不动：组件自有可选键保持注释（跟随组件默认），其它密钥由人给值（会给出 ${<UREPO>_<KEY>} 的建议写法）。
 required 键最后仍没有值 → 列出键名，退出码 3（已能填的照样写盘）。参数或文件错误 → 退出码 2。
+required 键写成 $var:X 时，X 要真有值才算填了：deploy.yaml 的 vars: 有 X 用它（同名时优先，与 brickKit 一致），
+否则看 config/vars.yaml；X 两处都没有、或取到的是空串 → 同样算缺（引用照样写，值去 vars.yaml 补）。
 """
 import argparse
 import json
@@ -24,6 +26,7 @@ KEY_RE = re.compile(r"^(?P<key>[A-Z][A-Z0-9_]*):(?P<rest>.*)$")
 COMMENTED_RE = re.compile(r"^#\s?(?P<key>[A-Z][A-Z0-9_]*):(?P<rest>.*)$")
 PG_SPECIAL = {"PG_USER", "PG_PASSWORD", "PG_SCHEMA"}
 # secret: true 的键只允许引用：${VAR}（只允许空默认值 :-，非空默认值等于明文）、file://…、$var:NAME——明文会被提交进 config/
+VAR_REF = re.compile(r"^\$var:(?P<name>[A-Za-z_][A-Za-z0-9_]*)$")
 SECRET_REF = re.compile(r"^(\$\{[A-Za-z_][A-Za-z0-9_]*(:-)?\}|file://\S+|\$var:[A-Za-z_][A-Za-z0-9_]*)$")
 
 
@@ -113,6 +116,23 @@ def is_empty(raw: str) -> bool:
     return v is None or v == ""
 
 
+def var_ref(raw: str):
+    """值是 $var:NAME（可带引号）时返回 NAME，否则 None。"""
+    try:
+        v = yaml.safe_load(f"k: {raw}")["k"] if raw else None
+    except yaml.YAMLError:
+        return None
+    m = VAR_REF.match(v) if isinstance(v, str) else None
+    return m["name"] if m else None
+
+
+def var_value(name: str, deploy_vars: dict, shared: dict):
+    """$var:NAME 实际取到的值：部署文件的 vars: 优先，其次 config/vars.yaml；都没有返回 None。"""
+    if name in deploy_vars:
+        return deploy_vars[name]
+    return shared.get(name)
+
+
 def derive(key: str, *, shell: bool, name: str, repo: str, row, var_keys: set):
     """按项目规则推导一个键的值；推不出返回 None。"""
     urepo = repo.upper().replace("-", "_")
@@ -168,7 +188,10 @@ def main() -> int:
     if not cfg.exists():
         die(f"没有 {cfg.relative_to(root)}——先 brickkit add {cid}@<版本> 生成骨架")
     vars_path = root / "config" / "vars.yaml"
-    var_keys = set(load_yaml(vars_path)) if vars_path.exists() else set()
+    shared = load_yaml(vars_path) if vars_path.exists() else {}
+    var_keys = set(shared)
+    deploy_path = root / "deploy.yaml"
+    deploy_vars = (load_yaml(deploy_path).get("vars") or {}) if deploy_path.exists() else {}
     row = schema_row(root, repo)
     ctx = dict(shell=shell, name=name, repo=repo, row=row, var_keys=var_keys)
 
@@ -239,10 +262,27 @@ def main() -> int:
     else:
         print(f"✓ {rel}：无需改动")
 
-    missing = [k for k in required if is_empty(final.get(k, "")) and "default" not in props[k]]
+    missing, unresolved = [], {}
+    for k in required:
+        raw = final.get(k, "")
+        if is_empty(raw):
+            if "default" not in props[k]:
+                missing.append(k)
+            continue
+        name = var_ref(raw)
+        if name is not None:   # 显式的 $var: 引用盖过组件默认值：取到空也算缺
+            v = var_value(name, deploy_vars, shared)
+            if v is None or str(v) == "":
+                missing.append(k)
+                unresolved[k] = (name, "没有" if v is None else "为空")
     if missing:
         print(f"✗ {rel} 还有 {len(missing)} 个 required 键没有值，需要人给（再跑一次带 --set KEY=VALUE）：")
         for k in missing:
+            if k in unresolved:
+                name, how = unresolved[k]
+                print(f"   - {k}  （写的是 $var:{name}，可 config/vars.yaml 里 {name} {how}、deploy.yaml 的 vars: 也没给值："
+                      f"在 config/vars.yaml 给 {name} 值，或用 --set 改写这个键）")
+                continue
             hint = f"密钥，建议 ${{{urepo}_{k}}}（值进 .env）；基础资源的密钥沿用它原有的变量名；多行密钥用 file://.secrets/{repo}/<文件>" \
                 if props[k].get("secret") else "组件自有键，按组件 BRICKKIT.md 的 Configuration 一节给值"
             print(f"   - {k}  （{hint}）")

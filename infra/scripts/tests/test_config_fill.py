@@ -351,6 +351,49 @@ def test_integrate_refuses_wrong_brickkit_version(tmp):  # T7 审查 Important 2
     assert not (tmp / "calls").exists(), (tmp / "calls").read_text()
 
 
+def _missing(r) -> list:
+    return [l.split()[1] for l in (r.stdout + r.stderr).splitlines() if l.startswith("   - ")]
+
+
+OK_SETS = ("--set", "APP_TOKEN=${DEMO_APP_APP_TOKEN}", "--set", "DEFAULT_WAREHOUSE_ID=w")
+
+
+def test_required_var_ref_to_absent_var_is_missing(tmp):  # T7 审查 (b)：$var:X 而 vars.yaml 没有 X，不算已填
+    skel = APP_SKELETON.replace('DEFAULT_WAREHOUSE_ID: ""', "DEFAULT_WAREHOUSE_ID: $var:WAREHOUSE")
+    root = make_root(tmp, skel)
+    r = run(root, "demo/app", "--set", "APP_TOKEN=${DEMO_APP_APP_TOKEN}")
+    assert r.returncode == 3, r.stdout + r.stderr
+    assert _missing(r) == ["DEFAULT_WAREHOUSE_ID"], r.stdout
+    assert "WAREHOUSE" in r.stdout and "config/vars.yaml" in r.stdout, r.stdout
+    r = run(root, "demo/app", *OK_SETS[:2], "--set", "DEFAULT_WAREHOUSE_ID=$var:NOPE")   # --set 写的 $var: 同样核对
+    assert r.returncode == 3 and _missing(r) == ["DEFAULT_WAREHOUSE_ID"], r.stdout + r.stderr
+
+
+def test_required_var_ref_to_empty_var_is_missing(tmp):
+    root = make_root(tmp)
+    vars_ = (root / "config/vars.yaml").read_text(encoding="utf-8")
+    (root / "config/vars.yaml").write_text(vars_.replace(
+        "IAM_JWKS_URL: http://infra-iam-casdoor-2-0-0:8200/.well-known/jwks.json", 'IAM_JWKS_URL: ""'), encoding="utf-8")
+    r = run(root, "demo/app", *OK_SETS)
+    assert r.returncode == 3, r.stdout + r.stderr
+    assert _missing(r) == ["IAM_JWKS_URL"], r.stdout
+    assert values(root / "config/demo-app.yaml")["IAM_JWKS_URL"] == "$var:IAM_JWKS_URL"   # 引用照样写，值去 vars.yaml 补
+
+
+def test_required_var_ref_resolved_by_deploy_vars(tmp):  # 部署文件的 vars: 覆盖 config/vars.yaml 的同名变量
+    root = make_root(tmp)
+    vars_ = (root / "config/vars.yaml").read_text(encoding="utf-8")
+    (root / "config/vars.yaml").write_text(vars_.replace(
+        "IAM_JWKS_URL: http://infra-iam-casdoor-2-0-0:8200/.well-known/jwks.json", 'IAM_JWKS_URL: ""'), encoding="utf-8")
+    (root / "deploy.yaml").write_text("target: docker\nvars:\n  IAM_JWKS_URL: http://iam/jwks\n", encoding="utf-8")
+    r = run(root, "demo/app", *OK_SETS)
+    assert r.returncode == 0, r.stdout + r.stderr
+    (root / "deploy.yaml").write_text("target: docker\nvars:\n  NATS_URL: ''\n", encoding="utf-8")
+    (root / "config/vars.yaml").write_text(vars_, encoding="utf-8")
+    r = run(root, "demo/app", *OK_SETS)
+    assert r.returncode == 3 and _missing(r) == ["NATS_URL"], r.stdout + r.stderr
+
+
 DB_MAKEFILE = """\
 dev-env:
 \t@echo "✓ 已向 .env 补齐 1 项（只列名字）："; echo "   DEMO_APP_DB_PASSWORD"
