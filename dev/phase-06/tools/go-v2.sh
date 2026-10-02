@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# 第 4.0–4.4 步：Go 组件的模块路径改 /v2、契约包统一成嵌套模块、根 go.mod require 真实的契约包版本、升 SDK，
+# 第 4.0–4.4 步与 4.6（SDK ≥ v0.4.0 时改迁移入口，见 migrate-entry.py）：Go 组件的模块路径改 /v2、契约包统一成嵌套模块、根 go.mod require 真实的契约包版本、升 SDK，
 # 最后跑 component-loop 4.4 的全部判据（每条打印 PASS/FAIL，有 FAIL 就 exit 1）。
 #
 # 用法：bash dev/phase-06/tools/go-v2.sh <scope>/<name> --sdk <be-sdk-go tag>
