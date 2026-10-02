@@ -190,7 +190,7 @@ case "$1" in
   inspect) case "$*" in *RestartCount*) echo "0 running" ;; *) echo "running healthy" ;; esac ;;
   run)
     case "$*" in
-      *"getent hosts hgw"*) echo "172.17.0.1      hgw  hgw" ;;
+      *"getent hosts hgw"*) [ -n "$FAKE_GW_EMPTY" ] || echo "172.17.0.1      hgw  hgw" ;;
       *" -d "*) echo toolbox ;;
       *Authorization*) printf 200 ;;
       *"/healthz") printf 200 ;;
@@ -223,7 +223,7 @@ def fake_env(tmp: pathlib.Path, **extra) -> dict:
     env = {**os.environ, "PATH": f"{b}:{os.environ['PATH']}", "BE_ROOT": str(tmp), "OUT": str(tmp / "out"),
            "FAKE_CALLS": str(tmp / "calls"), "FAKE_FOCUS_PID": str(tmp / "focus.pid"),
            "BE_PROJECT_LOCK": str(tmp / "lock"), "ROUTE": "", "FOCUS": "", "KEEP": "", "FAKE_FOCUS_SNAPSHOT": "",
-           "FAKE_LOCAL_MODE": "", "FAKE_LOCAL_OFF_FAIL": "", "SEED": ""}
+           "FAKE_LOCAL_MODE": "", "FAKE_LOCAL_OFF_FAIL": "", "SEED": "", "FAKE_GW_EMPTY": ""}
     env.pop("BE_PROJECT_LOCK_HELD", None)
     env.update(extra)
     return env
@@ -421,6 +421,23 @@ def test_interrupt_with_keep_restores_local_copy(tmp):
     assert "brickkit down" not in c, c                       # KEEP 照样保留容器
     assert "brickkit local off" in c, c
     assert (tmp / "deploy.local.yaml").read_text(encoding="utf-8") == USER_LOCAL
+
+
+def test_focus_no_host_gateway_ip_degrades_without_rewrite(tmp):  # T7 审查 (e)：getent 查不到时降级
+    make(tmp, ALL, [{"id": i} for i in ALL])
+    _vars(tmp)
+    snap = tmp / "snap.yaml"
+    r = verify(tmp, "mdm/product", FOCUS="1", FAKE_FOCUS_SNAPSHOT=str(snap), FAKE_GW_EMPTY="1")
+    assert "查不到 host-gateway 的 IP，focus 不改写 host.docker.internal" in r.stdout, r.stdout
+    assert snap.read_text(encoding="utf-8") == (tmp / "deploy.yaml").read_text(encoding="utf-8")   # local on 的原样副本
+    assert not (tmp / "deploy.local.yaml").exists()
+
+
+def test_interrupt_restores_set_aside_local_copy(tmp):  # T7 审查 (e)：中断后 deploy.local.yaml 与原文逐字节相同
+    alive, c = _interrupt_during_focus(tmp, keep="", setup=_user_local)
+    assert not alive, "focus 进程还活着"
+    assert "brickkit down -f" in c, c
+    assert (tmp / "deploy.local.yaml").read_bytes() == USER_LOCAL.encode("utf-8")
 
 
 def test_interrupt_cleans_up(tmp):  # 修复轮 I-2

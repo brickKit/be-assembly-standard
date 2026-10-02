@@ -205,7 +205,8 @@ stop_focus() {  # 停掉 focus 的整个进程组（setsid 起的，自己一个
 # "The process on this machine can't reach an address written in config"，修法是 deploy.local.yaml 的 vars:）。
 # 依赖容器与宿主机进程读的是同一份 vars:，所以不能写 localhost（容器里 localhost 是它自己），而写 Docker 的
 # host-gateway 实际映射到的 IP：容器里 host.docker.internal 本来就解析成它，宿主机上它是本机网卡地址。
-# 只在 Linux 原生 Docker 上验证过（Docker Desktop / rootless 下 host-gateway 的 IP 宿主机未必可达，那时 focus 大声 FAIL）。
+# 这套改写只适用于 Linux 原生 Docker，也只在它上面验证过（Docker Desktop / rootless 下 host-gateway 的 IP 宿主机未必可达，
+# 那时 focus 大声 FAIL，不会静默通过）。
 # deploy.local.yaml 的三种起点，收尾（含中断、KEEP=1、local off 失败）一律还原：
 #   不存在                → local on 从 deploy.yaml 复制一份；收尾时删掉（否则下一次 focus 会沿用这份副本）
 #   存在且本地模式开着    → 是正在用的个人副本：备份后在它上面加 vars:；收尾时原样恢复
