@@ -53,7 +53,9 @@ KNOWN_TOP = ['apiVersion', 'kind', 'metadata', 'tags', 'artifacts', 'dependencie
              'deployment', 'migration', 'healthCheck', 'local']
 ROLE_COMMENT = '# 登录角色，`PG_USER` 的值'
 # 归档 / 历史引用（component-loop 5.1"不写历史"）：assembly.yaml 注释清理与 component-check.sh 的 (b) 共用
-HIST_RE = re.compile(r'§|决策 ?[0-9]|设计计划|设计书|阶段[一二三四五六0-9]|总纲|导读|手册|铁律|Task ?[0-9]|docs/plans/|archive/')
+# 阶段名：阶段一…阶段六、阶段06 / 阶段 06；中文数字后面紧跟量词的是"每个阶段一条"这类说法，不算。
+# 导读：只算对旧导读条目的引用（"导读第 7 条"、导读"另外两条"）；"给 AI 看的导读"是普通名词，不算
+HIST_RE = re.compile(r'§|决策 ?[0-9]|设计计划|设计书|阶段 ?(?:[一二三四五六](?![条个次项份种步轮])|[0-9])|总纲|导读 ?[第"“]|手册|铁律|Task ?[0-9]|docs/plans/|archive/')
 NOTES_NAME = 'notes-2.0.0.md'
 NOTES_GEN = 'notes-2.0.0.generated.md'
 REMOVED_COMMENTS = 'assembly-removed-comments.txt'

@@ -73,7 +73,7 @@ python3 $ROOT/dev/phase-06/tools/migrate-manifest.py <id> --check; echo "exit=$?
 
 **`assembly.yaml`（文本级编辑，不经 YAML 往返）**：删 `version:`、`shell:`、`asset:`（连同块内容）；**去掉注释里的归档 / 历史引用**（见下）；`data.role`（只改 `data` 的直接子键）行的注释换成 `` # 登录角色，`PG_USER` 的值 ``（对齐保留）；overrides 的 `permissions_add` / `menus_add` / `edge_routes_add` 以 `  - { k: v, … }` 追加到对应列表最后一个条目之后（与 tag 版已有的键重复就失败）；其余（含注释）逐字保留。写盘前核对：解析结果 = 旧文件去掉那三个键、加上追加的条目。
 
-**注释里的归档 / 历史引用（`--write` 自己清，task-7 摩擦 5）**：模式 `HIST_RE` = `§|决策 ?[0-9]|设计计划|设计书|阶段[一二三四五六0-9]|总纲|手册|铁律|Task ?[0-9]|docs/plans/|archive/`（与 `component-check.sh` 的 (b) 同一个，定义在本脚本里）。
+**注释里的归档 / 历史引用（`--write` 自己清，task-7 摩擦 5）**：模式 `HIST_RE` = `§|决策 ?[0-9]|设计计划|设计书|阶段 ?(?:[一二三四五六](?![条个次项份种步轮])|[0-9])|总纲|导读 ?[第"“]|手册|铁律|Task ?[0-9]|docs/plans/|archive/`（与 `component-check.sh` 的 (b) 同一个，定义在本脚本里；"阶段一"…"阶段六"、"阶段06" / "阶段 06" 算；中文数字后面紧跟量词（条 / 个 / 次 / 项 / 份 / 种 / 步 / 轮）时是"每个阶段一条"这类说法，不算；"导读"只算对旧导读条目的引用（"导读第 N 条"、导读"另外两条"），"给 AI 看的导读"不算）。
 - 先去掉含引用的括号：`# 客户主数据全员可见（设计书 §14.2.2：…）` → `# 客户主数据全员可见`；括号在开头时紧跟的"，"一起去掉；去掉后只剩标点的注释行删掉。
 - 去掉括号仍有引用的：整行注释删掉它所在的**整块**（连续的 `#` 行，空行为界）；行尾注释删掉注释本身（值保留，`tier: backend   # 设计书 §3.5.1 …` → `tier: backend`），连同它下面几行的续行（`#` 列与它相差不超过 2 的整行注释）。
 - 块标量（`|` / `>`）里的内容、引号里的 `#` 不是注释，不动；语义自检照旧（解析结果必须等于"旧文件去掉三个键、加上追加的条目"）。
@@ -182,7 +182,7 @@ bash $ROOT/dev/phase-06/tools/go-v2.sh <id> --recheck --gen-bump patch; echo "ex
 BE_SCRATCH=<会话 scratchpad> bash dev/phase-06/tools/tests/run.sh      # 约 2 分钟；TEST_SDK（默认 v0.3.2，旧 API 路径）、TEST_SDK4（默认 v0.4.0，§4.6 路径）可换版本
 ```
 
-在 `$BE_SCRATCH/06b-tools-test/` 里用 `git clone --no-hardlinks`（scratch 可能与仓库不在同一文件系统，`--local` 的硬链接会失败）克隆 13 个组件（带 tag），只在克隆上写，不碰 `components/` 下的子模块。"迁移前"的夹具克隆后**退回最后一个 1.x tag**（`clone`），所以组件迁移进度（HEAD 已是 2.0.0，例如 mdm/customer）不会让这些测试漂移；`component-check.sh` 的"迁移后"夹具停在子模块当前 HEAD（`clone_head`）。测试 shell 把 `~/go/bin` 追加进 PATH（buf generate 夹具要用）。覆盖：
+在 `$BE_SCRATCH/06b-tools-test/` 里用 `git clone --no-hardlinks`（scratch 可能与仓库不在同一文件系统，`--local` 的硬链接会失败）克隆 13 个组件（带 tag），只在克隆上写，不碰 `components/` 下的子模块。"迁移前"的夹具克隆后**退回最后一个 1.x tag**（`clone`），并删掉不是这个 1.x 提交祖先的 tag（发布后才有的 `2.0.0` / `v2.0.0` / `gen/*/v1.0.0`）、去掉 `origin`；C-1 一节再用 `GOPRIVATE` + `git insteadOf` 把本仓库模块路径指到由夹具做出的本机裸仓库（发布后 proxy 上已有嵌套契约包，`go mod tidy` 会直接找到它，C-1 就不再复现）。所以组件迁移与发布进度（HEAD 已是 2.0.0，例如 mdm/customer）不会让这些测试漂移；`component-check.sh` 的"迁移后"夹具停在子模块当前 HEAD（`clone_head`）。测试 shell 把 `~/go/bin` 追加进 PATH（buf generate 夹具要用）。覆盖：
 
 - `env.sh`：没设 `BE_SCRATCH` / 非法 ID 报错；十个变量的取值；`BE_COMP_DIR`；不连库组件的空 `SCHEMA`。T8：PATH 行是追加且 eval 两次不重复、eval 后 `brickkit` 仍解析到 `~/.local/bin`、buf 可用；stdout + stderr 里没有口令的值（只在子 shell 里比对）；`TEST_PG_DSN` 指向 `brickkit_test_db` 且口令长度对；`~/go/bin` 放在前面（真 v0.4.6）、假 brickkit 报 v0.4.6、没有 buf、`.env` 没有 `POSTGRES_PASSWORD`、没有 `.env` 都 exit 2 并说明，且失败时 stdout 为空。
 - `migrate-manifest.py` × 13：预览不写盘；旧清单 `--check` exit 1；`--write` 后 `--check` exit 0；重复 `--write` 无改动；13 个组件的依赖 / required / 默认值 / secret 与 §2.2 表逐项相等；customer / notification / print（Python）/ im-dingtalk 的代码改写；assembly.yaml 只删不加；`--check` 抓住驼峰键读取、未声明键读取、驼峰 schema 键、未标 secret、未进 required、版本注释。

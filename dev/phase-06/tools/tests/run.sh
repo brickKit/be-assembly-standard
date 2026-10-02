@@ -39,8 +39,15 @@ log_has() { grep -qE -- "$2" "$LOG/$1.log"; }
 clean_tree() { [ -z "$(git -C "$1" status --short)" ]; }
 commit_all() { git -C "$1" add -A && git -C "$1" -c user.name=t -c user.email=t@t commit -qm "$2"; }
 
-# 历史 / 归档引用（component-check.sh 的 (b) 与 migrate-manifest.py 的 assembly.yaml 注释清理用同一个模式）
-HIST='§|决策 ?[0-9]|设计计划|设计书|阶段[一二三四五六0-9]|总纲|手册|铁律|Task ?[0-9]|docs/plans/|archive/'
+# 历史 / 归档引用：直接用 migrate-manifest.py 的 HIST_RE（component-check.sh 的 (b) 也用它），不在这里抄一份
+# （抄的那份曾漏了"导读"，且 grep -E 写不出量词排除的零宽断言）
+hist_free() {  # hist_free <文件>：文件里没有 HIST_RE 命中即成功
+  python3 - "$TOOLS/migrate-manifest.py" "$1" <<'PYEOF'
+import importlib.util, sys
+spec = importlib.util.spec_from_file_location('mm', sys.argv[1]); mm = importlib.util.module_from_spec(spec); spec.loader.exec_module(mm)
+sys.exit(1 if any(mm.HIST_RE.search(l) for l in open(sys.argv[2], encoding='utf-8')) else 0)
+PYEOF
+}
 
 ALL13="crm/opportunity erp/finance erp/inventory erp/sales infra/authz infra/bff-mobile infra/iam-casdoor
 infra/notification infra/print infra/workflow integration/im-dingtalk mdm/customer mdm/product"
@@ -57,6 +64,11 @@ clone() {  # clone <id> <目标目录>：迁移前的夹具——克隆后退回
   tag=$(git -C "$dst" tag -l '1.*' 'v1.*' | grep -E '^v?1\.[0-9]+\.[0-9]+$' | sort -V | tail -1)
   [ -n "$tag" ] || { echo "$id 没有 1.x tag" >&2; exit 2; }
   git -C "$dst" reset -q --hard "$tag"
+  # 组件发布后子模块里多出 2.0.0 / v2.0.0 / gen/*/v1.0.0 等 tag：不是这个 1.x 提交祖先的 tag 一律删掉，
+  # 否则 go-v2.sh 的 4.3 会看到"已发布的契约包 tag"，夹具随发布进度漂移。工具只读本地 tag（没有 ls-remote），
+  # 再去掉 origin，保证任何远端查询都看不到发布后的状态
+  git -C "$dst" tag --no-merged HEAD | xargs -r git -C "$dst" tag -d >/dev/null
+  git -C "$dst" remote remove origin
 }
 
 if [ "${TEST_KEEP:-}" != 1 ] || [ ! -d "$W" ]; then
@@ -200,7 +212,7 @@ for id in $ALL13; do
   check "$id --write 同时写出 notes-2.0.0.generated.md（第一次与 notes-2.0.0.md 相同）" cmp -s "$N" "${N%.md}.generated.md"
   check "$id --write 打印去掉了几行归档引用注释" log_has "mm-write-$n" 'assembly.yaml：去掉 [0-9]+ 行归档引用注释'
   check "$id 发布说明不写'不再有默认值'" bash -c "! grep -q '不再有默认值' '$N'"
-  check "$id --write 之后 assembly.yaml 没有归档 / 历史引用" bash -c "! grep -nE '$HIST' '$d/assembly.yaml'"
+  check "$id --write 之后 assembly.yaml 没有归档 / 历史引用" hist_free "$d/assembly.yaml"
   before=$(git -C "$d" diff | sha1sum)
   run_tool "mm-write2-$n" "$d" python3 "$TOOLS/migrate-manifest.py" "$id" --write >/dev/null
   after=$(git -C "$d" diff | sha1sum)
@@ -596,6 +608,23 @@ cc_neg todo       'TODO'            "printf '\nTODO: fill in\n' >>docs/design.zh
 cc_neg tbd        'TODO'            "printf '\nTBD\n' >>README.md"
 cc_neg boundary   '越界'            "printf '\nsee dev/phase-06/component-loop.md\n' >>AGENTS.zh.md"
 cc_neg nested-vendor '4.5.*驼峰'   "mkdir -p backend/vendor && printf 'package vendor\n\nfunc f(c interface{ String(string) string }) string { return c.String(\"pgSchema\") }\n' >backend/vendor/x.go"
+python3 - "$TOOLS/migrate-manifest.py" >"$LOG/hist-re-unit.log" 2>&1 <<'PYEOF'
+import importlib.util, sys
+spec = importlib.util.spec_from_file_location('mm', sys.argv[1]); mm = importlib.util.module_from_spec(spec); spec.loader.exec_module(mm)
+for s in ('每个阶段一条', '每个阶段一个', '阶段一次', '各阶段一项', '本阶段结束', '给开发本组件的 AI 看的导读', 'AI 助手导读'):
+    assert not mm.HIST_RE.search(s), s
+for s in ('阶段一', '阶段四', '阶段三的做法', '阶段06', '阶段 06', '阶段4', '阶段二只有一个默认法人', '导读第 7 条', '导读第23条', '跨语言精度，导读"另外两条"'):
+    assert mm.HIST_RE.search(s), s
+print('hist-re-ok')
+PYEOF
+check "HIST_RE：'每个阶段一条' 等量词说法不算历史引用，'阶段一' / '阶段四' / '阶段06' / '阶段 06' 仍算；'导读第 N 条' 算、'AI 看的导读' 不算" log_has hist-re-unit 'hist-re-ok'
+( cd "$d" && printf '\nOne migration per stage（每个阶段一条迁移）.\n' >>docs/design.zh.md && printf '\n给开发本组件的 AI 看的导读。\n' >>AGENTS.zh.md )
+expect_rc 0 cc-stage-ok "$d" $CC mdm/customer
+check "component-check：文档里的'每个阶段一条'、'AI 看的导读'不 FAIL" bash -c "grep '^  PASS' '$LOG/cc-stage-ok.log' | grep -q '历史'"
+git -C "$d" checkout -q -- .
+cc_neg stage-four '历史'          "printf '\n这是阶段四的做法\n' >>docs/design.zh.md"
+cc_neg stage-06   '历史'          "printf '\nsee 阶段 06 for details\n' >>docs/design.zh.md"
+cc_neg guide-item '历史'          "printf '\n健康检查只探自己（导读第 7 条）\n' >>AGENTS.zh.md"
 ( cd "$d" && printf '\n```bash\n## 代码块里的井号不是小节\n```\n' >>README.md )
 expect_rc 0 cc-fence "$d" $CC mdm/customer
 check "代码块里的 ## 不算小节" bash -c "grep '^  PASS' '$LOG/cc-fence.log' | grep -q '小节数'"
@@ -706,6 +735,11 @@ check "--recheck 后仍无改动"                        clean_tree "$d"
 
 section "go-v2.sh：C-1（形态 B 被当成形态 A 改，v2 静默对着自己的 v1 生成代码编译）"
 d=$W/c1-notification; M=github.com/brickKit/infra-notification
+# 组件发布后（gen/infra/notification/v1.0.0 已在 GitHub 与 proxy 上），go mod tidy 会直接找到已发布的嵌套契约包，
+# C-1 就不再复现。本节让本仓库的模块路径不走代理（GOPRIVATE → direct），并用 git insteadOf 把它的远端指到一个
+# 由夹具（已剪掉非祖先 tag）做出的本机裸仓库：go 看到的就是"发布前"的远端，与发布进度无关
+rm -rf "$W/c1-bare.git"; git clone -q --bare "$d" "$W/c1-bare.git"
+export GOPRIVATE=$M GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0="url.$W/c1-bare.git.insteadOf" GIT_CONFIG_VALUE_0="https://$M"
 ( cd "$d" && go mod edit -module $M/v2 \
   && git ls-files '*.go' | grep -v '^gen/' | xargs perl -pi -e 's#"github.com/brickKit/infra-notification/(?!v2/|gen/)#"github.com/brickKit/infra-notification/v2/#g' \
   && go mod tidy && go build ./... ) >"$LOG/c1-break.log" 2>&1
@@ -720,6 +754,7 @@ expect_rc 0 go-c1-fix "$d" bash "$TOOLS/go-v2.sh" infra/notification --sdk "$SDK
 check "完整运行：明确报出 C-1 残留并删掉"                       log_has go-c1-fix 'C-1'
 check "完整运行后不再 require 旧路径"                           bash -c "! grep -qE '^\s+$M v1\.' '$d/go.mod'"
 check "完整运行后 go list -m all 只有两行本仓库模块"           bash -c "[ \"\$(cd '$d' && go list -m all | grep -c 'brickKit/infra-notification')\" = 2 ]"
+unset GOPRIVATE GIT_CONFIG_COUNT GIT_CONFIG_KEY_0 GIT_CONFIG_VALUE_0
 
 section "§4.6：be-sdk-go v0.4.0 的迁移入口（真 v0.4.0；形态 A customer、形态 B im-dingtalk）"
 SDK4=${TEST_SDK4:-v0.4.0}
