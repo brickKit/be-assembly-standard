@@ -1,0 +1,17 @@
+# Component: infra/print@2.0.0
+# Environment variables for this component; every key is injected as-is.
+# Shared variable: $var:NAME (config/vars.yaml) · environment variable: ${NAME} · local file: file://path
+
+# === Required: startup is blocked until these have a value ===
+AUTHZ_BUNDLE_URL: $var:AUTHZ_BUNDLE_URL  # string
+IAM_JWKS_URL: $var:IAM_JWKS_URL  # string
+NATS_URL: $var:NATS_URL  # string
+PG_DATABASE: $var:PG_DATABASE  # string
+PG_HOST: $var:PG_HOST  # string
+PG_PASSWORD: ${INFRA_PRINT_DB_PASSWORD}  # string | secret
+PG_USER: infra_print_rw  # string
+
+# === Optional: commented keys use the component's default; uncomment to override ===
+OTEL_BASE_URL: $var:OTEL_BASE_URL  # string
+PG_PORT: $var:PG_PORT  # string
+PG_SCHEMA: infra_print  # string

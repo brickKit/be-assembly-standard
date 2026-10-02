@@ -18,7 +18,7 @@
 | erp/sales | `dev.superuser` 建的订单（`CONFIRMED`、`SHIPPED`、`CANCELLED`）和 `dev.sales.east` 建的订单（`DRAFT`、`CONFIRMED`），走它自己的 REST 接口 | 5 |
 | crm/opportunity | `seed-opp-1..5` 由 `dev.superuser` 建（三个 `OPEN` 处在不同阶段，一个 `WON`，一个 `LOST`）；`seed-opp-6..10` 用 `dev.sales.east` 的真实 token 建（同样的分布，在最近 2–25 天里逐步推进）；`seed-opp-11` 是给低信用客户的一条 `WON` 商机。每条成功的 `WON` 都让 erp/sales 建出一张归属相应的 `CONFIRMED` 订单；`seed-opp-11` 的订单停在 `DRAFT` | 11 |
 | erp/finance | 覆盖应收、应付、存货、收入、成本的人工凭证（单行与多行，其中一张被红字冲销）；三种状态的会计期间（2026-04 结账后锁定、2026-05 结账后反结账、2026-07 只结账）；给 `dev.superuser` 和 `dev.finance.viewer` 的法人访问授权 | 5 张凭证，1 张冲销，3 个期间 |
-| infra/print | 两个可渲染的模板：`seed-template-delivery-note`（PDF，按行循环的表格）和 `seed-template-shipping-label`（ZPL，含条码指令）；灌入时各真实渲染一次 | 2 |
+| infra/print | 两个可渲染的模板：`sales.delivery_note`（PDF，按行循环的表格，模板 ID 与数据形状同前端的打印按钮；两个版本，版本列表与回滚有东西可看）和 `sales.shipping_label`（ZPL，含条码指令）；灌入时各经 gRPC 真实渲染一次 | 2 个模板，3 个版本 |
 
 用这些账号看到的数据范围：`dev.sales.east` 的列表里只有 `seed-opp-6..11` 和本部门的订单；`dev.warehouse.south` 只看得到 WH-SOUTH 的库存。erp/finance 的应收和信用占用不需要灌：库存、销售、商机产生的事件会把它们填满。
 
@@ -27,7 +27,7 @@
 ## 没有 seed-clean 或没有 seed 的组件
 
 - **erp/inventory 和 erp/finance 没有 `seed-clean`，只有 `db-reset`。** `inventory_movements` 是只增表；`LOCKED` 的会计期间没有任何 rpc 能转回去。两者逐行删除都复原不了，所以 `make seed-data-clean` 不动它们。要清空：`make -C components/erp/inventory db-reset` 或 `make -C components/erp/finance db-reset`（`migrate down` 再 `up`）。这会清空该组件的**全部**数据，不只是种子灌的那部分。
-- **infra/print 没有 `seed-clean`**：模板有版本管理，重灌只会追加一个版本。
+- **infra/print 没有 `seed-clean`**：管理员改过的模板绝不能被种子覆盖或删掉。重灌时已存在的模板一律跳过，可以放心重复跑。
 - **infra/workflow 和 infra/notification 没有 `make seed`。** workflow 的待办命令刻意不对外开放 REST，notification 连一个写 rpc 都没有：记录只来自事件。它们的数据来自一次真实的业务失败：`seed-opp-11` 用一个超出信用额度的客户赢单，erp/sales 拒绝确认订单、在 infra/workflow 建一条异常待办（分派给华东），这条待办又产生一条通知记录。
 - **integration/im-dingtalk 没有种子数据**：它连的是真实的钉钉团队和真实的手机；假凭据什么都测不出，真凭据每跑一次都会给人发消息。
 
