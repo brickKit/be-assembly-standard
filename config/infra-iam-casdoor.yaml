@@ -1,0 +1,29 @@
+# Component: infra/iam-casdoor@2.0.0
+# Environment variables for this component; every key is injected as-is.
+# Shared variable: $var:NAME (config/vars.yaml) · environment variable: ${NAME} · local file: file://path
+
+# === Required: startup is blocked until these have a value ===
+APP_TOKEN_SIGNING_KEY_PEM: file://.secrets/infra-iam-casdoor/app-token-signing-key.pem  # string | secret
+CASDOOR_ADMIN_PASSWORD: ${CASDOOR_ADMIN_PASSWORD}  # string | secret
+CASDOOR_BASE_URL: http://host.docker.internal:8000  # string
+ENABLED_COMPONENTS: file://brickkit.yaml  # string
+IAM_JWKS_URL: $var:IAM_JWKS_URL  # string
+NATS_URL: $var:NATS_URL  # string
+PG_DATABASE: $var:PG_DATABASE  # string
+PG_HOST: $var:PG_HOST  # string
+PG_PASSWORD: ${INFRA_IAM_CASDOOR_DB_PASSWORD}  # string | secret
+PG_USER: infra_iam_casdoor_rw  # string
+WEBHOOK_SHARED_SECRET: ${INFRA_IAM_CASDOOR_WEBHOOK_SHARED_SECRET}  # string | secret
+
+# === Optional: commented keys use the component's default; uncomment to override ===
+# APP_TOKEN_PREVIOUS_PUBLIC_KEY_PEM: ""  # string (default)
+# APP_TOKEN_TTL_SECONDS: 600  # integer (default)
+# CASDOOR_ADMIN_USERNAME: admin  # string (default)
+# CASDOOR_APP_NAME: brickkit-app  # string (default)
+CASDOOR_EXTRA_CLIENT_IDS: local-dev-seed-app  # local only: the ROPC test app of scripts/seed.sh (fixed client ID); leave empty in production
+# CASDOOR_ORG_NAME: brickkit  # string (default)
+OTEL_BASE_URL: $var:OTEL_BASE_URL  # string
+PG_PORT: $var:PG_PORT  # string
+PG_SCHEMA: infra_iam_casdoor  # string
+# REFRESH_TOKEN_TTL_SECONDS: 604800  # integer (default)
+WEBHOOK_CALLBACK_URL: $var:IAM_WEBHOOK_CALLBACK_URL  # string

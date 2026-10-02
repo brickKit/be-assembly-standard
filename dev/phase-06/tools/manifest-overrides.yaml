@@ -28,6 +28,7 @@
 crm/opportunity:
   name: Opportunities
   description: Opportunity lifecycle, sales funnel and win-forecast data; publishes won, lost and stage-changed events.
+  deps_pin: {mdm/customer: 2.0.1}          # customer 2.0.1（credit_limit 严格十进制等修复）；gen require 仍是 v1.0.6
   local: {language: go, runCommand: [go, run, ./backend/cmd/server]}
 
 erp/finance:
@@ -47,7 +48,7 @@ erp/sales:
   description: Sales quotations and the order lifecycle, pricing, and the compensating orchestration that reserves stock when an order is confirmed.
   local: {language: go, runCommand: [go, run, ./backend/cmd/server]}
   deps_drop: [erp/finance]             # R55：没有任何同步调用，sales → finance 只走事件
-  deps_pin: {mdm/customer: 2.0.1}
+  deps_pin: {mdm/customer: 2.0.1, infra/workflow: 2.0.1}
 
 infra/authz:
   name: Authorization
@@ -61,17 +62,23 @@ infra/bff-mobile:
   deps_add:                                # P11：BFF 经注入地址调它们的 REST，缺席时对应字段不注册
     - {id: infra/notification@2.0.0, optional: true}
     - {id: crm/opportunity@2.0.0, optional: true}
+  deps_pin: {mdm/customer: 2.0.1, infra/workflow: 2.0.1}   # 上游已发布的补丁版本（optional 保留）
+  add_properties:                          # R57：持久化查询清单可由部署给（file://），空 = 镜像里的清单
+    PERSISTED_OPERATIONS_JSON: {type: string, default: ""}
   start_period_seconds: 90
   permissions_add:                         # frontend-needs §2.10 / §2.11，标题初稿，T20 可改
     - {key: infra.bff-mobile.task.act, title: 处理我的待办（移动端）, type: action}
     - {key: infra.bff-mobile.notification.view, title: 查询我的通知（移动端）, type: action}
     - {key: infra.bff-mobile.opportunity.view, title: 查询我的商机（移动端）, type: action}
-  local: {language: node, runCommand: [sh, -c, npm run build && node dist/main.js]}   # 初稿，T20 真机确定
+  local: {language: node, runCommand: [sh, -c, npm run build && node dist/main.js]}   # T20 make verify FOCUS=1 真机确认（宿主机 :8500/healthz → 200）
 
 infra/iam-casdoor:
   name: IAM adapter for Casdoor
   description: A thin adapter in front of Casdoor; issues and refreshes application tokens, serves /api/tenant/features and bridges Casdoor webhooks.
   drop_default: [ENABLED_COMPONENTS]       # R27：值是 file://brickkit.yaml
+  deps_pin: {infra/authz: 2.0.1}           # authz 2.0.1（dev.superuser 分到根部门、be-sdk-go v0.5.0）；gen require 仍是 v1.0.5
+  add_properties:                          # 发布前审查 I3：id_token 的 aud 校验；本地 ROPC 测试应用要列进来
+    CASDOOR_EXTRA_CLIENT_IDS: {type: string, default: ""}
   local: {language: go, runCommand: [go, run, ./backend/cmd/server]}
 
 infra/notification:

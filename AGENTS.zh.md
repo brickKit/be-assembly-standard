@@ -102,6 +102,7 @@
 | 在服务用户请求的路径上用 `besdk.SystemClient` | 返回结果悄悄多出用户无权看的行 | 它带的是组件自己的身份，绕过数据范围；只用于 `Start()` 和事件处理（[02-backend.md](docs/zh/01-conventions/02-backend.md#调用其他组件)） |
 | `assembly.yaml` 里省略 `data_scopes` | be-ops 拒绝这个组件 | 有意为之：安全设置不能默认关闭。不需要行级范围就写 `data_scopes: none`（[0205](docs/zh/02-decisions/02-permissions/0205-data-scopes-ship-with-the-version.md)） |
 | `owner` OR `org` 组合时有一个操作数停在"全匹配" | 整个条件匹配一切，每个用户都看到所有行 | 两个操作数都必须来自调用方真实的范围（[02-backend.md](docs/zh/01-conventions/02-backend.md#数据范围)） |
+| 把空的 `dept_path` 当成部门树的根 | 新建、还没分部门的用户在每个按 `org` 限定的列表里看到所有部门的行 | 只有没分部门时 `dept_path` 才为空；SDK 给这种人的 `org` 维一个永远不匹配的哨兵（be-sdk-go / be-sdk-python / be-sdk-ts v0.5.0）。整棵树是根部门，或者 `/`（[02-backend.md](docs/zh/01-conventions/02-backend.md#数据范围)） |
 | 改名或复用已发布的权限键 | 被授予它的每个角色悄悄失去它；升级后用户突然点不了某个按钮 | 权限键是持久标识；退役用 `deprecated` 列（[07-registries.md](docs/zh/01-conventions/07-registries.md#只追加)） |
 | 前端只查 `features`，不查 `permissions` | 菜单项看得见，点进去是整页 403 | `features` 说装了什么，`permissions` 说这个用户能做什么（[03-frontend.md](docs/zh/01-conventions/03-frontend.md#功能权限与菜单)） |
 | 把本项目的键（`permissions`、`data_scopes`、`menus`，以及 `domain`、`tier` 这类项目自己的元数据）写进 `component.yaml` | `brickkit lint` 和 `brickkit add` 拒绝整份清单：`MANIFEST_INVALID`、`unknown field`；组件加不进项目、也起不来 | `component.yaml` 没有扩展字段；这些键属于 `assembly.yaml`（[02-backend.md](docs/zh/01-conventions/02-backend.md#仓库结构)） |
