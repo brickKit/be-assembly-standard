@@ -9,6 +9,8 @@
 #   required_add          额外进 required 的键（必须已声明、且没有 default）
 #   drop_default          去掉旧默认值、改成 required 的键（R27：值由项目内容决定，不能悄悄为空）
 #   deps_add              新增依赖，写法同 component.yaml（版本必须是 2.0.0）
+#   deps_drop             去掉 tag 版里已有的依赖（不带版本的组件 ID 列表；必须是现有依赖）
+#   deps_pin              {组件 ID: 2.x.y}：上游发了补丁版本时把依赖钉到那个确切版本（optional 等其余字段保留）
 #   start_period_seconds  healthCheck.startPeriodSeconds（不写就沿用旧值；Go 不写，默认 60）
 #   migration_command     替换 migration.command（数组；不写就沿用旧值）
 #   local                 {language, runCommand（数组）}，必填
@@ -42,8 +44,10 @@ erp/inventory:
 
 erp/sales:
   name: Sales
-  description: Sales quotations and the order lifecycle, pricing, and the compensating orchestration of stock reservation and receivables.
+  description: Sales quotations and the order lifecycle, pricing, and the compensating orchestration that reserves stock when an order is confirmed.
   local: {language: go, runCommand: [go, run, ./backend/cmd/server]}
+  deps_drop: [erp/finance]             # R55：没有任何同步调用，sales → finance 只走事件
+  deps_pin: {mdm/customer: 2.0.1}
 
 infra/authz:
   name: Authorization
@@ -81,7 +85,8 @@ infra/print:
   start_period_seconds: 120
   # T16 的目标形态：业务包从 app 改名为 infra_print（外壳 py-render 里与其它 Python 成员不撞名）
   migration_command: [python, -m, infra_print.migrate, apply]
-  local: {language: python, runCommand: [python, -m, infra_print.main]}   # 初稿，T16 真机确定
+  # 宿主机的 python 没有本组件的依赖：focus / mode: local 用组件目录下 make venv 建的 .venv（T16 真机确定）
+  local: {language: python, runCommand: [.venv/bin/python, -m, infra_print.main]}
 
 infra/workflow:
   name: Workflow inbox

@@ -44,7 +44,10 @@ NO_DEFAULT = {'AUTHZ_BUNDLE_URL', 'IAM_JWKS_URL'}          # P1：一律 require
 SECRET_RE = re.compile(r'PASSWORD|SECRET|SIGNING_KEY')
 RESERVED = {'COMPONENT_ID', 'COMPONENT_VERSION', 'PORT', 'BRICKKIT_SERVED_MEMBERS', 'BRICKKIT_SERVED_MEMBERS_CONFIG'}
 KEY_RE = re.compile(r'[A-Z][A-Z0-9_]*')
+# 依赖版本：一律钉 2.x 的确切版本（deps_pin 之外都是 2.0.0）
+DEP_VER_RE = re.compile(r'2\.[0-9]+\.[0-9]+')
 OVERRIDE_FIELDS = {'name', 'description', 'tags', 'add_properties', 'required_add', 'drop_default', 'deps_add',
+                   'deps_drop', 'deps_pin',
                    'start_period_seconds', 'migration_command', 'local', 'history_allow'} | \
     {f'{k}_add' for k in ('permissions', 'menus', 'edge_routes')}
 # assembly.yaml 里允许由 overrides 追加条目的列表（每个任务新增的权限键、菜单、网关路由），以及条目的身份键
@@ -155,6 +158,13 @@ def load_override(cid):
             if len(x['text']) < ALLOW_MIN_TEXT or not HIST_RE.search(x['text']):
                 raise Fatal(f'manifest-overrides.yaml 的 {cid}.history_allow 的 text 必须是命中行里至少 {ALLOW_MIN_TEXT} 个字符、'
                             f'本身含历史引用（HIST_RE）的一段原文：{x["text"]!r}')
+    drop = ov.get('deps_drop')
+    if drop is not None and (not isinstance(drop, list) or not all(isinstance(x, str) and '@' not in x for x in drop)):
+        raise Fatal(f'manifest-overrides.yaml 的 {cid}.deps_drop 必须是不带版本的组件 ID 列表：{drop!r}')
+    pin = ov.get('deps_pin')
+    if pin is not None and (not isinstance(pin, dict) or not all(
+            isinstance(k, str) and '@' not in k and isinstance(v, str) and DEP_VER_RE.fullmatch(v) for k, v in pin.items())):
+        raise Fatal(f'manifest-overrides.yaml 的 {cid}.deps_pin 必须是 {{组件 ID: 2.x.y}} 的映射：{pin!r}')
     loc = ov['local']
     if not isinstance(loc, dict) or not isinstance(loc.get('runCommand'), list) or not loc.get('language'):
         raise Fatal(f'manifest-overrides.yaml 的 {cid}.local 必须有 language 和数组形式的 runCommand')
@@ -211,6 +221,19 @@ def build_component(old, ov, cx):
     dup = sorted({i for i in ids if ids.count(i) > 1})
     if dup:
         raise Fatal(f'依赖重复：{dup}')
+    # deps_drop：去掉 tag 版里已有、现在不再需要的依赖；deps_pin：已发布补丁版本的上游钉到确切版本
+    drop = ov.get('deps_drop') or []
+    for i in drop:
+        if i not in ids:
+            raise Fatal(f'deps_drop 里的 {i} 不是现有依赖（{ids}）')
+    deps = [d for d in deps if dep_id(d) not in drop]
+    pin = ov.get('deps_pin') or {}
+    for i, ver in pin.items():
+        if i not in [dep_id(d) for d in deps]:
+            raise Fatal(f'deps_pin 里的 {i} 不是现有依赖')
+    deps = [d if dep_id(d) not in pin else
+            (f'{dep_id(d)}@{pin[dep_id(d)]}' if isinstance(d, str) else {**d, 'id': f'{dep_id(d)}@{pin[dep_id(d)]}'})
+            for d in deps]
     new['dependencies'] = {'components': deps}
     resources = {r.get('kind') for r in (olddeps.get('resources') or [])}
 
@@ -699,7 +722,8 @@ def manifest_checks(m, text, cx):
     res.append(('密码/密钥未标 secret', [k for k in props if SECRET_RE.search(k) and not (props[k] or {}).get('secret')]))
     res.append(('残留字段', (['dependencies.resources'] if 'resources' in (m.get('dependencies') or {}) else []) +
                 (['deployment.image'] if 'image' in dep else [])))
-    res.append(('依赖不是 @2.0.0', [d for d in deps if not (d if isinstance(d, str) else str(d.get('id'))).endswith('@2.0.0')]))
+    res.append(('依赖不是 2.x 的确切版本', [d for d in deps if not re.fullmatch(
+        r'[^@]+@' + DEP_VER_RE.pattern, d if isinstance(d, str) else str(d.get('id')))]))
     res.append(('版本注释', [f'第 {n} 行：{ln.strip()}' for n, ln in enumerate(text.split('\n'), 1)
                           if re.search(r'#.*[0-9]+\.[0-9]+\.[0-9]+', ln)]))
     ports = []

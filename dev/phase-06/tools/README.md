@@ -66,7 +66,7 @@ python3 $ROOT/dev/phase-06/tools/migrate-manifest.py <id> --check; echo "exit=$?
 
 **`component.yaml`（整份重写，§3.1 版式）**：
 - 删除全部注释、`deployment.image`、`dependencies.resources`；补 `metadata.repository`（`https://github.com/brickKit/<repo>`）、`deployment.build`、`local`；`metadata.name`/`description` 取 overrides（英文，含中文字符就失败）；`version: 2.0.0`。
-- 依赖全部改 `@2.0.0`（optional 保留），加 `deps_add`；ID 重复就失败。
+- 依赖全部改 `@2.0.0`（optional 保留），加 `deps_add`，去掉 `deps_drop`，按 `deps_pin` 钉到已发布的 `2.x.y`；ID 重复、`deps_drop` / `deps_pin` 指向不存在的依赖、`deps_pin` 不是 `2.x.y` 都失败。
 - `configSchema`：旧 `resources` 有 `database` → `PG_HOST`、`PG_PORT`（`"5432"`）、`PG_DATABASE`、`PG_USER`、`PG_PASSWORD`（`secret: true`）、`PG_SCHEMA`（默认值 = 旧 `pgSchema` 默认值，必须等于 `registry/schemas.tsv`，否则失败）；有 `mq` → `NATS_URL`。共享键按固定名，其余驼峰键转大写下划线。`AUTHZ_BUNDLE_URL`/`IAM_JWKS_URL`（P1）、`drop_default` 里的键（R27）、旧 required 键一律去掉 `default`；键名含 `PASSWORD`/`SECRET`/`SIGNING_KEY` 的标 `secret: true`；属性里的 `description` 删掉（§2.3.4）；整数默认值保持数字。没有 `default` 的键全部进 `required`（按属性顺序）。
 - `deployment` 其余字段（端口、`extraPorts`、`labels`、`resources`）原样搬；`migration` 原样（或 `migration_command`）；`healthCheck` 原样，`start_period_seconds` 覆盖 `startPeriodSeconds`。
 - 写盘前自检：生成文本解析回来必须等于推导结果；再跑一遍 3.2 检查，不过就不写、exit 1。
@@ -93,7 +93,7 @@ python3 $ROOT/dev/phase-06/tools/migrate-manifest.py <id> --check; echo "exit=$?
 
 **代码**：把 SDK Config 读法里的旧键改成新键，逐处打印 `文件:行: "旧" → "新"`。认的写法：Go `.String|StringOr|MustString|Int|IntOr|Bool|BoolOr("<旧键>"`，Python `.string|string_or|must_string|int|int_or|bool|bool_or("<旧键>"`（单双引号），TS/JS `.string|stringOr|mustString|int|intOr|bool|boolOr("<旧键>"`；跳过 `gen/ node_modules/ dist/ .venv/ build/ vendor/`。代码的**字符串字面量与注释**里还出现的旧键名（报错文案、注释，例如 im-dingtalk 的 `panic("必填配置项 \"dingtalkAgentId\" …")`）只用 `ℹ️` 列出来，不改——要不要改由人判断（Review Focus 2）；同名的变量名不算。
 
-**`--check`**（当前工作区，任一项不是"无"就 exit 1）：驼峰/非法键；保留名（`*_ENDPOINT`、`COMPONENT_ID`、`COMPONENT_VERSION`、`PORT`、`BRICKKIT_SERVED_MEMBERS*`）；无默认值却不在 required；required 却有默认值；required 里有未声明的键；密码/密钥未标 secret；残留字段（`dependencies.resources`、`deployment.image`）；依赖不是 `@2.0.0`；版本注释（`#.*x.y.z`）；端口与 `registry/ports.tsv` 不一致；`PG_SCHEMA` 与 `registry/schemas.tsv` 不一致；metadata（版本 `2.x`、`repository`、英文名称与描述）；`deployment.build` / `local.runCommand` 数组；`assembly.yaml`（无 `version`/`shell`/`asset`、`id` 一致、有 `data_scopes`、`data.role` = registry 的 role）；**代码里还有驼峰键读取**；**非测试代码读取了 `configSchema` 没声明的键**（新键写进代码却忘了声明，brickKit 不会注入它）。
+**`--check`**（当前工作区，任一项不是"无"就 exit 1）：驼峰/非法键；保留名（`*_ENDPOINT`、`COMPONENT_ID`、`COMPONENT_VERSION`、`PORT`、`BRICKKIT_SERVED_MEMBERS*`）；无默认值却不在 required；required 却有默认值；required 里有未声明的键；密码/密钥未标 secret；残留字段（`dependencies.resources`、`deployment.image`）；依赖不是 `2.x` 的确切版本（`@2.x.y`）；版本注释（`#.*x.y.z`）；端口与 `registry/ports.tsv` 不一致；`PG_SCHEMA` 与 `registry/schemas.tsv` 不一致；metadata（版本 `2.x`、`repository`、英文名称与描述）；`deployment.build` / `local.runCommand` 数组；`assembly.yaml`（无 `version`/`shell`/`asset`、`id` 一致、有 `data_scopes`、`data.role` = registry 的 role）；**代码里还有驼峰键读取**；**非测试代码读取了 `configSchema` 没声明的键**（新键写进代码却忘了声明，brickKit 不会注入它）。
 
 **已知限制**：
 - `--write` 丢掉 `component.yaml` 里的全部注释（本来就要删；理由写进 `BRICKKIT.md` / `docs/design.md`）。
@@ -106,7 +106,7 @@ python3 $ROOT/dev/phase-06/tools/migrate-manifest.py <id> --check; echo "exit=$?
 
 ## manifest-overrides.yaml
 
-每个组件一段，字段：`name`、`description`（英文，必填）、`tags`、`add_properties`、`required_add`、`drop_default`、`deps_add`、`start_period_seconds`、`migration_command`、`local`（必填：`language` + 数组 `runCommand`）、`permissions_add`、`menus_add`、`edge_routes_add`、`history_allow`（`component-check.sh` 用：`[{path: <确切的文件路径>, text: <命中行里的一段原文>, why: <为什么必须留着>}]`，三个键都必填且非空；`path` 不许带 `* ? [`，`text` 至少 6 个字符且本身含 `HIST_RE` 命中——否则 exit 2，修复轮 I1）。写了别的字段脚本就失败。**本文件是 C3 之后所有清单增量的唯一入口**：改这里，再重跑 `--write`。初稿按 component-loop §2.2 写全 13 个组件：
+每个组件一段，字段：`name`、`description`（英文，必填）、`tags`、`add_properties`、`required_add`、`drop_default`、`deps_add`、`deps_drop`、`deps_pin`、`start_period_seconds`、`migration_command`、`local`（必填：`language` + 数组 `runCommand`）、`permissions_add`、`menus_add`、`edge_routes_add`、`history_allow`（`component-check.sh` 用：`[{path: <确切的文件路径>, text: <命中行里的一段原文>, why: <为什么必须留着>}]`，三个键都必填且非空；`path` 不许带 `* ? [`，`text` 至少 6 个字符且本身含 `HIST_RE` 命中——否则 exit 2，修复轮 I1）。写了别的字段脚本就失败。**本文件是 C3 之后所有清单增量的唯一入口**：改这里，再重跑 `--write`。初稿按 component-loop §2.2 写全 13 个组件：
 
 - `infra/authz` `drop_default: [PERMISSION_CATALOG]`、`infra/iam-casdoor` `drop_default: [ENABLED_COMPONENTS]`（R27）。
 - `erp/inventory` `add_properties: LOW_STOCK_THRESHOLD {type: string, default: "10"}`（plan-06b T10）。

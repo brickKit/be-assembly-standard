@@ -232,7 +232,7 @@ EXP = {
  'crm/opportunity': (['mdm/customer@2.0.0', 'mdm/product@2.0.0'], STD, d('crm_opportunity'), ['PG_PASSWORD']),
  'erp/finance': ([], STD, d('erp_finance'), ['PG_PASSWORD']),
  'erp/inventory': ([], STD, d('erp_inventory', LOW_STOCK_THRESHOLD='10'), ['PG_PASSWORD']),
- 'erp/sales': (['mdm/customer@2.0.0', 'mdm/product@2.0.0', 'erp/inventory@2.0.0', 'erp/finance@2.0.0', ('infra/workflow@2.0.0', True)],
+ 'erp/sales': (['mdm/customer@2.0.1', 'mdm/product@2.0.0', 'erp/inventory@2.0.0', ('infra/workflow@2.0.0', True)],   # R55 deps_drop finance；deps_pin customer
                STD + ['DEFAULT_WAREHOUSE_ID'], d('erp_sales', EXCEPTION_ASSIGNEE_SUB=''), ['PG_PASSWORD']),
  'infra/authz': ([], STD + ['PERMISSION_CATALOG'],
                  d('infra_authz', ACCESS_TOKEN_TTL_SECONDS='600', DEFAULT_ORG_ID='1', BOOTSTRAP_ADMIN_SUB=''), ['PG_PASSWORD']),
@@ -413,6 +413,36 @@ EOF
 expect_rc 2 mm-add-dup "$d" env BE_OVERRIDES="$OV" python3 "$TOOLS/migrate-manifest.py" mdm/customer --write
 check "permissions_add 与已有键重复时大声失败" log_has mm-add-dup 'mdm.customer.view'
 cp "$W/asm-before-add.yaml" "$d/assembly.yaml"
+
+section "deps_drop / deps_pin（R55：去掉不再调用的依赖；已发布补丁版本的上游钉到确切版本）"
+ds=$W/all/erp-sales   # 不复用 $d：下一节默认 $d 还是 mdm-customer
+check "真实 overrides：erp/sales 去掉了 erp/finance" bash -c "! grep -q 'erp/finance' '$ds/component.yaml'"
+check "真实 overrides：mdm/customer 钉在 2.0.1" grep -q 'mdm/customer@2.0.1' "$ds/component.yaml"
+expect_rc 0 mm-pin-check "$ds" python3 "$TOOLS/migrate-manifest.py" erp/sales --check
+OVP=$W/overrides-pin.yaml
+pin_case() {  # pin_case <名字> <期望码> <python 片段：改 d['erp/sales']>
+  python3 - "$TOOLS/manifest-overrides.yaml" "$OVP" "$3" <<'PYEOF'
+import sys, yaml
+d = yaml.safe_load(open(sys.argv[1])); s = d['erp/sales']
+exec(sys.argv[3])
+yaml.safe_dump(d, open(sys.argv[2], 'w'), allow_unicode=True, sort_keys=False)
+PYEOF
+  expect_rc "$2" "mm-pin-$1" "$ds" env BE_OVERRIDES="$OVP" python3 "$TOOLS/migrate-manifest.py" erp/sales --write
+}
+pin_case optional 0 "s['deps_pin'] = {'mdm/customer': '2.0.1', 'infra/workflow': '2.0.1'}"
+check "deps_pin 钉 optional 依赖：版本改了、optional 还在" python3 -c "
+import yaml; ds=yaml.safe_load(open('$ds/component.yaml'))['dependencies']['components']
+assert {'id': 'infra/workflow@2.0.1', 'optional': True} in ds, ds"
+pin_case drop-unknown 2 "s['deps_drop'] = ['erp/nope']"
+check "deps_drop 不存在的依赖：大声失败" log_has mm-pin-drop-unknown 'erp/nope'
+pin_case pin-unknown 2 "s['deps_pin'] = {'erp/nope': '2.0.1'}"
+check "deps_pin 不存在的依赖：大声失败" log_has mm-pin-pin-unknown 'erp/nope'
+pin_case pin-major 2 "s['deps_pin'] = {'mdm/customer': '3.0.0'}"
+check "deps_pin 不是 2.x.y：大声失败" log_has mm-pin-pin-major 'deps_pin'
+pin_case drop-versioned 2 "s['deps_drop'] = ['erp/finance@2.0.0']"
+check "deps_drop 带版本号：大声失败" log_has mm-pin-drop-versioned 'deps_drop'
+expect_rc 0 mm-pin-restore "$ds" python3 "$TOOLS/migrate-manifest.py" erp/sales --write
+check "回到真实 overrides 后 workflow 回到 2.0.0" grep -q 'infra/workflow@2.0.0' "$ds/component.yaml"
 
 section "修复轮：assembly.yaml 的 --check 反向路径、data.role 只改 data 的直接子键"
 cp "$d/assembly.yaml" "$W/asm.bak"
