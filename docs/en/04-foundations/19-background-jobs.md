@@ -27,9 +27,11 @@ Not covered here: consuming events ([12-event-bus.md](12-event-bus.md)); the rec
 
 ## Port contract
 
-The contract is tables and behaviour, so that every SDK, in any language, implements the same thing (the component protocol, planned `02-languages-and-component-protocol.md`).
+The contract is tables and behaviour, so that every SDK, in any language, implements the same thing (the component protocol, [02-languages-and-component-protocol.md](02-languages-and-component-protocol.md)).
 
-**Declaration.** A job has a name unique within its component (used in metrics, leases and logs), a kind, an interval (`every`, `singleton`) or a five-field cron expression (`cron`), and a timeout for one run. A worker for queued jobs has a kind, a concurrency, a maximum number of attempts, a backoff list, and a handler for jobs whose attempts are used up.
+**Declaration.** A job has a name unique within its component (used in metrics, leases and logs), a kind, an interval (`every`, `singleton`) or a schedule (`cron`), and a timeout for one run. A `cron` schedule is either a five-field cron expression (`0 2 * * *`) or `@every <duration>` (`@every 2s`). A worker for queued jobs has a kind, a concurrency, a maximum number of attempts, a backoff list, and a handler for jobs whose attempts are used up.
+
+**Overrides.** `JOBS_OVERRIDES` (JSON keyed by job name, runtime-owned `be.*` jobs included) overrides a job's `interval`, `cron` or `enabled` per deployment; an unknown job name is logged at WARN and ignored (be-protocol P14.5).
 
 **Tables** (in the component's schema; components write no DDL for them):
 
@@ -130,7 +132,7 @@ This is a **single-adapter port**, labelled honestly ([01-ports-and-adapters.md]
 
 Suite `tools/be-acceptance/conformance/jobs/` (decided), run against a fixture component built with each official SDK:
 
-- two replicas: one `cron` slot runs exactly once;
+- two replicas: one `cron` slot runs exactly once (CP-JOBS-01: the platform cron job `be.cleanup` set to `@every 2s` through `JOBS_OVERRIDES`);
 - two replicas: a `singleton` runs in one place at a time; a run whose lease is lost is cancelled;
 - a job that panics restarts with backoff and is counted; one job stopping leaves the others running;
 - `queue`: a rolled-back business transaction leaves no job; exhausted attempts call the dead handler; two replicas execute each job once under normal operation;
@@ -140,9 +142,10 @@ Component tests written red before migration: finance "when one loop exits the o
 
 ## Decision records
 
+- [0508 Background work runs only through the SDK's Jobs](../02-decisions/05-runtime/0508-background-work-only-through-jobs.md): this document is its full analysis.
+- [0501 No network call inside a transaction](../02-decisions/05-runtime/0501-no-network-inside-a-transaction.md): enqueueing in the business transaction is the asynchronous exit.
 - [0102 One database, one schema per component](../02-decisions/01-architecture/0102-one-schema-per-component.md): the job tables live in the component's schema.
 - [0108 One shell, one repository, one image, one member list](../02-decisions/01-architecture/0108-one-repository-per-shell.md): the launcher, and so the supervisor, lives in the SDK.
-- Planned: "background work runs only through the SDK's Jobs", in the planned runtime decision folder.
 
 ## Known limits
 

@@ -1,0 +1,143 @@
+===== nats.go 1.54.0, server 2.10.29
+T1 durable "crm_opportunity__r1go_order_confirmed_v1" created; hyphen variant "infra_iam-casdoor__r1go_order_confirmed_v1" -> ok
+T1 config read back: AckWait=1s MaxDeliver=8 BackOff=[1s 10s 1m0s 5m0s 15m0s 30m0s 1h0m0s] InactiveThreshold=720h0m0s MaxAckPending=256
+T2 DeliverAll on first create: fetched 3 of 3 pre-existing events
+T3 CreateConsumer again, identical config: ok
+T3 CreateConsumer again, MaxDeliver 8->9: ERR nats: API error: code=400 err_code=10148 description=consumer already exists
+T3 UpdateConsumer MaxDeliver 8->9: ok, MaxDeliver now 9
+T3 UpdateConsumer DeliverPolicy all->new: ERR nats: API error: code=500 err_code=10012 description=deliver policy can not be updated
+T4a BackOff len 3, MaxDeliver 3: ok
+T4a BackOff len 3, MaxDeliver 4: ok
+T4a stored AckWait when AckWait=30s and BackOff[0]=200ms: 200ms
+T4a BackOff len 3, MaxDeliver 2: ERR nats: API error: code=400 err_code=10116 description=max deliver is required to be > length of backoff values
+T4a BackOff len 3, MaxDeliver -1 (unlimited): ok
+T4b no ack (timeout path), BackOff 200ms,500ms,1s MaxDeliver 4: [+0s(n=1) +200ms(n=2) +700ms(n=3) +1.7s(n=4)]
+T4c Nak() each time, same BackOff: [+0s(n=1) +0s(n=2) +0s(n=3) +0s(n=4)]
+T4d NakWithDelay(BackOff[n-1]): [+0s(n=1) +200ms(n=2) +1s(n=3) +2.81s(n=4)]
+T4e stored AckWait without BackOff: 30s
+T4e no BackOff, AckWait 30s, NakWithDelay(EVENTS_BACKOFF[n-1]): [+0s(n=1) +200ms(n=2) +700ms(n=3) +1.7s(n=4)]
+T4 advisory $JS.EVENT.ADVISORY.CONSUMER.MAX_DELIVERIES.BE_R1GO.t4b: consumer=t4b stream_seq=4 deliveries=4
+T4 advisory $JS.EVENT.ADVISORY.CONSUMER.MAX_DELIVERIES.BE_R1GO.t4c: consumer=t4c stream_seq=5 deliveries=4
+T4 advisory $JS.EVENT.ADVISORY.CONSUMER.MAX_DELIVERIES.BE_R1GO.t4e: consumer=t4e stream_seq=7 deliveries=4
+T5a AckWait 2s, slow handler 4s with InProgress every 0.66s (AckWait/3): [+0s(n=1)]
+T5b control, slow handler 4s, no InProgress: [+0s(n=1) +2s(n=2)]
+T5c AckWait 6s + BackOff [1s,2s,3s], handler 4s, InProgress every 2s (AckWait/3): [+0s(n=1) +1s(n=2)]
+T5d same, InProgress every 330ms (BackOff[0]/3): [+0s(n=1)]
+T6 MaxDeliver -1, SDK-side limit 2, handler crashes (no ack): [+0s(n=1) +1s(n=2) +2s(n=3)]
+T6 DLQ stream messages: 1
+===== nats.go 1.54.0, server 2.11.17
+T1 durable "crm_opportunity__r1go_order_confirmed_v1" created; hyphen variant "infra_iam-casdoor__r1go_order_confirmed_v1" -> ok
+T1 config read back: AckWait=1s MaxDeliver=8 BackOff=[1s 10s 1m0s 5m0s 15m0s 30m0s 1h0m0s] InactiveThreshold=720h0m0s MaxAckPending=256
+T2 DeliverAll on first create: fetched 3 of 3 pre-existing events
+T3 CreateConsumer again, identical config: ok
+T3 CreateConsumer again, MaxDeliver 8->9: ERR nats: API error: code=400 err_code=10148 description=consumer already exists
+T3 UpdateConsumer MaxDeliver 8->9: ok, MaxDeliver now 9
+T3 UpdateConsumer DeliverPolicy all->new: ERR nats: API error: code=500 err_code=10012 description=deliver policy can not be updated
+T4a BackOff len 3, MaxDeliver 3: ok
+T4a BackOff len 3, MaxDeliver 4: ok
+T4a stored AckWait when AckWait=30s and BackOff[0]=200ms: 200ms
+T4a BackOff len 3, MaxDeliver 2: ERR nats: API error: code=400 err_code=10116 description=max deliver is required to be > length of backoff values
+T4a BackOff len 3, MaxDeliver -1 (unlimited): ok
+T4b no ack (timeout path), BackOff 200ms,500ms,1s MaxDeliver 4: [+0s(n=1) +200ms(n=2) +700ms(n=3) +1.7s(n=4)]
+T4c Nak() each time, same BackOff: [+0s(n=1) +0s(n=2) +0s(n=3) +0s(n=4)]
+T4d NakWithDelay(BackOff[n-1]): [+0s(n=1) +200ms(n=2) +1s(n=3) +2.81s(n=4)]
+T4e stored AckWait without BackOff: 30s
+T4e no BackOff, AckWait 30s, NakWithDelay(EVENTS_BACKOFF[n-1]): [+0s(n=1) +200ms(n=2) +700ms(n=3) +1.7s(n=4)]
+T4 advisory $JS.EVENT.ADVISORY.CONSUMER.MAX_DELIVERIES.BE_R1GO.t4b: consumer=t4b stream_seq=4 deliveries=4
+T4 advisory $JS.EVENT.ADVISORY.CONSUMER.MAX_DELIVERIES.BE_R1GO.t4c: consumer=t4c stream_seq=5 deliveries=4
+T4 advisory $JS.EVENT.ADVISORY.CONSUMER.MAX_DELIVERIES.BE_R1GO.t4e: consumer=t4e stream_seq=7 deliveries=4
+T5a AckWait 2s, slow handler 4s with InProgress every 0.66s (AckWait/3): [+0s(n=1)]
+T5b control, slow handler 4s, no InProgress: [+0s(n=1) +2s(n=2)]
+T5c AckWait 6s + BackOff [1s,2s,3s], handler 4s, InProgress every 2s (AckWait/3): [+0s(n=1) +1s(n=2)]
+T5d same, InProgress every 330ms (BackOff[0]/3): [+0s(n=1)]
+T6 MaxDeliver -1, SDK-side limit 2, handler crashes (no ack): [+0s(n=1) +1s(n=2) +2s(n=3)]
+T6 DLQ stream messages: 1
+===== nats.go 1.54.0, server 2.12.15
+T1 durable "crm_opportunity__r1go_order_confirmed_v1" created; hyphen variant "infra_iam-casdoor__r1go_order_confirmed_v1" -> ok
+T1 config read back: AckWait=1s MaxDeliver=8 BackOff=[1s 10s 1m0s 5m0s 15m0s 30m0s 1h0m0s] InactiveThreshold=720h0m0s MaxAckPending=256
+T2 DeliverAll on first create: fetched 3 of 3 pre-existing events
+T3 CreateConsumer again, identical config: ok
+T3 CreateConsumer again, MaxDeliver 8->9: ERR nats: API error: code=400 err_code=10148 description=consumer already exists
+T3 UpdateConsumer MaxDeliver 8->9: ok, MaxDeliver now 9
+T3 UpdateConsumer DeliverPolicy all->new: ERR nats: API error: code=500 err_code=10012 description=deliver policy can not be updated
+T4a BackOff len 3, MaxDeliver 3: ok
+T4a BackOff len 3, MaxDeliver 4: ok
+T4a stored AckWait when AckWait=30s and BackOff[0]=200ms: 200ms
+T4a BackOff len 3, MaxDeliver 2: ERR nats: API error: code=400 err_code=10116 description=max deliver is required to be > length of backoff values
+T4a BackOff len 3, MaxDeliver -1 (unlimited): ok
+T4b no ack (timeout path), BackOff 200ms,500ms,1s MaxDeliver 4: [+0s(n=1) +200ms(n=2) +700ms(n=3) +1.7s(n=4)]
+T4c Nak() each time, same BackOff: [+0s(n=1) +0s(n=2) +0s(n=3) +0s(n=4)]
+T4d NakWithDelay(BackOff[n-1]): [+0s(n=1) +200ms(n=2) +1s(n=3) +2.81s(n=4)]
+T4e stored AckWait without BackOff: 30s
+T4e no BackOff, AckWait 30s, NakWithDelay(EVENTS_BACKOFF[n-1]): [+0s(n=1) +200ms(n=2) +700ms(n=3) +1.71s(n=4)]
+T4 advisory $JS.EVENT.ADVISORY.CONSUMER.MAX_DELIVERIES.BE_R1GO.t4b: consumer=t4b stream_seq=4 deliveries=4
+T4 advisory $JS.EVENT.ADVISORY.CONSUMER.MAX_DELIVERIES.BE_R1GO.t4c: consumer=t4c stream_seq=5 deliveries=4
+T4 advisory $JS.EVENT.ADVISORY.CONSUMER.MAX_DELIVERIES.BE_R1GO.t4e: consumer=t4e stream_seq=7 deliveries=4
+T5a AckWait 2s, slow handler 4s with InProgress every 0.66s (AckWait/3): [+0s(n=1)]
+T5b control, slow handler 4s, no InProgress: [+0s(n=1) +2s(n=2)]
+T5c AckWait 6s + BackOff [1s,2s,3s], handler 4s, InProgress every 2s (AckWait/3): [+0s(n=1) +1s(n=2)]
+T5d same, InProgress every 330ms (BackOff[0]/3): [+0s(n=1)]
+T6 MaxDeliver -1, SDK-side limit 2, handler crashes (no ack): [+0s(n=1) +1s(n=2) +2s(n=3)]
+T6 DLQ stream messages: 1
+===== nats-py 2.11.0, server <nats server v2.10.29>
+T1 durable 'crm_opportunity__r1py_order_confirmed_v1' created; hyphen variant -> ok
+T1 config read back: AckWait=1.0s MaxDeliver=8 BackOff=[1.0, 10.0, 60.0, 300.0, 900.0, 1800.0, 3600.0] InactiveThreshold=2592000.0s MaxAckPending=256
+T2 DeliverAll on first create: fetched 3 of 3 pre-existing events
+T3 add_consumer again, identical config: ok
+T3 add_consumer again, MaxDeliver 8->9: ok; MaxDeliver now 9
+T3 add_consumer again, DeliverPolicy all->new: ERR ServerError: nats: ServerError: code=500 err_code=10012 description='deliver policy can not be updated'
+T3 API surface: update_consumer = False
+T4a BackOff len 3, MaxDeliver 2: ERR BadRequestError: nats: BadRequestError: code=400 err_code=10116 description='max deliver is required to be > length of backoff values'
+T4a stored AckWait when AckWait=30s and BackOff[0]=200ms: 0.2
+T4b no ack (timeout path), BackOff 200ms,500ms,1s MaxDeliver 4: ['+0.00s(n=1)', '+0.20s(n=2)', '+0.70s(n=3)', '+1.70s(n=4)']
+T4c nak() each time, same BackOff: ['+0.00s(n=1)', '+0.00s(n=2)', '+0.00s(n=3)', '+0.00s(n=4)']
+T4e stored AckWait without BackOff: 30.0
+T4e no BackOff, AckWait 30s, nak(delay=EVENTS_BACKOFF[n-1]): ['+0.00s(n=1)', '+0.20s(n=2)', '+0.70s(n=3)', '+1.71s(n=4)']
+T4 advisory $JS.EVENT.ADVISORY.CONSUMER.MAX_DELIVERIES.BE_R1PY.t4b: consumer=t4b stream_seq=4 deliveries=4
+T4 advisory $JS.EVENT.ADVISORY.CONSUMER.MAX_DELIVERIES.BE_R1PY.t4c: consumer=t4c stream_seq=5 deliveries=4
+T4 advisory $JS.EVENT.ADVISORY.CONSUMER.MAX_DELIVERIES.BE_R1PY.t4e: consumer=t4e stream_seq=6 deliveries=4
+T5a AckWait 2s, slow handler 4s with in_progress every 0.66s (AckWait/3): ['+0.00s(n=1)']
+T5b control, slow handler 4s, no in_progress: ['+0.00s(n=1)', '+2.00s(n=2)']
+T5c AckWait 6s + BackOff [1s,2s,3s], handler 4s, in_progress every 2s (AckWait/3): ['+0.00s(n=1)', '+1.00s(n=2)']
+T5d same, in_progress every 330ms (BackOff[0]/3): ['+0.00s(n=1)']
+===== nats-py 2.16.0, server <nats server v2.10.29>
+T1 durable 'crm_opportunity__r1py_order_confirmed_v1' created; hyphen variant -> ok
+T1 config read back: AckWait=1.0s MaxDeliver=8 BackOff=[1.0, 10.0, 60.0, 300.0, 900.0, 1800.0, 3600.0] InactiveThreshold=2592000.0s MaxAckPending=256
+T2 DeliverAll on first create: fetched 3 of 3 pre-existing events
+T3 add_consumer again, identical config: ok
+T3 add_consumer again, MaxDeliver 8->9: ok; MaxDeliver now 9
+T3 add_consumer again, DeliverPolicy all->new: ERR ServerError: nats: ServerError: code=500 err_code=10012 description='deliver policy can not be updated'
+T3 API surface: update_consumer = False
+T4a BackOff len 3, MaxDeliver 2: ERR BadRequestError: nats: BadRequestError: code=400 err_code=10116 description='max deliver is required to be > length of backoff values'
+T4a stored AckWait when AckWait=30s and BackOff[0]=200ms: 0.2
+T4b no ack (timeout path), BackOff 200ms,500ms,1s MaxDeliver 4: ['+0.00s(n=1)', '+0.20s(n=2)', '+0.70s(n=3)', '+1.70s(n=4)']
+T4c nak() each time, same BackOff: ['+0.00s(n=1)', '+0.00s(n=2)', '+0.00s(n=3)', '+0.00s(n=4)']
+T4e stored AckWait without BackOff: 30.0
+T4e no BackOff, AckWait 30s, nak(delay=EVENTS_BACKOFF[n-1]): ['+0.00s(n=1)', '+0.20s(n=2)', '+0.70s(n=3)', '+1.71s(n=4)']
+T4 advisory $JS.EVENT.ADVISORY.CONSUMER.MAX_DELIVERIES.BE_R1PY.t4b: consumer=t4b stream_seq=4 deliveries=4
+T4 advisory $JS.EVENT.ADVISORY.CONSUMER.MAX_DELIVERIES.BE_R1PY.t4c: consumer=t4c stream_seq=5 deliveries=4
+T4 advisory $JS.EVENT.ADVISORY.CONSUMER.MAX_DELIVERIES.BE_R1PY.t4e: consumer=t4e stream_seq=6 deliveries=4
+T5a AckWait 2s, slow handler 4s with in_progress every 0.66s (AckWait/3): ['+0.00s(n=1)']
+T5b control, slow handler 4s, no in_progress: ['+0.00s(n=1)', '+2.00s(n=2)']
+T5c AckWait 6s + BackOff [1s,2s,3s], handler 4s, in_progress every 2s (AckWait/3): ['+0.00s(n=1)', '+1.00s(n=2)']
+T5d same, in_progress every 330ms (BackOff[0]/3): ['+0.00s(n=1)']
+===== @nats-io/jetstream 3.4.0, server 2.10.29
+T1 durable "crm_opportunity__r1js_order_confirmed_v1" created; hyphen variant -> ok
+T1 config read back: AckWait=1000ms MaxDeliver=8 BackOff=1000,10000,60000,300000,900000,1800000,3600000ms InactiveThreshold=2592000000ms MaxAckPending=256
+T2 DeliverAll on first create: fetched 3 of 3 pre-existing events
+T3 consumers.add again, identical config: ok
+T3 consumers.add again, MaxDeliver 8->9: ERR JetStreamApiError: consumer already exists
+T3 consumers.update MaxDeliver 8->9: ok ; MaxDeliver now 9
+T4a BackOff len 3, MaxDeliver 2: ERR JetStreamApiError: max deliver is required to be > length of backoff values
+T4a stored AckWait when AckWait=30s and BackOff[0]=200ms: 200 ms
+T4b no ack (timeout path), BackOff 200ms,500ms,1s MaxDeliver 4: [ '+0.00s(n=1)', '+0.20s(n=2)', '+0.70s(n=3)', '+1.70s(n=4)' ]
+T4c nak() each time, same BackOff: [ '+0.00s(n=1)', '+0.00s(n=2)', '+0.00s(n=3)', '+0.00s(n=4)' ]
+T4e stored AckWait without BackOff: 30000 ms
+T4e no BackOff, AckWait 30s, nak(EVENTS_BACKOFF[n-1]): [ '+0.00s(n=1)', '+0.20s(n=2)', '+0.70s(n=3)', '+1.71s(n=4)' ]
+T4 advisory $JS.EVENT.ADVISORY.CONSUMER.MAX_DELIVERIES.BE_R1JS.t4b: consumer=t4b stream_seq=4 deliveries=4
+T4 advisory $JS.EVENT.ADVISORY.CONSUMER.MAX_DELIVERIES.BE_R1JS.t4c: consumer=t4c stream_seq=5 deliveries=4
+T4 advisory $JS.EVENT.ADVISORY.CONSUMER.MAX_DELIVERIES.BE_R1JS.t4e: consumer=t4e stream_seq=6 deliveries=4
+T5a AckWait 2s, slow handler 4s with working() every 0.66s (AckWait/3): [ '+0.00s(n=1)' ]
+T5b control, slow handler 4s, no working(): [ '+0.00s(n=1)', '+2.00s(n=2)' ]
+T5c AckWait 6s + BackOff [1s,2s,3s], handler 4s, working() every 2s (AckWait/3): [ '+0.00s(n=1)', '+1.00s(n=2)' ]
+T5d same, working() every 330ms (BackOff[0]/3): [ '+0.00s(n=1)' ]

@@ -27,9 +27,11 @@
 
 ## 端口契约
 
-契约是表和行为，这样每个 SDK、不论哪种语言，实现的都是同一件事（组件协议，计划中的 `02-languages-and-component-protocol.md`）。
+契约是表和行为，这样每个 SDK、不论哪种语言，实现的都是同一件事（组件协议，[02-languages-and-component-protocol.md](02-languages-and-component-protocol.md)）。
 
-**声明。** 一个任务有：在本组件内唯一的名字（指标、租约、日志都用它）、类型、间隔（`every`、`singleton`）或五段式 cron 表达式（`cron`）、单次运行的超时。消费入队作业的 worker 有：类型名、并发数、最大尝试次数、退避列表，以及尝试用尽时的处理函数。
+**声明。** 一个任务有：在本组件内唯一的名字（指标、租约、日志都用它）、类型、间隔（`every`、`singleton`）或时间表（`cron`）、单次运行的超时。`cron` 的时间表要么是五段式 cron 表达式（`0 2 * * *`），要么是 `@every <duration>`（`@every 2s`）。消费入队作业的 worker 有：类型名、并发数、最大尝试次数、退避列表，以及尝试用尽时的处理函数。
+
+**覆盖。** `JOBS_OVERRIDES`（按任务名作键的 JSON，包括运行时自带的 `be.*` 任务）按部署覆盖任务的 `interval`、`cron` 或 `enabled`；写了不存在的任务名时记一条 WARN 日志并忽略（be-protocol P14.5）。
 
 **表**（在组件自己的 schema 里；组件不为它们写 DDL）：
 
@@ -130,7 +132,7 @@ CREATE INDEX besdk_job_queue_due ON besdk_job_queue (kind, run_at) WHERE state I
 
 套件 `tools/be-acceptance/conformance/jobs/`（已定），对每个官方 SDK 写成的夹具组件跑：
 
-- 两个副本：一个 `cron` 时间槽只跑一次；
+- 两个副本：一个 `cron` 时间槽只跑一次（CP-JOBS-01：平台的 cron 任务 `be.cleanup` 通过 `JOBS_OVERRIDES` 设成 `@every 2s`）；
 - 两个副本：`singleton` 同一时间只在一处跑；丢了租约的那次运行被取消；
 - 任务 panic 后按退避重启并计数；一个任务停下，其余任务照常运行；
 - `queue`：业务事务回滚则作业不存在；尝试用尽时调用尽时的处理函数；正常运行下两个副本每个作业只执行一次；
@@ -140,9 +142,10 @@ CREATE INDEX besdk_job_queue_due ON besdk_job_queue (kind, run_at) WHERE state I
 
 ## 相关决策
 
+- [0508 后台工作只经 SDK 的 Jobs](../02-decisions/05-runtime/0508-background-work-only-through-jobs.md)：本文是它的完整分析。
+- [0501 事务里不发网络调用](../02-decisions/05-runtime/0501-no-network-inside-a-transaction.md)：在业务事务里入队，是异步的出口。
 - [0102 一个数据库，每个组件一个 schema](../02-decisions/01-architecture/0102-one-schema-per-component.md)：任务表在组件自己的 schema 里。
 - [0108 一个外壳、一个仓库、一个镜像、一份成员清单](../02-decisions/01-architecture/0108-one-repository-per-shell.md)：启动器、也就是监督者，在 SDK 里。
-- 计划新增："后台工作只经 SDK 的 Jobs"，放进计划中的运行期决策文件夹。
 
 ## 已知限制
 

@@ -1,0 +1,19 @@
+syntax = "proto3";
+package r1.batch.v1;
+
+import "be/v1/limits.proto";
+
+message BatchGetWidgetsRequest {
+  repeated string ids = 1 [(be.v1.max_items) = 100];     // explicit limit
+  repeated string tags = 2;                               // no option -> default 500 (P7.10)
+  repeated string widget_ids = 3 [(be.v1.max_items) = 2]; // snake_case field: which property name?
+  Filter filter = 4;
+  message Filter {
+    repeated string sku_ids = 1 [(be.v1.max_items) = 7]; // nested message
+  }
+}
+message BatchGetWidgetsResponse { repeated string ids = 1; }
+
+service Widgets {
+  rpc BatchGetWidgets(BatchGetWidgetsRequest) returns (BatchGetWidgetsResponse) { option idempotency_level = NO_SIDE_EFFECTS; }
+}

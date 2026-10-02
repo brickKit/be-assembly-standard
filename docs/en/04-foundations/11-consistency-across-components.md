@@ -33,7 +33,7 @@ The rules that follow from it:
 
 ## Port contract
 
-Tables and rules every implementation, in any language, creates and follows. The tables live in each component's own schema, carry the `besdk_` prefix and are created by the SDK's platform migration; component SQL never touches them. The normative DDL ships in `sql/platform/` of the planned `brickKit/be-protocol` repository.
+Tables and rules every implementation, in any language, creates and follows. The tables live in each component's own schema, carry the `besdk_` prefix and are created by the SDK's platform migration; component SQL never touches them. The normative DDL is in `ddl/` of the `brickKit/be-protocol` repository (`02-outbox.sql`, `03-event-cursor.sql`, `04-idempotency.sql`, `05-jobs.sql`), the requirements in its `spec/12-events.md`, `spec/13-idempotency.md` and `spec/14-background-jobs.md`.
 
 ### Outbox (producer)
 
@@ -212,9 +212,14 @@ Planned suites `tools/be-acceptance/conformance/bus/` (cursor cases) and `tools/
 
 ## Decision records
 
-- [0101 Components never import each other](../02-decisions/01-architecture/0101-no-imports-between-components.md) and [0102 One schema per component](../02-decisions/01-architecture/0102-one-schema-per-component.md): consistency is reached over the wire, with state in each component's own schema.
+- [0101 Components never import each other](../02-decisions/01-architecture/0101-no-imports-between-components.md) and [0102 One database, one schema per component](../02-decisions/01-architecture/0102-one-schema-per-component.md): consistency is reached over the wire, with state in each component's own schema.
+- [0501 No network call inside a transaction](../02-decisions/05-runtime/0501-no-network-inside-a-transaction.md): a remote side effect after commit goes through a queued command.
+- [0505 CloudEvents envelope; one cursor per aggregate stream](../02-decisions/05-runtime/0505-cloudevents-envelope-and-aggregate-cursor.md): the consumer cursor is keyed by aggregate stream.
+- [0506 At-least-once delivery; streams by first subject segment](../02-decisions/05-runtime/0506-at-least-once-delivery-and-streams.md): events are delivered at least once.
+- [0507 Idempotency keys are namespaced by caller](../02-decisions/05-runtime/0507-idempotency-keys-namespaced-by-caller.md): idempotency keys are namespaced by caller.
+- [0508 Background work runs only through the SDK's Jobs](../02-decisions/05-runtime/0508-background-work-only-through-jobs.md): queued commands and reconcilers run through the SDK's Jobs.
 - [0302 Contracts change by adding only](../02-decisions/03-contracts-and-data/0302-contracts-are-additive-only.md): new process states (such as `CONFIRMING`) are additions to an enum.
-- Planned, not yet numbered: "a process lives in the component that starts it, and its state is the business row"; "a remote side effect after commit goes through a queued command"; "events are delivered at least once and deduplicated by a cursor per aggregate stream"; "idempotency keys are namespaced by caller"; "bounded tables without partitions" (the cursor, idempotency, reconcile and job tables, bounded by retention).
+- Planned, not yet numbered: "a process lives in the component that starts it, and its state is the business row"; "bounded tables without partitions" (the cursor, idempotency, reconcile and job tables, bounded by retention).
 
 ## Known limits
 

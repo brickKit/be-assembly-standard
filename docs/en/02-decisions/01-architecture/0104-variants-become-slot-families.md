@@ -2,9 +2,11 @@
 
 # 0104 A slot family needs several reasonable implementations and no dependency edge
 
+**Status**: in place; the 3.0.0 revision (`slot:authz`, a family contract and suite per family) is decided and lands with the 3.0.0 sweep.
+
 ## Decision
 
-A feature becomes a slot family — one component per variant, all with an identical contract, the customer installs one (`slot`) or several (`channel`) at assembly time — only when both conditions hold: (a) mature systems implement it in genuinely different ways, each right for a different kind of customer, and (b) no component holds a dependency edge on that position. Real slot positions are of this kind: the frontend (`slot:frontend`), identity (`slot:iam`), payroll by country (`slot:payroll`) and external channels such as IM (`channel:im`). When (a) holds but (b) fails — the normal case for divergences inside transactional components (costing method, picking strategy, approval routing, period closing, pricing) — the standard component ships one default implementation, and a customer who needs another gets a customer fork of that component. If the divergence is only two or three branches with no further variant in sight, it may stay inside the component as an internal strategy. The family is designed and registered before any member is implemented.
+A feature becomes a slot family — one component per variant, all with an identical contract, the customer installs one (`slot`) or several (`channel`) at assembly time — only when both conditions hold: (a) mature systems implement it in genuinely different ways, each right for a different kind of customer, and (b) no component holds a dependency edge on that position. Real slot positions are of this kind: the frontend (`slot:frontend`), identity (`slot:iam`), authorization (`slot:authz`, [0209](../02-permissions/0209-authz-is-a-slot-family.md)), payroll by country (`slot:payroll`) and external channels such as IM (`channel:im`). When (a) holds but (b) fails — the normal case for divergences inside transactional components (costing method, picking strategy, approval routing, period closing, pricing) — the standard component ships one default implementation, and a customer who needs another gets a customer fork of that component. If the divergence is only two or three branches with no further variant in sight, it may stay inside the component as an internal strategy. The family is designed and registered before any member is implemented, with a family contract in its own repository and a conformance suite every member passes. Replacing the dependency edges on a position with a shared address (`AUTHZ_URL`, `IAM_JWKS_URL`, [0107](0107-authz-and-iam-addresses-are-shared-vars.md)) is the standard way to make it satisfy (b).
 
 ## Why
 
@@ -20,3 +22,5 @@ A dependency edge names an exact component id, and the injected variable carries
 ## Revisit only if
 
 A divergent position stops having any dependents — then it can become a slot family; or the variants of a family converge, in practice, on one implementation — then the family shrinks to it.
+
+Full analysis: [01-ports-and-adapters.md, Choice](../../04-foundations/01-ports-and-adapters.md#choice).

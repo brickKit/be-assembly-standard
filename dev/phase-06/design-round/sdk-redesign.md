@@ -5,6 +5,7 @@
 > 输入：同目录七份分析（`events-consistency`、`data-layer`、`identity-permissions`、`authz-architecture`、`data-lifecycle-v2`、`foundations-communication`、`foundations-data-platform`）、`../dept-scope-analysis.md`、`decisions.md`，以及**优先于一切分析的** `answers.md`；裁决 R38–R63（`.superpowers/sdd/plan-06b/takeover.md`、`progress.md`）。
 > SDK 现状来自 be-sdk-go / be-sdk-python / be-sdk-ts 三个仓库 v0.5.0 的代码（行号以写作时工作区为准），外壳来自 `shell/be/*`，门禁来自 `tools/be-acceptance`，生成器来自 `tools/be-ops` v0.2.0。brickKit 只读了本机 v1.1.0 文档（`brickkit docs`）和源码仓库 `docs/en/`。
 > 姊妹文件 `sdk-redesign-apis.md`：三门语言逐个 API、外壳启动器、夹具组件、第四门语言指南。本文件：结论、协议、一致性套件、现状盘点、迁移路径、brickKit 候选。
+> **修订（phase A 收尾，lane X2）**：按控制者对九个 lane 报告的裁决（a…bc）和 R1 最小复现的结果（`../repros/README.md`）修订。be-protocol rc.1（`tools/be-protocol`）已经是规范正文，名字和说法不一致时以它为准，本文件只是设计记录。
 
 ---
 
@@ -74,7 +75,7 @@
 | 14 | identity-permissions §5.3、events-consistency §1.3 | 幂等的 caller 取 `user:<sub>` / `system` | 取 `user:<sub>`、`svc:<be-caller>`、`system`（只有本组件自己的后台任务用）。系统面请求**必须**带 `be-caller`，否则答 `UNAUTHENTICATED` + `MISSING_CALLER` | 有了服务身份，命名空间可以更细；审计也可靠 |
 | 15 | authz-architecture §3.10 | 新 SDK 能退化读 v1 bundle | 不支持 v1；协议 1.0 要求 `contract: authz/2.x` | authz 和其它组件同一批升 3.0.0 |
 | 16 | authz-architecture §5.1 | `AUTHZ_BUNDLE_URL` 保留一版，由 `AUTHZ_URL` 派生 | 只有 `AUTHZ_URL` | 同上 |
-| 17 | authz-architecture §5.4、foundations-communication §2.3 | 套件位置分别是 `be-acceptance/authzconf/`、`be-acceptance/conformance/<port>/` | 统一为 `tools/be-acceptance/conformance/<端口短名>/`（组件协议套件是 `component/`；`compconf`、`authzconf` 只作非正式简称）；**语义向量不放在任何套件里，搬进 be-protocol 的 `vectors/`** | 规范和向量必须同一个版本号；三门 SDK 从 be-protocol 的 tag 同步向量 |
+| 17 | authz-architecture §5.4、foundations-communication §2.3 | 套件位置分别是 `be-acceptance/authzconf/`、`be-acceptance/conformance/<port>/` | 统一为 `tools/be-acceptance/conformance/<端口短名>/`（组件协议套件是 `component/`；`compconf`、`authzconf` 只作非正式简称）；**语义向量不放在任何套件里**：全协议通用的向量（money、幂等指纹、信封、日历、编号、错误、配置、脱敏……）放 be-protocol 的 `vectors/`；**族的判定向量**（authz 的范围求值等）以族契约仓库为准，放 `contracts/infra/authz/vectors/`，P6 按 tag 引用该仓库的 `EVALUATION.md`（K1 裁决 u） | 规范和向量必须同一个版本号；三门 SDK 从 be-protocol 的 tag 同步协议向量，从族契约仓库钉住的 tag 同步族向量 |
 | 18 | data-lifecycle-v2 §4.14 | Go 路径 `be-sdk-go/v1/lifecycle` | `github.com/brickKit/be-sdk-go/lifecycle` | Go 的 v0 和 v1 都不带主版本后缀 |
 | 19 | events-consistency、identity、data-layer | TS "不加"：事件、幂等、快照、库 | **全部加** | L1 |
 | 20 | events-consistency §3.4、§5.3 | Python 的快照 / 幂等"等第一个用户再补" | 与 Go **同版本发布** | widget-py 必须过同一套 compconf；协议对等 |
@@ -129,23 +130,29 @@
 | 键 | 谁要 | 必填 | 默认 | 含义 |
 |---|---|---|---|---|
 | `PG_HOST` `PG_PORT` `PG_DATABASE` | 有库 | 是（PORT 否） | `5432` | 共享变量 |
-| `PG_USER` `PG_PASSWORD` | 有库 | 是 | — | 本组件的登录角色，也是每个事务 `SET LOCAL ROLE` 的目标（R63）；口令是密钥 |
+| `PG_USER` `PG_PASSWORD` | 有库 | 是 | — | **运行角色**：只有 DML，不是属主角色的成员；服务的登录角色，也是每个运行期事务 `SET LOCAL ROLE` 的目标（R63、F27）；口令是密钥 |
+| `PG_OWNER_USER` `PG_OWNER_PASSWORD` | 有库 | 是 | — | **属主角色**：拥有本组件的表、做 DDL，只给迁移步骤（含平台迁移）登录用（P10.12、P11.1）；名字和口令都来自配置，不写字面量（R63）；口令是密钥。已知限制：brickKit 给迁移容器的环境与服务相同（`05-migration/02`），所以运行进程也收到这两个键，SDK 运行期**从不使用**；brickKit FR06-013（迁移专用的环境覆盖）落地后只给迁移容器 |
 | `PG_SCHEMA` | 有库 | 是 | **无默认** | 不从角色推，也不在代码里写默认值 |
 | `PG_POOL_MAX` | 有库 | 否 | `10` | 单跑时是池上限；外壳里是本成员在共享池里的并发预算（P10.5） |
+| `PG_POOL_MIN_IDLE` | 有库 | 否 | `2` | 保持的空闲连接数 |
 | `PG_POOL_ACQUIRE_TIMEOUT` | 有库 | 否 | `5s` | 取连接的等待上限，超时答 `RESOURCE_EXHAUSTED`/`DB_POOL_EXHAUSTED` |
 | `PG_CONN_MAX_LIFETIME` `PG_CONN_MAX_IDLE_TIME` | 有库 | 否 | `30m` / `5m` | — |
 | `PG_MIGRATION_HOST` `PG_MIGRATION_PORT` | 有库 | 否 | 同 `PG_HOST` / `PG_PORT` | 用了 transaction 模式的 pooler 时，迁移要直连库 |
 | `EVENT_BUS_URL` | 发或收事件 | 否 | 回退 `NATS_URL` | scheme 选适配器：`nats://`、`postgres://…?schema=be_bus`；`kafka://` 预留 |
 | `NATS_URL` | 同上 | 二选一 | — | 共享变量 |
-| `EVENTS_MAX_DELIVER` `EVENTS_BACKOFF` | 收事件 | 否 | `8` / `1s,10s,1m,5m,15m,30m,1h` | 部署层面的调优，**优先于**代码里的值；compconf 用它把重投缩短 |
-| `AUTHZ_URL` | 有受保护路由 | 是 | — | authz 族的唯一地址（0107 推广）；取代 `AUTHZ_BUNDLE_URL` |
-| `IAM_JWKS_URL` `IAM_ISSUER` | 同上 | 是 | — | 验签用的公钥地址；`iss` 的期望值 |
+| `EVENTS_MAX_DELIVER` `EVENTS_BACKOFF` | 收事件 | 否 | `8` / `1s,10s,1m,5m,15m,30m,1h` | 部署层面的调优，**优先于**订阅自己的值；compconf 用它把重投缩短。两者都由 **SDK** 执行，不写进服务端 consumer（R1 #7，裁决 ax）：`EVENTS_BACKOFF` 是 handler 失败后 `NakWithDelay` 的延迟表，`EVENTS_MAX_DELIVER` 是 SDK 写 DLQ 的门槛（P12.5、P12.7），改了立刻生效、不需要更新 durable |
+| `AUTHZ_URL` | 有受保护路由 | 是 | — | authz 族成员的基础地址，用成员自己的服务名（0107 推广）；取代 `AUTHZ_BUNDLE_URL`。族的 gRPC 地址由它推出，不另设键（推导规则以 be-protocol P2 为准） |
+| `IAM_URL` | 调 IAM 目录或登录相关接口 | 视情况 | — | iam 族成员的基础地址，用成员自己的服务名（contract-infra-iam）；gRPC 地址同上推出；永远不建依赖边 |
+| `IAM_JWKS_URL` `IAM_ISSUER` | 有受保护路由 | 是 | — | 验签用的公钥地址（`{IAM_URL}/.well-known/jwks.json`）；`iss` 的期望值，是稳定的名字 `urn:be:<TENANT_ID>:iam`，不是地址，换成员也不变（K2） |
 | `TENANT_ID` | 同上 | 是 | — | `aud` 的期望值（F1：一个部署就是一个租户） |
+| `BOOTSTRAP_ADMIN_LOGIN` | iam 族成员 | 否 | — | 第一个管理员的 IdP 登录名或邮箱（共享变量）。平台 `sub` 由 iam 成员签发、首次登录前不可知，所以不再用 `BOOTSTRAP_ADMIN_SUB`：成员在此人首次登录时把它绑到平台 `sub`，发带 `bootstrap_admin: true` 的目录事件，authz 成员据此授予管理员角色（裁决 r、ai） |
 | `BUSINESS_TIMEZONE` | 用 Cron | 否 | `Asia/Shanghai` | 部署级默认时区，Cron 按它求值（F5）；法人自己的时区来自 mdm/org（P11.9） |
 | `DATA_LIFECYCLE` | 有库 | 否 | `mode: on`，适配器都是 `none` | data-lifecycle-v2 §4.3 |
 | `S3_URL` `S3_REGION` `S3_FORCE_PATH_STYLE` `S3_BUCKET` | 用对象存储 | 视情况 | — / `us-east-1` / `false` | foundations-data-platform §8.2 |
+| `S3_PUBLIC_URL` | 用对象存储 | 否 | 同 `S3_URL` | 浏览器用的地址；预签名 URL 按它签（P17.2） |
 | `S3_ACCESS_KEY_ID` `S3_SECRET_ACCESS_KEY` | 同上 | 视情况 | — | 每个组件一套 |
 | `OTEL_BASE_URL` | 全部 | 否 | 空 = 不导出 | OTLP/HTTP 的基础地址，SDK 自己补 `/v1/traces` |
+| `DEFAULT_LOCALE` | 全部 | 否 | `zh-CN` | 部署的默认语言：problem 体的 `title` / `detail` 用它（P4.1） |
 | `LOG_LEVEL` | 全部 | 否 | `info` | `debug` / `info` / `warn` / `error` |
 | `HTTP_DEFAULT_TIMEOUT` | 有 HTTP 路由 | 否 | `10s` | 入站默认截止时间（F13），路由可以自己声明 |
 | `GRPC_MAX_CONNECTION_AGE` | 有 gRPC 端口 | 否 | `5m` | compconf 会把它缩短 |
@@ -161,8 +168,8 @@ brickKit 的 `config-schema-design` 一节提醒过："一个键装一整块 JSO
 | P3.1 | 主端口（`deployment.port`）上的路径分三类，此外没有别的：用户面 `/{domain}/{name}/…`（经边缘路由，见 `edge_routes`）；运维面 `/healthz`、`/readyz`、`/metrics`、`/_be/info`（不进边缘）；资源契约 `/{domain}/{name}/_authz/*`、`/_shares/*`、`/_lifecycle/*`（经边缘，P6、P16）。BFF 例外，它的用户面是 `/graphql` | MUST |
 | P3.2 | 请求 ID：入站带 `X-Request-Id` 就沿用（客户端伪造的那一份由边缘剥掉）；没有就用 trace-id。响应一律回写 `X-Request-Id`；所有出站调用都带上它（CP-CORE-10） | MUST |
 | P3.3 | trace：入站提取 W3C `traceparent` 和 `baggage`；本次请求的 span 是它的子 span（CP-OBS-01） | MUST |
-| P3.4 | 截止时间：每个路由有一个截止时间。默认取 `HTTP_DEFAULT_TIMEOUT`（10 s）；编排类路由声明 15 s；导出走异步，不占同步路由（F13）。到点答 504 + `DEADLINE_EXCEEDED`，同时取消下游调用和事务（CP-TIME-01） | MUST |
-| P3.5 | 服务端超时：读请求头 5 s，读整个请求 30 s，写响应取"路由截止时间 + 5 s"，空闲连接 120 s。慢速请求头必须被断开（CP-CORE-08） | MUST |
+| P3.4 | 截止时间：每个路由有一个截止时间。默认取 `HTTP_DEFAULT_TIMEOUT`（10 s）；编排类路由声明 15 s；导出走异步，不占同步路由（F13）。到点答 504 + `DEADLINE_EXCEEDED`，同时取消下游调用和事务（CP-OUT-07、CP-DB-02；原先的 CP-TIME-01 不单独设，be-protocol rc.1 已删） | MUST |
+| P3.5 | 服务端超时：读请求头 5 s，读整个请求 30 s，写响应取"路由截止时间 + 5 s"，空闲连接 120 s。慢速请求头必须被断开（CP-CORE-08）。TS 上 Node 只按 `connectionsCheckingInterval` 的周期检查这两个超时（默认 30 s），SDK 必须把它设成 1 s（R1 #8，apis §4） | MUST |
 | P3.6 | 请求体上限默认 1 MiB，路由可以声明更大（与 foundations 16 一致），超了答 413 + `BODY_TOO_LARGE`。上传一律走对象存储的预签名 URL（CP-CORE-09） | MUST |
 | P3.7 | 写命令的幂等键可以放在 `Idempotency-Key` 请求头里，也可以放在 body 的 `idempotency_key` 字段里，两者等价；同时出现且取值不同，答 400（P13） | MUST |
 | P3.8 | 列表分页用游标（0301，对齐 AIP-158）：参数 `page_size`（有上限，默认 50，最大 500；超过上限就降到上限）、`cursor`，返回 `next_cursor`（到末尾为空）。游标不透明，里面编码了排序键、最后一个 ID 和过滤条件的哈希；换了过滤条件还用旧游标，答 400 + `CURSOR_INVALID`。不返回精确总数 | MUST |
@@ -170,6 +177,7 @@ brickKit 的 `config-schema-design` 一节提醒过："一个键装一整块 JSO
 | P3.10 | 访问日志：每个请求一行，`msg = http_request`，字段见 P18.2 | MUST |
 | P3.11 | 不写 CORS。默认同源，由边缘负责 | MUST |
 | P3.12 | `/metrics` 是 Prometheus 文本格式（P18.3）；`/_be/info` 见 P20 | MUST |
+| P3.13 | 路由自己的截止时间和请求体上限，在它的 OpenAPI operation 上声明为 `x-be-deadline-seconds`（整数）和 `x-be-max-body-bytes`（整数），边缘、服务端和前端读的是同一个数字；没写就是 P3.4、P3.6 的默认值 | MUST |
 
 ### P4 错误模型
 
@@ -196,14 +204,14 @@ brickKit 的 `config-schema-design` 一节提醒过："一个键装一整块 JSO
 
 | # | 规则 | 等级 |
 |---|---|---|
-| P4.1 | 组件的每个 4xx/5xx 都是这个形状。`reason` 是 UPPER_SNAKE。`domain` 就是组件 ID，原样不变（`erp/inventory`），`type` 是 `urn:be:<domain>:<reason>`；SDK 自己的 reason 用 `domain: "be"`（CP-ERR-01） | MUST |
+| P4.1 | 组件的每个 4xx/5xx 都是这个形状。`reason` 是 UPPER_SNAKE。`domain` 就是组件 ID，原样不变（`erp/inventory`），`type` 是 `urn:be:<domain>:<reason>`；SDK 自己的 reason 用 `domain: "be"`。**例外**：槽位族的成员用族的 ID 代替自己的 ID（每个授权成员都答 `domain: "infra/authz"`），前端每个族只需一张表（K1 裁决 x）。`title` / `detail` 按 `DEFAULT_LOCALE` 写（CP-ERR-01） | MUST |
 | P4.2 | gRPC 上：标准状态码 + `google.rpc.ErrorInfo{reason, domain, metadata}`，按需再附 `BadRequest`、`PreconditionFailure`、`RetryInfo`、`ResourceInfo`。REST 与 gRPC 之间按 grpc-gateway 的表互相映射（R49：InvalidArgument / FailedPrecondition / OutOfRange → 400，AlreadyExists / Aborted → 409，NotFound → 404，ResourceExhausted → 429，Unavailable → 503，DeadlineExceeded → 504）（CP-ERR-02） | MUST |
 | P4.3 | `INTERNAL`、`UNKNOWN`、`DATA_LOSS` 一律只返回一句通用文案 + `trace_id`，原始错误只进日志。SQL 错误、栈、token 解析失败的原文都不进响应（CP-ERR-03） | MUST |
 | P4.4 | 每个组件在 `contracts/errors.yaml` 登记自己的 reason，字段是 `{reason, code, http, params[], title: {zh, en}, message: {zh, en}, since, deprecated}`（与 foundations 15 一致）。只增不改，规则同 `permissions.tsv`。前端用它生成 i18n 文案表，服务端不翻译 | MUST |
 | P4.5 | GraphQL（BFF）：`errors[].extensions = {code, reason, domain, metadata, request_id, trace_id}`（与 foundations 15 一致） | MUST |
 | P4.6 | 日志级别按状态码定（R51）：Internal / Unknown / DataLoss 记 ERROR；Unavailable / DeadlineExceeded 记 WARN；调用方错误记 INFO；停机时的 Canceled 不记 | MUST |
 
-**保留的 SDK reason**（`domain: be`，be-protocol 的 `schemas/errors-be.yaml`）。下表与 foundations 15 的平台 reason 表逐行相同（两份文档的并集，一个含义一个名字：池等待超时是 `DB_POOL_EXHAUSTED`、出站舱壁满是 `OUTBOUND_LIMIT`，不再有 `BULKHEAD_FULL`；缺功能键是 `MISSING_PERMISSION`；游标不匹配是 `CURSOR_INVALID`；重试用尽的事务冲突是 `TX_CONFLICT`）：
+**保留的 SDK reason**（`domain: be`，be-protocol 的 `schemas/errors-be.yaml`）。下表与 foundations 15 的平台 reason 表、与 `errors-be.yaml` 逐行相同，共 32 个（两份文档的并集，再加边缘自己产生的三个 `RATE_LIMITED` / `UPSTREAM_UNAVAILABLE` / `UPSTREAM_TIMEOUT`，以及 S-b 裁决 ap 的 `NETWORK_IN_TX`、`DB_TOO_MANY_CONNECTIONS`；一个含义一个名字：池等待超时是 `DB_POOL_EXHAUSTED`、出站舱壁满是 `OUTBOUND_LIMIT`，不再有 `BULKHEAD_FULL`；缺功能键是 `MISSING_PERMISSION`；游标不匹配是 `CURSOR_INVALID`；重试用尽的事务冲突是 `TX_CONFLICT`）：
 
 | Reason | Code | 什么时候抛 |
 |---|---|---|
@@ -216,7 +224,7 @@ brickKit 的 `config-schema-design` 一节提醒过："一个键装一整块 JSO
 | `TOKEN_INVALID` | `UNAUTHENTICATED` | 没有 token，或 token 校验不过（签名、`iss`、`aud`、`typ`、过期） |
 | `UNSUPPORTED_DELEGATION` | `UNAUTHENTICATED` | token 经由一种 provider 不支持的代理方行事 |
 | `MISSING_CALLER` | `UNAUTHENTICATED` | 系统面调用没带 `be-caller`（[14](../../../docs/zh/04-foundations/14-system-rpc.md)） |
-| `OUT_OF_SCOPE` | `PERMISSION_DENIED` | 请求参数本身就是一个维度取值，且不在调用方的范围内（`warehouse_id=7`） |
+| `OUT_OF_SCOPE` | `PERMISSION_DENIED` | 调用方持有路由键，但这条记录不在这个键的范围内；或请求参数本身就是一个维度取值，且不在调用方的范围内（`warehouse_id=7`）（K1 裁决 w） |
 | `FIELD_FORBIDDEN` | `PERMISSION_DENIED` | 写了一个调用方看不到的字段 |
 | `SORT_FORBIDDEN` | `INVALID_ARGUMENT` | 按对调用方掩码的字段排序、过滤或聚合 |
 | `SHARE_NOT_ALLOWED` | `PERMISSION_DENIED` | 这个资源类型或这个调用方不允许做的分享（[20](../../../docs/zh/04-foundations/20-authorization-provider.md)） |
@@ -234,6 +242,11 @@ brickKit 的 `config-schema-design` 一节提醒过："一个键装一整块 JSO
 | `BODY_TOO_LARGE` | `INVALID_ARGUMENT` | 请求体超过路由的上限；以 HTTP 413 回答（[16](../../../docs/zh/04-foundations/16-deadlines-and-retries.md)） |
 | `RANGE_COLD` | `FAILED_PRECONDITION` | 请求的时间范围已转入冷存储；`metadata` 给出冷区间，以及能否解冻、能否异步导出 |
 | `UNIT_SEALED` | `FAILED_PRECONDITION` | 修改一个已封存的生命周期单元；应当新建一张冲销单据 |
+| `RATE_LIMITED` | `RESOURCE_EXHAUSTED` | 边缘按客户端 IP（以后按 API key）限流；HTTP 429，带 `Retry-After` |
+| `UPSTREAM_UNAVAILABLE` | `UNAVAILABLE` | 边缘找不到或连不上后端；HTTP 502 / 503 |
+| `UPSTREAM_TIMEOUT` | `DEADLINE_EXCEEDED` | 后端没有在边缘超时内答复；HTTP 504 |
+| `NETWORK_IN_TX` | `INTERNAL` | 事务里发起了网络调用（P8.4）；编程错误，日志和测试运行里点名这个 reason，调用方按 P4.3 仍只看到 `INTERNAL` 的通用文案 |
+| `DB_TOO_MANY_CONNECTIONS` | `UNAVAILABLE` | PostgreSQL 拒绝新连接（SQLSTATE `53300`） |
 
 ### P5 身份：JWT 验证
 
@@ -250,7 +263,7 @@ brickKit 的 `config-schema-design` 一节提醒过："一个键装一整块 JSO
 
 ### P6 授权：bundle、范围、资源契约、投影
 
-provider 契约（bundle v2、changes、Check、WriteTuples）归族契约仓库 `contract-infra-authz`（authz-architecture §3）。本章只规定**组件一侧**怎么消费它、怎么求值、对外挂出什么。
+provider 契约（bundle v2、changes、Check、WriteTuples）归族契约仓库 `contract-infra-authz`（authz-architecture §3）。本章只规定**组件一侧**怎么消费它、怎么求值、对外挂出什么。求值语义按 tag 引用该仓库的 `EVALUATION.md`，判定向量也以该仓库的 `vectors/` 为准，be-protocol 不另存一份（K1 裁决 u）。
 
 | # | 规则 | 等级 |
 |---|---|---|
@@ -259,7 +272,7 @@ provider 契约（bundle v2、changes、Check、WriteTuples）归族契约仓库
 | P6.3 | 档位：`own < dept < subtree < all`（I2 改判，`dept` 现在就加）。对路由键 K，取所有授予 K 的角色里档位最高的那个；授予了 K 但没写档位，取角色的 `default_level`；还没有就是 `own`。资源维度的取值，按键取所有角色的并集；`*` 只能显式授予，表示全部；一个都没有就什么都看不到。`until` 按本地时间判定（CP-SCOPE-01…05） | MUST |
 | P6.4 | 主体集合：`S(P) = {user:sub} ∪ {role:r} ∪ {dept:dept_path} ∪ {dept_tree:p \| p 是 dept_path 的祖先或自身} ∪ ⋃S(委托人)`。**R60**：`dept_path` 为空或格式不对时，两个 dept 项都不出现，部门数组为空，什么都匹配不到。只有 `"/"` 表示整棵树。"空串当根"永远不成立（CP-SCOPE-06） | MUST |
 | P6.5 | 列表 SQL 用**规范谓词**，参数名固定：`@s_all`、`@s_owners[]`、`@s_dept_exact[]`、`@s_dept_prefix[]`（已经拼好 `%`、已转义）、`@s_<dim>_all`、`@s_<dim>_ids[]`、`@s_acl`、`@s_relations[]`、`@s_subjects[]`、`@s_graph_ids[]`。SQL 形状照抄 authz-architecture §3.5，仍然是静态参数化 SQL，没有 RLS（0206） | MUST（形状 INTERNAL；结果由 CP-SCOPE 测） |
-| P6.6 | 单条记录判定：`Can(key, row)` 给出 `{visible, allowed, reason}`。**看不见**（规则、共享、派生都不成立）时，读和命令一律 **404**（A3 细化 R62）。看得见但做不了，答 403，带 `reason`。只有请求参数本身就是维度值时（`warehouse_id=7`）才答 403 `OUT_OF_SCOPE`（CP-SCOPE-07…09） | MUST |
+| P6.6 | 单条记录判定：`Can(key, row)` 给出 `{visible, allowed, reason}`。看不看得见由资源类型声明里的 `view_key` 决定，动作由路由键 K 决定（K1 裁决 v）。**看不见**（对 `view_key` 而言，规则、共享、派生都不成立）时，读和命令一律 **404**（A3 细化 R62）。看得见但做不了，答 403：持有 K、但这条记录不在 K 的范围内是 `OUT_OF_SCOPE`，不持有 K 是 `MISSING_PERMISSION`。请求参数本身就是维度值、且不在范围内时（`warehouse_id=7`）也答 403 `OUT_OF_SCOPE`（CP-SCOPE-07…09） | MUST |
 | P6.7 | **List 和 Can 一致**：一行出现在列表里，当且仅当对同一个路由键 `Can` 为 visible（CP-SCOPE-10，属性测试） | MUST |
 | P6.8 | 字段级权限：`type: field` 的键。没有读键的字段在**源头**置为 null，并列进响应的 `_masked[]`；按掩码字段排序、过滤、聚合，答 400 `SORT_FORBIDDEN`；改了掩码字段，答 403 `FIELD_FORBIDDEN`（CP-SCOPE-11） | MUST（声明了字段键的组件） |
 | P6.9 | 行按钮：列表响应里每一行带 `_access: {<action>: bool}`，前端不自己拼规则 | SHOULD |
@@ -277,12 +290,12 @@ provider 契约（bundle v2、changes、Check、WriteTuples）归族契约仓库
 | P7.2 | 出站 metadata：`traceparent` 和 `baggage`（OTel 注入）、`x-request-id`、`be-caller`（**必填**，本成员的组件 ID）、`be-actor-sub`（ctx 里有用户时填，每次调用现取）、`be-actor-act`（有代理链时，JSON 形式）。入站缺 `be-caller`，答 `UNAUTHENTICATED` + `MISSING_CALLER`（CP-RPC-01、02） | MUST |
 | P7.3 | 服务端身份：上下文里标成系统主体 `System{Caller, ActorSub}`。面向用户的方法从 gRPC 进来，答 `UNAUTHENTICATED`，不是 Internal，也不 panic（CP-RPC-03） | MUST |
 | P7.4 | 服务端拦截器顺序：recovery → 身份 → 截止时间下限（入站没带 `grpc-timeout` 时补 10 s）→ BatchGet 上限 → 错误详情规范化 → RED 指标 → trace。一元和流各一条链 | MUST（顺序 INTERNAL） |
-| P7.5 | 服务端参数：`MaxRecvMsgSize` 显式设为 4 MiB；`MaxConnectionAge` 取 `GRPC_MAX_CONNECTION_AGE`（默认 5 min），`MaxConnectionAgeGrace` 30 s；`EnforcementPolicy.MinTime` 20 s（CP-RPC-04、05） | MUST |
+| P7.5 | 服务端参数：`MaxRecvMsgSize` 显式设为 4 MiB；`MaxConnectionAge` 取 `GRPC_MAX_CONNECTION_AGE`（默认 5 min），`MaxConnectionAgeGrace` 30 s，**必须大于最长的入站截止时间**（今天 30 s 对 10 s / 15 s；不满足时在途调用在换连接时被切断，R1 #2、#3）；`EnforcementPolicy.MinTime` 20 s 对 Go、Python 是 MUST，对 TS 不适用（grpc-js 服务端没有 keepalive 强制策略，R1 #3，widget-ts 在 compconf 里声明跳过对应断言）（CP-RPC-04、05） | MUST |
 | P7.6 | 客户端连接按（成员，依赖，端口）复用，懒建。稳态下对同一个依赖只有一条 TCP 连接。keepalive：每 30 s 一次，超时 10 s，空闲时不发 ping（CP-OUT-01） | MUST |
 | P7.7 | 出站截止时间：取 `min(3 s, 剩余预算 − 50 ms)`；剩余预算不足 50 ms 时**不发出调用**，直接答 `DEADLINE_EXCEEDED` + `DEADLINE_BUDGET_EXHAUSTED`（CP-OUT-02） | MUST |
-| P7.8 | 重试：方法标了 `idempotency_level = NO_SIDE_EFFECTS` 或 `IDEMPOTENT` 的，在 `UNAVAILABLE` 时重试，最多 3 次，退避 50 ms 起、上限 500 ms、倍数 2。其它方法只做透明重试（请求从未发出时）。重试预算用 `retryThrottling{maxTokens: 10, tokenRatio: 0.1}`，按连接计算，所以也是按成员计算。带 `idempotency_key` 字段的 rpc 必须标 `IDEMPOTENT`，由门禁检查（CP-OUT-03、04） | MUST |
+| P7.8 | 重试：方法标了 `idempotency_level = NO_SIDE_EFFECTS` 或 `IDEMPOTENT` 的，在 `UNAVAILABLE` 时重试：服务配置写 `maxAttempts: 3`，即**总共 3 次尝试**（首发 + 最多再试 2 次），三门语言、foundations 16 一致（R1 #2、#3，裁决 m）；退避 50 ms 起、上限 500 ms、倍数 2。其它方法只做透明重试（请求从未发出时）。重试预算用 `retryThrottling{maxTokens: 10, tokenRatio: 0.1}`；预算的范围**按语言不同**（裁决 az）：Go、Python 按 ClientConn / channel，也就是按（成员，依赖，端口，P7.6），所以一个成员的重试花不到别的成员的预算，并且每次 resolver 更新（dns 重新解析，最快 30 s 一次，通常跟着 GOAWAY）时预算回满；TS（grpc-js）按（进程，规范化的目标字符串），跨 channel 共享，resolver 更新时不回满。今天的 TS 只有 BFF，而 BFF 不进外壳，所以进程即成员；TS 若将来进外壳，SDK 在拦截器里自己做按成员的预算。"重试流量 ≤ 10 %" 是稳态上限，不是硬上限。带 `idempotency_key` 字段的 rpc 必须标 `IDEMPOTENT`，由门禁检查（CP-OUT-03、04） | MUST |
 | P7.9 | 出站舱壁：每个成员对每个依赖最多 64 个并发调用，超了立刻答 `RESOURCE_EXHAUSTED` + `OUTBOUND_LIMIT`（CP-OUT-05） | MUST |
-| P7.10 | BatchGet 上限：proto 字段选项 `[(be.v1.max_items) = N]`，没写就是 500。超限答 `INVALID_ARGUMENT` + `ErrorInfo{reason: BATCH_TOO_LARGE, metadata: {field, max, got}}` + `BadRequest`。调用方用 `BatchGetAll` 自动分片（D8）（CP-RPC-06） | MUST |
+| P7.10 | BatchGet 上限：proto 字段选项 `[(be.v1.max_items) = N]`，没写就是 500（SDK 在服务注册时按方法路径遍历入参消息的**每个 repeated 字段**建一张上限表，请求时只比长度）。三门语言怎么读选项（r1-03b）：TS 读 ts-proto 的 `protoMetadata.options.messages.<Msg>.fields.<字段>.max_items`（键是扩展的短名，不带包名；嵌套消息在 `.nested` 下），不读 `fileDescriptor` 的 field options；Python 读 `field.GetOptions().Extensions[limits_pb2.max_items]`，besdk 随包附带可导入的 `be.v1.limits_pb2`；Go 用 `proto.GetExtension(fd.Options(), bev1.E_MaxItems)`，尚未实测，Go SDK 实现时验证。超限答 `INVALID_ARGUMENT` + `ErrorInfo{reason: BATCH_TOO_LARGE, metadata: {field, max, got}}` + `BadRequest`。调用方用 `BatchGetAll` 自动分片（D8）（CP-RPC-06） | MUST |
 | P7.11 | 不做流式；不压缩，超过 1 MiB 的响应可以按调用开 gzip；proto 包名 `<domain>.<name>.v<n>`，只增（0302） | MUST |
 
 ### P8 出站：用户面 HTTP 与第三方 HTTP
@@ -292,7 +305,7 @@ provider 契约（bundle v2、changes、Check、WriteTuples）归族契约仓库
 | P8.1 | `UserHTTP(dep)`：只能在有用户的上下文里用。它转发调用者原始的 `Authorization`，以及 `X-Request-Id`、`traceparent`、`X-Authz-Revision`。上下文里没有用户（事件 handler、gRPC 系统调用里）就返回 `UNAUTHENTICATED`，**绝不悄悄换成系统身份**（CP-OUT-06） | MUST |
 | P8.2 | `UserHTTP` 的超时同 P7.7；只有 GET 在连接被重置时重试一次；对方回的 problem+json 被还原成同样的状态码和 reason | MUST |
 | P8.3 | `ExternalHTTP(name)` 调第三方（钉钉、Casdoor 这类）：默认超时 10 s，可以按名字配置；有 trace 和指标；**不转发**任何内部头（`Authorization`、`be-*`、`X-Authz-*`） | MUST |
-| P8.4 | 事务里不许发网络调用：上下文带着"在事务里"标记时，SDK 的 `Conn`、`UserHTTP`、`ExternalHTTP` 都返回 `ErrNetworkInTx`，测试构建里直接 panic。事务里想触发对外动作，只有 `tx.Publish` 和 `tx.Enqueue` 两条路 | INTERNAL |
+| P8.4 | 事务里不许发网络调用：上下文带着"在事务里"标记时，SDK 的 `Conn`、`UserHTTP`、`ExternalHTTP` 都返回 `ErrNetworkInTx`（日志里的 reason 是 `NETWORK_IN_TX`，对外按 P4.3 是 `INTERNAL` 的通用文案），测试构建里直接 panic。事务里想触发对外动作，只有 `tx.Publish` 和 `tx.Enqueue` 两条路 | INTERNAL |
 
 ### P9 截止时间与重试预算（汇总）
 
@@ -308,7 +321,7 @@ provider 契约（bundle v2、changes、Check、WriteTuples）归族契约仓库
 | 事件 handler | AckWait（30 s）− 5 s | P12 |
 | Job 单次运行 | 由 `Job.Timeout` 声明，必填 | P14 |
 | 事务重试 | 只对 40001 / 40P01，最多 3 次，`10 ms · 2^n` 加抖动 | P10.4 |
-| RPC 重试 | 只对幂等方法的 UNAVAILABLE；预算是额外流量 ≤ 10 % | P7.8 |
+| RPC 重试 | 只对幂等方法的 UNAVAILABLE；总共 3 次尝试；预算是稳态额外流量 ≤ 10 %（范围按语言，见 P7.8） | P7.8 |
 
 规则原文写进文档："子调用的超时必须短于调用方愿意等你的时间"（brickKit `09-patterns/04-service-calling`）。
 
@@ -316,32 +329,34 @@ provider 契约（bundle v2、changes、Check、WriteTuples）归族契约仓库
 
 | # | 规则 | 等级 |
 |---|---|---|
-| P10.1 | 库身份只来自配置：`PG_USER` 是每个事务都要切换到的角色，`PG_SCHEMA` 是 schema，两者都必填，没有默认值，也不互相推导。代码、迁移、测试夹具里都不出现 `_rw`、`_archive`、`shell_` 这类派生名，也不出现本组件的 schema 或角色字面量（R63）（CP-DB-01：套件用随机 schema、随机角色、NOINHERIT 的外壳角色跑完全部 profile） | MUST |
-| P10.2 | 每一次数据库访问都在事务里，并且开头先执行 `SET LOCAL ROLE <PG_USER>` 和 `SET LOCAL search_path TO <PG_SCHEMA>`。这包括业务事务、outbox 泵、消费、Jobs、生命周期、投影拉取和启动探测，没有例外。search_path 里不再放 `_archive`（D2）。会话级的 `SET` 一律禁止 | MUST（INTERNAL） |
+| P10.1 | 库身份只来自配置，是两个分开的角色加一个 schema（F27，裁决 p）：**属主** `PG_OWNER_USER` 拥有本组件的表、只在迁移里做 DDL；**运行角色** `PG_USER` 只有 DML，不是属主角色的成员，是每个运行期事务都要切换到的角色；`PG_SCHEMA` 是 schema。三者都必填，没有默认值，也不互相推导、不从组件 ID 推导。防住的威胁：运行期的 SQL（注入、AI 写出的语句）不能 DROP / ALTER。代码、迁移、测试夹具里都不出现 `_rw`、`_archive`、`shell_` 这类派生名，也不出现本组件的 schema 或角色字面量（R63）（CP-DB-01：套件用随机 schema、随机角色、NOINHERIT 的外壳角色跑完全部 profile） | MUST |
+| P10.2 | 每一次数据库访问都在事务里，并且开头先执行 `SET LOCAL ROLE <PG_USER>`、`SET LOCAL search_path TO <PG_SCHEMA>` 和 `SET LOCAL application_name = '<组件 ID>'`（外壳里是成员 ID；R1 #5：`pg_stat_activity.usename` 在外壳里永远是外壳的登录角色，只有 `application_name` 能区分成员）。这包括业务事务、outbox 泵、消费、Jobs、生命周期、投影拉取和启动探测，没有例外。search_path 里只有本组件的 schema（不再有 `_archive`，D2）。池化连接上的会话级 `SET` 一律禁止；唯一的例外是专用、不进池的迁移连接（P11.1）。**语句缓存的键必须包含成员的 schema**（R1 #4、r1-04b，裁决 ay；INTERNAL）：Go 保持 pgx 默认的 `QueryExecModeCacheStatement`、Python 保留 asyncpg 的缓存，`Tx` 在每条 SQL 前面加 `/* be:<PG_SCHEMA> */ `；两者都按 SQL 文本建键，于是两个成员永远不共用一条预编译语句（否则形状不同的表会确定性地报 `0A000` / `42804`）。pgx 的 `QueryExecModeCacheDescribe` **修不好**（列数不同报 `08P01`，参数类型不同仍是 `42804`），foundations-data-platform DB-6 的这条建议撤回。外壳里 pgx 的 `StatementCacheCapacity`、asyncpg 的 `statement_cache_size` 按成员数放大。TS 的 pg 保持默认的未命名语句，要用命名语句时 `name` 必须带成员前缀。`0A000`、`08P01` 不加进 P10.4 的自动重试 | MUST（INTERNAL） |
 | P10.3 | 每个事务都用 `SET LOCAL` 设三个超时：`statement_timeout = min(5 s, 剩余预算)`、`lock_timeout = 2 s`、`idle_in_transaction_session_timeout = 30 s`。服务端 ≥ 17 时再按剩余预算设 `transaction_timeout`。会话时区永远是 UTC（CP-DB-02：套件先持锁，被测组件在 `lock_timeout` 内答 409 + `LOCK_TIMEOUT`） | MUST |
-| P10.4 | 隔离级别默认 READ COMMITTED，单个事务可以选 RR 或 SERIALIZABLE。40001 / 40P01 由 SDK 回滚，重新执行整个事务函数，最多 3 次。用尽后答 `ABORTED` + `TX_CONFLICT`。55P03 映射成 `ABORTED` + `LOCK_TIMEOUT`，57014 映射成 `DEADLINE_EXCEEDED` + `STATEMENT_TIMEOUT`，53300 映射成 `UNAVAILABLE` | MUST |
-| P10.5 | 池：单跑时的上限是 `PG_POOL_MAX`。外壳里物理池的大小取 `min(Σ 成员的 PG_POOL_MAX, 外壳自己的 PG_POOL_MAX)`，每个成员再挂一个容量为它自己 `PG_POOL_MAX` 的信号量。取不到连接时最多等 `PG_POOL_ACQUIRE_TIMEOUT`，超时答 `RESOURCE_EXHAUSTED` + `DB_POOL_EXHAUSTED`。一个成员耗尽，不影响别的成员（CP-DB-03：套件压满并发，`pg_stat_activity` 里属于该角色的连接数 ≤ `PG_POOL_MAX`） | MUST |
+| P10.4 | 隔离级别默认 READ COMMITTED，单个事务可以选 RR 或 SERIALIZABLE。40001 / 40P01 由 SDK 回滚，重新执行整个事务函数，最多 3 次。用尽后答 `ABORTED` + `TX_CONFLICT`。55P03 映射成 `ABORTED` + `LOCK_TIMEOUT`，57014 映射成 `DEADLINE_EXCEEDED` + `STATEMENT_TIMEOUT`，53300 映射成 `UNAVAILABLE` + `DB_TOO_MANY_CONNECTIONS` | MUST |
+| P10.5 | 池：单跑时的上限是 `PG_POOL_MAX`。外壳里物理池的大小取 `min(Σ 成员的 PG_POOL_MAX, 外壳自己的 PG_POOL_MAX)`，每个成员再挂一个容量为它自己 `PG_POOL_MAX` 的信号量。取不到连接时最多等 `PG_POOL_ACQUIRE_TIMEOUT`，超时答 `RESOURCE_EXHAUSTED` + `DB_POOL_EXHAUSTED`。一个成员耗尽，不影响别的成员（CP-DB-03：套件压满并发，`pg_stat_activity` 里 `application_name` 等于该组件 ID、且不是 idle 的连接数 ≤ `PG_POOL_MAX`；按 `usename` 计数在外壳里永远是 0，R1 #5） | MUST |
 | P10.6 | 一个执行流同一时刻最多占一条连接：已经在事务里，再开事务就返回 `ErrNestedTx`；消费 handler 的 `Apply` 拿到的就是 SDK 的那个事务。这是池饥饿的根治办法 | INTERNAL |
-| P10.7 | 启动探测在后台跑，不放进 `/healthz`：`has_schema_privilege(current_user, current_schema(), 'USAGE,CREATE')`；schema 里不存在属主不是 `PG_USER` 的表；`server_version_num ≥ 140000`；支持声明式分区和 `SKIP LOCKED`。失败时记 ERROR，`be_db_identity_ok = 0`，`/readyz` 答 503 | MUST |
+| P10.7 | 启动探测在后台跑，不放进 `/healthz`。**能力**：`server_version_num ≥ 140000`，外壳里 ≥ 160000（外壳要 PG16 的 `GRANT … WITH INHERIT FALSE, SET TRUE`，R1 #5，裁决 n）；支持声明式分区和 `SKIP LOCKED`；缺了是致命错误。**身份**（以 `PG_USER` 在事务里查）：对 schema 有 `USAGE`、没有 `CREATE`；`pg_has_role(current_user, <PG_OWNER_USER>, 'MEMBER')` 为假；schema 里每张表的属主都是 `PG_OWNER_USER`，`PG_USER` 对每张表都有 DML。身份失败时记 ERROR，`be_db_identity_ok = 0`，`/readyz` 答 503，不退出。（R1 #4 顺带发现：没有 USAGE 时 search_path 那一项被静默跳过、报的是 `relation does not exist`，这条探测必须保留） | MUST |
 | P10.8 | advisory 锁只用事务级的，键是 `pg_advisory_xact_lock(hashtext(current_schema() \|\| ':' \|\| name), hashtext(key))`。所以外壳里成员之间不会撞键，"单跑和外壳同时在跑"时，同一个 schema 自然互斥。会话级锁一律禁止（与 pgbouncer 的 transaction 模式兼容） | MUST（INTERNAL） |
 | P10.9 | 队列认领、幂等认领都是原子的：`FOR UPDATE SKIP LOCKED`，或者 `INSERT … ON CONFLICT DO NOTHING / DO UPDATE … WHERE … RETURNING`。先 `SELECT` 再写，一律禁止（现有易错点） | MUST |
 | P10.10 | 一个事务要锁多行时，按主键或业务唯一键的固定顺序加锁（库存多品预留，foundations-communication §3.4 第 5 条） | MUST（组件义务） |
+| P10.11 | pooler 可选；用就只用 transaction 模式。PgBouncer ≥ 1.21 且 `max_prepared_statements > 0` 时驱动的语句缓存可以开着，其它 pooler 一律关掉。迁移经 `PG_MIGRATION_HOST` / `PG_MIGRATION_PORT` 直连 | MUST |
+| P10.12 | 运行中的服务**从不**以 `PG_OWNER_USER` 登录（已知限制见 P2 表）。服务运行期间生命周期引擎要做的 DDL（提前建分区、装封存守卫、删过期的平台或队列分区）只经平台的 `SECURITY DEFINER` 函数执行（be-protocol `ddl/10-lifecycle-functions.sql`：`besdk_ensure_range_partition`、`besdk_ensure_list_partition`、`besdk_seal_table`、`besdk_drop_partition`），这些函数由属主在平台迁移里建（裁决 aa）（CP-DB-05） | MUST（部分 INTERNAL） |
 
 ### P11 迁移与数据形状
 
 | # | 规则 | 等级 |
 |---|---|---|
-| P11.1 | 迁移以 `PG_USER` 登录，直连库（有 `PG_MIGRATION_HOST` 就用它）。会话参数 `lock_timeout = 5 s`、`statement_timeout = 15 min`。拿锁超时就退避重试 3 次，失败时打出阻塞者的 pid 和 SQL（截前 200 字） | MUST |
+| P11.1 | 迁移以**属主** `PG_OWNER_USER`（口令 `PG_OWNER_PASSWORD`）登录，直连库（有 `PG_MIGRATION_HOST` 就用它）（F27，裁决 p）。会话参数 `lock_timeout = 5 s`、`statement_timeout = 15 min`。拿锁超时就退避重试 3 次，失败时打出阻塞者的 pid 和 SQL（截前 200 字）。迁移连接是专用会话：迁移工具自己的会话级 `search_path` 和会话级 advisory 锁在这里允许，P10.2、P10.8 的禁令只针对运行期的池化连接（R1 #6）。迁移锁按 schema 区分：两个组件同时迁移同一个库都成功（node-pg-migrate 的默认锁是全库常量，TS SDK 必须改，见 apis §4） | MUST |
 | P11.2 | 迁移文件里不出现 `OWNER TO`、`GRANT`、`REVOKE`、`CREATE SCHEMA`、`CREATE ROLE` / `ALTER ROLE`、`SET`，不出现限定名，不出现角色或 schema 字面量，也不出现日期字面量的分区。名字都不带限定，靠 search_path 解析（R63、data-layer §2.6） | MUST |
-| P11.3 | 迁移的状态表放在本组件的 schema 里（表名由各语言的工具决定）。组件迁移跑完之后，SDK 再跑一段**平台迁移**，内容依次是：建或升级 `besdk_*` 表（版本记在 `besdk_platform_version`）；按 `lifecycle.yaml` 建出当前分区窗口；确保事件流和本组件的 durable 存在（P12.4）。三者都幂等 | MUST |
+| P11.3 | 迁移的状态表放在本组件的 schema 里，表名写死（R1 #6）：Go `schema_migrations_<PG_SCHEMA>` + `besdk_migrations_<PG_SCHEMA>`；Python `_yoyo_migration`、`_yoyo_log`、`_yoyo_version`、`yoyo_lock`（平台迁移 id 带 `besdk-` 前缀，共用这几张）；TS `pgmigrations_<PG_SCHEMA>` + `besdk_migrations_<PG_SCHEMA>`。这些表列入 P11.11 的白名单。组件迁移跑完之后，在同一个迁移步骤里、仍以属主身份，SDK 再跑一段**平台迁移**，内容依次是：建或升级 `besdk_*` 表和平台函数（P10.12；版本记在 `besdk_platform_version`）；按 `lifecycle.yaml` 建出当前分区窗口；确保事件流和本组件的 durable 存在（P12.4）。三者都幂等 | MUST |
 | P11.4 | 演进遵守 expand / contract：contract 类迁移的文件头写 `-- be:contract after=<version>`；`CREATE INDEX CONCURRENTLY` 单独一个文件，文件头写 `-- be:no-transaction`。生产只前滚（foundations-data-platform §6.4） | MUST |
 | P11.5 | 自有主键一律 UUIDv7，列类型 `uuid`，由应用生成。分区表的 `created_at` 必须等于 `IDTime(id)`。外部引用保持 `TEXT`（F3）。线上仍是不透明字符串 | MUST |
 | P11.6 | 金额 `NUMERIC(19,4)`；单价、成本、数量 `NUMERIC(19,6)`；汇率 `NUMERIC(19,10)`。金额与币种 `CHAR(3)` 总是成对出现。舍入只在 SDK 的 money 包里做，按 ISO 4217 的小数位，默认 HALF_AWAY_FROM_ZERO。线上仍是十进制字符串（0301）（F4） | MUST |
 | P11.7 | 瞬时用 `timestamptz`；业务日期用 `DATE`，按**法人**的业务时区算。SQL 里禁止 `CURRENT_DATE`、`now()::date` 和 `date_trunc(…, now())`，"今天"由 SDK 算出来作为参数传入。事件带单据的业务日期（F5） | MUST |
 | P11.8 | 交易单据表带 `legal_entity_id TEXT NOT NULL`；事件 payload 也带它。缺法人的事件，消费方拒收（进 DLQ），不悄悄记进 `default`（F2、Q2） | MUST |
-| P11.9 | 法人日历：时区、会计年度起始月、本位币，来自 `mdm/org`，由 SDK 的快照帮手维护；汇率来自 `mdm/currency`。两者本轮新建，排在其余组件升 3.0.0 之前（用户答复 P2），所以没有过渡用的 `LEGAL_ENTITIES` 共享变量，汇率也不限定为 1。mdm/org 与 IAM 目录（部门）怎么分工，在 mdm/org 自己的设计里定 | MUST |
-| P11.10 | 单据编号：`besdk_number_series` 表，`tx.NextNumber(series)`。凭证这类 `gapless=true` 的，在同一事务里锁行，按期连续、无缺号（F8，每个法人串行，吞吐上限写进文档）；其余按块预取，允许缺号。格式由组件配置给出（`<NAME>_NO_FORMAT`） | MUST |
-| P11.11 | 业务表、迁移里的表，都在 `lifecycle.yaml` 里有声明（P16） | MUST |
+| P11.9 | 法人日历：时区、会计年度起始月、本位币，来自 `mdm/org`，由 SDK 的快照帮手维护；汇率来自 `mdm/currency`。两者本轮新建，排在其余组件升 3.0.0 之前（用户答复 P2），所以没有过渡用的 `LEGAL_ENTITIES` 共享变量，汇率也不限定为 1。mdm/org 与 IAM 目录（部门）怎么分工，在 mdm/org 自己的设计里定。没装 mdm/org 时（夹具、单独调试）日历进**降级模式**：时区取 `BUSINESS_TIMEZONE`，会计年度起始月为 1，并在 `/_be/info` 里标出（S-b 裁决 as）。SDK 必须内嵌时区数据：Go `time/tzdata`、Python `tzdata` 包、Node 完整 ICU；tzdata 变了就重跑向量交叉核对（裁决 ar） | MUST |
+| P11.10 | 单据编号：`besdk_number_series` 表，`tx.NextNumber(series)`。凭证这类 `gapless=true` 的，在同一事务里锁行，按期连续、无缺号（F8，每个法人串行，吞吐上限写进文档）；其余按块预取，允许缺号。格式由组件配置给出（`<NAME>_NO_FORMAT`）。**唯一性**由一张不分区的分配表保证：`besdk_number_allocations`，主键 `(legal_entity_id, series, number)`，和单据在同一个事务里插入；不靠分区单据表上的唯一索引（分区表的唯一索引必须包含分区键，管不住跨分区重号，S-b 裁决 ao） | MUST |
+| P11.11 | 业务表、迁移里的表，都在 `lifecycle.yaml` 里有声明（P16）；`besdk_*` 表和 P11.3 的迁移状态表除外；迁移目录里只放 `*.sql` 和 `lifecycle.yaml` | MUST |
 
 ### P12 事件
 
@@ -367,17 +382,17 @@ provider 契约（bundle v2、changes、Check、WriteTuples）归族契约仓库
 | # | 规则 | 等级 |
 |---|---|---|
 | P12.1 | 发布只经 outbox：和业务写入在**同一个事务**里写 `besdk_outbox`。泵在事务外发布，拿到持久化确认（JetStream 的 PubAck）后才标成 `PUBLISHED`；总线不可用时行留在 `PENDING`，按 `next_attempt_at` 退避（1 s → 1 min），**永不丢弃**，积压由告警发现。认领用 `SKIP LOCKED`。轮询间隔自适应：忙时 200 ms，空闲时退到 2 s。最多 256 个确认同时在途（CP-EVP-01…04：停掉总线 → 执行命令仍然成功 → 恢复总线 → 事件送达，不丢、不重） | MUST |
-| P12.2 | payload 是 JSON，用 `contracts/events/*.json`（JSON Schema）校验，契约里写明 `x-aggregate-type` 和 `x-consumption: state\|sequence`；建议 ≤ 64 KiB，硬上限 1 MiB，更大的走对象存储 claim-check。payload 里不放给人看的敏感字段（CP-EVP-05） | MUST |
-| P12.3 | subject 命名：`<domain>.<aggregate>.<action>.v<n>`。历史上的 `sales.*`、`finance.*` 保留（E10）。同一个聚合类型的所有 subject 共用一个单调递增的版本 | MUST |
+| P12.2 | payload 是 JSON，用 `contracts/events/*.json`（JSON Schema）校验，契约里写明 `x-aggregate-type` 和 `x-consumption: state\|sequence`；建议 ≤ 64 KiB，硬上限 1 MiB；超过 64 KiB 的内容走对象存储 claim-check：对象放在**生产者自己的** bucket，payload 只带 `{key, sha256, size}`，生产者另提供一个 rpc 换取短期有效的 URL（D3b 裁决 d）。payload 里不放给人看的敏感字段（CP-EVP-05） | MUST |
+| P12.3 | subject 命名：至少 4 段，`<domain>.<name>.<event…>.v<N>`；每一段匹配 `[a-z][a-z0-9]*(_[a-z0-9]+)*`（没有开头、结尾或连续的下划线），第一段选流，最后一段是 `v<N>`（S-b 裁决 am）。历史上的 `sales.*`、`finance.*` 保留（E10）。一个 subject 只由一个组件、或一个槽位族的每个成员发布；唯一的例外是 `infra.authz.relation.sync.v1`，每个主责关系的组件都发（P6.13，K1 裁决 y）。同一个生产者、同一个聚合类型的所有 subject 共用一个单调递增的版本 | MUST |
 | P12.4 | 流：按 subject 第一段，名叫 `BE_<第一段大写>`，subjects 是 `<第一段>.>`；默认 7 天、1 GiB、丢旧、去重窗口 10 min、文件存储、单副本；DLQ 流 `BE_DLQ` 保留 30 天。规则是"没有就建，有就不碰"，在平台迁移和启动时各执行一次（E1、E2） | MUST |
-| P12.5 | durable：每个（组件，subject）一个 pull 消费者，名字是 `<组件ID的/换成_>__<subject的.换成_>`。参数：AckWait 30 s，MaxAckPending 256，MaxDeliver 和 BackOff 取 P2 的键，首次建时 `DeliverAll`（E3），InactiveThreshold 30 天。单跑、进外壳、多副本，用的都是同一个 durable（CP-EVS-01） | MUST |
+| P12.5 | durable：每个（组件，subject）一个 pull 消费者，名字是 `<组件ID的/换成_>__<subject的.换成_>`；有了 P12.3 的段格式（段里没有 `__`，也不以 `_` 开头或结尾），`__` 分隔符不会歧义，组件 ID 和 subject 能唯一拆开；但 subject 内部的 `.`→`_` **不是**单射：`x.y.stage_changed.v1` 和 `x.y.stage.changed.v1` 得到同一个名字（裁决 aw 的"单射"说法不成立，X2-F1 发现，待控制者定）。在定下更好的转义之前，一个组件不得同时订阅两个会撞名的 subject，由门禁检查。服务端参数全部是**协议常量**：AckWait 30 s（就是 handler 的真实期限），MaxAckPending 256，**不设 BackOff**，**MaxDeliver −1**，首次建时 `DeliverAll`（E3），InactiveThreshold 30 天；重投延迟和投递上限由 SDK 执行（P12.7，R1 #7，裁决 ax）。原因：设了 BackOff，服务端就把 AckWait 改成 BackOff[0]，`Nak()` 又不看 BackOff 立刻重投，InProgress 也挡不住 1 s 的期限，同一条事件会被并发执行两次。durable **只在不存在时创建，从不更新**：Go / JS 用"仅创建"的 API；Python 先 `consumer_info`，不存在才 `add_consumer`（nats-py 的 `add_consumer` 是"创建或更新"，不能直接调）；读回的配置与常量不一致时记 WARN、不覆盖。单跑、进外壳、多副本，用的都是同一个 durable（CP-EVS-01） | MUST |
 | P12.6 | 去重靠**聚合流游标**：`besdk_event_cursor` 的主键是 `(consumer, aggregate_type, aggregate_id)`，推进游标和业务写入在同一个事务里（附录 A 的 upsert）。语义是"状态模式"：比游标旧的版本直接跳过，handler 要写成"把聚合推进到第 v 版"。乱序和重复投递之后，最终状态与按序投递一次相同（CP-EVS-02、03，属性测试） | MUST |
-| P12.7 | 两种 handler：`Apply` 在游标所在的事务里，只做本地写；`Run` 在事务外执行，可以走网络，成功后用一个短事务推进游标，必须按业务键幂等。handler 出错就 Nak，按退避重投；`Permanent` 错误直接进 DLQ；最后一次投递仍失败也进 DLQ。DLQ 的 subject 是 `dlq.<durable>.<原 subject>`，带原来的 `ce-*` 头和 `be-dlq-reason`、`be-dlq-consumer`、`be-dlq-delivery`（CP-EVS-04、05） | MUST |
+| P12.7 | 两种 handler：`Apply` 在游标所在的事务里，只做本地写；`Run` 在事务外执行，可以走网络，成功后用一个短事务推进游标，必须按业务键幂等。handler 第 n 次投递出错，SDK 发 `NakWithDelay(EVENTS_BACKOFF[min(n−1, len−1)])`（三个客户端都有：Go `NakWithDelay`、Python `nak(delay=)`、JS `nak(millis)`）；超时或进程崩溃造成的重投固定隔 AckWait。投递到达时 `NumDelivered > EVENTS_MAX_DELIVER`，SDK 不跑 handler，直接写 DLQ 后 `Term`；`Permanent` 错误、以及最后一次投递里的失败，也是写 DLQ + `Term`，不再 Nak。所以"最后一次投递时进程崩溃"也能进 DLQ，不依赖 `MAX_DELIVERIES` advisory。DLQ 消息的 `Nats-Msg-Id` 是 `dlq:<durable>:<stream_seq>`（多副本、外壳里重复写会被去重），subject 是 `dlq.<durable>.<原 subject>`，带原来的 `ce-*` 头和 `be-dlq-reason`、`be-dlq-consumer`、`be-dlq-delivery`（CP-EVS-04、05） | MUST |
 | P12.8 | `ce-hopcount > 10` 直接进 DLQ（防环）。在 handler 或 Job 里发布的事件，`causationid` 和 `hopcount` 自动派生（CP-EVS-06） | MUST |
-| P12.9 | 处理慢时每过 AckWait/3 发一次 `InProgress`。每个订阅默认 4 个并发，同时受本成员 DB 预算的约束。正确性永远不依赖 broker 的顺序 | MUST |
+| P12.9 | 处理慢时每过 AckWait/3 发一次 `InProgress`（只有在 P12.5 不设 BackOff 时才成立，R1 #7）。每个订阅默认 4 个并发，同时受本成员 DB 预算的约束。正确性永远不依赖 broker 的顺序 | MUST |
 | P12.10 | 即时信号（poke），比如 `infra.authz.changed.v1`：尽力而为，可以丢，不持久、不重投。外壳里每个成员各订阅一次 | MUST |
 | P12.11 | 回放分三档：①流的保留期（7 天）以内，建一个从指定时间开始的临时消费者；②超过流的保留期、仍在 outbox 的保留期（发布后 14 天，data-lifecycle-v2 §4.7）以内，从生产者的 outbox 重发，`Nats-Msg-Id` 加后缀避开去重窗口，消费者靠游标去重（`make events-replay`）；③更早的历史不再重放事件，新消费者走上游的 `List` 回填（P15.3），遇到 `RANGE_COLD` 就改读上游发布的数据集 | MUST（生产者保留 outbox 14 天） |
-| P12.12 | 总线适配器由 `EVENT_BUS_URL` 的 scheme 选：`jetstream`（默认）、`pgqueue`（schema `be_bus`，由 db-init 建）、`kafka`（预留）。适配器必须通过 `tools/be-acceptance/conformance/bus/`（busconf，§4.8） | MUST |
+| P12.12 | 总线适配器由 `EVENT_BUS_URL` 的 scheme 选：`jetstream`（默认）、`pgqueue`（schema `be_bus`，由 db-init 建）、`kafka`（预留）。适配器必须通过 `tools/be-acceptance/conformance/bus/`（busconf，§4.8）。pgqueue 按与 P12.5、P12.7 相同的语义实现：失败 → `next_attempt_at = now + EVENTS_BACKOFF[n−1]`；投递次数 > `EVENTS_MAX_DELIVER` → DLQ；busconf 有一条"Nak 之后重投不早于 `EVENTS_BACKOFF[n−1]`" | MUST |
 
 ### P13 命令幂等
 
@@ -398,7 +413,7 @@ provider 契约（bundle v2、changes、Check、WriteTuples）归族契约仓库
 |---|---|---|
 | `Every` | 每个副本都跑；靠 `SKIP LOCKED` 认领工作，副本之间天然竞争 | — |
 | `Singleton` | 全局同一时刻只有一个在跑。租约 TTL 30 s，每过 TTL/3 续约；丢了租约就取消这次运行；`epoch` 作为防护令牌 | `besdk_job_lease` |
-| `Cron` | 每个时间槽全局只跑一次。用 `INSERT … ON CONFLICT DO NOTHING` 抢槽，不需要领导者。错过的槽只补跑最近一个。时区默认 `BUSINESS_TIMEZONE` | `besdk_job_slot` |
+| `Cron` | 每个时间槽全局只跑一次。用 `INSERT … ON CONFLICT DO NOTHING` 抢槽，不需要领导者。错过的槽只补跑最近一个。调度写成 5 字段的 cron 表达式，**或** `@every <时长>`（S-b 裁决 an）。时区默认 `BUSINESS_TIMEZONE` | `besdk_job_slot` |
 | `Queue` | 在业务事务里入队，至少执行一次。认领用 `SKIP LOCKED`；按退避重试；重试用尽进 `dead` 状态，并调用 `OnDead`；可选的 `unique_key` 保证同一个键只入队一次 | `besdk_job_queue` |
 | `Reconciler` | 按"非终态且已过期"扫描候选；逐行原子认领、带租约；`Handle` 在事务外执行，`Apply` 在短事务里推进；退避；超过上限调用 `GiveUp`（挂起 + 开异常待办） | `besdk_reconcile` |
 
@@ -423,7 +438,7 @@ provider 契约（bundle v2、changes、Check、WriteTuples）归族契约仓库
 | # | 规则 | 等级 |
 |---|---|---|
 | P16.1 | 每个有库的组件提供 `migrations/lifecycle.yaml` v1，字段全集见 data-lifecycle-v2 §4.3。迁移里出现的每一张表都要声明；`ledger` 类不许有 `pii` 列；声明了 `cold` 的表，`NUMERIC` 列都要带精度（门禁 `lifecycle-scan`） | MUST |
-| P16.2 | 引擎作为 Singleton 运行；每一步一个事务，加一把步骤锁（P10.8），设 `lock_timeout`；DETACH 和 DROP 走专用的维护连接，并用 `CONCURRENTLY`。必须守住 data-lifecycle-v2 §4.5 的 G1–G12 | MUST（INTERNAL，由 `lifecycleconf` 测） |
+| P16.2 | 引擎作为 Singleton 运行；每一步一个事务，加一把步骤锁（P10.8），设 `lock_timeout`。运行角色没有 DDL 权（P10.12）：运行期里只经平台的 `SECURITY DEFINER` 函数提前建分区、装封存守卫、删到期的 platform / queue 分区（短 `lock_timeout` 下的普通 `DETACH`）；`DETACH … CONCURRENTLY` 不能在函数或事务块里跑，所以已冷冻业务单元的 detach 和 drop 放在迁移步骤里，以属主身份在它的专用连接上做。必须守住 data-lifecycle-v2 §4.5 的 G1–G12 | MUST（INTERNAL，由 `lifecycleconf` 测） |
 | P16.3 | 读一个时间范围：要么拿到完整结果，要么答 `RANGE_COLD`，并在 `metadata` 里给出冷区间、能否解冻、能否异步导出。不静默截断。List 请求有可选字段 `include_cold`（CP-LIFE-02） | MUST |
 | P16.4 | 资源契约 `/{d}/{n}/_lifecycle/*`（OpenAPI 片段和 gRPC `be.lifecycle.v1` 都在 be-protocol 里），端点全部挂出；还没实现的答 501 `CAPABILITY_UNAVAILABLE`（CP-LIFE-03） | MUST |
 | P16.5 | 封存单元不可改：UPDATE / DELETE / TRUNCATE 被拒，映射成 `FAILED_PRECONDITION` + `UNIT_SEALED` | MUST |
@@ -433,12 +448,12 @@ provider 契约（bundle v2、changes、Check、WriteTuples）归族契约仓库
 
 | # | 规则 | 等级 |
 |---|---|---|
-| P17.1 | 走 S3 API。每个组件一个 bucket、一套凭据，策略只允许访问自己的 bucket（foundations-data-platform §8.2） | MUST |
-| P17.2 | 大文件不进 gRPC 或 REST 的响应体，返回预签名 URL（有效期 ≤ 5 min）或附件 ID。bucket 永不公开读 | MUST |
+| P17.1 | 走 S3 API，地址 `S3_URL`；浏览器走 `S3_PUBLIC_URL`。每个组件一个 bucket、一套凭据，策略只允许访问自己的 bucket（foundations-data-platform §8.2）。冷数据也放在组件自己的 bucket 里，前缀 `cold/<table>/…`（D3b 裁决 c） | MUST |
+| P17.2 | 大文件不进 gRPC 或 REST 的响应体，返回预签名 URL（有效期 ≤ 5 min，按 `S3_PUBLIC_URL` 签）或附件 ID。bucket 永不公开读 | MUST |
 
 ### P18 可观测性
 
-**P18.1 trace**：W3C TraceContext + Baggage。HTTP 和 gRPC 的入站提取、出站注入；事件把 `traceparent` 写进信封，消费端开一个新的 span，用 **span link** 指向生产者，不作为它的子 span。resource 属性：`service.name` 是组件 ID，`service.version`、`service.namespace` 是项目名，`service.instance.id`，`deployment.environment`。外壳里**每个成员一个 TracerProvider**（CP-OBS-01…03：HTTP → gRPC → outbox 事件 → 消费，是同一个 trace_id 或者有一条 link）。
+**P18.1 trace**：W3C TraceContext + Baggage。HTTP 和 gRPC 的入站提取、出站注入；事件把 `traceparent` 写进信封，消费端开一个新的 span，用 **span link** 指向生产者，不作为它的子 span。resource 属性：`service.name` 是组件 ID，`service.version`、`service.namespace` 是项目名，`service.instance.id`，`deployment.environment`。外壳里**每个成员一个 TracerProvider 和 MeterProvider**（CP-OBS-01…03：HTTP → gRPC → outbox 事件 → 消费，是同一个 trace_id 或者有一条 link）。R1 #1 补的三条（裁决 o）：①所有埋点（otelgrpc、otelgin / otelhttp、Python 的拦截器）一律**显式**传成员的 `TracerProvider`、`MeterProvider` 和平台的传播器，不靠全局，否则 span 进全局 provider、每一跳都断；②全局只装传播器（TraceContext + Baggage），全局 `TracerProvider` 设成外壳自己的（`service.name` = 外壳 ID），漏传选项的埋点一眼可见；③共享导出器的关闭归平台，见 P19.3。
 
 **P18.2 日志**：stdout，一行一个 JSON 对象，最长 2 KiB（超出截断并标 `…[TRUNCATED]`）。
 
@@ -460,7 +475,7 @@ provider 契约（bundle v2、changes、Check、WriteTuples）归族契约仓库
 | `http.request.method` `http.route` `http.response.status_code` `duration_ms` | 访问日志 | 属性名按 OTel 语义约定 |
 | `rpc.service` `rpc.method` `rpc.grpc.status_code` | gRPC 日志 | 同上 |
 
-PII 键自动脱敏：`phone`、`mobile`、`id_card`、`password`、`bank_card`、`email`、`token`、`secret` → `[REDACTED]`。三门语言都在 handler 里自动做，不靠业务代码去调。
+PII 与密钥键自动脱敏（S-b 裁决 aq，以向量 `redaction` 的语义为规范）：受保护的名字是 `phone`、`mobile`、`id_card`、`password`、`bank_card`、`email`、`token`、`secret`、`authorization`、`cookie`、`set-cookie`、`api_key`；字段名按 snake_case / camelCase 切成词，**整词**匹配（`contact_phone`、`apiKey` 命中，`tokenizer` 不命中），值整体换成 `"[REDACTED]"`；截断到 2 KiB 之后这一行仍是合法 JSON。三门语言都在 handler 里自动做，不靠业务代码去调。
 
 **P18.3 指标**：Prometheus 文本格式，在主端口的 `/metrics` 上。每个序列都带 `component` 标签；外壳里汇总所有成员的指标，同样带这个标签（V-08）。
 
@@ -491,9 +506,9 @@ PII 键自动脱敏：`phone`、`mobile`、`id_card`、`password`、`bank_card`�
 |---|---|---|
 | P19.1 | 一个外壳只装**同一门语言、同一个 SDK 版本**的成员，成员编译或链接进外壳镜像。启动时读 `BRICKKIT_SERVED_MEMBERS_CONFIG`：出现没编译进来的成员，或者成员版本和编译进来的版本不同（Go 读 build info，Python 读 `importlib.metadata`，TS 读成员包的 `package.json`），就以非 0 退出，并点名是哪个成员（CP-SHELL-01、02） | MUST |
 | P19.2 | 每个成员用它自己那一项的 `config`、`httpPort` 和 `extraPorts`；成员之间互相调用仍然走网络（0101、0108） | MUST |
-| P19.3 | 整个进程只有四样东西是共享的：OTel 导出器和传播器；JWKS 验签器和 bundle；DB 物理池；总线连接。共享的前提是各成员的 `AUTHZ_URL`、`IAM_*`、`TENANT_ID`、`PG_HOST` / `PG_PORT` / `PG_DATABASE`、`EVENT_BUS_URL` 都和外壳自己的一致；任何一项不一致都拒绝启动（修"静默忽略成员的 PG_HOST"）（CP-SHELL-03） | MUST |
+| P19.3 | 整个进程只有四样东西是共享的：OTel 导出器和传播器（**共享导出器只由平台在所有成员停完之后关闭**；每个成员的 provider 有自己的 BatchSpanProcessor，包着一层 `Shutdown` 为空操作的导出器壳，成员停止时只刷出自己的队列。R1 #1：朴素地共享导出器或 BSP，第一个成员一停导出器就关了，之后别的成员的 span 静默丢失，`Shutdown` 还返回 nil）；JWKS 验签器和 bundle；DB 物理池；总线连接。共享的前提是各成员的 `AUTHZ_URL`、`IAM_*`、`TENANT_ID`、`PG_HOST` / `PG_PORT` / `PG_DATABASE`、`EVENT_BUS_URL` 都和外壳自己的一致；任何一项不一致都拒绝启动（修"静默忽略成员的 PG_HOST"）（CP-SHELL-03） | MUST |
 | P19.4 | 其余的一切按成员实例化：Logger、Prometheus Registry、TracerProvider 和 MeterProvider（`service.name` 是成员 ID）、`Store`（成员的身份 + 成员的连接预算）、gRPC 连接池和出站舱壁、durable、Jobs、缓存、ACL 投影、生命周期引擎（CP-SHELL-04、05） | MUST |
-| P19.5 | 外壳的登录角色是 NOINHERIT 的，只通过 `SET LOCAL ROLE` 进入成员角色（PG16 `GRANT … WITH INHERIT FALSE, SET TRUE`） | MUST |
+| P19.5 | 外壳的登录角色是 NOINHERIT 的，只通过 `SET LOCAL ROLE` 进入成员的**运行角色** `PG_USER`（`GRANT <成员运行角色> TO <外壳角色> WITH INHERIT FALSE, SET TRUE`），所以**外壳要求 PostgreSQL ≥ 16**，单跑的组件仍以 14 为下限（R1 #5，裁决 n）。外壳从不被授予任何成员的属主角色；成员的迁移仍由各自的迁移容器以各自的 `PG_OWNER_USER` 跑（裁决 p）。成员之间的隔离靠 SDK、不靠数据库：外壳角色对每个成员都有 SET 权，成员代码若自己执行 `SET ROLE` 就能切到别的成员（R1 #5 C11），所以 SDK 的 `Store` 是唯一发 `SET LOCAL ROLE` 的地方，门禁 `identity-literal-scan` 禁止组件代码里出现 `SET ROLE` / `SET LOCAL ROLE` 和角色字面量（CP-SHELL-07） | MUST |
 | P19.6 | 外壳的 `/healthz` 只答外壳进程本身。成员初始化失败，整个外壳就启动失败；成员运行中的后台任务失败，由监督重启，不永久停止（CP-SHELL-06） | MUST |
 | P19.7 | 外壳在自己的端口上暴露汇总的 `/metrics`；每个成员的 `/metrics` 也照常可用 | MUST |
 
@@ -529,31 +544,26 @@ PII 键自动脱敏：`phone`、`mobile`、`id_card`、`password`、`bank_card`�
 ### 3.1 仓库 `brickKit/be-protocol`（新建，需用户同意，§9 Q1）
 
 ```
-be-protocol/
+be-protocol/                     （实际布局，以仓库为准；裁决 ab）
   README.md  README.zh.md        是什么、怎么读、版本规则
-  CHANGELOG.md
-  spec/en/P01-lifecycle.md … P20-self-description.md   正文，英文为准
-  spec/zh/…                                           中文镜像，同样的 ## 小节
+  CHANGELOG.md  CHANGELOG.zh.md  LICENSE
+  spec/00-reading-the-spec.md … 20-self-description-and-versioning.md   正文，英文为准；同目录 NN-x.zh.md 是中文镜像，同样的 ## 小节
   schemas/  config-keys.yaml       协议级配置键：名字、类型、是否密钥、默认值、属于哪个 profile（P2）
             errors-be.yaml         SDK 保留的 reason（P4）
-            problem.schema.json    problem+json 的 JSON Schema
-            envelope.schema.json   CloudEvents 头 + 扩展属性（P12）
-            lifecycle.schema.json  lifecycle.yaml v1（data-lifecycle-v2 §4.3）
-            errors-yaml.schema.json   组件 contracts/errors.yaml 的格式
-            assembly-protocol.schema.json   assembly.yaml 里本协议用到的键：protocol、conformance、resources、requires_capabilities
-            info.schema.json       /_be/info
-            fixtures.schema.json   组件 conformance/fixtures.yaml 的格式（§4.3）
-            compconf-report.schema.json
+            problem.schema.json  envelope.schema.json  events-contract.schema.json
+            lifecycle.schema.json  data-lifecycle-config.schema.json  jobs-overrides.schema.json
+            errors-yaml.schema.json  assembly-protocol.schema.json  info.schema.json  access-token.schema.json
+            fixtures.schema.json  conformance-cases.yaml / .schema.json  compconf-report.schema.json
+  ddl/      01-platform-version.sql … 10-lifecycle-functions.sql、be_bus.sql   平台表与平台函数的参考 DDL（规范性，附录 A 的定稿）
   proto/be/v1/limits.proto         extend FieldOptions { int32 max_items = 51001; }
-        be/lifecycle/v1/lifecycle.proto
+        be/lifecycle/v1/           gRPC be.lifecycle.v1.Lifecycle
   openapi/  resource-authz.yaml (_authz/check|explain, _shares)
             resource-lifecycle.yaml (_lifecycle/*)
             ops.yaml (/healthz /readyz /_be/info /_ops/jobs)
-  sql/platform/*.sql               平台表参考 DDL（附录 A）。规范性的，SDK 自己的平台迁移必须产出同样的表结构
-  vectors/  authz/ money/ idempotency/ envelope/ calendar/ numbering/ lifecycle/ search/ errors/ config/ redaction/
-            SHA256SUMS
-  fixtures/widget/                 夹具组件的契约与行为说明（apis 文件 §6）
-  fs.go  go.mod                    唯一的代码：//go:embed 把 schemas、vectors、sql 导出成 fs.FS，供 be-acceptance 和 be-sdk-go 的测试用
+  vectors/  calendar/ config/ envelope/ errors/ idempotency/ money/ numbering/ redaction/ …   全协议通用的语义向量
+            SHA256SUMS                       （族的判定向量不在这里，在族契约仓库，§1 第 17 条）
+  fixtures/widget/  fixtures/peer/  夹具组件和假对端的契约与行为说明（apis 文件 §6）
+  fs.go  go.mod                    唯一的代码：//go:embed 把 schemas、vectors、ddl 导出成 fs.FS，供 be-acceptance 和 be-sdk-go 的测试用
 ```
 
 为什么单独成仓库，而不是放进 be-acceptance 或某个 SDK：
@@ -582,7 +592,7 @@ be-protocol/
 
 ### 3.3 正式文档怎么指向它
 
-- `docs/{en,zh}/04-foundations/` 新增一篇 `02-languages-and-component-protocol.md`（第二波，计划中；编号已由 foundations README 定好）。按 foundations 的 11 个固定小节写：
+- `docs/{en,zh}/04-foundations/` 新增一篇 `02-languages-and-component-protocol.md`（**已写**，D3a）。按 foundations 的 11 个固定小节写：
   - Choice：协议加黑盒套件，SDK 是参考实现。
   - Alternatives：
     - 锁死语言（即今天的 0105）；
@@ -590,7 +600,7 @@ be-protocol/
     - WASM 组件模型：生态不成熟，PG / gRPC 驱动缺；
     - 每门语言各自约定、不做黑盒测试：漂移无法发现。
   - When to switch：出现必须跨语言合进一个进程的需求，这一条永远不支持，写成 Known limits。
-  - 仓库建好之前，正式文档只写名字 `brickKit/be-protocol` 并标"计划中"，**不放链接**（不存在的地址不链）；建好之后再链到它的 GitHub 地址（外部链接不受 `docs-boundary` 约束）。
+  - 仓库已建（`tools/be-protocol`，子模块）。正式文档链到它的 GitHub 地址（外部链接不受 `docs-boundary` 约束）；rc 阶段名字以仓库为准，文档与仓库说法不一致时改文档（裁决 ab）。
 - `01-conventions/02-backend.md` 重写成"用官方 SDK 写组件"：每一节"怎么做"都指向对应的 P 章节。新增一节"用其它语言写组件"（§5.6）。
 - 根 `AGENTS.md` 的约定表加一行 **Component protocol**；Where to look 表加一行"用别的语言写组件 / 组件协议 / compconf"；Pitfalls 表按 §7.6 的清单增删。
 - 组件 BRICKKIT 的 "Before you deploy" 写通用的运行要求（库身份一句话见 data-layer §2.2）。非官方 SDK 的组件，额外写明内存与冷启动的量级。
@@ -613,13 +623,14 @@ tools/be-acceptance/conformance/component  (compconf；Go，跑在一个容器�
  ├─ 读入：component.yaml、assembly.yaml、contracts/（openapi、proto、events、errors.yaml）、
  │        migrations/lifecycle.yaml、conformance/fixtures.yaml、镜像引用
  ├─ 基础设施（真的）：
- │    PG：make up 的实例，库 brickkit_test_db；每次运行现建随机 schema + 随机 LOGIN 角色（只授 USAGE+CREATE）
- │        + 一个 NOINHERIT 的"外壳"角色；跑完全部删掉（同 besdktest）
+ │    PG：make up 的实例，库 brickkit_test_db；每次运行现建随机 schema + 随机的属主角色（拥有 schema）和运行角色（只有 USAGE + DML）
+ │        + 一个 NOINHERIT 的"外壳"角色（PG16，WITH INHERIT FALSE, SET TRUE）；跑完全部删掉（同 besdktest）
  │    NATS：每次运行起一个一次性的 nats-server -js 容器，流和 durable 不和开发环境相撞
  ├─ 假服务（套件进程内）：
  │    fake-iam    JWKS + 签发器：签 access / refresh / 错 iss / 错 aud / 无 exp / HS256 / 轮换后的钥匙 …
  │    fake-authz  contract-infra-authz v2：bundle（每条用例脚本化）、changes、ReadTuples、Check、WriteTuples、poke
- │    fake-peer   被测组件的每个依赖：从依赖的 proto 描述符动态应答（protoreflect）；
+ │    fake-peer   被测组件的每个依赖：gRPC 从依赖的 proto 描述符动态应答（protoreflect），
+ │                用户面 HTTP（UserHTTP 的对端）按 fixtures 的样本应答（S-b 裁决 au，A1 再做）；
  │                记录 metadata、截止时间、连接数；可以挂起、返回 UNAVAILABLE、变慢
  │    otlp-sink   OTLP/HTTP 接收器，按 trace_id 收 span
  └─ 被测容器：先 migrate（两次），再 serve（1 个或 2 个副本）；外壳模式下按 BRICKKIT_SERVED_MEMBERS_CONFIG 起
@@ -663,7 +674,7 @@ profile 由清单里的事实**自动选**，组件不用声明：
 | `jobs` | 有库（平台任务一定存在） | 5 |
 | `lifecycle` | 有库 | 4 |
 | `blob` | `configSchema` 里有 `S3_BUCKET` | 3 |
-| `shell` | `component.yaml` 有 `shell.members` | 8，外加对每个成员在外壳模式下重跑它的 profile |
+| `shell` | `component.yaml` 有 `shell.members` | 10，外加对每个成员在外壳模式下重跑它的 profile |
 
 `conformance/fixtures.yaml` 告诉套件"怎样让这个组件做事、怎样看到结果"。它是数据，不是代码；第四门语言也写同一份。以 erp/sales 为例（节选）：
 
@@ -692,6 +703,8 @@ events:
       observe:  { sql: "SELECT version, credit_limit FROM customer_snapshots WHERE customer_id = $1" }
 ```
 
+fixtures 的完整字段以 be-protocol `schemas/fixtures.schema.json` 为准。S-b 写 widget 夹具时补进去的字段（裁决 at）：面向用户的 rpc（测 CP-RPC-03）、锁的目标（CP-DB-02）、会把个人数据写进日志的路由（CP-OBS-04）、维度和排序参数（scope、`SORT_FORBIDDEN`）、生命周期的范围参数（`RANGE_COLD`）、blob 用例、cron / reconciler 的触发方式、handler 产生的事件、HTTP 依赖的键。夹具里的资源类型名一律写全名，例如 `conformance.widget.widget`（裁决 av）。
+
 `observe.sql` 读的是被测组件**自己 schema 里的表**。套件拥有这个库，所以能直接查，这不算偷看代码。没有公开读接口的消费效果（快照、台账）就靠它观察。
 
 ### 4.4 用例目录（代表性用例，ID 稳定，只增不改）
@@ -706,13 +719,13 @@ events:
 | grpc | 01 没有 `be-caller` → `UNAUTHENTICATED`；02 系统调用的日志带 `caller`；03 面向用户的方法经 gRPC → `UNAUTHENTICATED`；04 5 MiB 请求被拒；05 `MaxConnectionAge` 之后发 GOAWAY，客户端透明重连；06 BatchGet 超上限 → `BATCH_TOO_LARGE` 加 BadRequest |
 | outbound | 01 触发 50 次 → fake-peer 只看到 1 条连接；02 出站的 `grpc-timeout` ≤ 3 s，且小于入站剩余；03 只对幂等方法在 UNAVAILABLE 时重试；04 一直 UNAVAILABLE 时，重试量 ≤ 10 %；05 对端挂起、并发超过 64 → 立刻 `OUTBOUND_LIMIT`；06 `UserHTTP` 转发 Authorization、`x-request-id`、`traceparent`；07 对端挂起 → 组件在路由截止时间内答 504，不跟着挂死；08 出站带 `be-caller`、`be-actor-sub`、`traceparent` |
 | events-pub | 01 命令 → 流上出现事件，`ce-*` 头齐全，`ce-id` 是 UUIDv7 且等于 `Nats-Msg-Id`，`aggregatetype` 与契约一致，`traceparent` 和请求同一个 trace；02 停掉总线 → 命令照样成功 → 恢复总线 → 恰好送达一次；03 两个副本 → 每行 outbox 只发布一次；04 没有流就按默认值建，已有的流配置不被覆盖；05 payload 通过契约校验，超过上限明确报错 |
-| events-sub | 01 durable 的名字和参数；离线期间发布的事件，上线后补收；02 重复投递只生效一次；03 乱序（v3 先于 v2）的最终状态与按序相同（属性测试）；04 格式错误的 payload → DLQ，带 `be-dlq-*` 头；05 临时失败（套件暂时收回表权限）→ Nak 重投 → 恢复后生效；06 handler 里发出的事件带 `causationid` 且 `hopcount` + 1，`hopcount=11` 的入站事件进 DLQ；07 交易单据事件缺法人 → DLQ |
+| events-sub | 01 durable 的名字和参数；离线期间发布的事件，上线后补收；02 重复投递只生效一次；03 乱序（v3 先于 v2）的最终状态与按序相同（属性测试）；04 格式错误的 payload → DLQ，带 `be-dlq-*` 头；05 临时失败（套件暂时收回表权限）→ 按 `EVENTS_BACKOFF` 延迟重投 → 恢复后生效；handler 耗时 > AckWait/2 且持续发 InProgress → 只执行一次；06 handler 里发出的事件带 `causationid` 且 `hopcount` + 1，`hopcount=11` 的入站事件进 DLQ；07 交易单据事件缺法人 → DLQ |
 | idempotency | 01 重放返回首次结果；02 换请求体 → 400 `IDEMPOTENCY_MISMATCH`；03 换 target；04 换命令；05 两段式命令进行中 → 409 `IDEMPOTENCY_IN_PROGRESS`；06 不同 caller 同一个键互相独立；07 并发同键只执行一次；08 请求头和 body 等价，冲突时 400 |
-| db | 01 随机身份下全部 profile 照常通过，表的属主全是 `PG_USER`，schema 外没有任何对象；02 套件持锁 → 组件在 `lock_timeout` 内答 409 `LOCK_TIMEOUT`；03 压满并发 → 该角色的连接数 ≤ `PG_POOL_MAX`；04 `besdk_*` 表与参考 DDL 逐列一致（查目录比对） |
-| jobs | 01 两个副本，平台 Cron（`be.cleanup`，用 `JOBS_OVERRIDES` 改成每 2 s）每个槽只跑一次；02 Singleton（生命周期引擎）同一时刻只有一个持有者，杀掉持有者后另一个在 TTL 内接管；03 Queue 的作业在两个副本下只执行一次（fixtures 给出会入队的命令）；04 业务事务回滚 → 作业不存在；05 运行中 `pg_terminate_backend` → 任务失败后被重启，进程不退出 |
+| db | 01 随机身份下全部 profile 照常通过，表的属主全是 `PG_OWNER_USER`，运行角色没有 CREATE、不是属主的成员，schema 外没有任何对象；02 套件持锁 → 组件在 `lock_timeout` 内答 409 `LOCK_TIMEOUT`；03 压满并发 → 该角色的连接数 ≤ `PG_POOL_MAX`；04 `besdk_*` 表与参考 DDL 逐列一致（查目录比对） |
+| jobs | 01 两个副本，平台 Cron（`be.cleanup`，用 `JOBS_OVERRIDES` 改成 `@every 2s`）每个槽只跑一次；02 Singleton（生命周期引擎）同一时刻只有一个持有者，杀掉持有者后另一个在 TTL 内接管；03 Queue 的作业在两个副本下只执行一次（fixtures 给出会入队的命令）；04 业务事务回滚 → 作业不存在；05 运行中 `pg_terminate_backend` → 任务失败后被重启，进程不退出 |
 | lifecycle | 01 新库迁移后立刻能写入（分区窗口已就绪）；02 早于在线下界的范围 → `RANGE_COLD`；03 `_lifecycle/*` 都已挂出，未实现的答 501；04 `lifecycle.yaml` 通过 schema 校验，覆盖了全部表 |
 | blob | 01 预签名 PUT 带内容长度上限；02 bucket 不可匿名读；03 预签名有效期 ≤ 5 min |
-| shell | 01 出现没编译进来的成员 → 非 0 退出并点名；02 成员版本不符 → 非 0 退出；03 成员的 `PG_HOST` 或 `AUTHZ_URL` 与外壳不同 → 拒绝启动；04 每个成员的 span，`service.name` 是成员 ID；汇总的 `/metrics` 带 `component` 标签；05 一个成员把连接预算耗尽，另一个照常；两个成员订阅同一个 subject 各收一份；06 成员的后台任务失败后被重启；07 NOINHERIT 的登录角色下，四类后台路径全部正常；08 对每个成员按外壳模式重跑它自己的 profile |
+| shell | 01 出现没编译进来的成员 → 非 0 退出并点名；02 成员版本不符 → 非 0 退出；03 成员的 `PG_HOST` 或 `AUTHZ_URL` 与外壳不同 → 拒绝启动；04 每个成员的 span，`service.name` 是成员 ID；汇总的 `/metrics` 带 `component` 标签；05 一个成员把连接预算耗尽，另一个照常；两个成员订阅同一个 subject 各收一份；06 成员的后台任务失败后被重启；07 NOINHERIT 的登录角色下，四类后台路径全部正常；08 对每个成员按外壳模式重跑它自己的 profile；09 跑完 HTTP → gRPC → 事件链路后，收集器里没有 `service.name` = 外壳 ID 的 span；10 先停一个成员，另一个成员之后发的 span 不丢（R1 #1） |
 
 ### 4.5 报告
 
@@ -827,11 +840,11 @@ events:
 
 | 层 | Go | Python | TypeScript |
 |---|---|---|---|
-| 运行时 | Go 1.25 | CPython 3.13（3.14 要实测 asyncpg 和 grpcio 的 wheel 再切） | **Node 24 LTS** |
-| HTTP | Gin | FastAPI on uvicorn（一个进程、一个事件循环） | **Fastify 5**（BFF 的 GraphQL 用 graphql-yoga 5，挂在 Fastify 上） |
-| gRPC | grpc-go | grpc.aio | **@grpc/grpc-js** + ts-proto 生成代码（`outputServices=grpc-js`） |
-| 数据库 | database/sql + pgx/v5 stdlib，sqlc，手写 SQL | asyncpg，手写 SQL，Pydantic 映射行 | **pg（node-postgres）8**，手写 SQL，zod 校验行 |
-| 迁移 | golang-migrate，纯 `.sql` | yoyo-migrations，纯 `.sql`（入口收进 SDK） | **node-pg-migrate**，纯 SQL 文件 |
+| 运行时 | Go 1.25 | **CPython 3.14**（基础镜像 `python:3.14-slim`；R1 #10 实测 asyncpg、grpcio、pyarrow 在 8 个平台组合都有 wheel，裁决 bb） | **Node 24 LTS** |
+| HTTP | Gin | FastAPI on uvicorn（一个进程、一个事件循环） | **Fastify 5**（≥ 5.12，要有 `handlerTimeout`；BFF 的 GraphQL 用 graphql-yoga 5，挂在 Fastify 上；实例选项见 apis §4，R1 #8，裁决 ba） |
+| gRPC | grpc-go | grpc.aio | **@grpc/grpc-js** + ts-proto 生成代码（`outputServices=grpc-js,esModuleInterop=true,outputSchema=true,importSuffix=.ts,enumsAsLiterals=true`；`outputSchema` 让 SDK 在运行时读到 `idempotency_level` 和 `max_items`，`enumsAsLiterals` 避开 Node 24 类型擦除不支持的 TS `enum`，R1 #3、r1-03b） |
+| 数据库 | database/sql + pgx/v5 stdlib，sqlc，手写 SQL | `asyncpg==0.31.0`（0.30.0 没有 cp314 wheel），手写 SQL，Pydantic 映射行 | **pg（node-postgres）8**，手写 SQL，zod 校验行 |
+| 迁移 | golang-migrate，纯 `.sql` | yoyo-migrations，纯 `.sql`（入口收进 SDK），同步驱动 `psycopg[binary]==3.3.6`（`postgresql+psycopg://` 后端） | **node-pg-migrate**，纯 SQL 文件；必须显式传 `ignorePattern`、由 schema 派生的 `lockValue` 和 `advisoryLockMode: 'wait'`（R1 #6） |
 | 事件 | nats.go `jetstream` | nats-py JetStream | **@nats-io/jetstream** + transport-node |
 | 十进制 | cockroachdb/apd/v3 | 标准库 `decimal` | decimal.js |
 | JWT | golang-jwt/v5 + keyfunc/v3 | PyJWT（必须传 `audience`） | jose 6 |
@@ -839,7 +852,7 @@ events:
 | 日志 / 指标 | slog / client_golang，每个模块一个 registry | logging（SDK 的 JSON formatter）/ prometheus-client，每个模块一个 CollectorRegistry | pino / 保留现用的 Prometheus 客户端，每个模块一个 Registry |
 | trace | otel-go + otelgrpc | opentelemetry-python + grpc 拦截器 | @opentelemetry/sdk-trace-base；**不用 auto-instrumentation**（它全局打补丁，会破坏"每个成员一个 provider"） |
 | 对象存储 | aws-sdk-go-v2 | aioboto3 | @aws-sdk/client-s3 |
-| UUIDv7 / 拼音 | google/uuid / go-pinyin | uuid6（3.14 起用标准库 `uuid.uuid7`）/ pypinyin | uuid 11 / pinyin-pro |
+| UUIDv7 / 拼音 | google/uuid / go-pinyin | 标准库 `uuid.uuid7`（3.14 起有，不再依赖 uuid6）/ pypinyin | uuid 11 / pinyin-pro |
 | 测试 | testing + testify + rapid | pytest + pytest-asyncio + hypothesis | vitest + **fast-check** |
 | 包管理 | Go modules | pyproject，精确版本 | npm + package-lock（与今天一致） |
 
@@ -855,7 +868,7 @@ events:
   - NestJS 自带一整套依赖注入，等于多一种写法，和"一个入口"冲突。
   - BFF 的 Yoga 挂到 Fastify 上，全项目 TS 只剩一个 HTTP 栈。0103 里写的"Apollo"是文档漂移，顺手改掉。
 - **node-postgres，而不是 porsager/postgres、Kysely、Drizzle 或 Prisma**：
-  - 需要在每个事务里 `SET LOCAL ROLE` / `search_path` / 超时。porsager 默认隐式缓存预编译语句，和"同一条连接上切换 search_path"有交互风险（foundations-data-platform DB-6 正在验证的问题），只能靠关缓存规避。
+  - 需要在每个事务里 `SET LOCAL ROLE` / `search_path` / 超时。porsager 默认隐式缓存预编译语句，和"同一条连接上切换 search_path"有交互风险（R1 #4 已证实：缓存键不含成员 schema 时形状不同就报错），只能靠关缓存规避。
   - Kysely 和 Drizzle 是查询构造器或 ORM，Prisma 是 ORM 且带独立引擎，都和 0103 的"手写 SQL、不用 ORM"冲突。Prisma 还做不到每个事务 `SET LOCAL ROLE`。
   - node-postgres 的池参数（`max`、`connectionTimeoutMillis`、`idleTimeoutMillis`）、LISTEN/NOTIFY（pgqueue 的 Notify 要用）、COPY 流，都现成。
 - **node-pg-migrate**：支持纯 SQL 文件，状态表可以放进本组件的 schema（`--migrations-schema`），拿锁也是独占连接。Graphile Migrate 绑定了自己的开发流程；dbmate 是一个 Go 二进制，塞进 Node 镜像很别扭。
@@ -866,7 +879,7 @@ events:
   - 每个成员一个 `BasicTracerProvider`、共用一个导出器，在 Node 上是否可行；
   - pg 池在 `SET LOCAL` 之后归还连接时是否干净。
 
-  这几条列为 §7.7 的任务 R1。
+  这几条列为 §7.7 的任务 R1，结果见 §7.9：grpc-js 的重试生效但预算按进程（#3）；node-pg-migrate 要显式传三个选项（#6）；pg 池归还时干净（#4）。Node 上"每个成员一个 provider"没有单独复现，按 Go 的结论（#1）实现，由 compconf 的 CP-SHELL-09 / -10 守住。
 
 ### 5.4 仓库与包结构
 
@@ -1068,7 +1081,7 @@ A 规范与契约 ─┬─ B 实现（并行 lane） ── C pilot（冻结点
    - 金额、单价、数量按 P11.6 的精度，金额与币种成对；
    - 交易单据带 `legal_entity_id`；
    - 业务日期是 `DATE` 列；
-   - 不出现 `OWNER TO`、日期分区、`_rw`；
+   - 不出现 `OWNER TO`、日期分区、`_rw`；迁移以 `PG_OWNER_USER` 跑，运行时只用 `PG_USER`；
    - 平台表**不写**进组件的迁移，由 SDK 的平台迁移负责。
 
    这一条需要决策 0305 明文破例（§7.6）。
@@ -1092,7 +1105,7 @@ A 规范与契约 ─┬─ B 实现（并行 lane） ── C pilot（冻结点
 6. **`assembly.yaml`**：`protocol: "1.0"`、`resources`、`requires_capabilities`、`type: field` 的键、`conformance.fixtures`。`.admin` 键在 `permissions.tsv` 里标 deprecated（只增不删）。
 7. **配置**：
    - configSchema 按 `config-keys.yaml` 写；
-   - 新增 `AUTHZ_URL`、`IAM_ISSUER`、`TENANT_ID`、`EVENT_BUS_URL`、`DATA_LIFECYCLE`、池的几个键（法人日历来自 mdm/org，不是配置键）；
+   - 新增 `PG_OWNER_USER` / `PG_OWNER_PASSWORD`（属主与运行角色分开，F27）、`AUTHZ_URL`、`IAM_ISSUER`、`TENANT_ID`、`EVENT_BUS_URL`、`DATA_LIFECYCLE`、`DEFAULT_LOCALE`、池的几个键；用对象存储的加 `S3_PUBLIC_URL`；调 iam 的加 `IAM_URL`（法人日历来自 mdm/org，不是配置键）；
    - 删掉 `AUTHZ_BUNDLE_URL`；
    - `config/vars.yaml` 在同一批里一起改，并核对 `service-hostname-scan`（记忆里的 C18）。
 8. **测试**：
@@ -1103,7 +1116,7 @@ A 规范与契约 ─┬─ B 实现（并行 lane） ── C pilot（冻结点
 10. **种子数据**：
     - id 全换成 UUIDv7；
     - 加第二个法人「本地测试」华南子公司；
-    - 首个管理员改用 `BOOTSTRAP_ADMIN_SUB`（I4）；
+    - 首个管理员改用共享变量 `BOOTSTRAP_ADMIN_LOGIN`（I4 的实现，裁决 r：平台 `sub` 首次登录前不可知，所以按 IdP 登录名或邮箱，首次登录时绑定）；
     - `db-reset` 之后重新播种。
 11. **验收**：compconf 报告 → `brickkit upgrade` → `make verify` → `brickkit down`（记忆：验证完一定要关）。
 
@@ -1112,7 +1125,7 @@ A 规范与契约 ─┬─ B 实现（并行 lane） ── C pilot（冻结点
 | 组件 | 特有改动 |
 |---|---|
 | infra/authz | v2 provider 的 P0 部分：档位（含 `dept`）、维度取值、字段键、能力、revision。ResolveClaims v2 带 `tenant_id`。审计事件走 outbox，带 actor。改部门写 stale。superuser 自动补齐键；系统角色和最后一个管理员受保护。`/api/me/access` v2。元组表和 changes 端点的形状一次建齐，`sharing` 能力随 P1 打开。`provides_capabilities`、`RESOURCE_CATALOG`、`DATA_SCOPE_CATALOG` |
-| infra/iam-casdoor | 删掉对 authz 的依赖边，改读 `AUTHZ_URL`。签 `typ`、`iss`、`aud`、`jti`、`tenant_id`、`locale`。平台 `sub` + `identity_links`。`/api/iam/login-config`。按 RFC 8693 的形状换 token（`casdoor_id_token` 留作别名，直到 06c 的前端改掉）。`User` 加 `version` 和 `disabled`；新增 `deleted` 事件。webhook 投递改成 `Queue` / `Reconciler`。登录调 authz 带上截止时间 |
+| infra/iam-casdoor | 删掉对 authz 的依赖边，改读 `AUTHZ_URL`。签 `typ`、`iss`、`aud`、`jti`、`tenant_id`、`locale`。平台 `sub` + `identity_links`。`/api/iam/login-config`。按 RFC 8693 的形状换 token（`casdoor_id_token` 留作别名，直到 06c 的前端改掉）。建 Casdoor 应用时 `tokenFormat: JWT-Standard`（今天 `admin.go:293` 写的 `JWT` 会把 86 个 claim、含 `passwordSalt`、`totpSecret` 的整条用户记录塞进 token，R1 #9，裁决 ag 待用户定是否先发 2.0.1），`grantTypes` 只要 `authorization_code`；拒收 IdP 标为 refresh 的 `subject_token`、要求 `kid`。`IAM_ISSUER` 是稳定的 URN `urn:be:<tenant>:iam`，元数据在 `IAM_URL` 下；token 错误是 problem+json，带 `metadata.oauth_error`；`enabled_components` / `GetTenantFeatures` 移到 authz 的 `/api/me/access`（K2）。`BOOTSTRAP_ADMIN_LOGIN` 在首次登录时绑定。`User` 加 `version` 和 `disabled`；新增 `deleted` 事件。webhook 投递改成 `Queue` / `Reconciler`。登录调 authz 带上截止时间 |
 | mdm/customer | 主数据去掉默认窗口（D3）。`credit_limit (19,4)` + 币种；字段键 `mdm.customer.credit`。gRPC 写接口答 Unauthenticated（I5）。幂等的先查后插 → SDK 认领 |
 | mdm/org（新建） | 法人主数据：时区、会计年度起始月、本位币；发布法人变更事件，SDK 的快照帮手据此维护法人日历（P11.9）；与 IAM 目录（部门）的分工在它的 design.md 里定 |
 | mdm/currency（新建） | 币种（ISO 4217 小数位）、汇率类型、每日汇率；和其他 mdm 枢纽一样，谁都读它，它不调用任何人；汇率的来源（集成组件或手工录入）换了，消费方不受影响 |
@@ -1152,7 +1165,7 @@ A 规范与契约 ─┬─ B 实现（并行 lane） ── C pilot（冻结点
 - **0201**：没有缓存服务器，缓存经 `besdk.Cache`。
 - **0202 / 0203 / 0204 / 0205 / 0206**：authz-architecture §6.3。
 - **0301**：金额的精度、金额与币种成对。
-- **0102**：Revisit 补上"每个成员一个池"（方案 C）和 Citus。
+- **0102**：Revisit 补上"每个成员一个池"（方案 C）和 Citus；去掉每组件的 `_archive` schema，冷数据进组件自己 bucket 的 `cold/<table>/…`（裁决 l、c）；属主角色与运行角色分开（F27，裁决 p）。
 
 **新增**
 
@@ -1163,7 +1176,8 @@ A 规范与契约 ─┬─ B 实现（并行 lane） ── C pilot（冻结点
 | 03-contracts-and-data 0304 | BatchGet 有上限，上限是契约的一部分（D8） |
 | 03-contracts-and-data **0305** | 3.0.0 的一次性破例：已发布的迁移可以整体替换为新基线，前提是**没有生产数据**。写明判据和"仅此一次"；以后同样的情况要重新拍板 |
 | 03-contracts-and-data 0306–0308 | 主键用 UUIDv7、单据号由 SDK 分配；业务日期与法人日历；租户 = 部署，法人是维度（F1–F5） |
-| 05-runtime 0501–0508 | foundations-communication §11.3：事务里不发网络调用；隔离与重试；截止时间与重试预算；错误模型与 reason 登记表；CloudEvents 信封与聚合流游标；至少一次送达与建流；后台工作只经 Jobs；边缘只路由、鉴权在服务 |
+| 05-runtime 0501–0508 | foundations-communication §11.3：事务里不发网络调用；隔离与重试；截止时间与重试预算；错误模型与 reason 登记表；CloudEvents 信封与聚合流游标；至少一次送达与建流；后台工作只经 Jobs |
+| 05-runtime **0509** | 边缘只路由，认证和授权留在每个服务里（裁决 q；foundations 18 链它）。其余未编号的（进程归启动它的组件、有界表不分区、审计走 outbox、边缘路由由声明生成等）仍标"计划中"（裁决 s） |
 
 **约定**
 
@@ -1181,7 +1195,7 @@ A 规范与契约 ─┬─ B 实现（并行 lane） ── C pilot（冻结点
 
 | ID | 任务 | lane | 依赖 | 产出 |
 |---|---|---|---|---|
-| R1 | 最小复现（§7.9），每条一个独立目录 | 各 lane 的第一步 | — | `dev/phase-06/to-verify.md` 的结论 |
+| R1 | 最小复现（§7.9），每条一个独立目录 | 各 lane 的第一步 | — | **已完成**：`dev/phase-06/repros/r1-01…r1-10`（含补测 r1-03b、r1-04b），汇总在 `dev/phase-06/repros/README.md` |
 | S1 | be-protocol rc.1：P1–P20 中英文、schemas、参考 DDL | Spec | 用户已同意新建仓库（答复 P1） | tag `v1.0.0-rc.1` |
 | S2 | 第一批向量：authz core、money、幂等指纹、信封派生、日历、编号、错误映射、配置解析 | Spec | S1、K1 | `vectors/` |
 | S3 | widget 契约：openapi、proto、events、errors.yaml、lifecycle.yaml、assembly.yaml、fixtures.yaml，以及行为说明 | Spec | S1 | `fixtures/widget/` |
@@ -1191,7 +1205,7 @@ A 规范与契约 ─┬─ B 实现（并行 lane） ── C pilot（冻结点
 | P1–P11 | be-sdk-python，同上 | Python | 同上 | 同上 |
 | T1–T11 | be-sdk-ts，同上；数据库、迁移、事件是从零写 | TS | 同上 | 同上 |
 | A1–A9 | be-acceptance：compconf 骨架与四个假服务（A1）→ core / obs / err / auth（A2）→ scope / grpc / outbound（A3）→ events / idem / db / jobs / lifecycle / blob（A4）→ shell（A5）→ 套件自检（A6）→ 新门禁先警告（A7，§7.3）→ authzconf core、busconf、lifecycleconf 的向量与黑盒（A8）→ versionbump 支持 `/v3` 和 SDK 版本（A9） | Acceptance | S1–S3；A3 及以后依赖 G11 / P11 / T11 里至少一个 | be-acceptance 0.5.0 |
-| O1 | be-ops：authzgen（三门语言）；`resources` / `requires_capabilities` / `field` / `delegable` 的校验；`resource-types.tsv`、`data-subjects.tsv`；不再建 `_archive`；`GRANT … WITH INHERIT FALSE, SET TRUE`；角色级超时；资源契约 openapi 的合并 | Ops | K1 | be-ops 0.3.0 |
+| O1 | be-ops：authzgen（三门语言）；`resources`（含 `view_key`）/ `requires_capabilities` / `field` / `delegable` 的校验；`resource-types.tsv`、`data-subjects.tsv`；不再建 `_archive`；每个组件建**属主角色和运行角色**两个 LOGIN 角色、schema 归属主、默认权限给运行角色 DML（F27）；外壳角色 `GRANT <成员运行角色> … WITH INHERIT FALSE, SET TRUE`（PG16）；角色级超时；资源契约 openapi 的合并 | Ops | K1 | be-ops 0.3.0 |
 | D1–D4 | 决策（D1）、约定（D2）、foundations 的 `02-languages-and-component-protocol.md`（D3）、根 AGENTS（D4），中英两份 | Docs | 和 S1 并行；定稿依赖 C 阶段 | — |
 | M1–M2 | 新建 mdm/org（M1）、mdm/currency（M2），两条并行（答复 P2） | 组件 lane ×2 | G、P、A2–A4、O1 | 3.0.0 + compconf 报告 |
 | X1–X4 | pilot：authz → iam → customer、print（后两个并行；customer 的额度带币种，依赖 M2） | 组件 lane | G、P、A2–A4、O1；customer 另依赖 M2 | 3.0.0 + compconf 报告 |
@@ -1219,7 +1233,7 @@ A 规范与契约 ─┬─ B 实现（并行 lane） ── C pilot（冻结点
 1. 三门 SDK 是 v0.6.0：外壳的代码和 `go.mod` 就是 SDK 的 `shell` 包，晚做就得再组一次外壳。
 2. P19 的全部内容：每个成员一个 provider 和一份预算；成员版本核对；配置不一致就拒绝启动；监督器；汇总的 `/metrics`。
 3. 13 个组件加新建的 mdm/org、mdm/currency 全部到 3.0.0，并且 compconf 全绿。成员的 `/v3` 路径决定了外壳 `go.mod` 的内容。
-4. be-ops 生成 NOINHERIT 的授权；不再建 `_archive`。
+4. be-ops 生成属主 / 运行两个角色和 NOINHERIT 的外壳授权（外壳所在的库要 PG16）；不再建 `_archive`。
 5. `config/vars.yaml` 改用成员自己的服务名：`AUTHZ_URL`、`IAM_JWKS_URL`、`IAM_ISSUER`（0107 / C18）。
 6. 门禁 `sdk-version-scan`、`compconf-record-scan`、`dependency-version-scan` 都已经是报错模式。
 
@@ -1238,18 +1252,22 @@ A 规范与契约 ─┬─ B 实现（并行 lane） ── C pilot（冻结点
 
 ### 7.9 风险与先做的最小复现（R1）
 
-| # | 要验证的假设 | 为什么要先验证 |
-|---|---|---|
-| 1 | Go：每个成员一个 `TracerProvider` 共用一个 `BatchSpanProcessor` 的导出器；otelgrpc 的 stats handler 用的是成员自己的 provider，不是全局的 | 外壳的核心不变量；otelgrpc 默认读全局 provider |
-| 2 | grpc-go：按 proto 方法选项生成的 `WithDefaultServiceConfig`（retryPolicy + retryThrottling）真的生效；`MaxConnectionAge` 触发 GOAWAY 后客户端透明重连 | P7.5、P7.8 |
-| 3 | grpc-js：同样的两点 | 选 grpc-js 的前提 |
-| 4 | asyncpg 和 pg：`SET LOCAL ROLE` / `search_path` 之后，预编译语句缓存不会跨 schema 串用（DB-6） | P10.2 在外壳里的正确性 |
-| 5 | PG16：`GRANT m TO shell WITH INHERIT FALSE, SET TRUE` 之后，`SET LOCAL ROLE m` 可用，而外壳角色对成员的表没有权限 | P19.5 |
-| 6 | golang-migrate（iofs）、yoyo、node-pg-migrate 都会忽略 `migrations/lifecycle.yaml`，并且状态表都能放进组件自己的 schema | data-layer §6 第 1 步已经点名的问题 |
-| 7 | nats.go、nats-py、nats.js 的 JetStream pull consumer：durable 命名、`DeliverAll`、`BackOff` 与 `MaxDeliver` 的配合、`InProgress` | P12.5–P12.9 |
-| 8 | Fastify：同一个进程里起多个实例、各自监听一个端口、各自一套钩子 | TS 外壳启动器 |
-| 9 | Casdoor：access token 的 `aud`；discovery 加 PKCE 能不能在浏览器端完成 | iam 3.0.0 和前端 |
-| 10 | Python 3.14：asyncpg、grpcio、pyarrow 的 wheel 是否齐全 | 决定 Python 的运行时版本 |
+全部做完（2026-10-02）。每条的过程、原始输出和建议在各自目录的 README 里；汇总表在 [`../repros/README.md`](../repros/README.md)。下表"结果"一列只写结论和落到了本文哪里。
+
+| # | 要验证的假设 | 为什么要先验证 | 结果 |
+|---|---|---|---|
+| 1 | Go：每个成员一个 `TracerProvider` 共用一个 `BatchSpanProcessor` 的导出器；otelgrpc 的 stats handler 用的是成员自己的 provider，不是全局的 | 外壳的核心不变量；otelgrpc 默认读全局 provider | **部分成立**（[r1-01](../repros/r1-01/README.md)）：朴素共享导出器 / BSP 会静默丢 span；otelgrpc 不给选项就读全局。→ P18.1、P19.3（导出器只由平台关闭，成员 BSP + 空 `Shutdown` 壳）、CP-SHELL-09/10 |
+| 2 | grpc-go：按 proto 方法选项生成的 `WithDefaultServiceConfig`（retryPolicy + retryThrottling）真的生效；`MaxConnectionAge` 触发 GOAWAY 后客户端透明重连 | P7.5、P7.8 | **成立**（[r1-02](../repros/r1-02/README.md)），另三处细节：`maxAttempts` 含首发、定为 3；预算按 ClientConn、resolver 更新时回满；`≤ 10 %` 是稳态值。→ P7.8、P9 |
+| 3 | grpc-js：同样的两点 | 选 grpc-js 的前提 | **大部分成立**（[r1-03](../repros/r1-03/README.md)）：重试和 GOAWAY 透明重连成立；预算按（进程，目标）共享且不回满；服务端没有 `MinTime` 强制。→ P7.5、P7.8、§5.3 的 ts-proto 选项 |
+| 3b | （补测）ts-proto 和 Python protobuf 运行时能否读到 `(be.v1.max_items)` | P7.10 在 TS / Python 上的前提 | **成立**（[r1-03b](../repros/r1-03b/README.md)）：TS 读 `protoMetadata.options`，要加 `enumsAsLiterals=true`；Python 读 `GetOptions().Extensions`，besdk 附带 `be.v1.limits_pb2`；Go 未测。→ P7.10、§5.3 |
+| 4 | asyncpg 和 pg：`SET LOCAL ROLE` / `search_path` 之后，预编译语句缓存不会跨 schema 串用（DB-6） | P10.2 在外壳里的正确性 | **成立，但缓存不能无条件开**（[r1-04](../repros/r1-04/README.md)）：不串数据，形状不同时确定性报 `0A000` / `42804`；`/* be:<schema> */` 前缀消除报错且保留缓存；连接归还干净。→ P10.2、P10.7 |
+| 4b | （补测）pgx v5 同样的问题 | Go SDK 的 P10.2 | **成立**（[r1-04b](../repros/r1-04b/README.md)）：默认模式与 asyncpg 同样报错；`CacheDescribe` 修不好（`08P01`、`42804`），DB-6 的这条建议撤回；前缀修好且最快。→ P10.2 |
+| 5 | PG16：`GRANT m TO shell WITH INHERIT FALSE, SET TRUE` 之后，`SET LOCAL ROLE m` 可用，而外壳角色对成员的表没有权限 | P19.5 | **成立**（[r1-05](../repros/r1-05/README.md)），另三点：成员之间的隔离靠 SDK 不靠库；CP-DB-03 要按 `application_name` 数；语法要 PG16。→ P10.2、P10.5、P10.7、P19.5（外壳要 PG16） |
+| 6 | golang-migrate（iofs）、yoyo、node-pg-migrate 都会忽略 `migrations/lifecycle.yaml`，并且状态表都能放进组件自己的 schema | data-layer §6 第 1 步已经点名的问题 | **部分成立**（[r1-06](../repros/r1-06/README.md)）：node-pg-migrate 不忽略、默认锁是全库常量；三者都用会话级状态。→ P11.1（迁移连接例外、按 schema 的锁）、P11.3（状态表名单）、P11.11、apis §4 的 `migrate` 选项 |
+| 7 | nats.go、nats-py、nats.js 的 JetStream pull consumer：durable 命名、`DeliverAll`、`BackOff` 与 `MaxDeliver` 的配合、`InProgress` | P12.5–P12.9 | **第 4 条不成立**（[r1-07](../repros/r1-07/README.md)）：BackOff 改写 AckWait、`Nak()` 不看 BackOff、InProgress 挡不住，同一事件会并发执行两次；nats-py 的 `add_consumer` 会改掉已有 durable。→ P12.5、P12.7、P12.9、P12.12（服务端不设 BackOff、MaxDeliver −1，SDK 负责延迟和 DLQ），P2 的 `EVENTS_*` |
+| 8 | Fastify：同一个进程里起多个实例、各自监听一个端口、各自一套钩子 | TS 外壳启动器 | **成立**（[r1-08](../repros/r1-08/README.md)），另两个细节：`connectionsCheckingInterval` 要设 1 s；`handlerTimeout` 答 503，要改成 504，错误处理器里 ALS 为空。→ P3.5、§5.3、apis §4 |
+| 9 | Casdoor：access token 的 `aud`；discovery 加 PKCE 能不能在浏览器端完成 | iam 3.0.0 和前端 | **成立**（[r1-09](../repros/r1-09/README.md)）：PKCE 在浏览器端走得通；Casdoor 的 token `aud` 是 client_id，平台按 P5.3 天然拒收；默认 `tokenFormat: JWT` 把整条用户记录放进 token（安全问题，裁决 ag）。→ §7.5 iam-casdoor、contract-infra-iam |
+| 10 | Python 3.14：asyncpg、grpcio、pyarrow 的 wheel 是否齐全 | 决定 Python 的运行时版本 | **成立**（[r1-10](../repros/r1-10/README.md)），但 asyncpg 要 0.31.0。→ §5.3（CPython 3.14、`asyncpg==0.31.0`、yoyo + `psycopg[binary]==3.3.6`、标准库 `uuid7`、pyarrow 只在 `besdk[cold]`） |
 
 最小复现失败时，在 lane 里改设计，并在报告里写明，不在真实仓库上硬铺开（记忆："没验证过的机制先写最小复现"）。
 
@@ -1267,7 +1285,7 @@ A 规范与契约 ─┬─ B 实现（并行 lane） ── C pilot（冻结点
 | B4 | （→ FR06-009）优雅停机时长 `deployment.stopGracePeriodSeconds` | docs 里找不到 stopGrace / terminationGrace；P1.6 需要平台的宽限期大于 `SHUTDOWN_GRACE` | — |
 | B5 | （→ FR06-029（新））**组件的语言声明**，例如可选的 `runtime.language`：`brickkit status` / `graph` 里显示；`lint` 检查外壳成员的语言和外壳一致 | 今天只有给 `mode: local` 用的 `local.language`。外壳一个进程只能装一门语言，这条约束 brickKit 看不见 | 多语言项目在组装期就能发现"把 Python 成员塞进 Go 外壳" |
 | B6 | （→ brickKit v1.1.0 已支持（OCI label `io.brickkit.shell.members` + `IMAGE_STALE`）；go.mod 那一半仍是本项目的门禁；见 to-verify V-17）**外壳镜像自报成员版本**：`brickkit build` 给外壳镜像打 OCI label `io.brickkit.shell.members`；`up` 时和 `shell.members` 比对 | 根 AGENTS 易错点："go.mod 与 shell.members 不一致 → 镜像跑的是别的代码，没有任何报错" | 把一个静默的坑变成组装期的错误 |
-| B7 | （→ FR06-013）迁移容器可以单独覆盖少量环境变量（`PG_MIGRATION_HOST`） | foundations-data-platform §15 第 2 条 | — |
+| B7 | （→ FR06-013）迁移容器可以单独覆盖少量环境变量（`PG_MIGRATION_HOST`，以及**只给迁移容器**的 `PG_OWNER_USER` / `PG_OWNER_PASSWORD`） | foundations-data-platform §15 第 2 条。具体动机（裁决 p）：F27 把属主角色和运行角色分开，让运行期的 SQL（注入、AI 写出的语句）不能 DROP / ALTER；但 brickKit 给迁移容器的环境与服务相同（`05-migration/02`），运行进程于是也收到属主口令，这道防线只剩"SDK 自觉不用"。能单独给迁移容器变量，属主口令就不进运行进程 | 任何"迁移要比服务更高权限"的项目都能做到最小权限 |
 | B8 | （→ FR06-012）密钥以文件挂载的形式交付 | 同上，第 3 条 | — |
 | B9 | （→ FR06-002 / FR06-003）**09-patterns 增加一页"多语言组件：协议 + 黑盒一致性套件"**，以及"族契约仓库 + 一致性套件"（同 foundations-communication §12 F8、data-lifecycle-v2 §8 第 6 条） | 本项目是它的实例：规范、向量和夹具放在契约仓库；每门语言一个参考实现；对容器做黑盒测试（本项目里组件协议套件的路径是 `tools/be-acceptance/conformance/component/`，C1） | 给 AI 一个可以照做的"可替换、可换语言"的验收方式 |
 | B10 | （→ FR06-001）按槽位声明依赖（`dependencies.slots`） | foundations-data-platform §15 第 1 条 | — |
@@ -1288,9 +1306,9 @@ A 规范与契约 ─┬─ B 实现（并行 lane） ── C pilot（冻结点
 
 ---
 
-## 附录 A：平台表参考 DDL（规范性，be-protocol `sql/platform/`）
+## 附录 A：平台表参考 DDL（设计稿；定稿在 be-protocol `ddl/`，两者不一致时以 `ddl/` 为准）
 
-所有表都在组件自己的 schema 里，由 SDK 的平台迁移以 `PG_USER` 建，所以属主天然就是 `PG_USER`。生命周期的五张表见 data-lifecycle-v2 §4.14，表名照用，不在这里重复。
+所有表都在组件自己的 schema 里，由 SDK 的平台迁移在迁移步骤里以**属主** `PG_OWNER_USER` 建，所以属主是 `PG_OWNER_USER`；运行角色 `PG_USER` 经 schema 的默认权限得到 DML（由项目的数据库初始化设定，DDL 里不写 GRANT）（F27，裁决 p）。运行期需要的 DDL 只经属主建的 `SECURITY DEFINER` 函数（`ddl/10-lifecycle-functions.sql`，P10.12）。生命周期的五张表见 data-lifecycle-v2 §4.14，表名照用，不在这里重复（定稿在 `ddl/09-lifecycle.sql`）。
 
 ```sql
 CREATE TABLE IF NOT EXISTS besdk_platform_version (component TEXT PRIMARY KEY, version INT NOT NULL, applied_at TIMESTAMPTZ NOT NULL DEFAULT now());
@@ -1393,6 +1411,9 @@ CREATE TABLE IF NOT EXISTS besdk_authz_cursor (scope TEXT PRIMARY KEY, revision 
 CREATE TABLE IF NOT EXISTS besdk_number_series (series TEXT NOT NULL, scope TEXT NOT NULL DEFAULT '', period TEXT NOT NULL DEFAULT '',
   next_value BIGINT NOT NULL DEFAULT 1, gapless BOOLEAN NOT NULL, updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   PRIMARY KEY (series, scope, period));
+-- 编号唯一性：不分区的分配表，和单据同一个事务插入（P11.10，S-b 裁决 ao）；分区单据表上的唯一索引管不住跨分区重号
+CREATE TABLE IF NOT EXISTS besdk_number_allocations (legal_entity_id TEXT NOT NULL, series TEXT NOT NULL, number TEXT NOT NULL,
+  allocated_at TIMESTAMPTZ NOT NULL DEFAULT now(), PRIMARY KEY (legal_entity_id, series, number));
 
 -- 可续跑的回填（foundations-data-platform §6.4）
 CREATE TABLE IF NOT EXISTS besdk_backfill (name TEXT PRIMARY KEY, cursor TEXT NOT NULL DEFAULT '', done BOOLEAN NOT NULL DEFAULT false,

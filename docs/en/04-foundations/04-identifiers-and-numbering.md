@@ -6,7 +6,7 @@ How a component identifies its own rows, how it refers to rows other components 
 
 ## Scope
 
-Covered: primary keys of a component's own tables, references to other components' records, partition keys derived from ids, list cursors, document numbers including gap-free voucher numbers. Not covered: idempotency keys ([11-consistency-across-components.md](11-consistency-across-components.md)), event ids ([13-event-contracts.md](13-event-contracts.md)), the platform-owned user id `sub` ([21-identity-provider.md](21-identity-provider.md)), tenant and legal-entity identifiers (the tenancy document, planned, file 07).
+Covered: primary keys of a component's own tables, references to other components' records, partition keys derived from ids, list cursors, document numbers including gap-free voucher numbers. Not covered: idempotency keys ([11-consistency-across-components.md](11-consistency-across-components.md)), event ids ([13-event-contracts.md](13-event-contracts.md)), the platform-owned user id `sub` ([21-identity-provider.md](21-identity-provider.md)), tenant and legal-entity identifiers ([07-tenancy.md](07-tenancy.md)).
 
 ## Choice
 
@@ -68,7 +68,7 @@ Two allocation modes, declared per series by the component:
 
 - A gap-free number is allocated only after the idempotency claim has succeeded, so a duplicate request never consumes one.
 - The format is a configuration value of the component (for example `ORDER_NO_FORMAT`, default `SO{yyyy}{mm}-{seq:05}`). Placeholders: `{le}` (legal entity code), `{yyyy}`, `{yy}`, `{mm}`, `{seq:N}` (zero-padded to N digits). Dates in the format are business dates.
-- The document table enforces uniqueness: `UNIQUE (legal_entity_id, <number column>)`.
+- Uniqueness is enforced by the unpartitioned platform table `besdk_number_allocations`, `PRIMARY KEY (legal_entity_id, series, number)`: in both modes the SDK records every number it hands out there, in the document's own transaction, so a duplicate fails with `23505` before the document commits. It is not enforced by a unique index on the document table: on a partitioned table a unique index must contain the partition key, so `UNIQUE (legal_entity_id, <number column>)` cannot hold across partitions.
 - When a number is allocated is the owning component's business decision (sales: at confirmation or at creation). Other components refer to the document by id; the number is for people.
 
 ## Alternatives
@@ -117,13 +117,14 @@ Document numbers: a database sequence per series (fast, gaps allowed), a locked 
 
 ## Conformance tests
 
-Shared vectors in `vectors/numbering/` of the planned `brickKit/be-protocol` repository (format placeholders, period keys from business dates across a time-zone midnight), read by every official SDK. SDK tests, red first:
+Shared vectors in `vectors/numbering/` of the `brickKit/be-protocol` repository (format placeholders, period keys from business dates across a time-zone midnight), read by every official SDK. SDK tests, red first:
 
 - a generated id is version 7, and ids generated within one millisecond by one generator increase;
 - the time derived from an id equals the `created_at` set with it, to the millisecond;
 - 100 concurrent gap-free allocations in one scope and period yield a continuous run with no gap and no duplicate;
 - counting is separate per legal entity and per period;
 - a gapped series leaves a gap after a rollback but never repeats a number;
+- a number already in `besdk_number_allocations` is refused, also when the two documents fall into different partitions;
 - where an endpoint accepts a client-generated id, one that is not a valid UUIDv7 is rejected.
 
 Component tests (erp/sales as the model): a get-by-id on a partitioned table scans exactly one partition (asserted from `EXPLAIN`); an order number cannot be derived from the order's id.
@@ -132,10 +133,11 @@ Gate: a new migration whose own primary key is not `uuid` fails `make gates` (fi
 
 ## Decision records
 
-- [0301](../02-decisions/03-contracts-and-data/0301-money-as-strings-lists-by-cursor.md): lists page by cursor; the cursor here is keyset over `created_at, id`.
-- [0302](../02-decisions/03-contracts-and-data/0302-contracts-are-additive-only.md): ids were always strings in contracts, so moving to UUIDv7 changes no field type.
-- [0104](../02-decisions/01-architecture/0104-variants-become-slot-families.md): a numbering scheme is one configuration key, not a slot family.
-- Planned, not yet numbered: "own primary keys are UUIDv7"; "the 3.0.0 baseline rebuild replaces released migrations once, because no production data exists".
+- [0306 Own keys are UUIDv7; document numbers come from the SDK](../02-decisions/03-contracts-and-data/0306-uuidv7-own-keys.md): this document is its full analysis.
+- [0305 The 3.0.0 rebuild may replace released migrations, once](../02-decisions/03-contracts-and-data/0305-one-shot-baseline-rebuild-for-3-0-0.md): the one-time 3.0.0 baseline rebuild that brings the UUIDv7 keys in, allowed because no production data exists.
+- [0301 Money is a decimal string paired with a currency; lists page by cursor](../02-decisions/03-contracts-and-data/0301-money-as-strings-lists-by-cursor.md): lists page by cursor; the cursor here is keyset over `created_at, id`.
+- [0302 Contracts change by adding only](../02-decisions/03-contracts-and-data/0302-contracts-are-additive-only.md): ids were always strings in contracts, so moving to UUIDv7 changes no field type.
+- [0104 A slot family needs several reasonable implementations and no dependency edge](../02-decisions/01-architecture/0104-variants-become-slot-families.md): a numbering scheme is one configuration key, not a slot family.
 
 ## Known limits
 

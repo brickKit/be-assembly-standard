@@ -7,14 +7,14 @@
 ## 范围
 
 - **覆盖：** 时间预算及其传递；HTTP 服务器的超时和请求体上限；每一层的重试规则；重试预算；作为舱壁的并发上限和连接预算。
-- **不覆盖：** 事务级的超时和 `40001`/`40P01` 重试的细节（[10-local-transactions.md](10-local-transactions.md)）；事件重投的细节（[12-event-bus.md](12-event-bus.md#持久消费者)）；任务和 reconciler 的退避（[19-background-jobs.md](19-background-jobs.md)、[11-consistency-across-components.md](11-consistency-across-components.md)）；边缘自己的超时和限流（边缘文档计划中，18 号文件）。
+- **不覆盖：** 事务级的超时和 `40001`/`40P01` 重试的细节（[10-local-transactions.md](10-local-transactions.md)）；事件重投的细节（[12-event-bus.md](12-event-bus.md#持久消费者)）；任务和 reconciler 的退避（[19-background-jobs.md](19-background-jobs.md)、[11-consistency-across-components.md](11-consistency-across-components.md)）；边缘自己的超时和限流（[18-edge.md](18-edge.md)）。
 
 ## 选择
 
 - **每个请求都有截止时间，而且只会缩短**：它一路传下去，每一跳给子调用的时间都比自己手里的少。用 brickKit 的话说，你给依赖设的超时，必须短于你的调用方愿意等你的时间（`brickkit docs 09-patterns/04-service-calling`）。
 - **用户能接受的默认值：** 普通操作 10 s；编排类操作（例如确认订单）15 s，在它的路由上声明；导出是异步的。
 - **方法要不要重试只由契约决定**：一个 gRPC 方法只有在声明自己无副作用或幂等时才会重试，而且只在 `UNAVAILABLE` 时。
-- **每条连接一份重试预算**，把重试流量限制在正常流量的约 10 %，依赖大面积宕掉时完全停止重试。
+- **每个客户端 channel 一份重试预算**（TypeScript 里是每个进程、每个目标一份，见[逐层的重试](#逐层的重试)），把重试流量限制在正常流量的约 10 %，依赖大面积宕掉时完全停止重试。
 - **用舱壁代替熔断器：** 每个（成员，依赖）一个并发上限，每个成员一个连接预算，再加上截止时间。
 - **只有一层重试。** 代码绝不在一个本来就会重试的调用外面再包一层重试循环。
 
@@ -27,7 +27,7 @@
 | 跳 | 默认值 | 规则 |
 |---|---|---|
 | 用户等待 | 10 s；声明过的编排 15 s；导出返回 202，作为任务完成 | 需要超过 10 s 的路由在它的 OpenAPI operation 里声明 `x-be-deadline-seconds`（计划中），让边缘、服务端和前端读的是同一个数字 |
-| 边缘 | 路由截止时间 + 5 s | 从同一处声明配置（计划中的边缘文档） |
+| 边缘 | 路由截止时间 + 5 s | 从同一处声明配置（[18](18-edge.md)） |
 | 入站 HTTP | 路由的截止时间 | 请求上下文从读到第一个字节起就带着它 |
 | HTTP 服务器 | 读请求头 5 s；读 30 s；写 = 路由截止时间 + 5 s；空闲 120 s；请求体最多 1 MiB，除非路由声明了更多 | 单跑和外壳里取值相同；文件经预签名 URL 进对象存储，绝不经过组件的请求体 |
 | 入站 gRPC | 调用方的 `grpc-timeout`；没有时 10 s | [14](14-system-rpc.md#服务端要求) |
@@ -37,6 +37,18 @@
 | 任务运行、reconciler 步骤 | 任务声明的超时 | [19](19-background-jobs.md#端口契约) |
 | 前端 | 路由截止时间 + 5 s | 之后把操作显示为未完成；重试的写复用它的 `Idempotency-Key`（[15](15-user-api-and-errors.md#请求头)） |
 
+**TypeScript 里的 HTTP 服务端设置。** Node 的选项和"HTTP 服务端"那一行不是一一对应的，所以 SDK 在 Fastify（5.12 或更高，带 `handlerTimeout` 的版本）上这样设：
+
+| Fastify / Node 选项 | 值 | 实现的是那一行的哪个值 |
+|---|---|---|
+| `headersTimeout` | `5000` | 读请求头 5 s |
+| `connectionsCheckingInterval` | `1000` | Node 只按这个周期检查 `headersTimeout` 和 `requestTimeout`（默认 30 s）；设成 1 s，5 s 的请求头上限才是真的 |
+| `requestTimeout` | `30000` | 读 30 s |
+| `keepAliveTimeout` | `120000` | 空闲 120 s |
+| `handlerTimeout` | 路由的截止时间 | Fastify 自己答 `503`；SDK 的错误处理器把它改成 `504`、code `DEADLINE_EXCEEDED`，`request.signal` 同时取消下游调用和事务 |
+
+SDK 的错误处理器从不读 `AsyncLocalStorage` 上下文：处理函数超时时它跑在定时器的上下文里，那里的上下文是空的，所以成员 ID 和 request ID 从 `request` 和闭包里取。
+
 演算示例，确认订单（15 s）：sales 收到请求时有 15 s；它自己的每次读各拿 `min(5 s, remaining)`；对 inventory 的预留调用拿 `min(3 s, remaining − 50 ms)`，到达时 `grpc-timeout` 最多 3 s；inventory 的语句拿 `min(5 s, 那份剩余)`。sales 下面的任何东西都活不过用户的等待。
 
 ### 逐层的重试
@@ -44,11 +56,11 @@
 | 层 | 重试什么 | 怎么重试 | 上限 |
 |---|---|---|---|
 | 数据库事务 | `40001`、`40P01` | 重跑事务体，`10 ms · 2^n` ± 抖动 | 3 次尝试（[10](10-local-transactions.md)） |
-| gRPC，`idempotency_level` 为 `NO_SIDE_EFFECTS` 或 `IDEMPOTENT` 的方法 | `UNAVAILABLE` | 下面的 service config | 3 次尝试，外加重试预算 |
+| gRPC，`idempotency_level` 为 `NO_SIDE_EFFECTS` 或 `IDEMPOTENT` 的方法 | `UNAVAILABLE` | 下面的 service config | 总共 3 次尝试（首发加最多 2 次重试），外加重试预算 |
 | gRPC，其他方法 | 只重试从没离开过客户端的请求（gRPC 的透明重试） | gRPC 内置 | 一次 |
 | 组件代用户发起的 REST 调用 | 连接被重置的 `GET` | 立即重试一次 | 一次 |
 | 前端写 | 超时和 5xx | 用同一个 `Idempotency-Key` | 由页面决定；绝不换新键 |
-| 事件 | 处理函数出错 | nak，退避 1 s … 1 h | 8 次投递，然后进死信（[12](12-event-bus.md#持久消费者)） |
+| 事件 | 处理函数出错 | SDK 按 `EVENTS_BACKOFF` 的延迟 nak（默认 1 s … 1 h）；服务端不设退避 | `EVENTS_MAX_DELIVER` 次投递（默认 8），然后进死信（[12](12-event-bus.md#持久消费者)） |
 | 入队的命令 | 处理函数出错 | worker 的退避列表 | 它的最大尝试次数，然后进尝试用尽的处理函数（[19](19-background-jobs.md)） |
 | Reconciler | 处理函数出错 | 按条目退避 | 它的最大尝试次数，然后置为 `SUSPENDED` 并开一条待办（[11](11-consistency-across-components.md)） |
 
@@ -70,7 +82,15 @@
 }
 ```
 
-- `retryThrottling` 就是重试预算。它按连接计数，而连接按成员划分，所以一个成员的重试风暴花不掉另一个成员的预算（[27-shells.md](27-shells.md)）。
+- `maxAttempts` 3 指总共 3 次尝试：首发加最多 2 次重试，每门语言都一样。
+- `retryThrottling` 就是重试预算（`maxTokens` 10）。它在哪一级计数，取决于 gRPC 库：
+
+  | 语言 | 预算按什么计数 | 什么时候回满 |
+  |---|---|---|
+  | Go、Python | 客户端 channel，也就是每个（成员，依赖，端口）一份（[14](14-system-rpc.md#客户端要求)），所以一个成员的重试风暴花不掉另一个成员的预算（[27-shells.md](27-shells.md)） | 每次 channel 的 resolver 更新时（DNS 重新解析，通常跟在 `GOAWAY` 之后） |
+  | TypeScript（grpc-js） | 进程加规范化的目标字符串，通往同一目标的所有 channel 共用 | 重新解析时不回满 |
+
+  今天唯一的 TypeScript 组件是移动端 BFF，它从不进外壳，所以它的进程就是一个成员；将来 TypeScript 组件若进外壳，SDK 在自己的拦截器里维护按成员的预算。"重试流量 ≤ 10 %" 是稳态上限，不是硬上限。
 - 对冲（hedging，在第一份失败之前就发第二份）关闭。
 - **嵌套的重试会相乘。** 三层、每层三次尝试，宕机期间最底层会收到 27 次调用，而这正是依赖最扛不住的时候。组件绝不在一个本来就会重试的运行时调用外面再加自己的重试循环；更高一层的重试（reconciler、重投的事件）使用同一个幂等键。
 
@@ -128,7 +148,8 @@
 - 没带截止时间的 gRPC 调用拿到默认值；
 - 只有 `NO_SIDE_EFFECTS` 或 `IDEMPOTENT` 方法会重试，而且只在 `UNAVAILABLE` 时；
 - 重试预算用完后，不再发生重试；
-- 发请求头很慢的客户端在读请求头超时之后被断开；
+- 发请求头很慢的客户端在读请求头超时之后被断开（TypeScript 里在超时之后 1 s 的检查周期内）；
+- 超过截止时间的路由在每门语言里都答 `504` `DEADLINE_EXCEEDED`（TypeScript 里是改写过的 `handlerTimeout`）；
 - 对同一个依赖的第 65 个并发调用立即以 `OUTBOUND_LIMIT` 失败；
 - 在外壳里，一个成员耗尽它的连接预算，另一个成员的延迟不变。
 
@@ -136,9 +157,10 @@
 
 ## 相关决策
 
-- [0201 不引入 Redis](../02-decisions/02-permissions/0201-no-redis.md)：没有用于全局上限的共享存储；跨请求的限流归边缘。
+- [0503 截止时间与重试预算](../02-decisions/05-runtime/0503-deadlines-and-retry-budgets.md)：本文是它的完整分析。
+- [0201 不用 Redis，不设缓存服务器](../02-decisions/02-permissions/0201-no-redis.md)：没有用于全局上限的共享存储；跨请求的限流归边缘。
 - [0108 一个外壳、一个仓库、一个镜像、一份成员清单](../02-decisions/01-architecture/0108-one-repository-per-shell.md)：外壳里预算和上限按成员划分。
-- 计划中、尚未编号："截止时间与重试预算"（放在计划中的运行时文件夹里）；"gRPC 是组件之间的系统协议"。
+- [0208 gRPC 是系统面，人用 REST](../02-decisions/02-permissions/0208-grpc-is-the-system-plane.md)：组件之间的 gRPC 在其规范里携带截止时间与重试策略。
 
 ## 已知限制
 

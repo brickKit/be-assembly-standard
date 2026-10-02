@@ -48,14 +48,16 @@ How components call each other synchronously: gRPC as the system plane, who the 
 - A call without `be-caller` answers `UNAUTHENTICATED` / `MISSING_CALLER`.
 - A user-facing rpc kept for compatibility answers `UNAUTHENTICATED` from the runtime, before any component code runs.
 - `max receive message size` 4 MiB, set explicitly.
-- Keepalive: `max connection age` 5 min with 30 s grace; minimum client ping interval 20 s; pings without active calls refused.
+- Keepalive: `max connection age` 5 min (`GRPC_MAX_CONNECTION_AGE`) with 30 s grace (`MaxConnectionAgeGrace`); minimum client ping interval 20 s (`MinTime`); pings without active calls refused.
+- **The grace must exceed the longest inbound deadline** (30 s against the 10 s default and the 15 s of an orchestrating route); otherwise calls in flight are cut when the connection is replaced.
+- **`MinTime` is enforced in Go and Python only.** grpc-js has no server-side keepalive enforcement policy, so a TypeScript server cannot enforce the 20 s minimum; its conformance run declares that assertion skipped.
 - Each member of a shell has its own gRPC server on its own port with its own interceptor chain.
 
 ### Client requirements
 
 - One connection per (member, dependency, port), created lazily, reused by every call, closed at stop.
 - Keepalive: ping after 30 s idle on an active call, 10 s timeout; no pings without active calls.
-- A service config generated from each method's `idempotency_level` ([16](16-deadlines-and-retries.md#port-contract)).
+- A service config generated from each method's `idempotency_level` ([16](16-deadlines-and-retries.md#port-contract)): `maxAttempts` 3 in total (the first plus at most 2 retries) and a retry budget of `maxTokens` 10, counted per channel per member in Go and Python and per process and target in TypeScript (grpc-js) ([16](16-deadlines-and-retries.md#retries-layer-by-layer)).
 - Interceptor order: default deadline → outbound concurrency limit → metadata → client RED metrics → the transaction guard ([10](10-local-transactions.md#port-contract)).
 
 ### Contract rules
@@ -64,7 +66,7 @@ How components call each other synchronously: gRPC as the system plane, who the 
 - Every method declares `option idempotency_level`: `NO_SIDE_EFFECTS` for reads, `BatchGet` and `GetStatus`; `IDEMPOTENT` for every write that takes an `idempotency_key`. A gate checks it (planned `idempotency-level-scan`).
 - Every aggregate root offers `BatchGet`, limited to 500 IDs per call (the limit is declared as a method option); more fail with `INVALID_ARGUMENT` / `BATCH_TOO_LARGE`. Every cross-component write offers `GetStatus` by key ([11](11-consistency-across-components.md#command-idempotency-callee)).
 - Money as decimal strings, lists by cursor ([0301](../02-decisions/03-contracts-and-data/0301-money-as-strings-lists-by-cursor.md)).
-- No streaming rpcs. A large result is written to object storage and announced by an event (claim check).
+- No streaming rpcs. A large result is written to object storage and announced by an event (claim check, [22-object-storage.md](22-object-storage.md#large-results), [13](13-event-contracts.md#payload-rules)).
 
 ### Load balancing
 
@@ -127,17 +129,20 @@ Planned suite `tools/be-acceptance/conformance/rpc/`, run against each official 
 - an `ErrorInfo` crosses gRPC → REST → gRPC unchanged ([15](15-user-api-and-errors.md));
 - `traceparent`, `x-request-id`, `be-caller` and `be-actor-sub` reach the callee; in a shell, `be-caller` is the calling member;
 - a message above 4 MiB fails clearly on both sides;
-- after the server's maximum connection age the client reconnects without a failed call;
+- after the server's maximum connection age the client reconnects without a failed call, including a call in flight with the longest inbound deadline;
+- a client pinging more often than every 20 s is disconnected (Go and Python; skipped on TypeScript);
 - a user-facing rpc called without a user answers `UNAUTHENTICATED`, not `INTERNAL`.
 
 Component tests written red first: erp/inventory and crm/opportunity user-facing rpcs answer `UNAUTHENTICATED` (today `INTERNAL`); mdm/customer and mdm/product refuse gRPC writes without a user (today they succeed); after the shells are assembled, sales → inventory `Reserve` inside one shell records the confirming user as the actor. Gate: a method with an `idempotency_key` but no `IDEMPOTENT` fails, seen red on a sample first.
 
 ## Decision records
 
-- [0101 Components never import each other](../02-decisions/01-architecture/0101-no-imports-between-components.md) and [0108 One shell, one repository](../02-decisions/01-architecture/0108-one-repository-per-shell.md): calls stay on the network inside a shell.
-- [0107 Authz and IAM addresses are shared variables](../02-decisions/01-architecture/0107-authz-and-iam-addresses-are-shared-vars.md): which calls declare a dependency.
-- [0301](../02-decisions/03-contracts-and-data/0301-money-as-strings-lists-by-cursor.md) and [0302](../02-decisions/03-contracts-and-data/0302-contracts-are-additive-only.md): field and evolution rules.
-- Planned, not yet numbered: "gRPC is the system protocol between components" (in the permissions folder); "a `BatchGet` takes at most 500 IDs" (in the contracts folder).
+- [0208 gRPC is the system plane; people use REST](../02-decisions/02-permissions/0208-grpc-is-the-system-plane.md): this document is its full analysis.
+- [0304 A `BatchGet` takes at most 500 IDs](../02-decisions/03-contracts-and-data/0304-batch-get-takes-at-most-500-ids.md): a `BatchGet` takes at most 500 IDs.
+- [0101 Components never import each other](../02-decisions/01-architecture/0101-no-imports-between-components.md) and [0108 One shell, one repository, one image, one member list](../02-decisions/01-architecture/0108-one-repository-per-shell.md): calls stay on the network inside a shell.
+- [0107 Authorization and identity are reached through shared variables](../02-decisions/01-architecture/0107-authz-and-iam-addresses-are-shared-vars.md): no edge to an authz or IAM member; every other call declares its dependency.
+- [0503 Deadlines and retry budgets](../02-decisions/05-runtime/0503-deadlines-and-retry-budgets.md): deadlines and retry budgets on the system plane.
+- [0301 Money is a decimal string paired with a currency; lists page by cursor](../02-decisions/03-contracts-and-data/0301-money-as-strings-lists-by-cursor.md) and [0302 Contracts change by adding only](../02-decisions/03-contracts-and-data/0302-contracts-are-additive-only.md): field and evolution rules.
 
 ## Known limits
 

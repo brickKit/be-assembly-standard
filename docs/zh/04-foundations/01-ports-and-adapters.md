@@ -6,7 +6,7 @@
 
 ## 范围
 
-本文写的是所有端口共用的规则。每个端口自己的契约、备选方案和更换步骤写在它自己的文档里，清单见[端口表](README.md#端口)。槽位族作为装配概念（每个变体一个组件，在组装项目时选）由 [0104](../02-decisions/01-architecture/0104-variants-become-slot-families.md) 决定；本文讲的是怎么证明这样一个族可以替换。语言中立的组件协议（不论用什么语言，每个组件都要实现它）另有一篇文档（计划中，02 号文件）；在这里它只是又一份带套件的契约。
+本文写的是所有端口共用的规则。每个端口自己的契约、备选方案和更换步骤写在它自己的文档里，清单见[端口表](README.md#端口)。槽位族作为装配概念（每个变体一个组件，在组装项目时选）由 [0104](../02-decisions/01-architecture/0104-variants-become-slot-families.md) 决定；本文讲的是怎么证明这样一个族可以替换。语言中立的组件协议（不论用什么语言，每个组件都要实现它）另有一篇文档：[02-languages-and-component-protocol.md](02-languages-and-component-protocol.md)；在这里它只是又一份带套件的契约。
 
 ## 选择
 
@@ -56,7 +56,7 @@
 - **同一个大版本内，SDK 对模块代码向后兼容。** 外壳用同一个 SDK 版本编译全部成员，同一门语言的所有组件和外壳都钉这同一个版本（计划中的门禁 `sdk-version-scan`），所以一个让某模块代码编不过的 SDK 小版本，会让托管它的每个外壳都编不过。一个 API 在某个小版本里标为弃用，在之后的小版本里才删，而且要等项目里已经没有组件再用它；把每个外壳都编译一遍就能证明这一点。
 - **SDK 在每个组件 schema 里建的平台表**（outbox、inbox、任务租约、编号序列）按 expand/contract 演进：同一个成员单独运行时和在外壳里运行时，可能有一段时间用不同的 SDK 版本访问同一个 schema。平台 SQL 写明列名，从不 `SELECT *`。
 - **套件随 `be-acceptance` 一起定版本。** SDK 的发布说明写明它通过的是哪个版本的套件。
-- **组件协议在自己的仓库里定版本**，即计划新建的 `brickKit/be-protocol`：规范正文、schema、平台表的参考 DDL、语义向量和夹具契约都在里面，从 v1.0.0 起步。小版本只增加可选的面；要变成必须做到的行为，只能出大版本。`be-acceptance` 和各官方 SDK 钉同一个协议版本。
+- **组件协议在自己的仓库里定版本**，即 `brickKit/be-protocol`（检出在 `tools/be-protocol`）：规范正文、schema、平台表的参考 DDL、语义向量和夹具契约都在里面，从 v1.0.0 起步。小版本只增加可选的面；要变成必须做到的行为，只能出大版本。`be-acceptance` 和各官方 SDK 钉同一个协议版本。
 
 ## 备选方案
 
@@ -108,7 +108,7 @@
 
 ## 一致性测试
 
-目录结构：`tools/be-acceptance/conformance/<套件>/`，每个端口一个文件夹，用端口的短名命名（`db`、`store`、`bus`、`jobs`、`rpc`、`userapi`、`authz`、`iam` 等）；组件协议套件是 `conformance/component/`。非正式简称 `dbconf`、`authzconf`、`iamconf`、`compconf` 分别指 `conformance/db`、`conformance/authz`、`conformance/iam`、`conformance/component`。共享语义的向量（金额、时间、编号、请求指纹等）不是套件：它们放在计划新建的 `brickKit/be-protocol` 仓库的 `vectors/` 里，各套件和每个 SDK 的单元测试都从那里读。
+目录结构：`tools/be-acceptance/conformance/<套件>/`，每个端口一个文件夹，用端口的短名命名（`db`、`store`、`bus`、`jobs`、`rpc`、`userapi`、`authz`、`iam` 等）；组件协议套件是 `conformance/component/`。非正式简称 `dbconf`、`authzconf`、`iamconf`、`compconf` 分别指 `conformance/db`、`conformance/authz`、`conformance/iam`、`conformance/component`。共享语义的向量（金额、时间、编号、请求指纹等）不是套件：它们放在 `brickKit/be-protocol` 仓库的 `vectors/` 里，各套件和每个 SDK 的单元测试都从那里读。
 
 每个套件最多三层：
 
@@ -127,11 +127,11 @@
 
 ## 相关决策
 
-- [0104](../02-decisions/01-architecture/0104-variants-become-slot-families.md)：变体什么时候成为槽位族；本文补充了怎么证明一个族可以替换。
-- [0106](../02-decisions/01-architecture/0106-infrastructure-is-not-a-component.md)：基础设施不是组件。计划修订：事件总线可以通过一个按 URL scheme 选择的 SDK 适配器来更换，这比一个开关多，又比一次迁移少。
-- [0103](../02-decisions/01-architecture/0103-locked-stack-per-language.md)：每种语言内部锁定一套栈；计划修订：改正 TypeScript 的 HTTP 栈名称，并把这套栈描述为官方 SDK 自己的栈。
-- [0105](../02-decisions/01-architecture/0105-no-java-or-csharp.md)：计划重写。任何语言，只要它的实现通过组件协议套件，就可以加入；JVM 的内存开销改为文档里的提醒。
-- 计划中、尚未编号："SDK 端口与一致性套件"（即本文的判据与目录结构）。
+- [0104 槽位族需要多种合理实现，而且没有依赖边](../02-decisions/01-architecture/0104-variants-become-slot-families.md)：变体什么时候成为槽位族，每个族一份族契约、一套套件；本文补充了怎么证明一个族可以替换。
+- [0109 规则写在语言中立的组件协议里，由黑盒套件检查](../02-decisions/01-architecture/0109-language-neutral-component-protocol.md)：组件协议及其黑盒套件；`tools/be-acceptance/conformance/<端口>/` 下的各端口套件遵循本文的判据与目录结构。
+- [0106 基础设施不是组件](../02-decisions/01-architecture/0106-infrastructure-is-not-a-component.md)：事件总线通过按 URL scheme 选用的 SDK 适配器更换，这比一个开关多，又比一次迁移少。
+- [0103 每种语言内部一套锁定的技术栈](../02-decisions/01-architecture/0103-locked-stack-per-language.md)：每种语言内部锁定一套栈，也就是官方 SDK 自己的栈。
+- [0105 任何语言，一份协议](../02-decisions/01-architecture/0105-any-language-one-protocol.md)：任何语言，只要它的实现通过组件协议套件，就可以加入；JVM 的内存开销是文档里的提醒。
 
 ## 已知限制
 

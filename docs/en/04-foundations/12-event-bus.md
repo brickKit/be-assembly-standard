@@ -37,7 +37,8 @@ Which message broker carries events between components, what delivery it promise
 |---|---|
 | ensure stream | create the stream if missing; never change an existing one |
 | publish | store a message with its ID; success means stored durably; the same ID within the duplicate window is stored once |
-| consume | deliver to a named durable consumer with a subject filter; replicas sharing the durable compete, each message to one of them |
+| ensure durable | create the durable consumer if missing; never update an existing one |
+| consume | deliver to a named durable consumer with a subject filter; replicas sharing the durable compete, each message to one of them; a message not acknowledged within `ack_wait` is delivered again |
 | ack / nak with delay / terminate / in progress | done; redeliver after a delay; never redeliver; extend the acknowledgement deadline |
 | delivery count | how many times this message was delivered |
 | notify / on notify | a best-effort signal: not stored, not redelivered, may be lost |
@@ -47,19 +48,29 @@ Which message broker carries events between components, what delivery it promise
 - **One stream per first subject segment**: name `BE_<FIRST SEGMENT IN CAPITALS>`, subjects `<first segment>.>`. Today: `BE_ERP`, `BE_MDM`, `BE_CRM`, `BE_INFRA`, `BE_INTEGRATION`, and `BE_SALES`, `BE_FINANCE` for the older subjects without the `erp.` prefix. Dead letters: `BE_DLQ`, subjects `dlq.>`.
 - **Created by whoever needs it first**, "create if missing, never touch if present", in the component's migration step (which brickKit runs with the component's own image and configuration before the component starts) and again at start. Operators may pre-create a stream and tune it; a component that finds no stream and may not create one fails its migration with a clear error.
 - **Defaults:** `max_age` 7 days, `max_bytes` 1 GiB, `discard: old`, `duplicate_window` 10 minutes, file storage, 1 replica (3 on a NATS cluster, set by the operator). `BE_DLQ`: 30 days.
-- A stream follows the subject, not the producing component, so several members of a slot family can publish one subject (`integration.im.result.v1`).
+- A stream follows the subject, not the producing component, so several members of a slot family can publish one subject (`integration.im.result.v1`), and every relation owner can publish `infra.authz.relation.sync.v1` ([13](13-event-contracts.md#subjects)).
 
 ### Durable consumers
 
-- **One pull durable per (component, subject)**, named `<component ID with / as _>__<subject with . as _>`: `erp_finance__sales_order_created_v1`. The same name standalone, in a shell and on every replica, so moving a member in or out of a shell keeps its position.
+- **One pull durable per (component, subject)**, named `<component ID with / as _>__<subject with . as _>`: `erp_finance__sales_order_created_v1`. The same name standalone, in a shell and on every replica, so moving a member in or out of a shell keeps its position. The `__` separator is unambiguous because no subject segment may contain a double underscore ([13](13-event-contracts.md#subjects)) and a component ID contains none. Inside the subject part `.` and `_` both end as `_`, so two subjects that differ only there (`a.b.c_d.v1`, `a.b.c.d.v1`) would share a name; a component never consumes two such subjects.
+- **Created only if absent, never updated.** At start the SDK looks the durable up and creates it only when it is missing; an existing durable is left as it is, even when its settings differ (an operator may have tuned it). No blind "add or update" call is used (nats-py's `add_consumer` updates silently); changing an existing durable is an operator's act.
 - **First creation delivers everything still in the stream** (`DeliverAll`): a newly installed consumer catches up on up to 7 days of events. A newly installed finance therefore books orders confirmed in the 7 days before it was installed.
-- `ack_wait` 30 s; `max_deliver` 8; redelivery backoff 1 s, 10 s, 1 min, 5 min, 15 min, 30 min, 1 h; `max_ack_pending` 256; up to 4 messages handled at once per subscription, also bounded by the member's connection budget ([10](10-local-transactions.md#port-contract)); `inactive_threshold` 30 days, so a removed component's durables disappear by themselves.
-- **Acknowledge after the handler's transaction committed.** On error: nak with the next backoff delay. On a permanent error (unparsable, contract violation): publish to the dead-letter subject, then terminate. While a handler runs: "in progress" every 10 s (a third of `ack_wait`).
+- `ack_wait` 30 s, the real timer for a message whose handler neither acknowledged nor nak'ed it; `max_ack_pending` 256; up to 4 messages handled at once per subscription, also bounded by the member's connection budget ([10](10-local-transactions.md#port-contract)); `inactive_threshold` 30 days, so a removed component's durables disappear by themselves.
+- **Redelivery timing and the delivery limit belong to the SDK, not the server.** The durable is created with no server-side `BackOff` and with `MaxDeliver` -1 (unlimited).
+
+  | Key | Default | Used by the SDK as |
+  |---|---|---|
+  | `EVENTS_BACKOFF` | `1s,10s,1m,5m,15m,30m,1h` | the `NakWithDelay` schedule: the delay of the nak after the n-th failed delivery |
+  | `EVENTS_MAX_DELIVER` | `8` | the delivery limit: a message received with `NumDelivered` > `EVENTS_MAX_DELIVER` is not handled; the SDK writes it to the dead letters, then terminates it |
+
+  A subscription may declare its own values; the keys, when set, override them (be-protocol P12.5).
+- **Acknowledge after the handler's transaction committed.** On error: nak with the next delay of `EVENTS_BACKOFF`. On a permanent error (unparsable, contract violation): publish to the dead-letter subject, then terminate. While a handler runs: "in progress" every 10 s (a third of `ack_wait`).
 
 ### Dead letters
 
 - Subject `dlq.<durable>.<original subject>`, with headers `be-dlq-reason`, `be-dlq-consumer`, `be-dlq-delivery` added to the original ones. The durable is in the subject because a message may fail in one consumer and succeed in another; only the failing one gets it back.
-- A message goes there after `max_deliver` attempts, on a permanent error, or when its hop count exceeds 10 ([13](13-event-contracts.md)).
+- The dead-letter message's ID (`Nats-Msg-Id` on NATS) is `dlq:<durable>:<seq>`, `<seq>` being the original's stream sequence, so a dead-lettering repeated after a crash between the write and the terminate is stored once.
+- A message goes there when it is received with a delivery count above `EVENTS_MAX_DELIVER`, on a permanent error, or when its hop count exceeds 10 ([13](13-event-contracts.md)). The original is terminated only after the dead letter is stored.
 - `make dlq-ls` and `make dlq-replay` (planned) list and replay them. A replay publishes to the original subject with a suffixed message ID to pass the duplicate window; other consumers skip it through their cursor.
 - `be_dlq_messages_total{subject,consumer}`, with an alert-rule template.
 
@@ -128,7 +139,8 @@ CREATE TABLE be_bus.delivery (                 -- in flight and waiting for rede
 
 - **Publish:** insert into `msg_id` with `ON CONFLICT DO NOTHING`; only when that inserted, insert the message, in the same short transaction.
 - **Fan-out:** under a row lock on its `durable` row, a consumer copies the next matching messages into `delivery` and advances `(last_tx_id, last_seq)`. It reads only messages whose `tx_id` is older than every transaction still running (`tx_id < pg_snapshot_xmin(pg_current_snapshot())`), so a publisher that committed later with a lower `seq` is never skipped.
-- **Consume:** claim `delivery` rows with `next_at <= now()` and an expired lease using `FOR UPDATE SKIP LOCKED`; ack deletes the row; nak sets `next_at` and increments `num_delivered`; in progress extends `lease_until`; terminate deletes it.
+- **Consume:** claim `delivery` rows with `next_at <= now()` and an expired lease using `FOR UPDATE SKIP LOCKED`; ack deletes the row; nak sets `next_at` and increments `num_delivered`; in progress extends `lease_until`; terminate deletes it. A lease that runs out (`ack_wait`) makes the row claimable again.
+- **Same semantics as JetStream:** the adapter keeps no delivery limit and no backoff of its own; the SDK reads `num_delivered` as the delivery count, naks with the `EVENTS_BACKOFF` delays, and applies the same `EVENTS_MAX_DELIVER` check and the same dead-letter message ID (deduplicated through `msg_id`). A durable row is inserted only if absent and never updated.
 - **Notify:** `NOTIFY be_bus, '<subject>'` wakes consumers; signals use the same channel.
 
 ### Kafka adapter (later)
@@ -185,7 +197,9 @@ Planned suite `tools/be-acceptance/conformance/bus/`, the same cases for every a
 
 - a consumer restarted after downtime receives what was published meanwhile;
 - two instances of one durable each handle a message once;
-- nak redelivers after the delay; past `max_deliver` the message is in the dead-letter subject with the consumer and the reason;
+- nak redelivers after the delay taken from `EVENTS_BACKOFF`; a message neither acknowledged nor nak'ed is redelivered after `ack_wait`;
+- a message received with a delivery count above `EVENTS_MAX_DELIVER` is not handled; it is in the dead-letter subject once, with message ID `dlq:<durable>:<seq>`, the consumer and the reason, and is not delivered again;
+- ensure durable creates a missing durable and leaves an existing one with other settings unchanged;
 - terminate stops redelivery;
 - one message ID within the window is stored once;
 - ensure stream is idempotent and does not overwrite an existing configuration;
@@ -200,9 +214,10 @@ SDK tests written red first: reconnects and resumes after the broker was down fo
 
 ## Decision records
 
-- [0106 Infrastructure is not a component](../02-decisions/01-architecture/0106-infrastructure-is-not-a-component.md): the bus stays infrastructure. A revision is planned: the bus is swapped through an SDK adapter chosen by the URL scheme, which is more than a setting and must pass the suite.
-- [0102 One schema per component](../02-decisions/01-architecture/0102-one-schema-per-component.md): the `be_bus` schema belongs to the infrastructure, not to a component.
-- Planned, not yet numbered: "events are delivered at least once; streams are created by first subject segment"; "the outbox is the source of truth for replay".
+- [0106 Infrastructure is not a component](../02-decisions/01-architecture/0106-infrastructure-is-not-a-component.md): the bus stays infrastructure and is swapped through an SDK adapter chosen by the URL scheme, which is more than a setting and must pass the suite.
+- [0506 At-least-once delivery; streams by first subject segment](../02-decisions/05-runtime/0506-at-least-once-delivery-and-streams.md): this document is its full analysis: at-least-once delivery, streams by first subject segment, the outbox as the source of truth for replay.
+- [0505 CloudEvents envelope; one cursor per aggregate stream](../02-decisions/05-runtime/0505-cloudevents-envelope-and-aggregate-cursor.md): the envelope every adapter carries unchanged.
+- [0102 One database, one schema per component](../02-decisions/01-architecture/0102-one-schema-per-component.md): the `be_bus` schema belongs to the infrastructure, not to a component.
 
 ## Known limits
 

@@ -1,0 +1,272 @@
+===== asyncpg 0.30.0, statement_cache_size=100, per-member SQL prefix=False
+before: {'pid': 171, 'usr': 'shell', 'sp': '"$user", public'}
+--- S1 same shape SELECT id, v FROM widget WHERE id=$1
+  [a] OK   <Record id=1 v='from-a' s='a'>
+  [b] OK   <Record id=1 v='from-b' s='b'>
+  [a] OK   <Record id=1 v='from-a' s='a'>
+  [b] OK   <Record id=1 v='from-b' s='b'>
+--- S1 same shape UPDATE ... RETURNING
+  [a] OK   from-a+
+  [b] OK   from-b+
+  [a] OK   from-a++
+  [b] OK   from-b++
+--- S2 different result type: SELECT id, payload FROM besdk_thing
+  [a] OK   <Record id=1 payload='a-text'>
+  [b] ERR  InvalidCachedStatementError: cached statement plan is invalid due to a database schema or configuration change (sqlstate=0A000)
+  [a] OK   <Record id=1 payload='a-text'>
+  [b] ERR  InvalidCachedStatementError: cached statement plan is invalid due to a database schema or configuration change (sqlstate=0A000)
+--- S2 different result type: SELECT * FROM besdk_thing
+  [a] OK   <Record id=1 payload='a-text'>
+  [b] ERR  InvalidCachedStatementError: cached statement plan is invalid due to a database schema or configuration change (sqlstate=0A000)
+  [a] OK   <Record id=1 payload='a-text'>
+  [b] ERR  InvalidCachedStatementError: cached statement plan is invalid due to a database schema or configuration change (sqlstate=0A000)
+--- S3 same listed types, b has extra col: SELECT id, payload FROM besdk_same
+  [a] OK   <Record id=1 payload='a-same'>
+  [b] OK   <Record id=1 payload='b-same'>
+  [a] OK   <Record id=1 payload='a-same'>
+  [b] OK   <Record id=1 payload='b-same'>
+--- S3 SELECT * FROM besdk_same (column count differs)
+  [a] OK   <Record id=1 payload='a-same'>
+  [b] ERR  InvalidCachedStatementError: cached statement plan is invalid due to a database schema or configuration change (sqlstate=0A000)
+  [a] OK   <Record id=1 payload='a-same'>
+  [b] ERR  InvalidCachedStatementError: cached statement plan is invalid due to a database schema or configuration change (sqlstate=0A000)
+--- S4 INSERT INTO besdk_thing (id, payload) VALUES ($1,$2) (param text vs jsonb)
+  [a] OK   {"k":1}
+  [b] ERR  DatatypeMismatchError: column "payload" is of type jsonb but expression is of type text
+HINT:  You will need to rewrite or cast the expression. (sqlstate=42804)
+  [a] OK   {"k":1}
+  [b] ERR  DatatypeMismatchError: column "payload" is of type jsonb but expression is of type text
+HINT:  You will need to rewrite or cast the expression. (sqlstate=42804)
+--- S5 isolation: role ra with search_path b
+  ERR (expected) UndefinedTableError: relation "widget" does not exist
+--- S6 NOINHERIT: shell login without SET ROLE reads a.widget
+  ERR (expected) InsufficientPrivilegeError: permission denied for schema a
+--- S7 leak check after commit: {'pid': 171, 'usr': 'shell', 'sp': '"$user", public'}
+  (forced error: DivisionByZeroError)
+--- S7 leak check after rollback: {'pid': 171, 'usr': 'shell', 'sp': '"$user", public'}
+--- bench: 2000 alternating member tx in 1.65s = 0.827 ms/tx
+===== asyncpg 0.30.0, statement_cache_size=0, per-member SQL prefix=False
+before: {'pid': 186, 'usr': 'shell', 'sp': '"$user", public'}
+--- S1 same shape SELECT id, v FROM widget WHERE id=$1
+  [a] OK   <Record id=1 v='from-a' s='a'>
+  [b] OK   <Record id=1 v='from-b' s='b'>
+  [a] OK   <Record id=1 v='from-a' s='a'>
+  [b] OK   <Record id=1 v='from-b' s='b'>
+--- S1 same shape UPDATE ... RETURNING
+  [a] OK   from-a+
+  [b] OK   from-b+
+  [a] OK   from-a++
+  [b] OK   from-b++
+--- S2 different result type: SELECT id, payload FROM besdk_thing
+  [a] OK   <Record id=1 payload='a-text'>
+  [b] OK   <Record id=1 payload='{"b": "jsonb"}'>
+  [a] OK   <Record id=1 payload='a-text'>
+  [b] OK   <Record id=1 payload='{"b": "jsonb"}'>
+--- S2 different result type: SELECT * FROM besdk_thing
+  [a] OK   <Record id=1 payload='a-text'>
+  [b] OK   <Record id=1 payload='{"b": "jsonb"}' extra=7>
+  [a] OK   <Record id=1 payload='a-text'>
+  [b] OK   <Record id=1 payload='{"b": "jsonb"}' extra=7>
+--- S3 same listed types, b has extra col: SELECT id, payload FROM besdk_same
+  [a] OK   <Record id=1 payload='a-same'>
+  [b] OK   <Record id=1 payload='b-same'>
+  [a] OK   <Record id=1 payload='a-same'>
+  [b] OK   <Record id=1 payload='b-same'>
+--- S3 SELECT * FROM besdk_same (column count differs)
+  [a] OK   <Record id=1 payload='a-same'>
+  [b] OK   <Record id=1 payload='b-same' extra=7>
+  [a] OK   <Record id=1 payload='a-same'>
+  [b] OK   <Record id=1 payload='b-same' extra=7>
+--- S4 INSERT INTO besdk_thing (id, payload) VALUES ($1,$2) (param text vs jsonb)
+  [a] OK   {"k":1}
+  [b] OK   {"k": 1}
+  [a] OK   {"k":1}
+  [b] OK   {"k": 1}
+--- S5 isolation: role ra with search_path b
+  ERR (expected) UndefinedTableError: relation "widget" does not exist
+--- S6 NOINHERIT: shell login without SET ROLE reads a.widget
+  ERR (expected) InsufficientPrivilegeError: permission denied for schema a
+--- S7 leak check after commit: {'pid': 186, 'usr': 'shell', 'sp': '"$user", public'}
+  (forced error: DivisionByZeroError)
+--- S7 leak check after rollback: {'pid': 186, 'usr': 'shell', 'sp': '"$user", public'}
+--- bench: 2000 alternating member tx in 1.97s = 0.985 ms/tx
+===== asyncpg 0.30.0, statement_cache_size=100, per-member SQL prefix=True
+before: {'pid': 201, 'usr': 'shell', 'sp': '"$user", public'}
+--- S1 same shape SELECT id, v FROM widget WHERE id=$1
+  [a] OK   <Record id=1 v='from-a' s='a'>
+  [b] OK   <Record id=1 v='from-b' s='b'>
+  [a] OK   <Record id=1 v='from-a' s='a'>
+  [b] OK   <Record id=1 v='from-b' s='b'>
+--- S1 same shape UPDATE ... RETURNING
+  [a] OK   from-a+
+  [b] OK   from-b+
+  [a] OK   from-a++
+  [b] OK   from-b++
+--- S2 different result type: SELECT id, payload FROM besdk_thing
+  [a] OK   <Record id=1 payload='a-text'>
+  [b] OK   <Record id=1 payload='{"b": "jsonb"}'>
+  [a] OK   <Record id=1 payload='a-text'>
+  [b] OK   <Record id=1 payload='{"b": "jsonb"}'>
+--- S2 different result type: SELECT * FROM besdk_thing
+  [a] OK   <Record id=1 payload='a-text'>
+  [b] OK   <Record id=1 payload='{"b": "jsonb"}' extra=7>
+  [a] OK   <Record id=1 payload='a-text'>
+  [b] OK   <Record id=1 payload='{"b": "jsonb"}' extra=7>
+--- S3 same listed types, b has extra col: SELECT id, payload FROM besdk_same
+  [a] OK   <Record id=1 payload='a-same'>
+  [b] OK   <Record id=1 payload='b-same'>
+  [a] OK   <Record id=1 payload='a-same'>
+  [b] OK   <Record id=1 payload='b-same'>
+--- S3 SELECT * FROM besdk_same (column count differs)
+  [a] OK   <Record id=1 payload='a-same'>
+  [b] OK   <Record id=1 payload='b-same' extra=7>
+  [a] OK   <Record id=1 payload='a-same'>
+  [b] OK   <Record id=1 payload='b-same' extra=7>
+--- S4 INSERT INTO besdk_thing (id, payload) VALUES ($1,$2) (param text vs jsonb)
+  [a] OK   {"k":1}
+  [b] OK   {"k": 1}
+  [a] OK   {"k":1}
+  [b] OK   {"k": 1}
+--- S5 isolation: role ra with search_path b
+  ERR (expected) UndefinedTableError: relation "widget" does not exist
+--- S6 NOINHERIT: shell login without SET ROLE reads a.widget
+  ERR (expected) InsufficientPrivilegeError: permission denied for schema a
+--- S7 leak check after commit: {'pid': 201, 'usr': 'shell', 'sp': '"$user", public'}
+  (forced error: DivisionByZeroError)
+--- S7 leak check after rollback: {'pid': 201, 'usr': 'shell', 'sp': '"$user", public'}
+--- bench: 2000 alternating member tx in 1.40s = 0.700 ms/tx
+===== pg 8.23.1, mode=unnamed
+before: { pid: 216, usr: 'shell', sp: '"$user", public' }
+--- S1 same shape SELECT id, v FROM widget WHERE id=$1
+  [a] OK   {"id":1,"v":"from-a","s":"a"}
+  [b] OK   {"id":1,"v":"from-b","s":"b"}
+  [a] OK   {"id":1,"v":"from-a","s":"a"}
+  [b] OK   {"id":1,"v":"from-b","s":"b"}
+--- S1 same shape UPDATE ... RETURNING
+  [a] OK   {"v":"from-a+"}
+  [b] OK   {"v":"from-b+"}
+  [a] OK   {"v":"from-a++"}
+  [b] OK   {"v":"from-b++"}
+--- S2 different result type: SELECT id, payload FROM besdk_thing
+  [a] OK   {"id":"1","payload":"a-text"}
+  [b] OK   {"id":"1","payload":{"b":"jsonb"}}
+  [a] OK   {"id":"1","payload":"a-text"}
+  [b] OK   {"id":"1","payload":{"b":"jsonb"}}
+--- S2 different result type: SELECT * FROM besdk_thing
+  [a] OK   {"id":"1","payload":"a-text"}
+  [b] OK   {"id":"1","payload":{"b":"jsonb"},"extra":7}
+  [a] OK   {"id":"1","payload":"a-text"}
+  [b] OK   {"id":"1","payload":{"b":"jsonb"},"extra":7}
+--- S3 same listed types, b has extra col: SELECT id, payload FROM besdk_same
+  [a] OK   {"id":"1","payload":"a-same"}
+  [b] OK   {"id":"1","payload":"b-same"}
+  [a] OK   {"id":"1","payload":"a-same"}
+  [b] OK   {"id":"1","payload":"b-same"}
+--- S3 SELECT * FROM besdk_same (column count differs)
+  [a] OK   {"id":"1","payload":"a-same"}
+  [b] OK   {"id":"1","payload":"b-same","extra":7}
+  [a] OK   {"id":"1","payload":"a-same"}
+  [b] OK   {"id":"1","payload":"b-same","extra":7}
+--- S4 INSERT INTO besdk_thing (id, payload) VALUES ($1,$2) (param text vs jsonb)
+  [a] OK   {"payload":"{\"k\":1}"}
+  [b] OK   {"payload":"{\"k\": 1}"}
+  [a] OK   {"payload":"{\"k\":1}"}
+  [b] OK   {"payload":"{\"k\": 1}"}
+--- S5 isolation: role ra with search_path b
+  ERR (expected) relation "widget" does not exist
+--- S6 NOINHERIT: shell login without SET ROLE reads a.widget
+  ERR (expected) permission denied for schema a
+--- S7 leak check after commit: { pid: 217, usr: 'shell', sp: '"$user", public' }
+  (forced error: division by zero)
+--- S7 leak check after rollback: { pid: 217, usr: 'shell', sp: '"$user", public' }
+--- bench: 2000 alternating member tx in 1.06s = 0.528 ms/tx
+===== pg 8.23.1, mode=named
+before: { pid: 233, usr: 'shell', sp: '"$user", public' }
+--- S1 same shape SELECT id, v FROM widget WHERE id=$1
+  [a] OK   {"id":1,"v":"from-a","s":"a"}
+  [b] OK   {"id":1,"v":"from-b","s":"b"}
+  [a] OK   {"id":1,"v":"from-a","s":"a"}
+  [b] OK   {"id":1,"v":"from-b","s":"b"}
+--- S1 same shape UPDATE ... RETURNING
+  [a] OK   {"v":"from-a+"}
+  [b] OK   {"v":"from-b+"}
+  [a] OK   {"v":"from-a++"}
+  [b] OK   {"v":"from-b++"}
+--- S2 different result type: SELECT id, payload FROM besdk_thing
+  [a] OK   {"id":"1","payload":"a-text"}
+  [b] ERR  cached plan must not change result type (code=0A000)
+  [a] OK   {"id":"1","payload":"a-text"}
+  [b] ERR  cached plan must not change result type (code=0A000)
+--- S2 different result type: SELECT * FROM besdk_thing
+  [a] OK   {"id":"1","payload":"a-text"}
+  [b] ERR  cached plan must not change result type (code=0A000)
+  [a] OK   {"id":"1","payload":"a-text"}
+  [b] ERR  cached plan must not change result type (code=0A000)
+--- S3 same listed types, b has extra col: SELECT id, payload FROM besdk_same
+  [a] OK   {"id":"1","payload":"a-same"}
+  [b] OK   {"id":"1","payload":"b-same"}
+  [a] OK   {"id":"1","payload":"a-same"}
+  [b] OK   {"id":"1","payload":"b-same"}
+--- S3 SELECT * FROM besdk_same (column count differs)
+  [a] OK   {"id":"1","payload":"a-same"}
+  [b] ERR  cached plan must not change result type (code=0A000)
+  [a] OK   {"id":"1","payload":"a-same"}
+  [b] ERR  cached plan must not change result type (code=0A000)
+--- S4 INSERT INTO besdk_thing (id, payload) VALUES ($1,$2) (param text vs jsonb)
+  [a] OK   {"payload":"{\"k\":1}"}
+  [b] ERR  column "payload" is of type jsonb but expression is of type text (code=42804)
+  [a] OK   {"payload":"{\"k\":1}"}
+  [b] ERR  column "payload" is of type jsonb but expression is of type text (code=42804)
+--- S5 isolation: role ra with search_path b
+  ERR (expected) relation "widget" does not exist
+--- S6 NOINHERIT: shell login without SET ROLE reads a.widget
+  ERR (expected) permission denied for schema a
+--- S7 leak check after commit: { pid: 234, usr: 'shell', sp: '"$user", public' }
+  (forced error: division by zero)
+--- S7 leak check after rollback: { pid: 234, usr: 'shell', sp: '"$user", public' }
+--- bench: 2000 alternating member tx in 1.24s = 0.622 ms/tx
+===== pg 8.23.1, mode=named-member
+before: { pid: 249, usr: 'shell', sp: '"$user", public' }
+--- S1 same shape SELECT id, v FROM widget WHERE id=$1
+  [a] OK   {"id":1,"v":"from-a","s":"a"}
+  [b] OK   {"id":1,"v":"from-b","s":"b"}
+  [a] OK   {"id":1,"v":"from-a","s":"a"}
+  [b] OK   {"id":1,"v":"from-b","s":"b"}
+--- S1 same shape UPDATE ... RETURNING
+  [a] OK   {"v":"from-a+"}
+  [b] OK   {"v":"from-b+"}
+  [a] OK   {"v":"from-a++"}
+  [b] OK   {"v":"from-b++"}
+--- S2 different result type: SELECT id, payload FROM besdk_thing
+  [a] OK   {"id":"1","payload":"a-text"}
+  [b] OK   {"id":"1","payload":{"b":"jsonb"}}
+  [a] OK   {"id":"1","payload":"a-text"}
+  [b] OK   {"id":"1","payload":{"b":"jsonb"}}
+--- S2 different result type: SELECT * FROM besdk_thing
+  [a] OK   {"id":"1","payload":"a-text"}
+  [b] OK   {"id":"1","payload":{"b":"jsonb"},"extra":7}
+  [a] OK   {"id":"1","payload":"a-text"}
+  [b] OK   {"id":"1","payload":{"b":"jsonb"},"extra":7}
+--- S3 same listed types, b has extra col: SELECT id, payload FROM besdk_same
+  [a] OK   {"id":"1","payload":"a-same"}
+  [b] OK   {"id":"1","payload":"b-same"}
+  [a] OK   {"id":"1","payload":"a-same"}
+  [b] OK   {"id":"1","payload":"b-same"}
+--- S3 SELECT * FROM besdk_same (column count differs)
+  [a] OK   {"id":"1","payload":"a-same"}
+  [b] OK   {"id":"1","payload":"b-same","extra":7}
+  [a] OK   {"id":"1","payload":"a-same"}
+  [b] OK   {"id":"1","payload":"b-same","extra":7}
+--- S4 INSERT INTO besdk_thing (id, payload) VALUES ($1,$2) (param text vs jsonb)
+  [a] OK   {"payload":"{\"k\":1}"}
+  [b] OK   {"payload":"{\"k\": 1}"}
+  [a] OK   {"payload":"{\"k\":1}"}
+  [b] OK   {"payload":"{\"k\": 1}"}
+--- S5 isolation: role ra with search_path b
+  ERR (expected) relation "widget" does not exist
+--- S6 NOINHERIT: shell login without SET ROLE reads a.widget
+  ERR (expected) permission denied for schema a
+--- S7 leak check after commit: { pid: 250, usr: 'shell', sp: '"$user", public' }
+  (forced error: division by zero)
+--- S7 leak check after rollback: { pid: 250, usr: 'shell', sp: '"$user", public' }
+--- bench: 2000 alternating member tx in 0.93s = 0.466 ms/tx

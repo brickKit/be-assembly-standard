@@ -34,10 +34,10 @@ field(P, K, r)   = visible(P, K, r) AND P 持有该字段键
 
 - **两份契约。** **provider 契约** `infra.authz.v2`，authz 槽位的每个成员都实现；**资源契约**，SDK 在每个声明了资源的组件里自动挂出。规则所需的属性留在拥有这行数据的组件里；authz 只持有显式授予和关系。
 - **决策留在本地。** 键、档位、取值、字段、天花板随 bundle 下发；直接授予进组件自己 schema 里的一张投影表；列表是一条静态参数化 SQL 谓词。只有声明了的 graph 类型、或者投影落后于一致性令牌时，请求才会走到 provider。
-- **槽位族**，全部在阶段 06 内建，顺序是：`infra/authz`（原生，默认）→ `infra/authz-static`（文件，无库）→ `infra/authz-openfga`（ReBAC）。Cedar 或 OPA 只在有真实 ABAC 需求时才建，而且只用于动作判定。族契约放在独立仓库 `contract-infra-authz`。
+- **槽位族**，全部在阶段 06 内建，顺序是：`infra/authz`（原生，默认）→ `infra/authz-static`（文件，无库）→ `infra/authz-openfga`（ReBAC）。Cedar 或 OPA 只在有真实 ABAC 需求时才建，而且只用于动作判定。族契约放在独立仓库 `contract-infra-authz`（检出在 `contracts/infra/authz`）：proto、REST 与事件契约、错误 reason、bundle 的含义（`EVALUATION.md`）以及锁定它的决策向量。
 - **任何组件都不依赖某个成员。** 所有调用都打共享地址 `AUTHZ_URL`；`infra/iam-casdoor` 到 `infra/authz` 的依赖边删除。
 - **档位**：`own`、`dept`（只本部门，不含下级）、`subtree`、`all`；若干个部门子树的自定义组合，是 `org` 维度的取值。
-- **已经定了的答案**：共享一条记录可以顺带给出对这一条的查看权，但永远不顺带动作键（确认、取消、关闭要角色键；每个关系声明自己授予什么）；共享要持有该类型的 share 键，且自己至少有要授出的那一级；调用者看不见的记录，读和命令一律答 `404`，只有看得见但不允许这个动作时才答 `403`；生产环境只读的"以他人身份查看"要 `infra.authz.impersonate` 键，日志带 `act` 链，并通知被查看的人。
+- **已经定了的答案**：共享一条记录可以顺带给出对这一条的查看权，但永远不顺带动作键（确认、取消、关闭要角色键；每个关系声明自己授予什么）；共享要持有该类型的 share 键，且自己至少有要授出的那一级；调用者看不见的记录，读和命令一律答 `404`，只有看得见但不允许这个动作时才答 `403`（调用方持有这个动作的键、但这条记录不在该键的范围内时是 `OUT_OF_SCOPE`，调用方没有这个键时是 `MISSING_PERMISSION`）；生产环境只读的"以他人身份查看"要 `infra.authz.impersonate` 键，日志带 `act` 链，并通知被查看的人。
 - **AI 代理只留位子、不开发**：`act.kind` 允许 `agent`，bundle 能力 `agents` 默认 `false`，profile 与天花板的形状一次定好，权限键接受一个可选的 `delegable` 字段，目前没有任何东西填写或读取它。以后启用全部只增。
 
 **状态**：已在用：`infra/authz` 2.0.x 在 `/authz/bundle` 提供 v1 bundle（角色 → 键、`stale_since`），每个组件用自己的范围代码过滤行，inventory 和 finance 各有自己的授权表。已定：本文其余全部内容，即 v2 设计，随 3.0.0 统一升级落地，`infra/authz-static` 和 `infra/authz-openfga` 在阶段 06 内建。
@@ -136,15 +136,17 @@ AND (
 
 SDK 也把三个分支分开给出，慢查询可以改写成按同一个游标合并的 `UNION ALL`，语义不变。组件怎么写这段，见 [02-backend.md](../01-conventions/02-backend.md#数据范围)。
 
-**声明**，在 `assembly.yaml` 里与 `data_scopes` 并列：`permissions` 的条目增加 `type: page|action|field` 和可选、目前不用的 `delegable`；新增 `resources` 段，写明每个类型（`<domain>.<name>.<aggregate>`，唯一属主，登记在只增的 `registry/resource-types.tsv`）、它的表、键、关系（`viewer: {grants: [...]}`、`editor: {includes: [viewer], grants: [...]}`，组件主责的关系标 `owned_by: component`）、共享规则（键、关系、主体种类）、字段集（列、读键、写键）、一跳的 `inherits`，以及 `derivation: direct|graph`。be-ops 校验这些声明，并为每种语言生成键和类型的常量；生成物过期时门禁 `authzgen-fresh` 失败。
+**声明**，在 `assembly.yaml` 里与 `data_scopes` 并列：`permissions` 的条目增加 `type: page|action|field` 和可选、目前不用的 `delegable`；新增 `resources` 段，写明每个类型（`<domain>.<name>.<aggregate>`，唯一属主，登记在只增的 `registry/resource-types.tsv`）、它的表、它的 `view_key`（决定这个类型的记录到底看不看得见的键，列表和单条读取都用它；必填）、它的键、关系（`viewer: {grants: [...]}`、`editor: {includes: [viewer], grants: [...]}`，组件主责的关系标 `owned_by: component`）、共享规则（键、关系、主体种类）、字段集（列、读键、写键）、一跳的 `inherits`，以及 `derivation: direct|graph`。be-ops 校验这些声明，并为每种语言生成键和类型的常量；生成物过期时门禁 `authzgen-fresh` 失败。
 
-**字段级权限。** 字段键是 `type: field` 的权限键。属主组件把被掩码的字段置为 `null` 并列进 `_masked`；写被掩码的字段答 `403 field_forbidden`；按被掩码的字段排序、过滤、聚合一律拒绝。事件是系统面，绝不未经掩码就展示给人。
+**字段级权限。** 字段键是 `type: field` 的权限键。属主组件把被掩码的字段置为 `null` 并列进 `_masked`；写被掩码的字段答 `403 FIELD_FORBIDDEN`；按被掩码的字段排序、过滤、聚合一律拒绝。事件是系统面，绝不未经掩码就展示给人。
 
 **authz 发布的事件**（outbox，只增）：`infra.authz.tuple.changed.v1`、`infra.authz.scope_grant.changed.v1`、`infra.authz.delegation.changed.v1`、`infra.authz.role.changed.v1`、`infra.authz.user_role.changed.v1`（都带 actor 及其 `act` 链），以及 poke `infra.authz.changed.v1`。
 
 **管理与自助 REST**（经网关；管理页只按族契约生成）：角色、带档位的键、维度取值；profile；`/api/me/delegations`、`/api/admin/delegations`；`/api/me/shares?direction=by_me|with_me`、`/api/admin/shares`；`/api/admin/keys/{key}/holders`、`/api/admin/access-review?type=&id=`；以及 `GET /api/me/access`，一次给全：`sub`、`act`、部门、已装组件、能力、带档位的键、取值、字段、天花板、委托给我的、revision。它替代原来分开的特性和权限两次请求。
 
-**状态码。** bundle 标记 token 过期时答 `401 token_stale`（随后静默刷新）；第一份 bundle 到达之前答 `503`（`/healthz` 保持绿）；看不见答 `404`；看得见但不允许答 `403` 并带 reason。
+**状态码。** bundle 标记 token 过期时答 `401 TOKEN_STALE`（随后静默刷新）；第一份 bundle 到达之前答 `503 AUTHZ_NOT_READY`（`/healthz` 保持绿）；看不见答 `404 NOT_FOUND`，由类型的 `view_key` 判定；看得见但不允许答 `403`：调用方持有路由键、但这条记录不在该键的范围内时是 `OUT_OF_SCOPE`，调用方没有这个键时是 `MISSING_PERMISSION`（[15](15-user-api-and-errors.md#访问相关的状态码)）。
+
+**错误 domain。** 成员以自己名义抛出的 reason 一律用族的 ID，`domain: infra/authz`，不管装的是哪个成员，并列在族契约的 `errors.yaml` 里；这是"`domain` 就是组件 ID"这条规则的槽位族例外（[15](15-user-api-and-errors.md#错误体)），这样前端每个族只维护一张表。
 
 ## 备选方案
 
@@ -190,21 +192,30 @@ SDK 也把三个分支分开给出，慢查询可以改写成按同一个游标�
 
 ## 一致性测试
 
-套件 `tools/be-acceptance/conformance/authz/`（`authzconf`），三层；决策向量不放在套件里，而是从计划新建的 `brickKit/be-protocol` 仓库的 `vectors/authz/` 读：
+套件 `tools/be-acceptance/conformance/authz/`（`authzconf`），三层；决策向量不放在套件里，而是从族契约仓库的 `vectors/decision/` 读，以那里为准（`contracts/infra/authz`，按标签固定）。be-protocol 只放全协议通用的向量，并按标签引用族的 `EVALUATION.md`：
 
 | 层 | 内容 | 断言 |
 |---|---|---|
-| 决策向量 `vectors/authz/*.json` | bundle、claims、路由键、行属性、ACL 行、时间、revision → 决策、谓词参数、主体集合、字段掩码、原因 | 每个官方 SDK 算出相同结果：取最高档、按键求值、主体展开、没有部门时数组为空、委托合并、天花板交集、到期、不是 `contract: authz/2.*` 的 bundle 被拒用 |
+| 决策向量 `vectors/decision/*.json`（族仓库） | bundle、claims、路由键、行属性、ACL 行、时间、revision → 决策、谓词参数、主体集合、字段掩码、原因 | 每个官方 SDK 算出相同结果：取最高档、按键求值、主体展开、没有部门时数组为空、委托合并、天花板交集、到期、不是 `contract: authz/2.*` 的 bundle 被拒用 |
 | provider 黑盒 `provider/` | 套件自己签测试 token；被测成员用一份夹具目录初始化 | core 必过；声明了的可选能力必过；没声明的必须答 `501 CAPABILITY_UNAVAILABLE` 并带能力名；导出的 NDJSON 导入另一个成员后，判定结果相同 |
-| 端到端 `e2e/` | 一个用真 SDK 写的夹具组件，对每个成员跑；随机生成角色、档位、取值、共享、委托、到期 | List/Can 一致；带上 revision 共享后立刻可见；撤销和到期后不可见；掩码字段为 `null` 且被列出；按掩码字段排序被拒 |
+| 端到端 `e2e/` | 夹具组件 `conformance/widget`（资源类型 `conformance.widget.widget`），用真 SDK 写成，对每个成员跑；随机生成角色、档位、取值、共享、委托、到期 | List/Can 一致；带上 revision 共享后立刻可见；撤销和到期后不可见；掩码字段为 `null` 且被列出；按掩码字段排序被拒 |
 
 输出是一张能力矩阵（成员 × 能力 × 通过 / 降级正确 / 失败）。组件测试用的进程内假 provider 也必须通过 core，夹具才不会和真实成员漂移。
 
 ## 相关决策
 
-已有、都将按 v2 设计修订：[0101](../02-decisions/01-architecture/0101-no-imports-between-components.md)（族契约包成为第三类可以跨边界的包）、[0104](../02-decisions/01-architecture/0104-variants-become-slot-families.md)（`slot:authz`）、[0107](../02-decisions/01-architecture/0107-authz-and-iam-addresses-are-shared-vars.md)（一律经 `AUTHZ_URL`，不对任何成员建边）、[0202](../02-decisions/02-permissions/0202-local-permission-bundle.md)、[0203](../02-decisions/02-permissions/0203-jwt-carries-identity-only.md)（新的身份 claim）、[0204](../02-decisions/02-permissions/0204-permissions-are-a-pure-union.md)（只在委托链上取交集）、[0205](../02-decisions/02-permissions/0205-data-scopes-ship-with-the-version.md) 与 [0206](../02-decisions/02-permissions/0206-no-row-level-security.md)（原地重写）。
-
-计划新增：0207 数据范围的分配在 authz；0208 gRPC 是组件间的系统协议；0209 authz 是槽位族，契约 `infra.authz.v2`、能力协商与一致性测试；0210 委托与扮演；0211 字段级权限。
+- [0209 授权是一个槽位族](../02-decisions/02-permissions/0209-authz-is-a-slot-family.md)：本文是它的完整分析：这个族、两份契约、能力与套件。
+- [0202 权限在本地判定](../02-decisions/02-permissions/0202-local-permission-bundle.md)：判定留在本地，对照 bundle 和投影。
+- [0203 token 只承载身份，`sub` 归平台所有](../02-decisions/02-permissions/0203-jwt-carries-identity-only.md)：身份 claim，从不是权限键。
+- [0204 权限是纯并集，没有 Deny](../02-decisions/02-permissions/0204-permissions-are-a-pure-union.md)：一个主体内部是纯并集；只沿委托链取交集。
+- [0205 数据范围的规则随版本发布](../02-decisions/02-permissions/0205-data-scopes-ship-with-the-version.md) 和 [0207 数据范围的分配放在 authz](../02-decisions/02-permissions/0207-scope-assignments-live-in-authz.md)：规则随版本发布；分配放在 authz。
+- [0206 不用行级安全；共享引擎只有一个，在 authz](../02-decisions/02-permissions/0206-no-row-level-security.md)：不用行级安全；共享引擎只有一个，由 SDK 投影。
+- [0210 委托与扮演](../02-decisions/02-permissions/0210-delegation-and-impersonation.md)：委托、扮演，代理人只留位子。
+- [0211 字段级权限是一个键](../02-decisions/02-permissions/0211-field-level-permissions.md)：字段级权限。
+- [0212 调用者看不见的记录答 404](../02-decisions/02-permissions/0212-invisible-records-answer-404.md)：调用者看不见的记录答 404。
+- [0101 组件之间禁止 import](../02-decisions/01-architecture/0101-no-imports-between-components.md)：族契约包是第三类可以跨边界的包。
+- [0104 槽位族需要多种合理实现，而且没有依赖边](../02-decisions/01-architecture/0104-variants-become-slot-families.md)：`slot:authz`。
+- [0107 授权与身份经共享变量访问，从不经依赖](../02-decisions/01-architecture/0107-authz-and-iam-addresses-are-shared-vars.md)：一律经 `AUTHZ_URL`，不对任何成员建边。
 
 ## 已知限制
 

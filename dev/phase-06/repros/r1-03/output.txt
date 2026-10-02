@@ -1,0 +1,25 @@
+===== node v24.21.0, @grpc/grpc-js 1.14.5, ts-proto 2.12.4
+service config derived from protoMetadata: {"methodConfig":[{"name":[{"service":"r1.echo.v1.Echo","method":"Get"}],"retryPolicy":{"maxAttempts":3,"initialBackoff":"0.05s","maxBackoff":"0.5s","backoffMultiplier":2,"retryableStatusCodes":["UNAVAILABLE"]}}],"retryThrottling":{"maxTokens":10,"tokenRatio":0.1}}
+R1 Get (NO_SIDE_EFFECTS), first 2 attempts UNAVAILABLE: OK attempts=3 gaps(ms)=61,115
+R2 Get, always UNAVAILABLE (maxAttempts 3): ERR UNAVAILABLE attempts=3 gaps(ms)=60,93
+R3 Create (no idempotency level), always UNAVAILABLE: ERR UNAVAILABLE attempts=1
+R4 channel A, 6 failing Get calls, attempts per call: 3,2,1,1,1,1
+R4 channel B (new channel, same target string, local subchannel pool), first failing call attempts: 1
+R4 channel D (same server, target spelled "dns:///127.0.0.1:45087"), first failing call attempts: 3
+R5a age=2000ms grace=3000ms: {"Create OK":16140,"Get OK":9084}; distinct client connections seen by server=4; slow 2500ms call started ~300ms before GOAWAY: OK
+R5b age=2000ms grace=500ms: {"Create OK":19160,"Get OK":10544}; distinct client connections seen by server=4; slow 2500ms call started ~300ms before GOAWAY: ERR UNAVAILABLE
+R6 client pings every 100ms for 3s while idle, then calls again: OK same connection=true
+M1 maxAttempts=2: attempts on an always-UNAVAILABLE Get = 2
+M1 maxAttempts=3: attempts on an always-UNAVAILABLE Get = 3
+M1 maxAttempts=4: attempts on an always-UNAVAILABLE Get = 4
+M1 maxAttempts=5: attempts on an always-UNAVAILABLE Get = 5
+M1 maxAttempts=6: attempts on an always-UNAVAILABLE Get = 5
+M1 maxAttempts=10: attempts on an always-UNAVAILABLE Get = 5
+M2 12 failing calls -> attempts 3,2,1,1,1,1,1,1,1,1,1,1; then 60 successes; probe attempts=1 (2 = retries back on)
+M2 12 failing calls -> attempts 3,2,1,1,1,1,1,1,1,1,1,1; then 61 successes; probe attempts=2 (2 = retries back on)
+M3 target localhost: exhausted, attempts 3,2,1,1,1,1,1,1,1,1,1,1; probe right away attempts=1
+M3 after 3 s of connection rotation (+6 successes = +0.6 tokens): probe attempts=1 (2 = budget was refilled)
+===== grpcio 1.76.0
+channel A, 6 failing Get calls, attempts per call: [4, 1, 1, 1, 1, 1]
+channel B (new channel, same target, local subchannel pool), attempts: 4
+channel D (target spelled localhost:34939), attempts: 4

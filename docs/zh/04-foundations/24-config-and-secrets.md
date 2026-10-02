@@ -12,7 +12,7 @@
 - 密钥来源端口：读密钥、重读密钥、不重启就轮换；
 - 开发机上的密钥放在哪。
 
-不在本文：有哪些键、怎么命名（[04-configuration.md](../01-conventions/04-configuration.md)）；各部署目标的具体操作（`brickkit-deploy` 技能）。
+不在本文：有哪些键、怎么命名（[04-configuration.md](../01-conventions/04-configuration.md)；协议键的完整目录，含类型和默认值，是 `be-protocol` 的 `schemas/config-keys.yaml`，第 P2 章）；各部署目标的具体操作（`brickkit-deploy` 技能）。
 
 ## 选择
 
@@ -32,6 +32,19 @@
 - 键就是环境变量名，在 `configSchema` 里声明类型、是否必填、默认值，以及是否 `secret: true`（[04-configuration.md](../01-conventions/04-configuration.md#键名)）。
 - 组件代码只从 SDK 交给它的运行时读配置，绝不读进程环境（[02-backend.md](../01-conventions/02-backend.md#合并安全)）。
 - 外壳里，brickKit 把所有成员的配置打成一个 JSON 值（`BRICKKIT_SERVED_MEMBERS_CONFIG`）传进来；启动器只把每个成员自己的键交给它（[27-shells.md](27-shells.md)）。
+
+**容易弄错的协议键。** 不是完整列表；每个键名和默认值以 `be-protocol` 的 `schemas/config-keys.yaml` 为准。
+
+| 键 | 默认值 | 含义 |
+|---|---|---|
+| `PG_USER`、`PG_PASSWORD`（secret） | — | 运行期角色：只有 DML，不是属主角色的成员；是服务的登录角色，也是每个事务用 `SET LOCAL ROLE` 切换到的角色。外壳里由外壳的登录角色 `SET LOCAL ROLE` 到各成员的 `PG_USER`（[03-database.md](03-database.md)） |
+| `PG_OWNER_USER`、`PG_OWNER_PASSWORD`（secret） | — | 属主角色：`LOGIN`，拥有表，执行迁移和平台迁移；绝不写成字面量，运行中的服务从不使用。限制：brickKit 给迁移容器的环境与服务相同，所以运行中的进程也会收到这两个键，SDK 不理会它们；等 brickKit FR06-013（只给迁移步骤的环境变量覆盖）落地后才改变 |
+| `S3_PUBLIC_URL` | `S3_URL` | 浏览器使用的地址；预签名 URL 按它签名（[22-object-storage.md](22-object-storage.md)） |
+| `DEFAULT_LOCALE` | `zh-CN` | 部署的默认语言（BCP 47），共享：错误体的 `title` 和 `detail`，以及服务端文本的回退语言（[26-i18n-data.md](26-i18n-data.md)） |
+| `AUTHZ_URL`、`IAM_URL` | — | 已安装的授权 / 身份成员的基础 URL，用成员自己的服务名，共享，写在 `config/vars.yaml`，从不是依赖边。该族的 gRPC 端口按 `be-protocol` P2 的规则从它的 `*_URL` 推出 |
+| `BOOTSTRAP_ADMIN_LOGIN` | — | 第一位管理员在 IdP 的登录名或电子邮箱，共享；在此人第一次登录时绑定到平台 `sub`，因为平台 `sub` 事先无法知道。不存在 `BOOTSTRAP_ADMIN_SUB` |
+| `EVENTS_MAX_DELIVER` | `8` | SDK 一侧的死信阈值：消息的 `NumDelivered` 超过它时，SDK 写入死信消息并终止原消息；服务端的 `MaxDeliver` 是 `-1`（[12-event-bus.md](12-event-bus.md)） |
+| `EVENTS_BACKOFF` | `1s,10s,1m,5m,15m,30m,1h` | SDK 的 `NakWithDelay` 延迟序列；消费者没有服务端 `BackOff` |
 
 **值形式**，写在 `config/vars.yaml`、`config/<scope>-<name>.yaml` 或部署文件的 `vars:` 里：
 
@@ -110,7 +123,8 @@
 ## 相关决策
 
 - [0106 基础设施不是组件](../02-decisions/01-architecture/0106-infrastructure-is-not-a-component.md)：共享连接键在 `config/vars.yaml` 里只写一次。
-- [0107 权限 bundle 与 token 公钥地址是共享变量，不是依赖](../02-decisions/01-architecture/0107-authz-and-iam-addresses-are-shared-vars.md)：共享地址就是配置。
+- [0107 授权与身份经共享变量访问，从不经依赖](../02-decisions/01-architecture/0107-authz-and-iam-addresses-are-shared-vars.md)：共享地址就是配置。
+- [0109 规则写在语言中立的组件协议里，由黑盒套件检查](../02-decisions/01-architecture/0109-language-neutral-component-protocol.md)：配置键和严格解析是组件协议的一部分。
 - 计划新增：无。"没有配置服务器"是 brickKit 自己的设计原则，记在根目录 `AGENTS.md` 里。
 
 ## 已知限制

@@ -1,0 +1,66 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>r1-09 SPA</title>
+<!--
+  只依赖 OIDC discovery 的浏览器端登录：不写任何 Casdoor 路径。
+  ISSUER 和 CLIENT_ID 是将来 GET /api/iam/login-config 会给前端的两个值。
+  / 显示「登录」按钮；/callback 用授权码 + code_verifier 在浏览器里直接换 token（公共客户端，无 secret）。
+-->
+<button id="login">login</button>
+<pre id="out"></pre>
+<script type="module">
+const ISSUER = "http://localhost:38000";
+const CLIENT_ID = "r1-spa-client-id";
+const REDIRECT = location.origin + "/callback";
+const out = document.getElementById("out");
+const log = (k, v) => { out.textContent += k + ": " + (typeof v === "string" ? v : JSON.stringify(v, null, 2)) + "\n"; };
+const b64url = (b) => btoa(String.fromCharCode(...new Uint8Array(b))).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+const rand = (n) => b64url(crypto.getRandomValues(new Uint8Array(n)));
+const decode = (jwt) => { const [h, p] = jwt.split("."); const d = (s) => JSON.parse(atob(s.replace(/-/g, "+").replace(/_/g, "/"))); return { header: d(h), payload: d(p) }; };
+
+async function discovery() {
+  const r = await fetch(ISSUER + "/.well-known/openid-configuration");   // 跨源：要 CORS
+  return r.json();
+}
+
+document.getElementById("login").onclick = async () => {
+  const d = await discovery();
+  const verifier = rand(32), state = rand(16), nonce = rand(16);
+  sessionStorage.setItem("pkce", JSON.stringify({ verifier, state, nonce }));
+  const challenge = b64url(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(verifier)));
+  const u = new URL(d.authorization_endpoint);
+  for (const [k, v] of Object.entries({ client_id: CLIENT_ID, redirect_uri: REDIRECT, response_type: "code",
+      scope: "openid profile email offline_access", state, nonce, code_challenge: challenge, code_challenge_method: "S256" }))
+    u.searchParams.set(k, v);
+  location.assign(u);
+};
+
+if (location.pathname === "/callback") {
+  try {
+    const q = new URLSearchParams(location.search);
+    const { verifier, state, nonce } = JSON.parse(sessionStorage.getItem("pkce") || "{}");
+    log("state_matches", q.get("state") === state);
+    const d = await discovery();
+    log("discovery.token_endpoint", d.token_endpoint);
+    const r = await fetch(d.token_endpoint, {                               // 跨源 POST：要 CORS
+      method: "POST",
+      headers: { "content-type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({ grant_type: "authorization_code", client_id: CLIENT_ID,
+        code: q.get("code"), redirect_uri: REDIRECT, code_verifier: verifier }),
+    });
+    log("token_http_status", String(r.status));
+    log("token_cors_acao", String(r.headers.get("access-control-allow-origin")));
+    const body = await r.json();
+    log("token_response_keys", Object.keys(body));
+    for (const k of ["access_token", "id_token", "refresh_token"])
+      if (body[k] && body[k].split(".").length === 3) log(k, decode(body[k]));
+    if (body.id_token) log("nonce_matches", decode(body.id_token).payload.nonce === nonce);
+    log("access_token_equals_id_token", body.access_token === body.id_token);
+    const jwks = await (await fetch(d.jwks_uri)).json();                      // 跨源：要 CORS
+    log("jwks_keys", jwks.keys.map((k) => ({ kid: k.kid, alg: k.alg, kty: k.kty, use: k.use })));
+    log("RESULT", "BROWSER_PKCE_OK");
+  } catch (e) {
+    log("RESULT", "BROWSER_PKCE_FAILED " + e);
+  }
+}
+</script>

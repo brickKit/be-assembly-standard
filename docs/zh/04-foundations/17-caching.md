@@ -101,8 +101,8 @@
 
 ## 相关决策
 
-- [0201 不引入 Redis](../02-decisions/02-permissions/0201-no-redis.md)：本文承载它的分析。计划修订措辞为"没有缓存服务器；缓存只在进程内，经 SDK 创建"。
-- [0202 权限判定基于本地 bundle](../02-decisions/02-permissions/0202-local-permission-bundle.md)：bundle 是每个进程都必须持有的那一份缓存。
+- [0201 不用 Redis，不设缓存服务器](../02-decisions/02-permissions/0201-no-redis.md)：本文承载它的分析：没有缓存服务器；缓存只在进程内，经 SDK 创建。
+- [0202 权限在本地判定](../02-decisions/02-permissions/0202-local-permission-bundle.md)：bundle 是每个进程都必须持有的那一份缓存。
 
 ## 已知限制
 

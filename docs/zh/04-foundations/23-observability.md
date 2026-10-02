@@ -40,11 +40,11 @@
 | 发布事件 | 信封里的 trace 上下文（[13-event-contracts.md](13-event-contracts.md)） | 生产者的 span 上下文写进消息 |
 | 消费事件 | — | 消费方开一个**新 trace，用 span link 指向生产者的 span**，而不是作为它的子 span（OpenTelemetry messaging 约定）：否则很长的异步链会长成一棵没有上限的 trace |
 
-传播器是无状态的，每个进程只装一次；它是遥测里唯一一样进程级的东西。
+传播器和 OTLP 导出器是遥测里仅有的进程级的东西。两者都归平台一侧（单独运行时的启动器，或外壳）所有，从不归模块：模块既不安装它们，也不关闭它们。每一处埋点（HTTP 服务端、gRPC 服务端和客户端、出站 HTTP、消费者）都显式拿到本成员的 tracer provider、meter provider 和传播器，从不用进程全局的。全局 tracer provider 只是兜底，它的 `service.name` 是外壳自己的 ID，所以带这个名字的 span 就暴露出一处漏掉的埋点。
 
 **关联。** `X-Request-Id` 是客户端能看到、能报给我们的 id。请求进来没带它时，第一个服务把它设为 trace id。出站调用时继续往下传。每条日志都带 `trace_id`；事件带 `ce-causationid`（[13-event-contracts.md](13-event-contracts.md)）。
 
-**resource 属性**，每个成员一份：`service.name` = 组件 ID（`erp/sales`）、`service.version` = 组件版本、`service.namespace` = 项目、`service.instance.id` = 容器或 Pod、`deployment.environment`。外壳里每个成员有自己的 tracer provider 和 meter provider，带这些属性；导出器共用。
+**resource 属性**，每个成员一份：`service.name` = 组件 ID（`erp/sales`）、`service.version` = 组件版本、`service.namespace` = 项目、`service.instance.id` = 容器或 Pod、`deployment.environment`。外壳里每个成员有自己的 tracer provider 和 meter provider，带这些属性；导出器共用，只由外壳在所有成员都停下之后关闭。停掉一个成员只冲刷这个成员自己的 span 队列。
 
 **导出。** OTLP 发往 `OTEL_BASE_URL`（[04-configuration.md](../01-conventions/04-configuration.md#共享连接键)）。为空表示不导出、也不报错；组件照常运行。
 
@@ -79,7 +79,11 @@
 | 调用方的错误：`INVALID_ARGUMENT`、`NOT_FOUND`、`PERMISSION_DENIED`、`FAILED_PRECONDITION` …… / 4xx | INFO |
 
   ERROR 表示运维必须处理。调用方的错误永远不是 ERROR。
-- **个人数据脱敏**在每个 SDK 的日志处理器里自动完成（手机号、e-mail、证件号），用同一组共享向量校验，所有语言脱敏结果一致。
+- **脱敏**在每个 SDK 的日志处理器里自动完成，从不由业务代码做，用共享向量 `redaction` 校验，所有语言脱敏结果一致：
+  - 受保护的名字：`phone`、`mobile`、`id_card`、`password`、`bank_card`、`email`、`token`、`secret`、`authorization`、`cookie`、`set-cookie`、`api_key`；
+  - 字段名先拆成词：按 camelCase 拆，`_`、`-`、`.` 都当分隔符，转小写。受保护名字的词在其中作为一段连续的完整词出现时就算匹配（最后一个词可带复数 `s`）：`phone_number`、`accessToken`、`user.email` 匹配；`telephone`、`tokenizer` 不匹配；
+  - 匹配字段的值，不论什么类型，都换成字符串 `"[REDACTED]"`，不再往里走；值从不被扫描，所以个人数据绝不写进自由文本；信封字段从不改动；
+  - 超过 2 KiB 的行被截断，截断后仍是一个合法的 JSON 对象。
 - 组件不自己经网络发日志；stdout 是唯一出口。collector 读容器日志（Docker 上用文件日志 receiver，Kubernetes 上用其日志管道），转给 Loki。
 
 **审计日志**不是应用日志：
@@ -137,21 +141,23 @@
 - 入站 `traceparent` 被继承，出站用户面调用注入它；
 - gRPC 客户端和服务端在同一个 trace 里；
 - 事件消费方的 span 链接到生产者的 span；
-- 外壳里两个成员的 span 带不同的 `service.name`；
+- 外壳里两个成员的 span 带不同的 `service.name`；走完一条 HTTP → gRPC → 事件的链路后，没有任何 span 带外壳自己的 ID；停掉一个成员，不会丢掉另一个成员之后发出的 span；
 - 外壳汇总的 `/metrics` 带 `component` 标签，且没有任何 collector 被注册两次；
 - `LOG_LEVEL=warn` 时 info 行不输出；
 - 级别映射：调用方错误记 INFO，内部错误记 ERROR，取消不记；
 - 脱敏向量在每个 SDK 里输出相同；
+- 组件协议套件的 `obs` profile 从外面对每个组件检查同样的事：`CP-OBS-01`（入站 `traceparent` 成为服务端 span 的父）、`CP-OBS-02`（日志字段、按错误码定级别）、`CP-OBS-03`（`/metrics` 的名字和标签）、`CP-OBS-04`（脱敏）、`CP-OBS-05`（`LOG_LEVEL`）；外壳里是 `CP-SHELL-04`、`CP-SHELL-09`、`CP-SHELL-10`；
 - 审计事件存在，当且仅当业务事务已提交。
 
 基础设施：infra 和 observability 的 compose 文件里没有 `:latest` 镜像。真机：sales → inventory → finance 在 Tempo 里是一个 trace 加它的链接。
 
 ## 相关决策
 
-- [0103 每种语言一套锁定的技术栈](../02-decisions/01-architecture/0103-locked-stack-per-language.md)：每个模块一个指标 registry。
+- [0103 每种语言内部一套锁定的技术栈](../02-decisions/01-architecture/0103-locked-stack-per-language.md)：每个模块一个指标 registry。
 - [0106 基础设施不是组件](../02-decisions/01-architecture/0106-infrastructure-is-not-a-component.md)：可观测性栈在组件图之外运行。
 - [0108 一个外壳、一个仓库、一个镜像、一份成员清单](../02-decisions/01-architecture/0108-one-repository-per-shell.md)：外壳里每成员的身份。
-- 计划新增："审计记录是业务数据，走 outbox"。
+- [0504 一种错误对象，由目录里的 reason 标识](../02-decisions/05-runtime/0504-error-model-and-reason-catalogue.md)：日志级别跟随状态码；内部错误只记日志，从不返回。
+- 计划新增、尚未编号："审计记录是业务数据，走 outbox"。
 
 ## 已知限制
 

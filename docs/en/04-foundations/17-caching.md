@@ -101,8 +101,8 @@ Gate `module-global-cache-scan` (decided) warns when module code uses a package-
 
 ## Decision records
 
-- [0201 No Redis](../02-decisions/02-permissions/0201-no-redis.md): this document carries its analysis. A revision is planned to read "no cache server; caches live only in process, through the SDK".
-- [0202 Permissions are checked against a local bundle](../02-decisions/02-permissions/0202-local-permission-bundle.md): the bundle is the one cache every process must hold.
+- [0201 No Redis, no cache server](../02-decisions/02-permissions/0201-no-redis.md): this document carries its analysis: no cache server; caches live only in process, through the SDK.
+- [0202 Permissions are decided locally](../02-decisions/02-permissions/0202-local-permission-bundle.md): the bundle is the one cache every process must hold.
 
 ## Known limits
 

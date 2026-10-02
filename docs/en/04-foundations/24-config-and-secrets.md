@@ -12,7 +12,7 @@ How a component receives its configuration and its secrets, how values are writt
 - the secret source port: reading a secret, re-reading it, rotating it without a restart;
 - where secrets live on a developer machine.
 
-Not covered: which keys exist and how they are named ([04-configuration.md](../01-conventions/04-configuration.md)); deployment mechanics per target (the `brickkit-deploy` skill).
+Not covered: which keys exist and how they are named ([04-configuration.md](../01-conventions/04-configuration.md); the full catalogue of protocol keys, with types and defaults, is `be-protocol` `schemas/config-keys.yaml`, chapter P2); deployment mechanics per target (the `brickkit-deploy` skill).
 
 ## Choice
 
@@ -32,6 +32,19 @@ Not covered: which keys exist and how they are named ([04-configuration.md](../0
 - A key is an environment variable name, declared in `configSchema` with its type, whether it is required, its default and whether it is `secret: true` ([04-configuration.md](../01-conventions/04-configuration.md#key-names)).
 - Component code reads configuration only from the runtime the SDK hands it, never from the process environment ([02-backend.md](../01-conventions/02-backend.md#merge-safety)).
 - In a shell, brickKit passes every member's configuration as one JSON value (`BRICKKIT_SERVED_MEMBERS_CONFIG`); the launcher gives each member only its own keys ([27-shells.md](27-shells.md)).
+
+**Protocol keys that are easy to get wrong.** Not the full list; `be-protocol` `schemas/config-keys.yaml` is canonical for every name and default.
+
+| Key | Default | Meaning |
+|---|---|---|
+| `PG_USER`, `PG_PASSWORD` (secret) | — | the runtime role: DML only, not a member of the owner role; the service's login role and the role every transaction switches to with `SET LOCAL ROLE`. In a shell, the shell's login role does `SET LOCAL ROLE` to each member's `PG_USER` ([03-database.md](03-database.md)) |
+| `PG_OWNER_USER`, `PG_OWNER_PASSWORD` (secret) | — | the owner role: `LOGIN`, owns the tables, runs the migrations and the platform migration; never a literal, never used by the running service. Limitation: brickKit gives the migration container the service's environment, so the running process also receives both keys and the SDK ignores them, until brickKit FR06-013 (migration-only environment overrides) lands |
+| `S3_PUBLIC_URL` | `S3_URL` | the address browsers use; presigned URLs are signed for it ([22-object-storage.md](22-object-storage.md)) |
+| `DEFAULT_LOCALE` | `zh-CN` | the deployment's default language (BCP 47), shared: the `title` and `detail` of problem bodies, the fallback of server-side text ([26-i18n-data.md](26-i18n-data.md)) |
+| `AUTHZ_URL`, `IAM_URL` | — | base URL of the installed authorization / identity member by the member's own service name, shared in `config/vars.yaml`, never a dependency edge. The family's gRPC port is derived from its `*_URL` by the rule in `be-protocol` P2 |
+| `BOOTSTRAP_ADMIN_LOGIN` | — | the IdP login name or e-mail of the first administrator, shared; bound to the platform `sub` at that person's first login, because the platform `sub` cannot be known before. There is no `BOOTSTRAP_ADMIN_SUB` |
+| `EVENTS_MAX_DELIVER` | `8` | the SDK-side dead-letter threshold: when a message's `NumDelivered` exceeds it, the SDK writes the dead-letter message and terminates the original; the server's `MaxDeliver` is `-1` ([12-event-bus.md](12-event-bus.md)) |
+| `EVENTS_BACKOFF` | `1s,10s,1m,5m,15m,30m,1h` | the SDK's `NakWithDelay` schedule; the consumer has no server-side `BackOff` |
 
 **Value forms**, written in `config/vars.yaml`, `config/<scope>-<name>.yaml` or a deploy file's `vars:`:
 
@@ -110,7 +123,8 @@ SDK tests in every official SDK, written red first:
 ## Decision records
 
 - [0106 Infrastructure is not a component](../02-decisions/01-architecture/0106-infrastructure-is-not-a-component.md): shared connection keys written once in `config/vars.yaml`.
-- [0107 The permission bundle and token keys are shared variables, not dependencies](../02-decisions/01-architecture/0107-authz-and-iam-addresses-are-shared-vars.md): shared addresses as configuration.
+- [0107 Authorization and identity are reached through shared variables](../02-decisions/01-architecture/0107-authz-and-iam-addresses-are-shared-vars.md): shared addresses as configuration.
+- [0109 The rules live in a language-neutral component protocol](../02-decisions/01-architecture/0109-language-neutral-component-protocol.md): the configuration keys and strict parsing are part of the component protocol.
 - Planned: none. "No configuration server" is brickKit's own design principle, recorded in the root `AGENTS.md`.
 
 ## Known limits

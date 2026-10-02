@@ -1,0 +1,14 @@
+syntax = "proto3";
+package r1.echo.v1;
+
+message GetRequest { string id = 1; int32 sleep_ms = 2; }
+message GetResponse { string id = 1; string peer = 2; }
+message CreateRequest { string idempotency_key = 1; }
+message CreateResponse { string id = 1; }
+
+service Echo {
+  // P7.8: read-only -> retried on UNAVAILABLE
+  rpc Get(GetRequest) returns (GetResponse) { option idempotency_level = NO_SIDE_EFFECTS; }
+  // P7.8: no idempotency level -> transparent retry only
+  rpc Create(CreateRequest) returns (CreateResponse);
+}

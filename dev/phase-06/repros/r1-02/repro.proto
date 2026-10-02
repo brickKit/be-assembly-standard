@@ -1,0 +1,17 @@
+// R1 #2 的测试服务。方法选项 idempotency_level 是 protobuf 内置的 MethodOptions 字段，
+// 生成器据此给出 service config（P7.8）。消息用包装类型，免得要 protoc 生成代码。
+syntax = "proto3";
+package repro.v1;
+
+import "google/protobuf/wrappers.proto";
+
+service Widgets {
+  rpc GetWidget(google.protobuf.StringValue) returns (google.protobuf.StringValue) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+  rpc TouchWidget(google.protobuf.StringValue) returns (google.protobuf.StringValue) {
+    option idempotency_level = IDEMPOTENT;
+  }
+  // 没有选项：不配置 retryPolicy，只有 gRPC 自带的透明重试
+  rpc CreateWidget(google.protobuf.StringValue) returns (google.protobuf.StringValue);
+}

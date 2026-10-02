@@ -15,13 +15,13 @@ N 个组件要共用一个进程而互不察觉，需要什么：一个外壳能
 
 ## 选择
 
-**一个外壳只合并同一种语言写的组件。** 每个组件可以用自己的语言写：进项目靠的是语言中立的组件协议和它的黑盒一致性套件（计划中的 `02-languages-and-component-protocol.md`）。合并是另一回事：外壳把成员的代码编译进一个进程、一个运行时，所以只有当一种语言既有官方 SDK、**又有**该 SDK 的外壳启动器时，才有这种语言的外壳。用别的语言写的组件可以进项目、通过一致性测试、单独运行；等它的语言两样都有了，才能合并。今天：Go 外壳 `be/go-core`、`be/go-infra`、`be/go-backoffice`；一个 Python 外壳 `be/py-render`；TypeScript 没有外壳启动器，所以 BFF 单独运行。
+**一个外壳只合并同一种语言写的组件。** 每个组件可以用自己的语言写：进项目靠的是语言中立的组件协议和它的黑盒一致性套件（[02-languages-and-component-protocol.md](02-languages-and-component-protocol.md)）。合并是另一回事：外壳把成员的代码编译进一个进程、一个运行时，所以只有当一种语言既有官方 SDK、**又有**该 SDK 的外壳启动器时，才有这种语言的外壳。用别的语言写的组件可以进项目、通过一致性测试、单独运行；等它的语言两样都有了，才能合并。今天：Go 外壳 `be/go-core`、`be/go-infra`、`be/go-backoffice`；一个 Python 外壳 `be/py-render`；TypeScript 没有外壳启动器，所以 BFF 单独运行。
 
 **外壳只把 N 个进程变成一个**（原则二）。它不加路由、不加逻辑、不在成员之间加调用；成员之间照样经各自端口上真实的 HTTP 或 gRPC 互相调用（[0101](../02-decisions/01-architecture/0101-no-imports-between-components.md)）。启动器是 SDK 代码；外壳仓库就是一份成员清单（[0108](../02-decisions/01-architecture/0108-one-repository-per-shell.md)）。
 
 **四条外壳不变量：**
 
-1. **进程级的东西恰好四样**：OpenTelemetry 导出器与传播器；权限 bundle 与 token 验签器（JWKS）；物理数据库连接池；事件总线连接。
+1. **进程级的东西恰好四样**：OpenTelemetry 导出器与传播器（共享的导出器只由启动器在所有成员都停下之后关闭；停掉一个成员只冲刷它自己的 span 队列）；权限 bundle 与 token 验签器（JWKS）；物理数据库连接池；事件总线连接。
 2. **其余一切都按成员**：配置、logger、tracer 与 meter provider、指标 registry、HTTP 与 gRPC 服务端、出站连接、缓存、后台任务、授权投影、advisory 锁的键。
 3. **每个成员有自己的资源预算**：数据库连接、出站并发、缓存内存。一个成员耗尽预算，绝不会饿死另一个。
 4. **两种形态下监督行为相同**：外壳里成员失败的后台任务按退避重启，和单跑时完全一样；成员绝不停掉或退出整个进程。
@@ -36,17 +36,17 @@ N 个组件要共用一个进程而互不察觉，需要什么：一个外壳能
 
 - **输入。** brickKit 传入 `BRICKKIT_SERVED_MEMBERS` 和 `BRICKKIT_SERVED_MEMBERS_CONFIG`（一个 JSON 值）。启动器恰好启动列出的成员，每个只拿到自己的配置键；列出的成员没有编译进来或编译进来的版本不同、某个成员的 `PG_HOST`、`PG_PORT`、`PG_DATABASE`、`EVENT_BUS_URL`、`AUTHZ_URL`、`IAM_*` 或 `TENANT_ID` 与外壳的不同（这几项撑着那四样进程级共享的东西）、或者任何成员的配置非法（全部错误一起报出）时，拒绝启动，并点名是哪个成员。
 - **端口。** 每个成员在自己的 HTTP 端口和自己的 `extraPorts` 上监听，有自己的 gRPC 服务端和拦截器链。地址按成员自己的服务名解析，brickKit 把它做成外壳的别名（[04-configuration.md](../01-conventions/04-configuration.md#依赖地址)）。
-- **数据库。** 外壳用它自己的 `PG_USER` 登录，每个事务用 `SET LOCAL ROLE` 切到该成员自己的 `PG_USER`（取自成员的配置，绝不由 schema 名推导），并把事务内的 `search_path` 设为该成员的 `PG_SCHEMA`。物理池大小是外壳的 `PG_POOL_MAX`；每个成员经一个容量为它自己 `PG_POOL_MAX` 的限额取连接，预算用尽时怎么办见 [03-database.md](03-database.md)。
+- **数据库。** 外壳要求 PostgreSQL 16 及以上；单独运行的组件仍以 14 为下限。外壳用它自己的 `PG_USER` 登录，这个登录角色以 `WITH INHERIT FALSE, SET TRUE` 被授予每个成员的运行期角色，因此不持有它们的任何权限。每个事务用 `SET LOCAL ROLE` 切到该成员自己的运行期 `PG_USER`（取自成员的配置，绝不由 schema 名推导；绝不切到属主角色，外壳从不被授予属主角色），把事务内的 `search_path` 设为该成员的 `PG_SCHEMA`，并用 `SET LOCAL application_name` 设为该成员的 ID，让 `pg_stat_activity` 能按成员数连接。成员之间的隔离是 SDK 的职责，不是数据库的：只有运行时的 store 发 `SET LOCAL ROLE`，成员代码从不发 `SET ROLE`（门禁 `identity-literal-scan`）。物理池大小是外壳的 `PG_POOL_MAX`；每个成员经一个容量为它自己 `PG_POOL_MAX` 的限额取连接，预算用尽时怎么办见 [03-database.md](03-database.md)。
 - **advisory 锁**只用事务级的，键由「成员 schema 加锁名」的哈希和锁的各部分的哈希组成，两个成员绝不会争同一个键（[10-local-transactions.md](10-local-transactions.md)）。
-- **遥测。** 每个成员一个 tracer 和 meter provider，`service.name` = 成员的组件 ID；共用一个导出器；外壳端口上一个汇总的 `/metrics`，每个成员带一个 `component` 标签（[23-observability.md](23-observability.md)）。
+- **遥测。** 每个成员一个 tracer 和 meter provider，`service.name` = 成员的组件 ID；每一处埋点（HTTP 与 gRPC 的服务端和客户端、出站 HTTP、消费者）都显式拿到该成员的 provider 和传播器，从不用 OpenTelemetry 的进程全局对象；全局 tracer provider 只作兜底，带外壳自己的 ID，所以出现这个名字的 span 就说明有埋点漏了；共用一个导出器，只由启动器在所有成员都停下之后关闭；外壳端口上一个汇总的 `/metrics`，每个成员带一个 `component` 标签（[23-observability.md](23-observability.md)）。
 - **健康检查。** `/healthz` 只报告进程活着；一个成员的下游抖动不能让所有成员一起重启（[02-backend.md](../01-conventions/02-backend.md#健康检查与镜像)）。
-- **迁移**在外壳启动之前，从每个成员自己的镜像里跑，绝不在外壳里跑。
+- **迁移**在外壳启动之前，从每个成员自己的镜像里跑，绝不在外壳里跑，各自以该成员自己的属主凭据（`PG_OWNER_USER` / `PG_OWNER_PASSWORD`，[08-schema-evolution.md](08-schema-evolution.md#迁移入口)）登录；外壳的登录角色从不被授予属主角色。
 
 **合并安全核对表。** SDK 的每个功能，涉及到哪一项就在这里核对，过了才能叫"合并安全"。
 
 | 项 | 外壳里的风险 | 怎么保证安全 | 由什么证明 |
 |---|---|---|---|
-| 事务身份 | 不带 `LOCAL` 的 `SET` 泄漏给下一个借连接的 | `SET LOCAL ROLE` 和 `search_path`；store 绑定成员身份 | 已有测试、store 一致性套件 |
+| 事务身份 | 不带 `LOCAL` 的 `SET` 泄漏给下一个借连接的 | `SET LOCAL ROLE`、`search_path` 和 `application_name`；store 绑定成员身份；成员代码禁止 `SET ROLE` | 已有测试、store 一致性套件 |
 | 事务超时 | `SET ROLE` 之后，成员角色上的 `ALTER ROLE … SET` 不生效 | 每个事务用 `SET LOCAL` 设超时 | store 一致性套件 |
 | 连接池 | 一个无上限的共享池；一个成员就能把它吃光 | 池由外壳定大小，每个成员一份预算 | "一个成员预算耗尽不影响另一个" |
 | advisory 锁 | 同名键在成员之间相撞；会话级锁泄漏 | 键里含成员 ID；只用事务级 | "两个成员的锁互不阻塞" |
@@ -61,7 +61,7 @@ N 个组件要共用一个进程而互不察觉，需要什么：一个外壳能
 | 任务租约与时间槽 | 同一个组件的外壳实例和单跑实例重复干活 | 表在成员 schema 里，跨进程协调（[19-background-jobs.md](19-background-jobs.md)） | jobs 一致性套件 |
 | 后台任务失败 | 外壳里永久停止，单跑时重启进程 | SDK 监督者，两种形态一样 | "成员失败的任务被重启"（今天是红的） |
 | 缓存 | 包级 map 被成员共享 | 缓存按成员创建，加全局 map 门禁（[17-caching.md](17-caching.md)） | cache 一致性套件 |
-| trace | 所有 span 都挂在外壳名下 | 每个成员一个 tracer provider | "每个成员的 span 带自己的 `service.name`"（今天是红的） |
+| trace | 所有 span 都挂在外壳名下；一个成员停下就关掉了共享导出器 | 每个成员一个 tracer 和 meter provider，连同传播器显式传入；只有启动器关闭导出器 | "每个成员的 span 带自己的 `service.name`"（今天是红的） |
 | 日志 | SDK 用进程默认 logger 记日志，丢了成员 ID | SDK 只经成员的 logger 记日志 | "消费失败的日志带成员 ID" |
 | 指标 | 默认 registry 在第二个成员上 panic | 每个成员一个 registry，汇总时加 `component` 标签 | 已在用，加汇总测试 |
 | bundle 与 JWKS | — | 每个进程一份（不变量 1）；授权投影按成员，在它自己的 schema 里（[20-authorization-provider.md](20-authorization-provider.md)） | 已在用 |
@@ -113,19 +113,20 @@ N 个组件要共用一个进程而互不察觉，需要什么：一个外壳能
 ## 一致性测试
 
 - 上面核对表里的每一条红测试，在每个有启动器的官方 SDK 里都要有。
-- 组件协议套件里（计划中的 `02-languages-and-component-protocol.md`）：一个夹具组件分别单独运行和在外壳里运行，黑盒结果完全相同。
+- 组件协议套件里（[02-languages-and-component-protocol.md](02-languages-and-component-protocol.md)）：一个夹具组件分别单独运行和在外壳里运行，黑盒结果完全相同。
 - 门禁：`make module-check`（模块代码不读进程环境、不做进程级初始化、不退出进程）；外壳成员检查（注册的成员 = `shell.members` = 模块依赖声明）；`service-hostname-scan`。
 - 组装后真机：`be/go-core` 里 sales → inventory 的 `Reserve` 走回环 gRPC，记下的操作人是发起确认的用户；然后 `brickkit up --ignore-shells` 得到相同结果。
 
 ## 相关决策
 
+- [0105 任何语言，一份协议](../02-decisions/01-architecture/0105-any-language-one-protocol.md)：每个组件自选语言；外壳只合并同一门、有官方 SDK 和启动器的语言的成员；JVM 的内存开销是文档里的提醒。
+- [0109 规则写在语言中立的组件协议里，由黑盒套件检查](../02-decisions/01-architecture/0109-language-neutral-component-protocol.md)：组件协议，包括外壳成员的义务。
+- [0108 一个外壳、一个仓库、一个镜像、一份成员清单](../02-decisions/01-architecture/0108-one-repository-per-shell.md)：还有每个外壳一个 SDK 版本，以及启动器在启动时的核对。
+- [0508 后台工作只经 SDK 的 Jobs](../02-decisions/05-runtime/0508-background-work-only-through-jobs.md)：单跑和外壳里的监督方式相同。
 - [0101 组件之间禁止 import](../02-decisions/01-architecture/0101-no-imports-between-components.md)
 - [0102 一个数据库，每个组件一个 schema](../02-decisions/01-architecture/0102-one-schema-per-component.md)
-- [0103 每种语言一套锁定的技术栈](../02-decisions/01-architecture/0103-locked-stack-per-language.md)：保留，作为"每种语言内部锁定一套栈"。
-- [0105 不用 Java / C#](../02-decisions/01-architecture/0105-no-java-or-csharp.md)：将重写：取消禁令（每个组件自选语言），每个进程一个 JVM 的内存开销改为文档里的提醒。
-- [0107 权限 bundle 与 token 公钥地址是共享变量，不是依赖](../02-decisions/01-architecture/0107-authz-and-iam-addresses-are-shared-vars.md)
-- [0108 一个外壳、一个仓库、一个镜像、一份成员清单](../02-decisions/01-architecture/0108-one-repository-per-shell.md)
-- 计划新增："每个组件自选语言；SDK 是语言中立的组件协议加黑盒一致性套件"；"后台工作只经 SDK 的 Jobs"。
+- [0103 每种语言内部一套锁定的技术栈](../02-decisions/01-architecture/0103-locked-stack-per-language.md)：让每成员不变量能在代码里落实。
+- [0107 授权与身份经共享变量访问，从不经依赖](../02-decisions/01-architecture/0107-authz-and-iam-addresses-are-shared-vars.md)
 
 ## 已知限制
 

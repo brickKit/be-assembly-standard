@@ -6,7 +6,7 @@ What makes a piece of infrastructure a port, how the implementation behind it is
 
 ## Scope
 
-This document holds the rules shared by every port. Each port's own contract, alternatives and switch procedure are in its own document; the list is the [port table](README.md#ports). Slot families as an assembly concept (one component per variant, chosen when the project is assembled) are decided in [0104](../02-decisions/01-architecture/0104-variants-become-slot-families.md); this document covers how such a family is proved replaceable. The language-neutral component protocol, which every component implements whatever its language, is the subject of a separate document (planned, file 02); here it appears only as one more contract with a suite.
+This document holds the rules shared by every port. Each port's own contract, alternatives and switch procedure are in its own document; the list is the [port table](README.md#ports). Slot families as an assembly concept (one component per variant, chosen when the project is assembled) are decided in [0104](../02-decisions/01-architecture/0104-variants-become-slot-families.md); this document covers how such a family is proved replaceable. The language-neutral component protocol, which every component implements whatever its language, is the subject of [02-languages-and-component-protocol.md](02-languages-and-component-protocol.md); here it appears only as one more contract with a suite.
 
 ## Choice
 
@@ -56,7 +56,7 @@ What every port's document must specify in its own **Port contract** section, an
 - **Within one major version an SDK is backward compatible for module code.** A shell builds all its members against one SDK version, and every component and shell of one language pins that same version (planned gate `sdk-version-scan`), so an SDK minor that breaks a module's code breaks every shell hosting it. An API is deprecated in one minor and removed only in a later one, once no component in the project still uses it; building every shell proves that.
 - **Platform tables the SDK creates in each component's schema** (outbox, inbox, job leases, number series) evolve by expand and contract, because a member standalone and the same member in a shell may run different SDK versions against the same schema for a while. Platform SQL names its columns and never selects `*`.
 - **A suite is versioned with `be-acceptance`.** An SDK's release notes name the suite version it passes.
-- **The component protocol is versioned in its own repository**, the planned `brickKit/be-protocol`: the specification text, schemas, the reference DDL of the platform tables, the semantic vectors and the fixture contracts, starting at v1.0.0. A minor version only adds optional surface; a behaviour that becomes required needs a major. `be-acceptance` and the official SDKs pin one protocol version.
+- **The component protocol is versioned in its own repository**, `brickKit/be-protocol` (checked out at `tools/be-protocol`): the specification text, schemas, the reference DDL of the platform tables, the semantic vectors and the fixture contracts, starting at v1.0.0. A minor version only adds optional surface; a behaviour that becomes required needs a major. `be-acceptance` and the official SDKs pin one protocol version.
 
 ## Alternatives
 
@@ -108,7 +108,7 @@ Adding a new adapter:
 
 ## Conformance tests
 
-Layout: `tools/be-acceptance/conformance/<suite>/`, one folder per port, named by its short port name (`db`, `store`, `bus`, `jobs`, `rpc`, `userapi`, `authz`, `iam`, …); the component protocol suite is `conformance/component/`. The informal names `dbconf`, `authzconf`, `iamconf` and `compconf` mean `conformance/db`, `conformance/authz`, `conformance/iam` and `conformance/component`. Shared semantic vectors (money, time, numbering, request fingerprints, …) are not a suite: they live in `vectors/` of the planned `brickKit/be-protocol` repository, and the suites and each SDK's unit tests read them from there.
+Layout: `tools/be-acceptance/conformance/<suite>/`, one folder per port, named by its short port name (`db`, `store`, `bus`, `jobs`, `rpc`, `userapi`, `authz`, `iam`, …); the component protocol suite is `conformance/component/`. The informal names `dbconf`, `authzconf`, `iamconf` and `compconf` mean `conformance/db`, `conformance/authz`, `conformance/iam` and `conformance/component`. Shared semantic vectors (money, time, numbering, request fingerprints, …) are not a suite: they live in `vectors/` of the `brickKit/be-protocol` repository, and the suites and each SDK's unit tests read them from there.
 
 Each suite has up to three layers:
 
@@ -127,11 +127,11 @@ Rules:
 
 ## Decision records
 
-- [0104](../02-decisions/01-architecture/0104-variants-become-slot-families.md): when a variant becomes a slot family; this document adds how a family is proved replaceable.
-- [0106](../02-decisions/01-architecture/0106-infrastructure-is-not-a-component.md): infrastructure is not a component. A revision is planned: the event bus can be swapped through an SDK adapter chosen by URL scheme, which is more than a setting and less than a migration.
-- [0103](../02-decisions/01-architecture/0103-locked-stack-per-language.md): one locked stack inside each language; a revision is planned to name the TypeScript HTTP stack correctly and to describe the stack as the official SDKs' own.
-- [0105](../02-decisions/01-architecture/0105-no-java-or-csharp.md): a rewrite is planned. Any language whose implementation passes the component protocol suite may join; the memory cost of a JVM becomes a documented caveat.
-- Planned, not yet numbered: "SDK ports and conformance suites" (the criteria and layout in this document).
+- [0104 A slot family needs several reasonable implementations and no dependency edge](../02-decisions/01-architecture/0104-variants-become-slot-families.md): when a variant becomes a slot family, with one family contract and one suite per family; this document adds how a family is proved replaceable.
+- [0109 The rules live in a language-neutral component protocol](../02-decisions/01-architecture/0109-language-neutral-component-protocol.md): the component protocol and its black-box suite; the per-port suites under `tools/be-acceptance/conformance/<port>/` follow this document's criteria and layout.
+- [0106 Infrastructure is not a component](../02-decisions/01-architecture/0106-infrastructure-is-not-a-component.md): the event bus is swapped through an SDK adapter chosen by URL scheme, which is more than a setting and less than a migration.
+- [0103 One locked stack inside each language](../02-decisions/01-architecture/0103-locked-stack-per-language.md): one locked stack inside each language, which is the official SDK's own.
+- [0105 Any language, one protocol](../02-decisions/01-architecture/0105-any-language-one-protocol.md): any language whose implementation passes the component protocol suite may join; the memory cost of a JVM is a documented caveat.
 
 ## Known limits
 

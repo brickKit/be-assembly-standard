@@ -7,7 +7,7 @@ The REST plane that people reach through the browser, the mobile BFF and, later,
 ## Scope
 
 - **In:** the shape of every user-facing HTTP exchange that is not business-specific; status codes; the error body and its gRPC and GraphQL forms; the reason catalogue; the versioning policy for internal and external callers.
-- **Out:** which permission key a route requires and how it is declared ([02-backend.md](../01-conventions/02-backend.md#permissions)); the authorization provider and service accounts ([20-authorization-provider.md](20-authorization-provider.md)); tokens ([21-identity-provider.md](21-identity-provider.md)); deadlines ([16-deadlines-and-retries.md](16-deadlines-and-retries.md)); rate limits and routing at the edge (the edge document is planned as file 18); log levels for errors ([23-observability.md](23-observability.md)); the frontend's use of all this ([03-frontend.md](../01-conventions/03-frontend.md)).
+- **Out:** which permission key a route requires and how it is declared ([02-backend.md](../01-conventions/02-backend.md#permissions)); the authorization provider and service accounts ([20-authorization-provider.md](20-authorization-provider.md)); tokens ([21-identity-provider.md](21-identity-provider.md)); deadlines ([16-deadlines-and-retries.md](16-deadlines-and-retries.md)); rate limits and routing at the edge ([18-edge.md](18-edge.md)); log levels for errors ([23-observability.md](23-observability.md)); the frontend's use of all this ([03-frontend.md](../01-conventions/03-frontend.md)).
 
 ## Choice
 
@@ -62,6 +62,8 @@ The REST plane that people reach through the browser, the mobile BFF and, later,
 | the record does not exist | 404 `NOT_FOUND` | 404 |
 | the record exists but the caller can see it through no rule, share or relation | 404 `NOT_FOUND`, indistinguishable from the row above | 404 |
 | visible, but the action needs a key the caller lacks (for a record shared for viewing only) | — | 403 `MISSING_PERMISSION` |
+| visible, the caller holds the action's key, but this record is outside that key's scope | — | 403 `OUT_OF_SCOPE` |
+| a request parameter that is itself a scope value outside the caller's scope (`warehouse_id=7`) | 403 `OUT_OF_SCOPE` | 403 `OUT_OF_SCOPE` |
 | visible and allowed, but the state forbids it | — | 400 `FAILED_PRECONDITION` with the component's reason (`ORDER_NOT_DRAFT`) |
 | the permission bundle has not loaded yet | 503 `AUTHZ_NOT_READY` | 503 |
 
@@ -87,11 +89,11 @@ The REST plane that people reach through the browser, the mobile BFF and, later,
 | Field | Rule |
 |---|---|
 | `type` | `urn:be:<domain>:<reason>` |
-| `title` | the reason's short title in the deployment's default language, from the catalogue |
+| `title` | the reason's short title in the deployment's default language (`DEFAULT_LOCALE`, default `zh-CN`), from the catalogue |
 | `status` | the HTTP status |
 | `code` | the canonical gRPC code name |
-| `reason`, `domain` | the identity of the error: the frontend looks up `domain` + `reason` in the catalogue |
-| `detail` | the rendered message in the default language, for logs and debugging; shown to a user only when the frontend does not know the reason |
+| `reason`, `domain` | the identity of the error: the frontend looks up `domain` + `reason` in the catalogue. `domain` is the component ID, or `be` for a platform reason; the members of a slot family use the family's ID instead of their own (every authorization member answers `domain: infra/authz`), so the frontend keeps one table per family |
+| `detail` | the rendered message in `DEFAULT_LOCALE`, for logs and debugging; shown to a user only when the frontend does not know the reason |
 | `metadata` | string values only, the template's parameters; never personal data beyond what the user sent, never secrets |
 | `violations` | field errors, from gRPC `BadRequest` |
 | `instance` | the request path |
@@ -112,6 +114,8 @@ Status code plus the default-language `detail` as the message, plus details: `Er
 | `NOT_FOUND` | 404 | `UNAVAILABLE` | 503 |
 | `ALREADY_EXISTS`, `ABORTED` | 409 | `DEADLINE_EXCEEDED` | 504 |
 | `INTERNAL`, `UNKNOWN`, `DATA_LOSS` | 500 | | |
+
+Two exceptions: `BODY_TOO_LARGE` (`INVALID_ARGUMENT`) answers 413, and `UPSTREAM_UNAVAILABLE` (`UNAVAILABLE`), raised by the edge, answers 502 or 503.
 
 ### GraphQL form (mobile BFF)
 
@@ -134,9 +138,9 @@ reasons:
     deprecated: false
 ```
 
-- `reason` is `UPPER_SNAKE`, unique within the domain. Entries are **append-only**, like `registry/permissions.tsv`: never renamed, removed or reused; retired with `deprecated: true` ([07-registries.md](../01-conventions/07-registries.md#append-only)).
+- `reason` is `UPPER_SNAKE`, unique within the domain. A slot-family member's reasons are listed in its family contract's `errors.yaml` under the family's domain (`infra/authz`), not in the member's own catalogue. Entries are **append-only**, like `registry/permissions.tsv`: never renamed, removed or reused; retired with `deprecated: true` ([07-registries.md](../01-conventions/07-registries.md#append-only)).
 - The frontend generates its message tables from the catalogues of the installed components, the same way it generates types from the contracts. An unknown reason shows `title` or a generic message and is reported.
-- **Platform reasons** use `domain: be` and ship with the component protocol (`schemas/errors-be.yaml` in the planned `brickKit/be-protocol` repository). This table is the complete set; a component never raises one of these names in its own domain:
+- **Platform reasons** use `domain: be` and ship with the component protocol (`schemas/errors-be.yaml` of `brickKit/be-protocol`, [02](02-languages-and-component-protocol.md#repository-layout-of-be-protocol)). This table is the complete set, 32 reasons, row for row the same as that file; a component never raises one of these names in its own domain, and never raises a `be` reason that is not in it:
 
 | Reason | Code | Raised when |
 |---|---|---|
@@ -149,7 +153,7 @@ reasons:
 | `TOKEN_INVALID` | `UNAUTHENTICATED` | no token, or one that fails verification (signature, `iss`, `aud`, `typ`, expiry) |
 | `UNSUPPORTED_DELEGATION` | `UNAUTHENTICATED` | a token that acts through a kind of delegate the provider does not support |
 | `MISSING_CALLER` | `UNAUTHENTICATED` | a system call without `be-caller` ([14](14-system-rpc.md)) |
-| `OUT_OF_SCOPE` | `PERMISSION_DENIED` | a request parameter that is itself a scope value outside the caller's scope (`warehouse_id=7`) |
+| `OUT_OF_SCOPE` | `PERMISSION_DENIED` | a request parameter that is itself a scope value outside the caller's scope (`warehouse_id=7`), or a visible record outside the scope of the action's key the caller holds ([20](20-authorization-provider.md)) |
 | `FIELD_FORBIDDEN` | `PERMISSION_DENIED` | a write to a field the caller may not see |
 | `SORT_FORBIDDEN` | `INVALID_ARGUMENT` | sorting, filtering or aggregating by a field masked for the caller |
 | `SHARE_NOT_ALLOWED` | `PERMISSION_DENIED` | a share the resource type or the caller may not make ([20](20-authorization-provider.md)) |
@@ -167,6 +171,13 @@ reasons:
 | `BODY_TOO_LARGE` | `INVALID_ARGUMENT` | the request body exceeds the route's limit; answered as HTTP 413 ([16](16-deadlines-and-retries.md)) |
 | `RANGE_COLD` | `FAILED_PRECONDITION` | the requested time range is in cold storage; `metadata` gives the cold ranges and whether thawing or an export is possible |
 | `UNIT_SEALED` | `FAILED_PRECONDITION` | a change to a sealed lifecycle unit; correct it with a new reversing document |
+| `RATE_LIMITED` | `RESOURCE_EXHAUSTED` | edge only: the rate limit for the caller or route was reached; HTTP 429, with `Retry-After` ([18](18-edge.md)) |
+| `UPSTREAM_UNAVAILABLE` | `UNAVAILABLE` | edge only: the edge could not reach the component; HTTP 502 or 503 ([18](18-edge.md)) |
+| `UPSTREAM_TIMEOUT` | `DEADLINE_EXCEEDED` | edge only: the component did not answer within the edge's deadline; HTTP 504 ([18](18-edge.md)) |
+| `NETWORK_IN_TX` | `INTERNAL` | an outbound call started while a transaction is open: a programming error, named in the log and in test runs so they catch it; the caller still receives `reason: INTERNAL` as above ([10](10-local-transactions.md#port-contract), [0501](../02-decisions/05-runtime/0501-no-network-inside-a-transaction.md)) |
+| `DB_TOO_MANY_CONNECTIONS` | `UNAVAILABLE` | the database refused a connection with SQLSTATE `53300` (too many connections); not retried |
+
+The three edge reasons are never raised by a component: answers the edge produces itself (404, 413, 429, 502, 503, 504) carry this problem body with `domain: be`.
 
 ### Versioning
 
@@ -226,10 +237,13 @@ Gates (planned `error-catalog-scan`): a reason used in code but missing from the
 
 ## Decision records
 
-- [0301 Money is a decimal string; lists page by cursor](../02-decisions/03-contracts-and-data/0301-money-as-strings-lists-by-cursor.md) and [0302 Contracts change by adding only](../02-decisions/03-contracts-and-data/0302-contracts-are-additive-only.md).
-- [0204 Permissions are a pure union](../02-decisions/02-permissions/0204-permissions-are-a-pure-union.md) and [0205 Data scopes ship with the version](../02-decisions/02-permissions/0205-data-scopes-ship-with-the-version.md): what 403 and 404 are decided against.
-- [0404 Four user preferences](../02-decisions/04-frontend/0404-four-user-preferences.md): the language is a frontend preference, so the frontend translates.
-- Planned, not yet numbered: "the error model and the reason catalogue"; "a record the caller cannot see answers 404, for commands too"; "gRPC is the system protocol between components", whose other half is that REST is the user plane.
+- [0504 One error object, identified by a reason from a catalogue](../02-decisions/05-runtime/0504-error-model-and-reason-catalogue.md): this document is its full analysis.
+- [0212 A record the caller cannot see answers 404](../02-decisions/02-permissions/0212-invisible-records-answer-404.md): a record the caller cannot see answers 404, for commands too.
+- [0302 Contracts change by adding only](../02-decisions/03-contracts-and-data/0302-contracts-are-additive-only.md): versioning, including the `/v2/` path prefix with `Deprecation` and `Sunset`.
+- [0208 gRPC is the system plane; people use REST](../02-decisions/02-permissions/0208-grpc-is-the-system-plane.md): its other half: REST is the user plane.
+- [0301 Money is a decimal string paired with a currency; lists page by cursor](../02-decisions/03-contracts-and-data/0301-money-as-strings-lists-by-cursor.md): money and paging.
+- [0204 Permissions are a pure union, with no Deny](../02-decisions/02-permissions/0204-permissions-are-a-pure-union.md) and [0205 Data-scope rules ship with the version](../02-decisions/02-permissions/0205-data-scopes-ship-with-the-version.md): what 403 and 404 are decided against.
+- [0404 Users own four preferences](../02-decisions/04-frontend/0404-four-user-preferences.md): the language is a frontend preference, so the frontend translates.
 
 ## Known limits
 

@@ -33,11 +33,11 @@ What an event is on the wire: the CloudEvents envelope in message headers, subje
 | `ce-subject` | the aggregate ID | the producer |
 | `ce-dataschema` | `<component ID>@<version>/contracts/events/<file>#<subject>`: where the payload's schema is, as a reference, not a URL to fetch | the runtime |
 | `content-type` | `application/json` | the runtime |
-| `ce-aggregatetype` | the declared aggregate type (`erp.sales.order`) | the runtime, from the contract |
+| `ce-aggregatetype` | the contract's `x-aggregate-type` (`erp.sales.order`) | the runtime, from the contract |
 | `ce-aggregateversion` | the aggregate's version after this change, a decimal integer | the producer |
 | `ce-causationid` | the `ce-id` of the event being handled when this one was produced; empty when it came from a request | the runtime, from the context |
 | `ce-hopcount` | the causing event's hop count plus 1; 0 from a request. Above 10 the message goes to the dead letters | the runtime, from the context |
-| `ce-legalentity` | the legal entity of a transaction document; required on those events, and a consumer dead-letters one without it | the runtime, from the payload |
+| `ce-legalentity` | the legal entity of a transaction document; required on the events whose contract entry says `x-transaction-document: true`, and a consumer dead-letters one without it | the runtime, from the payload |
 | `ce-sequence` | reserved for sequence mode: a per-aggregate counter kept in the outbox, separate from the business version | not set yet |
 | `ce-tenantid` | reserved: one deployment is one tenant, so it is not set | not set |
 | `traceparent`, `tracestate` | W3C trace context of the producing span ([23-observability.md](23-observability.md)) | the runtime |
@@ -48,10 +48,10 @@ What an event is on the wire: the CloudEvents envelope in message headers, subje
 
 ### Subjects
 
-- `<domain>.<aggregate or component>[.<more>].<action>.v<n>`: lowercase, segments of `[a-z0-9_]`, the first segment a domain (it selects the stream, [12](12-event-bus.md#streams)), the last `v<n>`. Examples: `erp.inventory.adjusted.v1`, `infra.workflow.task.completed.v1`, `crm.opportunity.stage_changed.v1`.
+- `<domain>.<name>.<event…>.v<N>`: at least 4 segments, every segment matching `[a-z][a-z0-9]*(_[a-z0-9]+)*` (lowercase, starts with a letter, no leading, trailing or double underscore), the first segment a domain (it selects the stream, [12](12-event-bus.md#streams)), the last `v<N>`. Examples: `erp.inventory.adjusted.v1`, `infra.workflow.task.completed.v1`, `crm.opportunity.stage_changed.v1`.
 - **The aggregate type is declared, never parsed out of the subject:** `infra.notification.dispatch.im.v1` cannot be split reliably.
 - The older subjects `sales.*` and `finance.*` keep their names; contracts only grow, and each first segment simply has its own stream.
-- A subject is published by one component, or by every member of one slot family (`integration.im.result.v1`).
+- A subject is published by one component, or by every member of one slot family (`integration.im.result.v1`). The one documented exception is `infra.authz.relation.sync.v1`, published by every component that owns a relation ([20-authorization-provider.md](20-authorization-provider.md)).
 
 ### Aggregate type and version
 
@@ -73,16 +73,19 @@ Each component lists its events in `contracts/events/<name>.events.json`: an `en
 | Key | Meaning |
 |---|---|
 | `subject` | as above |
-| `aggregate_type` | the declared aggregate type (new; required) |
-| `consumption` | `state` (default) or `sequence` (new) |
+| `x-aggregate-type` | the declared aggregate type (new; required) |
+| `x-consumption` | `state` (default) or `sequence` (new) |
+| `x-transaction-document` | `true` when the event is about a transaction document: the payload schema must require `legal_entity_id`, and the runtime sets `ce-legalentity` from it (new; default `false`) |
 | `grade` | `core` (business-critical: persisted, deduplicated, may reach dead letters) or `peripheral` (informational side events) |
 | `note` | who consumes it and why, in prose |
 | `payload` | a JSON Schema (2020-12) object for the payload |
 
+The file's schema is `schemas/events-contract.schema.json` in be-protocol (P12.2); no other key is allowed in an event entry.
+
 Gates (part of `make gates`):
 
 - additive only: deleting a field, changing a type or removing a subject fails (in place today);
-- every event declares `aggregate_type` (planned);
+- every event declares `x-aggregate-type` (planned);
 - the subjects a component's code publishes are exactly those in its contract file (planned).
 
 ### Payload rules
@@ -93,7 +96,8 @@ Gates (part of `make gates`):
 - **Enough state for state mode:** an event carries what a consumer needs to reach the aggregate's state at that version, not just the name of the change.
 - **Events are system data.** A payload is never shown to a person as it is: a notification built from an event is masked for its recipient or carries only a link, because a field such as a price may be hidden from that recipient ([20-authorization-provider.md](20-authorization-provider.md)).
 - **No secrets, no tokens, as little personal data as the consumers need.**
-- **Size:** up to 64 KiB is normal. Larger content goes to object storage and the event carries a reference to it (claim check; the object storage document is planned as file 22). The broker's hard limit is 8 MB including headers.
+- **Size:** up to 64 KiB is normal. The protocol's hard limit is 1 MiB, enforced at publish with a clear error (be-protocol P12.2); the broker's own limit is 8 MB including headers.
+- **Larger than 64 KiB: claim check** ([22-object-storage.md](22-object-storage.md#large-results)). The producer writes the content as an object in its own bucket; the payload carries `{key, sha256, size}` of that object, never the bytes; the producer offers an rpc that returns a short-lived URL for that key. A consumer calls the rpc, downloads, and checks `size` and `sha256`; it never holds the producer's bucket credentials.
 
 ### Evolution
 
@@ -136,7 +140,7 @@ Gates (part of `make gates`):
 
 - Header names are fixed by the protocol and do not switch.
 - A payload format or schema change is a new subject version (`.v2`) published beside the old one; consumers move one at a time; no flag day.
-- Sequence mode is added per event by declaring `consumption: sequence` once the mode exists; state-mode consumers of the same subject are unaffected.
+- Sequence mode is added per event by declaring `x-consumption: sequence` once the mode exists; state-mode consumers of the same subject are unaffected.
 
 ## Conformance tests
 
@@ -146,14 +150,15 @@ Planned, in `tools/be-acceptance/conformance/bus/` (envelope cases run on every 
 - a message with only `X-` headers, or without `ce-id`, goes to the dead letters;
 - publishing inside a handler sets `ce-causationid` to the handled event's ID and increments `ce-hopcount`; a hop count above 10 goes to the dead letters;
 - the aggregate version is strictly increasing across all subjects of one aggregate type in a producer's outbox;
-- gates: an event without `aggregate_type` fails; a removed field fails; a subject published in code but missing from the contract fails;
+- gates: an event without `x-aggregate-type` fails; a subject that does not match the segment pattern fails; a removed field fails; a subject published in code but missing from the contract fails;
 - **one property test per consumer** ([06-testing.md](../01-conventions/06-testing.md#l2-business-rule-tests)): shuffled and duplicated deliveries end in the same state as one in-order delivery.
 
 ## Decision records
 
-- [0301 Money is a decimal string; lists page by cursor](../02-decisions/03-contracts-and-data/0301-money-as-strings-lists-by-cursor.md): money in payloads.
+- [0505 CloudEvents envelope; one cursor per aggregate stream](../02-decisions/05-runtime/0505-cloudevents-envelope-and-aggregate-cursor.md): this document is its full analysis.
+- [0301 Money is a decimal string paired with a currency; lists page by cursor](../02-decisions/03-contracts-and-data/0301-money-as-strings-lists-by-cursor.md): money in payloads.
 - [0302 Contracts change by adding only](../02-decisions/03-contracts-and-data/0302-contracts-are-additive-only.md): event schemas and subjects.
-- Planned, not yet numbered: "the event envelope is CloudEvents in binary mode, and consumer cursors are keyed by aggregate stream".
+- [0308 A tenant is a deployment](../02-decisions/03-contracts-and-data/0308-tenant-is-the-deployment.md): one deployment is one tenant, so `ce-tenantid` stays unset.
 
 ## Known limits
 

@@ -33,11 +33,11 @@
 | `ce-subject` | 聚合 ID | 生产者 |
 | `ce-dataschema` | `<组件 ID>@<版本>/contracts/events/<文件>#<subject>`：载荷 schema 所在的位置，是一个引用，不是要去抓取的 URL | 运行时 |
 | `content-type` | `application/json` | 运行时 |
-| `ce-aggregatetype` | 声明的聚合类型（`erp.sales.order`） | 运行时，取自契约 |
+| `ce-aggregatetype` | 契约里的 `x-aggregate-type`（`erp.sales.order`） | 运行时，取自契约 |
 | `ce-aggregateversion` | 这次变更之后聚合的版本，十进制整数 | 生产者 |
 | `ce-causationid` | 产生这个事件时正在处理的那个事件的 `ce-id`；来自请求时为空 | 运行时，取自上下文 |
 | `ce-hopcount` | 起因事件的跳数加 1；来自请求时为 0。超过 10 时消息进死信 | 运行时，取自上下文 |
-| `ce-legalentity` | 交易单据的法人；这类事件必填，缺了它的事件消费方直接送进死信 | 运行时，取自 payload |
+| `ce-legalentity` | 交易单据的法人；契约条目写了 `x-transaction-document: true` 的事件必填，缺了它的事件消费方直接送进死信 | 运行时，取自 payload |
 | `ce-sequence` | 为序列模式保留：在 outbox 里维护的按聚合计数器，独立于业务版本 | 暂不设置 |
 | `ce-tenantid` | 保留：一个部署就是一个租户，所以不设置 | 不设置 |
 | `traceparent`、`tracestate` | 生产 span 的 W3C trace context（[23-observability.md](23-observability.md)） | 运行时 |
@@ -48,10 +48,10 @@
 
 ### subject 命名
 
-- `<domain>.<聚合或组件>[.<更多>].<动作>.v<n>`：小写，每段由 `[a-z0-9_]` 组成，第一段是一个域（它决定流，[12](12-event-bus.md#流)），最后一段是 `v<n>`。例子：`erp.inventory.adjusted.v1`、`infra.workflow.task.completed.v1`、`crm.opportunity.stage_changed.v1`。
+- `<domain>.<name>.<event…>.v<N>`：至少 4 段，每段都匹配 `[a-z][a-z0-9]*(_[a-z0-9]+)*`（小写、以字母开头、不能以下划线开头或结尾、不能连用两个下划线），第一段是一个域（它决定流，[12](12-event-bus.md#流)），最后一段是 `v<N>`。例子：`erp.inventory.adjusted.v1`、`infra.workflow.task.completed.v1`、`crm.opportunity.stage_changed.v1`。
 - **聚合类型是声明出来的，绝不从 subject 里解析：** `infra.notification.dispatch.im.v1` 就没法可靠地拆分。
 - 旧 subject `sales.*` 和 `finance.*` 保留原名；契约只增不减，每个第一段就有自己的流。
-- 一个 subject 由一个组件发布，或者由一个槽位族的每个成员发布（`integration.im.result.v1`）。
+- 一个 subject 由一个组件发布，或者由一个槽位族的每个成员发布（`integration.im.result.v1`）。唯一写明的例外是 `infra.authz.relation.sync.v1`：每个拥有关系的组件都发布它（[20-authorization-provider.md](20-authorization-provider.md)）。
 
 ### 聚合类型与版本
 
@@ -73,16 +73,19 @@
 | 键 | 含义 |
 |---|---|
 | `subject` | 同上 |
-| `aggregate_type` | 声明的聚合类型（新增；必填） |
-| `consumption` | `state`（默认）或 `sequence`（新增） |
+| `x-aggregate-type` | 声明的聚合类型（新增；必填） |
+| `x-consumption` | `state`（默认）或 `sequence`（新增） |
+| `x-transaction-document` | 事件关于一张交易单据时为 `true`：载荷 schema 必须把 `legal_entity_id` 列为必填，运行时据此设置 `ce-legalentity`（新增；默认 `false`） |
 | `grade` | `core`（业务关键：持久化、去重、可能进死信）或 `peripheral`（信息性的旁路事件） |
 | `note` | 谁消费它、为什么，用文字写 |
 | `payload` | 描述载荷的 JSON Schema（2020-12）对象 |
 
+这个文件的 schema 是 be-protocol 里的 `schemas/events-contract.schema.json`（P12.2）；事件条目里不允许出现其他键。
+
 门禁（`make gates` 的一部分）：
 
 - 只做加法：删字段、改类型或删 subject 会失败（已就位）；
-- 每个事件都声明 `aggregate_type`（计划中）；
+- 每个事件都声明 `x-aggregate-type`（计划中）；
 - 组件代码发布的 subject 与它契约文件里的恰好一致（计划中）。
 
 ### 载荷规则
@@ -93,7 +96,8 @@
 - **为状态模式带够状态：** 事件带上消费者推到聚合在该版本时状态所需的内容，而不只是变更的名字。
 - **事件是系统数据。** 载荷绝不原样展示给人：由事件生成的通知要按接收人脱敏，或者只带一个链接，因为价格这类字段可能对那个接收人隐藏（[20-authorization-provider.md](20-authorization-provider.md)）。
 - **不带密钥，不带 token，个人数据只带消费者需要的最少部分。**
-- **大小：** 64 KiB 以内是常态。更大的内容放进对象存储，事件只带一个指向它的引用（claim check；对象存储那篇文档计划作为第 22 篇）。broker 的硬上限是 8 MB，含消息头。
+- **大小：** 64 KiB 以内是常态。协议的硬上限是 1 MiB，发布时检查并给出明确的错误（be-protocol P12.2）；broker 自己的上限是 8 MB，含消息头。
+- **超过 64 KiB：claim check**（[22-object-storage.md](22-object-storage.md#大结果)）。生产者把内容作为一个对象写进自己的 bucket；载荷带这个对象的 `{key, sha256, size}`，绝不带字节本身；生产者提供一个 rpc，按这个 key 返回一个短时有效的 URL。消费者调用这个 rpc、下载、校验 `size` 和 `sha256`；它绝不持有生产者 bucket 的凭据。
 
 ### 演进
 
@@ -136,7 +140,7 @@
 
 - 消息头名字由协议固定，不换。
 - 载荷格式或 schema 的变更是一个新的 subject 版本（`.v2`），和旧的并排发布；消费者一个一个地迁；没有一刀切的切换日。
-- 序列模式存在之后，按事件逐个通过声明 `consumption: sequence` 加上；同一 subject 的状态模式消费者不受影响。
+- 序列模式存在之后，按事件逐个通过声明 `x-consumption: sequence` 加上；同一 subject 的状态模式消费者不受影响。
 
 ## 一致性测试
 
@@ -146,14 +150,15 @@
 - 只带 `X-` 头或缺 `ce-id` 的消息进死信；
 - 在处理函数里发布时，`ce-causationid` 设为被处理事件的 ID，`ce-hopcount` 加一；跳数超过 10 的进死信；
 - 在一个生产者的 outbox 里，同一聚合类型的所有 subject 上，聚合版本严格递增；
-- 门禁：没有 `aggregate_type` 的事件失败；删掉字段失败；代码里发布、契约里却没有的 subject 失败；
+- 门禁：没有 `x-aggregate-type` 的事件失败；subject 不符合分段规则的失败；删掉字段失败；代码里发布、契约里却没有的 subject 失败；
 - **每个消费者一个性质测试**（[06-testing.md](../01-conventions/06-testing.md#l2-业务规则测试)）：打乱并重复的投递，最终状态与一次按序投递相同。
 
 ## 相关决策
 
-- [0301 金额是十进制字符串；列表按游标分页](../02-decisions/03-contracts-and-data/0301-money-as-strings-lists-by-cursor.md)：载荷里的金额。
+- [0505 CloudEvents 信封；按聚合流记游标](../02-decisions/05-runtime/0505-cloudevents-envelope-and-aggregate-cursor.md)：本文是它的完整分析。
+- [0301 金额是与币种成对的十进制字符串；列表按游标分页](../02-decisions/03-contracts-and-data/0301-money-as-strings-lists-by-cursor.md)：载荷里的金额。
 - [0302 契约只做加法](../02-decisions/03-contracts-and-data/0302-contracts-are-additive-only.md)：事件 schema 和 subject。
-- 计划中、尚未编号："事件信封是 binary 模式的 CloudEvents，消费者游标以聚合流为键"。
+- [0308 租户就是部署](../02-decisions/03-contracts-and-data/0308-tenant-is-the-deployment.md)：一套部署就是一个租户，所以 `ce-tenantid` 不设置。
 
 ## 已知限制
 

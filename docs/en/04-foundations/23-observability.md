@@ -40,11 +40,11 @@ Not covered: dashboards, alert rules and on-call procedures (planned `05-operati
 | Event publish | the envelope's trace context ([13-event-contracts.md](13-event-contracts.md)) | the producer's span context is written into the message |
 | Event consume | — | the consumer starts a **new trace with a span link** to the producer's span, not a child span (OpenTelemetry messaging conventions): long asynchronous chains would otherwise grow one unbounded trace |
 
-The propagator is stateless and installed once per process; it is the one piece of telemetry that is process-wide.
+The propagator and the OTLP exporter are the only process-wide telemetry. Both belong to the platform side, the standalone launcher or the shell, never to a module: a module neither installs them nor shuts them down. Every instrumentation (HTTP server, gRPC server and client, outbound HTTP, consumers) is given the member's tracer provider, meter provider and the propagator explicitly, never the process globals. The global tracer provider is only a fallback and carries the shell's own ID as `service.name`, so a span with that name reveals an instrumentation that was missed.
 
 **Correlation.** `X-Request-Id` is the id a client sees and may quote. When a request arrives without one, the first service sets it to the trace id. It is propagated on outbound calls. Every log line carries `trace_id`; events carry `ce-causationid` ([13-event-contracts.md](13-event-contracts.md)).
 
-**Resource attributes**, per member: `service.name` = the component ID (`erp/sales`), `service.version` = the component version, `service.namespace` = the project, `service.instance.id` = the container or Pod, `deployment.environment`. In a shell each member has its own tracer provider and meter provider with these attributes; the exporter is shared.
+**Resource attributes**, per member: `service.name` = the component ID (`erp/sales`), `service.version` = the component version, `service.namespace` = the project, `service.instance.id` = the container or Pod, `deployment.environment`. In a shell each member has its own tracer provider and meter provider with these attributes; the exporter is shared and only the shell shuts it down, after every member has stopped. Stopping one member flushes only that member's own span queue.
 
 **Export.** OTLP to `OTEL_BASE_URL` ([04-configuration.md](../01-conventions/04-configuration.md#shared-connection-keys)). Empty means no export and no error; the component still runs.
 
@@ -79,7 +79,11 @@ The propagator is stateless and installed once per process; it is the one piece 
 | caller errors: `INVALID_ARGUMENT`, `NOT_FOUND`, `PERMISSION_DENIED`, `FAILED_PRECONDITION` … / 4xx | INFO |
 
   ERROR means an operator must act. A caller's mistake is never ERROR.
-- **Redaction** of personal data is automatic in every SDK's log handler (phone numbers, e-mail, identity numbers), checked by one set of shared vectors so all languages mask the same way.
+- **Redaction** is automatic in every SDK's log handler, never in business code, checked by the shared vectors `redaction` so all languages mask the same way:
+  - protected names: `phone`, `mobile`, `id_card`, `password`, `bank_card`, `email`, `token`, `secret`, `authorization`, `cookie`, `set-cookie`, `api_key`;
+  - a field name is split into tokens: camelCase words, and `_`, `-`, `.` as separators, lower-cased. It matches when a protected name's tokens appear in it as one contiguous run of whole tokens (the last may carry a plural `s`): `phone_number`, `accessToken`, `user.email` match; `telephone`, `tokenizer` do not;
+  - the matching field's value, of any type, is replaced by the string `"[REDACTED]"` and not walked further; values are never scanned, so personal data never goes into free text; the envelope fields are never touched;
+  - a line longer than 2 KiB is truncated so that it stays one valid JSON object.
 - No component sends logs over the network itself; stdout is the only output. The collector reads container logs (a file-log receiver on Docker, the Kubernetes log pipeline on Kubernetes) and forwards them to Loki.
 
 **Audit logs** are not application logs:
@@ -137,21 +141,23 @@ Suite `tools/be-acceptance/conformance/telemetry/` (decided), run against every 
 - an inbound `traceparent` is continued, and an outbound user-plane call injects it;
 - a gRPC client and server end up in one trace;
 - an event consumer's span links to the producer's span;
-- in a shell, two members' spans carry different `service.name` values;
+- in a shell, two members' spans carry different `service.name` values; after an HTTP → gRPC → event chain no span carries the shell's own ID; stopping one member does not drop spans another member emits afterwards;
 - the shell's aggregated `/metrics` carries the `component` label and registers no collector twice;
 - `LOG_LEVEL=warn` suppresses info lines;
 - the level mapping: a caller error logs INFO, an internal error ERROR, a cancel nothing;
 - redaction vectors give the same output in every SDK;
+- the component suite's `obs` profile checks the same from outside for every component: `CP-OBS-01` (an inbound `traceparent` parents the server span), `CP-OBS-02` (log fields, levels by code), `CP-OBS-03` (`/metrics` names and labels), `CP-OBS-04` (redaction), `CP-OBS-05` (`LOG_LEVEL`); in a shell, `CP-SHELL-04`, `CP-SHELL-09`, `CP-SHELL-10`;
 - an audit event exists if and only if the business transaction committed.
 
 Infrastructure: no `:latest` image in the infra and observability compose files. On a real machine: sales → inventory → finance appears in Tempo as one trace plus its links.
 
 ## Decision records
 
-- [0103 One locked stack per language](../02-decisions/01-architecture/0103-locked-stack-per-language.md): one metrics registry per module.
+- [0103 One locked stack inside each language](../02-decisions/01-architecture/0103-locked-stack-per-language.md): one metrics registry per module.
 - [0106 Infrastructure is not a component](../02-decisions/01-architecture/0106-infrastructure-is-not-a-component.md): the observability stack runs outside the component graph.
 - [0108 One shell, one repository, one image, one member list](../02-decisions/01-architecture/0108-one-repository-per-shell.md): per-member identity inside a shell.
-- Planned: "audit records are business data and travel through the outbox".
+- [0504 One error object, identified by a reason from a catalogue](../02-decisions/05-runtime/0504-error-model-and-reason-catalogue.md): log levels follow the status; internal errors are logged, never returned.
+- Planned, not yet numbered: "audit records are business data and travel through the outbox".
 
 ## Known limits
 

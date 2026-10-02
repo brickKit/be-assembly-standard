@@ -33,7 +33,7 @@
 
 ## 端口契约
 
-每个实现、不论哪种语言，都要建的表和遵守的规则。这些表在每个组件自己的 schema 里，带 `besdk_` 前缀，由 SDK 的平台迁移创建；组件的 SQL 从不碰它们。规范性的 DDL 放在计划新建的 `brickKit/be-protocol` 仓库的 `sql/platform/` 里。
+每个实现、不论哪种语言，都要建的表和遵守的规则。这些表在每个组件自己的 schema 里，带 `besdk_` 前缀，由 SDK 的平台迁移创建；组件的 SQL 从不碰它们。规范性的 DDL 在 `brickKit/be-protocol` 仓库的 `ddl/` 里（`02-outbox.sql`、`03-event-cursor.sql`、`04-idempotency.sql`、`05-jobs.sql`），要求写在它的 `spec/12-events.md`、`spec/13-idempotency.md` 和 `spec/14-background-jobs.md` 里。
 
 ### 生产者的 outbox
 
@@ -212,9 +212,14 @@ try 步骤预留的资源带一个由调用方选定的期限，这样消失了�
 
 ## 相关决策
 
-- [0101 组件之间绝不互相 import](../02-decisions/01-architecture/0101-no-imports-between-components.md) 和 [0102 每个组件一个 schema](../02-decisions/01-architecture/0102-one-schema-per-component.md)：一致性经由线上达成，状态放在每个组件自己的 schema 里。
+- [0101 组件之间禁止 import](../02-decisions/01-architecture/0101-no-imports-between-components.md) 和 [0102 一个数据库，每个组件一个 schema](../02-decisions/01-architecture/0102-one-schema-per-component.md)：一致性经由线上达成，状态放在每个组件自己的 schema 里。
+- [0501 事务里不发网络调用](../02-decisions/05-runtime/0501-no-network-inside-a-transaction.md)：提交后的远程副作用经由入队命令。
+- [0505 CloudEvents 信封；按聚合流记游标](../02-decisions/05-runtime/0505-cloudevents-envelope-and-aggregate-cursor.md)：消费者游标以聚合流为键。
+- [0506 至少送达一次；流按 subject 第一段划分](../02-decisions/05-runtime/0506-at-least-once-delivery-and-streams.md)：事件至少投递一次。
+- [0507 幂等键按调用方划分命名空间](../02-decisions/05-runtime/0507-idempotency-keys-namespaced-by-caller.md)：幂等键按调用方划分命名空间。
+- [0508 后台工作只经 SDK 的 Jobs](../02-decisions/05-runtime/0508-background-work-only-through-jobs.md)：入队命令和 reconciler 经 SDK 的 Jobs 运行。
 - [0302 契约只做加法](../02-decisions/03-contracts-and-data/0302-contracts-are-additive-only.md)：新的流程状态（如 `CONFIRMING`）是对枚举的追加。
-- 计划新增、尚未编号："流程住在发起它的组件里，它的状态就是业务行"；"提交后的远程副作用经由入队命令"；"事件至少投递一次，靠每个聚合流一个游标去重"；"幂等键按调用方划分命名空间"；"不分区的有界表"（游标表、幂等表、reconcile 表和作业表，靠保留期保持有界）。
+- 计划新增、尚未编号："流程住在发起它的组件里，它的状态就是业务行"；"不分区的有界表"（游标表、幂等表、reconcile 表和作业表，靠保留期保持有界）。
 
 ## 已知限制
 

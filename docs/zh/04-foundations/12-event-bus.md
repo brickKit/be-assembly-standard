@@ -37,7 +37,8 @@
 |---|---|
 | ensure stream | 流不存在就创建；绝不修改已有的流 |
 | publish | 连同消息 ID 存下一条消息；成功意味着已持久存储；去重窗口内同一个 ID 只存一次 |
-| consume | 按 subject 过滤投递给一个具名的持久消费者；共用这个 durable 的副本互相竞争，每条消息只给其中一个 |
+| ensure durable | 持久消费者不存在就创建；绝不更新已有的 |
+| consume | 按 subject 过滤投递给一个具名的持久消费者；共用这个 durable 的副本互相竞争，每条消息只给其中一个；`ack_wait` 内没被确认的消息会再投一次 |
 | ack / 带延迟的 nak / terminate / in progress | 处理完毕；延迟后重投；永不重投；延长确认截止时间 |
 | delivery count | 这条消息被投递了几次 |
 | notify / on notify | 尽力而为的信号：不存储，不重投，可能丢失 |
@@ -47,19 +48,29 @@
 - **按 subject 的第一段一个流**：名字是 `BE_<第一段的大写>`，subjects 是 `<第一段>.>`。今天有：`BE_ERP`、`BE_MDM`、`BE_CRM`、`BE_INFRA`、`BE_INTEGRATION`，以及给不带 `erp.` 前缀的旧 subject 用的 `BE_SALES`、`BE_FINANCE`。死信：`BE_DLQ`，subjects 是 `dlq.>`。
 - **谁先需要谁创建**，"不存在就创建，存在就绝不碰"，在组件的迁移步骤里做（brickKit 在组件启动前用组件自己的镜像和配置运行它），启动时再做一次。运维可以预先建好流并调参；组件找不到流、又没有创建权限时，迁移失败并给出清楚的错误。
 - **默认值：** `max_age` 7 天，`max_bytes` 1 GiB，`discard: old`，`duplicate_window` 10 分钟，文件存储，1 个副本（NATS 集群上为 3，由运维设定）。`BE_DLQ`：30 天。
-- 流跟着 subject 走，而不是跟着生产组件走，所以一个槽位族的多个成员可以发布同一个 subject（`integration.im.result.v1`）。
+- 流跟着 subject 走，而不是跟着生产组件走，所以一个槽位族的多个成员可以发布同一个 subject（`integration.im.result.v1`），每个关系拥有者也都可以发布 `infra.authz.relation.sync.v1`（[13](13-event-contracts.md#subject-命名)）。
 
 ### 持久消费者
 
-- **每个（组件，subject）一个 pull 型 durable**，命名为 `<组件 ID，/ 换成 _>__<subject，. 换成 _>`：`erp_finance__sales_order_created_v1`。单跑、外壳里、每个副本上都是同一个名字，所以成员搬进或搬出外壳都保留它的位置。
+- **每个（组件，subject）一个 pull 型 durable**，命名为 `<组件 ID，/ 换成 _>__<subject，. 换成 _>`：`erp_finance__sales_order_created_v1`。单跑、外壳里、每个副本上都是同一个名字，所以成员搬进或搬出外壳都保留它的位置。分隔符 `__` 不会有歧义，因为 subject 的任何一段都不允许出现连续两个下划线（[13](13-event-contracts.md#subject-命名)），组件 ID 里也没有下划线。在 subject 部分里 `.` 和 `_` 最后都成了 `_`，所以只在这里不同的两个 subject（`a.b.c_d.v1`、`a.b.c.d.v1`）会得到同一个名字；一个组件绝不同时消费这样两个 subject。
+- **只在不存在时创建，绝不更新。** 启动时 SDK 先查这个 durable，只有不存在才创建；已有的 durable 原样保留，即使设置不同（运维可能调过参）。不用盲目的"新增或更新"调用（nats-py 的 `add_consumer` 会静默更新）；修改已有 durable 是运维的动作。
 - **首次创建会投递流里还留着的全部消息**（`DeliverAll`）：新装的消费者会补上最多 7 天的事件。所以新装的 finance 会记账它安装前 7 天内确认的订单。
-- `ack_wait` 30 秒；`max_deliver` 8；重投退避 1 秒、10 秒、1 分钟、5 分钟、15 分钟、30 分钟、1 小时；`max_ack_pending` 256；每个订阅同时最多处理 4 条消息，同时受成员的连接预算约束（[10](10-local-transactions.md#端口契约)）；`inactive_threshold` 30 天，所以被移除组件的 durable 会自己消失。
-- **处理函数的事务提交之后再确认。** 出错时：按下一档退避延迟 nak。永久性错误（无法解析、违反契约）时：先发布到死信 subject，再 terminate。处理函数运行期间：每 10 秒发一次 "in progress"（`ack_wait` 的三分之一）。
+- `ack_wait` 30 秒，处理函数既没确认也没 nak 的消息就靠这个计时器重投；`max_ack_pending` 256；每个订阅同时最多处理 4 条消息，同时受成员的连接预算约束（[10](10-local-transactions.md#端口契约)）；`inactive_threshold` 30 天，所以被移除组件的 durable 会自己消失。
+- **重投时机和投递上限归 SDK 管，不归服务端。** durable 创建时不设服务端 `BackOff`，`MaxDeliver` 为 -1（不限）。
+
+  | 键 | 默认值 | SDK 拿它做什么 |
+  |---|---|---|
+  | `EVENTS_BACKOFF` | `1s,10s,1m,5m,15m,30m,1h` | `NakWithDelay` 的时间表：第 n 次投递失败后那次 nak 的延迟 |
+  | `EVENTS_MAX_DELIVER` | `8` | 投递上限：收到的消息 `NumDelivered` > `EVENTS_MAX_DELIVER` 时不再处理；SDK 把它写进死信，然后 terminate |
+
+  订阅可以声明自己的值；这两个键一旦设置就覆盖它们（be-protocol P12.5）。
+- **处理函数的事务提交之后再确认。** 出错时：按 `EVENTS_BACKOFF` 的下一档延迟 nak。永久性错误（无法解析、违反契约）时：先发布到死信 subject，再 terminate。处理函数运行期间：每 10 秒发一次 "in progress"（`ack_wait` 的三分之一）。
 
 ### 死信
 
 - subject 是 `dlq.<durable>.<原 subject>`，在原有消息头之外加上 `be-dlq-reason`、`be-dlq-consumer`、`be-dlq-delivery`。durable 放在 subject 里，是因为一条消息可能在一个消费者里失败、在另一个里成功；只有失败的那个会拿回它。
-- 消息在三种情况下进死信：尝试了 `max_deliver` 次之后，遇到永久性错误时，或者跳数超过 10 时（[13](13-event-contracts.md)）。
+- 死信消息的 ID（NATS 上是 `Nats-Msg-Id`）是 `dlq:<durable>:<seq>`，`<seq>` 是原消息在流里的序号，所以写入死信和 terminate 之间崩溃、重做一次时，死信只存一份。
+- 消息在三种情况下进死信：收到时投递次数超过 `EVENTS_MAX_DELIVER`，遇到永久性错误时，或者跳数超过 10 时（[13](13-event-contracts.md)）。死信存好之后才 terminate 原消息。
 - `make dlq-ls` 和 `make dlq-replay`（计划中）列出和回放死信。回放时发布到原 subject，消息 ID 加后缀以绕过去重窗口；其他消费者靠自己的游标跳过它。
 - `be_dlq_messages_total{subject,consumer}`，附带告警规则模板。
 
@@ -128,7 +139,8 @@ CREATE TABLE be_bus.delivery (                 -- 在途的和等待重投的
 
 - **发布：** 用 `ON CONFLICT DO NOTHING` 插入 `msg_id`；只有插入成功时才插入消息，两步在同一个短事务里。
 - **扇出：** 消费者在自己那行 `durable` 的行锁下，把接下来匹配的消息复制进 `delivery`，并推进 `(last_tx_id, last_seq)`。它只读 `tx_id` 比所有仍在运行的事务都老的消息（`tx_id < pg_snapshot_xmin(pg_current_snapshot())`），所以较晚提交、`seq` 却较小的发布者绝不会被跳过。
-- **消费：** 用 `FOR UPDATE SKIP LOCKED` 认领 `next_at <= now()` 且租约已过期的 `delivery` 行；ack 删除该行；nak 设置 `next_at` 并把 `num_delivered` 加一；in progress 延长 `lease_until`；terminate 删除该行。
+- **消费：** 用 `FOR UPDATE SKIP LOCKED` 认领 `next_at <= now()` 且租约已过期的 `delivery` 行；ack 删除该行；nak 设置 `next_at` 并把 `num_delivered` 加一；in progress 延长 `lease_until`；terminate 删除该行。租约到期（`ack_wait`）后，这一行可以再被认领。
+- **语义与 JetStream 相同：** 适配器自己不设投递上限，也不设退避；SDK 把 `num_delivered` 当投递次数读，按 `EVENTS_BACKOFF` 的延迟 nak，执行同样的 `EVENTS_MAX_DELIVER` 检查，用同样的死信消息 ID（经 `msg_id` 去重）。durable 行只在不存在时插入，绝不更新。
 - **通知：** `NOTIFY be_bus, '<subject>'` 唤醒消费者；信号用同一个频道。
 
 ### Kafka 适配器（以后）
@@ -185,7 +197,9 @@ CREATE TABLE be_bus.delivery (                 -- 在途的和等待重投的
 
 - 停机后重启的消费者能收到期间发布的消息；
 - 同一个 durable 的两个实例，每条消息只被处理一次；
-- nak 后在延迟到期时重投；超过 `max_deliver` 后，消息出现在死信 subject 里，带着消费者和原因；
+- nak 后按 `EVENTS_BACKOFF` 里的延迟重投；既没确认也没 nak 的消息在 `ack_wait` 后重投；
+- 收到时投递次数超过 `EVENTS_MAX_DELIVER` 的消息不再处理；它在死信 subject 里只出现一次，消息 ID 是 `dlq:<durable>:<seq>`，带着消费者和原因，之后不再投递；
+- ensure durable 会创建缺失的 durable，已有的、设置不同的 durable 保持不变；
 - terminate 停止重投；
 - 窗口内同一个消息 ID 只存一次；
 - ensure stream 是幂等的，不会覆盖已有配置；
@@ -200,9 +214,10 @@ CREATE TABLE be_bus.delivery (                 -- 在途的和等待重投的
 
 ## 相关决策
 
-- [0106 基础设施不是组件](../02-decisions/01-architecture/0106-infrastructure-is-not-a-component.md)：总线仍是基础设施。计划修订：总线通过一个按 URL scheme 选择的 SDK 适配器替换，这不只是一项配置，必须通过一致性套件。
-- [0102 每个组件一个 schema](../02-decisions/01-architecture/0102-one-schema-per-component.md)：`be_bus` schema 属于基础设施，不属于某个组件。
-- 计划中、尚未编号："事件至少投递一次；流按 subject 第一段创建"；"outbox 是回放的事实来源"。
+- [0106 基础设施不是组件](../02-decisions/01-architecture/0106-infrastructure-is-not-a-component.md)：总线仍是基础设施，通过按 URL scheme 选用的 SDK 适配器更换，这不只是一项配置，必须通过一致性套件。
+- [0506 至少送达一次；流按 subject 第一段划分](../02-decisions/05-runtime/0506-at-least-once-delivery-and-streams.md)：本文是它的完整分析：至少投递一次、流按 subject 第一段创建、outbox 是回放的事实来源。
+- [0505 CloudEvents 信封；按聚合流记游标](../02-decisions/05-runtime/0505-cloudevents-envelope-and-aggregate-cursor.md)：每个适配器原样携带的信封。
+- [0102 一个数据库，每个组件一个 schema](../02-decisions/01-architecture/0102-one-schema-per-component.md)：`be_bus` schema 属于基础设施，不属于某个组件。
 
 ## 已知限制
 

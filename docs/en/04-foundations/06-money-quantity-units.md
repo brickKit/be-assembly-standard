@@ -111,10 +111,9 @@ The money vectors above, run by every official SDK. Tests to write red first:
 
 ## Decision records
 
-- [0301](../02-decisions/03-contracts-and-data/0301-money-as-strings-lists-by-cursor.md): money is a decimal string. A revision is planned: a currency is paired with every amount.
-- [0302](../02-decisions/03-contracts-and-data/0302-contracts-are-additive-only.md): `currency` and functional-currency fields are added, never substituted.
-- [0104](../02-decisions/01-architecture/0104-variants-become-slot-families.md): rounding and allocation are SDK strategies, not slot families.
-- Planned, not yet numbered: "exchange rates belong to mdm/currency".
+- [0301 Money is a decimal string paired with a currency; lists page by cursor](../02-decisions/03-contracts-and-data/0301-money-as-strings-lists-by-cursor.md): this document is its full analysis: a currency with every amount, the column precision, exchange rates in mdm/currency.
+- [0302 Contracts change by adding only](../02-decisions/03-contracts-and-data/0302-contracts-are-additive-only.md): `currency` and functional-currency fields are added, never substituted.
+- [0104 A slot family needs several reasonable implementations and no dependency edge](../02-decisions/01-architecture/0104-variants-become-slot-families.md): rounding and allocation are SDK strategies, not slot families.
 
 ## Known limits
 

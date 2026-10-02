@@ -32,6 +32,7 @@
 BEGIN ISOLATION LEVEL READ COMMITTED;            -- 或事务要求的级别
 SET LOCAL ROLE <PG_USER of this component>;      -- 外壳里：成员自己的 PG_USER
 SET LOCAL search_path TO <PG_SCHEMA>;
+SET LOCAL application_name = '<component ID>';   -- 外壳里：成员的 ID
 SET LOCAL statement_timeout = '<min(5s, remaining deadline)>';
 SET LOCAL lock_timeout = '2s';
 SET LOCAL idle_in_transaction_session_timeout = '30s';
@@ -55,11 +56,12 @@ SET LOCAL transaction_timeout = '<remaining deadline>';  -- 仅 PostgreSQL 17 �
 | `57014` | 语句被取消（`statement_timeout`） | 不重试 | `DEADLINE_EXCEEDED` / `STATEMENT_TIMEOUT` |
 | `25P04` | 事务超时（PostgreSQL 17+） | 不重试 | `DEADLINE_EXCEEDED` / `STATEMENT_TIMEOUT` |
 | `25P03` | 事务内空闲过久 | 服务端关闭了连接 | `INTERNAL`：这是组件的 bug |
+| `53300` | 连接数过多 | 不重试 | `UNAVAILABLE` / `DB_TOO_MANY_CONNECTIONS` |
 | `23505` | 唯一约束冲突 | 不重试 | 组件把它映射成自己的 reason，通常是 `ALREADY_EXISTS` |
 
 重试是在一个新事务里从头重跑事务体。这样做之所以安全，只是因为事务体除了这个事务什么都不碰，而这一点由下面两条规则保证。调用方想重试 `LOCK_TIMEOUT`，要在更上一层用同一个幂等键去重试。重试次数计入 `be_tx_retries_total{component,reason}`。
 
-**事务里不做网络调用。** 一个工作单元持有打开的事务时，运行时提供的每一种出站调用（gRPC、面向用户的 HTTP、直接向总线发布）都拒绝发起，并以 `INTERNAL` / `NETWORK_IN_TX` 失败；在测试构建里直接让测试中止。出口只有两个：
+**事务里不做网络调用。** 一个工作单元持有打开的事务时，运行时提供的每一种出站调用（gRPC、面向用户的 HTTP、直接向总线发布）都拒绝发起，并以 `INTERNAL` / `NETWORK_IN_TX` 失败：这是编程错误，在开发和测试中暴露出来（测试构建里直接让测试中止）。出口只有两个：
 
 - 一行 outbox：事件在提交后发布（[12-event-bus.md](12-event-bus.md)）；
 - 一行作业队列：命令在提交后、在任何事务之外执行（[19-background-jobs.md](19-background-jobs.md)）。
@@ -166,9 +168,10 @@ SELECT pg_try_advisory_xact_lock(hashtext(current_schema() || ':' || $1), hashte
 
 ## 相关决策
 
+- [0501 事务里不发网络调用](../02-decisions/05-runtime/0501-no-network-inside-a-transaction.md)：本文是它的完整分析。
+- [0502 默认 READ COMMITTED，配一架明确的阶梯](../02-decisions/05-runtime/0502-isolation-and-retry.md)：隔离手段阶梯、按事务设定的超时，以及对 `40001` / `40P01` 的重试。
 - [0102 一个数据库，每个组件一个 schema](../02-decisions/01-architecture/0102-one-schema-per-component.md)：每个事务都以组件的角色在它自己的 schema 里运行。
-- [0206 不用行级安全](../02-decisions/02-permissions/0206-no-row-level-security.md)：范围限定写在静态查询里，所以事务不带按用户区分的数据库身份。
-- 计划新增、尚未编号，放进计划中的运行期决策文件夹："事务里不做网络调用"；"隔离级别与重试策略"。
+- [0206 不用行级安全；共享引擎只有一个，在 authz](../02-decisions/02-permissions/0206-no-row-level-security.md)：范围限定写在静态查询里，所以事务不带按用户区分的数据库身份。
 
 ## 已知限制
 

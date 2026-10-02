@@ -111,10 +111,9 @@
 
 ## 相关决策
 
-- [0301](../02-decisions/03-contracts-and-data/0301-money-as-strings-lists-by-cursor.md)：金额是十进制字符串。计划修订：每个金额都与一个币种成对。
-- [0302](../02-decisions/03-contracts-and-data/0302-contracts-are-additive-only.md)：`currency` 和本位币字段是新增的，绝不替换已有字段。
-- [0104](../02-decisions/01-architecture/0104-variants-become-slot-families.md)：舍入和分摊是 SDK 内部策略，不是槽位族。
-- 计划中、尚未编号："汇率归 mdm/currency"。
+- [0301 金额是与币种成对的十进制字符串；列表按游标分页](../02-decisions/03-contracts-and-data/0301-money-as-strings-lists-by-cursor.md)：本文是它的完整分析：每个金额都带币种、列精度、汇率归 mdm/currency。
+- [0302 契约只做加法](../02-decisions/03-contracts-and-data/0302-contracts-are-additive-only.md)：`currency` 和本位币字段是新增的，绝不替换已有字段。
+- [0104 槽位族需要多种合理实现，而且没有依赖边](../02-decisions/01-architecture/0104-variants-become-slot-families.md)：舍入和分摊是 SDK 内部策略，不是槽位族。
 
 ## 已知限制
 

@@ -1,0 +1,287 @@
+===== pgx v5.10.0, mode=cache_statement, per-member SQL prefix=false
+before: pid=75 usr=shell sp="$user", public
+--- S1 same shape SELECT id, v FROM widget WHERE id=$1
+  [a] OK   [][]interface {}{[]interface {}{1, "from-a", "a"}}
+  [b] OK   [][]interface {}{[]interface {}{1, "from-b", "b"}}
+  [a] OK   [][]interface {}{[]interface {}{1, "from-a", "a"}}
+  [b] OK   [][]interface {}{[]interface {}{1, "from-b", "b"}}
+--- S1 same shape UPDATE ... RETURNING
+  [a] OK   [][]interface {}{[]interface {}{"from-a+"}}
+  [b] OK   [][]interface {}{[]interface {}{"from-b+"}}
+  [a] OK   [][]interface {}{[]interface {}{"from-a++"}}
+  [b] OK   [][]interface {}{[]interface {}{"from-b++"}}
+--- S2 different result type: SELECT id, payload FROM besdk_thing
+  [a] OK   [][]interface {}{[]interface {}{1, "a-text"}}
+  [b] ERR  cached plan must not change result type (sqlstate=0A000)
+  [a] OK   [][]interface {}{[]interface {}{1, "a-text"}}
+  [b] ERR  cached plan must not change result type (sqlstate=0A000)
+--- S2 different result type: SELECT * FROM besdk_thing
+  [a] OK   [][]interface {}{[]interface {}{1, "a-text"}}
+  [b] ERR  cached plan must not change result type (sqlstate=0A000)
+  [a] OK   [][]interface {}{[]interface {}{1, "a-text"}}
+  [b] ERR  cached plan must not change result type (sqlstate=0A000)
+--- S3 same listed types, b has extra col: SELECT id, payload FROM besdk_same
+  [a] OK   [][]interface {}{[]interface {}{1, "a-same"}}
+  [b] OK   [][]interface {}{[]interface {}{1, "b-same"}}
+  [a] OK   [][]interface {}{[]interface {}{1, "a-same"}}
+  [b] OK   [][]interface {}{[]interface {}{1, "b-same"}}
+--- S3 SELECT * FROM besdk_same (column count differs)
+  [a] OK   [][]interface {}{[]interface {}{1, "a-same"}}
+  [b] ERR  cached plan must not change result type (sqlstate=0A000)
+  [a] OK   [][]interface {}{[]interface {}{1, "a-same"}}
+  [b] ERR  cached plan must not change result type (sqlstate=0A000)
+--- S4 INSERT INTO besdk_thing (id, payload) VALUES ($1,$2) (param text vs jsonb)
+  [a] OK   [][]interface {}{[]interface {}{"{\"k\":1}"}}
+  [b] ERR  column "payload" is of type jsonb but expression is of type text (sqlstate=42804)
+  [a] OK   [][]interface {}{[]interface {}{"{\"k\":1}"}}
+  [b] ERR  column "payload" is of type jsonb but expression is of type text (sqlstate=42804)
+--- S7 leak check after commit:   pid=75 usr=shell sp="$user", public
+  (forced error: division by zero (sqlstate=22012))
+--- S7 leak check after rollback: pid=75 usr=shell sp="$user", public
+--- bench: 2000 alternating member tx in 0.84s = 0.421 ms/tx
+===== pgx v5.10.0, mode=cache_describe, per-member SQL prefix=false
+before: pid=91 usr=shell sp="$user", public
+--- S1 same shape SELECT id, v FROM widget WHERE id=$1
+  [a] OK   [][]interface {}{[]interface {}{1, "from-a", "a"}}
+  [b] OK   [][]interface {}{[]interface {}{1, "from-b", "b"}}
+  [a] OK   [][]interface {}{[]interface {}{1, "from-a", "a"}}
+  [b] OK   [][]interface {}{[]interface {}{1, "from-b", "b"}}
+--- S1 same shape UPDATE ... RETURNING
+  [a] OK   [][]interface {}{[]interface {}{"from-a+"}}
+  [b] OK   [][]interface {}{[]interface {}{"from-b+"}}
+  [a] OK   [][]interface {}{[]interface {}{"from-a++"}}
+  [b] OK   [][]interface {}{[]interface {}{"from-b++"}}
+--- S2 different result type: SELECT id, payload FROM besdk_thing
+  [a] OK   [][]interface {}{[]interface {}{1, "a-text"}}
+  [b] OK   [][]interface {}{[]interface {}{1, map[string]interface {}{"b":"jsonb"}}}
+  [a] OK   [][]interface {}{[]interface {}{1, "a-text"}}
+  [b] OK   [][]interface {}{[]interface {}{1, map[string]interface {}{"b":"jsonb"}}}
+--- S2 different result type: SELECT * FROM besdk_thing
+  [a] OK   [][]interface {}{[]interface {}{1, "a-text"}}
+  [b] ERR  bind message has 2 result formats but query has 3 columns (sqlstate=08P01)
+  [a] OK   [][]interface {}{[]interface {}{1, "a-text"}}
+  [b] ERR  bind message has 2 result formats but query has 3 columns (sqlstate=08P01)
+--- S3 same listed types, b has extra col: SELECT id, payload FROM besdk_same
+  [a] OK   [][]interface {}{[]interface {}{1, "a-same"}}
+  [b] OK   [][]interface {}{[]interface {}{1, "b-same"}}
+  [a] OK   [][]interface {}{[]interface {}{1, "a-same"}}
+  [b] OK   [][]interface {}{[]interface {}{1, "b-same"}}
+--- S3 SELECT * FROM besdk_same (column count differs)
+  [a] OK   [][]interface {}{[]interface {}{1, "a-same"}}
+  [b] ERR  bind message has 2 result formats but query has 3 columns (sqlstate=08P01)
+  [a] OK   [][]interface {}{[]interface {}{1, "a-same"}}
+  [b] ERR  bind message has 2 result formats but query has 3 columns (sqlstate=08P01)
+--- S4 INSERT INTO besdk_thing (id, payload) VALUES ($1,$2) (param text vs jsonb)
+  [a] OK   [][]interface {}{[]interface {}{"{\"k\":1}"}}
+  [b] ERR  column "payload" is of type jsonb but expression is of type text (sqlstate=42804)
+  [a] OK   [][]interface {}{[]interface {}{"{\"k\":1}"}}
+  [b] ERR  column "payload" is of type jsonb but expression is of type text (sqlstate=42804)
+--- S7 leak check after commit:   pid=91 usr=shell sp="$user", public
+  (forced error: division by zero (sqlstate=22012))
+--- S7 leak check after rollback: pid=91 usr=shell sp="$user", public
+--- bench: 2000 alternating member tx in 0.89s = 0.445 ms/tx
+===== pgx v5.10.0, mode=describe_exec, per-member SQL prefix=false
+before: pid=107 usr=shell sp="$user", public
+--- S1 same shape SELECT id, v FROM widget WHERE id=$1
+  [a] OK   [][]interface {}{[]interface {}{1, "from-a", "a"}}
+  [b] OK   [][]interface {}{[]interface {}{1, "from-b", "b"}}
+  [a] OK   [][]interface {}{[]interface {}{1, "from-a", "a"}}
+  [b] OK   [][]interface {}{[]interface {}{1, "from-b", "b"}}
+--- S1 same shape UPDATE ... RETURNING
+  [a] OK   [][]interface {}{[]interface {}{"from-a+"}}
+  [b] OK   [][]interface {}{[]interface {}{"from-b+"}}
+  [a] OK   [][]interface {}{[]interface {}{"from-a++"}}
+  [b] OK   [][]interface {}{[]interface {}{"from-b++"}}
+--- S2 different result type: SELECT id, payload FROM besdk_thing
+  [a] OK   [][]interface {}{[]interface {}{1, "a-text"}}
+  [b] OK   [][]interface {}{[]interface {}{1, map[string]interface {}{"b":"jsonb"}}}
+  [a] OK   [][]interface {}{[]interface {}{1, "a-text"}}
+  [b] OK   [][]interface {}{[]interface {}{1, map[string]interface {}{"b":"jsonb"}}}
+--- S2 different result type: SELECT * FROM besdk_thing
+  [a] OK   [][]interface {}{[]interface {}{1, "a-text"}}
+  [b] OK   [][]interface {}{[]interface {}{1, map[string]interface {}{"b":"jsonb"}, 7}}
+  [a] OK   [][]interface {}{[]interface {}{1, "a-text"}}
+  [b] OK   [][]interface {}{[]interface {}{1, map[string]interface {}{"b":"jsonb"}, 7}}
+--- S3 same listed types, b has extra col: SELECT id, payload FROM besdk_same
+  [a] OK   [][]interface {}{[]interface {}{1, "a-same"}}
+  [b] OK   [][]interface {}{[]interface {}{1, "b-same"}}
+  [a] OK   [][]interface {}{[]interface {}{1, "a-same"}}
+  [b] OK   [][]interface {}{[]interface {}{1, "b-same"}}
+--- S3 SELECT * FROM besdk_same (column count differs)
+  [a] OK   [][]interface {}{[]interface {}{1, "a-same"}}
+  [b] OK   [][]interface {}{[]interface {}{1, "b-same", 7}}
+  [a] OK   [][]interface {}{[]interface {}{1, "a-same"}}
+  [b] OK   [][]interface {}{[]interface {}{1, "b-same", 7}}
+--- S4 INSERT INTO besdk_thing (id, payload) VALUES ($1,$2) (param text vs jsonb)
+  [a] OK   [][]interface {}{[]interface {}{"{\"k\":1}"}}
+  [b] OK   [][]interface {}{[]interface {}{"{\"k\": 1}"}}
+  [a] OK   [][]interface {}{[]interface {}{"{\"k\":1}"}}
+  [b] OK   [][]interface {}{[]interface {}{"{\"k\": 1}"}}
+--- S7 leak check after commit:   pid=107 usr=shell sp="$user", public
+  (forced error: division by zero (sqlstate=22012))
+--- S7 leak check after rollback: pid=107 usr=shell sp="$user", public
+--- bench: 2000 alternating member tx in 1.01s = 0.507 ms/tx
+===== pgx v5.10.0, mode=exec, per-member SQL prefix=false
+before: pid=123 usr=shell sp="$user", public
+--- S1 same shape SELECT id, v FROM widget WHERE id=$1
+  [a] OK   [][]interface {}{[]interface {}{1, "from-a", "a"}}
+  [b] OK   [][]interface {}{[]interface {}{1, "from-b", "b"}}
+  [a] OK   [][]interface {}{[]interface {}{1, "from-a", "a"}}
+  [b] OK   [][]interface {}{[]interface {}{1, "from-b", "b"}}
+--- S1 same shape UPDATE ... RETURNING
+  [a] OK   [][]interface {}{[]interface {}{"from-a+"}}
+  [b] OK   [][]interface {}{[]interface {}{"from-b+"}}
+  [a] OK   [][]interface {}{[]interface {}{"from-a++"}}
+  [b] OK   [][]interface {}{[]interface {}{"from-b++"}}
+--- S2 different result type: SELECT id, payload FROM besdk_thing
+  [a] OK   [][]interface {}{[]interface {}{1, "a-text"}}
+  [b] OK   [][]interface {}{[]interface {}{1, map[string]interface {}{"b":"jsonb"}}}
+  [a] OK   [][]interface {}{[]interface {}{1, "a-text"}}
+  [b] OK   [][]interface {}{[]interface {}{1, map[string]interface {}{"b":"jsonb"}}}
+--- S2 different result type: SELECT * FROM besdk_thing
+  [a] OK   [][]interface {}{[]interface {}{1, "a-text"}}
+  [b] OK   [][]interface {}{[]interface {}{1, map[string]interface {}{"b":"jsonb"}, 7}}
+  [a] OK   [][]interface {}{[]interface {}{1, "a-text"}}
+  [b] OK   [][]interface {}{[]interface {}{1, map[string]interface {}{"b":"jsonb"}, 7}}
+--- S3 same listed types, b has extra col: SELECT id, payload FROM besdk_same
+  [a] OK   [][]interface {}{[]interface {}{1, "a-same"}}
+  [b] OK   [][]interface {}{[]interface {}{1, "b-same"}}
+  [a] OK   [][]interface {}{[]interface {}{1, "a-same"}}
+  [b] OK   [][]interface {}{[]interface {}{1, "b-same"}}
+--- S3 SELECT * FROM besdk_same (column count differs)
+  [a] OK   [][]interface {}{[]interface {}{1, "a-same"}}
+  [b] OK   [][]interface {}{[]interface {}{1, "b-same", 7}}
+  [a] OK   [][]interface {}{[]interface {}{1, "a-same"}}
+  [b] OK   [][]interface {}{[]interface {}{1, "b-same", 7}}
+--- S4 INSERT INTO besdk_thing (id, payload) VALUES ($1,$2) (param text vs jsonb)
+  [a] OK   [][]interface {}{[]interface {}{"{\"k\":1}"}}
+  [b] OK   [][]interface {}{[]interface {}{"{\"k\": 1}"}}
+  [a] OK   [][]interface {}{[]interface {}{"{\"k\":1}"}}
+  [b] OK   [][]interface {}{[]interface {}{"{\"k\": 1}"}}
+--- S7 leak check after commit:   pid=123 usr=shell sp="$user", public
+  (forced error: division by zero (sqlstate=22012))
+--- S7 leak check after rollback: pid=123 usr=shell sp="$user", public
+--- bench: 2000 alternating member tx in 0.94s = 0.472 ms/tx
+===== pgx v5.10.0, mode=simple_protocol, per-member SQL prefix=false
+before: pid=139 usr=shell sp="$user", public
+--- S1 same shape SELECT id, v FROM widget WHERE id=$1
+  [a] OK   [][]interface {}{[]interface {}{1, "from-a", "a"}}
+  [b] OK   [][]interface {}{[]interface {}{1, "from-b", "b"}}
+  [a] OK   [][]interface {}{[]interface {}{1, "from-a", "a"}}
+  [b] OK   [][]interface {}{[]interface {}{1, "from-b", "b"}}
+--- S1 same shape UPDATE ... RETURNING
+  [a] OK   [][]interface {}{[]interface {}{"from-a+"}}
+  [b] OK   [][]interface {}{[]interface {}{"from-b+"}}
+  [a] OK   [][]interface {}{[]interface {}{"from-a++"}}
+  [b] OK   [][]interface {}{[]interface {}{"from-b++"}}
+--- S2 different result type: SELECT id, payload FROM besdk_thing
+  [a] OK   [][]interface {}{[]interface {}{1, "a-text"}}
+  [b] OK   [][]interface {}{[]interface {}{1, map[string]interface {}{"b":"jsonb"}}}
+  [a] OK   [][]interface {}{[]interface {}{1, "a-text"}}
+  [b] OK   [][]interface {}{[]interface {}{1, map[string]interface {}{"b":"jsonb"}}}
+--- S2 different result type: SELECT * FROM besdk_thing
+  [a] OK   [][]interface {}{[]interface {}{1, "a-text"}}
+  [b] OK   [][]interface {}{[]interface {}{1, map[string]interface {}{"b":"jsonb"}, 7}}
+  [a] OK   [][]interface {}{[]interface {}{1, "a-text"}}
+  [b] OK   [][]interface {}{[]interface {}{1, map[string]interface {}{"b":"jsonb"}, 7}}
+--- S3 same listed types, b has extra col: SELECT id, payload FROM besdk_same
+  [a] OK   [][]interface {}{[]interface {}{1, "a-same"}}
+  [b] OK   [][]interface {}{[]interface {}{1, "b-same"}}
+  [a] OK   [][]interface {}{[]interface {}{1, "a-same"}}
+  [b] OK   [][]interface {}{[]interface {}{1, "b-same"}}
+--- S3 SELECT * FROM besdk_same (column count differs)
+  [a] OK   [][]interface {}{[]interface {}{1, "a-same"}}
+  [b] OK   [][]interface {}{[]interface {}{1, "b-same", 7}}
+  [a] OK   [][]interface {}{[]interface {}{1, "a-same"}}
+  [b] OK   [][]interface {}{[]interface {}{1, "b-same", 7}}
+--- S4 INSERT INTO besdk_thing (id, payload) VALUES ($1,$2) (param text vs jsonb)
+  [a] OK   [][]interface {}{[]interface {}{"{\"k\":1}"}}
+  [b] OK   [][]interface {}{[]interface {}{"{\"k\": 1}"}}
+  [a] OK   [][]interface {}{[]interface {}{"{\"k\":1}"}}
+  [b] OK   [][]interface {}{[]interface {}{"{\"k\": 1}"}}
+--- S7 leak check after commit:   pid=139 usr=shell sp="$user", public
+  (forced error: division by zero (sqlstate=22012))
+--- S7 leak check after rollback: pid=139 usr=shell sp="$user", public
+--- bench: 2000 alternating member tx in 0.90s = 0.451 ms/tx
+===== pgx v5.10.0, mode=cache_statement, per-member SQL prefix=true
+before: pid=156 usr=shell sp="$user", public
+--- S1 same shape SELECT id, v FROM widget WHERE id=$1
+  [a] OK   [][]interface {}{[]interface {}{1, "from-a", "a"}}
+  [b] OK   [][]interface {}{[]interface {}{1, "from-b", "b"}}
+  [a] OK   [][]interface {}{[]interface {}{1, "from-a", "a"}}
+  [b] OK   [][]interface {}{[]interface {}{1, "from-b", "b"}}
+--- S1 same shape UPDATE ... RETURNING
+  [a] OK   [][]interface {}{[]interface {}{"from-a+"}}
+  [b] OK   [][]interface {}{[]interface {}{"from-b+"}}
+  [a] OK   [][]interface {}{[]interface {}{"from-a++"}}
+  [b] OK   [][]interface {}{[]interface {}{"from-b++"}}
+--- S2 different result type: SELECT id, payload FROM besdk_thing
+  [a] OK   [][]interface {}{[]interface {}{1, "a-text"}}
+  [b] OK   [][]interface {}{[]interface {}{1, map[string]interface {}{"b":"jsonb"}}}
+  [a] OK   [][]interface {}{[]interface {}{1, "a-text"}}
+  [b] OK   [][]interface {}{[]interface {}{1, map[string]interface {}{"b":"jsonb"}}}
+--- S2 different result type: SELECT * FROM besdk_thing
+  [a] OK   [][]interface {}{[]interface {}{1, "a-text"}}
+  [b] OK   [][]interface {}{[]interface {}{1, map[string]interface {}{"b":"jsonb"}, 7}}
+  [a] OK   [][]interface {}{[]interface {}{1, "a-text"}}
+  [b] OK   [][]interface {}{[]interface {}{1, map[string]interface {}{"b":"jsonb"}, 7}}
+--- S3 same listed types, b has extra col: SELECT id, payload FROM besdk_same
+  [a] OK   [][]interface {}{[]interface {}{1, "a-same"}}
+  [b] OK   [][]interface {}{[]interface {}{1, "b-same"}}
+  [a] OK   [][]interface {}{[]interface {}{1, "a-same"}}
+  [b] OK   [][]interface {}{[]interface {}{1, "b-same"}}
+--- S3 SELECT * FROM besdk_same (column count differs)
+  [a] OK   [][]interface {}{[]interface {}{1, "a-same"}}
+  [b] OK   [][]interface {}{[]interface {}{1, "b-same", 7}}
+  [a] OK   [][]interface {}{[]interface {}{1, "a-same"}}
+  [b] OK   [][]interface {}{[]interface {}{1, "b-same", 7}}
+--- S4 INSERT INTO besdk_thing (id, payload) VALUES ($1,$2) (param text vs jsonb)
+  [a] OK   [][]interface {}{[]interface {}{"{\"k\":1}"}}
+  [b] OK   [][]interface {}{[]interface {}{"{\"k\": 1}"}}
+  [a] OK   [][]interface {}{[]interface {}{"{\"k\":1}"}}
+  [b] OK   [][]interface {}{[]interface {}{"{\"k\": 1}"}}
+--- S7 leak check after commit:   pid=156 usr=shell sp="$user", public
+  (forced error: division by zero (sqlstate=22012))
+--- S7 leak check after rollback: pid=156 usr=shell sp="$user", public
+--- bench: 2000 alternating member tx in 0.76s = 0.380 ms/tx
+===== pgx v5.10.0, mode=cache_describe, per-member SQL prefix=true
+before: pid=172 usr=shell sp="$user", public
+--- S1 same shape SELECT id, v FROM widget WHERE id=$1
+  [a] OK   [][]interface {}{[]interface {}{1, "from-a", "a"}}
+  [b] OK   [][]interface {}{[]interface {}{1, "from-b", "b"}}
+  [a] OK   [][]interface {}{[]interface {}{1, "from-a", "a"}}
+  [b] OK   [][]interface {}{[]interface {}{1, "from-b", "b"}}
+--- S1 same shape UPDATE ... RETURNING
+  [a] OK   [][]interface {}{[]interface {}{"from-a+"}}
+  [b] OK   [][]interface {}{[]interface {}{"from-b+"}}
+  [a] OK   [][]interface {}{[]interface {}{"from-a++"}}
+  [b] OK   [][]interface {}{[]interface {}{"from-b++"}}
+--- S2 different result type: SELECT id, payload FROM besdk_thing
+  [a] OK   [][]interface {}{[]interface {}{1, "a-text"}}
+  [b] OK   [][]interface {}{[]interface {}{1, map[string]interface {}{"b":"jsonb"}}}
+  [a] OK   [][]interface {}{[]interface {}{1, "a-text"}}
+  [b] OK   [][]interface {}{[]interface {}{1, map[string]interface {}{"b":"jsonb"}}}
+--- S2 different result type: SELECT * FROM besdk_thing
+  [a] OK   [][]interface {}{[]interface {}{1, "a-text"}}
+  [b] OK   [][]interface {}{[]interface {}{1, map[string]interface {}{"b":"jsonb"}, 7}}
+  [a] OK   [][]interface {}{[]interface {}{1, "a-text"}}
+  [b] OK   [][]interface {}{[]interface {}{1, map[string]interface {}{"b":"jsonb"}, 7}}
+--- S3 same listed types, b has extra col: SELECT id, payload FROM besdk_same
+  [a] OK   [][]interface {}{[]interface {}{1, "a-same"}}
+  [b] OK   [][]interface {}{[]interface {}{1, "b-same"}}
+  [a] OK   [][]interface {}{[]interface {}{1, "a-same"}}
+  [b] OK   [][]interface {}{[]interface {}{1, "b-same"}}
+--- S3 SELECT * FROM besdk_same (column count differs)
+  [a] OK   [][]interface {}{[]interface {}{1, "a-same"}}
+  [b] OK   [][]interface {}{[]interface {}{1, "b-same", 7}}
+  [a] OK   [][]interface {}{[]interface {}{1, "a-same"}}
+  [b] OK   [][]interface {}{[]interface {}{1, "b-same", 7}}
+--- S4 INSERT INTO besdk_thing (id, payload) VALUES ($1,$2) (param text vs jsonb)
+  [a] OK   [][]interface {}{[]interface {}{"{\"k\":1}"}}
+  [b] OK   [][]interface {}{[]interface {}{"{\"k\": 1}"}}
+  [a] OK   [][]interface {}{[]interface {}{"{\"k\":1}"}}
+  [b] OK   [][]interface {}{[]interface {}{"{\"k\": 1}"}}
+--- S7 leak check after commit:   pid=172 usr=shell sp="$user", public
+  (forced error: division by zero (sqlstate=22012))
+--- S7 leak check after rollback: pid=172 usr=shell sp="$user", public
+--- bench: 2000 alternating member tx in 0.87s = 0.434 ms/tx

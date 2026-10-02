@@ -7,7 +7,7 @@
 ## 范围
 
 - **覆盖：** 每一次面向用户、与具体业务无关的 HTTP 交互的形状；状态码；错误体及其 gRPC、GraphQL 形式；reason 目录；面向内部与外部调用方的版本策略。
-- **不覆盖：** 一个路由要求哪个权限键、怎么声明（[02-backend.md](../01-conventions/02-backend.md#权限)）；授权提供方和服务账号（[20-authorization-provider.md](20-authorization-provider.md)）；token（[21-identity-provider.md](21-identity-provider.md)）；截止时间（[16-deadlines-and-retries.md](16-deadlines-and-retries.md)）；边缘的限流和路由（边缘文档计划中，18 号文件）；错误的日志级别（[23-observability.md](23-observability.md)）；前端怎么用这一切（[03-frontend.md](../01-conventions/03-frontend.md)）。
+- **不覆盖：** 一个路由要求哪个权限键、怎么声明（[02-backend.md](../01-conventions/02-backend.md#权限)）；授权提供方和服务账号（[20-authorization-provider.md](20-authorization-provider.md)）；token（[21-identity-provider.md](21-identity-provider.md)）；截止时间（[16-deadlines-and-retries.md](16-deadlines-and-retries.md)）；边缘的限流和路由（[18-edge.md](18-edge.md)）；错误的日志级别（[23-observability.md](23-observability.md)）；前端怎么用这一切（[03-frontend.md](../01-conventions/03-frontend.md)）。
 
 ## 选择
 
@@ -62,6 +62,8 @@
 | 记录不存在 | 404 `NOT_FOUND` | 404 |
 | 记录存在，但调用方经任何规则、分享或关系都看不到它 | 404 `NOT_FOUND`，与上一行无法区分 | 404 |
 | 看得到，但这个操作需要调用方没有的键（对一条只分享查看权的记录） | — | 403 `MISSING_PERMISSION` |
+| 看得到，调用方也持有这个操作的键，但这条记录不在这个键的范围内 | — | 403 `OUT_OF_SCOPE` |
+| 请求参数本身就是一个维度取值，且不在调用方的范围内（`warehouse_id=7`） | 403 `OUT_OF_SCOPE` | 403 `OUT_OF_SCOPE` |
 | 看得到也允许，但状态不允许 | — | 400 `FAILED_PRECONDITION`，带组件自己的 reason（`ORDER_NOT_DRAFT`） |
 | 权限 bundle 还没加载 | 503 `AUTHZ_NOT_READY` | 503 |
 
@@ -87,11 +89,11 @@
 | 字段 | 规则 |
 |---|---|
 | `type` | `urn:be:<domain>:<reason>` |
-| `title` | 这个 reason 的短标题，用部署的默认语言，取自目录 |
+| `title` | 这个 reason 的短标题，用部署的默认语言（`DEFAULT_LOCALE`，默认 `zh-CN`），取自目录 |
 | `status` | HTTP 状态码 |
 | `code` | 标准的 gRPC code 名 |
-| `reason`、`domain` | 错误的身份：前端用 `domain` + `reason` 去目录里查 |
-| `detail` | 用默认语言渲染好的消息，供日志和调试；只在前端不认识这个 reason 时才展示给用户 |
+| `reason`、`domain` | 错误的身份：前端用 `domain` + `reason` 去目录里查。`domain` 是组件 ID，平台 reason 则是 `be`；槽位族的成员不用自己的 ID，而用族的 ID（每个授权成员都回答 `domain: infra/authz`），这样前端每个族只维护一张表 |
+| `detail` | 用 `DEFAULT_LOCALE` 渲染好的消息，供日志和调试；只在前端不认识这个 reason 时才展示给用户 |
 | `metadata` | 只有字符串值，即模板的参数；绝不含用户自己发来的内容之外的个人数据，绝不含密钥 |
 | `violations` | 字段错误，来自 gRPC 的 `BadRequest` |
 | `instance` | 请求路径 |
@@ -112,6 +114,8 @@ status code，加上作为 message 的默认语言 `detail`，再加上 details�
 | `NOT_FOUND` | 404 | `UNAVAILABLE` | 503 |
 | `ALREADY_EXISTS`、`ABORTED` | 409 | `DEADLINE_EXCEEDED` | 504 |
 | `INTERNAL`、`UNKNOWN`、`DATA_LOSS` | 500 | | |
+
+两个例外：`BODY_TOO_LARGE`（`INVALID_ARGUMENT`）回答 413；由边缘抛出的 `UPSTREAM_UNAVAILABLE`（`UNAVAILABLE`）回答 502 或 503。
 
 ### GraphQL 形式（移动端 BFF）
 
@@ -134,9 +138,9 @@ reasons:
     deprecated: false
 ```
 
-- `reason` 是 `UPPER_SNAKE`，在 domain 内唯一。条目**只追加**，和 `registry/permissions.tsv` 一样：绝不改名、删除或复用；用 `deprecated: true` 退役（[07-registries.md](../01-conventions/07-registries.md#只追加)）。
+- `reason` 是 `UPPER_SNAKE`，在 domain 内唯一。槽位族成员的 reason 列在族契约的 `errors.yaml` 里，归在族的 domain（`infra/authz`）下，不进成员自己的目录。条目**只追加**，和 `registry/permissions.tsv` 一样：绝不改名、删除或复用；用 `deprecated: true` 退役（[07-registries.md](../01-conventions/07-registries.md#只追加)）。
 - 前端从已安装组件的目录生成自己的消息表，就像它从契约生成类型一样。不认识的 reason 显示 `title` 或一条通用消息，并上报。
-- **平台 reason** 用 `domain: be`，随组件协议一起发布（计划新建的 `brickKit/be-protocol` 仓库里的 `schemas/errors-be.yaml`）。下表是完整集合；组件不在自己的 domain 里使用这些名字：
+- **平台 reason** 用 `domain: be`，随组件协议一起发布（`brickKit/be-protocol` 的 `schemas/errors-be.yaml`，[02](02-languages-and-component-protocol.md#be-protocol-的仓库结构)）。下表是完整集合，共 32 个 reason，与该文件逐行一致；组件不在自己的 domain 里使用这些名字，也不抛该文件之外的 `be` reason：
 
 | Reason | Code | 什么时候抛 |
 |---|---|---|
@@ -149,7 +153,7 @@ reasons:
 | `TOKEN_INVALID` | `UNAUTHENTICATED` | 没有 token，或 token 校验不过（签名、`iss`、`aud`、`typ`、过期） |
 | `UNSUPPORTED_DELEGATION` | `UNAUTHENTICATED` | token 经由一种 provider 不支持的代理方行事 |
 | `MISSING_CALLER` | `UNAUTHENTICATED` | 系统面调用没带 `be-caller`（[14](14-system-rpc.md)） |
-| `OUT_OF_SCOPE` | `PERMISSION_DENIED` | 请求参数本身就是一个维度取值，且不在调用方的范围内（`warehouse_id=7`） |
+| `OUT_OF_SCOPE` | `PERMISSION_DENIED` | 请求参数本身就是一个维度取值，且不在调用方的范围内（`warehouse_id=7`）；或者一条看得到的记录，不在调用方所持操作键的范围内（[20](20-authorization-provider.md)） |
 | `FIELD_FORBIDDEN` | `PERMISSION_DENIED` | 写了一个调用方看不到的字段 |
 | `SORT_FORBIDDEN` | `INVALID_ARGUMENT` | 按对调用方掩码的字段排序、过滤或聚合 |
 | `SHARE_NOT_ALLOWED` | `PERMISSION_DENIED` | 这个资源类型或这个调用方不允许做的分享（[20](20-authorization-provider.md)） |
@@ -167,6 +171,13 @@ reasons:
 | `BODY_TOO_LARGE` | `INVALID_ARGUMENT` | 请求体超过路由的上限；以 HTTP 413 回答（[16](16-deadlines-and-retries.md)） |
 | `RANGE_COLD` | `FAILED_PRECONDITION` | 请求的时间范围已转入冷存储；`metadata` 给出冷区间，以及能否解冻、能否异步导出 |
 | `UNIT_SEALED` | `FAILED_PRECONDITION` | 修改一个已封存的生命周期单元；应当新建一张冲销单据 |
+| `RATE_LIMITED` | `RESOURCE_EXHAUSTED` | 只由边缘抛出：达到了调用方或路由的限流上限；HTTP 429，带 `Retry-After`（[18](18-edge.md)） |
+| `UPSTREAM_UNAVAILABLE` | `UNAVAILABLE` | 只由边缘抛出：边缘连不上组件；HTTP 502 或 503（[18](18-edge.md)） |
+| `UPSTREAM_TIMEOUT` | `DEADLINE_EXCEEDED` | 只由边缘抛出：组件没在边缘的截止时间内回答；HTTP 504（[18](18-edge.md)） |
+| `NETWORK_IN_TX` | `INTERNAL` | 事务打开期间发起了出站调用：属于编程错误，在日志和测试运行里写明这个名字，好让它们抓到；调用方收到的仍是上面所说的 `reason: INTERNAL`（[10](10-local-transactions.md#端口契约)、[0501](../02-decisions/05-runtime/0501-no-network-inside-a-transaction.md)） |
+| `DB_TOO_MANY_CONNECTIONS` | `UNAVAILABLE` | 数据库以 SQLSTATE `53300`（连接过多）拒绝了连接；不重试 |
+
+三个边缘 reason 绝不由组件抛出：边缘自己产生的回答（404、413、429、502、503、504）带同样的 problem 体，`domain: be`。
 
 ### 版本策略
 
@@ -226,10 +237,13 @@ reasons:
 
 ## 相关决策
 
-- [0301 金额是字符串编码的十进制；列表按游标分页](../02-decisions/03-contracts-and-data/0301-money-as-strings-lists-by-cursor.md) 和 [0302 契约只做加法](../02-decisions/03-contracts-and-data/0302-contracts-are-additive-only.md)。
-- [0204 权限是纯并集，没有 Deny](../02-decisions/02-permissions/0204-permissions-are-a-pure-union.md) 和 [0205 数据范围随版本发布](../02-decisions/02-permissions/0205-data-scopes-ship-with-the-version.md)：403 和 404 依据它们来判定。
+- [0504 一种错误对象，由目录里的 reason 标识](../02-decisions/05-runtime/0504-error-model-and-reason-catalogue.md)：本文是它的完整分析。
+- [0212 调用者看不见的记录答 404](../02-decisions/02-permissions/0212-invisible-records-answer-404.md)：调用方看不到的记录回答 404，命令也一样。
+- [0302 契约只做加法](../02-decisions/03-contracts-and-data/0302-contracts-are-additive-only.md)：版本策略，包括带 `Deprecation` 和 `Sunset` 的 `/v2/` 路径前缀。
+- [0208 gRPC 是系统面，人用 REST](../02-decisions/02-permissions/0208-grpc-is-the-system-plane.md)：它的另一半：REST 是用户面。
+- [0301 金额是与币种成对的十进制字符串；列表按游标分页](../02-decisions/03-contracts-and-data/0301-money-as-strings-lists-by-cursor.md)：金额与分页。
+- [0204 权限是纯并集，没有 Deny](../02-decisions/02-permissions/0204-permissions-are-a-pure-union.md) 和 [0205 数据范围的规则随版本发布](../02-decisions/02-permissions/0205-data-scopes-ship-with-the-version.md)：403 和 404 依据它们来判定。
 - [0404 用户偏好只有四项](../02-decisions/04-frontend/0404-four-user-preferences.md)：语言是前端偏好，所以由前端翻译。
-- 计划中、尚未编号："错误模型与 reason 目录"；"调用方看不到的记录回答 404，命令也一样"；"gRPC 是组件之间的系统协议"，它的另一半是 REST 是用户面。
 
 ## 已知限制
 

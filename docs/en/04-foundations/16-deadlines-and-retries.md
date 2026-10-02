@@ -7,14 +7,14 @@ How much time one request may take at each hop, from the user's click through th
 ## Scope
 
 - **In:** time budgets and how they propagate; HTTP server timeouts and body limits; the retry rule of every layer; retry budgets; concurrency limits and connection budgets as bulkheads.
-- **Out:** the transaction-level timeouts and the `40001`/`40P01` retry in detail ([10-local-transactions.md](10-local-transactions.md)); event redelivery in detail ([12-event-bus.md](12-event-bus.md#durable-consumers)); job and reconciler backoff ([19-background-jobs.md](19-background-jobs.md), [11-consistency-across-components.md](11-consistency-across-components.md)); the edge's own timeouts and rate limits (the edge document is planned as file 18).
+- **Out:** the transaction-level timeouts and the `40001`/`40P01` retry in detail ([10-local-transactions.md](10-local-transactions.md)); event redelivery in detail ([12-event-bus.md](12-event-bus.md#durable-consumers)); job and reconciler backoff ([19-background-jobs.md](19-background-jobs.md), [11-consistency-across-components.md](11-consistency-across-components.md)); the edge's own timeouts and rate limits ([18-edge.md](18-edge.md)).
 
 ## Choice
 
 - **Every request has a deadline, and it only shrinks** as it travels: each hop gives its children less time than it has itself. In brickKit's words, the timeout you set on a dependency must be shorter than the time your caller is willing to wait for you (`brickkit docs 09-patterns/04-service-calling`).
 - **Defaults a user can live with:** an ordinary action 10 s; an orchestrated action such as confirming an order 15 s, declared on its route; exports are asynchronous.
 - **Method retries are decided by the contract alone**: a gRPC method is retried only if it declares itself free of side effects or idempotent, and only on `UNAVAILABLE`.
-- **A retry budget per connection** caps retry traffic at about 10 % of normal traffic and stops retries entirely when a dependency is broadly down.
+- **A retry budget per client channel** (in TypeScript per process and target, see [Retries](#retries-layer-by-layer)) caps retry traffic at about 10 % of normal traffic and stops retries entirely when a dependency is broadly down.
 - **Bulkheads instead of circuit breakers:** a concurrency limit per (member, dependency), a connection budget per member, and deadlines.
 - **One layer retries.** Code never wraps a retry loop around a call that already retries.
 
@@ -27,7 +27,7 @@ How much time one request may take at each hop, from the user's click through th
 | Hop | Default | Rule |
 |---|---|---|
 | User waits | 10 s; 15 s for declared orchestrations; exports return 202 and finish as a job | a route that needs more than 10 s declares it in its OpenAPI operation as `x-be-deadline-seconds` (planned), so the edge, the server and the frontend read one number |
-| Edge | route deadline + 5 s | configured from the same declaration (planned edge document) |
+| Edge | route deadline + 5 s | configured from the same declaration ([18](18-edge.md)) |
 | Inbound HTTP | the route's deadline | the request context carries it from the first byte read |
 | HTTP server | read header 5 s; read 30 s; write = route deadline + 5 s; idle 120 s; body at most 1 MiB unless the route declares more | the same values standalone and in a shell; files go to object storage through presigned URLs, never through a component's body |
 | Inbound gRPC | the caller's `grpc-timeout`; 10 s when absent | [14](14-system-rpc.md#server-requirements) |
@@ -37,6 +37,18 @@ How much time one request may take at each hop, from the user's click through th
 | Job run, reconciler step | the timeout the job declares | [19](19-background-jobs.md#port-contract) |
 | Frontend | route deadline + 5 s | then shows the action as unfinished; a retried write reuses its `Idempotency-Key` ([15](15-user-api-and-errors.md#request-headers)) |
 
+**HTTP server settings in TypeScript.** Node's options do not map one to one onto the HTTP server row, so the SDK sets them on Fastify (5.12 or later, which has `handlerTimeout`) as follows:
+
+| Fastify / Node option | Value | Row value it implements |
+|---|---|---|
+| `headersTimeout` | `5000` | read header 5 s |
+| `connectionsCheckingInterval` | `1000` | Node checks `headersTimeout` and `requestTimeout` only on this interval (default 30 s); 1 s makes the 5 s header limit real |
+| `requestTimeout` | `30000` | read 30 s |
+| `keepAliveTimeout` | `120000` | idle 120 s |
+| `handlerTimeout` | the route's deadline | Fastify answers `503` by itself; the SDK's error handler remaps it to `504`, code `DEADLINE_EXCEEDED`, and `request.signal` cancels the downstream calls and the transaction |
+
+The SDK's error handler never reads the `AsyncLocalStorage` context: on a handler timeout it runs in the timer's context, where the context is empty, so the member's ID and the request ID come from `request` and the closure.
+
 Worked example, confirming an order (15 s): sales receives the request with 15 s; its own reads get `min(5 s, remaining)` each; the reservation call to inventory gets `min(3 s, remaining − 50 ms)` and arrives with `grpc-timeout` of at most 3 s; inventory's statements get `min(5 s, that remaining)`. Nothing below sales can outlive the user's wait.
 
 ### Retries, layer by layer
@@ -44,11 +56,11 @@ Worked example, confirming an order (15 s): sales receives the request with 15 s
 | Layer | Retried | How | Bound |
 |---|---|---|---|
 | Database transaction | `40001`, `40P01` | re-run the body, `10 ms · 2^n` ± jitter | 3 attempts ([10](10-local-transactions.md)) |
-| gRPC, methods with `idempotency_level` `NO_SIDE_EFFECTS` or `IDEMPOTENT` | `UNAVAILABLE` | the service config below | 3 attempts, plus the retry budget |
+| gRPC, methods with `idempotency_level` `NO_SIDE_EFFECTS` or `IDEMPOTENT` | `UNAVAILABLE` | the service config below | 3 attempts in total (the first plus at most 2 retries), plus the retry budget |
 | gRPC, other methods | only a request that never left the client (gRPC's transparent retry) | built into gRPC | once |
 | REST calls a component makes for a user | `GET` on a reset connection | one immediate retry | once |
 | Frontend writes | timeouts and 5xx | the same `Idempotency-Key` | as the page decides; never a new key |
-| Events | handler errors | nak with backoff 1 s … 1 h | 8 deliveries, then dead letters ([12](12-event-bus.md#durable-consumers)) |
+| Events | handler errors | the SDK naks with the `EVENTS_BACKOFF` delays (default 1 s … 1 h); no server-side backoff | `EVENTS_MAX_DELIVER` deliveries (default 8), then dead letters ([12](12-event-bus.md#durable-consumers)) |
 | Queued commands | handler errors | the worker's backoff list | its maximum attempts, then the dead handler ([19](19-background-jobs.md)) |
 | Reconcilers | handler errors | per item backoff | its maximum attempts, then `SUSPENDED` and a task ([11](11-consistency-across-components.md)) |
 
@@ -70,7 +82,15 @@ The service config every SDK generates for the retryable methods of a dependency
 }
 ```
 
-- `retryThrottling` is the retry budget. It is counted per connection, and connections are per member, so one member's retry storm cannot spend another member's budget ([27-shells.md](27-shells.md)).
+- `maxAttempts` 3 means 3 attempts in total: the first plus at most 2 retries, in every language.
+- `retryThrottling` is the retry budget (`maxTokens` 10). Where it is counted differs by gRPC library:
+
+  | Language | Budget counted per | Refilled |
+  |---|---|---|
+  | Go, Python | client channel, that is per (member, dependency, port) ([14](14-system-rpc.md#client-requirements)), so one member's retry storm cannot spend another member's budget ([27-shells.md](27-shells.md)) | whenever the channel's resolver updates (DNS re-resolution, typically after a `GOAWAY`) |
+  | TypeScript (grpc-js) | process and normalised target string, shared by every channel to that target | not on re-resolution |
+
+  Today the only TypeScript component, the mobile BFF, is never hosted in a shell, so its process is one member; should a TypeScript component join a shell, the SDK keeps a per-member budget in its own interceptor. "Retry traffic ≤ 10 %" is the steady-state bound, not a hard cap.
 - Hedging (sending a second copy before the first fails) is off.
 - **Nested retries multiply.** Three layers of three attempts make 27 calls at the bottom during an outage, exactly when the dependency can least take them. A component never adds its own retry loop around a runtime call that already retries; a retry a layer higher (a reconciler, a redelivered event) uses the same idempotency key.
 
@@ -128,7 +148,8 @@ Planned, in `tools/be-acceptance/conformance/rpc/` and `tools/be-acceptance/conf
 - a gRPC call without a deadline receives the default;
 - only `NO_SIDE_EFFECTS` or `IDEMPOTENT` methods are retried, and only on `UNAVAILABLE`;
 - after the retry budget is spent, no further retries happen;
-- a client that sends headers slowly is disconnected after the read-header timeout;
+- a client that sends headers slowly is disconnected after the read-header timeout (in TypeScript within the 1 s check interval of it);
+- a route that outlives its deadline answers `504` `DEADLINE_EXCEEDED` in every language (in TypeScript the remapped `handlerTimeout`);
 - the 65th concurrent call to one dependency fails at once with `OUTBOUND_LIMIT`;
 - in a shell, one member exhausting its connection budget leaves another member's latency unchanged.
 
@@ -136,9 +157,10 @@ Component tests written red first: infra/iam-casdoor's login fails within its de
 
 ## Decision records
 
-- [0201 No Redis](../02-decisions/02-permissions/0201-no-redis.md): no shared store for global limits; rate limiting across requests belongs to the edge.
-- [0108 One shell, one repository](../02-decisions/01-architecture/0108-one-repository-per-shell.md): budgets and limits are per member inside a shell.
-- Planned, not yet numbered: "deadlines and retry budgets" (in the planned runtime folder); "gRPC is the system protocol between components".
+- [0503 Deadlines and retry budgets](../02-decisions/05-runtime/0503-deadlines-and-retry-budgets.md): this document is its full analysis.
+- [0201 No Redis, no cache server](../02-decisions/02-permissions/0201-no-redis.md): no shared store for global limits; rate limiting across requests belongs to the edge.
+- [0108 One shell, one repository, one image, one member list](../02-decisions/01-architecture/0108-one-repository-per-shell.md): budgets and limits are per member inside a shell.
+- [0208 gRPC is the system plane; people use REST](../02-decisions/02-permissions/0208-grpc-is-the-system-plane.md): gRPC between components carries deadlines and retry policy in its specification.
 
 ## Known limits
 

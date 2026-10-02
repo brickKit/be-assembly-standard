@@ -9,20 +9,20 @@ Which database engine the project runs on, what "the database is replaceable" me
 This document covers the engine and its version promise, compatible distributions, the dialect layer in the SDK, schema and role isolation, the database identity a component takes from configuration, pools and the per-member bulkhead in a shell, connection poolers, role-level guardrails, and pointers for high availability and backup. It leaves to other documents:
 
 - what happens inside one transaction (isolation, timeouts, retries, lock order, advisory locks): [10-local-transactions.md](10-local-transactions.md);
-- migrations, expand/contract and coexisting versions: the schema evolution document (planned, file 08);
-- partitions, retention and frozen data: the data lifecycle document (planned, file 09);
+- migrations, expand/contract and coexisting versions: [08-schema-evolution.md](08-schema-evolution.md);
+- partitions, retention and frozen data: [09-data-lifecycle.md](09-data-lifecycle.md);
 - primary keys and document numbers: [04-identifiers-and-numbering.md](04-identifiers-and-numbering.md);
 - how a component uses the database day to day: [02-backend.md](../01-conventions/02-backend.md#database) and [04-configuration.md](../01-conventions/04-configuration.md#database-roles).
 
 ## Choice
 
-- **The PostgreSQL dialect family.** PostgreSQL 14 or later is supported; 16 or later is required once shells use NOINHERIT grants. The base resources run `postgres:16-alpine`.
+- **The PostgreSQL dialect family.** A standalone component needs PostgreSQL 14 or later; a shell needs 16 or later, for its NOINHERIT grants (`GRANT … WITH INHERIT FALSE, SET TRUE`). The base resources run `postgres:16-alpine`.
 - **"Replaceable" means another engine that speaks the PostgreSQL wire protocol and passes the database suite.** There is no multi-dialect abstraction in the SDK. The mechanisms every component needs (role switching, partitions, queue claims, advisory locks, error classification, platform tables) live once, in the SDK's PostgreSQL dialect layer; business SQL stays in each component's repository layer.
-- **One database, one schema and one role per component** ([0102](../02-decisions/01-architecture/0102-one-schema-per-component.md)).
-- **The identity comes from configuration only.** The role is `PG_USER`, the schema is `PG_SCHEMA`; both are required, neither has a default, and neither is derived from the other. Migrations contain no role or schema names.
-- **Every access goes through the SDK's store handle**, which switches role and `search_path` inside each transaction. The outbox pump, consumers and lifecycle jobs go through it as well, so a shell's login role needs no privileges of its own.
+- **One database; per component one schema and two roles**, an owner and a runtime role ([0102](../02-decisions/01-architecture/0102-one-schema-per-component.md)).
+- **The identity comes from configuration only.** The owner role is `PG_OWNER_USER`, the runtime role is `PG_USER`, the schema is `PG_SCHEMA`; all three are required, none has a default, and none is derived from another or from the component ID. Migrations contain no role or schema names.
+- **Every access goes through the SDK's store handle**, which switches role, `search_path` and `application_name` inside each transaction. The outbox pump, consumers and lifecycle jobs go through it as well, so a shell's login role needs no privileges of its own.
 - **Pools are bounded**, and in a shell every member has its own budget inside the shared pool.
-- **Migration role and runtime role are separate**: the runtime role can read and write rows but cannot drop a table.
+- **Owner role and runtime role are separate**: the owner owns the tables and runs the migrations; the runtime role has DML only, is not a member of the owner, and cannot create, alter or drop a table. The few DDL steps needed at run time (partitions ahead, seal guards, dropping expired platform partitions) go through `SECURITY DEFINER` functions the owner creates.
 - **A connection pooler is optional**; when used, it runs in transaction mode and migrations bypass it.
 - **Out-of-band services** (Casdoor, Keycloak) connect with roles of their own, never as a superuser.
 
@@ -37,8 +37,10 @@ The engine port is "the PostgreSQL wire protocol plus this capability list". The
 | Key | Required | Default | Meaning |
 |---|---|---|---|
 | `PG_HOST`, `PG_PORT`, `PG_DATABASE` | yes | — | where the database is ([04-configuration.md](../01-conventions/04-configuration.md#shared-connection-keys)) |
-| `PG_USER` | yes | none | the role every transaction switches to; standalone it is also the login role |
+| `PG_USER` | yes | none | the runtime role: DML only; every transaction switches to it; standalone it is also the login role |
 | `PG_PASSWORD` | yes | — | secret, `${<REPO>_DB_PASSWORD}` |
+| `PG_OWNER_USER` | yes | none | the owner role: owns the tables in `PG_SCHEMA`, runs migrations and the platform migration; the running service never uses it |
+| `PG_OWNER_PASSWORD` | yes | — | secret; the owner's password, used by the migration step only |
 | `PG_SCHEMA` | yes | none | the schema the component owns; the only entry on its `search_path` |
 | `PG_POOL_MAX` | no | 10 | standalone: the pool's maximum open connections. In a shell: this member's concurrency limit inside the shared pool |
 | `PG_POOL_MIN_IDLE` | no | 2 | idle connections kept open |
@@ -49,23 +51,30 @@ The engine port is "the PostgreSQL wire protocol plus this capability list". The
 
 The optional keys are declared in each component's `configSchema`. A shell has its own `PG_POOL_MAX`: the size of its one physical pool, default the smaller of the sum of its members' `PG_POOL_MAX` and 40.
 
+A documented limitation: brickKit gives the migration container exactly the service's environment, so the running service also receives `PG_OWNER_USER` / `PG_OWNER_PASSWORD`. The SDK runtime never uses them; once brickKit can give the migration step variables of its own (feature request FR06-013), only the migration container receives them.
+
 ### What every transaction does
 
 ```sql
 BEGIN;
-SET LOCAL ROLE <PG_USER>;
+SET LOCAL ROLE <PG_USER>;                        -- in a shell: the member's own runtime role
 SET LOCAL search_path TO <PG_SCHEMA>;
+SET LOCAL application_name = '<component ID>';  -- in a shell: the member's ID
 -- per-transaction timeouts: see 10-local-transactions.md
 ...
 COMMIT;
 ```
 
-Nothing is ever set at session level: a `SET` without `LOCAL` stays on the pooled connection and the next borrower runs in your schema. The session time zone is UTC and is never changed ([05-time-and-calendars.md](05-time-and-calendars.md)).
+Nothing is ever set at session level on a pooled connection: a `SET` without `LOCAL` stays on it and the next borrower runs in your schema. The one exception is the dedicated, unpooled migration connection, which logs in as the owner and is closed after use ([08-schema-evolution.md](08-schema-evolution.md#the-migration-entry)). The session time zone is UTC and is never changed ([05-time-and-calendars.md](05-time-and-calendars.md)).
+
+`application_name` is how a member's connections are told apart: inside a shell `usename` is always the shell's login role, so `pg_stat_activity` counts a member by `application_name` (conformance case `CP-DB-03`). The SDK also prefixes every statement of a member with the comment `/* be:<schema> */`, so the asyncpg and pgx statement caches never share a prepared statement between two members whose platform tables have different shapes; the TypeScript `pg` driver keeps unnamed statements.
+
+Component code never issues `SET ROLE` or `SET LOCAL ROLE` itself: only the store does (gate `identity-literal-scan`).
 
 ### What the SDK checks at start
 
-- **Capabilities**: `server_version_num >= 140000`, declarative partitioning, `FOR UPDATE SKIP LOCKED`. A missing one stops the start and names the capability.
-- **Identity**: inside a transaction as `PG_USER`, the role has `USAGE` and `CREATE` on `PG_SCHEMA`, and no table in the schema has another owner. A failure is logged at ERROR and exported as a metric; it does not stop the module, and it is never part of `/healthz`.
+- **Capabilities**: `server_version_num >= 140000` (`>= 160000` in a shell), declarative partitioning, `FOR UPDATE SKIP LOCKED`. A missing one stops the start and names the capability.
+- **Identity**: inside a transaction as `PG_USER`, the role has `USAGE` but not `CREATE` on `PG_SCHEMA`, is not a member of `PG_OWNER_USER`, every table in the schema is owned by `PG_OWNER_USER`, and `PG_USER` holds `SELECT, INSERT, UPDATE, DELETE` on each. A failure is logged at ERROR, exported as `be_db_identity_ok = 0` and makes `/readyz` answer `503`; it does not stop the module, and it is never part of `/healthz`.
 - **Shell**: when a member's configuration names a `PG_HOST`, `PG_PORT` or `PG_DATABASE` different from the shell's, the shell refuses to start and names the member and the key. Otherwise the member would silently use the shell's database.
 
 ### Capability list
@@ -80,17 +89,23 @@ Nothing is ever set at session level: a `SET` without `LOCAL` stays on the poole
 | transactional DDL, `CREATE INDEX CONCURRENTLY` | migrations |
 | `INSERT … ON CONFLICT … RETURNING` | idempotency claims, upserts |
 | `uuid`, `NUMERIC`, `timestamptz`, `date`, `JSONB` (opaque storage only) | column types |
-| SQLSTATE 23505, 40001, 40P01, 55P03, 57014 | error classification in the SDK |
+| `SECURITY DEFINER` functions with `SET search_path FROM CURRENT` | the DDL the runtime role may perform at run time |
+| SQLSTATE 23505, 40001, 40P01, 55P03, 57014, 25P04, 53300 | error classification in the SDK |
+
+**Optional capabilities.** `pg_trgm` and `pg_bigm` are not required extensions: the SDK probes them at start and uses the best one present for search indexes; without either, search is correct but slower ([25-search.md](25-search.md)). An engine that lacks them still qualifies.
 
 ### Roles
 
 | Role | Login | Owns | Used by |
 |---|---|---|---|
-| `PG_USER` | yes | the tables in `PG_SCHEMA`, because the migrations run as this role and own what they create | the component: its migrations and the running service |
-| shell login role | yes | nothing | a shell; a member of every hosted `PG_USER`, NOINHERIT |
+| `PG_OWNER_USER` (the `<schema>` owner) | yes | the tables, sequences and functions in `PG_SCHEMA`, because migrations and the platform migration run as this role; does all DDL | the migration step only |
+| `PG_USER` (runtime role) | yes | nothing; `USAGE` on `PG_SCHEMA` and `SELECT, INSERT, UPDATE, DELETE` on its tables through default privileges; not a member of the owner role | the running service (standalone: its login role) |
+| shell login role | yes | nothing | a shell; granted every hosted member's runtime `PG_USER` (never an owner) `WITH INHERIT FALSE, SET TRUE` (PostgreSQL 16) and reaches it only by `SET LOCAL ROLE` |
 | `casdoor_rw` and similar | yes | its own schema only | an out-of-band service |
 
-No role or schema name is derived in code or written into a migration: both come from `PG_USER` and `PG_SCHEMA`. `be-ops` generates the roles, the grants and these role-level guardrails, which act as a backstop for any session, including a forgotten tool:
+The threat this split covers: runtime SQL (an injection, a statement an AI wrote wrongly) cannot `DROP` or `ALTER` a table. At run time the lifecycle engine creates partitions ahead, installs seal guards and drops expired platform and queue partitions only through the platform's `SECURITY DEFINER` functions (be-protocol `ddl/10-lifecycle-functions.sql`), which the owner creates in the platform migration ([09-data-lifecycle.md](09-data-lifecycle.md)). Inside a shell, isolation between members is the SDK's job: the shell role may switch to every member's runtime role, so only the store issues `SET LOCAL ROLE`, always to the member's own `PG_USER`.
+
+No role or schema name is derived in code or written into a migration: they come from `PG_OWNER_USER`, `PG_USER` and `PG_SCHEMA`. `be-ops` generates the roles, the grants, the default privileges (`ALTER DEFAULT PRIVILEGES FOR ROLE <owner> IN SCHEMA <schema> GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES` and `USAGE, SELECT ON SEQUENCES` to the runtime role) and these role-level guardrails, which act as a backstop for any session, including a forgotten tool:
 
 ```sql
 ALTER ROLE <login role> SET statement_timeout = '30s';
@@ -103,7 +118,8 @@ They apply to the role that logs in. After `SET ROLE` PostgreSQL does not apply 
 ### Pools and the bulkhead
 
 - One pool per process. In a shell the pool belongs to the shell, and each member reaches it through a limit of its own `PG_POOL_MAX` concurrent connections.
-- A member that has used its whole budget waits up to `PG_POOL_ACQUIRE_TIMEOUT` (or the caller's remaining deadline, if shorter) and then fails with `RESOURCE_EXHAUSTED` and the reason `DB_POOL_EXHAUSTED` ([15-user-api-and-errors.md](15-user-api-and-errors.md)), confined to that member. The other members are unaffected.
+- A member that has used its whole budget waits up to `PG_POOL_ACQUIRE_TIMEOUT` (or the caller's remaining deadline, if shorter) and then fails with `RESOURCE_EXHAUSTED` and the reason `DB_POOL_EXHAUSTED` ([15-user-api-and-errors.md](15-user-api-and-errors.md)), confined to that member. The other members are unaffected. A member's connections are counted by `application_name`.
+- When the server refuses a new connection with SQLSTATE `53300` (too many connections), the SDK fails with `UNAVAILABLE` / `DB_TOO_MANY_CONNECTIONS`, without retrying.
 - One task holds at most one connection at a time; a nested transaction is refused ([10-local-transactions.md](10-local-transactions.md)). With bounded pools, holding two connections at once is how a pool starves itself.
 - A connection budget gate in `be-ops` adds up `PG_POOL_MAX` for every process in the deploy file plus reserves for migrations, Casdoor and Keycloak, and fails when the total exceeds `max_connections - superuser_reserved_connections`.
 
@@ -111,7 +127,7 @@ They apply to the role that logs in. After `SET ROLE` PostgreSQL does not apply 
 
 - Optional. When used: transaction mode only, PgBouncer 1.21 or later with `max_prepared_statements > 0`. Otherwise turn off the statement cache in every driver.
 - Runtime code takes transaction-scoped advisory locks only; a gate scans for session-level `pg_advisory_lock` calls.
-- Migrations connect directly to PostgreSQL through `PG_MIGRATION_HOST` / `PG_MIGRATION_PORT`, because golang-migrate holds a session-level advisory lock. brickKit gives the migration container exactly the service's environment, so separate keys are the only way to point the two at different hosts.
+- Migrations log in as `PG_OWNER_USER` and connect directly to PostgreSQL through `PG_MIGRATION_HOST` / `PG_MIGRATION_PORT`, because golang-migrate holds a session-level advisory lock. brickKit gives the migration container exactly the service's environment, so separate keys are the only way to point the two at different hosts.
 
 ## Alternatives
 
@@ -176,18 +192,18 @@ The output is an engine-by-capability matrix with three verdicts: works, degrade
 
 Tests to write red first:
 
-- SDK: a member that exceeds its `PG_POOL_MAX` waits and then gets `RESOURCE_EXHAUSTED` / `DB_POOL_EXHAUSTED`, while another member keeps working; the pool sets its maximum and lifetime; a shell's physical pool is the smaller of the members' sum and the shell's cap; `PG_MIGRATION_HOST` wins over `PG_HOST`; a missing `PG_USER` or `PG_SCHEMA` fails naming the key, and the role is never derived from the schema; a NOINHERIT shell login role can still run the outbox pump and consumers; a member whose `PG_HOST` differs from the shell's stops the shell.
-- SDK, reproduce first: two members on one physical connection sending identical SQL text against platform tables of different shapes must not fail with "cached plan must not change result type".
+- SDK: a member that exceeds its `PG_POOL_MAX` waits and then gets `RESOURCE_EXHAUSTED` / `DB_POOL_EXHAUSTED`, while another member keeps working; the pool sets its maximum and lifetime; a shell's physical pool is the smaller of the members' sum and the shell's cap; `PG_MIGRATION_HOST` wins over `PG_HOST`; a missing `PG_USER` or `PG_SCHEMA` fails naming the key, and the role is never derived from the schema; a NOINHERIT shell login role can still run the outbox pump and consumers; a member whose `PG_HOST` differs from the shell's stops the shell; under full load a member's connections with `application_name` = its ID stay at or below its `PG_POOL_MAX` (`CP-DB-03`); the runtime role's `DROP TABLE` and `ALTER TABLE` fail, while partition creation at run time succeeds through the `SECURITY DEFINER` functions; a refused connection (`53300`) gives `UNAVAILABLE` / `DB_TOO_MANY_CONNECTIONS`.
+- SDK, reproduce first: two members on one physical connection sending identical SQL text against platform tables of different shapes must not fail with "cached plan must not change result type"; the `/* be:<schema> */` prefix is what prevents it (the pgx reproduction with the prefix is still to run).
 - be-ops: login roles carry the three timeouts; the connection budget gate fails and lists the processes when the total exceeds `max_connections`.
-- be-acceptance: a session-level advisory lock in runtime code fails the scan; a migration containing `OWNER TO`, `GRANT`, `CREATE SCHEMA`, `SET ROLE`, a qualified name or a role name fails the migration identity scan; code that derives a role from a schema name, or defaults `PG_SCHEMA` to a literal, fails the identity literal scan.
+- be-acceptance: a session-level advisory lock in runtime code fails the scan; a migration containing `OWNER TO`, `GRANT`, `CREATE SCHEMA`, `SET ROLE`, a qualified name or a role name fails the migration identity scan; code that derives a role from a schema name, defaults `PG_SCHEMA` to a literal, or issues `SET ROLE` in component code, fails the identity literal scan (`identity-literal-scan`).
 - infra: the Casdoor role is not a superuser.
 
 ## Decision records
 
-- [0102](../02-decisions/01-architecture/0102-one-schema-per-component.md): one database, one schema and role per component. A revision is planned: Citus schema-based sharding and a separate pool per member as its reopen conditions, and the split between owner role and runtime role.
-- [0103](../02-decisions/01-architecture/0103-locked-stack-per-language.md): no ORM, hand-written SQL, so business SQL stays in each component's repository layer.
-- [0106](../02-decisions/01-architecture/0106-infrastructure-is-not-a-component.md): the database server is infrastructure, not a component.
-- Planned, not yet numbered: "the database target is the PostgreSQL dialect family, qualified by the database suite".
+- [0102 One database, one schema per component](../02-decisions/01-architecture/0102-one-schema-per-component.md): the PostgreSQL dialect family qualified by the database suite; one schema and two roles per component (owner `PG_OWNER_USER`, runtime `PG_USER`), identity from configuration only; Citus schema-based sharding and a separate pool per member as its reopen conditions.
+- [0103 One locked stack inside each language](../02-decisions/01-architecture/0103-locked-stack-per-language.md): no ORM, hand-written SQL, so business SQL stays in each component's repository layer.
+- [0106 Infrastructure is not a component](../02-decisions/01-architecture/0106-infrastructure-is-not-a-component.md): the database server is infrastructure, not a component.
+- [0502 READ COMMITTED with an explicit ladder](../02-decisions/05-runtime/0502-isolation-and-retry.md): the per-transaction timeouts that make role-level settings only a backstop.
 
 ## Known limits
 
@@ -195,5 +211,6 @@ Tests to write red first:
 - **The Xinchuang distributions are not measured yet**; none is promised until the suite has run against it.
 - **One writer.** Scale-out goes through Citus, which is designed for, not tested.
 - **Every process draws on one `max_connections`.** The budget gate keeps the sum honest; it cannot make the server bigger.
-- **The statement cache on a shared pool** with members on different SDK versions is unverified: until the reproduction above has run, platform SQL names its columns and never uses `*`.
+- **The statement cache on a shared pool** with members on different SDK versions rests on the `/* be:<schema> */` prefix, which is not yet reproduced for pgx: until it is, platform SQL names its columns and never uses `*`.
+- **The owner credentials reach the running service** as well as the migration container, until brickKit FR06-013 lands; the SDK never uses them at run time.
 - **High availability and backup are operations** (the operations documents, `05-operations/`, are not written yet). Pointers: CloudNativePG on Kubernetes (with its pooler and point-in-time recovery); pgBackRest or WAL-G on a single machine. Point-in-time recovery is the only real undo for deleted data.

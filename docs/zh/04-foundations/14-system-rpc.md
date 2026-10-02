@@ -48,14 +48,16 @@
 - 没带 `be-caller` 的调用回答 `UNAUTHENTICATED` / `MISSING_CALLER`。
 - 为兼容而保留的面向用户的 rpc，由运行时在任何组件代码运行之前回答 `UNAUTHENTICATED`。
 - `max receive message size` 4 MiB，显式设置。
-- Keepalive：`max connection age` 5 分钟，宽限 30 s；客户端 ping 的最小间隔 20 s；没有活跃调用时的 ping 一律拒绝。
+- Keepalive：`max connection age` 5 分钟（`GRPC_MAX_CONNECTION_AGE`），宽限 30 s（`MaxConnectionAgeGrace`）；客户端 ping 的最小间隔 20 s（`MinTime`）；没有活跃调用时的 ping 一律拒绝。
+- **宽限必须大于最长的入站截止时间**（30 s 对默认的 10 s 和编排路由的 15 s）；否则换连接时在途调用会被切断。
+- **`MinTime` 只在 Go 和 Python 里强制。** grpc-js 服务端没有 keepalive 强制策略，所以 TypeScript 服务端没法强制 20 s 的下限；它的一致性测试声明跳过这条断言。
 - 外壳里每个成员都有自己的 gRPC 服务器，在自己的端口上，用自己的拦截器链。
 
 ### 客户端要求
 
 - 每个（成员，依赖，端口）一条连接，懒创建，所有调用复用，停止时关闭。
 - Keepalive：有活跃调用时空闲 30 s 后 ping，超时 10 s；没有活跃调用时不 ping。
-- 按每个方法的 `idempotency_level` 生成 service config（[16](16-deadlines-and-retries.md#端口契约)）。
+- 按每个方法的 `idempotency_level` 生成 service config（[16](16-deadlines-and-retries.md#端口契约)）：`maxAttempts` 3 指总共 3 次尝试（首发加最多 2 次重试），重试预算 `maxTokens` 10，在 Go 和 Python 里按每个成员的每个 channel 计数，在 TypeScript（grpc-js）里按进程和目标计数（[16](16-deadlines-and-retries.md#逐层的重试)）。
 - 拦截器顺序：默认截止时间 → 出站并发上限 → metadata → 客户端 RED 指标 → 事务守卫（[10](10-local-transactions.md#端口契约)）。
 
 ### 契约规则
@@ -64,7 +66,7 @@
 - 每个方法都声明 `option idempotency_level`：读、`BatchGet` 和 `GetStatus` 用 `NO_SIDE_EFFECTS`；每个带 `idempotency_key` 的写用 `IDEMPOTENT`。有门禁检查（计划中的 `idempotency-level-scan`）。
 - 每个聚合根都提供 `BatchGet`，每次最多 500 个 ID（上限作为方法 option 声明）；超过的以 `INVALID_ARGUMENT` / `BATCH_TOO_LARGE` 失败。每个跨组件写入都提供按键查询的 `GetStatus`（[11](11-consistency-across-components.md#被调方的命令幂等)）。
 - 金额用十进制字符串，列表按游标分页（[0301](../02-decisions/03-contracts-and-data/0301-money-as-strings-lists-by-cursor.md)）。
-- 不用流式 rpc。大结果写进对象存储，再用一条事件通知（claim check）。
+- 不用流式 rpc。大结果写进对象存储，再用一条事件通知（claim check，[22-object-storage.md](22-object-storage.md#大结果)、[13](13-event-contracts.md#载荷规则)）。
 
 ### 负载均衡
 
@@ -127,17 +129,20 @@
 - 一个 `ErrorInfo` 经 gRPC → REST → gRPC 后不变（[15](15-user-api-and-errors.md)）；
 - `traceparent`、`x-request-id`、`be-caller` 和 `be-actor-sub` 到达被调方；在外壳里，`be-caller` 是发起调用的成员；
 - 超过 4 MiB 的消息在两端都明确失败；
-- 到了服务端的最大连接寿命后，客户端重连，不会有失败的调用；
+- 到了服务端的最大连接寿命后，客户端重连，不会有失败的调用，带着最长入站截止时间的在途调用也不会失败；
+- ping 比每 20 s 一次更频繁的客户端被断开（Go 和 Python；TypeScript 上跳过）；
 - 没带用户调用面向用户的 rpc，回答 `UNAUTHENTICATED`，而不是 `INTERNAL`。
 
 先写成红的组件测试：erp/inventory 和 crm/opportunity 的面向用户 rpc 回答 `UNAUTHENTICATED`（今天是 `INTERNAL`）；mdm/customer 和 mdm/product 拒绝没带用户的 gRPC 写入（今天会成功）；外壳组装好之后，在同一个外壳里 sales → inventory 的 `Reserve` 把确认订单的用户记为操作人。门禁：带 `idempotency_key` 却没有 `IDEMPOTENT` 的方法失败，先在样例上看到红。
 
 ## 相关决策
 
+- [0208 gRPC 是系统面，人用 REST](../02-decisions/02-permissions/0208-grpc-is-the-system-plane.md)：本文是它的完整分析。
+- [0304 `BatchGet` 最多 500 个 ID](../02-decisions/03-contracts-and-data/0304-batch-get-takes-at-most-500-ids.md)：一次 `BatchGet` 最多 500 个 ID。
 - [0101 组件之间禁止 import](../02-decisions/01-architecture/0101-no-imports-between-components.md) 和 [0108 一个外壳、一个仓库、一个镜像、一份成员清单](../02-decisions/01-architecture/0108-one-repository-per-shell.md)：外壳里的调用也走网络。
-- [0107 权限 bundle 与 token 公钥地址是共享变量，不是依赖](../02-decisions/01-architecture/0107-authz-and-iam-addresses-are-shared-vars.md)：哪些调用要声明依赖。
-- [0301](../02-decisions/03-contracts-and-data/0301-money-as-strings-lists-by-cursor.md) 和 [0302](../02-decisions/03-contracts-and-data/0302-contracts-are-additive-only.md)：字段规则和演进规则。
-- 计划中、尚未编号："gRPC 是组件之间的系统协议"（放在权限文件夹里）；"一次 `BatchGet` 最多 500 个 ID"（放在契约文件夹里）。
+- [0107 授权与身份经共享变量访问，从不经依赖](../02-decisions/01-architecture/0107-authz-and-iam-addresses-are-shared-vars.md)：不对 authz 或 IAM 成员建边；其他调用都声明依赖。
+- [0503 截止时间与重试预算](../02-decisions/05-runtime/0503-deadlines-and-retry-budgets.md)：系统面上的截止时间与重试预算。
+- [0301 金额是与币种成对的十进制字符串；列表按游标分页](../02-decisions/03-contracts-and-data/0301-money-as-strings-lists-by-cursor.md) 和 [0302 契约只做加法](../02-decisions/03-contracts-and-data/0302-contracts-are-additive-only.md)：字段规则和演进规则。
 
 ## 已知限制
 

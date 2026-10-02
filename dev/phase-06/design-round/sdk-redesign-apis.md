@@ -2,6 +2,7 @@
 
 > 开发文档，只给本项目自己用；正式文档不得链接本文件。写于 2026-10-02（06b 设计轮，lane A）。
 > 这是 `sdk-redesign.md` 的姊妹篇。那一篇里有协议（P1–P20）、compconf、现状盘点、迁移路径；本篇只写**签名和用法**。签名是 v0.6.0 的目标形状，pilot（阶段 C）可以在冻结之前修改；修改要同时改三门语言和本文件。
+> **修订（phase A 收尾，lane X2）**：按控制者对九个 lane 报告的裁决（a…bc）和 R1 最小复现的结果（`../repros/README.md`）修订。be-protocol rc.1（`tools/be-protocol`）已经是规范正文，名字和说法不一致时以它为准，本文件只是设计记录。
 
 ## 0. 怎么读
 
@@ -90,7 +91,7 @@ func (c *Config) Secret(key string) Secret                          // Secret.Cu
 ### 2.3 Store 与 Tx
 
 ```go
-type Store struct{ /* 绑定 PG_USER + PG_SCHEMA + 本成员的连接预算 */ }
+type Store struct{ /* 绑定运行角色 PG_USER + PG_SCHEMA + 本成员的连接预算；从不使用 PG_OWNER_USER（→ P10.12） */ }
 
 type Isolation int
 const ( ReadCommitted Isolation = iota; RepeatableRead; Serializable )
@@ -127,12 +128,14 @@ func (tx *Tx) IdemRelease(ctx context.Context, c Command) error
 
 var (
     ErrNestedTx     error // ctx 已经在事务里，又开一个（→ P10.6）
-    ErrNetworkInTx  error // 事务里调了 Conn / UserHTTP / ExternalHTTP（→ P8.4）；测试构建里直接 panic
+    ErrNetworkInTx  error // 事务里调了 Conn / UserHTTP / ExternalHTTP（→ P8.4）；日志 reason NETWORK_IN_TX，对外 INTERNAL；测试构建里直接 panic
     ErrNoDatabase   error
 )
 ```
 
-SQLSTATE 由 SDK 统一分类并映射（→ P10.4）。组件里不再写 `pgerr.go`；需要判断错误类型时，用 `besdk.IsUniqueViolation(err)`、`IsLockTimeout(err)` 这类函数。
+每个事务开头 `SET LOCAL ROLE` / `search_path` / `application_name` + 三个超时（→ P10.2、P10.3）。`Tx` 的 `ExecContext` / `QueryContext` / `QueryRowContext` 在 SQL 前加 `/* be:<PG_SCHEMA> */ `，pgx 保持默认的 `QueryExecModeCacheStatement`（`CacheDescribe` 不行，r1-04b）；外壳里 `StatementCacheCapacity` 按成员数放大（→ P10.2）。几条 `SET LOCAL` 可以合成一条 `SELECT set_config(…, true), …` 省往返，是否做由实现时实测决定。
+
+SQLSTATE 由 SDK 统一分类并映射（→ P10.4；`53300` → `DB_TOO_MANY_CONNECTIONS`）。组件里不再写 `pgerr.go`；需要判断错误类型时，用 `besdk.IsUniqueViolation(err)`、`IsLockTimeout(err)` 这类函数。
 
 ### 2.4 路由与守卫
 
@@ -233,8 +236,8 @@ type Subscription struct {
     Consumer    string                                              // 游标的消费者名（投影名），默认 ""（→ P12.6）
     Apply       func(ctx context.Context, tx *Tx, ev Event) error   // 和 Run 二选一
     Run         func(ctx context.Context, ev Event) error
-    MaxDeliver  int                                                 // 0 = 取配置或默认的 8
-    Backoff     []time.Duration
+    MaxDeliver  int                                                 // 0 = 取配置或默认的 8；由 SDK 判（NumDelivered > 它 → DLQ + Term），不写进 consumer（→ P12.5、P12.7）
+    Backoff     []time.Duration                                     // SDK 的 NakWithDelay 延迟表；EVENTS_BACKOFF 优先；不写进 consumer
     StartFrom   StartFrom                                           // 默认 StartAll（E3）
     Concurrency int                                                 // 默认 4
 }
@@ -242,7 +245,7 @@ func Permanent(err error) error                                     // 直接进
 func Decode[T any](ev Event) (T, error)                             // 解析失败自动变成 Permanent
 ```
 
-durable、流、泵、DLQ、`InProgress` 心跳、游标、清理，都由 SDK 根据 `Events` 声明自动完成。组件里不再出现 NATS 的任何类型。
+durable、流、泵、DLQ、`InProgress` 心跳、游标、清理，都由 SDK 根据 `Events` 声明自动完成。组件里不再出现 NATS 的任何类型。durable 只在不存在时创建（nats.go `CreateConsumer`），从不更新；服务端参数是协议常量（AckWait 30 s、无 BackOff、MaxDeliver −1），读回不一致只记 WARN（→ P12.5，r1-07）。
 
 ### 2.8 命令幂等
 
@@ -516,11 +519,14 @@ class Job:
 
 - **一个进程一个事件循环**（0103 不变）。阻塞调用（PyJWT 验签、pyarrow）一律经 `asyncio.to_thread`；SDK 里没有任何同步 IO。
 - **`Store.tx` 是"传函数"而不是 `async with`**：上下文管理器没法在 40001 时重跑代码块。
-- **迁移入口进 SDK**：`python -m <pkg> migrate apply` 调 yoyo，状态表放在本组件的 schema 里。print 的 `migrate.py` 删掉。
+- **运行时是 CPython 3.14**（`python:3.14-slim`，镜像里不需要编译器；r1-10）。`uuid.uuid7` 用标准库；`pyarrow` 只在 `besdk[cold]` 里。
+- **迁移入口进 SDK**：`python -m <pkg> migrate apply` 以 `PG_OWNER_USER` 登录调 yoyo（同步驱动 `psycopg[binary]==3.3.6`，`postgresql+psycopg://` 后端），状态表放在本组件的 schema 里（`_yoyo_*`、`yoyo_lock`；平台迁移 id 带 `besdk-` 前缀）。print 的 `migrate.py` 删掉。
 - **pytest 插件 `besdk.testing`**：
   - fixture：`rt`（随机身份）、`shell_view`、`fake_iam`、`fake_authz`、`fake_peer`；
   - 辅助函数：`with_user(...)`（上下文管理器）、`published(rt)`、`deliver(rt, ev)`、`run_job(rt, name)`、`vectors(dir)`。
-- **asyncpg 的池**：`max_size = PG_POOL_MAX`；`acquire(timeout=PG_POOL_ACQUIRE_TIMEOUT)`；预编译语句缓存要等 §7.9 第 4 条验证完再决定开或关。
+- **asyncpg 的池**：`asyncpg==0.31.0`；`max_size = PG_POOL_MAX`；`acquire(timeout=PG_POOL_ACQUIRE_TIMEOUT)`；预编译语句缓存**开着**，`Tx` 的 `fetch` / `fetchrow` / `execute` 在 SQL 前加 `/* be:<PG_SCHEMA> */ `，外壳里 `statement_cache_size` 按成员数放大（r1-04，→ P10.2）。
+- **事件**：nats-py 的 `add_consumer` 是"创建或更新"，SDK 先 `consumer_info`、不存在才建，从不直接调它改已有的 durable（r1-07，→ P12.5）。
+- **批量上限**：besdk 随包附带生成好的 `be/v1/limits_pb2.py`（顶层包 `be`），SDK 用 `field.GetOptions().Extensions[limits_pb2.max_items]` 读上限，`HasExtension` 为假时取 500（r1-03b，→ P7.10）。
 - **JWT**：`jwt.decode(..., audience=TENANT_ID, issuer=IAM_ISSUER, options={"require": ["exp","iat","sub","jti","iss","aud"]})`，并另外检查 `typ`（→ P5.3）。
 - **冷层**：`pip install besdk[cold]` 才有 `s3-parquet`；没装时，加载 `lifecycle.yaml` 那一刻就报"不支持"。
 
@@ -585,7 +591,10 @@ export function createBatchGetLoader<K, V>(batchGet: (ids: readonly K[]) => Prom
 **TS 特有的要点**：
 
 - **上下文用 `AsyncLocalStorage`**：Fastify 的 `onRequest` 钩子、grpc-js 的服务端包装、事件 handler 和 Job 运行器各自 `als.run(ctx, …)`。组件代码不传 `ctx`，但截止时间和取消信号可以用 `deadline()`、`signal()` 取到，交给 `pg` 和 `fetch`。
-- **截止时间到 pg**：用 `SET LOCAL statement_timeout`，再加 `AbortSignal` 驱动 `client.query` 的取消（`pg` 的 `cancel` 走 `pg_cancel_backend`）。
+- **截止时间到 pg**：用 `SET LOCAL statement_timeout`，再加 `AbortSignal` 驱动 `client.query` 的取消（`pg` 的 `cancel` 走 `pg_cancel_backend`）。pg 保持默认的未命名语句；要用命名语句时 `name` 必须是 `<schema>:<name>`（r1-04，→ P10.2）。
+- **Fastify 实例的固定选项**（r1-08，→ P3.4–P3.6；Fastify ≥ 5.12）：`http: { headersTimeout: 5000, connectionsCheckingInterval: 1000 }`（Node 只按这个周期检查，默认 30 s 会让 5 s 变成最多 35 s）、`requestTimeout: 30000`、`keepAliveTimeout: 120000`、`bodyLimit: 1 MiB`（路由声明更大时用路由级 `bodyLimit`）、`handlerTimeout` = 路由截止时间（默认 `HTTP_DEFAULT_TIMEOUT`）。错误处理器把 `FST_ERR_HANDLER_TIMEOUT`（Fastify 默认答 503）改成 504 + `DEADLINE_EXCEEDED`，`FST_ERR_CTP_BODY_TOO_LARGE` 改成 413 + `BODY_TOO_LARGE`；`request.signal` 交给 pg 的取消和 undici。**错误处理器和 `onTimeout` 钩子里不读 ALS**（定时器上下文里 ALS 为空），成员身份和 request id 从 `request` 和闭包里取。
+- **迁移**（r1-06，→ P11.1、P11.3）：node-pg-migrate 以 `PG_OWNER_USER` 登录，必须显式传 `ignorePattern: '(\\..*)|(.*(?<!\\.sql))'`（只认 `.sql`，否则 `lifecycle.yaml` 让整次迁移失败）、`lockValue`（由 `PG_SCHEMA` + 状态表名派生，例如 FNV-1a 截到 53 位，不能用默认的全库常量）和 `advisoryLockMode: 'wait'`；状态表 `pgmigrations_<PG_SCHEMA>` + `besdk_migrations_<PG_SCHEMA>`。
+- **gRPC 生成与批量上限**（r1-03、r1-03b，→ P7.8、P7.10）：ts-proto 选项 `outputServices=grpc-js,esModuleInterop=true,outputSchema=true,importSuffix=.ts,enumsAsLiterals=true`。SDK 从 `protoMetadata` 推服务配置（`idempotencyLevel`）；批量上限读 `protoMetadata.options.messages.<Msg>.fields.<字段>.max_items`（扩展短名，嵌套消息在 `.nested` 下，跨文件沿 `dependencies` 查），默认 500 来自遍历入参消息的每个 repeated 字段。grpc-js 的重试预算按（进程，目标）共享，服务端没有 `MinTime` 强制（→ P7.5、P7.8）。
 - **金额**：`decimal.js` 的实例只在 SDK 的 money 模块里构造，线上一律是字符串（0301）；`number` 永远不承载金额（门禁里加一条 TS 的 `parseFloat` 扫描）。
 - **`bigint`**：聚合版本、revision 用 `bigint`。JSON 序列化时转成字符串，和 P12 的头值一致。
 - **BFF**：
@@ -604,14 +613,16 @@ for m in members:
     spec := compiled[m.componentId]                     // 没有 → 退出 2，点名成员
     assert compiledVersion(spec) == m.version           // 不一致 → 退出 2（Go 用 build info，Py 用 importlib.metadata，TS 用 package.json）
     assert m.config 里的 PG_HOST/PORT/DATABASE、EVENT_BUS_URL（或 NATS_URL）、AUTHZ_URL、IAM_*、TENANT_ID == shellCfg 里的值   // 不一致 → 退出 78
-platform := 进程级：OTel 导出器 + 传播器；JWKS 验签器 + bundle；PG 物理池（大小 = min(Σ 成员 PG_POOL_MAX, 外壳的 PG_POOL_MAX)）；总线连接
+assert server_version_num >= 160000                    // 外壳要 PG16（WITH INHERIT FALSE, SET TRUE，→ P10.7、P19.5）
+platform := 进程级：OTel 导出器 + 传播器（全局只装传播器；全局 TracerProvider 设成外壳自己的）；JWKS 验签器 + bundle；PG 物理池（大小 = min(Σ 成员 PG_POOL_MAX, 外壳的 PG_POOL_MAX)，以外壳的登录角色连）；总线连接
 for m in members:
-    rt := newRuntime(platform, m.config, m.ports)        // 成员自己的 Logger / Registry / TracerProvider / MeterProvider / 预算信号量 / Conn 池 / 舱壁 / 缓存
+    rt := newRuntime(platform, m.config, m.ports)        // 成员自己的 Logger / Registry / TracerProvider（自己的 BSP + 包着共享导出器的空 Shutdown 壳）/ MeterProvider / 预算信号量 / Conn 池 / 舱壁 / 缓存；
+                                                         // Store 每个事务 SET LOCAL ROLE <m 的 PG_USER> + application_name = m 的 ID；m 的 PG_OWNER_* 不用（迁移由 m 自己的迁移容器跑）
     mod := spec.New(rt)                                  // 失败 → 整个外壳退出非 0
     serve(m.httpPort, mod.HTTP); serve(m.extraPorts.grpc, mod.GRPC)
     supervise(mod.Jobs + 平台任务 + 消费者 + Reconcilers + Workers + 投影拉取)   // 和单跑用的是同一个监督器
 serve(shell.port, /healthz + 汇总的 /metrics)
-on SIGTERM: 停止接新请求 → 各成员 Stop → 平台关闭
+on SIGTERM: 停止接新请求 → 各成员 Stop（只刷出自己的 span 队列）→ 平台关闭（这时才关真正的导出器，r1-01）
 ```
 
 ## 6. 夹具组件 `widget`（规格在 be-protocol `fixtures/widget/`，三门 SDK 各实现一份）
@@ -666,7 +677,7 @@ widget 的 `conformance/fixtures.yaml` 也在 be-protocol 里，就是 compconf 
 |---|---|---|
 | I-1 | 事务里没有网络调用；对外的动作只经 outbox 和作业队列 | P8.4 |
 | I-2 | 没有嵌套事务；同一个执行流最多占一条连接 | P10.6 |
-| I-3 | 每一次数据库访问都在事务里，都先 `SET LOCAL ROLE` / `search_path`；没有会话级的 `SET` | P10.2 |
+| I-3 | 每一次数据库访问都在事务里，都先 `SET LOCAL ROLE` / `search_path` / `application_name`；池化连接上没有会话级的 `SET`（迁移连接除外）；语句缓存的键包含成员 schema | P10.2 |
 | I-4 | advisory 锁只用事务级的，键的派生方式符合 P10.8 | P10.8 |
 | I-5 | 列表 SQL 是规范谓词，参数全部来自求值结果；没有字符串拼接出来的 WHERE | P6.5 |
 | I-6 | 不跨请求缓存授权决策 | P6.14 |
@@ -674,6 +685,9 @@ widget 的 `conformance/fixtures.yaml` 也在 be-protocol 里，就是 compconf 
 | I-8 | 只读 configSchema 声明过的键；不读进程环境 | P2.2 |
 | I-9 | 所有后台工作都受监督，没有自己写的无监督循环 | P14.1 |
 | I-10 | 多行加锁按固定顺序 | P10.10 |
+| I-11 | 运行进程从不以 `PG_OWNER_USER` 连库；运行期的 DDL 只经平台的 `SECURITY DEFINER` 函数 | P10.12 |
+| I-12 | 所有 OTel 埋点显式传成员的 provider 和平台的传播器；成员停止不关共享导出器 | P18.1、P19.3 |
+| I-13 | durable 只建不改；重投延迟和 DLQ 由运行时自己执行，不靠服务端 BackOff / MaxDeliver | P12.5、P12.7 |
 
 ## 8. v0.5.0 → v0.6.0 名字对照（给迁移 lane 查）
 

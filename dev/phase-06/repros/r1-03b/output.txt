@@ -1,0 +1,16 @@
+R1 protoMetadata.options = {"messages":{"BatchGetWidgetsRequest":{"fields":{"ids":{"max_items":100},"widget_ids":{"max_items":2}},"nested":{"Filter":{"fields":{"sku_ids":{"max_items":7}}}}}}}
+R2 fileDescriptor field 'ids' options keys = ctype,packed,jstype,lazy,unverifiedLazy,deprecated,weak,debugRedact,retention,targets,editionDefaults,features,featureSupport,uninterpretedOption
+R3 limits by method = [["/r1.batch.v1.Widgets/BatchGetWidgets",[{"field":"ids","prop":"ids","max":100,"explicit":true},{"field":"tags","prop":"tags","max":500,"explicit":false},{"field":"widget_ids","prop":"widgetIds","max":2,"explicit":true},{"field":"filter","prop":"filter","max":0,"explicit":false,"nested":[{"field":"sku_ids","prop":"skuIds","max":7,"explicit":true}]}]]]
+R4 ids=100 (limit 100): OK 100 ids
+R4 ids=101: ERR INVALID_ARGUMENT BATCH_TOO_LARGE {"field":"ids","max":100,"got":101}
+R4 tags=500 (no option): OK 0 ids
+R4 tags=501: ERR INVALID_ARGUMENT BATCH_TOO_LARGE {"field":"tags","max":500,"got":501}
+R4 widget_ids=3 (limit 2): ERR INVALID_ARGUMENT BATCH_TOO_LARGE {"field":"widget_ids","max":2,"got":3}
+R4 filter.sku_ids=8 (limit 7): ERR INVALID_ARGUMENT BATCH_TOO_LARGE {"field":"filter.sku_ids","max":7,"got":8}
+===== grpcio 1.76.0, protobuf 6.33.6
+protobuf backend: upb
+P1 extension: be.v1.max_items number 51001
+P2 limits: [('ids', 100, True), ('tags', 500, False), ('widget_ids', 2, True), ('filter.sku_ids', 7, True)]
+P3 by method path: /r1.batch.v1.Widgets/BatchGetWidgets -> r1.batch.v1.BatchGetWidgetsRequest [('ids', 100, True), ('tags', 500, False), ('widget_ids', 2, True), ('filter.sku_ids', 7, True)]
+P3 method idempotency_level: 1
+P4 via default pool: 100

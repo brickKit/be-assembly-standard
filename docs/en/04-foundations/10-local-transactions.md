@@ -32,6 +32,7 @@ The contract is what reaches PostgreSQL, so that an implementation in any langua
 BEGIN ISOLATION LEVEL READ COMMITTED;            -- or the level the transaction asked for
 SET LOCAL ROLE <PG_USER of this component>;      -- in a shell: the member's own PG_USER
 SET LOCAL search_path TO <PG_SCHEMA>;
+SET LOCAL application_name = '<component ID>';   -- in a shell: the member's ID
 SET LOCAL statement_timeout = '<min(5s, remaining deadline)>';
 SET LOCAL lock_timeout = '2s';
 SET LOCAL idle_in_transaction_session_timeout = '30s';
@@ -55,11 +56,12 @@ SET LOCAL transaction_timeout = '<remaining deadline>';  -- PostgreSQL 17 or lat
 | `57014` | statement cancelled (`statement_timeout`) | no retry | `DEADLINE_EXCEEDED` / `STATEMENT_TIMEOUT` |
 | `25P04` | transaction timeout (PostgreSQL 17+) | no retry | `DEADLINE_EXCEEDED` / `STATEMENT_TIMEOUT` |
 | `25P03` | idle in transaction too long | the server closed the connection | `INTERNAL`: it is a bug in the component |
+| `53300` | too many connections | no retry | `UNAVAILABLE` / `DB_TOO_MANY_CONNECTIONS` |
 | `23505` | unique violation | no retry | the component maps it to its own reason, usually `ALREADY_EXISTS` |
 
 A retry re-runs the body from the start in a new transaction. That is safe only because the body touches nothing but the transaction, which the next two rules guarantee. A caller that wants to retry a `LOCK_TIMEOUT` does so a layer higher, with the same idempotency key. Retries are counted in `be_tx_retries_total{component,reason}`.
 
-**No network inside a transaction.** While a unit of work holds an open transaction, every outbound call the runtime offers (gRPC, user-facing HTTP, a direct publish to the bus) refuses to start and fails with `INTERNAL` / `NETWORK_IN_TX`; in test builds it aborts the test. The only exits are:
+**No network inside a transaction.** While a unit of work holds an open transaction, every outbound call the runtime offers (gRPC, user-facing HTTP, a direct publish to the bus) refuses to start and fails with `INTERNAL` / `NETWORK_IN_TX`: a programming error, surfaced in development and tests (in test builds it aborts the test). The only exits are:
 
 - an outbox row: the event is published after commit ([12-event-bus.md](12-event-bus.md));
 - a job-queue row: the command runs after commit, outside any transaction ([19-background-jobs.md](19-background-jobs.md)).
@@ -166,9 +168,10 @@ Component tests written red before the sweep:
 
 ## Decision records
 
+- [0501 No network call inside a transaction](../02-decisions/05-runtime/0501-no-network-inside-a-transaction.md): this document is its full analysis.
+- [0502 READ COMMITTED with an explicit ladder](../02-decisions/05-runtime/0502-isolation-and-retry.md): the isolation ladder, the per-transaction timeouts and the retry of `40001` / `40P01`.
 - [0102 One database, one schema per component](../02-decisions/01-architecture/0102-one-schema-per-component.md): each transaction runs as the component's role in its schema.
-- [0206 No row-level security](../02-decisions/02-permissions/0206-no-row-level-security.md): scoping is in static queries, so the transaction carries no per-user database identity.
-- Planned, not yet numbered, in the planned runtime folder: "no network call inside a transaction"; "isolation levels and retry policy".
+- [0206 No row-level security; one sharing engine, in authz](../02-decisions/02-permissions/0206-no-row-level-security.md): scoping is in static queries, so the transaction carries no per-user database identity.
 
 ## Known limits
 

@@ -9,20 +9,20 @@
 本文覆盖：引擎及其版本承诺、兼容发行版、SDK 里的方言层、schema 与角色隔离、组件从配置里拿到的库身份、连接池以及外壳里按成员的舱壁、连接池代理、角色级护栏，以及高可用与备份的入口。留给别的文档的：
 
 - 一个事务里发生的事（隔离级别、超时、重试、加锁顺序、advisory 锁）：[10-local-transactions.md](10-local-transactions.md)；
-- 迁移、expand/contract 与并存版本：schema 演进文档（计划中，08 号文件）；
-- 分区、保留期与冻结数据：数据生命周期文档（计划中，09 号文件）；
+- 迁移、expand/contract 与并存版本：[08-schema-evolution.md](08-schema-evolution.md)；
+- 分区、保留期与冻结数据：[09-data-lifecycle.md](09-data-lifecycle.md)；
 - 主键与单据编号：[04-identifiers-and-numbering.md](04-identifiers-and-numbering.md)；
 - 组件日常怎么用数据库：[02-backend.md](../01-conventions/02-backend.md#数据库) 和 [04-configuration.md](../01-conventions/04-configuration.md#数据库角色)。
 
 ## 选择
 
-- **PostgreSQL 方言族。** 支持 PostgreSQL 14 及以上；外壳改用 NOINHERIT 授权之后要求 16 及以上。基础资源跑的是 `postgres:16-alpine`。
+- **PostgreSQL 方言族。** 单独运行的组件要求 PostgreSQL 14 及以上；外壳要求 16 及以上，因为它用 NOINHERIT 授权（`GRANT … WITH INHERIT FALSE, SET TRUE`）。基础资源跑的是 `postgres:16-alpine`。
 - **"可替换"的意思是：换成另一个说 PostgreSQL 线协议、并且通过数据库套件的引擎。** SDK 里不做多方言抽象。每个组件都要的机制（角色切换、分区、队列认领、advisory 锁、错误分类、平台表）在 SDK 的 PostgreSQL 方言层里只有一份；业务 SQL 留在各组件的 repo 层。
-- **一个数据库，每个组件一个 schema、一个角色**（[0102](../02-decisions/01-architecture/0102-one-schema-per-component.md)）。
-- **身份只来自配置。** 角色是 `PG_USER`，schema 是 `PG_SCHEMA`；两者都必填，都没有默认值，也不互相推导。迁移里不出现角色名或 schema 名。
-- **一切访问都经过 SDK 的 store 句柄**，它在每个事务里切换角色和 `search_path`。outbox 推送、消费者、生命周期任务也都走它，所以外壳的登录角色自己不需要任何权限。
+- **一个数据库；每个组件一个 schema、两个角色**：属主角色和运行期角色（[0102](../02-decisions/01-architecture/0102-one-schema-per-component.md)）。
+- **身份只来自配置。** 属主角色是 `PG_OWNER_USER`，运行期角色是 `PG_USER`，schema 是 `PG_SCHEMA`；三者都必填，都没有默认值，互相之间、与组件 ID 之间都不推导。迁移里不出现角色名或 schema 名。
+- **一切访问都经过 SDK 的 store 句柄**，它在每个事务里切换角色、`search_path` 和 `application_name`。outbox 推送、消费者、生命周期任务也都走它，所以外壳的登录角色自己不需要任何权限。
 - **连接池有上限**；在外壳里，每个成员在共享池里有自己的预算。
-- **迁移角色与运行期角色分开**：运行期角色能读写行，但删不了表。
+- **属主角色与运行期角色分开**：属主拥有表并执行迁移；运行期角色只有 DML，不是属主角色的成员，建不了、改不了、删不了表。运行期少数必须的 DDL（提前建分区、装封存守卫、删过期的平台分区）只经由属主创建的 `SECURITY DEFINER` 函数。
 - **连接池代理可选**；用的话必须是 transaction 模式，而且迁移绕过它。
 - **带外服务**（Casdoor、Keycloak）用各自的角色连库，绝不用超级用户。
 
@@ -37,8 +37,10 @@
 | 键 | 必填 | 默认值 | 含义 |
 |---|---|---|---|
 | `PG_HOST`、`PG_PORT`、`PG_DATABASE` | 是 | — | 数据库在哪里（[04-configuration.md](../01-conventions/04-configuration.md#共享连接键)） |
-| `PG_USER` | 是 | 无 | 每个事务切换到的角色；单独运行时也是登录角色 |
+| `PG_USER` | 是 | 无 | 运行期角色：只有 DML；每个事务切换到它；单独运行时也是登录角色 |
 | `PG_PASSWORD` | 是 | — | 密钥，`${<REPO>_DB_PASSWORD}` |
+| `PG_OWNER_USER` | 是 | 无 | 属主角色：拥有 `PG_SCHEMA` 里的表，执行迁移和平台迁移；运行中的服务从不使用它 |
+| `PG_OWNER_PASSWORD` | 是 | — | 密钥；属主的密码，只有迁移步骤使用 |
 | `PG_SCHEMA` | 是 | 无 | 组件拥有的 schema；也是它 `search_path` 里唯一的一项 |
 | `PG_POOL_MAX` | 否 | 10 | 单独运行：连接池最多打开的连接数。在外壳里：这个成员在共享池里的并发上限 |
 | `PG_POOL_MIN_IDLE` | 否 | 2 | 保持打开的空闲连接数 |
@@ -49,23 +51,30 @@
 
 可选键写进各组件的 `configSchema`。外壳有自己的 `PG_POOL_MAX`：它那一个物理池的大小，默认取"各成员 `PG_POOL_MAX` 之和"与 40 中较小的一个。
 
+一条已记录的限制：brickKit 给迁移容器的环境和主服务完全相同，所以运行中的服务也会拿到 `PG_OWNER_USER` / `PG_OWNER_PASSWORD`。SDK 运行期从不使用它们；等 brickKit 能给迁移步骤单独的变量（功能请求 FR06-013）之后，就只有迁移容器拿到。
+
 ### 每个事务做什么
 
 ```sql
 BEGIN;
-SET LOCAL ROLE <PG_USER>;
+SET LOCAL ROLE <PG_USER>;                        -- 外壳里：该成员自己的运行期角色
 SET LOCAL search_path TO <PG_SCHEMA>;
+SET LOCAL application_name = '<组件 ID>';       -- 外壳里：该成员的 ID
 -- 每个事务的超时：见 10-local-transactions.md
 ...
 COMMIT;
 ```
 
-从不在会话级设置任何东西：不带 `LOCAL` 的 `SET` 会留在池化的连接上，下一个借用者就会在你的 schema 里执行。会话时区是 UTC，从不修改（[05-time-and-calendars.md](05-time-and-calendars.md)）。
+在池化的连接上从不在会话级设置任何东西：不带 `LOCAL` 的 `SET` 会留在连接上，下一个借用者就会在你的 schema 里执行。唯一的例外是专用、不进池的迁移连接：它以属主登录，用完即关（[08-schema-evolution.md](08-schema-evolution.md#迁移入口)）。会话时区是 UTC，从不修改（[05-time-and-calendars.md](05-time-and-calendars.md)）。
+
+区分成员的连接靠 `application_name`：在外壳里 `usename` 永远是外壳的登录角色，所以 `pg_stat_activity` 按 `application_name` 给成员计数（一致性用例 `CP-DB-03`）。SDK 还给成员的每条语句加上注释前缀 `/* be:<schema> */`，这样 asyncpg 和 pgx 的语句缓存不会让两个平台表结构不同的成员共用同一条预备语句；TypeScript 的 `pg` 驱动保持用未命名语句。
+
+组件代码自己从不发 `SET ROLE` 或 `SET LOCAL ROLE`：只有 store 会发（门禁 `identity-literal-scan`）。
 
 ### SDK 在启动时检查什么
 
-- **能力**：`server_version_num >= 140000`、声明式分区、`FOR UPDATE SKIP LOCKED`。缺了哪一项就停止启动，并点名那项能力。
-- **身份**：在一个以 `PG_USER` 执行的事务里检查：这个角色对 `PG_SCHEMA` 有 `USAGE` 和 `CREATE`，schema 里没有属主是别人的表。失败时记一条 ERROR 日志并导出一个指标；不让模块停下，也绝不放进 `/healthz`。
+- **能力**：`server_version_num >= 140000`（外壳里 `>= 160000`）、声明式分区、`FOR UPDATE SKIP LOCKED`。缺了哪一项就停止启动，并点名那项能力。
+- **身份**：在一个以 `PG_USER` 执行的事务里检查：这个角色对 `PG_SCHEMA` 有 `USAGE`、没有 `CREATE`，不是 `PG_OWNER_USER` 的成员；schema 里每张表的属主都是 `PG_OWNER_USER`，且 `PG_USER` 对每张表都有 `SELECT, INSERT, UPDATE, DELETE`。失败时记一条 ERROR 日志、导出 `be_db_identity_ok = 0`，并让 `/readyz` 回 `503`；不让模块停下，也绝不放进 `/healthz`。
 - **外壳**：成员配置里写的 `PG_HOST`、`PG_PORT` 或 `PG_DATABASE` 和外壳的不同时，外壳拒绝启动，并点名成员和键。否则这个成员会悄悄用上外壳的库。
 
 ### 能力清单
@@ -80,17 +89,23 @@ COMMIT;
 | 事务性 DDL、`CREATE INDEX CONCURRENTLY` | 迁移 |
 | `INSERT … ON CONFLICT … RETURNING` | 幂等认领、upsert |
 | `uuid`、`NUMERIC`、`timestamptz`、`date`、`JSONB`（只作不透明存储） | 列类型 |
-| SQLSTATE 23505、40001、40P01、55P03、57014 | SDK 里的错误分类 |
+| 带 `SET search_path FROM CURRENT` 的 `SECURITY DEFINER` 函数 | 运行期角色在运行期可以做的那些 DDL |
+| SQLSTATE 23505、40001、40P01、55P03、57014、25P04、53300 | SDK 里的错误分类 |
+
+**可选能力。** `pg_trgm` 和 `pg_bigm` 不是必需的扩展：SDK 启动时探测它们，用现有的最好那个建搜索索引；两个都没有时搜索结果照样正确，只是更慢（[25-search.md](25-search.md)）。缺它们的引擎照样能通过认证。
 
 ### 角色
 
 | 角色 | 能否登录 | 拥有什么 | 谁用 |
 |---|---|---|---|
-| `PG_USER` | 是 | `PG_SCHEMA` 里的表，因为迁移就以这个角色运行，建出来的东西归它 | 组件：它的迁移和运行中的服务 |
-| 外壳登录角色 | 是 | 无 | 外壳；是每个被托管成员 `PG_USER` 的成员，NOINHERIT |
+| `PG_OWNER_USER`（`<schema>` 的属主） | 是 | `PG_SCHEMA` 里的表、序列和函数，因为迁移和平台迁移都以这个角色运行；所有 DDL 由它做 | 只有迁移步骤 |
+| `PG_USER`（运行期角色） | 是 | 无；对 `PG_SCHEMA` 有 `USAGE`，经默认权限对其中的表有 `SELECT, INSERT, UPDATE, DELETE`；不是属主角色的成员 | 运行中的服务（单独运行时就是它的登录角色） |
+| 外壳登录角色 | 是 | 无 | 外壳；以 `WITH INHERIT FALSE, SET TRUE`（PostgreSQL 16）被授予每个被托管成员的运行期 `PG_USER`（从不授予属主），只能经 `SET LOCAL ROLE` 到达它 |
 | `casdoor_rw` 之类 | 是 | 只有它自己的 schema | 某个带外服务 |
 
-代码里不推导、迁移里也不写任何角色名或 schema 名：两者都来自 `PG_USER` 和 `PG_SCHEMA`。`be-ops` 生成角色、授权，以及下面这些角色级护栏；它们对任何会话都起兜底作用，包括被遗忘的工具：
+这次拆分防的是：运行期 SQL（一次注入、一条 AI 写错的语句）没法 `DROP` 或 `ALTER` 一张表。运行期生命周期引擎提前建分区、装封存守卫、删过期的平台与队列分区，都只经由平台的 `SECURITY DEFINER` 函数（be-protocol 的 `ddl/10-lifecycle-functions.sql`），这些函数由属主在平台迁移里创建（[09-data-lifecycle.md](09-data-lifecycle.md)）。在外壳里，成员之间的隔离是 SDK 的职责：外壳角色可以切换到每个成员的运行期角色，所以只有 store 发 `SET LOCAL ROLE`，而且永远切到该成员自己的 `PG_USER`。
+
+代码里不推导、迁移里也不写任何角色名或 schema 名：它们都来自 `PG_OWNER_USER`、`PG_USER` 和 `PG_SCHEMA`。`be-ops` 生成角色、授权、默认权限（`ALTER DEFAULT PRIVILEGES FOR ROLE <属主> IN SCHEMA <schema> GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES` 以及 `USAGE, SELECT ON SEQUENCES`，授给运行期角色），以及下面这些角色级护栏；它们对任何会话都起兜底作用，包括被遗忘的工具：
 
 ```sql
 ALTER ROLE <登录角色> SET statement_timeout = '30s';
@@ -103,7 +118,8 @@ ALTER ROLE <登录角色> SET lock_timeout = '5s';
 ### 连接池与舱壁
 
 - 每个进程一个池。在外壳里池属于外壳，每个成员经过一个"最多 `PG_POOL_MAX` 条并发连接"的限额去用它。
-- 用完了全部预算的成员，最多等 `PG_POOL_ACQUIRE_TIMEOUT`（调用方剩余截止时间更短时以它为准），然后以 `RESOURCE_EXHAUSTED` 加 reason `DB_POOL_EXHAUSTED` 失败（[15-user-api-and-errors.md](15-user-api-and-errors.md)），只影响这一个成员。其他成员不受影响。
+- 用完了全部预算的成员，最多等 `PG_POOL_ACQUIRE_TIMEOUT`（调用方剩余截止时间更短时以它为准），然后以 `RESOURCE_EXHAUSTED` 加 reason `DB_POOL_EXHAUSTED` 失败（[15-user-api-and-errors.md](15-user-api-and-errors.md)），只影响这一个成员。其他成员不受影响。成员的连接按 `application_name` 计数。
+- 服务器以 SQLSTATE `53300`（连接数过多）拒绝新连接时，SDK 以 `UNAVAILABLE` / `DB_TOO_MANY_CONNECTIONS` 失败，不重试。
 - 一个任务同一时刻最多占一条连接；嵌套事务会被拒绝（[10-local-transactions.md](10-local-transactions.md)）。池有上限之后，同时占两条连接正是池把自己饿死的方式。
 - `be-ops` 里的连接预算门禁：把部署文件里每个进程的 `PG_POOL_MAX` 加起来，再加上迁移、Casdoor、Keycloak 的预留，总数超过 `max_connections - superuser_reserved_connections` 就失败。
 
@@ -111,7 +127,7 @@ ALTER ROLE <登录角色> SET lock_timeout = '5s';
 
 - 可选。用的话：只能是 transaction 模式，PgBouncer 要 1.21 及以上并设 `max_prepared_statements > 0`。否则要在每个驱动里关掉语句缓存。
 - 运行期代码只取事务级 advisory 锁；有门禁扫描会话级的 `pg_advisory_lock` 调用。
-- 迁移经 `PG_MIGRATION_HOST` / `PG_MIGRATION_PORT` 直连 PostgreSQL，因为 golang-migrate 持有一把会话级 advisory 锁。brickKit 给迁移容器的环境和主服务完全相同，所以只有用单独的键，才能让两者指向不同的主机。
+- 迁移以 `PG_OWNER_USER` 登录，经 `PG_MIGRATION_HOST` / `PG_MIGRATION_PORT` 直连 PostgreSQL，因为 golang-migrate 持有一把会话级 advisory 锁。brickKit 给迁移容器的环境和主服务完全相同，所以只有用单独的键，才能让两者指向不同的主机。
 
 ## 备选方案
 
@@ -176,18 +192,18 @@ ALTER ROLE <登录角色> SET lock_timeout = '5s';
 
 要先写红的测试：
 
-- SDK：超出自己 `PG_POOL_MAX` 的成员等待之后拿到 `RESOURCE_EXHAUSTED` / `DB_POOL_EXHAUSTED`，同时另一个成员照常工作；连接池设了上限和生命周期；外壳物理池取成员之和与外壳上限中较小的那个；`PG_MIGRATION_HOST` 优先于 `PG_HOST`；缺 `PG_USER` 或 `PG_SCHEMA` 时报错并点名键，角色绝不从 schema 推出；NOINHERIT 的外壳登录角色照样能跑 outbox 推送和消费者；某成员的 `PG_HOST` 与外壳不同时外壳停止。
-- SDK，先写复现：两个成员在同一条物理连接上，对结构不同的平台表发出完全相同的 SQL 文本，不能报 "cached plan must not change result type"。
+- SDK：超出自己 `PG_POOL_MAX` 的成员等待之后拿到 `RESOURCE_EXHAUSTED` / `DB_POOL_EXHAUSTED`，同时另一个成员照常工作；连接池设了上限和生命周期；外壳物理池取成员之和与外壳上限中较小的那个；`PG_MIGRATION_HOST` 优先于 `PG_HOST`；缺 `PG_USER` 或 `PG_SCHEMA` 时报错并点名键，角色绝不从 schema 推出；NOINHERIT 的外壳登录角色照样能跑 outbox 推送和消费者；某成员的 `PG_HOST` 与外壳不同时外壳停止；满负载时 `application_name` 等于某成员 ID 的连接数不超过它的 `PG_POOL_MAX`（`CP-DB-03`）；运行期角色的 `DROP TABLE`、`ALTER TABLE` 失败，而运行期经 `SECURITY DEFINER` 函数建分区成功；连接被拒（`53300`）得到 `UNAVAILABLE` / `DB_TOO_MANY_CONNECTIONS`。
+- SDK，先写复现：两个成员在同一条物理连接上，对结构不同的平台表发出完全相同的 SQL 文本，不能报 "cached plan must not change result type"；防住它的就是 `/* be:<schema> */` 前缀（带前缀的 pgx 复现还没跑）。
 - be-ops：登录角色带上那三个超时；总数超过 `max_connections` 时连接预算门禁失败，并列出各进程。
-- be-acceptance：运行期代码里的会话级 advisory 锁让扫描失败；迁移里出现 `OWNER TO`、`GRANT`、`CREATE SCHEMA`、`SET ROLE`、带限定的名字或角色名时，迁移身份扫描失败；代码从 schema 名推出角色、或给 `PG_SCHEMA` 一个字面量默认值时，身份字面量扫描失败。
+- be-acceptance：运行期代码里的会话级 advisory 锁让扫描失败；迁移里出现 `OWNER TO`、`GRANT`、`CREATE SCHEMA`、`SET ROLE`、带限定的名字或角色名时，迁移身份扫描失败；代码从 schema 名推出角色、给 `PG_SCHEMA` 一个字面量默认值、或组件代码里发 `SET ROLE` 时，身份字面量扫描（`identity-literal-scan`）失败。
 - infra：Casdoor 的角色不是超级用户。
 
 ## 相关决策
 
-- [0102](../02-decisions/01-architecture/0102-one-schema-per-component.md)：一个数据库，每个组件一个 schema、一个角色。计划修订：把 Citus 按 schema 分片、按成员各开一个池列为重新讨论的条件，并写入属主角色与运行期角色的拆分。
-- [0103](../02-decisions/01-architecture/0103-locked-stack-per-language.md)：不用 ORM、手写 SQL，所以业务 SQL 留在各组件的 repo 层。
-- [0106](../02-decisions/01-architecture/0106-infrastructure-is-not-a-component.md)：数据库服务器是基础设施，不是组件。
-- 计划中、尚未编号："数据库目标是 PostgreSQL 方言族，由数据库套件认证"。
+- [0102 一个数据库，每个组件一个 schema](../02-decisions/01-architecture/0102-one-schema-per-component.md)：PostgreSQL 方言族，由数据库套件认证；每个组件一个 schema、两个角色（属主 `PG_OWNER_USER`、运行期 `PG_USER`），库身份只来自配置；Citus 按 schema 分片、按成员各开一个池是它重新讨论的条件。
+- [0103 每种语言内部一套锁定的技术栈](../02-decisions/01-architecture/0103-locked-stack-per-language.md)：不用 ORM、手写 SQL，所以业务 SQL 留在各组件的 repo 层。
+- [0106 基础设施不是组件](../02-decisions/01-architecture/0106-infrastructure-is-not-a-component.md)：数据库服务器是基础设施，不是组件。
+- [0502 默认 READ COMMITTED，配一架明确的阶梯](../02-decisions/05-runtime/0502-isolation-and-retry.md)：按事务设定的超时，使角色级设置只作兜底。
 
 ## 已知限制
 
@@ -195,5 +211,6 @@ ALTER ROLE <登录角色> SET lock_timeout = '5s';
 - **信创发行版还没实测**；套件对某个库跑过之前，不承诺它。
 - **单写节点。** 横向扩展走 Citus，这条路是设计上留好的，还没测过。
 - **所有进程共用一个 `max_connections`。** 预算门禁让总数如实，但没法让服务器变大。
-- **共享池上的语句缓存**在成员 SDK 版本不同时的表现还没验证：上面的复现跑过之前，平台 SQL 写明列名，从不用 `*`。
+- **共享池上的语句缓存**在成员 SDK 版本不同时，靠的是 `/* be:<schema> */` 前缀，而它在 pgx 上还没复现：复现之前，平台 SQL 写明列名，从不用 `*`。
+- **属主凭据也会到达运行中的服务**，不只是迁移容器，直到 brickKit FR06-013 落地；SDK 运行期从不使用它们。
 - **高可用与备份属于运维**（运维文档 `05-operations/` 还没写）。入口：Kubernetes 上用 CloudNativePG（自带 pooler 和按时间点恢复）；单机用 pgBackRest 或 WAL-G。按时间点恢复是"数据被删"时唯一真正的回退手段。

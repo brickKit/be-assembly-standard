@@ -13,7 +13,7 @@ Who authenticates a person, what token the platform issues, who owns the user id
 - the IAM slot family, its family contract and its conformance suite;
 - the shapes reserved for service accounts and delegation tokens.
 
-Not covered: what a person may do once identified ([20-authorization-provider.md](20-authorization-provider.md)); tenancy (`tenant_id`, `aud`, one deployment per customer: planned `07-tenancy.md`).
+Not covered: what a person may do once identified ([20-authorization-provider.md](20-authorization-provider.md)); tenancy (`tenant_id`, `aud`, one deployment per customer: [07-tenancy.md](07-tenancy.md)).
 
 ## Choice
 
@@ -27,7 +27,7 @@ Not covered: what a person may do once identified ([20-authorization-provider.md
 
 ## Port contract
 
-**Login configuration.** `GET /api/iam/login-config` (public) → `{issuer, discovery_url, client_id, scopes, pkce: "S256", end_session_supported}`. The frontend reads the IdP's `/.well-known/openid-configuration` from `discovery_url` and takes the authorization and token endpoints from it.
+**Login configuration.** `GET /api/iam/login-config` (public) → `{issuer, discovery_url, client_id, scopes, pkce: "S256", end_session_supported}`. The frontend reads the IdP's `/.well-known/openid-configuration` from `discovery_url` and takes the authorization and token endpoints from it. `GET /api/tenant/features` (public) carries only what the login page needs before sign-in: `contract`, `tenant_id`, `capabilities`, `default_locale`, `locales`.
 
 **Token exchange.** `POST /api/iam/token`, form-encoded:
 
@@ -38,19 +38,21 @@ Not covered: what a person may do once identified ([20-authorization-provider.md
 | `subject_token_type` | `urn:ietf:params:oauth:token-type:id_token` |
 | `audience` | optional |
 
-The answer carries `access_token`, `refresh_token`, `token_type`, `expires_in`. The Casdoor member also accepts the field `casdoor_id_token` until the 06c frontend has moved to the token exchange; it is then removed. `POST /api/iam/token/refresh` rotates the refresh token (the old one is invalid at once); `POST /api/iam/logout` revokes it.
+The answer carries `access_token`, `issued_token_type`, `token_type`, `expires_in`, `refresh_token`, `refresh_expires_in`. The Casdoor member also accepts the field `casdoor_id_token` until the 06c frontend has moved to the token exchange; it is then removed. `POST /api/iam/token/refresh` rotates the refresh token (the old one is invalid at once); `POST /api/iam/logout` revokes it.
+
+**Token errors.** Every failure on these paths is problem+json ([15](15-user-api-and-errors.md#the-error-body)) with a reason of domain `infra/iam` (the family's ID, whichever member is installed) or a reserved `be` reason; `metadata.oauth_error` carries the RFC 6749 §5.2 code (`invalid_grant`, `invalid_request`, …) for OAuth-aware clients. There is no top-level `error` member.
 
 **Application token claims:**
 
 | Claim | Meaning |
 |---|---|
-| `iss` | the platform issuer, shared key `IAM_ISSUER` |
+| `iss` | the platform issuer, shared key `IAM_ISSUER`: a stable name, `urn:be:<TENANT_ID>:iam`, not an address; unchanged when the member is swapped |
 | `aud` | the deployment, shared key `TENANT_ID` |
 | `sub` | platform user id (UUIDv7); `svc:<id>` for a service account (reserved) |
 | `typ` | `access` or `refresh` |
 | `iat`, `nbf`, `exp`, `jti` | standard; access TTL 600 s, refresh 7 days |
 | `tenant_id` | tenant / default legal entity; `org_id` is deprecated |
-| `roles`, `dept_path` | resolved from the authorization provider at login and refresh |
+| `roles`, `dept_path` | resolved from the authorization provider's `ResolveClaims` at login and refresh; `dept_path` is **omitted** when the user has no department, never `""` or `"/"` |
 | `act` | `{sub, kind: user|agent|svc}`, the acting party, nestable (RFC 8693 §4.1); `agent` is reserved |
 | `ceil`, `dg` | ceiling profile codes and delegation grant id ([20-authorization-provider.md](20-authorization-provider.md)) |
 | `azp` | the client (PC, mobile) |
@@ -68,15 +70,17 @@ The answer carries `access_token`, `refresh_token`, `token_type`, `expires_in`. 
 
 **Platform `sub` and identity links.** The member keeps `identity_links(idp, idp_issuer, idp_sub, user_id)` with one row per IdP account. The first login of an unknown IdP account creates a platform user. Linking to an existing user is by exact `(idp_issuer, idp_sub)` by default; automatic linking by e-mail is an opt-in with a security risk. The family defines an NDJSON export of the links so a new member can import them and keep every `sub`.
 
+**Bootstrap administrator.** The platform `sub` exists only after a person's first login, so the first administrator is named by `BOOTSTRAP_ADMIN_LOGIN`: the IdP login name, or a verified e-mail address. At a login exchange the member matches it case-insensitively, binds it to that person's platform `sub` at most once per deployment, and publishes the directory event with `bootstrap_admin: true`; the authorization member grants its administrator role on that event. `BOOTSTRAP_ADMIN_LOGIN` replaces the former `BOOTSTRAP_ADMIN_SUB`.
+
 **Directory events.** `infra.iam.user.created.v1`, `.updated.v1`, `.disabled.v1`, `.deleted.v1` (deleted is new). The payload carries at least `sub`, `display_name`, `email`, `phone`, `locale`, `im_accounts`, `status`. How a member learns of changes is its own business: Casdoor by webhook, Keycloak by polling admin events, the generic member by SCIM 2.0 inbound (`/scim/v2/Users`, `/scim/v2/Groups`).
 
-**System RPC.** `BatchGetUsers` (sub list → display data). `GetTenantFeatures` is narrowed to what the login page needs before sign-in; the rest moves into the authenticated `/api/me/access` ([20-authorization-provider.md](20-authorization-provider.md)).
+**System RPC** (`infra.iam.v1.IamProvider`, reached through `IAM_URL`): `BatchGetUsers` (sub list → display data) and `ListUsers` (core); `ListDepartments` and `ListMemberships` (capability `directory_departments`). There is no `GetTenantFeatures`: the installed components (today's `enabled_components`), keys and capabilities move to the authorization provider's authenticated `GET /api/me/access` ([20-authorization-provider.md](20-authorization-provider.md)); the public `/api/tenant/features` keeps only the login page's fields.
 
 **Capabilities**, so the login page degrades by what the member declares: `password_login`, `social_cn` (DingTalk, WeCom, Feishu), `ldap`, `saml`, `scim_inbound`, `mfa`, `token_exchange_delegation`, `service_accounts`.
 
 **Reserved, not built**: service accounts (`sub: svc:<id>` through client credentials, the extension point of the system plane, see [14-system-rpc.md](14-system-rpc.md)); token exchange for delegation (`act`, `ceil`, `dg`), with no branch for agents.
 
-**Configuration.** Shared keys in `config/vars.yaml`: `IAM_JWKS_URL` (in place), `IAM_ISSUER` and `TENANT_ID` (decided). The IdP server (Casdoor, Keycloak) is infrastructure started by `make up`, not a component ([0106](../02-decisions/01-architecture/0106-infrastructure-is-not-a-component.md)), and logs in to its own schema with its own role, never as `postgres`.
+**Configuration.** Shared keys in `config/vars.yaml`: `IAM_JWKS_URL` (in place; `{IAM_URL}/.well-known/jwks.json`), and, decided: `IAM_URL` (the member's base URL by its own service name, like `AUTHZ_URL`; its gRPC port is derived from it by the rule in be-protocol P2), `IAM_ISSUER` (`urn:be:<TENANT_ID>:iam`), `TENANT_ID`, `BOOTSTRAP_ADMIN_LOGIN`. Server metadata (RFC 8414 shape) is at `{IAM_URL}/.well-known/oauth-authorization-server`, relative to `IAM_URL` because the issuer is a name, not a URL. The IdP server (Casdoor, Keycloak) is infrastructure started by `make up`, not a component ([0106](../02-decisions/01-architecture/0106-infrastructure-is-not-a-component.md)), and logs in to its own schema with its own role, never as `postgres`.
 
 ## Alternatives
 
@@ -118,7 +122,7 @@ Two architectural alternatives were also weighed: components verifying the IdP's
 
 1. Export the identity links from the old member (NDJSON) and import them into the new one, linking the new IdP's subjects to the existing platform `sub` values.
 2. `brickkit add` the new member and `brickkit remove` the old one; no component changes its dependencies.
-3. Set `IAM_JWKS_URL` in `config/vars.yaml` to the new member's own service name. `IAM_ISSUER` names the platform, not the IdP, and stays the same.
+3. Set `IAM_URL` and `IAM_JWKS_URL` in `config/vars.yaml` to the new member's own service name. `IAM_ISSUER` names the platform, not the IdP, and stays the same.
 4. People sign in again: tokens signed by the old member's key stop verifying once its key is gone from the JWKS.
 5. Run `iamconf` against the new member. The frontend does not change; it only reads discovery.
 
@@ -140,15 +144,16 @@ SDK side, in every official SDK: reject `typ: refresh`; enforce the `alg` allowl
 
 ## Decision records
 
+- [0203 The token carries identity only, and the platform owns `sub`](../02-decisions/02-permissions/0203-jwt-carries-identity-only.md): the token claims and the platform-owned `sub`.
+- [0308 A tenant is a deployment](../02-decisions/03-contracts-and-data/0308-tenant-is-the-deployment.md): the tenant is the deployment: `aud` is `TENANT_ID`, `tenant_id` is reserved on the wire.
+- [0107 Authorization and identity are reached through shared variables](../02-decisions/01-architecture/0107-authz-and-iam-addresses-are-shared-vars.md): `IAM_JWKS_URL`, `IAM_ISSUER` and `TENANT_ID` are shared variables; the iam → authz edge is removed.
+- [0210 Delegation and impersonation](../02-decisions/02-permissions/0210-delegation-and-impersonation.md): the token side of delegation, reserved for agents.
 - [0104 A slot family needs several reasonable implementations and no dependency edge](../02-decisions/01-architecture/0104-variants-become-slot-families.md): `slot:iam`.
 - [0106 Infrastructure is not a component](../02-decisions/01-architecture/0106-infrastructure-is-not-a-component.md): the IdP servers.
-- [0107 The permission bundle and token keys are shared variables](../02-decisions/01-architecture/0107-authz-and-iam-addresses-are-shared-vars.md): to be revised for `IAM_ISSUER`, `TENANT_ID` and the removal of the iam → authz edge.
-- [0203 The token carries identity only](../02-decisions/02-permissions/0203-jwt-carries-identity-only.md): to be revised for the new identity claims (`iss`, `aud`, `jti`, `typ`, `tenant_id`, `act`, `ceil`, `dg`, `azp`, `locale`).
-- Planned: "the platform owns the user id"; "tenant = deployment".
+- [0303 No test accounts in migrations](../02-decisions/03-contracts-and-data/0303-no-test-accounts-in-migrations.md): the first administrator comes from `BOOTSTRAP_ADMIN_LOGIN`, never from a migration or a seed.
 
 ## Known limits
 
-- Whether Casdoor's standard token endpoint completes PKCE from the browser is still to be verified; the current frontend uses Casdoor's private paths.
 - Revoking a person takes effect through the bundle's `stale_since` (about 15 s) or token expiry (600 s), not instantly.
 - The generic OIDC + SCIM member does not exist yet; until then a customer's own IdP is federated through Keycloak.
 - Chinese commercial cryptography (SM2 signing) is a listed capability only, built when a customer requires it.

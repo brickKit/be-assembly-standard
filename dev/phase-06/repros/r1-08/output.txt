@@ -1,0 +1,13 @@
+===== node v24.21.0, fastify 5.12.5
+F1 two instances listening: A=43457 B=38069
+F2 /whoami x4 interleaved: 200 {"member":"erp/sales","ctx":{"member":"erp/sales","reqId":…}} | 200 {"member":"erp/finance","ctx":{"member":"erp/finance","reqId":…}} | 200 {"member":"erp/sales","ctx":{"member":"erp/sales","reqId":…}} | 200 {"member":"erp/finance","ctx":{"member":"erp/finance","reqId":…}}
+F3 hook counts after 2 requests each: A {"onRequest":2,"preHandler":2,"onSend":2,"onError":0,"onResponse":2} B {"onRequest":2,"preHandler":2,"onSend":2,"onError":0,"onResponse":2}
+F3 after one 404 on A only: A.onRequest 3 B.onRequest 2
+F4 log lines carry their own component: erp/sales/ctx=erp/sales, erp/finance/ctx=erp/finance, erp/sales/ctx=erp/sales, erp/finance/ctx=erp/finance
+F5 A POST 2 MiB to /upload (limit 1 MiB): 413 {"status":413,"reason":"BODY_TOO_LARGE","member":"erp/sales","ctx":"erp/sales"}
+F5 A POST 2 MiB to /upload-big (route limit 4 MiB): 200 {"bytes":2097160}
+F6 A /slow (handlerTimeout 1000ms, handler 1500ms): 504 {"status":504,"reason":"DEADLINE_EXCEEDED","member":"erp/sales","ctx":null}
+F6 B /slow (no handlerTimeout): 200 {"aborted":false}
+F7 slowloris (partial headers): A (headersTimeout 1000) 1023ms HTTP/1.1 408 Request Timeout | B (headersTimeout 3000) 3005ms HTTP/1.1 408 Request Timeout
+F8 after A.close(): B still serves -> 200 ; A -> ERR ECONNREFUSED ; onClose A 1 B 0
+F9 headersTimeout 1000 with default connectionsCheckingInterval: 30003ms HTTP/1.1 408 Request Timeout (server.connectionsCheckingInterval default 30000)

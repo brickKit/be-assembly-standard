@@ -6,7 +6,7 @@
 
 ## 范围
 
-覆盖：组件自有表的主键、对别的组件记录的引用、从 id 派生的分区键、列表游标、单据编号（含无缺号的凭证号）。不覆盖：幂等键（[11-consistency-across-components.md](11-consistency-across-components.md)）、事件 id（[13-event-contracts.md](13-event-contracts.md)）、平台自有的用户 id `sub`（[21-identity-provider.md](21-identity-provider.md)）、租户与法人的标识（租户文档，计划中，07 号文件）。
+覆盖：组件自有表的主键、对别的组件记录的引用、从 id 派生的分区键、列表游标、单据编号（含无缺号的凭证号）。不覆盖：幂等键（[11-consistency-across-components.md](11-consistency-across-components.md)）、事件 id（[13-event-contracts.md](13-event-contracts.md)）、平台自有的用户 id `sub`（[21-identity-provider.md](21-identity-provider.md)）、租户与法人的标识（[07-tenancy.md](07-tenancy.md)）。
 
 ## 选择
 
@@ -68,7 +68,7 @@
 
 - 无缺号的号只在幂等认领成功之后才分配，所以重复的请求绝不会占掉一个号。
 - 格式是组件的一个配置值（例如 `ORDER_NO_FORMAT`，默认 `SO{yyyy}{mm}-{seq:05}`）。占位符：`{le}`（法人代码）、`{yyyy}`、`{yy}`、`{mm}`、`{seq:N}`（补零到 N 位）。格式里的日期都是业务日期。
-- 单据表负责唯一性：`UNIQUE (legal_entity_id, <编号列>)`。
+- 唯一性由不分区的平台表 `besdk_number_allocations` 保证，`PRIMARY KEY (legal_entity_id, series, number)`：两种模式下，SDK 都在单据自己的事务里把发出的每个号记进这张表，所以重号在单据提交之前就以 `23505` 失败。唯一性不靠单据表上的唯一索引：分区表上的唯一索引必须包含分区键，所以 `UNIQUE (legal_entity_id, <编号列>)` 跨分区保证不了。
 - 什么时候分配编号，是拥有方组件的业务决定（sales：在确认时或创建时）。别的组件按 id 引用单据；编号是给人看的。
 
 ## 备选方案
@@ -117,13 +117,14 @@
 
 ## 一致性测试
 
-共享向量放在计划新建的 `brickKit/be-protocol` 仓库的 `vectors/numbering/`（格式占位符、跨时区午夜时由业务日期得出的期间键），每个官方 SDK 都读。要先写红的 SDK 测试：
+共享向量放在 `brickKit/be-protocol` 仓库的 `vectors/numbering/`（格式占位符、跨时区午夜时由业务日期得出的期间键），每个官方 SDK 都读。要先写红的 SDK 测试：
 
 - 生成的 id 是第 7 版，同一个生成器在同一毫秒内生成的 id 递增；
 - 从 id 推出的时间与一起设定的 `created_at` 相同，精确到毫秒；
 - 同一范围、同一期间里并发 100 次无缺号分配，得到一段连续的号，没有缺口也没有重复；
 - 按法人、按期间分别计数；
 - 允许缺号的序列回滚后留下缺号，但绝不重号；
+- 已经记在 `besdk_number_allocations` 里的号被拒绝，两张单据落在不同分区时也一样；
 - 端点接受客户端生成的 id 时，不是合法 UUIDv7 的值被拒绝。
 
 组件测试（以 erp/sales 为样板）：分区表上按 id 取单条只扫描一个分区（用 `EXPLAIN` 断言）；订单号无法从订单 id 推出。
@@ -132,10 +133,11 @@
 
 ## 相关决策
 
-- [0301](../02-decisions/03-contracts-and-data/0301-money-as-strings-lists-by-cursor.md)：列表按游标分页；这里的游标是基于 `created_at, id` 的 keyset。
-- [0302](../02-decisions/03-contracts-and-data/0302-contracts-are-additive-only.md)：契约里的 id 一直是字符串，所以换成 UUIDv7 不改任何字段类型。
-- [0104](../02-decisions/01-architecture/0104-variants-become-slot-families.md)：编号方案是一个配置键，不是槽位族。
-- 计划中、尚未编号："自有主键用 UUIDv7"；"3.0.0 重建基线时一次性替换已发布的迁移，因为没有生产数据"。
+- [0306 自有主键用 UUIDv7；单据号由 SDK 分配](../02-decisions/03-contracts-and-data/0306-uuidv7-own-keys.md)：本文是它的完整分析。
+- [0305 3.0.0 重建可以替换已发布的迁移，仅此一次](../02-decisions/03-contracts-and-data/0305-one-shot-baseline-rebuild-for-3-0-0.md)：3.0.0 一次性重建基线，引入 UUIDv7 主键；之所以允许，是因为没有生产数据。
+- [0301 金额是与币种成对的十进制字符串；列表按游标分页](../02-decisions/03-contracts-and-data/0301-money-as-strings-lists-by-cursor.md)：列表按游标分页；这里的游标是基于 `created_at, id` 的 keyset。
+- [0302 契约只做加法](../02-decisions/03-contracts-and-data/0302-contracts-are-additive-only.md)：契约里的 id 一直是字符串，所以换成 UUIDv7 不改任何字段类型。
+- [0104 槽位族需要多种合理实现，而且没有依赖边](../02-decisions/01-architecture/0104-variants-become-slot-families.md)：编号方案是一个配置键，不是槽位族。
 
 ## 已知限制
 

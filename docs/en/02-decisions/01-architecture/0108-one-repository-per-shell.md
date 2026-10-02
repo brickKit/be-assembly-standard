@@ -2,9 +2,11 @@
 
 # 0108 One shell, one repository, one image, one member list
 
+**Status**: in place; the 3.0.0 revision (one SDK version per shell, the launcher's start-up checks) is decided and lands with the 3.0.0 sweep.
+
 ## Decision
 
-Each shell is its own Git repository, like a component: `be/go-core`, `be/go-infra`, `be/go-backoffice` and `be/py-render` live in `brickKit/be-go-core`, `be-go-infra`, `be-go-backoffice` and `be-py-render`, and this project checks each out as a Git submodule at `shell/<scope>/<name>/`, where the `local-shells` source in `brickkit.yaml` finds it. A shell is released from the root of its own repository with `brickkit release --notes-file`; its tag is the bare version (`1.0.0`), with no `v` tag, because nothing imports a shell as a Go module or Python package. One shell is one image with one member list: `shell.members` in its `component.yaml` lists the exact member versions compiled in, and its code registers exactly those members, no more and no fewer. Adding a member or moving one to a new version is a commit and a release in the shell's repository, then a submodule pointer commit and `brickkit upgrade be/<name>@<version>` here. Which of the compiled-in members a deployment actually hosts is chosen in the deploy file (`members:` under the shell's entry). A shell only turns N processes into one: the launcher logic lives in the SDK, each member's migration still runs from that member's own image, and a shell never mixes languages.
+Each shell is its own Git repository, like a component: `be/go-core`, `be/go-infra`, `be/go-backoffice` and `be/py-render` live in `brickKit/be-go-core`, `be-go-infra`, `be-go-backoffice` and `be-py-render`, and this project checks each out as a Git submodule at `shell/<scope>/<name>/`, where the `local-shells` source in `brickkit.yaml` finds it. A shell is released from the root of its own repository with `brickkit release --notes-file`; its tag is the bare version (`1.0.0`), with no `v` tag, because nothing imports a shell as a Go module or Python package. One shell is one image with one member list: `shell.members` in its `component.yaml` lists the exact member versions compiled in, and its code registers exactly those members, no more and no fewer. Adding a member or moving one to a new version is a commit and a release in the shell's repository, then a submodule pointer commit and `brickkit upgrade be/<name>@<version>` here. Which of the compiled-in members a deployment actually hosts is chosen in the deploy file (`members:` under the shell's entry). A shell only turns N processes into one: the launcher logic lives in the SDK (one launcher per language that has an official SDK), each member's migration still runs from that member's own image, and a shell never mixes languages: all its members are written in one language and resolve one SDK version. At start the launcher refuses to run, naming the member, when a listed member is not compiled in, is compiled at another version, or has a database, bus, authz or IAM address different from the shell's.
 
 ## Why
 
@@ -18,7 +20,7 @@ The shells are reused by other assembly projects (customer projects, a clean sta
 - Members calling each other in-process because they share a shell ([0101](0101-no-imports-between-components.md))
 - "Upgrade `erp/sales` without touching the shell": a new member version means bumping, releasing and rebuilding the shell
 - A shell whose registered members differ from its `shell.members`
-- Mixing Go and Python members in one shell; putting the TypeScript BFF or the frontend in a shell
+- Mixing members of different languages, or members built on different SDK versions, in one shell; putting the TypeScript BFF or the frontend in a shell
 - Running members' migrations from the shell
 
 `brickkit up --ignore-shells` runs every member on its own and is how the project checks that each component still starts by itself.
@@ -26,3 +28,5 @@ The shells are reused by other assembly projects (customer projects, a clean sta
 ## Revisit only if
 
 No other project ever reuses a shell; the shells could then move back into this repository as project code.
+
+Full analysis: [27-shells.md, Choice](../../04-foundations/27-shells.md#choice).

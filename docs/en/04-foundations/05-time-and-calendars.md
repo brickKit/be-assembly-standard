@@ -6,7 +6,7 @@ How the project stores and transmits time, which day a document belongs to, whos
 
 ## Scope
 
-Covered: instants and business dates, the business time zone of a legal entity, the database session time zone, how "today" reaches SQL, business dates in events, fiscal periods and fiscal years, how dates are displayed. Not covered: deadlines and timeouts ([16-deadlines-and-retries.md](16-deadlines-and-retries.md)); retention periods and partition windows (the data lifecycle document, planned, file 09); legal entities as a data dimension (the tenancy document, planned, file 07).
+Covered: instants and business dates, the business time zone of a legal entity, the database session time zone, how "today" reaches SQL, business dates in events, fiscal periods and fiscal years, how dates are displayed. Not covered: deadlines and timeouts ([16-deadlines-and-retries.md](16-deadlines-and-retries.md)); retention periods and partition windows ([09-data-lifecycle.md](09-data-lifecycle.md)); legal entities as a data dimension ([07-tenancy.md](07-tenancy.md)).
 
 ## Choice
 
@@ -52,7 +52,9 @@ A business date is never sent as an instant at midnight: midnight in which zone 
 | business time zone | IANA zone name | `Asia/Shanghai` | the legal entity in mdm/org |
 | fiscal year start month | integer 1–12 | 1 | the legal entity's calendar, set by the open-fiscal-year command |
 
-The conversion `business date = civil date of (instant) in (legal entity's zone)` has exactly one implementation per official SDK, checked by shared vectors. It handles daylight saving time; the database is never asked to do it.
+The conversion `business date = civil date of (instant) in (legal entity's zone)` has exactly one implementation per official SDK, checked by shared vectors. It handles daylight saving time; the database is never asked to do it. Every SDK MUST embed its time zone data (Go `time/tzdata`, Python the `tzdata` package, Node full ICU), so the answer never depends on the image's zone files; legal entities store canonical IANA names, never link names such as `Asia/Calcutta`.
+
+**Without mdm/org (degraded mode).** When mdm/org is not installed (`MDM_ORG_ENDPOINT` does not exist), the component does not crash: every legal entity uses `BUSINESS_TIMEZONE` as its zone and fiscal year start month 1, and the runtime flags the degraded calendar in `/_be/info`. Once mdm/org is installed, its legal-entity calendars replace these values.
 
 ### SQL
 
@@ -110,7 +112,7 @@ The conversion `business date = civil date of (instant) in (legal entity's zone)
 
 ## Conformance tests
 
-Shared vectors in `vectors/calendar/` of the planned `brickKit/be-protocol` repository: instant plus zone gives business date, including daylight-saving boundaries (for example `America/New_York`) and the Beijing hours 00:00–08:00, which are the previous day in UTC. Every official SDK must give the same answers.
+Shared vectors in `vectors/calendar/` of `be-protocol` (`business_date.json`, `bounds.json`, `fiscal.json`): instant plus zone gives business date, including daylight-saving boundaries (for example `America/New_York`) and the Beijing hours 00:00–08:00, which are the previous day in UTC. Every official SDK must give the same answers. Each vector file names the tz release its expected values were computed with; when the tz data changes, the vectors are regenerated and cross-checked across languages before an SDK embeds the new release.
 
 Tests to write red first:
 
@@ -121,13 +123,15 @@ Tests to write red first:
 
 ## Decision records
 
-- [0404](../02-decisions/04-frontend/0404-four-user-preferences.md): users have no time zone preference; instants are shown in the legal entity's zone.
-- [0302](../02-decisions/03-contracts-and-data/0302-contracts-are-additive-only.md): business-date fields join existing events as optional fields.
-- Planned, not yet numbered: "business dates are `DATE` in the legal entity's business time zone; the database session is UTC".
+- [0307 Business dates follow the legal entity's calendar](../02-decisions/03-contracts-and-data/0307-business-dates-and-legal-entity-calendar.md): this document is its full analysis.
+- [0308 A tenant is a deployment](../02-decisions/03-contracts-and-data/0308-tenant-is-the-deployment.md): legal entities are a dimension inside one deployment, each with its own calendar.
+- [0404 Users own four preferences](../02-decisions/04-frontend/0404-four-user-preferences.md): users have no time zone preference; instants are shown in the legal entity's zone.
+- [0302 Contracts change by adding only](../02-decisions/03-contracts-and-data/0302-contracts-are-additive-only.md): business-date fields join existing events as optional fields.
 
 ## Known limits
 
 - **mdm/org is a prerequisite of the 3.0.0 sweep**: no component books by legal-entity calendar before it is released. How legal entities in mdm/org relate to departments in the IAM directory is settled in mdm/org's own design.
+- **Without mdm/org every legal entity shares one calendar**: `BUSINESS_TIMEZONE` and a January fiscal year, flagged in `/_be/info`.
 - **Changing a legal entity's zone does not re-date history**; documents keep the business dates they were given.
 - **Only month-based fiscal calendars** are produced by the open-fiscal-year command for now; 13-period and 4-4-5 calendars need the pattern parameter.
 - **Two known bugs remain until the sweep**: erp/finance takes the posting date from the processing time in UTC and compares a `DATE` with a `timestamptz`, so postings after 00:00 UTC on the last day of a month land in the next month, Beijing postings between 00:00 and 08:00 land on the previous day, and a delayed or replayed event lands in the period of its processing; erp/sales evaluates price effective dates with the database's `CURRENT_DATE` in UTC, so a price effective 1 October applies from 08:00 Beijing time.

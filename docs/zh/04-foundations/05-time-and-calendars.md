@@ -6,7 +6,7 @@
 
 ## 范围
 
-覆盖：瞬时与业务日期、法人的业务时区、数据库会话时区、"今天"怎么进到 SQL 里、事件里的业务日期、会计期间与会计年度、日期怎么显示。不覆盖：截止时间与超时（[16-deadlines-and-retries.md](16-deadlines-and-retries.md)）；保留期与分区窗口（数据生命周期文档，计划中，09 号文件）；作为数据维度的法人（租户文档，计划中，07 号文件）。
+覆盖：瞬时与业务日期、法人的业务时区、数据库会话时区、"今天"怎么进到 SQL 里、事件里的业务日期、会计期间与会计年度、日期怎么显示。不覆盖：截止时间与超时（[16-deadlines-and-retries.md](16-deadlines-and-retries.md)）；保留期与分区窗口（[09-data-lifecycle.md](09-data-lifecycle.md)）；作为数据维度的法人（[07-tenancy.md](07-tenancy.md)）。
 
 ## 选择
 
@@ -52,7 +52,9 @@
 | 业务时区 | IANA 时区名 | `Asia/Shanghai` | mdm/org 里的法人 |
 | 会计年度起始月 | 整数 1–12 | 1 | 法人的日历，由开会计年度命令设定 |
 
-换算 `业务日期 = （瞬时）在（法人时区）下的日历日期` 在每个官方 SDK 里只有一份实现，由共享向量校验。它处理夏令时；从不交给数据库去做。
+换算 `业务日期 = （瞬时）在（法人时区）下的日历日期` 在每个官方 SDK 里只有一份实现，由共享向量校验。它处理夏令时；从不交给数据库去做。每个 SDK 都 MUST 内嵌自己的时区数据（Go 用 `time/tzdata`，Python 用 `tzdata` 包，Node 用 full ICU），所以答案从不取决于镜像里的时区文件；法人只存规范的 IANA 名称，从不存 `Asia/Calcutta` 这类别名。
+
+**没有 mdm/org 时（降级模式）。** 没装 mdm/org 时（`MDM_ORG_ENDPOINT` 不存在），组件不崩溃：每个法人都用 `BUSINESS_TIMEZONE` 作时区、会计年度起始月为 1，运行时在 `/_be/info` 里标出日历处于降级状态。装上 mdm/org 之后，它的法人日历取代这些值。
 
 ### SQL
 
@@ -110,7 +112,7 @@
 
 ## 一致性测试
 
-共享向量放在计划新建的 `brickKit/be-protocol` 仓库的 `vectors/calendar/`：瞬时加时区得出业务日期，包括夏令时边界（例如 `America/New_York`）以及北京时间 00:00–08:00 这段在 UTC 下属于前一天的时间。每个官方 SDK 都必须给出相同答案。
+共享向量放在 `be-protocol` 的 `vectors/calendar/`（`business_date.json`、`bounds.json`、`fiscal.json`）：瞬时加时区得出业务日期，包括夏令时边界（例如 `America/New_York`）以及北京时间 00:00–08:00 这段在 UTC 下属于前一天的时间。每个官方 SDK 都必须给出相同答案。每个向量文件写明它的期望值是按哪个时区数据版本算的；时区数据一变，先重新生成向量并跨语言交叉核对，SDK 才内嵌新版本。
 
 要先写红的测试：
 
@@ -121,13 +123,15 @@
 
 ## 相关决策
 
-- [0404](../02-decisions/04-frontend/0404-four-user-preferences.md)：用户没有时区偏好；瞬时按法人时区显示。
-- [0302](../02-decisions/03-contracts-and-data/0302-contracts-are-additive-only.md)：业务日期字段作为可选字段加入已有事件。
-- 计划中、尚未编号："业务日期是法人业务时区下的 `DATE`；数据库会话是 UTC"。
+- [0307 业务日期按法人日历算](../02-decisions/03-contracts-and-data/0307-business-dates-and-legal-entity-calendar.md)：本文是它的完整分析。
+- [0308 租户就是部署](../02-decisions/03-contracts-and-data/0308-tenant-is-the-deployment.md)：法人是一套部署内的维度，各有自己的日历。
+- [0404 用户偏好只有四项](../02-decisions/04-frontend/0404-four-user-preferences.md)：用户没有时区偏好；时刻按法人时区显示。
+- [0302 契约只做加法](../02-decisions/03-contracts-and-data/0302-contracts-are-additive-only.md)：业务日期字段作为可选字段加入已有事件。
 
 ## 已知限制
 
 - **mdm/org 是 3.0.0 统一升级的前提**：它发布之前，没有组件按法人日历记账。mdm/org 里的法人与 IAM 目录里的部门如何划分，在 mdm/org 自己的设计里定。
+- **没有 mdm/org 时所有法人共用一份日历**：`BUSINESS_TIMEZONE` 加一月起始的会计年度，在 `/_be/info` 里标出。
 - **改法人的时区不会重新给历史定日期**；单据保留它们当初拿到的业务日期。
 - **开会计年度命令目前只生成按月的会计日历**；13 期和 4-4-5 日历要等日历模式参数。
 - **统一升级之前还有两个已知 bug**：erp/finance 用 UTC 的处理时刻作过账日期，并把 `DATE` 和 `timestamptz` 比较，所以每月最后一天 UTC 00:00 之后的过账记进下个月，北京时间 00:00–08:00 的过账记到前一天，延迟或重放的事件记进它被处理时所在的期间；erp/sales 用数据库在 UTC 下的 `CURRENT_DATE` 判断价格生效日，所以 10 月 1 日生效的价格要到北京时间 08:00 才生效。
