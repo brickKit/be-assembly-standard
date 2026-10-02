@@ -9,4 +9,9 @@
 | `events-consistency.md` | 事件至少一次送达（JetStream）、事件快照的回读/回填、TCC/saga 可靠性（预留过期、对账）、幂等重放绑定命令+目标+调用者 |
 | `data-layer.md` | 数据库身份解耦（R63 扫尾）、冷热数据生命周期、分区窗口、BatchGet 上限 |
 | `identity-permissions.md` | 功能权限与数据权限的整体设计审查、gRPC 上的用户身份、Claims 读取 API |
+| `authz-architecture.md` | 权限架构 v2：分享、关系派生、委托与 AI 代理、字段级、槽位族与一致性测试 |
+| `data-lifecycle-v2.md` | 冷热数据 v2：四层 + 保全/限制处理、SDK 端口与适配器、治理组件 |
+| `foundations-communication.md` | 底层审查：本地事务、跨组件一致性、同步通信、队列、缓存、边缘、后台任务、外壳；新 docs 目录结构 |
+| `foundations-data-platform.md` | 底层审查：数据库、主键、时间金额、多租户、迁移、搜索、文件、可观测性、配置密钥、IAM、多语言 |
+| `decisions.md` | 全部拍板点汇总 |
 | `sdk-redesign.md` | 在前三份结论之上，SDK（Go / Python / TS）的整体重新设计与迁移路径 |
