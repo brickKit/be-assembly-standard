@@ -19,6 +19,8 @@ export SHIP_PROBE_INTERVAL=0 SHIP_PROBE_RETRIES=1 GOPROXY=off GOFLAGS=-mod=mod
 mkdir -p "$T/bin"
 cat > "$T/bin/brickkit" <<'EOF'
 #!/usr/bin/env bash
+# version 不记进调用日志（版本核对每次都跑；FAKE_BK_VERSION 模拟 PATH 上是别的版本）
+[ "$1" = version ] && { echo "BrickKit CLI ${FAKE_BK_VERSION:-v1.1.0}"; echo "Supported deploy targets: docker"; exit 0; }
 echo "brickkit $*" >> "$FAKE_CALLS"
 if [ "$1" = release ]; then
   ver="$(awk '/^  version:/{print $2; exit}' component.yaml)"
@@ -183,6 +185,17 @@ git -C "$W" tag -d 2.0.0 v2.0.0 gen/demo/thing/v1.0.0 >/dev/null
 out="$(bash "$SHIP" "$W" "$T/notes.md" 2>&1)"; rc=$?
 if echo "$out" | grep -q '▸ 第 2 步.*PASS' && echo "$out" | grep -q '▸ 第 3 步.*PASS' && echo "$out" | grep -q '▸ 第 4 步.*PASS' \
    && [ ! -s "$FAKE_CALLS" ]; then ok "N 只有远端 tag 时重跑：2–4 步 PASS、不再 release"; else bad "N rc=$rc calls=$(cat "$FAKE_CALLS")\n$out"; fi
+
+# ---------- O（T7 审查 Important 2）. PATH 上的 brickkit 不是 v1.1.0 → 开始前即拒绝，点名二进制路径，什么都不推 ----------
+W="$(fixture o python)"
+: > "$FAKE_CALLS"
+for mode in --dry-run ""; do
+  out="$(FAKE_BK_VERSION=v0.4.6 bash "$SHIP" $mode "$W" "$T/notes.md" 2>&1)"; rc=$?
+  if [ $rc -eq 2 ] && echo "$out" | grep -q "❌ PATH 上的 brickkit 是 $T/bin/brickkit：BrickKit CLI v0.4.6" \
+     && [ -z "$(echo "$out" | steps_order)" ] && [ ! -s "$FAKE_CALLS" ] && [ -z "$(git -C "$W" ls-remote --tags origin)" ]; then
+    ok "O 旧版 brickkit（${mode:-真跑}）：exit 2、点名 $T/bin/brickkit、一步都不走"
+  else bad "O ${mode:-真跑} rc=$rc calls=$(cat "$FAKE_CALLS")\n$out"; fi
+done
 
 [ $fail -eq 0 ] && echo "全部通过" || echo "有失败"
 exit $fail

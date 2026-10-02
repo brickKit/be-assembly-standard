@@ -8,6 +8,8 @@
 #              改动类命令（push、tag、release、拉取探针）只打印
 # 环境变量：SHIP_PROBE_RETRIES（拉取探针次数，默认 3）、SHIP_PROBE_INTERVAL（间隔秒数，默认 30）
 set -uo pipefail
+# brickkit release 交给旧 CLI 不会报错：dry-run 也先核对版本，不对就退出 2，一步都不走
+source "$(dirname "${BASH_SOURCE[0]}")/lib/require-brickkit.sh"; require_brickkit
 
 DRY=0
 [ "${1:-}" = "--dry-run" ] && { DRY=1; shift; }

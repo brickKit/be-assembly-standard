@@ -16,6 +16,8 @@
 #     BE_ROOT        项目根（默认本仓库；测试用）
 #   --deploy-only <文件>  只按闭包生成 deploy.verify.yaml 形态的文件并打印闭包，不碰 Docker（测试与预览用）
 set -uo pipefail
+# 先核对 brickkit 版本（不对就不等项目锁、直接退出 2）；--deploy-only 不调 brickkit，不查
+[ "${2:-}" = --deploy-only ] || { source "$(dirname "${BASH_SOURCE[0]}")/lib/require-brickkit.sh"; require_brickkit; }
 [ -n "${BE_PROJECT_LOCK_HELD:-}" ] || [ "${2:-}" = --deploy-only ] \
   || exec bash "$(dirname "${BASH_SOURCE[0]}")/project-lock.sh" -- bash "${BASH_SOURCE[0]}" "$@"
 

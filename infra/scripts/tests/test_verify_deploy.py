@@ -171,6 +171,7 @@ def test_disabled_target_fails_early(tmp):  # 修复轮 M-8
 
 # ---------- 用假 brickkit / docker / curl 跑完整流程 ----------
 FAKE_BRICKKIT = """#!/bin/sh
+[ "$1" = version ] && { echo "BrickKit CLI ${FAKE_BK_VERSION:-v1.1.0}"; exit 0; }
 echo "brickkit $*" >> "$FAKE_CALLS"
 case "$1 $2" in
   "local status") echo "Local mode: ${FAKE_LOCAL_MODE:-off}" ;;
@@ -439,6 +440,22 @@ def test_interrupt_with_keep_leaves_containers(tmp):
     alive, c = _interrupt_during_focus(tmp, keep="1")
     assert not alive, "focus 进程还活着（KEEP 只保留容器，不留宿主机进程）"
     assert "brickkit down" not in c, c
+
+
+def test_wrong_brickkit_version_refused(tmp):  # T7 审查 Important 2：~/go/bin 的旧 CLI 遮住 v1.1.0
+    make(tmp, ALL, [{"id": i} for i in ALL])
+    r = verify(tmp, "mdm/product", FAKE_BK_VERSION="v0.4.6")
+    assert r.returncode == 2, r.stdout + r.stderr
+    assert f"❌ PATH 上的 brickkit 是 {tmp / 'fakebin' / 'brickkit'}：BrickKit CLI v0.4.6" in r.stderr, r.stderr
+    assert calls(tmp) == "", calls(tmp)                     # 一条 brickkit / docker 命令都没跑
+    assert not (tmp / "deploy.verify.yaml").exists()
+
+
+def test_deploy_only_needs_no_brickkit(tmp):  # --deploy-only 不调 brickkit，不做版本核对
+    root = make(tmp, ALL, [{"id": i} for i in ALL])
+    r = subprocess.run(["bash", str(SCRIPT), "mdm/customer", "--deploy-only", str(tmp / "v.yaml")],
+                       capture_output=True, text=True, env=fake_env(tmp, FAKE_BK_VERSION="v0.4.6"))
+    assert r.returncode == 0 and (tmp / "v.yaml").exists(), r.stdout + r.stderr
 
 
 def main() -> int:

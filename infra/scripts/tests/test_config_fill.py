@@ -314,14 +314,40 @@ def test_integrate_refuses_missing_schemas_tsv(tmp):  # 修复轮 M-10：integra
     (root / "registry/schemas.tsv").unlink()
     fake = tmp / "bin"
     fake.mkdir()
-    (fake / "brickkit").write_text('#!/bin/sh\necho "brickkit $*" >> "$FAKE_CALLS"\n', encoding="utf-8")
+    r = integrate(tmp, root)
+    assert r.returncode == 1, r.stdout + r.stderr
+    assert "第 1 步失败" in r.stderr and "schemas.tsv" in r.stderr, r.stdout + r.stderr
+    assert not (tmp / "calls").exists(), (tmp / "calls").read_text()
+
+
+FAKE_BK = """#!/bin/sh
+[ "$1" = version ] && { echo "BrickKit CLI ${FAKE_BK_VERSION:-v1.1.0}"; exit 0; }
+echo "brickkit $*" >> "$FAKE_CALLS"
+"""
+
+
+def integrate(tmp: pathlib.Path, root: pathlib.Path, **extra) -> subprocess.CompletedProcess:
+    """用 PATH 上的假 brickkit 跑 integrate.sh demo/app（调用记进 tmp/calls，version 不记）。"""
+    import os
+    fake = tmp / "bin"
+    fake.mkdir(exist_ok=True)
+    (fake / "brickkit").write_text(FAKE_BK, encoding="utf-8")
     (fake / "brickkit").chmod(0o755)
     env = {**os.environ, "PATH": f"{fake}:{os.environ['PATH']}", "BE_ROOT": str(root),
            "FAKE_CALLS": str(tmp / "calls"), "BE_PROJECT_LOCK": str(tmp / "lock")}
     env.pop("BE_PROJECT_LOCK_HELD", None)
-    r = subprocess.run(["bash", str(SCRIPT.parent / "integrate.sh"), "demo/app"], capture_output=True, text=True, env=env)
-    assert r.returncode == 1, r.stdout + r.stderr
-    assert "第 1 步失败" in r.stderr and "schemas.tsv" in r.stderr, r.stdout + r.stderr
+    env.pop("BE_SKIP_DB_INIT", None)
+    env.update(extra)
+    return subprocess.run(["bash", str(SCRIPT.parent / "integrate.sh"), "demo/app"], capture_output=True, text=True,
+                          env=env, timeout=60)
+
+
+def test_integrate_refuses_wrong_brickkit_version(tmp):  # T7 审查 Important 2
+    root = make_root(tmp)
+    r = integrate(tmp, root, FAKE_BK_VERSION="v0.4.6", BE_SKIP_DB_INIT="1")
+    assert r.returncode == 2, r.stdout + r.stderr
+    assert f"❌ PATH 上的 brickkit 是 {tmp / 'bin' / 'brickkit'}：BrickKit CLI v0.4.6" in r.stderr, r.stderr
+    assert "第 1 步" not in r.stdout + r.stderr, r.stdout   # 一步都没走
     assert not (tmp / "calls").exists(), (tmp / "calls").read_text()
 
 

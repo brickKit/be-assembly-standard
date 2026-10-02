@@ -7,6 +7,8 @@
 #   外壳同样适用：brickkit add be/<name>@1.0.0 会把已在项目里的成员移进外壳。
 # 环境变量：BE_ROOT（项目根，默认本仓库；测试用）、BE_SKIP_DB_INIT=1（跳过 make dev-env db-init；测试用）
 set -uo pipefail
+# 先核对 brickkit 版本（不对就不等项目锁、直接退出 2）
+source "$(dirname "${BASH_SOURCE[0]}")/lib/require-brickkit.sh"; require_brickkit
 [ -n "${BE_PROJECT_LOCK_HELD:-}" ] || exec bash "$(dirname "${BASH_SOURCE[0]}")/project-lock.sh" -- bash "${BASH_SOURCE[0]}" "$@"
 
 S="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
