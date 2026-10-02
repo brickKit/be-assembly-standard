@@ -11,7 +11,8 @@
 | `docs-skel.sh` | 第 2 步 / C2 | `brickkit new` 骨架 → 八份文档骨架 + `CLAUDE.md`，旧文件留底 |
 | `migrate-manifest.py` | 第 3 步 / C3 | 从最后一个 1.x tag 重写 `component.yaml`、删改 `assembly.yaml`、改代码里的旧键读法；`--check` 跑 3.2 |
 | `manifest-overrides.yaml` | 第 3 步 | 每个组件的人工输入（英文名称与描述、R27、P11、新键、`local`） |
-| `go-v2.sh` | 4.0–4.4 / C4 | 契约包统一成嵌套模块、`/v2`、契约包真实版本、升 SDK，最后跑 4.4 判据 |
+| `go-v2.sh` | 4.0–4.4、4.6 / C4 | 契约包统一成嵌套模块、`/v2`、契约包真实版本、升 SDK、（SDK ≥ v0.4.0 时）迁移入口改成一行，最后跑判据 |
+| `migrate-entry.py` | 4.6 | 由 `go-v2.sh` 调用：迁移入口一行化、删 `Module.Migrations` 字段；也可单独 `--check` |
 | `tests/run.sh` | — | 在 scratch 克隆上跑全部脚本并断言（含 C-1） |
 
 组件目录默认 `$ROOT/components/<id>`；环境变量 `BE_COMP_DIR` 可以改（测试用它指向 scratch 里的克隆）。`BE_SCRATCH` 必填（当前会话的 scratchpad 目录），`$S=$BE_SCRATCH/06b/<repo>`。
@@ -102,9 +103,16 @@ bash $ROOT/dev/phase-06/tools/go-v2.sh <id> --recheck; echo "exit=$?"
 3. **C-1 残留**：根 `go.mod` require 了自己的旧路径（`github.com/brickKit/<repo> v1.x.y`）→ 打印 `⚠️ 发现 C-1 残留` 并 `go mod edit -droprequire`。
 4. **4.2**：`go mod edit -module …/v2`；把所有 `.go`（`gen/` 除外）里的 `"github.com/brickKit/<repo>/…"` 改成 `…/v2/…`，契约包 `…/<repo>/gen/…` 不改；非 Go 文件里还提到旧模块路径的（Makefile 的 import-scan 白名单等）只用 `ℹ️` 列出，按 4.7 人工改。
 5. **4.3 契约包版本**：没有 `gen/<d>/<n>/v*` tag → `v1.0.0`（P3：形态 B 第一个 tag 一律 `v1.0.0`，即使同一轮契约有新增）；本地 `gen/<d>/<n>` 与最新 tag 一致（`git diff --quiet <tag> -- <dir>` 且无未跟踪文件）→ 那个版本；不一致 → 下一个 minor（`v1.0.6` → `v1.1.0`）。写进根 `go.mod` 的 require，replace 保持。
-6. **4.4**：`go get be-sdk-go@<tag>`、`go mod tidy`、`go build ./...`、`go vet ./...`。
+6. **4.4**：`go get be-sdk-go@<tag>`。
+7. **4.6（be-sdk-go ≥ v0.4.0 才做；v0.4.0 删了 `Module.Migrations`，不做这步 `go build` 必然报 `unknown field Migrations`）**，由 `migrate-entry.py --apply` 完成：
+   - 找含 `//go:embed *.sql` 的迁移嵌入包（13 个组件都是 `migrations/embed.go`，`package migrations`、`var FS embed.FS`）；没有就新建 `migrations/embed.go`（`migrations/` 下没有 `.sql` 就失败）。
+   - `backend/cmd/migrate/main.go` 整份写成 `package main` + `import ("github.com/brickKit/be-sdk-go/migrate"; "<模块>/v2/migrations")` + `func main() { migrate.Main(migrations.FS) }`（gofmt 后的确切文本）。目录里还有别的非测试 `.go` 文件就失败。
+   - `backend/module/module.go`：删 `besdk.Module{…}` 里单行的 `Migrations: x,`（连同紧挨在它上面、中间没有空行的注释行）；值是 `pkg.FS` 且包名不再用到 → 删那条 import；值是变量且只剩声明 → 删声明；然后 gofmt。`role := schema + "_rw"` 不动（外壳里 `SET LOCAL ROLE` 还要用）。`Migrations:` 不是单行写法就失败，不猜。
+   - 嵌入包文件原来的注释（"给 Module.Migrations 用""迁移容器读磁盘"）不改，只用 `ℹ️` 提醒 C4 审查时改。
+   - Dockerfile 不用改：`go build -o /out/migrate ./backend/cmd/migrate` + `COPY --from=build /out/migrate /app/migrate` 照旧，`.sql` 已嵌进二进制（`COPY migrations /app/migrations` 留着无害）。实测（mdm/customer 克隆，v0.4.0）：`docker build` 通过；镜像里 `./migrate` 无参数 → `用法：migrate up|down（收到 []）`、exit 2；`./migrate up` 不给 `PG_*` → `缺少数据库连接配置：PG_HOST, …`、exit 1。
+8. `go mod tidy`（`lib/pq`、旧入口的 `source/file` 随之消失；golang-migrate 只剩 SDK 带进来的 indirect）、`go build ./...`、`go vet ./...`。
 
-**判据**（每条 `PASS`/`FAIL`，任一 FAIL 就 exit 1）：BUILD_OK；`go.mod` 第一行 `module …/v2`；`go.mod` 不 require 自己的旧路径；契约包是嵌套模块且模块路径不带 `/v2`；根 `go.mod` require 的契约包版本 = 4.3 算出的版本（不是 `v0.0.0`）且有本地 replace；根 `go.mod` 里**除契约包外没有别的 replace**（例如为了先用上未发布的 SDK 指到本机 `tools/be-sdk-go`：本机全绿，`brickkit build` 时路径不在构建上下文里才失败）；`go list -m all` 里本仓库模块**恰好**两行（`…/v2` 与 `…/gen/<d>/<n> vX => ./gen/<d>/<n>`）；`go list -deps -test` 里本仓库模块只有这两个；import 全部带 `/v2`（契约包除外；没有不带子路径的裸导入 `"github.com/brickKit/<repo>"`，也没有 `…/v2/gen/…`；`//go:build ignore` 的文件也查）；Dockerfile 先 `COPY . .` 再 `go mod download`；给了 `--sdk` 时 be-sdk-go 版本一致。最后打印 `📌 第 8.3 步需要打的契约包 tag：gen/<d>/<n>/vX`，或"不需要"。
+**判据**（每条 `PASS`/`FAIL`，任一 FAIL 就 exit 1）：BUILD_OK；`go.mod` 第一行 `module …/v2`；`go.mod` 不 require 自己的旧路径；契约包是嵌套模块且模块路径不带 `/v2`；根 `go.mod` require 的契约包版本 = 4.3 算出的版本（不是 `v0.0.0`）且有本地 replace；根 `go.mod` 里**除契约包外没有别的 replace**（例如为了先用上未发布的 SDK 指到本机 `tools/be-sdk-go`：本机全绿，`brickkit build` 时路径不在构建上下文里才失败）；`go list -m all` 里本仓库模块**恰好**两行（`…/v2` 与 `…/gen/<d>/<n> vX => ./gen/<d>/<n>`）；`go list -deps -test` 里本仓库模块只有这两个；import 全部带 `/v2`（契约包除外；没有不带子路径的裸导入 `"github.com/brickKit/<repo>"`，也没有 `…/v2/gen/…`；`//go:build ignore` 的文件也查）；Dockerfile 先 `COPY . .` 再 `go mod download`；Dockerfile 编译 `./backend/cmd/migrate` 并把二进制 `COPY --from` 进最终镜像；SDK ≥ v0.4.0 时 `cmd/migrate/main.go` 恰好是那一行入口、非 gen 代码里没有 `Migrations:` 字段（`--recheck` 按 `go.mod` 里的 SDK 版本判断要不要查这条）；给了 `--sdk` 时 be-sdk-go 版本一致。最后打印 `📌 第 8.3 步需要打的契约包 tag：gen/<d>/<n>/vX`，或"不需要"。
 
 `--recheck` 只做 4.3 + tidy/build/vet + 判据：不拆模块、不改 import、不升 SDK、**不清 C-1 残留**（让判据报出来）。`--sdk` 可选（给了就核对版本）。
 
@@ -112,13 +120,14 @@ bash $ROOT/dev/phase-06/tools/go-v2.sh <id> --recheck; echo "exit=$?"
 
 **已知限制**：
 - `gen/` 有变化一律升 **minor**（`v1.0.6` → `v1.1.0`）：脚本分不清"契约新增"和"只是重新生成"（component-loop 4.0 说后者升 patch），只是重新生成时会多升一档，要 patch 就手工 `go mod edit -require=…@v1.0.7` 后再 `--recheck`。
-- `--sdk <tag>` 的 tag 还不存在时（例如 T1 发布 be-sdk-go v0.4.0 之前），在 4.4 的 `go get` 处 exit 2；此时 4.1–4.3（拆模块、`/v2`、import、契约包版本）**已经做完**，tag 出来后原样重跑即可（幂等）。
+- `--sdk <tag>` 的 tag 还不存在时，在 4.4 的 `go get` 处 exit 2；此时 4.1–4.3（拆模块、`/v2`、import、契约包版本）**已经做完**，tag 出来后原样重跑即可（幂等）。tag 刚推送的一段时间里 proxy.golang.org / sum.golang.org 还会返回之前缓存的"查不到"（实测 v0.4.0 推送后十几分钟仍是 `404 … unknown revision`）：脚本会提示，确认远端有 tag 后临时 `GONOSUMDB=github.com/brickKit` 重跑（回落到 git 直取，go.sum 照常记录）。
+- v0.4.0 还改了 `UserClient` / `SystemClient` 的签名：用到它们的组件（crm/opportunity、erp/sales、infra/iam-casdoor）第一次跑 `--sdk v0.4.0` 只有 BUILD 一条 FAIL（`not enough arguments in call to besdk.UserClient`），按 4.5 改完代码后重跑。其余 8 个 Go 组件实测直接全部 PASS。
 - 只认 `gen/` 下一个契约包目录；Dockerfile 只改上面那一种写法（别的写法由判据报 FAIL，人工改）；minor 版本号只看本仓库已有的 `gen/*` tag（远端有而本地没 fetch 的 tag 不知道——跑之前 `git fetch --tags`）；需要访问 Go 模块代理（`go get` SDK）。
 
 ## tests/run.sh
 
 ```bash
-BE_SCRATCH=<会话 scratchpad> bash dev/phase-06/tools/tests/run.sh      # 约 40 秒；TEST_SDK=v0.4.0 换 SDK
+BE_SCRATCH=<会话 scratchpad> bash dev/phase-06/tools/tests/run.sh      # 约 1 分钟；TEST_SDK（默认 v0.3.2，旧 API 路径）、TEST_SDK4（默认 v0.4.0，§4.6 路径）可换版本
 ```
 
 在 `$BE_SCRATCH/06b-tools-test/` 里用 `git clone --no-hardlinks`（scratch 可能与仓库不在同一文件系统，`--local` 的硬链接会失败）克隆 13 个组件（带 tag），只在克隆上写，不碰 `components/` 下的子模块。覆盖：
@@ -127,4 +136,5 @@ BE_SCRATCH=<会话 scratchpad> bash dev/phase-06/tools/tests/run.sh      # 约 4
 - `migrate-manifest.py` × 13：预览不写盘；旧清单 `--check` exit 1；`--write` 后 `--check` exit 0；重复 `--write` 无改动；13 个组件的依赖 / required / 默认值 / secret 与 §2.2 表逐项相等；customer / notification / print（Python）/ im-dingtalk 的代码改写；assembly.yaml 只删不加；`--check` 抓住驼峰键读取、未声明键读取、驼峰 schema 键、未标 secret、未进 required、版本注释。
 - `docs-skel.sh`（mdm/customer）：九个文件、留底、小节数、固定中文标题、互链、BRICKKIT 无相对链接、幂等、不覆盖已填写的文件、`--force`、组件目录 `brickkit lint` 只剩两类预期警告。
 - `go-v2.sh`：形态 A（mdm/customer，`v1.0.6`）、形态 B（infra/notification，拆出 `v1.0.0`、Dockerfile）、两者提交后重复运行 `git status --short` 为空、`--recheck` 在契约有变化时升到 `v1.1.0` 并报出要打的 tag、C-1 复现与捕获、Python 组件被拒绝。
+- §4.6：真 v0.4.0 下的 mdm/customer（形态 A，已有嵌入包）与 im-dingtalk（形态 B，删掉嵌入包、由脚本新建）：exit 0、`main.go` 逐字等于一行入口、没有 `Migrations` 字段与 migrations import、`role` 保留、gofmt、`lib/pq` 消失、`go build ./... && go vet ./...`、两条判据 PASS、提交后重跑无改动；`main.go` 多一行或 Dockerfile 不拷 migrate 二进制 → `--recheck` FAIL；v0.3.2 的组件不做 §4.6。
 - 修复轮：`--write` 遇到手改（assembly.yaml 追加一行、component.yaml 改版本）exit 3、两个文件都不写、diff 里列出会丢的行，`--force` 覆盖；overrides 的 `permissions_add` / `menus_add` / `edge_routes_add` 追加、只加不删、重复运行未改动、与 tag 版已有键重复时 exit 2、在 `*_add` 生成的文件上再手改也拒绝、改 overrides 后重跑照常；`--check` 对 assembly.yaml 的反向路径（残留 `shell`、缺 `data_scopes`）；`data.role` 只改 `data` 的直接子键（单元测试）；旧键名提示只看字符串与注释；docs-skel 换一个 `BE_SCRATCH`、清空 `$S` 之后重跑都不覆盖已填写的 `AGENTS.md` / `README.md`，留底取自 tag；go-v2 的多余 `replace` 与裸导入旧根包都 FAIL。

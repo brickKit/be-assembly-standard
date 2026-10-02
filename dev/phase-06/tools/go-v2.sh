@@ -152,7 +152,30 @@ BUILD=PASS
 if [ $RECHECK = 0 ] && [ -n "$SDK" ]; then
   cur=$(go list -m -f '{{.Version}}' github.com/brickKit/be-sdk-go 2>/dev/null || true)
   if [ "$cur" = "$SDK" ]; then skip "be-sdk-go 已是 $SDK"
-  else echo "  \$ go get github.com/brickKit/be-sdk-go@$SDK"; go get "github.com/brickKit/be-sdk-go@$SDK" || die "go get be-sdk-go@$SDK 失败"; did "be-sdk-go $cur → $SDK"; fi
+  else
+    echo "  \$ go get github.com/brickKit/be-sdk-go@$SDK"
+    go get "github.com/brickKit/be-sdk-go@$SDK" >"$S/go-get.log" 2>&1; rc=$?; cat "$S/go-get.log"
+    if [ $rc != 0 ]; then
+      if grep -q 'sum.golang.org.*404\|unknown revision' "$S/go-get.log"; then
+        echo "  ℹ️  tag 刚推送时，proxy.golang.org / sum.golang.org 会把之前查不到的结果缓存一阵子（负缓存）。" >&2
+        echo "     确认远端有这个 tag（git -C \$ROOT/tools/be-sdk-go ls-remote --tags origin $SDK）后，可临时 GONOSUMDB=github.com/brickKit 重跑（回落到 git 直取，go.sum 照常记录）。" >&2
+      fi
+      die "go get be-sdk-go@$SDK 失败（此时 4.1–4.3 已经做完，修好后原样重跑即可）"
+    fi
+    did "be-sdk-go $cur → $SDK"
+  fi
+fi
+# be-sdk-go v0.4.0 起删了 Module.Migrations：迁移只由 brickKit 用组件镜像跑 backend/cmd/migrate（component-loop §4.6）
+SDKV=${SDK:-$(go list -m -f '{{.Version}}' github.com/brickKit/be-sdk-go 2>/dev/null || true)}
+sdk_ge_04() { python3 -c "import re,sys; m=re.match(r'v(\d+)\.(\d+)\.(\d+)', sys.argv[1]); sys.exit(0 if m and tuple(map(int,m.groups()))>=(0,4,0) else 1)" "$1"; }
+NEW_MIGRATE=0; sdk_ge_04 "$SDKV" && NEW_MIGRATE=1
+if [ $RECHECK = 0 ]; then
+  step "4.6 迁移入口改成 SDK 的一行（be-sdk-go ≥ v0.4.0）"
+  if [ $NEW_MIGRATE = 1 ]; then
+    python3 "$HERE/migrate-entry.py" "$C" --apply || die "改迁移入口失败"
+  else
+    skip "be-sdk-go 是 ${SDKV:-?}（< v0.4.0），Module.Migrations 还在，不改"
+  fi
 fi
 before=$(gomod_hash)
 for cmd in "go mod tidy" "go build ./..." "go vet ./..."; do
@@ -204,6 +227,17 @@ crit "$(pf test -z "$bad_imp$bad_gen")" "import 全部带 /v2（契约包 $M/gen
 if [ -f Dockerfile ]; then
   crit "$(pf awk '/^RUN.*go mod download/{if(!d)d=NR} /^COPY[ \t]+\.[ \t]+\./{if(!c)c=NR} END{exit !(d==0 || (c && c<d))}' Dockerfile)" \
     "Dockerfile 先 COPY . . 再 go mod download（本地 replace 要求契约包目录在场）"
+fi
+if [ $NEW_MIGRATE = 1 ]; then
+  mprob=$(python3 "$HERE/migrate-entry.py" "$C" --check 2>&1)
+  crit "$(pf test -z "$mprob")" "backend/cmd/migrate/main.go 恰好是 migrate.Main(migrations.FS) 一行入口，代码里没有 Migrations 字段（be-sdk-go ≥ v0.4.0）"
+  [ -n "$mprob" ] && echo "$mprob" | sed 's/^/        │ /'
+fi
+if [ -f Dockerfile ]; then
+  # 迁移镜像：brickKit 用组件镜像跑 migration.command（./migrate up），二进制必须编进镜像
+  mout=$(grep -oE -- '-o[[:space:]]+[^[:space:]]+[[:space:]]+\./backend/cmd/migrate' Dockerfile | awk '{print $2}' | head -1)
+  crit "$(pf test -n "$mout" -a -n "$(grep -E "^COPY[[:space:]]+--from=[^[:space:]]+[[:space:]]+$mout([[:space:]]|$)" Dockerfile 2>/dev/null)")" \
+    "Dockerfile 编译 ./backend/cmd/migrate 并把二进制拷进最终镜像${mout:+（$mout）}"
 fi
 if [ -n "$SDK" ]; then
   sv=$(go list -m -f '{{.Version}}' github.com/brickKit/be-sdk-go 2>/dev/null || echo '?')

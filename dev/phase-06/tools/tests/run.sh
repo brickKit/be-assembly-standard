@@ -55,6 +55,8 @@ if [ "${TEST_KEEP:-}" != 1 ] || [ ! -d "$W" ]; then
   clone infra/notification "$W/infra-notification"
   clone infra/notification "$W/c1-notification"
   clone infra/print        "$W/infra-print"
+  clone mdm/customer            "$W/v4-mdm-customer"
+  clone integration/im-dingtalk "$W/v4-integration-im-dingtalk"
 fi
 mkdir -p "$LOG"
 
@@ -396,6 +398,43 @@ expect_rc 0 go-c1-fix "$d" bash "$TOOLS/go-v2.sh" infra/notification --sdk "$SDK
 check "完整运行：明确报出 C-1 残留并删掉"                       log_has go-c1-fix 'C-1'
 check "完整运行后不再 require 旧路径"                           bash -c "! grep -qE '^\s+$M v1\.' '$d/go.mod'"
 check "完整运行后 go list -m all 只有两行本仓库模块"           bash -c "[ \"\$(cd '$d' && go list -m all | grep -c 'brickKit/infra-notification')\" = 2 ]"
+
+section "§4.6：be-sdk-go v0.4.0 的迁移入口（真 v0.4.0；形态 A customer、形态 B im-dingtalk）"
+SDK4=${TEST_SDK4:-v0.4.0}
+# tag 刚推送时 proxy / sumdb 有负缓存：GONOSUMDB 让 go 回落到 git 直取（go.sum 照常记录）
+G4="env GONOSUMDB=${GONOSUMDB:-github.com/brickKit}"
+rm -f "$W/v4-integration-im-dingtalk/migrations/embed.go"     # 覆盖"没有嵌入包就新建"
+for id in mdm/customer integration/im-dingtalk; do
+  n=${id/\//-}; d=$W/v4-$n; M=github.com/brickKit/$n
+  expect_rc 0 "go4-$n" "$d" $G4 bash "$TOOLS/go-v2.sh" "$id" --sdk "$SDK4"
+  want=$(printf 'package main\n\nimport (\n\t"github.com/brickKit/be-sdk-go/migrate"\n\t"%s/v2/migrations"\n)\n\nfunc main() { migrate.Main(migrations.FS) }' "$M")
+  check "$id：cmd/migrate/main.go 恰好是一行入口"        test "$(cat "$d/backend/cmd/migrate/main.go")" = "$want"
+  check "$id：module.go 里没有 Migrations 字段"         bash -c "! grep -nE '^[^/]*\bMigrations[[:space:]]*:' '$d/backend/module/module.go'"
+  check "$id：module.go 不再 import migrations 包"     bash -c "! grep -q '/migrations\"' '$d/backend/module/module.go'"
+  check "$id：保留 role := schema + \"_rw\""           grep -q 'role := schema + "_rw"' "$d/backend/module/module.go"
+  check "$id：module.go 是 gofmt 过的"                 test -z "$(gofmt -l "$d/backend/module/module.go")"
+  check "$id：go mod tidy 去掉了 lib/pq"               bash -c "! grep -q 'github.com/lib/pq' '$d/go.mod'"
+  check "$id：be-sdk-go 是 $SDK4"                      bash -c "cd '$d' && [ \"\$(go list -m -f '{{.Version}}' github.com/brickKit/be-sdk-go)\" = '$SDK4' ]"
+  check "$id：go build ./... && go vet ./...（真 $SDK4）" bash -c "cd '$d' && $G4 go build ./... && $G4 go vet ./..."
+  check "$id：判据报出一行入口 PASS"                   log_has "go4-$n" 'PASS.*migrate\.Main\(migrations\.FS\)'
+  check "$id：判据报出 Dockerfile 编译并拷贝 migrate PASS" log_has "go4-$n" 'PASS.*Dockerfile 编译 \./backend/cmd/migrate'
+  commit_all "$d" "go-v2 v0.4.0 第一次"
+  expect_rc 0 "go4-$n-2" "$d" $G4 bash "$TOOLS/go-v2.sh" "$id" --sdk "$SDK4"
+  check "$id：重复运行无改动（git status --short 为空）" clean_tree "$d"
+done
+d=$W/v4-integration-im-dingtalk
+check "im-dingtalk：没有嵌入包时新建 migrations/embed.go" bash -c "grep -qx '//go:embed \*.sql' '$d/migrations/embed.go' && grep -qx 'var FS embed.FS' '$d/migrations/embed.go'"
+check "im-dingtalk：日志报出新建 embed.go"               log_has go4-integration-im-dingtalk '新建 migrations/embed.go'
+d=$W/v4-mdm-customer
+echo '// 多一行' >>"$d/backend/cmd/migrate/main.go"
+expect_rc 1 go4-neg-main "$d" $G4 bash "$TOOLS/go-v2.sh" mdm/customer --recheck
+check "main.go 不是一行入口 → FAIL"                     log_has go4-neg-main 'FAIL.*migrate\.Main\(migrations\.FS\)'
+git -C "$d" checkout -q backend/cmd/migrate/main.go
+sed -i 's#^COPY --from=build /out/migrate /app/migrate$#COPY --from=build /out/server /app/migrate-gone#' "$d/Dockerfile"
+expect_rc 1 go4-neg-docker "$d" $G4 bash "$TOOLS/go-v2.sh" mdm/customer --recheck
+check "Dockerfile 不拷 migrate 二进制 → FAIL"            log_has go4-neg-docker 'FAIL.*Dockerfile 编译 \./backend/cmd/migrate'
+git -C "$d" checkout -q Dockerfile
+check "v0.3.2 的组件不做 §4.6（Module.Migrations 还在）" grep -q 'Migrations: migrations.FS' "$W/mdm-customer/backend/module/module.go"
 
 section "go-v2.sh：非 Go 组件"
 expect_rc 2 go-python "$W/infra-print" bash "$TOOLS/go-v2.sh" infra/print --sdk "$SDK"
