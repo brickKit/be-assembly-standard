@@ -98,6 +98,18 @@ release_gates() {
   local groot rel acc bin
   groot="$(cd "$D/../../.." && pwd -P)"; rel="${D#"$groot"/}"
   case "$rel" in components/*/*|shell/*/*) ;; *) fail "组件目录不在 <项目根>/components/<scope>/<name> 或 <项目根>/shell/<scope>/<name> 下，发布前门禁扫不到它：$D" ;; esac
+  # openapi 只增检查对比的是本地最近的发布 tag；本地一个都没有（没 fetch tags）时 gate 只打一条 ℹ"跳过"，会假绿。
+  # 远端有不在 HEAD 上的发布 tag（之前的版本）而本地一个发布 tag 都没有 → 先 fetch。
+  # （远端的发布 tag 全在 HEAD 上是"本版本已发布后重跑"，没有更早的基线要比，放行）
+  local prev
+  prev="$(g ls-remote --tags origin)" || fail "git ls-remote --tags origin 失败"
+  prev="$(printf '%s\n' "$prev" | awk -v h="$HEAD_SHA" '
+    { r = $2; peeled = sub(/\^\{\}$/, "", r); sub(/^refs\/tags\//, "", r) }
+    r ~ /^v?[0-9]+\.[0-9]+\.[0-9]+$/ { if (peeled || !(r in c)) c[r] = $1 }
+    END { for (t in c) if (c[t] != h) print t }')"
+  if [ -n "$prev" ] && ! g tag -l | grep -qE '^v?[0-9]+\.[0-9]+\.[0-9]+$'; then
+    fail "远端有更早的发布 tag（$(echo "$prev" | sort -V | tail -1) 等），本地一个都没有：openapi 只增检查会找不到基线而跳过。先 git -C $D fetch --tags 再发布"
+  fi
   acc="$ROOT/tools/be-acceptance"; bin="$(mktemp -d)/be-acceptance"
   echo "  发布前门禁（项目根 $groot，只看 $rel）："
   echo "  \$ (cd $acc && go build -o $bin ./cmd/be-acceptance)"

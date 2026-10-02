@@ -235,5 +235,13 @@ out="$(bash "$SHIP" --dry-run "$W" "$T/notes.md" 2>&1)"; rc=$?
 if [ $rc -eq 0 ] && echo "$out" | grep -q '▸ 第 1 步.*PASS' && echo "$out" | grep -q '别的组件.*不挡本次发布'; then ok "R 别的组件的违规不挡本组件发布"
 else bad "R rc=$rc\n$out"; fi
 
+# ---------- S. 远端有发布 tag、本地一个都没有（没 fetch tags）→ openapi 会"没有发布 tag，跳过"而假绿：第 1 步 FAIL ----------
+W="$(fixture s python)"
+git -C "$W" tag -a 1.0.0 -m 1.0.0 && git -C "$W" push -q origin 1.0.0 && git -C "$W" tag -d 1.0.0 >/dev/null
+echo "# 2.x" >> "$W/pyproject.toml" && git -C "$W" commit -q -am "2.x" && git -C "$W" push -q origin main   # 1.0.0 是更早的版本
+out="$(bash "$SHIP" --dry-run "$W" "$T/notes.md" 2>&1)"; rc=$?
+if [ $rc -ne 0 ] && echo "$out" | grep -q '▸ 第 1 步.*FAIL.*fetch --tags' && [ -z "$(git -C "$W" tag -l)" ]; then ok "S 本地缺发布 tag：第 1 步 FAIL，提示 fetch --tags（dry-run 不建本地 tag）"
+else bad "S rc=$rc\n$out"; fi
+
 [ $fail -eq 0 ] && echo "全部通过" || echo "有失败"
 exit $fail
