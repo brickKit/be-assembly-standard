@@ -137,4 +137,12 @@ A component's documentation is `BRICKKIT.md` (translations `BRICKKIT.<lang>.md`)
 | Component | Version | What it does | Docs | Home |
 |---|---|---|---|---|
 | mdm/customer | 2.0.0 | Customer names, tax IDs, credit limits, status, contacts and billing details. | BRICKKIT.md +zh | https://github.com/brickKit/mdm-customer |
+| infra/authz | 2.0.0 | Permission key catalogue, roles as plain unions, the policy bundle served at /authz/bundle, and login-time claims. | BRICKKIT.md +zh | https://github.com/brickKit/infra-authz |
+| infra/notification | 2.0.0 | Takes notification intents from business components and routes them to the installed channel adapters by each user's preferences. | BRICKKIT.md +zh | https://github.com/brickKit/infra-notification |
+| infra/workflow | 2.0.0 | A light task inbox; business components register approval and exception tasks, and completion is reported back by event. | BRICKKIT.md +zh | https://github.com/brickKit/infra-workflow |
+| mdm/product | 2.0.0 | SKUs, categories, unit-of-measure conversions, batch and serial tracking policies, and standard costs. | BRICKKIT.md +zh | https://github.com/brickKit/mdm-product |
+| integration/im-dingtalk | 2.0.0 | The DingTalk member of the IM channel family; sends work notifications for IM dispatch events and publishes the delivery results. | BRICKKIT.md +zh | https://github.com/brickKit/integration-im-dingtalk |
+| infra/print | 2.0.0 | A pure rendering service; a template ID plus JSON data becomes a PDF byte stream or a ZPL command stream, with no business logic. | BRICKKIT.md +zh | https://github.com/brickKit/infra-print |
+| erp/inventory | 2.0.0 | Stock balances, movements and reservations, with oversell protection; the only writer of physical stock movements. | BRICKKIT.md +zh | https://github.com/brickKit/erp-inventory |
+| erp/finance | 2.0.0 | Chart of accounts, general ledger entries, receivable and payable ledgers, period locks and reconciliation. | BRICKKIT.md +zh | https://github.com/brickKit/erp-finance |
 <!-- brickkit:managed:end -->
