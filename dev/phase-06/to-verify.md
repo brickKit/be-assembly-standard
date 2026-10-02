@@ -13,6 +13,7 @@
 | V-08 | 外壳合并部署下，成员的 Prometheus 指标怎么抓取：成员各自的 HTTP 端口上有 /metrics，但外壳的 labels 只能声明一个 prometheus.io/port；v1 起成员 labels 不再合并进外壳 | 06e 部署矩阵（开 obs 的那一格） | 合并部署 + make obs-up，看 Prometheus 能否拿到每个成员的指标；不行的话设计方案（外壳聚合 /metrics，或请 brickKit 支持多端口抓取声明） | |
 | V-09 | `brickkit up --focus <id>` 会把 deploy.yaml 复制成 deploy.local.yaml 并打开 local 模式，`up --all` 只清除 focus、不关 local 模式；之后对 deploy.yaml 的修改悄悄不生效（来源：最终审查 B 读 brickKit 源码 cli/focus.go） | 06b 第一次 focus 运行 | 真机：focus 运行后改 deploy.yaml，看 up 是否提示；`brickkit local status` 的输出是否足够醒目 | |
 | V-10 | （事实已写入反馈 F06-002；06d 实测影响后补充）brickKit 安装的 `brickkit-plan-change` skill 写死了"项目的 `docs/decisions/`"（第 29 行），本项目按 brickKit 自己文档的布局把决策放在 `docs/en/02-decisions/`；AI 照 skill 去找会扑空，只能靠项目 AGENTS.md 的路由兜住 | 06d 路由考试（冲突类题目） | 看考生是否先去 docs/decisions/ 扑空、是否能从 AGENTS.md 找到正确位置；若扑空率高，建议 brickKit 的 skill 写成"项目 AGENTS.md 指出的决策目录（默认 docs/decisions/）" | |
+| V-11 | `brickkit add` 一个能托管已有组件的外壳时，v1.1.0 代码（`internal/install/add.go` 的 `nestExisting`）会把已在项目里的成员挪进外壳的 `members:`（打印 `🔗 <member> moved into shell`），而 `brickkit docs 04-shell/04-members-management` 写的是"对外壳出现之前就已在项目里的组件，`add` **不会**把它挪进外壳"。文档与行为不一致（来源：06b T6 审查读源码） | 06b T21–T24 第一个外壳 `make integrate` | 原文记录 add 输出有无 🔗 行、`deploy.yaml` 里成员的位置；与文档对照，成立则写反馈 | |
 | V-04 | 知识缺口：只靠已安装的 5 个 skill、项目 AGENTS.md 的 CLI 维护块、`.brickkit/manifests/` 缓存和 `--help`，能不能完成组件开发和部署 | 06a 用 `brickkit init` / `skills update` / `new` 重新生成之后，贯穿 06b–06f | 每次不得不去翻 brickKit 仓库，就在下面的缺口记录里追加一行；阶段末整理成反馈 | |
 
 ## 知识缺口记录（V-04）

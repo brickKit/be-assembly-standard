@@ -165,7 +165,7 @@ eval "$(bash $ROOT/dev/phase-06/tools/env.sh $ID)"     # 打印的 export 行见
   ```bash
   bash $ROOT/dev/phase-06/tools/go-v2.sh $ID --sdk v0.4.0; echo "exit=$?"     # 只 Go 组件
   ```
-  通过：`exit=0`（脚本最后跑 component-loop 4.4 的全部判据，任一不满足就非零退出）。然后：迁移入口改成 SDK 的一行（T1 的 `migrate.Main`）；`Makefile` 按 component-loop 4.7；脚本按 4.9；审查按 4.10–4.12（本 Task 的"重构重点"）；补接口按 4.13–4.15（契约先改，`buf generate` 之后再跑一次 `go-v2.sh $ID --recheck` 让根 `go.mod` require 正确的契约包版本）；测试按 4.16–4.17（`make -C $ROOT test-db-init` 拿锁）。每个红绿循环一个提交（组件仓库）。
+  通过：`exit=0`（脚本最后跑 component-loop 4.4 的全部判据，任一不满足就非零退出）。`--sdk v0.4.0` 起，脚本顺带把迁移入口改成 SDK 的一行（`migrate.Main(migrations.FS)`）并删掉 `module.go` 的 `Migrations:`，人工只读 diff、核对 Dockerfile。然后：`Makefile` 按 component-loop 4.7；脚本按 4.9；审查按 4.10–4.12（本 Task 的"重构重点"）；补接口按 4.13–4.15（契约先改，`buf generate` 之后再跑一次 `go-v2.sh $ID --recheck` 让根 `go.mod` require 正确的契约包版本）；测试按 4.16–4.17（`make -C $ROOT test-db-init` 拿锁）。每个红绿循环一个提交（组件仓库）。
 - [ ] **C5 文档**（第 5 步）：按 component-loop 5.1 写满八份文件，`docs/design.md` 从 `archive/pre-v1/docs/dev/design/$REPO.md` 只提取结论，并写进本 Task 引入的新设计（新接口、事件方案）。
 - [ ] **C6 版本与 lint**（第 6 步）：`make -C $ROOT docs-check ID=$ID; echo "exit=$?"` → `0 with errors, 0 warnings` 且 `exit=0`；`cd $C && make check-version test migrate-idempotent contract-check import-scan module-check` 全绿（Python / TS 用各自目标）。
 - [ ] **C7 接入与真机**（第 7 步，脚本自己拿项目锁）：
@@ -342,7 +342,7 @@ go list -deps . | grep -c golang-migrate     # 0
 - [ ] **Step 2: 测试**
 
 ```bash
-cd tools/be-sdk-python && uv venv -p 3.12 $S/venv-sdk && $S/venv-sdk/bin/pip install -e '.[dev]' -q
+cd tools/be-sdk-python && uv venv --seed -p 3.12 $S/venv-sdk && $S/venv-sdk/bin/pip install -e '.[dev]' -q
 set -a; . /home/zhijie/Desktop/github/be-assembly-standard/.env; set +a
 TEST_PG_DSN="postgres://postgres:${POSTGRES_PASSWORD}@localhost:5432/brickkit_test_db" $S/venv-sdk/bin/pytest -q
 ```
@@ -676,7 +676,7 @@ docker exec be-postgres psql -U postgres -d brickkit_db -tAc "select count(*) fr
 
 **重构重点**：渲染路径里的任何运行期读文件（component-loop §4.2 末尾"成员运行期读文件"一条）——模板在库里、字体在镜像里，外壳镜像也必须有同样的系统库与字体（T21）；`docs/` 下指向 `../docs/design/` 的两处 `DOC_LINK_NOT_PORTABLE` 随文档重写消失。
 
-- [ ] **Step 1: C1–C9**。测试用 `uv venv -p 3.12 $S/venv && $S/venv/bin/pip install -e '.[dev]' && $S/venv/bin/pytest -q`。`make test-cross` 不适用（记录写"不适用"）。
+- [ ] **Step 1: C1–C9**。测试用 `uv venv --seed -p 3.12 $S/venv && $S/venv/bin/pip install -e '.[dev]' && $S/venv/bin/pytest -q`。`make test-cross` 不适用（记录写"不适用"）。
 
 ---
 
@@ -814,7 +814,7 @@ L2 测试：消费者回填（含重复投递、乱序、不同值不覆盖）�
 
 **前置**：T16 已发布。**成员**：`infra/print@2.0.0`。端口 8402；登录角色 `shell_py_render` / `${SHELL_PY_RENDER_PASSWORD}`。
 
-**特有**：`main.py` 改为 `from infra_print.module import create_module` 与 `main("be-py-render", {"infra/print": create_module})`（入口名以 infra-print 2.0.0 的实际导出为准）；`pyproject.toml` 加 `"infra-print @ git+https://github.com/brickKit/infra-print.git@2.0.0"`，besdk 与 infra-print 钉同一个 `v0.4.4`；`Dockerfile` 补 WeasyPrint 系统库与中文字体（对照 `components/infra/print/Dockerfile` 的 `apt-get install` 列表与 `fc-cache -f`），并改成多阶段构建（06a 遗留：单阶段 517MB），记录前后镜像体积。本地验证：`uv venv -p 3.12 $S/pyvenv && $S/pyvenv/bin/pip install $SHD && $S/pyvenv/bin/python -c 'import main, infra_print.module'`。真机多核一项：经外壳调 `POST /infra/print/render` 渲染 `sales.delivery_note` 得到 PDF，`pdftotext`（或检查字节头 `%PDF`）确认中文没有乱码。R15 判据用 be-sdk-python README"外壳失败契约"的原文（T2）。**V-03 Python 半程**在这里记结论。
+**特有**：`main.py` 改为 `from infra_print.module import create_module` 与 `main("be-py-render", {"infra/print": create_module})`（入口名以 infra-print 2.0.0 的实际导出为准）；`pyproject.toml` 加 `"infra-print @ git+https://github.com/brickKit/infra-print.git@2.0.0"`，besdk 与 infra-print 钉同一个 `v0.4.4`；`Dockerfile` 补 WeasyPrint 系统库与中文字体（对照 `components/infra/print/Dockerfile` 的 `apt-get install` 列表与 `fc-cache -f`），并改成多阶段构建（06a 遗留：单阶段 517MB），记录前后镜像体积。本地验证：`uv venv --seed -p 3.12 $S/pyvenv && $S/pyvenv/bin/pip install $SHD && $S/pyvenv/bin/python -c 'import main, infra_print.module'`。真机多核一项：经外壳调 `POST /infra/print/render` 渲染 `sales.delivery_note` 得到 PDF，`pdftotext`（或检查字节头 `%PDF`）确认中文没有乱码。R15 判据用 be-sdk-python README"外壳失败契约"的原文（T2）。**V-03 Python 半程**在这里记结论。
 
 - [ ] **Step 1: H1–H7**。
 
@@ -868,7 +868,7 @@ L2 测试：消费者回填（含重复投递、乱序、不同值不覆盖）�
 ```bash
 cd /home/zhijie/Desktop/github/be-assembly-standard
 python3 -c "import yaml;b=yaml.safe_load(open('brickkit.yaml'));[print(c['id'],c['version'],c.get('kind','')) for c in b['components']]"
-python3 infra/scripts/teardown-sync.py --check
+make teardown-sync CHECK=1
 brickkit local status
 ```
 
