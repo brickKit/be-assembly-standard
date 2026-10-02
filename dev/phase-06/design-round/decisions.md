@@ -35,7 +35,7 @@
 | ★A1 | 被共享一张单据但没有对应 view 键的人能否打开 | 查看类可以顺带，动作类（确认、取消、关闭）永远要角色键；各组件在 `relations.grants` 显式声明 | 一律还要角色键（Salesforce 式） |
 | ★A2 | 谁能共享 | 持有该类型的 share 键，且自己至少有要授出的那一级，不能转授高于自己的级别 | 只有负责人能共享 |
 | A3 | 看不见的记录对命令也答 404（不再 403） | 改 | 维持 R62 |
-| A4 | AI 代理的边界 | **推迟**（用户近期不在业务里用 AI）：`agents` 留作 P3 可选能力、默认关；`delegable` 等有需求时只增地加；人的代办与扮演照常 | 原推荐：默认只读 + 起草，不可逆动作标 `delegable: false` |
+| A4 | AI 代理的边界 | **只留位子、不开发**：`ana/ai` 的 registry 行、`act.kind=agent`、`agents` 能力（默认关）、权限键可选字段 `delegable` 只在契约里占位；清单与实现等商业化后再定 | 原推荐：默认只读 + 起草，不可逆动作标 `delegable: false` |
 | ★A5 | 生产环境"以他人身份查看" | 允许但只读，单独键 `infra.authz.impersonate`，日志带 `act` 并通知被查看的人 | 只在开发环境开 |
 | ★A6 | openfga 成员什么时候建 | **06 内建**（控制者改判：用户明确要多实现互换验证，第二个真实实现越早越能逼出契约偏差）；顺序 static → openfga | 等 prj/project 或阶段 07 |
 | — | 先决条件 | 删掉 iam → authz 依赖边（槽位族成员不能被依赖，brickKit 09-patterns）；族契约放新仓库 `contract-infra-authz`（**需新建 GitHub 仓库，先征得同意**） | — |
