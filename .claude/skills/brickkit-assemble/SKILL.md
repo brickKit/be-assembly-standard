@@ -151,6 +151,7 @@ never local mode, so their output is the same for everyone. `down` never deletes
 
 ## Where to dig deeper
 
+- The documentation of this BrickKit version, offline: `brickkit docs` lists the pages — running a project `brickkit docs 02-project-guide`, every `brickkit.yaml` field `brickkit docs 11-reference/02-brickkit-yaml-schema`
 - Flags and exact behavior: `brickkit <command> --help` (`add`, `remove`, `upgrade`, `deps`, `sync`,
   `up`, `local`). This skill deliberately doesn't duplicate the flag reference
 - A component's own guide: `.brickkit/manifests/<scope>/<name>/<version>/BRICKKIT.md`; which
@@ -159,4 +160,4 @@ never local mode, so their output is the same for everyone. `down` never deletes
 - A new requirement or a change across components: the `brickkit-plan-change` skill
 - The platform's full specification: <https://github.com/brickKit/brickKit> and its root `AGENTS.md`
 
-<!-- brickkit:skill version=v1.0.0 sum=sha256:4772027dd48d1cca98808fca3afae2806b5b9d996d88014b9bc6c921823d2fc4 -->
+<!-- brickkit:skill version=v1.1.0 sum=sha256:dd13a019f790e34d19ad9b942d70525fafd6d76efe286e142b3524079bf3ed93 -->

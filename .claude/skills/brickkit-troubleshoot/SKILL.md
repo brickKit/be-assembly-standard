@@ -96,10 +96,10 @@ one key and hides the conflict.
 | `LINT_FAILED` | `brickkit lint` found problems, each printed with file and field | Fix and rerun; warnings fail only with `--strict` |
 | `DOC_FILE_MISSING` / `DOC_SECTION_MISSING` (lint warnings) | A required doc (`BRICKKIT.md`, `AGENTS.md`, `CLAUDE.md`, `README.md`) or one of its fixed sections is missing | Add it; `brickkit new` shows the full set, `brickkit skills update` creates a missing `AGENTS.md` / `CLAUDE.md` |
 | `DOC_PATH_MISSING` / `DOC_LINK_BROKEN` | A Code map path in `AGENTS.md`, or a relative link, points at nothing — the code moved, the doc didn't | Fix the path or link in the doc |
-| `DOC_LINK_NOT_PORTABLE` | `BRICKKIT.md` has a relative link (dead in other projects' caches), or a component doc links out of the component | Name files as inline code in `BRICKKIT.md`; keep component docs self-contained |
+| `DOC_LINK_NOT_PORTABLE` | `BRICKKIT.md` has a relative link (dead in other projects' caches), or any other component doc — `AGENTS.md`, `README.md`, `docs/` — links out of the component (`../…`) | Name files as inline code in `BRICKKIT.md`; keep component docs self-contained |
 | `DOC_OUT_OF_STEP` | `component.yaml` has a dependency, required key, artifact file or shell member the doc doesn't mention where it belongs | Mention it in that section (a dependency by ID, no version) |
 | `DOC_PLACEHOLDER` | A `TODO`-style placeholder is still in a doc's text | Fill it in |
-| `DOC_TRANSLATION_DRIFT` | A translation lacks its primary, has a different number of `##` sections, a language version doesn't link every other, or the suffix isn't a language code | Bring the translation back in step with the primary |
+| `DOC_TRANSLATION_DRIFT` | A translation lacks its primary, has a different number of `##` sections (the brickkit-maintained block at the end of `AGENTS.md` isn't counted), a page is missing from one of the `docs/<lang>/` trees, a language version doesn't link every other, or the suffix isn't a language code | Bring the translation back in step with the primary |
 | `AGENTS_BLOCK_MISSING` / `CLAUDE_IMPORT_MISSING` | `AGENTS.md` has no usable block maintained by brickkit, or `CLAUDE.md` lacks `@AGENTS.md` | `brickkit skills update` adds them (no other command edits these files) |
 | `PROJECT_MAP_OBSOLETE` | The old project map `BRICKKIT.md` is still at the project root | Move your own notes into `AGENTS.md`, then delete it by hand |
 | A row of the component table in `AGENTS.md` flips between commits; `skills status` calls the block outdated | A released version was edited in place in a local source (`BRICKKIT.md`, a translation or `metadata.description`), while another machine takes it from the tag. An unreleased bumped version doesn't do this | Put the change in the next version: bump `metadata.version`, `brickkit release`, `brickkit upgrade` in the project |
@@ -145,9 +145,10 @@ shell is reached at the shell's address. **To see the generated files** without 
 
 ## Where to dig deeper
 
+- The documentation of this BrickKit version, offline: `brickkit docs` lists the pages — troubleshooting `brickkit docs 10-troubleshooting`, every error code `brickkit docs 06-architecture/09-error-codes`
 - Flags: `brickkit <command> --help`
 - A component's own notes (configuration, known pitfalls): `.brickkit/manifests/<scope>/<name>/<version>/BRICKKIT.md`
 - The full specification and the reasoning behind each design choice:
   <https://github.com/brickKit/brickKit> and its root `AGENTS.md`
 
-<!-- brickkit:skill version=v1.0.1 sum=sha256:29e465ef605c1d28a7eb42205a00e9fbc4728a760c8e0d2f9a7de11abe127c70 -->
+<!-- brickkit:skill version=v1.1.0 sum=sha256:ae618720bf3476cdc80784d1bfce0ccccaeae030047dc42eda24d072af83b1f1 -->
