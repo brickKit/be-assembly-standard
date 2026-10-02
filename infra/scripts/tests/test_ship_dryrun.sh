@@ -79,9 +79,9 @@ echo "$out" | grep -q "gate config-key-scan --root $T/a --only components/demo/t
   && echo "$out" | grep -q "gate openapi-additive-scan --root $T/a --only components/demo/thing" \
   && echo "$out" | grep -q "门禁 be-acceptance@$(git -C "$ACC" rev-parse --short HEAD)" \
   && ok "A 发布前门禁照跑并打印命令（dry-run 也跑）" || bad "A 没打印发布前门禁命令:\n$out"
-echo "$out" | grep -q '\[dry-run\] git tag -a gen/demo/thing/v1.0.0' && ok "A 打印契约包 tag" || bad "A 没打印契约包 tag:\n$out"
+echo "$out" | grep -q '\[dry-run\] git tag -a --cleanup=verbatim gen/demo/thing/v1.0.0' && ok "A 打印契约包 tag" || bad "A 没打印契约包 tag:\n$out"
 echo "$out" | grep -q '\[dry-run\] brickkit release --notes-file' && ok "A 打印 brickkit release" || bad "A 没打印 release"
-echo "$out" | grep -q '\[dry-run\] git tag -a v2.0.0' && ok "A 打印 v tag" || bad "A 没打印 v tag"
+echo "$out" | grep -q '\[dry-run\] git tag -a --cleanup=verbatim v2.0.0' && ok "A 打印 v tag" || bad "A 没打印 v tag"
 [ -z "$(git -C "$W" ls-remote --tags origin)" ] && ok "A 远端没有任何 tag" || bad "A dry-run 推了 tag"
 [ -z "$(git -C "$W" tag -l)" ] && ok "A 本地没有打 tag" || bad "A dry-run 打了本地 tag"
 [ ! -s "$FAKE_CALLS" ] && ok "A 没调用 brickkit" || bad "A dry-run 调用了 brickkit: $(cat "$FAKE_CALLS")"
@@ -164,6 +164,11 @@ for t in 2.0.0 v2.0.0 gen/demo/thing/v1.0.0; do
 done
 if [ $rc -ne 0 ] && [ $all_at_head = 1 ] && echo "$out" | grep -q '▸ 第 4 步.*PASS' && echo "$out" | grep -q '▸ 第 5 步.*FAIL' \
    && [ "$(echo "$out" | steps_order)" = "12345" ]; then ok "J Go 真跑：三个 tag 在 HEAD，探针失败停在第 5 步"; else bad "J rc=$rc at_head=$all_at_head\n$out"; fi
+
+# J2. 注解里的 "## 新增" 这类标题行要原样保留（git tag -F 默认把 # 开头的行当注释删掉）
+for t in v2.0.0 gen/demo/thing/v1.0.0; do
+  if git -C "$W" tag -l --format='%(contents)' "$t" | grep -q '^## 新增'; then ok "J2 $t 的注解保留 ## 标题行"; else bad "J2 $t 的注解丢了 ## 标题行：$(git -C "$W" tag -l --format='%(contents)' "$t")"; fi
+done
 
 # ---------- K（修复轮 I-1）. 远端契约包 tag 在旧提交，本地同名 tag 却在 HEAD → 必须按远端比较并 FAIL ----------
 W="$(fixture k go)"

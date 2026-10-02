@@ -190,7 +190,7 @@ else
         if [ -n "$lsha" ] && [ "$lsha" != "$HEAD_SHA" ]; then
           fail "本地已有未推送的 $tag，指向 $lsha 而不是 HEAD——不移动，核对后人工处理"
         fi
-        [ -n "$lsha" ] || run g tag -a "$tag" -F "$NOTES" HEAD || fail "git tag $tag 失败"
+        [ -n "$lsha" ] || run g tag -a --cleanup=verbatim "$tag" -F "$NOTES" HEAD || fail "git tag $tag 失败"
         run g push origin "refs/tags/$tag" || fail "git push origin $tag 失败"
         if [ "$DRY" = 0 ]; then
           [ "$(remote_tag_commit "$tag")" = "$HEAD_SHA" ] || fail "推送后远端 $tag 不在 HEAD"
@@ -234,7 +234,7 @@ else
   else
     lsha="$(local_tag_commit "$VT")"
     [ -z "$lsha" ] || [ "$lsha" = "$HEAD_SHA" ] || fail "本地已有未推送的 $VT，指向 $lsha 而不是 HEAD——不移动，核对后人工处理"
-    [ -n "$lsha" ] || run g tag -a "$VT" -F "$NOTES" HEAD || fail "git tag $VT 失败"
+    [ -n "$lsha" ] || run g tag -a --cleanup=verbatim "$VT" -F "$NOTES" HEAD || fail "git tag $VT 失败"
     run g push origin "refs/tags/$VT" || fail "git push origin $VT 失败"
   fi
   if [ "$DRY" = 0 ]; then
