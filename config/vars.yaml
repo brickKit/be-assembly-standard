@@ -21,3 +21,7 @@ OTEL_BASE_URL: ""
 # 只在这两个组件发版时改；与 brickkit.yaml 的版本对不上时 make gates（service-hostname-scan）报错。
 AUTHZ_BUNDLE_URL: http://infra-authz-2-0-0:8223/authz/bundle
 IAM_JWKS_URL: http://infra-iam-casdoor-2-0-0:8200/.well-known/jwks.json
+
+# Casdoor（基础资源，接在本项目网络上，见 infra/docker-compose.infra.yml）回调 infra/iam-casdoor 的 webhook：
+# 同样用成员自己的版本化服务名，独立部署与外壳托管都能解析；iam 发版时与 IAM_JWKS_URL 一起改（service-hostname-scan 把关）。
+IAM_WEBHOOK_CALLBACK_URL: http://infra-iam-casdoor-2-0-0:8200/api/iam/webhooks/casdoor

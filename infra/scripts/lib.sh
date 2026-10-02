@@ -77,10 +77,22 @@ port_owner() {
   printf '%s' "$owner"
 }
 
+# brickKit 给本项目建的网络：Casdoor 接在上面回调 infra/iam-casdoor（docker-compose.infra.yml 的 brickkit-net）。
+# 名字与 compose 标签照 brickKit 的生成规则（网络 brickkit-<project>-net、compose 项目 brickkit-<project>、
+# 网络键 brickkit-net）；标签对得上，brickkit up 才把预先建好的网络当成自己的，不会删了重建。
+BK_PROJECT="$(awk '/^project:/{print $2; exit}' "$ROOT/brickkit.yaml" 2>/dev/null)"
+BK_NET="brickkit-${BK_PROJECT:-be-assembly-standard}-net"
+
 ensure_net() {
   if ! docker network inspect "$NET" >/dev/null 2>&1; then
     docker network create "$NET" >/dev/null
     printf '%s\n' "${C_DIM}已创建 external network $NET${C_OFF}"
+  fi
+  if ! docker network inspect "$BK_NET" >/dev/null 2>&1; then
+    docker network create \
+      --label com.docker.compose.project="brickkit-${BK_PROJECT:-be-assembly-standard}" \
+      --label com.docker.compose.network=brickkit-net "$BK_NET" >/dev/null
+    printf '%s\n' "${C_DIM}已创建 brickKit 项目网络 $BK_NET（Casdoor 回调 iam 用）${C_OFF}"
   fi
 }
 

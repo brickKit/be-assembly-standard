@@ -3,6 +3,14 @@ name: be-infra
 networks:
   be-net:
     external: true
+  # brickKit 给本项目建的网络（brickkit-<project>-net）。只有 Casdoor 接进去：它要按成员自己的
+  # 服务名回调 infra/iam-casdoor 的 webhook（config/vars.yaml 的 IAM_WEBHOOK_CALLBACK_URL），
+  # 单独部署与外壳托管都解析得到（成员服务名是外壳容器的网络别名）。网络还没建时由 make net
+  # 带上 brickKit 的 compose 标签预先建好（lib.sh 的 ensure_net），brickkit up 照常把它当成自己的；
+  # brickkit down 时 Casdoor 还连着，网络留下（compose 只打一行 "Resource is still in use"）。
+  brickkit-net:
+    external: true
+    name: brickkit-be-assembly-standard-net
 
 volumes:
   pg_data:
@@ -78,7 +86,7 @@ services:
   casdoor:
     image: casbin/casdoor:latest
     container_name: be-casdoor
-    networks: [be-net]
+    networks: [be-net, brickkit-net]
     ports: ["8000:8000"]
     depends_on:
       postgres:

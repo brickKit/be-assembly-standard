@@ -33,13 +33,18 @@ docker network inspect "$NET" >/dev/null 2>&1 || {
 	exit 1
 }
 
-# 强依赖列表：component.yaml 的 dependencies.components 段里的 scope/name（去掉 @版本、去掉 optional 包装）
-mapfile -t DEPS < <(awk '
-	/^dependencies:/ {ind=1}
-	ind && /^  components:/ {inc=1; next}
-	inc && /^  [a-z]/ {inc=0}
-	inc && match($0, /[a-z][a-z_-]*\/[a-z][a-z_-]*@/) { print substr($0, RSTART, RLENGTH-1) }
-' "$DIR/component.yaml")
+# 依赖列表：component.yaml 的 dependencies.components 里的 scope/name（去掉 @版本、去掉 optional 包装）。
+# 按 YAML 解析：2.0.0 的清单是流式写法（components: [infra/authz@2.0.0]），按行匹配的旧 awk 一条都数不到，
+# 有依赖的组件静默退化成"无强依赖，等价于 make test"，跨组件测试全部 SKIP 却显示 ok。
+# 每行 "<id>\t<optional 0|1>"；可选依赖的容器没在跑时只提示、不桥接（它的地址变量本来就可以不存在）。
+mapfile -t DEPLINES < <(python3 - "$DIR/component.yaml" <<'PY' || { echo "✗ 解析 $DIR/component.yaml 的 dependencies 失败" >&2; exit 1; }
+import sys, yaml
+d = yaml.safe_load(open(sys.argv[1])) or {}
+for c in ((d.get("dependencies") or {}).get("components") or []):
+    ref, opt = (c, False) if isinstance(c, str) else (c.get("id", ""), bool(c.get("optional")))
+    print(f"{ref.split('@', 1)[0]}\t{1 if opt else 0}")
+PY
+)
 
 # .env 里的 POSTGRES_PASSWORD 用于拼默认 TEST_PG_DSN（已在环境里就不覆盖）
 #
@@ -70,7 +75,8 @@ ENVS=()
 cleanup() { [ ${#FWDS[@]} -gt 0 ] && docker rm -f "${FWDS[@]}" >/dev/null 2>&1 || true; }
 trap cleanup EXIT
 
-for dep in "${DEPS[@]}"; do
+for line in "${DEPLINES[@]}"; do
+	dep="${line%%$'\t'*}"; optional="${line##*$'\t'}"
 	grpc_port="$(awk -F'\t' -v c="$dep" '$2==c {print $4}' "$ROOT/registry/ports.tsv")"
 	[ -n "$grpc_port" ] || { echo "✗ registry/ports.tsv 里找不到 $dep 的 grpc 端口" >&2; exit 1; }
 
@@ -78,6 +84,10 @@ for dep in "${DEPS[@]}"; do
 	# 依赖实际所在的服务（独立部署是它自己，外壳收编时是外壳服务），读 .brickkit/generated/compose.yaml
 	svc="$(service_host "$dep")"
 	cname="$(docker ps --filter "label=com.docker.compose.service=${svc}" --filter "label=com.docker.compose.project=${NET%-net}" --format '{{.Names}}' | head -1)"
+	if [ -z "$cname" ] && [ "$optional" = 1 ]; then
+		echo "ℹ️  可选依赖 $dep 没在跑，不桥接（依赖它的测试按地址变量缺席处理）" >&2
+		continue
+	fi
 	[ -n "$cname" ] || {
 		echo "✗ 依赖容器没在跑：$dep（compose 项目 ${NET%-net} 里找不到服务 $svc）——先把它 brickkit up 起来" >&2
 		exit 1
