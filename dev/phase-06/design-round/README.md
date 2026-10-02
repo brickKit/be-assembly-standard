@@ -14,4 +14,6 @@
 | `foundations-communication.md` | 底层审查：本地事务、跨组件一致性、同步通信、队列、缓存、边缘、后台任务、外壳；新 docs 目录结构 |
 | `foundations-data-platform.md` | 底层审查：数据库、主键、时间金额、多租户、迁移、搜索、文件、可观测性、配置密钥、IAM、多语言 |
 | `decisions.md` | 全部拍板点汇总 |
-| `sdk-redesign.md` | 在前三份结论之上，SDK（Go / Python / TS）的整体重新设计与迁移路径 |
+| `answers.md` | 用户对 `decisions.md` 各拍板点的实际答复；优先于一切分析的推荐 |
+| `sdk-redesign.md` | SDK 整体重新设计：组件协议 be-protocol 1.0（P1–P20）、黑盒一致性套件 compconf（`tools/be-acceptance/conformance/component/`）、三门官方 SDK、现状盘点、迁移路径与任务表、brickKit 候选（附 FR 去向）、平台表参考 DDL |
+| `sdk-redesign-apis.md` | `sdk-redesign.md` 的姊妹文件：三门语言逐个 API、外壳启动器、夹具组件 widget、第四门语言指南与 INTERNAL 规则清单 |

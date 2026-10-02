@@ -13,9 +13,11 @@ The entry point is [`AGENTS.md`](../../AGENTS.md) at the repository root (for AI
 | 01 | [Conventions](01-conventions/README.md) | The rules every component, shell and tool follows: workflow, backend, frontend, configuration, data, testing, registries, documents, AI-sized code, reference implementations |
 | 02 | [Decisions](02-decisions/README.md) | Why the project is shaped this way and what not to propose, in four topic folders: architecture, permissions, contracts and data, frontend |
 | 03 | [Seed data](03-seed-data.md) | The demo data, the test accounts, how to log in |
+| 04 | [Foundations](04-foundations/README.md) | Why each piece underneath the components is what it is, one document per key choice: the database, identifiers, time and money, transactions, events, calls, jobs, identity, authorization, telemetry, configuration, shells; the port table, and how to swap an implementation |
 
 ## Read order
 
 1. **Starting work on a component**: [the development workflow](01-conventions/01-development-workflow.md), then the convention for what you are writing ([backend](01-conventions/02-backend.md), [frontend](01-conventions/03-frontend.md)), then [testing](01-conventions/06-testing.md).
 2. **Before proposing a change to how the project works**: the [decision index](02-decisions/README.md). A decision wins over a convention.
 3. **Exploring the running system**: [seed data](03-seed-data.md).
+4. **Before changing an SDK, a shell or the infrastructure, or proposing to replace a piece of it** ("use Kafka", "support database Y", "add a cache"): the [foundations index](04-foundations/README.md), then the document for that piece.

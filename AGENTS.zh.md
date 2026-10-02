@@ -15,7 +15,7 @@
   - `components/<scope>/<name>/`：每个组件一个 Git 子模块；`.gitmodules` 记录每个组件的确切提交。
   - `shell/<scope>/<name>/`：外壳（`be/go-core`、`be/go-infra`、`be/go-backoffice`、`be/py-render`）；每个都是独立仓库，像组件一样以 Git 子模块检出，供别的装配项目复用（[0108](docs/zh/02-decisions/01-architecture/0108-one-repository-per-shell.md)）。
   - `tools/`：`be-sdk-go`、`be-sdk-python`、`be-sdk-ts`（每个组件依托的运行时库）、`be-ops`（组装期生成：建库脚本、权限与数据范围登记表）、`be-acceptance`（`make gates` 背后的门禁）。
-  - `registry/`（端口、schema、权限键、数据范围）、`config/`（组件配置值，共享值在 `vars.yaml`）、`infra/`（`make up` 启动的基础资源）、`docs/zh/`（约定、决策、种子数据；[索引](docs/zh/README.md)），与英文的 `docs/en/` 逐文件对应。
+  - `registry/`（端口、schema、权限键、数据范围）、`config/`（组件配置值，共享值在 `vars.yaml`）、`infra/`（`make up` 启动的基础资源）、`docs/zh/`（约定、决策、种子数据、底层选择：每块基础设施为什么是这样、怎么更换；[索引](docs/zh/README.md)），与英文的 `docs/en/` 逐文件对应。
 - **两条不可违背的原则。**
   1. **每个组件都是完整的 brickKit 组件，能单独运行。** 调用其他组件一律走真实的 gRPC 或 HTTP，`extraPorts` 里的每个端口都真的监听，`brickkit up --focus <id>` 只带着它的依赖就能把它起来。"反正最后在同一个外壳里，直接调函数吧"就破坏了这一条，这个组件从此再也不能单独部署。
   2. **合并只发生在部署层。** 外壳把 N 个进程变成 1 个，除此之外什么都不做。
@@ -77,7 +77,8 @@
 | 在项目里加、删、升级组件；某个组件为什么没起来 | `brickkit-assemble` 技能（[SKILL.md](.claude/skills/brickkit-assemble/SKILL.md)） |
 | 某条 `brickkit` 命令报错或打出 `error_code` | `brickkit-troubleshoot` 技能（[SKILL.md](.claude/skills/brickkit-troubleshoot/SKILL.md)）；参数：`brickkit <命令> --help` |
 | 一个可能与已记录的决策冲突的改动；"为什么不用 React / Java / RLS / Deny 规则 / 配置中心……" | [docs/zh/02-decisions/](docs/zh/02-decisions/README.md)（提议前先读；决策与约定冲突时决策为准） |
-| 上面某条一行约定的完整规则；上线、备份、轮换密钥、生产故障（运维文档，尚未编写：将放在 `docs/zh/04-operations/`） | 约定：[docs/zh/01-conventions/](docs/zh/01-conventions/)；决策：[docs/zh/02-decisions/](docs/zh/02-decisions/README.md)；运维：`docs/zh/04-operations/` 建好之前看 `brickkit-deploy` 技能 |
+| 为什么用这个数据库 / 队列 / 事务模型 / id / 金额格式；替换某块基础设施；有哪些实现、怎么换 | [docs/zh/04-foundations/README.md](docs/zh/04-foundations/README.md)（先看端口表，再看那一块的文档） |
+| 上面某条一行约定的完整规则；上线、备份、轮换密钥、生产故障（运维文档，尚未编写：将放在 `docs/zh/05-operations/`） | 约定：[docs/zh/01-conventions/](docs/zh/01-conventions/)；决策：[docs/zh/02-decisions/](docs/zh/02-decisions/README.md)；运维：`docs/zh/05-operations/` 建好之前看 `brickkit-deploy` 技能 |
 | 某个组件是做什么的；改某个组件 | 英文版 [AGENTS.md](AGENTS.md) 末尾的组件表，再看 `components/<scope>/<name>/BRICKKIT.md`（它拥有什么）和它的 `AGENTS.md`（怎么改它） |
 
 这里没有？看组件表，再看那个组件的 `AGENTS.md`。
