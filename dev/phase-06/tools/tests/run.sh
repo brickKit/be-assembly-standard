@@ -76,6 +76,7 @@ if [ "${TEST_KEEP:-}" != 1 ] || [ ! -d "$W" ]; then
   [ -n "$fix" ] || { echo "mdm/customer 里找不到去掉 go.mod / buf.yaml / LICENSE 归档引用的那个提交" >&2; exit 2; }
   git -C "$W/cc-prefix" reset -q --hard "$fix^"
   clone mdm/product "$W/cc-old"
+  clone infra/workflow "$W/wf-bump"        # --gen-bump：v1.0.4 的 gen 只在注释上落后于 .proto（真实情况）
 fi
 mkdir -p "$LOG"
 
@@ -661,6 +662,29 @@ chmod 644 "$PB"
 gsum=$(cd "$d" && find gen -type f | sort | xargs sha1sum | sha1sum)
 expect_rc 0 go-gen-restored "$d" bash "$TOOLS/go-v2.sh" mdm/customer --recheck
 check "--recheck 不写 gen/（buf generate 只写临时目录）" test "$(cd "$d" && find gen -type f | sort | xargs sha1sum | sha1sum)" = "$gsum"
+
+section "go-v2.sh --gen-bump patch|minor（infra/workflow v1.0.4：gen 只在注释上落后）"
+d=$W/wf-bump; WM=github.com/brickKit/infra-workflow/gen/infra/workflow
+wf_req() { (cd "$d" && go mod edit -json | python3 -c "import json,sys; print(next(x['Version'] for x in json.load(sys.stdin)['Require'] if x['Path']=='$WM'))"); }
+expect_rc 1 wf-1 "$d" bash "$TOOLS/go-v2.sh" infra/workflow --sdk "$SDK"
+check "workflow 原样：gen 判据 FAIL（.proto 注释改过没重新生成）" log_has wf-1 'FAIL.*gen/.*buf generate'
+( cd "$d" && buf generate --template buf.gen.yaml ) >"$LOG/wf-bufgen.log" 2>&1
+expect_rc 0 wf-patch "$d" bash "$TOOLS/go-v2.sh" infra/workflow --recheck --gen-bump patch
+check "--gen-bump patch：require v1.0.4" test "$(wf_req)" = v1.0.4
+check "--gen-bump patch：第 8.3 步要打 gen/infra/workflow/v1.0.4" log_has wf-patch '第 8.3 步需要打的契约包 tag：gen/infra/workflow/v1\.0\.4'
+gm=$(sha1sum <"$d/go.mod")
+expect_rc 0 wf-patch-2 "$d" bash "$TOOLS/go-v2.sh" infra/workflow --recheck --gen-bump patch
+check "同一个 --gen-bump 重跑：go.mod 不变" test "$(sha1sum <"$d/go.mod")" = "$gm"
+expect_rc 0 wf-noflag "$d" bash "$TOOLS/go-v2.sh" infra/workflow --recheck
+check "之后不带 --gen-bump 重跑：保留已高于已发布 tag 的 v1.0.4，不再升" bash -c "[ \"\$(sha1sum <'$d/go.mod')\" = '$gm' ] && grep -q '第 8.3 步需要打的契约包 tag：gen/infra/workflow/v1\.0\.4' '$LOG/wf-noflag.log'"
+expect_rc 0 wf-full-noflag "$d" bash "$TOOLS/go-v2.sh" infra/workflow --sdk "$SDK"
+check "完整运行不带 --gen-bump：同样保留 v1.0.4" test "$(wf_req)" = v1.0.4
+expect_rc 0 wf-minor "$d" bash "$TOOLS/go-v2.sh" infra/workflow --recheck --gen-bump minor
+check "显式 --gen-bump minor：改成 v1.1.0" bash -c "[ \"\$(cd '$d' && go mod edit -json | grep -c '\"Version\": \"v1.1.0\"')\" -ge 1 ] && grep -q 'gen/infra/workflow/v1\.1\.0' '$LOG/wf-minor.log'"
+expect_rc 0 wf-full-patch "$d" bash "$TOOLS/go-v2.sh" infra/workflow --sdk "$SDK" --gen-bump patch
+check "完整运行 --gen-bump patch：改回 v1.0.4" test "$(wf_req)" = v1.0.4
+expect_rc 2 wf-bad "$d" bash "$TOOLS/go-v2.sh" infra/workflow --recheck --gen-bump major
+check "--gen-bump 只认 patch|minor" log_has wf-bad 'gen-bump'
 
 section "go-v2.sh：形态 B（infra/notification）"
 d=$W/infra-notification

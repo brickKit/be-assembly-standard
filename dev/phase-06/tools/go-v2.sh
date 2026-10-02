@@ -4,6 +4,7 @@
 #
 # 用法：bash dev/phase-06/tools/go-v2.sh <scope>/<name> --sdk <be-sdk-go tag>
 #       bash dev/phase-06/tools/go-v2.sh <scope>/<name> --recheck [--sdk <tag>]
+#   两种都可加 --gen-bump patch|minor（默认 minor）：gen/ 相对最新 gen/* tag 有变化时，契约包下一个版本升哪一位
 #   BE_SCRATCH 必填（见 env.sh）；BE_COMP_DIR 可改组件目录。
 # 步骤（每步都先看是否已经做过，做过就跳过，所以可以重复运行）：
 #   4.0 判形态：gen/<domain>/<name>/go.mod 在 → 形态 A（或已拆过的 B）；不在 → 形态 B
@@ -11,7 +12,9 @@
 #       Dockerfile 改成先 `COPY . .` 再 `go mod download`（本地 replace 要求目录在场）
 #   C-1 残留：根 go.mod 里 require 了自己的旧路径（github.com/brickKit/<repo> v1.x.y）→ 删掉并大声报出来
 #   4.2 go mod edit -module …/v2；改写全部自引用 import（契约包 …/<repo>/gen/… 不改）
-#   4.3 契约包版本：本地 gen/ 与最新 gen/* tag 一致 → require 那个 tag；不一致 → 下一个 minor；没有 tag（形态 B）→ v1.0.0
+#   4.3 契约包版本：本地 gen/ 与最新 gen/* tag 一致 → require 那个 tag；不一致 → 下一个 minor（--gen-bump patch：下一个
+#       patch）；没给 --gen-bump 且 go.mod 里已 require 一个高于最新 tag 的版本（上次 --gen-bump patch 写的）→ 保留它；
+#       没有 tag（形态 B）→ v1.0.0
 #   4.4 go get be-sdk-go@<tag>、go mod tidy、go build ./...、go vet ./...，然后跑判据
 # --recheck：契约改动（改 .proto → buf generate）之后用，只重算 4.3 并重跑 tidy/build/vet 与判据（不拆、不改 import、不升 SDK、
 #   不清 C-1 残留——让判据把它报出来）；最后打印第 8.3 步需要打的契约包 tag（或"不需要"）。
@@ -26,11 +29,13 @@ did() { echo "  ✏️  $*"; }
 skip() { echo "  ⏭  $*"; }
 run() { echo "  \$ $*"; "$@" || die "命令失败：$*"; }
 
-ID=""; SDK=""; RECHECK=0
+ID=""; SDK=""; RECHECK=0; GEN_BUMP=minor; GEN_BUMP_SET=0
 while [ $# -gt 0 ]; do
   case $1 in
     --sdk) SDK=${2:-}; [ -n "$SDK" ] || die "--sdk 后面要跟 be-sdk-go 的 tag"; shift 2 ;;
     --recheck) RECHECK=1; shift ;;
+    --gen-bump) GEN_BUMP=${2:-}; GEN_BUMP_SET=1
+      case $GEN_BUMP in patch|minor) ;; *) die "--gen-bump 只认 patch 或 minor（收到：${GEN_BUMP:-空}）" ;; esac; shift 2 ;;
     -*) die "不认识的参数 $1" ;;
     *) [ -z "$ID" ] && ID=$1 || die "多余的参数 $1"; shift ;;
   esac
@@ -137,9 +142,24 @@ else
   elif git diff --quiet "$LAST_TAG" -- "$G" && [ -z "$(git ls-files -o --exclude-standard -- "$G")" ]; then
     GV=${LAST_TAG##*/}; echo "  本地 $G 与 $LAST_TAG 一致 → $GV"
   else
-    lv=${LAST_TAG##*/v}; IFS=. read -r ma mi _ <<<"$lv"
-    GV=v$ma.$((mi + 1)).0; NEED_TAG=gen/$GREL/$GV
-    echo "  本地 $G 与 $LAST_TAG 不一致（契约有变化）→ 下一个 minor $GV"
+    lv=${LAST_TAG##*/v}; IFS=. read -r ma mi pa <<<"$lv"
+    if [ "$GEN_BUMP" = patch ]; then GV=v$ma.$mi.$((pa + 1)); else GV=v$ma.$((mi + 1)).0; fi
+    # 没显式给 --gen-bump：go.mod 里已经 require 一个高于已发布 tag 的版本（上次 --gen-bump patch 写的）就保留，
+    # 免得不带参数重跑又把它升成 minor；显式给了就按参数算
+    cur=$(go mod edit -json 2>/dev/null | python3 -c "
+import json,sys; d=json.load(sys.stdin)
+print(next((x['Version'] for x in d.get('Require') or [] if x['Path']=='$GM'), ''))" || true)
+    newer=$(python3 -c "
+import re,sys
+v=lambda s: tuple(map(int, re.fullmatch(r'v(\d+)\.(\d+)\.(\d+)', s).groups())) if re.fullmatch(r'v\d+\.\d+\.\d+', s) else None
+a, b = v(sys.argv[1]), v(sys.argv[2]); print('y' if a and b and a > b else '')" "$cur" "v$lv")
+    if [ $GEN_BUMP_SET = 0 ] && [ -n "$newer" ]; then
+      GV=$cur
+      echo "  本地 $G 与 $LAST_TAG 不一致（契约有变化）；go.mod 已 require $cur（高于 $LAST_TAG）→ 保留（要重算就显式给 --gen-bump patch|minor）"
+    else
+      echo "  本地 $G 与 $LAST_TAG 不一致（契约有变化）→ 下一个 $GEN_BUMP $GV（--gen-bump $GEN_BUMP$([ $GEN_BUMP_SET = 0 ] && echo '，默认')）"
+    fi
+    NEED_TAG=gen/$GREL/$GV
     git diff --stat "$LAST_TAG" -- "$G" | sed 's/^/     /'
   fi
   before=$(gomod_hash)

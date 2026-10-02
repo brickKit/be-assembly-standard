@@ -144,6 +144,8 @@ bash $ROOT/dev/phase-06/tools/component-check.sh <id>; echo "exit=$?"
 bash $ROOT/dev/phase-06/tools/go-v2.sh <id> --sdk v0.4.0; echo "exit=$?"
 # 契约改动并 buf generate 之后：
 bash $ROOT/dev/phase-06/tools/go-v2.sh <id> --recheck; echo "exit=$?"
+# gen/ 只是重新生成（注释、生成器输出变化，没有契约新增）：升 patch
+bash $ROOT/dev/phase-06/tools/go-v2.sh <id> --recheck --gen-bump patch; echo "exit=$?"
 ```
 
 步骤（做过的跳过）：
@@ -151,7 +153,7 @@ bash $ROOT/dev/phase-06/tools/go-v2.sh <id> --recheck; echo "exit=$?"
 2. **4.1 形态 B 拆嵌套模块**：`go mod init …/gen/<d>/<n>`、与根模块同版本的 grpc / protobuf、同一个 `go` 版本、`tidy`、`build`；根 `go.mod` 加 `require … v1.0.0` + `replace => ./gen/<d>/<n>`。Dockerfile 里 `COPY go.mod go.sum ./` → `RUN go mod download` → `COPY . .` 的写法改成 `COPY . .` → `RUN go mod download`。
 3. **C-1 残留**：根 `go.mod` require 了自己的旧路径（`github.com/brickKit/<repo> v1.x.y`）→ 打印 `⚠️ 发现 C-1 残留` 并 `go mod edit -droprequire`。
 4. **4.2**：`go mod edit -module …/v2`；把所有 `.go`（`gen/` 除外）里的 `"github.com/brickKit/<repo>/…"` 改成 `…/v2/…`，契约包 `…/<repo>/gen/…` 不改；非 Go 文件里还提到旧模块路径的（Makefile 的 import-scan 白名单等）只用 `ℹ️` 列出，按 4.7 人工改。
-5. **4.3 契约包版本**：没有 `gen/<d>/<n>/v*` tag → `v1.0.0`（P3：形态 B 第一个 tag 一律 `v1.0.0`，即使同一轮契约有新增）；本地 `gen/<d>/<n>` 与最新 tag 一致（`git diff --quiet <tag> -- <dir>` 且无未跟踪文件）→ 那个版本；不一致 → 下一个 minor（`v1.0.6` → `v1.1.0`）。写进根 `go.mod` 的 require，replace 保持。
+5. **4.3 契约包版本**：没有 `gen/<d>/<n>/v*` tag → `v1.0.0`（P3：形态 B 第一个 tag 一律 `v1.0.0`，即使同一轮契约有新增）；本地 `gen/<d>/<n>` 与最新 tag 一致（`git diff --quiet <tag> -- <dir>` 且无未跟踪文件）→ 那个版本；不一致 → 按 `--gen-bump patch|minor`（默认 `minor`；完整运行与 `--recheck` 都认）算下一个版本：`minor` `v1.0.6` → `v1.1.0`，`patch` `v1.0.3` → `v1.0.4`。**没给 `--gen-bump` 且根 `go.mod` 已经 require 一个高于最新 tag 的版本**（上次 `--gen-bump patch` 写的）→ 保留它，不再升（所以 `--gen-bump patch` 之后不带参数重跑，`v1.0.4` 不会变成 `v1.1.0`）；显式给了 `--gen-bump` 就按参数重算。同一个参数重跑不改 `go.mod`。写进根 `go.mod` 的 require，replace 保持；最后一行"第 8.3 步需要打的契约包 tag"跟着这个版本。
 6. **4.4**：`go get be-sdk-go@<tag>`。
 7. **4.6（be-sdk-go ≥ v0.4.0 才做；v0.4.0 删了 `Module.Migrations`，不做这步 `go build` 必然报 `unknown field Migrations`）**，由 `migrate-entry.py --apply` 完成：
    - 找含 `//go:embed *.sql` 的迁移嵌入包（13 个组件都是 `migrations/embed.go`，`package migrations`、`var FS embed.FS`）；没有就新建 `migrations/embed.go`（`migrations/` 下没有 `.sql` 就失败）。
@@ -169,7 +171,7 @@ bash $ROOT/dev/phase-06/tools/go-v2.sh <id> --recheck; echo "exit=$?"
 **C-1 是什么、为什么判据抓得住**：形态 B（`gen/` 属于根模块）被当成形态 A 改 `/v2` 时，`go build` 先报 `no required module provides package …/gen/…`，`go mod tidy` 接着自己"修好"——`found … in github.com/brickKit/<repo> v1.x.y`，往 `go.mod` 加回自己上一个已发布版本，之后 `go build` 是绿的，v2 组件静默对着 v1 的生成代码编译。`tests/run.sh` 在 infra/notification 的克隆上照这个错误做法真做一遍（确认 `go build` 绿、`go.mod` 多出 `infra-notification v1.0.4`），然后 `--recheck` 必须 exit 1，且"require 旧路径""go list -m all""go list -deps""嵌套模块"四条判据都是 FAIL；再跑完整的 `go-v2.sh --sdk` 必须报出 C-1、删掉旧 require、拆出嵌套模块并全部 PASS。
 
 **已知限制**：
-- `gen/` 有变化一律升 **minor**（`v1.0.6` → `v1.1.0`）：脚本分不清"契约新增"和"只是重新生成"（component-loop 4.0 说后者升 patch），只是重新生成时会多升一档，要 patch 就手工 `go mod edit -require=…@v1.0.7` 后再 `--recheck`。
+- 脚本分不清"契约新增"和"只是重新生成"（component-loop 4.0：前者 minor、后者 patch），由人用 `--gen-bump` 决定，默认 `minor`。手工 `go mod edit -require=…@v1.0.7` 也行：之后不带 `--gen-bump` 的重跑会保留它（高于已发布 tag 的版本不再升）。已知实例：`infra/workflow` v1.0.4 的 gen 只在注释上落后于 `.proto`，`buf generate` 后跑 `--recheck --gen-bump patch` → `gen/infra/workflow/v1.0.4`。
 - `--sdk <tag>` 的 tag 还不存在时，在 4.4 的 `go get` 处 exit 2；此时 4.1–4.3（拆模块、`/v2`、import、契约包版本）**已经做完**，tag 出来后原样重跑即可（幂等）。tag 刚推送的一段时间里 proxy.golang.org / sum.golang.org 还会返回之前缓存的"查不到"（实测 v0.4.0 推送后十几分钟仍是 `404 … unknown revision`）：脚本会提示，确认远端有 tag 后临时 `GONOSUMDB=github.com/brickKit` 重跑（回落到 git 直取，go.sum 照常记录）。
 - v0.4.0 还改了 `UserClient` / `SystemClient` 的签名：用到它们的组件（crm/opportunity、erp/sales、infra/iam-casdoor）第一次跑 `--sdk v0.4.0` 只有 BUILD 一条 FAIL（`not enough arguments in call to besdk.UserClient`），按 4.5 改完代码后重跑。其余 8 个 Go 组件实测直接全部 PASS。
 - 只认 `gen/` 下一个契约包目录；Dockerfile 只改上面那一种写法（别的写法由判据报 FAIL，人工改）；minor 版本号只看本仓库已有的 `gen/*` tag（远端有而本地没 fetch 的 tag 不知道——跑之前 `git fetch --tags`）；需要访问 Go 模块代理（`go get` SDK）。
@@ -190,5 +192,6 @@ BE_SCRATCH=<会话 scratchpad> bash dev/phase-06/tools/tests/run.sh      # 约 2
 - T8 `migrate-manifest.py`：13 个组件预览不写发布说明、`--write` 写出三节骨架、不出现"不再有默认值"、`assembly.yaml` 没有 `HIST_RE` 命中；customer 的四条旧键 → 新键、`改为必填（1.x 可以不配）`、角色 / NATS / `/v2` / `DATABASE_*`、新增 / 修复两节为空；authz 的 `PERMISSION_CATALOG`、inventory 的 `LOW_STOCK_THRESHOLD`、Python 组件不提 `/v2`；已存在不覆盖；没设 `BE_SCRATCH` exit 2；注释清理在真实组件上（opportunity 括号出处、iam-casdoor 续行、bff-mobile 整条行尾注释与跨行括号、finance 整块）与单元测试（块标量、引号里的 `#`、续行、确定性）；"只删不加"放宽为"加的行只能是 role 行或去掉注释后与某条删掉的行相同"。
 - 修复轮：env.sh 含 `@ : / %` 与空格的口令编码后解码回原值、`.env` 里的 `$(…)` 不被执行、假口令与 PEM 不进输出、单引号去掉、行内注释去掉、空值 exit 2、`--no-tools` 没有 brickkit / buf / `.env` 也 exit 0 且不输出 `TEST_PG_DSN`；export 了 `BE_ENV_NO_TOOLS=1`、PATH 上是旧 brickkit 时照样 exit 2 并打 `⚠️`；13 个组件都写出 generated 且第一次与 notes 相同、打印去掉了几行注释；去掉的注释清单（customer、opportunity）；只改新增 / 修复不报漂移、改了升级前一节 ⚠️ 且不动 notes；`history_allow` 带通配符 / text 不含引用 / 太短 / 只有 `/` → exit 2，同一行第二处引用没盖住、path 是别的文件 → 仍 FAIL；component-check 在没有 brickkit / buf / `.env` 时十项 PASS；嵌套的 `backend/vendor/x.go` 里的驼峰读取 FAIL；go-v2 读不了生成物（`chmod 000`）→ gen 判据 FAIL。
 - T8 `component-check.sh`：迁移后的 mdm/customer（当前 HEAD）十项全部 PASS 且不改工作区；试点漏掉的那个提交只在历史扫描 FAIL、点名 `go.mod` / `buf.yaml` / `LICENSE`；`history_allow` 放行（`ℹ️` + 理由）、缺 `why` exit 2、`migrate-manifest.py` 接受这个字段；迁移前的 mdm/product 在 4.5 / 历史 / 小节数 FAIL；Python 组件能跑；12 个逐项反例（驼峰读取、`DATABASE_`、`1-0-N`、未跟踪文件里的历史、文档里的 `Task 7`、小节数、首行、`../`、BRICKKIT 相对链接、`TODO`、`TBD`、`dev/phase-06`）各自 FAIL；代码块里的 `##` 不计。
+- `--gen-bump`（infra/workflow v1.0.4 克隆）：原样完整运行 gen 判据 FAIL；`buf generate` 后 `--recheck --gen-bump patch` → `v1.0.4` 且第 8.3 步报 `gen/infra/workflow/v1.0.4`；同一参数重跑 `go.mod` 不变；之后不带参数的 `--recheck` 与完整运行都保留 `v1.0.4`；显式 `minor` → `v1.1.0`；完整运行 `--gen-bump patch` → 改回 `v1.0.4`；`--gen-bump major` exit 2。
 - T8 `go-v2.sh`：改 `.proto` 并 `buf generate` 后 `--recheck` gen 判据 PASS、升 `v1.1.0`（原来的夹具是直接往 `*.pb.go` 追加一行，现在这本身就是 FAIL）；手改 `*.pb.go`、改了 `.proto` 没生成、`gen/` 里多一个 `*.pb.go` 都 FAIL 并点名；`--recheck` 不写 `gen/`；形态 A / B 与 §4.6 的完整运行里这条都 PASS。
 - 修复轮：`--write` 遇到手改（assembly.yaml 追加一行、component.yaml 改版本）exit 3、两个文件都不写、diff 里列出会丢的行，`--force` 覆盖；overrides 的 `permissions_add` / `menus_add` / `edge_routes_add` 追加、只加不删、重复运行未改动、与 tag 版已有键重复时 exit 2、在 `*_add` 生成的文件上再手改也拒绝、改 overrides 后重跑照常；`--check` 对 assembly.yaml 的反向路径（残留 `shell`、缺 `data_scopes`）；`data.role` 只改 `data` 的直接子键（单元测试）；旧键名提示只看字符串与注释；docs-skel 换一个 `BE_SCRATCH`、清空 `$S` 之后重跑都不覆盖已填写的 `AGENTS.md` / `README.md`，留底取自 tag；go-v2 的多余 `replace` 与裸导入旧根包都 FAIL。
