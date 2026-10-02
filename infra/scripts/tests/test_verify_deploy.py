@@ -223,7 +223,7 @@ def fake_env(tmp: pathlib.Path, **extra) -> dict:
     env = {**os.environ, "PATH": f"{b}:{os.environ['PATH']}", "BE_ROOT": str(tmp), "OUT": str(tmp / "out"),
            "FAKE_CALLS": str(tmp / "calls"), "FAKE_FOCUS_PID": str(tmp / "focus.pid"),
            "BE_PROJECT_LOCK": str(tmp / "lock"), "ROUTE": "", "FOCUS": "", "KEEP": "", "FAKE_FOCUS_SNAPSHOT": "",
-           "FAKE_LOCAL_MODE": "", "FAKE_LOCAL_OFF_FAIL": ""}
+           "FAKE_LOCAL_MODE": "", "FAKE_LOCAL_OFF_FAIL": "", "SEED": ""}
     env.pop("BE_PROJECT_LOCK_HELD", None)
     env.update(extra)
     return env
@@ -456,6 +456,56 @@ def test_deploy_only_needs_no_brickkit(tmp):  # --deploy-only 不调 brickkit，
     r = subprocess.run(["bash", str(SCRIPT), "mdm/customer", "--deploy-only", str(tmp / "v.yaml")],
                        capture_output=True, text=True, env=fake_env(tmp, FAKE_BK_VERSION="v0.4.6"))
     assert r.returncode == 0 and (tmp / "v.yaml").exists(), r.stdout + r.stderr
+
+
+SEED_MK = "seed:\n\t@echo \"make seed $$SEED\" >> \"$$FAKE_CALLS\"\n"
+
+
+def _makefile(tmp, cid, body):
+    (tmp / "components" / cid / "Makefile").write_text(body, encoding="utf-8")
+
+
+def test_seed_runs_after_health_before_teardown(tmp):  # T7 审查 (c)-2：SEED=1 替代"拷回 deploy.verify.yaml 再起"
+    make(tmp, ALL, [{"id": i} for i in ALL])
+    _makefile(tmp, "mdm/product", "all:\n\t@true\n" + SEED_MK)
+    verify(tmp, "mdm/product", SEED="1")   # 假 docker 没有镜像，镜像检查总是 FAIL：这里只看 seed 那一行
+    st, why, logf = row_like(rows(tmp), "seed")
+    assert st == "PASS" and logf.endswith("seed.log"), (st, why, logf)
+    c = calls(tmp)
+    assert "make seed 1" in c, c
+    assert c.index("brickkit up -f") < c.index("make seed") < c.index("brickkit down -f"), c   # 起来之后、收尾之前
+
+
+def test_seed_failure_is_fail(tmp):
+    make(tmp, ALL, [{"id": i} for i in ALL])
+    _makefile(tmp, "mdm/product", "seed:\n\t@echo 种子炸了; exit 1\n")
+    verify(tmp, "mdm/product", SEED="1")
+    st, _, logf = row_like(rows(tmp), "seed")
+    assert st == "FAIL", st
+    assert "种子炸了" in (tmp / "out" / logf).read_text(encoding="utf-8")
+    assert "brickkit down -f" in calls(tmp)                  # 种子失败照样收尾
+
+
+def test_seed_without_target_skips_with_reason(tmp):
+    make(tmp, ALL, [{"id": i} for i in ALL])
+    _makefile(tmp, "mdm/product", "test:\n\t@echo \"make test\" >> \"$$FAKE_CALLS\"\n")
+    verify(tmp, "mdm/product", SEED="1")   # 假 docker 没有镜像，镜像检查总是 FAIL：这里只看 seed 那一行
+    st, why, _ = row_like(rows(tmp), "seed")
+    assert st == "SKIP" and "没有 seed 目标" in why, (st, why)
+    assert "make test" not in calls(tmp)                     # 只探测目标，不跑别的
+    (tmp / "components" / "mdm/product" / "Makefile").unlink()
+    verify(tmp, "mdm/product", SEED="1")
+    st, why, _ = row_like(rows(tmp), "seed")
+    assert st == "SKIP" and "Makefile" in why, (st, why)
+
+
+def test_seed_only_with_1(tmp):
+    make(tmp, ALL, [{"id": i} for i in ALL])
+    _makefile(tmp, "mdm/product", SEED_MK)
+    verify(tmp, "mdm/product", SEED="0")
+    st, why, _ = row_like(rows(tmp), "seed")
+    assert st == "SKIP" and "SEED=1" in why, (st, why)
+    assert "make seed" not in calls(tmp), calls(tmp)
 
 
 def main() -> int:

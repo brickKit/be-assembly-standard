@@ -1,14 +1,17 @@
 #!/usr/bin/env bash
-# 单组件（或外壳）真机验证：build → 只起闭包 → 迁移/健康/鉴权检查 → 跨组件测试 →（可选）focus → 收尾，最后打印汇总表。
+# 单组件（或外壳）真机验证：build → 只起闭包 → 迁移/健康/鉴权检查 →（可选）种子数据 → 跨组件测试 →（可选）focus → 收尾，
+# 最后打印汇总表。
 # 持项目锁执行（build/up/down/local 与 deploy.verify.yaml 都是项目共享状态）。任何一项 FAIL → 退出 1。
 #
-# 用法：bash infra/scripts/verify-component.sh <id>        （make verify ID=<id> [ROUTE=…] [FOCUS=1] [KEEP=1]）
+# 用法：bash infra/scripts/verify-component.sh <id>        （make verify ID=<id> [ROUTE=…] [FOCUS=1] [SEED=1] [KEEP=1]）
 #   环境变量：
 #     ROUTE='<路径>' 或 '<METHOD> <路径>'  受保护路由（省略方法时 GET）；不带 token 期望 401/503，带 token 期望 200
 #     FOCUS=1        容器形态之后再跑一次 brickkit up --focus <id>（宿主机进程），结束后 brickkit local off
+#     SEED=1         健康检查通过后、收尾之前跑 make -C <组件目录> seed（组件 Makefile 有 seed 目标时；没有就 SKIP 写明原因；
+#                    seed 失败算 FAIL）。种子灌进 brickkit_db，收尾 down 之后数据还在
 #     KEEP=1         不收尾：容器留着（用完 brickkit down -f deploy.verify.yaml）；focus 进程照样停掉，本地模式照样关、
 #                    deploy.local.yaml 照样还原
-#                    （FOCUS / KEEP 只有值为 1 才生效，0 或其它值等于没设）
+#                    （FOCUS / KEEP / SEED 只有值为 1 才生效，0 或其它值等于没设）
 #   中断（Ctrl+C、SIGTERM、超时）时 EXIT 陷阱照样收尾：停 focus 进程组、local off、还原 deploy.local.yaml；
 #     除非 KEEP=1，再 down、删 deploy.verify.yaml
 #     FORCE_BUILD=1  本组件的镜像 brickkit build --force（版本没变但代码改过时）
@@ -152,6 +155,7 @@ NET="brickkit-$PROJECT-net"
 CP="brickkit-$PROJECT"   # compose 项目名
 ROUTE="${ROUTE:-}"
 FOCUS="$( [ "${FOCUS:-}" = 1 ] && echo 1 )"; KEEP="$( [ "${KEEP:-}" = 1 ] && echo 1 )"   # 只有 1 算开
+SEED="$( [ "${SEED:-}" = 1 ] && echo 1 )"
 IS_GO=0; [ "$IS_SHELL" = 0 ] && [ -f "$ROOT/components/$ID/go.mod" ] && IS_GO=1
 
 ROWS=()
@@ -187,7 +191,7 @@ echo "▶ verify $ID@$VER（项目 $PROJECT；输出 $OUT）"
 echo "  闭包：$KEEP_IDS"
 [ -n "$DISABLED" ] && echo "  deploy.verify.yaml 里停用：$DISABLED"
 cp "$VF" "$OUT/deploy.verify.yaml"
-UP_OK=0
+UP_OK=0; HEALTH_OK=0   # HEALTH_OK：目标容器 healthy 且 /healthz → 200（种子数据只在这之后灌）
 FPID=""; FOCUS_STARTED=0; CLEANED=0
 stop_focus() {  # 停掉 focus 的整个进程组（setsid 起的，自己一个会话）
   [ -n "$FPID" ] || return 0
@@ -332,7 +336,7 @@ if [ -n "$SC" ]; then
     sleep 2
   done
 fi
-if [ "$hs" = "running healthy" ]; then row "$SVC running (healthy)${HOST:+（容器服务 $HOST）}" PASS "" "$(log status.log)"
+if [ "$hs" = "running healthy" ]; then HEALTH_OK=1; row "$SVC running (healthy)${HOST:+（容器服务 $HOST）}" PASS "" "$(log status.log)"
 else row "$SVC running (healthy)" FAIL "容器 ${SC:-不存在}：${hs:-无}" "$(log status.log)"; fi
 [ -n "$SC" ] && docker logs "$SC" > "$(log "container-$HOST.log")" 2>&1
 
@@ -343,7 +347,7 @@ if [ "$UP_OK" = 0 ] || [ -z "$SC" ]; then
 elif [ "$IS_SHELL" = 0 ]; then
   code="$(curl_in_net "http://$SVC:$PORT/healthz")"
   echo "GET http://$SVC:$PORT/healthz → $code" >> "$(log http.log)"
-  [ "$code" = 200 ] && row "GET /healthz → 200" PASS "" "$(log http.log)" || row "GET /healthz → 200" FAIL "实际 $code" "$(log http.log)"
+  [ "$code" = 200 ] && row "GET /healthz → 200" PASS "" "$(log http.log)" || { HEALTH_OK=0; row "GET /healthz → 200" FAIL "实际 $code" "$(log http.log)"; }
   if [ -z "$ROUTE" ]; then
     row "受保护路由" SKIP "没给 ROUTE"
   else
@@ -408,7 +412,7 @@ PY
   [ "$rs" = "0 running" ] && row "R15：RestartCount/状态 = 0 running" PASS "" || row "R15：RestartCount/状态 = 0 running" FAIL "实际 $rs"
   code="$(curl_in_net "http://$SVC:$PORT/healthz")"
   echo "GET http://$SVC:$PORT/healthz → $code" >> "$(log http.log)"
-  [ "$code" = 200 ] && row "外壳 /healthz → 200" PASS "" "$(log http.log)" || row "外壳 /healthz → 200" FAIL "实际 $code" "$(log http.log)"
+  [ "$code" = 200 ] && row "外壳 /healthz → 200" PASS "" "$(log http.log)" || { HEALTH_OK=0; row "外壳 /healthz → 200" FAIL "实际 $code" "$(log http.log)"; }
   for m in $MEMBERS; do
     ms="$(echo "$m" | cut -d'|' -f2)"; mp="$(echo "$m" | cut -d'|' -f3)"
     code="$(curl_in_net "http://$ms:$mp/healthz")"
@@ -419,8 +423,28 @@ PY
   row "成员受保护路由带 token → 200" SKIP "外壳分支只查 /healthz 与运行期核对；每个成员经外壳带真 token 打受保护路由由全栈集成（06b T25）覆盖"
 fi
 
-# ---------- 5. 跨组件测试 ----------
-echo; echo "▸ 4. 跨组件测试"
+# ---------- 5. 种子数据（SEED=1） ----------
+echo; echo "▸ 4. 种子数据"
+SRC_DIR=""; for b in components shell; do [ -d "$ROOT/$b/$ID" ] && { SRC_DIR="$b/$ID"; break; }; done
+if [ -z "$SEED" ]; then
+  row "make -C <源目录> seed" SKIP "没设 SEED=1"
+elif [ -z "$SRC_DIR" ]; then
+  row "make -C <源目录> seed" SKIP "components/$ID、shell/$ID 都不存在（没有本地源，没有 Makefile 可跑）"
+elif [ ! -f "$ROOT/$SRC_DIR/Makefile" ]; then
+  row "make -C $SRC_DIR seed" SKIP "$SRC_DIR 没有 Makefile"
+elif ! { make -C "$ROOT/$SRC_DIR" -qp 2>/dev/null || true; } | grep -q '^seed:'; then   # -qp 只打印规则库、不执行配方（退出码不看）
+  row "make -C $SRC_DIR seed" SKIP "$SRC_DIR/Makefile 没有 seed 目标"
+elif [ "$UP_OK" = 0 ] || [ "$HEALTH_OK" = 0 ]; then
+  row "make -C $SRC_DIR seed" SKIP "容器没起来或健康检查没过，跳过"
+# 清掉 make verify 传下来的 MAKEFLAGS：否则 ID= / OUT= / ROUTE= 这些命令行变量会覆盖组件 Makefile 里的同名变量
+elif runlog "$(log seed.log)" env -u MAKEFLAGS -u MFLAGS -u MAKELEVEL make --no-print-directory -C "$ROOT/$SRC_DIR" seed; then
+  row "make -C $SRC_DIR seed" PASS "" "$(log seed.log)"
+else
+  row "make -C $SRC_DIR seed" FAIL "种子脚本失败，见日志" "$(log seed.log)"
+fi
+
+# ---------- 6. 跨组件测试 ----------
+echo; echo "▸ 5. 跨组件测试"
 if [ "$IS_GO" = 0 ]; then
   row "make test-cross ID=$ID" SKIP "$( [ "$IS_SHELL" = 1 ] && echo '外壳：对每个成员单独跑 make test-cross' || echo '不是 Go 组件（test-cross 只跑 Go）')"
 elif [ "$UP_OK" = 0 ]; then
@@ -431,8 +455,8 @@ else
   row "make test-cross ID=$ID" FAIL "见日志" "$(log test-cross.log)"
 fi
 
-# ---------- 6. focus ----------
-echo; echo "▸ 5. focus 运行"
+# ---------- 7. focus ----------
+echo; echo "▸ 6. focus 运行"
 if [ -z "$FOCUS" ]; then
   row "brickkit up --focus $ID" SKIP "没设 FOCUS=1"
 else
@@ -467,8 +491,8 @@ else
   focus_restore   # local off 成败都还原 deploy.local.yaml
 fi
 
-# ---------- 7. 收尾 ----------
-echo; echo "▸ 6. 收尾"
+# ---------- 8. 收尾 ----------
+echo; echo "▸ 7. 收尾"
 CLEANED=1   # 从这里起由正常路径收尾，EXIT 陷阱不再重复
 if [ -n "$KEEP" ]; then
   row "brickkit down" SKIP "KEEP=1：容器保留，用完 brickkit down -f deploy.verify.yaml"
