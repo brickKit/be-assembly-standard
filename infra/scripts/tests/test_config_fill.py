@@ -351,6 +351,48 @@ def test_integrate_refuses_wrong_brickkit_version(tmp):  # T7 审查 Important 2
     assert not (tmp / "calls").exists(), (tmp / "calls").read_text()
 
 
+DB_MAKEFILE = """\
+dev-env:
+\t@echo "✓ 已向 .env 补齐 1 项（只列名字）："; echo "   DEMO_APP_DB_PASSWORD"
+db-init:
+\t@for i in $$(seq 1 1000); do echo "GRANT noise-$$i"; done; echo "✓ 建库脚本已执行（幂等，可重跑）"
+"""
+
+
+def _out_lines(r) -> set:
+    return {l.strip() for l in (r.stdout + r.stderr).splitlines()}
+
+
+def test_integrate_db_init_output_goes_to_log(tmp):  # T7 摩擦 7：db-init 的约 1000 行 psql 输出不进终端
+    root = make_root(tmp)
+    (root / "Makefile").write_text(DB_MAKEFILE, encoding="utf-8")
+    out = tmp / "out"
+    r = integrate(tmp, root, OUT=str(out))
+    assert "第 1 步失败" not in r.stderr, r.stdout + r.stderr
+    lines = _out_lines(r)
+    assert not any("noise-" in l for l in lines), r.stdout[:2000]
+    assert "✓ 建库脚本已执行（幂等，可重跑）" in r.stdout, r.stdout
+    assert "  ✓ 已向 .env 补齐 1 项（只列名字）：\n   DEMO_APP_DB_PASSWORD\n" in r.stdout, r.stdout   # 补了哪些变量照样看得到
+    assert str(out / "db-init.log") in r.stdout, r.stdout
+    log = (out / "db-init.log").read_text(encoding="utf-8")
+    assert "GRANT noise-1000" in log and "GRANT noise-1\n" in log
+
+
+def test_integrate_db_init_failure_prints_log_tail(tmp):
+    root = make_root(tmp)
+    (root / "Makefile").write_text(DB_MAKEFILE.replace(
+        'seq 1 1000); do echo "GRANT noise-$$i"; done; echo "✓ 建库脚本已执行（幂等，可重跑）"',
+        'seq 1 100); do echo "GRANT noise-$$i"; done; echo "✗ psql 炸了"; exit 1'), encoding="utf-8")
+    out = tmp / "out"
+    r = integrate(tmp, root, OUT=str(out))
+    assert r.returncode == 1 and "第 1 步失败" in r.stderr, r.stdout + r.stderr
+    lines = _out_lines(r)
+    assert "GRANT noise-100" in lines and "GRANT noise-73" in lines and "✗ psql 炸了" in lines, r.stdout + r.stderr
+    assert "GRANT noise-72" not in lines and "GRANT noise-1" not in lines, r.stdout + r.stderr   # 只打最后 30 行（含 make 自己的报错行）
+    assert str(out / "db-init.log") in r.stdout + r.stderr
+    assert not (tmp / "calls").exists(), (tmp / "calls").read_text()   # 第 1 步失败就停，没调 brickkit add
+
+
 def main() -> int:
     tests = [(n, f) for n, f in sorted(globals().items()) if n.startswith("test_") and callable(f)]
     failed = 0

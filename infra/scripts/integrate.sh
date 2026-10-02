@@ -5,7 +5,8 @@
 # 用法：bash infra/scripts/integrate.sh <id> [版本]     （make integrate ID=<id> [VERSION=<版本>]）
 #   版本默认：外壳 be/* 是 1.0.0，其余 2.0.0
 #   外壳同样适用：brickkit add be/<name>@1.0.0 会把已在项目里的成员移进外壳。
-# 环境变量：BE_ROOT（项目根，默认本仓库；测试用）、BE_SKIP_DB_INIT=1（跳过 make dev-env db-init；测试用）
+# 环境变量：OUT=<目录>（日志目录，默认 $BE_SCRATCH/integrate/<repo>-<时间>，没有 BE_SCRATCH 时用项目的 build/integrate/）、
+#   BE_ROOT（项目根，默认本仓库；测试用）、BE_SKIP_DB_INIT=1（跳过 make dev-env db-init；测试用）
 set -uo pipefail
 # 先核对 brickkit 版本（不对就不等项目锁、直接退出 2）
 source "$(dirname "${BASH_SOURCE[0]}")/lib/require-brickkit.sh"; require_brickkit
@@ -19,13 +20,17 @@ DEFAULT_VER=2.0.0; [ "${ID%%/*}" = be ] && DEFAULT_VER=1.0.0
 VER="${2:-$DEFAULT_VER}"
 REPO="${ID//\//-}"
 cd "$ROOT" || exit 1
+if [ -z "${OUT:-}" ]; then
+  if [ -n "${BE_SCRATCH:-}" ]; then OUT="$BE_SCRATCH/integrate/$REPO-$(date +%Y%m%d-%H%M%S)"
+  else OUT="$ROOT/build/integrate/$REPO-$(date +%Y%m%d-%H%M%S)"; fi
+fi
 
 n=0
 step() { n=$((n + 1)); echo; echo "▸ $n. $*"; }
 die() { echo "✗ 第 $n 步失败：$*" >&2; exit 1; }
 runv() { echo "  \$ $*"; "$@"; }
 
-echo "▶ integrate $ID@$VER（项目 $ROOT）"
+echo "▶ integrate $ID@$VER（项目 $ROOT；日志 $OUT）"
 
 # 1. 连库组件（registry/schemas.tsv 有它的行）与外壳：先补 .env 密码、建角色与 schema
 step "数据库角色与密码（make dev-env db-init）"
@@ -37,7 +42,19 @@ if [ "$needs_db" = 0 ]; then
 elif [ -n "${BE_SKIP_DB_INIT:-}" ]; then
   echo "  BE_SKIP_DB_INIT 已设置，跳过"
 else
-  runv make --no-print-directory dev-env db-init || die "make dev-env db-init"
+  # psql 的 CREATE / GRANT / NOTICE 约 1000 行，全进日志；终端只打 ✓ / ✗ / ⚠ 结果行（连同 dev-env / db-init 列在
+  # 结果行下面、缩进三格的变量名），失败时再打日志最后 30 行
+  mkdir -p "$OUT" || die "建不了日志目录 $OUT"
+  DBLOG="$OUT/db-init.log"
+  echo "  \$ make dev-env db-init  > $DBLOG"
+  make --no-print-directory dev-env db-init > "$DBLOG" 2>&1; rc=$?
+  grep -E '^[[:space:]]*(✓|✗|⚠)|^   [A-Z][A-Z0-9_]*$' "$DBLOG" | sed -E 's/^[[:space:]]*(✓|✗|⚠)/  \1/'
+  if [ $rc -ne 0 ]; then
+    echo "  …… $DBLOG 最后 30 行：" >&2
+    tail -n 30 "$DBLOG" | sed 's/^/    /' >&2
+    die "make dev-env db-init（退出 $rc；完整输出 $DBLOG）"
+  fi
+  echo "  完整输出：$DBLOG"
 fi
 
 # 2. 加入或升级
