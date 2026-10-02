@@ -7,10 +7,13 @@
 # 用法：bash infra/scripts/ship.sh [--dry-run] <组件目录：components/<scope>/<name> | shell/be/<name>> <发布说明文件>
 #   --dry-run  只读检查照做（干净、分支、发布前门禁、远端 tag、契约包 N-3 校验；为比较可能从远端取回提交对象，但不建任何
 #              本地引用），改动类命令（push、tag、release、拉取探针）只打印
-# 发布前门禁（第 1 步，推 main 之前）：openapi-additive-scan 与 config-key-scan --strict，只看本组件的违规。
-#   openapi 的基线是"上一个发布 tag"：破坏一旦打进 tag 就成了新基线、以后再也报不出来，所以必须在打 tag 之前拦。
-#   项目根取组件目录往上三层（<根>/components/<scope>/<name>、<根>/shell/<scope>/<name>）；be-acceptance 从本仓库
-#   tools/be-acceptance 构建（与 make gates 同一条 go build，输出到临时目录）。
+# 发布前门禁（第 1 步，推 main 之前）：gate openapi-additive-scan / config-key-scan --only <本组件> --strict，退出码即判据。
+#   openapi 的基线是"上一个发布 tag"：破坏一旦打进 tag 就成了新基线、以后再也报不出来，所以必须在打 tag 之前拦；
+#   远端最新的（不在 HEAD 上的）发布 tag 必须在本地且一致，否则拒绝（先 fetch --tags）。
+#   项目根取组件目录往上三层（<根>/components/<scope>/<name>、<根>/shell/<scope>/<name>）。be-acceptance 只用父仓库
+#   钉住的提交、工作区必须干净（升门禁的顺序：先提交父仓库的 tools/be-acceptance 指针，再 ship），与 make gates
+#   同一条 go build，输出到临时目录。
+# 环境变量：BE_ROOT（本仓库根，默认脚本所在仓库；测试用）
 # 环境变量：SHIP_PROBE_RETRIES（拉取探针次数，默认 3）、SHIP_PROBE_INTERVAL（间隔秒数，默认 30）
 set -uo pipefail
 # brickkit release 交给旧 CLI 不会报错：dry-run 也先核对版本，不对就退出 2，一步都不走
@@ -71,55 +74,63 @@ local_tag_commit() { g rev-parse -q --verify "refs/tags/$1^{commit}" 2>/dev/null
 # 确保本地有这个提交对象（比较用）；只取对象、不建 tag 引用，dry-run 下也安全
 have_commit() { g cat-file -e "$1^{commit}" 2>/dev/null || g fetch -q --no-tags origin "$1" 2>/dev/null || g fetch -q --no-tags origin "refs/tags/$2" 2>/dev/null; g cat-file -e "$1^{commit}" 2>/dev/null; }
 
-# gate_scoped <门禁名> <本组件违规行前缀> <本组件提示行前缀> <命令…>：跑整个项目的门禁，只有本组件的 ✗ 才判红。
-# 门禁没有按组件筛选的参数；别的组件（例如还在 1.x、--strict 下也是 ✗ 的组件）的违规只计数、不挡本次发布。
-# 门禁退出非零、最后一行却不是"发现 N 条…"汇总时，是门禁自己出错（没扫完），一律判红。
-gate_scoped() {
-  local name="$1" pfx="$2" npfx="$3"; shift 3
-  local out rc last mine others
-  echo "  \$ ${*}"
-  out="$("$@" 2>&1)"; rc=$?
-  mine="$(printf '%s\n' "$out" | awk -v p="✗ $pfx" 'index($0, p) == 1')"
-  printf '%s\n' "$out" | awk -v p="ℹ $npfx" 'index($0, p) == 1' | sed 's/^/    /'
-  if [ $rc -eq 0 ]; then echo "    ✓ $name：本组件 0 条违规"; return 0; fi
-  last="$(printf '%s\n' "$out" | tail -1)"
-  if ! [[ "$last" =~ ^✗\ $name\ 发现\ [0-9]+\ 条 ]]; then
-    printf '%s\n' "$out" | tail -5 | sed 's/^/    /'
-    GATE_WHY="$name 自己出错（没扫完，没法确认本组件）：$last"; return 1
-  fi
-  if [ -n "$mine" ]; then
-    printf '%s\n' "$mine" | sed 's/^/    /'
-    GATE_WHY="$name：本组件 $(printf '%s\n' "$mine" | wc -l) 条违规（见上）"; return 1
-  fi
-  others="$(printf '%s\n' "$out" | grep -c '^✗ ' )"; others=$((others - 1))
-  echo "    ✓ $name：本组件 0 条违规（别的组件 $others 条违规，不挡本次发布）"
-}
-release_gates() {
-  local groot rel acc bin
-  groot="$(cd "$D/../../.." && pwd -P)"; rel="${D#"$groot"/}"
-  case "$rel" in components/*/*|shell/*/*) ;; *) fail "组件目录不在 <项目根>/components/<scope>/<name> 或 <项目根>/shell/<scope>/<name> 下，发布前门禁扫不到它：$D" ;; esac
-  # openapi 只增检查对比的是本地最近的发布 tag；本地一个都没有（没 fetch tags）时 gate 只打一条 ℹ"跳过"，会假绿。
-  # 远端有不在 HEAD 上的发布 tag（之前的版本）而本地一个发布 tag 都没有 → 先 fetch。
-  # （远端的发布 tag 全在 HEAD 上是"本版本已发布后重跑"，没有更早的基线要比，放行）
-  local prev
-  prev="$(g ls-remote --tags origin)" || fail "git ls-remote --tags origin 失败"
-  prev="$(printf '%s\n' "$prev" | awk -v h="$HEAD_SHA" '
+# release_baseline：openapi 只增检查的基线必须可信。远端不在 HEAD 上的发布 tag 里取语义版本最高的一个
+# （X.Y.Z / vX.Y.Z，同号取裸 tag，gen/* 与预发布不算）；它必须在本地存在、指向同一提交、并且是 HEAD 的祖先，
+# 否则 gate 会拿更旧的 tag 当基线，"上个版本新增、这次又删掉"的东西就看不见了。远端的发布 tag 全在 HEAD 上
+# （本版本已发布后重跑）或一个都没有（首次发布）时没有更早的基线要比，放行。
+release_baseline() {
+  local rt best tag sha lsha
+  rt="$(g ls-remote --tags origin)" || fail "git ls-remote --tags origin 失败"
+  best="$(printf '%s\n' "$rt" | awk -v h="$HEAD_SHA" '
     { r = $2; peeled = sub(/\^\{\}$/, "", r); sub(/^refs\/tags\//, "", r) }
     r ~ /^v?[0-9]+\.[0-9]+\.[0-9]+$/ { if (peeled || !(r in c)) c[r] = $1 }
-    END { for (t in c) if (c[t] != h) print t }')"
-  if [ -n "$prev" ] && ! g tag -l | grep -qE '^v?[0-9]+\.[0-9]+\.[0-9]+$'; then
-    fail "远端有更早的发布 tag（$(echo "$prev" | sort -V | tail -1) 等），本地一个都没有：openapi 只增检查会找不到基线而跳过。先 git -C $D fetch --tags 再发布"
+    END {
+      for (t in c) {
+        if (c[t] == h) continue
+        v = t; bare = (substr(v, 1, 1) == "v") ? 0 : 1; sub(/^v/, "", v); split(v, n, ".")
+        printf "%d %d %d %d %s %s\n", n[1], n[2], n[3], bare, t, c[t]
+      }
+    }' | sort -k1,1n -k2,2n -k3,3n -k4,4n | tail -1)"
+  [ -n "$best" ] || { echo "  openapi 基线：远端没有更早的发布 tag（首次发布，或本版本已发布后重跑）"; return 0; }
+  read -r _ _ _ _ tag sha <<< "$best"
+  lsha="$(local_tag_commit "$tag")"
+  [ -n "$lsha" ] && [ "$lsha" = "$sha" ] \
+    || fail "远端最新的发布 tag $tag（$sha）本地$( [ -n "$lsha" ] && echo "指向 $lsha，不是同一提交" || echo "没有")：openapi 只增检查会拿更旧的 tag 当基线。先 git -C $D fetch --tags（本地同名 tag 不一致时核对后人工处理）再发布"
+  g merge-base --is-ancestor "$sha" HEAD \
+    || fail "远端最新的发布 tag $tag（$sha）不是 HEAD 的祖先：openapi 只增检查只认 HEAD 祖先上的 tag，会拿更旧的当基线。先把 $tag 合进 main 再发布"
+  echo "  openapi 基线：$tag（$sha，本地一致）"
+}
+# release_gates：发布前门禁。只用父仓库钉住的、干净的 be-acceptance；两个 gate 都带 --only <本组件> --strict，
+# 退出码就是判据（不解析输出）。
+release_gates() {
+  local groot rel acc pinned head dirty gtmp
+  groot="$(cd "$D/../../.." && pwd -P)"; rel="${D#"$groot"/}"
+  case "$rel" in components/*/*|shell/*/*) ;; *) fail "组件目录不在 <项目根>/components/<scope>/<name> 或 <项目根>/shell/<scope>/<name> 下，发布前门禁扫不到它：$D" ;; esac
+  acc="$ROOT/tools/be-acceptance"
+  dirty="$(git -C "$acc" status --porcelain 2>&1)" || fail "读不了 $acc 的 git 状态"
+  [ -z "$dirty" ] || fail "门禁仓库 $acc 工作区不干净（$(echo "$dirty" | head -3 | tr '\n' ';')）：发布只用父仓库钉住的门禁，先提交或还原"
+  head="$(git -C "$acc" rev-parse HEAD)" || fail "读不了 $acc 的 HEAD"
+  pinned="$(git -C "$ROOT" rev-parse "HEAD:tools/be-acceptance" 2>/dev/null)" || fail "父仓库 $ROOT 的 HEAD 里没有 tools/be-acceptance 指针"
+  [ "$head" = "$pinned" ] || fail "门禁仓库 $acc 的 HEAD $head 不是父仓库钉住的 $pinned：要用新门禁就先提交父仓库的 tools/be-acceptance 指针，再发布"
+  release_baseline
+  gtmp="$(mktemp -d)"
+  echo "  发布前门禁 be-acceptance@$(git -C "$acc" rev-parse --short HEAD)（项目根 $groot，只看 $rel）："
+  echo "  \$ (cd $acc && go build -o $gtmp/be-acceptance ./cmd/be-acceptance)"
+  if ! (cd "$acc" && go build -o "$gtmp/be-acceptance" ./cmd/be-acceptance) > "$gtmp/build.log" 2>&1; then
+    sed 's/^/    /' "$gtmp/build.log" | tail -10; rm -rf "$gtmp"
+    fail "构建 be-acceptance 失败（$acc），发布前门禁跑不了"
   fi
-  acc="$ROOT/tools/be-acceptance"; bin="$(mktemp -d)/be-acceptance"
-  echo "  发布前门禁（项目根 $groot，只看 $rel）："
-  echo "  \$ (cd $acc && go build -o $bin ./cmd/be-acceptance)"
-  (cd "$acc" && go build -o "$bin" ./cmd/be-acceptance) > "$bin.build.log" 2>&1 \
-    || { sed 's/^/    /' "$bin.build.log" | tail -10; fail "构建 be-acceptance 失败（$acc），发布前门禁跑不了"; }
-  GATE_WHY=""
-  gate_scoped openapi-additive-scan "${rel#*/}/contracts/" "${rel#*/}" "$bin" gate openapi-additive-scan --root "$groot" \
-    && gate_scoped config-key-scan "$rel/component.yaml:" "$rel" "$bin" gate config-key-scan --root "$groot" --strict \
-    || { rm -rf "$(dirname "$bin")"; fail "发布前门禁 $GATE_WHY；修好再发布（还没推 main、没打任何 tag）"; }
-  rm -rf "$(dirname "$bin")"
+  local name
+  for name in openapi-additive-scan config-key-scan; do
+    local args=(gate "$name" --root "$groot" --only "$rel")
+    [ "$name" = config-key-scan ] && args+=(--strict)
+    echo "  \$ $gtmp/be-acceptance ${args[*]}"
+    if ! "$gtmp/be-acceptance" "${args[@]}" 2>&1 | sed 's/^/    /'; then
+      rm -rf "$gtmp"
+      fail "发布前门禁 $name 判红（退出码非零，见上）；修好再发布（还没推 main、没打任何 tag）"
+    fi
+  done
+  rm -rf "$gtmp"
 }
 
 echo "▶ 发布 $ID@$VER（$KIND）：$D$( [ "$DRY" = 1 ] && echo '  〔dry-run：改动类命令只打印〕')"

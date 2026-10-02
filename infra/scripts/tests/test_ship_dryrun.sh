@@ -33,6 +33,15 @@ export PATH="$T/bin:$PATH" FAKE_CALLS="$T/calls"
 : > "$FAKE_CALLS"
 printf '## 新增\n- 测试发布\n' > "$T/notes.md"
 
+# 玩具父仓库：tools/be-acceptance 是本仓库 be-acceptance 当前提交的 clone，父仓库按 gitlink 钉住它
+# （ship 只用钉住的、干净的门禁；见 I-3）。ship 以 BE_ROOT 为本仓库根。
+P="$T/proj"; ACC="$P/tools/be-acceptance"
+git init -q -b main "$P"
+git clone -q "$ROOT/tools/be-acceptance" "$ACC" 2>/dev/null || { echo "clone be-acceptance 失败" >&2; exit 1; }
+pin_acc() { git -C "$P" -c advice.addEmbeddedRepo=false add tools/be-acceptance && git -C "$P" commit -q -m "pin be-acceptance" --allow-empty; }
+pin_acc
+export BE_ROOT="$P"
+
 # fixture <名字> <go|python|shell>：建 bare 远端 + clone，提交并推送 main，回显工作目录。
 # 工作目录放在 $T/<名字>/components/demo/thing（外壳：shell/be/x）：ship 的发布前门禁以组件目录往上三层为项目根
 fixture() {
@@ -66,7 +75,9 @@ W="$(fixture a go)"
 out="$(bash "$SHIP" --dry-run "$W" "$T/notes.md" 2>&1)"; rc=$?
 if [ $rc -eq 0 ] && [ "$(echo "$out" | steps_order)" = "123456" ]; then ok "A dry-run 六步按顺序"; else bad "A rc=$rc order=$(echo "$out" | steps_order)\n$out"; fi
 echo "$out" | grep -q '\[dry-run\] git push origin main' && ok "A 打印 push main" || bad "A 没打印 push main"
-echo "$out" | grep -q "gate config-key-scan --root $T/a --strict" && echo "$out" | grep -q "gate openapi-additive-scan --root $T/a" \
+echo "$out" | grep -q "gate config-key-scan --root $T/a --only components/demo/thing --strict" \
+  && echo "$out" | grep -q "gate openapi-additive-scan --root $T/a --only components/demo/thing" \
+  && echo "$out" | grep -q "门禁 be-acceptance@$(git -C "$ACC" rev-parse --short HEAD)" \
   && ok "A 发布前门禁照跑并打印命令（dry-run 也跑）" || bad "A 没打印发布前门禁命令:\n$out"
 echo "$out" | grep -q '\[dry-run\] git tag -a gen/demo/thing/v1.0.0' && ok "A 打印契约包 tag" || bad "A 没打印契约包 tag:\n$out"
 echo "$out" | grep -q '\[dry-run\] brickkit release --notes-file' && ok "A 打印 brickkit release" || bad "A 没打印 release"
@@ -232,7 +243,8 @@ W="$(fixture r python)"
 mkdir -p "$T/r/components/old/legacy"
 printf 'apiVersion: brickkit/v1\nkind: Component\nmetadata:\n  id: old/legacy\n  version: 1.0.0\nconfigSchema:\n  properties:\n    pgSchema: {type: string}\n' > "$T/r/components/old/legacy/component.yaml"
 out="$(bash "$SHIP" --dry-run "$W" "$T/notes.md" 2>&1)"; rc=$?
-if [ $rc -eq 0 ] && echo "$out" | grep -q '▸ 第 1 步.*PASS' && echo "$out" | grep -q '别的组件.*不挡本次发布'; then ok "R 别的组件的违规不挡本组件发布"
+if [ $rc -eq 0 ] && echo "$out" | grep -q '▸ 第 1 步.*PASS' && echo "$out" | grep -q '✓ config-key-scan（只看 components/demo/thing）：0 条违规' \
+   && ! echo "$out" | grep -q 'pgSchema'; then ok "R 别的组件的违规不挡本组件发布（--only 只扫本组件）"
 else bad "R rc=$rc\n$out"; fi
 
 # ---------- S. 远端有发布 tag、本地一个都没有（没 fetch tags）→ openapi 会"没有发布 tag，跳过"而假绿：第 1 步 FAIL ----------
@@ -242,6 +254,63 @@ echo "# 2.x" >> "$W/pyproject.toml" && git -C "$W" commit -q -am "2.x" && git -C
 out="$(bash "$SHIP" --dry-run "$W" "$T/notes.md" 2>&1)"; rc=$?
 if [ $rc -ne 0 ] && echo "$out" | grep -q '▸ 第 1 步.*FAIL.*fetch --tags' && [ -z "$(git -C "$W" tag -l)" ]; then ok "S 本地缺发布 tag：第 1 步 FAIL，提示 fetch --tags（dry-run 不建本地 tag）"
 else bad "S rc=$rc\n$out"; fi
+
+# ---------- T（B2 审查 I-1）. 本地只有旧的 1.0.0、没有远端最新的 2.0.0 → 基线过旧，2.0.0 里新增又删掉的路径看不见：拒绝 ----------
+W="$(fixture t python)"
+spec="$W/contracts/thing.openapi.yaml"; mkdir -p "$W/contracts"
+oa() { printf 'openapi: 3.0.3\ninfo: {title: t, version: 1.0.0}\npaths:\n'; for p in "$@"; do printf '  /%s:\n    get:\n      responses:\n        "200": {description: ok}\n' "$p"; done; }
+oa a > "$spec"; git -C "$W" add -A && git -C "$W" commit -q -m "1.0.0：/a" && git -C "$W" tag -a 1.0.0 -m 1.0.0
+oa a c > "$spec"; git -C "$W" commit -q -am "2.0.0：/a /c" && git -C "$W" tag -a 2.0.0 -m 2.0.0 && git -C "$W" tag -a v2.0.0 -m v2.0.0
+git -C "$W" push -q origin main 1.0.0 2.0.0 v2.0.0 && git -C "$W" tag -d 2.0.0 v2.0.0 >/dev/null
+oa a > "$spec"; sed -i 's/^  version: 2.0.0/  version: 2.1.0/' "$W/component.yaml"
+git -C "$W" commit -q -am "2.1.0：删了 /c" && git -C "$W" push -q origin main
+out="$(bash "$SHIP" --dry-run "$W" "$T/notes.md" 2>&1)"; rc=$?
+if [ $rc -ne 0 ] && echo "$out" | grep -q '▸ 第 1 步.*FAIL.*2\.0\.0.*fetch --tags' && [ "$(echo "$out" | steps_order)" = "1" ] \
+   && ! echo "$out" | grep -q 'openapi-additive-scan --root'; then ok "T 本地缺远端最新的发布 tag 2.0.0：第 1 步 FAIL（门禁都没跑）"
+else bad "T rc=$rc\n$out"; fi
+# T2：本地有 2.0.0 但指向别的提交 → 同样拒绝；T3：fetch 回来之后按 2.0.0 比较，/c 被删判红
+git -C "$W" tag -a 2.0.0 -m local HEAD~1~1 2>/dev/null || git -C "$W" tag -a 2.0.0 -m local "$(git -C "$W" rev-list --max-parents=0 HEAD)"
+out="$(bash "$SHIP" --dry-run "$W" "$T/notes.md" 2>&1)"; rc=$?
+if [ $rc -ne 0 ] && echo "$out" | grep -q '▸ 第 1 步.*FAIL.*2\.0\.0'; then ok "T2 本地 2.0.0 与远端不在同一提交：拒绝"; else bad "T2 rc=$rc\n$out"; fi
+git -C "$W" tag -d 2.0.0 >/dev/null && git -C "$W" fetch -q --tags origin
+out="$(bash "$SHIP" --dry-run "$W" "$T/notes.md" 2>&1)"; rc=$?
+if [ $rc -ne 0 ] && echo "$out" | grep -q 'GET /c \[removed\]' && echo "$out" | grep -q '对比 2.0.0'; then ok "T3 fetch 之后按 2.0.0 比较：删 /c 判红"
+else bad "T3 rc=$rc\n$out"; fi
+
+# ---------- V（I-3）. be-acceptance 工作区不干净 / HEAD 不是父仓库钉住的提交 → 拒绝，并提示先提交指针 ----------
+W="$(fixture v python)"
+echo x > "$ACC/stray.txt"
+out="$(bash "$SHIP" --dry-run "$W" "$T/notes.md" 2>&1)"; rc=$?
+if [ $rc -ne 0 ] && echo "$out" | grep -q '▸ 第 1 步.*FAIL.*be-acceptance.*不干净'; then ok "V be-acceptance 工作区不干净：拒绝"; else bad "V dirty rc=$rc\n$out"; fi
+rm -f "$ACC/stray.txt"
+git -C "$ACC" commit -q --allow-empty -m "没钉的提交"
+out="$(bash "$SHIP" --dry-run "$W" "$T/notes.md" 2>&1)"; rc=$?
+if [ $rc -ne 0 ] && echo "$out" | grep -q '▸ 第 1 步.*FAIL.*钉住' && echo "$out" | grep -q '先提交'; then ok "V be-acceptance HEAD 不是钉住的提交：拒绝，提示先提交指针"
+else bad "V unpinned rc=$rc\n$out"; fi
+pin_acc
+out="$(bash "$SHIP" --dry-run "$W" "$T/notes.md" 2>&1)"; rc=$?
+[ $rc -eq 0 ] && ok "V 钉上之后放行" || bad "V 钉上后 rc=$rc\n$out"
+
+# ---------- U（I-2）. 判据是 gate 的退出码，不解析输出：把违规行改成别的格式（钉住）照样判红 ----------
+sed -i 's|fmt.Fprintf(os.Stderr, "✗ %s:%d：%s \[%s\] %s\\n"|fmt.Fprintf(os.Stderr, "VIOLATION %s:%d：%s [%s] %s\\n"|' "$ACC/cmd/be-acceptance/main.go"
+if git -C "$ACC" diff --quiet; then bad "U 没改到 be-acceptance 的输出格式（sed 没命中）"; else
+  git -C "$ACC" commit -q -am "改输出格式" && pin_acc
+  W="$(fixture u python)"
+  printf 'configSchema:\n  properties:\n    pgSchema: {type: string}\n' >> "$W/component.yaml"
+  git -C "$W" commit -q -am "驼峰键" && git -C "$W" push -q origin main
+  out="$(bash "$SHIP" --dry-run "$W" "$T/notes.md" 2>&1)"; rc=$?
+  if [ $rc -ne 0 ] && echo "$out" | grep -q 'VIOLATION components/demo/thing/component.yaml' && echo "$out" | grep -q '▸ 第 1 步.*FAIL.*config-key-scan'; then
+    ok "U 违规行换了格式：照样按退出码判红"; else bad "U rc=$rc\n$out"; fi
+fi
+
+# ---------- W（M-4）. be-acceptance 编不过 → 第 1 步 FAIL，临时目录不留下 ----------
+echo 'package main; func 坏(' >> "$ACC/cmd/be-acceptance/main.go"
+git -C "$ACC" commit -q -am "编不过" && pin_acc
+W="$(fixture w python)"
+mkdir -p "$T/tmpx"
+out="$(TMPDIR="$T/tmpx" bash "$SHIP" --dry-run "$W" "$T/notes.md" 2>&1)"; rc=$?
+if [ $rc -ne 0 ] && echo "$out" | grep -q '▸ 第 1 步.*FAIL.*构建 be-acceptance 失败' && [ -z "$(ls -A "$T/tmpx")" ]; then ok "W 门禁编不过：FAIL，临时目录已清掉"
+else bad "W rc=$rc left=$(ls -A "$T/tmpx")\n$out"; fi
 
 [ $fail -eq 0 ] && echo "全部通过" || echo "有失败"
 exit $fail
