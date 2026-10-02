@@ -55,6 +55,31 @@ if [ $# -gt 0 ]; then
 	COMPONENTS=("$want")
 fi
 
+# 早期的迁移以 postgres 身份建表，组件改为以 <schema>_rw 迁移后，ALTER 这些表会报
+# must be owner。把本组件 schema（及 <schema>_archive）里 postgres 名下的表、分区、
+# 序列、视图转给 <schema>_rw——只改属主、不动数据，幂等。
+echo "▸ ①b 把 postgres 名下的旧对象转给各组件的 <schema>_rw"
+for c in "${COMPONENTS[@]}"; do
+	repo="$(basename "$(dirname "components/$c")")-$(basename "$c")"
+	schema="$(awk -F'\t' -v r="$repo" '$1==r {print $2}' "$ROOT/registry/schemas.tsv")"
+	[ -n "$schema" ] || { echo "✗ registry/schemas.tsv 里没有 $repo" >&2; exit 1; }
+	docker exec -i be-postgres psql -v ON_ERROR_STOP=1 -U postgres -d brickkit_test_db -qAt >/dev/null <<SQL
+DO \$\$
+DECLARE r record;
+BEGIN
+  FOR r IN SELECT n.nspname, c.relname, c.relkind FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
+           WHERE n.nspname IN ('${schema}', '${schema}_archive') AND pg_get_userbyid(c.relowner) = 'postgres'
+             AND c.relkind IN ('r','p','S','v','m')
+             AND NOT (c.relkind = 'S' AND EXISTS (SELECT 1 FROM pg_depend d WHERE d.objid = c.oid AND d.deptype IN ('a','i')))
+  LOOP
+    EXECUTE format('ALTER %s %I.%I OWNER TO %I',
+      CASE r.relkind WHEN 'S' THEN 'SEQUENCE' WHEN 'v' THEN 'VIEW' WHEN 'm' THEN 'MATERIALIZED VIEW' ELSE 'TABLE' END,
+      r.nspname, r.relname, '${schema}_rw');
+  END LOOP;
+END \$\$;
+SQL
+done
+
 echo "▸ ② 对 ${#COMPONENTS[@]} 个已建组件各跑一遍 migrate-idempotent，目标 brickkit_test_db"
 for c in "${COMPONENTS[@]}"; do
 	echo "  - $c"
