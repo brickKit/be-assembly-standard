@@ -46,11 +46,12 @@
 
 ## 真机运行
 
+- **一条命令的版本。** `make integrate ID=<scope>/<name>` 把一个组件（或外壳）接入项目：连库的先 `make dev-env db-init`，然后 `brickkit add`（已在项目里就 `brickkit upgrade` 到 `VERSION=`；默认 `2.0.0`，外壳 `1.0.0`），按 [04-configuration.md](04-configuration.md#值写在哪里) 的规则填好 `config/<repo>.yaml`，`make teardown-sync`，`brickkit lint --strict <id>`，`brickkit up --dry-run`。推不出值的 required 键会被列出来并停下；用 `python3 infra/scripts/config-fill.py <id> --set KEY=VALUE` 给值后重跑。接着 `make verify ID=<scope>/<name> [ROUTE='GET /路径'] [FOCUS=1]` 真机跑一遍：`brickkit build`，只起这个组件的依赖闭包（生成的 `deploy.verify.yaml` 把其余条目全部关掉），迁移 `Exited (0)`，`/healthz` 200，受保护路由不带 token 是 401 或 503、带真 token 是 200（infra/authz 与 infra/iam-casdoor 都在项目里时），`make test-cross`，`FOCUS=1` 时再跑一次 focus，除非 `KEEP=1` 最后 `brickkit down`；它打印一张 PASS / FAIL / SKIP 汇总表，每项一个日志文件。外壳 ID 改成在运行期核对它托管的成员。这两条命令都拿项目锁（`infra/scripts/project-lock.sh`），`make dev-env`、`db-init`、`test-db-init`、`permissions` 也一样：改动项目共享状态的命令（`brickkit add` / `upgrade` / `build` / `up` / `down` / `local`、`config/`、部署文件、`registry/`、`.env`）一次只跑一个，并行的工作会等锁，而不是互相踩。手工跑这类命令时写成 `bash infra/scripts/project-lock.sh -- <命令>`。
 - **先构建。** `brickkit up` 从不构建镜像。改了代码要 `brickkit build <id>`；镜像 tag 就是 `metadata.version`，版本号没升就会复用旧镜像（升版本，或者 `--force`）。
 - **一次只跑一个组件。** `brickkit up --focus <id>` 从源码拉起这个组件和它需要的一切；`brickkit up --all` 回到整个项目。`--focus` 把焦点写进 `deploy.local.yaml` 并打开本地模式（第一次会复制 `deploy.yaml`）；`--all` 清掉焦点，但本地模式仍开着。本地模式开着时，`up`、`down`、`status`、`build` 只读 `deploy.local.yaml`，之后改 `deploy.yaml` 不起作用：改 `deploy.yaml` 之前先 `brickkit local off`，或者改完之后 `brickkit local refresh`。
 - **然后对着它测。** `make test-cross ID=<scope>/<name>` 让组件的跨组件测试打到真实的依赖容器（[06-testing.md](06-testing.md#跨组件测试)）；项目里新加了组件之后跑 `make tier0`。
 - **容器默认关着。** `make up` 管的基础资源（PostgreSQL、NATS、Casdoor……）可以常开；项目的组件容器只在真机验证和演示时需要，用完 `brickkit down`（不删 volume）。一直开着的容器在下次改动后跑的是旧版本，还会和本地测试抢同一个 NATS subject 的消息。
-- **拆回验证。** 外壳合并之后，每个组件仍然必须能独立运行。`brickkit up --ignore-shells --dry-run` 不启动任何东西就能检查；`make teardown-up` / `make teardown-down` 把每个成员都当独立容器真的跑一遍。外壳的成员清单一变就跑。
+- **拆回验证。** 外壳合并之后，每个组件仍然必须能独立运行。`brickkit up --ignore-shells --dry-run` 不启动任何东西就能检查；`make teardown-up` / `make teardown-down` 把每个成员都当独立容器真的跑一遍。外壳的成员清单一变就跑。`brickkit add` 和 `upgrade` 只维护 `deploy.yaml`；`make teardown-sync` 让 `deploy.teardown.yaml` 与它一致（`CHECK=1` 只核对）。
 - **在 IDE 里调试**用 `deploy.local.yaml` 里的 `mode: debug`（先 `brickkit local on`），绝不写进 `deploy.yaml`。
 
 ## 版本号
@@ -71,6 +72,8 @@
 2. 在组件仓库提交并推送（外壳就是外壳自己的仓库）。
 3. `brickkit release --notes-file <文件>`。说明文件放在组件目录之外（目录里的未跟踪文件过不了干净检查）。发布说明先写使用方必须做什么（某个键的含义变了、某个接口删了），再写新增了什么。
 4. Go 组件（外壳不做这一步）：`git tag -a v<版本> -F <同一份说明>`，再 `git push origin v<版本>`。
+
+   第 2–4 步是一条命令，由负责发布的人运行：`make ship DIR=components/<scope>/<name> NOTES=<文件>`（外壳：`DIR=shell/be/<name>`；`DRY_RUN=1` 先预览）。它拒绝不干净的工作区和 `main` 以外的分支，推送 `main`；根 `go.mod` require 的契约包 `gen/<domain>/<name>/v<x.y.z>` 还没发布时在 `HEAD` 上打这个 tag（已发布的与 `HEAD` 不一致则失败）；然后 `brickkit release`、补 `v` tag、核对每个 tag 都指向 `HEAD`，最后从外壳的视角拉取并编译一次。第一处失败就停，绝不强推，也绝不删除或移动已经推送的东西；修好原因后重跑，已完成的步骤会直接通过。
 5. `brickkit build <id>`。镜像只在本地构建，从不推送。
 6. 回到本仓库：提交 submodule 指针（外壳的指针和组件一样）和 `brickkit upgrade` 改出的内容，真机跑一遍，`brickkit down`。发布了 infra/authz 或 infra/iam-casdoor 之后，还要把 `config/vars.yaml` 里的 `AUTHZ_BUNDLE_URL` / `IAM_JWKS_URL` 改成新的服务名；`brickkit upgrade` 不碰 `$var` 的值，两者对上之前 `make gates` 一直失败（[04-configuration.md](04-configuration.md#依赖地址)）。
 

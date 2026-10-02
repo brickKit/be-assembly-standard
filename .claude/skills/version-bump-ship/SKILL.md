@@ -65,28 +65,26 @@ dry-run 时重点核对：
 3. 契约变了跑 `make contract-check`。
 4. **提交信息写到 scratchpad 文件，用 `git commit -F`，不要内联 `-m`**——长文本/双引号可能让 commit 静默失败，之后的 tag 会打在旧提交上（真实吃过的亏）。结构：一句话概括，空行，理由（搬 §1 那段），空行，署名行。
 5. `git commit -F <消息文件>`，**`git log --oneline -1` 确认 commit 真的落了**，再发布。
-6. 推送当前分支（发布检查要求被打 tag 的提交已在远端历史里）：`git push origin main`。
-7. **发布**：把发布说明（可直接用 §1 的理由）写进一个文件，在组件目录里：
+6. **推送、发布、打 tag 用一条命令 `make ship`**（在装配仓库根目录跑，只有负责发布的人跑）。发布说明（可直接用 §1 的理由；先写使用方必须做的事，再写新增）写进组件目录**之外**的文件，先预览再真跑：
 
    ```bash
-   brickkit release --notes-file <说明文件>
+   make ship DIR=components/<scope>/<name> NOTES=<说明文件> DRY_RUN=1   # 只读检查照做，push / tag / release 只打印
+   make ship DIR=components/<scope>/<name> NOTES=<说明文件>
    ```
 
-   tag 是 `2.0.0`（不带 `v`），带说明的注解 tag，自动推送；推送失败会自动删掉本地 tag。
-8. **Go 组件额外打第二个 tag**（Go 模块代理只认 `v` 前缀；v2+ 的模块路径以 `/v2` 结尾），打在同一个提交上、用同一份说明：
+   它按顺序做、第一处失败即停，每步打印 `▸ 第 n 步 … PASS/FAIL/SKIP`。第 1 步：工作区干净、在 `main`，`git push origin main`（发布检查要求被打 tag 的提交已在远端历史里；绝不强推）。第 2 步（Go 组件）：根 `go.mod` require 的本仓库契约包 `gen/<domain>/<name>/vX` 远端还没有就在 `HEAD` 打注解 tag 并推送；远端已有就校验它与 `HEAD` 的 `gen/<domain>/<name>/` 逐字节一致（已发布的契约包不能改，不一致即 FAIL）。
+7. **发布**（`make ship` 第 3 步）：`brickkit release --notes-file <说明文件>`，tag 是 `2.0.0`（不带 `v`），带说明的注解 tag，自动推送（推送失败会自动删掉本地 tag）；随后核对 `git cat-file -t` 是 `tag`、远端有这一行、指向 `HEAD`。
+8. **Go 组件额外打第二个 tag**（`make ship` 第 4、5 步；Go 模块代理只认 `v` 前缀，v2+ 的模块路径以 `/v2` 结尾）：`v<版本>` 打在同一个提交上、用同一份说明，核对两个 tag 指向同一提交；然后从外壳的视角真拉一次（临时模块 `go get <模块>@v<版本>` + `go build`，`go list -m all` 里本仓库只有 `…/v2 v<版本>` 和契约包两行；代理刚收到新 tag 时最多重试 3 次、间隔 30 秒）。Python/TS 组件只有第 7 步的 tag，`make ship` 自动跳过这一步。第 6 步打印父仓库要按路径提交的内容和 `git submodule status` 的期望形态。
+
+   停在哪一步就在哪一步处理：**已推送的东西不回滚、不删除、不移动**。修好原因后重跑同一条命令，已经在 `HEAD` 上的 tag 视为完成；已推送却不在 `HEAD` 上的 tag 一律 FAIL——发新版本，不要动它。
+
+9. **外壳**是独立仓库（`brickKit/be-<name>`），在装配仓库里以子模块挂在 `shell/be/<name>/`，和组件一样在**它自己的仓库根目录**收尾：第 1–5 步照做（`bump-version` 改的 `shell.members` / `go.mod` 就在子模块的工作区里；Go 外壳的"测试"是 `go build -o /dev/null ./...`，py-render 是装包后 `import main`），在子模块里提交，然后在装配仓库根目录
 
    ```bash
-   git tag -a v<版本> -F <说明文件> && git push origin v<版本>
+   make ship DIR=shell/be/<name> NOTES=<说明文件>
    ```
 
-   Python/TS 组件只要第 7 步的 tag。
-9. **外壳**是独立仓库（`brickKit/be-<name>`），在装配仓库里以子模块挂在 `shell/be/<name>/`，和组件一样在**它自己的仓库根目录**收尾：第 1–7 步照做（`bump-version` 改的 `shell.members` / `go.mod` 就在子模块的工作区里；Go 外壳的"测试"是 `go build -o /dev/null ./...`，py-render 是装包后 `import main`），在子模块里提交、`git push origin main`、
-
-   ```bash
-   cd shell/be/<name> && brickkit release --notes-file <说明文件>
-   ```
-
-   tag 是裸的 `<版本>`（如 `1.0.1`），跳过第 8 步：外壳不被任何人 import，不打 `v` tag。绝不在装配仓库根目录用 `brickkit release --path shell/be/<name>` 发布，也不在装配仓库打 `be-<name>/<版本>` tag。外壳排在它的全部成员之后；它的子模块指针和成员的指针一起在 §4 第 4 步提交。
+   tag 是裸的 `<版本>`（如 `1.0.1`），`make ship` 自动跳过契约包、`v` tag 和拉取探针（第 8 步）：外壳不被任何人 import，不打 `v` tag。绝不在装配仓库根目录用 `brickkit release --path shell/be/<name>` 发布，也不在装配仓库打 `be-<name>/<版本>` tag。外壳排在它的全部成员之后；它的子模块指针和成员的指针一起在 §4 第 4 步提交。
 10. **构建镜像**：`brickkit build <id>`（已有镜像会跳过，改了代码要重建加 `--force`）。构建失败就停下，不带着没验证的镜像往下走。**镜像不推送**，现阶段全部本地使用。
 
 **工具仓库**（`be-sdk-*`、`be-ops`、`be-acceptance`）不是 brickKit 组件，不走 `brickkit release`：测试通过、提交后 `git tag -a vX.Y.Z -F <说明文件>` 并 `git push origin vX.Y.Z`；Go 工具仓库升到 v2+ 时模块路径要同步加 `/v2`。

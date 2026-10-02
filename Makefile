@@ -94,6 +94,36 @@ test-db-init:  ## 建/刷新本地测试专用库 brickkit_test_db（跟真机�
 	@bash infra/scripts/test-db-init.sh
 .PHONY: test-db-init
 
+##@ 组件接入、真机验证与发布（integrate / verify / permissions 自己拿项目锁，见 infra/scripts/project-lock.sh）
+integrate:  ## 接入一个组件或外壳：dev-env/db-init → add 或 upgrade → 填 config → 同步 deploy.teardown.yaml → lint → up --dry-run。make integrate ID=<id> [VERSION=2.0.0]
+	@test -n "$(ID)" || { echo "用法：make integrate ID=<scope>/<name> [VERSION=<版本>]（外壳 ID=be/<name>，版本默认 1.0.0）"; exit 2; }
+	@bash $(S)/integrate.sh "$(ID)" $(VERSION)
+
+verify:  ## 真机验证一个组件或外壳：build → 只起闭包 → 迁移/健康/鉴权 → test-cross → [focus] → 收尾。make verify ID=<id> [ROUTE='GET /路径'] [FOCUS=1] [KEEP=1] [FORCE_BUILD=1]
+	@test -n "$(ID)" || { echo "用法：make verify ID=<scope>/<name> [ROUTE='<METHOD> <路径>'] [FOCUS=1] [KEEP=1] [FORCE_BUILD=1] [OUT=<目录>]"; exit 2; }
+	@ROUTE="$(ROUTE)" FOCUS="$(FOCUS)" KEEP="$(KEEP)" FORCE_BUILD="$(FORCE_BUILD)" OUT="$(OUT)" bash $(S)/verify-component.sh "$(ID)"
+
+ship:  ## 【只有控制者】发布：推 main → 契约包 tag → brickkit release → v tag → 外壳视角拉取检查。make ship DIR=components/<id>|shell/be/<name> NOTES=<说明文件> [DRY_RUN=1]
+	@test -n "$(DIR)" -a -n "$(NOTES)" || { echo "用法：make ship DIR=<components/<scope>/<name> | shell/be/<name>> NOTES=<发布说明文件> [DRY_RUN=1]"; exit 2; }
+	@bash $(S)/ship.sh $(if $(DRY_RUN),--dry-run,) "$(DIR)" "$(NOTES)"
+
+teardown-sync:  ## 让 deploy.teardown.yaml 与 deploy.yaml 一致（target、components；不带 vars:）。make teardown-sync [CHECK=1] 只核对
+	@bash $(S)/project-lock.sh -- python3 $(S)/teardown-sync.py $(if $(CHECK),--check,)
+
+permissions:  ## 从各组件 assembly.yaml 重新产出 registry/permissions.tsv 与 data-scopes.tsv，再 registry-check；permissions.tsv 只增不删
+	@bash $(S)/project-lock.sh -- $(MAKE) --no-print-directory _permissions-locked
+
+_permissions-locked:
+	@set -euo pipefail; \
+	  (cd tools/be-ops && go build -o build/be-ops ./cmd/be-ops); \
+	  tools/be-ops/build/be-ops permissions --root .; \
+	  tools/be-ops/build/be-ops data-scopes --root .; \
+	  $(MAKE) --no-print-directory registry-check; \
+	  removed="$$(git diff -- registry/permissions.tsv | grep '^-[^-]' || true)"; \
+	  if [ -n "$$removed" ]; then echo "✗ registry/permissions.tsv 只增不删，下面这些已有行被改或删了（键是持久标识，退役用 deprecated 列）："; echo "$$removed"; exit 1; fi; \
+	  echo "✓ registry/permissions.tsv 只有新增（git diff -- registry/ 看改动）"
+.PHONY: integrate verify ship teardown-sync permissions _permissions-locked
+
 ##@ 拆回验证
 # 同一份 brickkit.yaml，`--ignore-shells` 让所有成员忽略 servedBy、各自独立成容器；
 # -f deploy.teardown.yaml 只读这一份部署文件、忽略本地模式；authz/iam 地址本来就是成员自己的服务名，不用覆盖。
