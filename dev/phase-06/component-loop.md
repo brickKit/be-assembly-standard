@@ -464,7 +464,7 @@ Go 组件的 4.0–4.4 与 4.6 由一条命令完成（plan C4；幂等，可重
 bash $ROOT/dev/phase-06/tools/go-v2.sh $ID --sdk v0.4.0; echo "exit=$?"
 ```
 
-通过：`exit=0`。下面 4.0–4.4、4.6 的手工命令是脚本做的事和判据的原文，保留作排障参考与 diff 审读的对照；脚本不做、仍要人做的事写在各条里（4.6 的 Dockerfile 核对与读 diff）。
+通过：`exit=0`。下面 4.0–4.4、4.6 的手工命令是脚本所做之事的原文，保留作排障参考与 diff 审读的对照；判据全集以脚本输出和 `dev/phase-06/tools/README.md` 的"go-v2.sh / 判据"为准。脚本不做、仍要人做的：4.5、4.7–4.9；4.6 的读 diff、改 `migrations/embed.go` 的过时注释、核对 Dockerfile 的目的路径。
 
 - [ ] **4.0 先认清本组件 `gen/` 是哪种形态**（两种形态的改法不同，用错了不报任何错）：
   ```bash
@@ -515,10 +515,11 @@ bash $ROOT/dev/phase-06/tools/go-v2.sh $ID --sdk v0.4.0; echo "exit=$?"
   ```
   通过（全部满足才算过）：
   - `BUILD_OK`；`head -1` 是 `module github.com/brickKit/<repo>/v2`；
-  - `go.mod 没有 require 自己的旧路径`——出现 `github.com/brickKit/<repo> v1.x.y` 就是形态 B 被当成形态 A 做了，回到 4.0；
+  - `go.mod 没有 require 自己的旧路径`——出现 `github.com/brickKit/<repo> v1.x.y` 就是形态 B 被当成形态 A 做了，回到 4.0（`go-v2.sh` 完整运行会自动清掉并报 ⚠️；`--recheck` 不清、报 FAIL）；
   - `go list -m all` 只有两行：`github.com/brickKit/<repo>/v2`（主模块）和 `github.com/brickKit/<repo>/gen/<domain>/<name> v1.x.y => ./gen/<domain>/<name>`；
   - `go list -deps` 列出的本仓库模块只有这同样两个（C-1 状态下这里会多出 `github.com/brickKit/<repo>`，实测）；
   - 最后一条输出 `import 全部带 /v2（契约包除外）`。
+  - 脚本另外还判（手工排障时一并核对）：契约包模块路径不带 `/v2`；根 `go.mod` require 的契约包版本 = 4.3 算出的版本且有本地 replace；除契约包外没有别的 `replace`；Dockerfile 先 `COPY . .` 再 `go mod download`；Dockerfile 编译 `./backend/cmd/migrate` 并 `COPY --from` 进最终镜像；SDK ≥ v0.4.0 时迁移入口恰好一行、非 gen 代码里没有 `Migrations:`；be-sdk-go 是 `--sdk` 给的版本。
 - [ ] **4.5 改配置读取**：按 §2.1 把 `module.go`（及测试里构造 `Config` 的地方）的旧键名换成新键名。核对：
   ```bash
   grep -rnE '(String|StringOr|MustString|Int|IntOr|Bool|BoolOr)\("[a-z]' --include='*.go' backend || echo "无驼峰键读取"
@@ -528,7 +529,7 @@ bash $ROOT/dev/phase-06/tools/go-v2.sh $ID --sdk v0.4.0; echo "exit=$?"
   通过：两条都输出"无…"。依赖地址只用 `rt.Config.Endpoint(dep, "grpc")` / `MustEndpoint`；用户请求路径上 `besdk.UserClient(ctx, rt.Config, dep, "grpc")`，`besdk.SystemClient(rt.Config, dep, "grpc")` 只在 `Start()` 和事件 handler 里；对象存储 `rt.Config.S3URL()`。
 - [ ] **4.6 迁移入口**（be-sdk-go v0.4.0 的 `migrate` 包，P4；**由 `go-v2.sh --sdk v0.4.0` 完成，人工核对**）：
   - **脚本做的**（v0.4.0 起，在编译之前）：删掉 `backend/module/module.go` 的 `Migrations:` 一行；把 `backend/cmd/migrate/main.go` 改写成只剩 `func main() { migrate.Main(migrations.FS) }`（import `github.com/brickKit/be-sdk-go/migrate` 与本组件的 `…/v2/migrations`）；`migrations/embed.go`（`//go:embed *.sql` + `var FS embed.FS`）缺了就建；两处都核对，不符就 FAIL。连接串、`search_path`、`schema_migrations_<schema>` 表名、`up`/`down` 参数校验都由 SDK 负责（读 `PG_*`，缺键以 1 退出并点名；参数不对以 2 退出）；SDK 用 `database/pgx/v5`，不再有 lib/pq 与 `sslmode` 的问题。`component.yaml` 的 `migration.command` 不变（`["./migrate", "up"]`）。
-  - **人要做的**：读脚本产生的 diff（`git -C $C diff -- backend/ migrations/`），确认 `module.go` 里随 `Migrations:` 一起不再用的 import 已清掉、`migrations/embed.go` 的注释不再说"挂到 `Module.Migrations`"；核对 `Dockerfile`：仍然 `go build … -o /out/migrate ./backend/cmd/migrate` 并拷成 `/app/migrate`（`WORKDIR /app`，`./migrate up` 才找得到），`COPY component.yaml /app/component.yaml` 保留；迁移文件已嵌进二进制，`COPY migrations /app/migrations` 不再需要，可以删。
+  - **人要做的**：读脚本产生的 diff（`git -C $C diff -- backend/ migrations/`），确认 `module.go` 里随 `Migrations:` 一起不再用的 import 已清掉、`migrations/embed.go` 的注释不再说"挂到 `Module.Migrations`"；核对 `Dockerfile`（脚本已判"编译 `./backend/cmd/migrate` 并 `COPY --from` 进最终镜像"，人只看目的路径）：仍然 `go build … -o /out/migrate ./backend/cmd/migrate` 并拷成 `/app/migrate`（`WORKDIR /app`，`./migrate up` 才找得到），`COPY component.yaml /app/component.yaml` 保留；迁移文件已嵌进二进制，`COPY migrations /app/migrations` 不再需要，可以删。
   - 通过：`go-v2.sh` `exit=0`；`make migrate-idempotent` 绿；`verify` 里迁移容器 `Exited (0)`。
 - [ ] **4.7 `Makefile` 按 v1 改**（目标集合保持 06-testing.md 要求的那几个：`test`、`migrate-idempotent`、`contract-check`、`module-check`、`smoke`、`seed`/`seed-clean` 或 `db-reset`）：
   - `check-version`：不再查 `deployment.image`；HEAD 带 tag 时要求同时有 `$(VERSION)` 与 `v$(VERSION)`（Go）；`VERSION` 用 `yq` 或 `grep -m1 '^  version:'` 取 `metadata.version`。
@@ -558,7 +559,7 @@ TypeScript（infra/bff-mobile）对应项：`package.json` 的 `version` 改 `2.
 **4C 补前端需要的接口（§1.2 本组件那一行）**
 
 - [ ] **4.13 先写设计**：边界 / 契约 / 事件有变化的，先改 `docs/design.md`（第 5 步的文件，可以先只写这一段）。涉及新的跨组件事件或改变已有事件语义的，除 plan-06b 预设裁定（P9）已定的方案外，由控制者裁定并记录（§7），不自行扩展。
-- [ ] **4.14 契约先行，只增不改**：改 `contracts/*.proto` / `*.openapi.yaml` / `events/*.json`；`make contract-check` 绿；`buf generate` 重新生成 `gen/`（`git diff --stat gen/` 有变化，第 8 步要打新的契约包 tag）。然后跑 `bash $ROOT/dev/phase-06/tools/go-v2.sh $ID --recheck`（plan C4：重算根 `go.mod` require 的契约包版本并重跑判据），把它最后打印的"第 8.3 步需要打的契约包 tag"（或"不需要"）交给控制者。
+- [ ] **4.14 契约先行，只增不改**：改 `contracts/*.proto` / `*.openapi.yaml` / `events/*.json`；`make contract-check` 绿；`buf generate` 重新生成 `gen/`（`git diff --stat gen/` 有变化，第 8 步要打新的契约包 tag）。然后跑 `bash $ROOT/dev/phase-06/tools/go-v2.sh $ID --recheck`（plan C4：重算根 `go.mod` require 的契约包版本并重跑判据），把它最后打印的"第 8.3 步需要打的契约包 tag"（或"不需要"）交给控制者（脚本一律升 minor；只是重新生成、要 patch 时手工 `go mod edit -require=…@v1.x.(y+1)` 再 `--recheck`，见 tools README）。
 - [ ] **4.15 红绿**：每条新规则先写 L2 测试并跑红（红的原因是"功能还不存在"），再写实现跑绿；一个循环一个提交。有数据范围的接口（warehouse、legal_entity、org/owner）必须有"别人的数据看不到"的测试（06-testing.md#l2）。新增路由一律 `besdk.GET(r, path, permKey, h)` 这类带权限键的注册。
 
 **4D 全部测试**
