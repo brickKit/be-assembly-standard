@@ -112,6 +112,9 @@ Python 用蛇形命名对应同一套名字（`rt.config.endpoint`、`must_endpo
 - 现在用到的维度：`org`（按 `dept_path` 前缀匹配，不需要组织树副本）、`owner`（等于调用者的 `sub`），以及 `warehouse`、`legal_entity` 这类资源维度（调用者被授权的 ID 集合）。be-ops 把它们汇总进 `registry/data-scopes.tsv`。
 - `besdk.ScopeOf(ctx)` 给出按调用者 token 算好的过滤条件；repository 方法接收它，作为静态 `sqlc` 查询的参数传进去。不用 PostgreSQL 行级安全，不拼动态 SQL。
 - 列表把 `owner` 和 `org` 用 OR 组合时，两个操作数都必须来自调用者真实的范围；任何一个停留在"全匹配"，整个条件就匹配一切。
+- `dept_path` 为空的意思是调用者没有部门，绝不是部门树的根。SDK（be-sdk-go、be-sdk-python、be-sdk-ts v0.5.0）给这种调用者的 `org` 维一个不匹配任何行的哨兵前缀（`besdk.NoDeptPath`，同时 `HasDept` 为假），于是 `owner OR org` 只剩调用者自己的行，部门视图是空列表。`/` 是整棵树的显式标记（`All`）。看全公司的意思是坐在根部门，根部门的路径 `/<根id>/` 是其它所有路径的前缀。
+- 哨兵只用来比较。绝不把 `Prefix` 或 `Exact` 写进行里：记录建单人部门的快照（订单的 `dept_path`、`dept_id`）先看 `HasDept`，为假时存空串。
+- repository 绝不把空前缀读作"所有部门"。SDK 从不产出空前缀，所以空前缀到了 repository 就是漏传了参数：拒绝它（`InvalidArgument`），或者让 `org` 一侧什么都不命中。真要跨所有部门的系统视图（别的组件经 gRPC 调用）用一个显式参数表达，不用空串。
 - 每个有数据范围的组件都有一个测试：建两条归属不同身份的数据，用其中一个身份查，断言另一个身份的数据一条都不返回（[06-testing.md](06-testing.md#l2-业务规则测试)）。
 
 ## 调用其他组件

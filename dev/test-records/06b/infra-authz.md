@@ -185,3 +185,121 @@ verify infra/authz@2.0.0 汇总（输出目录 $BE_SCRATCH/verify/infra-authz-20
 - 交给控制者的：发布说明 `$S/notes-2.0.0.md`（"升级前必须做"有意改动两处，见 C8）；契约包不需要新 tag（仍 `gen/infra/authz/v1.0.5`）；父仓库待提交路径：`components/infra/authz`（指针，ship 后）、`brickkit.yaml`、`deploy.yaml`、`deploy.teardown.yaml`、`config/infra-authz.yaml`、`AGENTS.md`（组件表一行）、`dev/test-records/06b/infra-authz.md`；`manifest-overrides.yaml` 本组件那一段没有改动。`config/vars.yaml` 的 `AUTHZ_BUNDLE_URL` 已经是 `http://infra-authz-2-0-0:8223/authz/bundle`，与本次版本一致，没有改动。
 - 遗留到后续 Task：带 token `200`、`make seed`（iam 加入后）；外壳 go-infra 里再核一次 `PERMISSION_CATALOG` 穿过 `BRICKKIT_SERVED_MEMBERS_CONFIG` 的逐字节一致（T22）。
 - 检查点小结：infra/authz 2.0.0，tag `2.0.0` / `v2.0.0` 待 `make ship`，组件 HEAD 22a2701，无契约包 tag，遗留见上。
+
+## 2.0.1（R60 跟进：种子与文档）
+
+### 目标
+
+R60 之后，空 `dept_path` 的意思是"没有部门、只剩本人"，不再是"看全部"。本版要做的：把 `dev.superuser` 分到根部门，让它拿到真实的 `/<根id>/`；SDK 升到 be-sdk-go v0.5.0；在组件文档与项目约定里写明 `dept_path` 的语义；`AUTHZ_BUNDLE_URL` 改成 `infra-authz-2-0-1`；最后真机验证一遍。
+
+### 环境
+
+- 日期：2026-10-02。brickKit CLI v1.1.0，目标 docker。
+- 开工时组件仓库停在 22a2701（`2.0.0` / `v2.0.0`），工作区干净；开工前的 `make test` 全绿（`$S/201-test-baseline.log`）。
+- 项目里同时有 infra/workflow@2.0.1（另一条工作线）和 infra/iam-casdoor@2.0.0（未发布）。本地模式开始与结束都是 off。
+
+### 步骤
+
+1. 跑 `go get github.com/brickKit/be-sdk-go@v0.5.0 && go mod tidy`，输出 `go: upgraded github.com/brickKit/be-sdk-go v0.4.0 => v0.5.0`。之后 `make test` 全绿，`--- SKIP` 计数为 0。
+2. 核对 authz 里 dept_path 的取值：
+   - `grep ScopeOf|DeptPath`：authz 只在 `http.go:82` 用到 `ScopeOf(...).Owner`，没有任何代码读 `.Prefix`、`.All` 或空 dept_path。
+   - `CreateDepartment` 的 `parentPath` 初值是 `"/"`，路径算法是 `parentPath + id + "/"`，所以顶层部门是 `/<id>/`，本组件从不签发 `"/"`。
+   - 没有部门时 `DeptPathFor` 返回 `""`（`TestDeptPathFor_未分配返回空串不报错` 仍然成立）。
+   - 新增 `TestCreateDepartment_顶层部门dept_path是斜杠id斜杠不是根标记`，锁住现有行为，所以改动前后都是绿的，不是一次红绿循环。
+3. 改种子 `scripts/seed.sh`：
+   - 加上 `assign_dept "$SEED_SUB" "$ROOT_DEPT_ID"`。
+   - `assign_dept` 改为检查 HTTP 码，不是 200 就 `die`。
+   - `seed-clean.sh` 已经会按"「本地测试」总公司"删除 `user_departments`，不用改。
+4. 改文档：
+   - BRICKKIT、docs/design、AGENTS（各中英一份）。
+   - 组件版本号改成 2.0.1，README 的 add 命令和 OpenAPI `info.version` 一起改。
+   - 共 5 个提交，见"结论"。
+5. 组件门禁：`make test check-version dag-check contract-check import-scan module-check docs-check` 退出码 0。各项输出：
+   - `✓ version=2.0.1`
+   - `✓ 无依赖，无环`
+   - `buf breaking --against '.git#tag=v2.0.0'` 通过
+   - `✓ 无组件间 import`
+   - `✓ 入口签名对、零 os.Getenv、零进程级初始化、栈合规`
+   - `📋 Checked 3 files: 0 with errors, 0 warnings`
+   - `component-check.sh`：`✅ component-check infra/authz：10 项全部 PASS`
+6. 改父仓库文件（未提交）：
+   - `config/vars.yaml`：`AUTHZ_BUNDLE_URL: http://infra-authz-2-0-1:8223/authz/bundle`
+   - `docs/{en,zh}/01-conventions/02-backend.md` 的 Data scopes 一节加 3 条
+   - `docs/{en,zh}/03-seed-data.md`：每个种子用户在哪个部门
+   - 根 `AGENTS.md` / `AGENTS.zh.md` 易错点表加一行
+   - `make docs-mirror docs-boundary` 两个都退出 0
+7. `make integrate ID=infra/authz VERSION=2.0.1` 退出 0。upgrade 的输出原文：
+   ```
+      ⬆️  infra/authz: 2.0.0 → 2.0.1
+      ✅ infra/authz@2.0.0 (requiredBy: infra/iam-casdoor)
+   ```
+   `up --dry-run` 里 `infra-authz-2-0-0` 和 `infra-authz-2-0-1` 同时出现（见卡点 1）。
+8. `make gates` 退出 0，其中 `✓ service-hostname-scan：0 条错误（0 条警告）`，其余 gate 都是 0 条违规。
+9. 真机运行：用 `project-lock.sh` 跑 `$S/201-verify-and-claims.sh`，在一次锁内依次做完下面几件事：
+   - `make verify ID=infra/authz ROUTE=/api/admin/roles SEED=1 FORCE_BUILD=1 KEEP=1`
+   - 换四个种子用户的应用 JWT，只解码 `dept_path` 这一个 claim
+   - `brickkit down -f deploy.verify.yaml`，删掉 `deploy.verify.yaml`
+
+   verify 汇总（`$S/201-verify/summary.md`）：
+   ```
+   | brickkit build infra/authz | FAIL | 构建失败 | build.log |
+   | 镜像 infra-authz:2.0.1：sh + wget、/app/component.yaml | PASS |  | image-check.log |
+   | brickkit up -f deploy.verify.yaml | PASS |  | up.log |
+   | 迁移容器 Exited (0)（3 个） | PASS |  | migration-*.log |
+   | infra-authz-2-0-1 running (healthy)（容器服务 infra-authz-2-0-1） | PASS |  | status.log |
+   | GET /healthz → 200 | PASS |  | http.log |
+   | GET /api/admin/roles 不带 token → 401/503 | PASS | 实际 401 | http.log |
+   | GET /api/admin/roles 带 token → 200 | PASS |  | http.log |
+   | make -C components/infra/authz seed | PASS |  | seed.log |
+   | make test-cross ID=infra/authz | PASS |  | test-cross.log |
+   | brickkit up --focus infra/authz | SKIP | 没设 FOCUS=1 |  |
+   | brickkit down | SKIP | KEEP=1：容器保留，用完 brickkit down -f deploy.verify.yaml |  |
+   ```
+   build.log 里 FAIL 的原文：`✅ Built infra/authz@2.0.1 → infra-authz:2.0.1`，然后 `🔨 Building infra/authz@2.0.0 → infra-authz:2.0.0` / `❌ Error: component not found … error_code":"COMPONENT_NOT_FOUND"`。
+
+   种子之后的 claims（token 本身没有打印）：
+   ```
+     dev.superuser          dept_path='/1/'
+     dev.sales.east         dept_path='/1/2/'
+     dev.warehouse.south    dept_path='/1/3/'
+     dev.finance.viewer     dept_path=''
+   authz 部门表：1 「本地测试」总公司 /1/；2 「本地测试」华东分部 /1/2/；3 「本地测试」华南分部 /1/3/
+   ```
+   收尾：`down exit=0`，`剩下的项目容器：<无>`，`Local mode: off`。
+
+### 现象
+
+- 符合预期的：
+  - `dev.superuser` 的 token 带上了根部门的真实路径 `/1/`，它是 `/1/2/`、`/1/3/` 的前缀，所以它在 org 维看得到每个部门。
+  - `dev.finance.viewer` 是唯一没有部门的种子用户，`dept_path=''`。
+  - 带 token 访问受保护路由得到 200。
+  - 种子可以重复跑：部门和角色都按"已存在"跳过，只补上分配。
+- 不符合预期的：项目里出现了 authz 2.0.0 和 2.0.1 两个版本并存（见卡点 1）。
+
+### 卡点与绕过
+
+1. **authz 两个版本并存。** `infra/iam-casdoor/component.yaml` 里依赖的还是 `infra/authz@2.0.0`（iam 未发布，pin 归 iam 工作线改），所以 `brickkit upgrade` 照规则把 2.0.0 保留为 `requiredBy: [infra/iam-casdoor]`，带来四处连锁变化：
+   - `brickkit.yaml`、`deploy.yaml`（`infra/authz@2.0.0`）、`config/infra-authz@2.0.0.yaml`、AGENTS 组件表都多出一项。
+   - verify 闭包同时起了两个 authz 实例，共用同一个 `infra_authz` schema。iam 的 `ResolveClaims` 打到 2.0.0 实例，但因为库是同一个，claims 的结果一样。
+   - 这次 verify 唯一的 FAIL 就是它造成的：`FORCE_BUILD` 时 `brickkit build infra/authz` 要把项目里这个 ID 的两个版本都构建一遍，而本地源只有 2.0.1，于是 2.0.0 报 `COMPONENT_NOT_FOUND`。2.0.1 的镜像构建成功，2.0.0 用的是已有镜像。
+   - 绕过：本工作线没改 iam（不在 brief 范围内）。iam 的 pin 改成 `@2.0.1` 之后再跑一次 `brickkit upgrade infra/iam-casdoor` 或 `brickkit sync`，2.0.0 那项和 `config/infra-authz@2.0.0.yaml` 就会消失，build 也会恢复成单个版本。
+2. 演示库里 `dev.superuser` 早先建的 `seed-order-*` 和 `seed-opp-1..5`，`dept_path` 是 `''`。等消费方用上 SDK v0.5.0，这些行只有 owner 自己看得到。sales 和 opportunity 要先 `seed-clean` 再重灌（已经写进 `03-seed-data.md`）。这一步本工作线没有做。
+3. 没有翻 brickKit 源码。
+
+### 结论
+
+已完成。组件仓库新增 5 个提交，没有推送、没有打 tag：
+
+- 84f2244 版本号 2.0.1
+- 21510e8 be-sdk-go v0.5.0
+- ff88599 test：顶层部门路径
+- c29d830 fix(seed)：dev.superuser 分到根部门
+- 7b3f823 docs
+
+契约包仍是 `gen/infra/authz/v1.0.5`。发布说明在 `$S/notes-2.0.1.md`。
+
+没有部门的种子用户只有 `dev.finance.viewer`。这是对的：它只有 `erp.finance.view`，finance 按 `legal_entity` 维限定，不读 `dept_path`；在按部门限定的列表里它只看得到自己的行，正好符合"只读财务"的意图。`BOOTSTRAP_ADMIN_SUB`（本地留空）配置的首个管理员同样没有部门。它只需要用 admin API 分配部门和角色，不需要看部门数据；部署方要让他看全公司，就给他分到根部门（已写进 BRICKKIT 的"部署前准备"）。
+
+### 反馈候选
+
+- 项目工具：`verify-component.sh` 在 `FORCE_BUILD=1` 时跑的 `brickkit build <id>` 会构建项目里这个 ID 的所有版本。并存版本只要缺本地源，就整行 FAIL，哪怕目标版本已经构建成功。可以改成 `brickkit build <id>@<目标版本>`，或者把两行分开报告。这不是 brickKit 的问题，brickKit 的行为符合"项目里有哪些版本就建哪些"。

@@ -195,3 +195,195 @@ aa6be29 docs: 写明 CreateTask 的 summary_json 可选、不是合法 JSON 时�
 - 父仓库待控制者提交（脚本写出，未提交）：`brickkit.yaml`、`deploy.yaml`、`deploy.teardown.yaml`、`config/infra-workflow.yaml`、`AGENTS.md`（组件表一行）、`components/infra/workflow`（指针，ship 之后），以及本记录。共享文件里同时有别的工作线的行（authz、notification、mdm/product、im-dingtalk、print、inventory），按 8.7 只取本组件的块。`registry/permissions.tsv` 里的 `+mdm.product.set_status	启用/停用产品	action	mdm/product` 是 mdm/product 工作线的，不是本组件（本组件没有新权限键）。
 - 遗留到后续：带 token 打受保护路由得 200（iam 加入后 / T25）；`.proto` 注释清理（下一次契约变更）；归档与清理任务（未实现，写进 design 的未决问题）。
 - 检查点：infra/workflow 2.0.0，tag `2.0.0` / `v2.0.0` / `gen/infra/workflow/v1.0.4` 待 `make ship`，组件 HEAD aa6be29。
+
+## 2.0.1（R60：没分部门的人数据范围 fail-closed）
+
+### 目标
+
+已发布的 infra/workflow 2.0.0 把 token 里为空的 `dept_path` 当成"不限"（空前缀在 `LIKE … || '%'` 与 `strings.HasPrefix` 里匹配一切），没分部门的人在"我的待办"、管理视图、待办详情里看得到全部（`dev/phase-06/dept-scope-analysis.md` §3.1，`repo/tasks.go:72-73`、`tasks.go:287-295`）。按 §6.2 第 2 步修成 2.0.1：先在 be-sdk-go v0.4.0 上跑红，升 v0.5.0，仓储层用显式 `AllDepts` 表达系统视图，空前缀报 `InvalidArgument`。
+
+### 环境
+
+- brickKit CLI v1.1.0；be-sdk-go v0.4.0 → v0.5.0（proxy.golang.org 直接拿到，没碰到 sumdb 负缓存，没设 `GONOSUMDB`）。
+- 测试库 `brickkit_test_db`（`TEST_PG_DSN` 由 env.sh 拼出，不打印值）。
+- 起点：组件 HEAD aa6be29（2.0.0 / v2.0.0 / gen/infra/workflow/v1.0.4），工作区干净，`## main...origin/main`。
+- 同时在跑的工作线：authz 2.0.1、sales、opportunity（R4 批次）。
+
+### 步骤
+
+1. 红测试（提交 4d5049e），SDK v0.4.0，`go test ./backend/... -race -count=1 -run '无部门|AllDepts|ScopePrefix留空|空前缀org' -v`：
+   ```
+   --- FAIL: TestListTasks_非系统视图ScopePrefix留空报InvalidArgument (0.04s)
+       repo_test.go:516: 我的待办：ScopePrefix 留空应该 ErrInvalidArgument，实际 err=<nil>、返回 1 条
+   --- FAIL: TestTask_InScope_空前缀org一侧不命中 (0.00s)
+       repo_test.go:528: 空前缀不该在 org 一侧命中（assignee_dept_path="/1/12/"）
+   --- FAIL: TestListMyTasks_无部门的人只看到指派给自己的待办 (0.05s)
+       service_test.go:256: 别的部门里别人的待办不该出现：没分部门不是'不限'
+   --- FAIL: TestListTasksAdmin_无部门的管理员看不到任何部门的待办 (0.05s)
+       service_test.go:279: 没分部门的管理员不该看到任何部门的待办，实际 3 条
+   --- FAIL: TestGetTaskDetail_无部门的人看别人的待办是Forbidden (0.04s)
+       service_test.go:292: 没分部门的人看别人的待办（assignee_dept_path="/1/12/"）应该 ErrForbidden，实际：<nil>
+   --- PASS: TestListTasks_gRPC系统视图AllDepts仍看全部 (0.04s)
+   ```
+   回归用例在旧代码上是绿的（设计如此：它守的是修完之后系统视图不被误伤）。
+2. `go get github.com/brickKit/be-sdk-go@v0.5.0` + `go mod tidy`（提交 3fa7811）：
+   ```
+   go: upgraded github.com/brickKit/be-sdk-go v0.4.0 => v0.5.0
+   --- PASS: TestListMyTasks_无部门的人只看到指派给自己的待办 (0.05s)
+   --- PASS: TestListTasksAdmin_无部门的管理员看不到任何部门的待办 (0.05s)
+   --- PASS: TestGetTaskDetail_无部门的人看别人的待办是Forbidden (0.04s)
+   --- PASS: TestListTasks_gRPC系统视图AllDepts仍看全部 (0.05s)
+   --- FAIL: TestListTasks_非系统视图ScopePrefix留空报InvalidArgument (0.04s)
+   --- FAIL: TestTask_InScope_空前缀org一侧不命中 (0.00s)
+   ```
+   `go list -m all | grep brickKit/`：`infra-workflow/v2`、`be-sdk-go v0.5.0`、`infra-workflow/gen/infra/workflow v1.0.4 => ./gen/infra/workflow`。
+3. 额外一条红测试（提交 9c6e10a）：`CreateTask` 收到不以 `/` 开头的非空 `assignee_dept_path`（如哨兵 `!no-dept`）要报参数错误——哨兵一旦进行，所有没分部门的人的前缀都等于它，彼此看得到对方的待办：
+   ```
+       service_test.go:342: assignee_dept_path="!no-dept" 应该 ErrInvalidArgument，实际：<nil>
+   --- FAIL: TestCreateTask_assignee_dept_path不是真实路径报参数错误 (0.05s)
+   ```
+4. 实现（提交 c3aa29a）：`repo.ListInput.AllDepts`；`ListTasks` 先 `validateScope()`（非系统视图空 `ScopePrefix`、我的待办空 `ScopeOwner`、`AllDepts` 用在我的待办上或与 `ScopePrefix` 同给 → `ErrInvalidArgument`）；`Task.InScope` 空操作数不命中；gRPC `ListTasks` 设 `AdminView=true, AllDepts=true`；两条 REST 路径显式 `AllDepts=false`；`CreateTask` 校验 `assignee_dept_path`。新增绿测试 `TestListTasks_AllDepts系统视图看全部包括空部门行`、`TestListTasks_根标记斜杠看得到所有有部门的待办`。
+   ```
+   --- PASS: TestListTasks_非系统视图ScopePrefix留空报InvalidArgument (0.04s)
+   --- PASS: TestTask_InScope_空前缀org一侧不命中 (0.00s)
+   --- PASS: TestListTasks_AllDepts系统视图看全部包括空部门行 (0.04s)
+   --- PASS: TestListTasks_根标记斜杠看得到所有有部门的待办 (0.05s)
+   --- PASS: TestListMyTasks_无部门的人只看到指派给自己的待办 (0.06s)
+   --- PASS: TestListTasksAdmin_无部门的管理员看不到任何部门的待办 (0.05s)
+   --- PASS: TestGetTaskDetail_无部门的人看别人的待办是Forbidden (0.05s)
+   --- PASS: TestListTasks_gRPC系统视图AllDepts仍看全部 (0.04s)
+   --- PASS: TestCreateTask_assignee_dept_path不是真实路径报参数错误 (0.04s)
+   ```
+5. 旧测试：逐个核对了 `authedCtx` / `engineAs` / `ScopePrefix` 的全部调用点，没有一条断言"空 dept_path 看全部"（2.0.0 的测试都带真实路径），所以没有要单独提交改掉的测试。
+6. 文档（提交 f34692e）：BRICKKIT / AGENTS / docs/design 中英；版本（提交 41df273）：`metadata.version` 2.0.1，README 的 `brickkit add` 行。`.proto` 未动（`git diff --stat 2.0.0 -- contracts gen` 为空），契约包仍是 v1.0.4。
+7. 门禁：
+   ```
+   component-check：✅ component-check infra/workflow：10 项全部 PASS
+   docs-check：📋 Checked 3 files: 0 with errors, 0 warnings（exit=0）
+   make check-version test contract-check import-scan module-check dag-check（exit=0）：
+   ✓ version=2.0.1（go.mod 主版本一致；HEAD 上没有 tag，或 2.0.1 与 v2.0.1 都在）
+   ok  	github.com/brickKit/infra-workflow/v2/backend/internal/http	1.252s
+   ok  	github.com/brickKit/infra-workflow/v2/backend/internal/partition	1.084s
+   ok  	github.com/brickKit/infra-workflow/v2/backend/internal/repo	1.870s
+   ok  	github.com/brickKit/infra-workflow/v2/backend/internal/service	1.529s
+   buf breaking --against '.git#tag=v2.0.0'
+   ✓ 无组件间 import
+   ✓ 入口签名对、零 os.Getenv、零进程级初始化、栈合规
+   ✓ 无依赖，无环
+   make test-db-init ID=infra/workflow：✓ 迁移幂等 / ✓ brickkit_test_db 就绪
+   project-lock make gates（exit=0）：import 扫描、SystemClient、裸路由、事件契约、data-scope-test-scan、dependency-version-scan、service-hostname-scan（0 错误 0 警告）、config-key-scan、openapi-additive-scan 全部 0 条违规
+   ```
+8. `make integrate ID=infra/workflow VERSION=2.0.1`（exit=0）：
+   ```
+   📋 Version change summary:
+      infra/workflow: 2.0.0 → 2.0.1
+      ├── Dependency changes: none
+      ├── Added config items: none
+      ├── Removed config items: none
+      ├── Database migration: ./migrate up
+      ├── Artifacts changes: none
+      ├── Resource quota changes: none
+      └── Old-version artifacts: kept (callers may still point at the old version)
+   ✓ integrate infra/workflow@2.0.1 完成
+   ```
+9. `make verify ID=infra/workflow ROUTE=/infra/workflow/tasks FORCE_BUILD=1`（exit=0，输出目录 `$BE_SCRATCH/verify/infra-workflow-20261002-145123`）：
+
+   | 检查项 | 结果 | 原因 | 日志 |
+   |---|---|---|---|
+   | brickkit build infra/workflow | PASS |  | build.log |
+   | build infra/authz@2.0.1（闭包里缺镜像） | PASS |  | build-infra-authz.log |
+   | 镜像 infra-workflow:2.0.1：sh + wget、/app/component.yaml | PASS |  | image-check.log |
+   | brickkit up -f deploy.verify.yaml | PASS |  | up.log |
+   | 迁移容器 Exited (0)（4 个） | PASS |  | migration-*.log |
+   | infra-workflow-2-0-1 running (healthy)（容器服务 infra-workflow-2-0-1） | PASS |  | status.log |
+   | GET /healthz → 200 | PASS |  | http.log |
+   | GET /infra/workflow/tasks 不带 token → 401/503 | PASS | 实际 401 | http.log |
+   | GET /infra/workflow/tasks 带 token → 200 | PASS |  | http.log |
+   | make -C <源目录> seed | SKIP | 没设 SEED=1 |  |
+   | make test-cross ID=infra/workflow | PASS |  | test-cross.log |
+   | brickkit up --focus infra/workflow | SKIP | 没设 FOCUS=1 |  |
+   | brickkit down：docker ps 里没有本项目（brickkit-be-assembly-standard）的容器 | PASS |  | down.log |
+
+   http.log：`GET http://infra-workflow-2-0-1:8201/infra/workflow/tasks（带 dev.superuser 的 token，第 1 次）→ 200`。
+
+### 现象
+
+- 没分部门的人：升 SDK 本身就让 service 层三条转绿（哨兵对没改代码的消费者也是 fail-closed），仓储层守卫是第二道：以后谁在 REST 路径上漏填前缀，答 400 而不是悄悄返回全部。
+- 带 token 那一行第一次就 200（SDK v0.5.0 的 bundle 首次拉取短退避生效，没有走到 verify 的 30 秒重试）。
+
+### 卡点与绕过
+
+- `config/vars.yaml` 的 `AUTHZ_BUNDLE_URL` 在本工作线 integrate 期间变成 `infra-authz-2-0-1`：是并行的 authz 2.0.1 工作线改的（integrate 不碰 `$var` 值），`brickkit.yaml` 里 authz 顶层已是 2.0.1，两者一致，gates 的 service-hostname-scan 0 警告。没有改动它。
+- verify 的闭包缺 `infra-authz:2.0.1` 镜像，脚本按 authz 工作线当时的工作区（HEAD 7b3f823）构建了它。authz 工作线之后若再改代码，要 `FORCE_BUILD=1`，否则镜像停在这一版。
+- verify 收尾后 docker ps 里出现的 `infra-authz-2-0-0` / `infra-authz-2-0-1` / `infra-iam-casdoor-2-0-0` 容器是 authz 工作线之后起的（本工作线 down 时核对过零容器），没有动。
+
+### 结论
+
+infra/workflow 2.0.1 就绪待发布：组件 HEAD 41df273（6 个提交，未推送、未打 tag）；契约包不需要新 tag（仍 `gen/infra/workflow/v1.0.4`）；发布说明 `$BE_SCRATCH/06b/infra-workflow/notes-2.0.1.md`。
+
+### 反馈候选
+
+- 下游：erp/sales 的 `opportunity_won.go` 把商机的 `DeptPath` 原样当成 `assignee_dept_path` 传给 `CreateTask`。只要 sales / opportunity 按 R60 在没分部门时写空串（不写哨兵），这里就是合法值；若哪天写进了哨兵，workflow 2.0.1 会以 `INVALID_ARGUMENT` 拒绝建待办——是大声失败，不是静默泄露。sales 工作线知悉即可。
+- 2.0.0 审查时记下的 R51 项（`建待办失败` 等对调用方错误也记 ERROR）不在本次范围，仍在 T26 清单里。
+
+### 2.0.1 追加：R51 日志级别与 R62 范围外单条读答 404（控制者要求并入 2.0.1，不发 2.0.2）
+
+#### 目标
+
+- R51：调用方错误（4xx）不记 ERROR；进程关停时的 ctx 取消不是错误；ERROR 只留给映射成 Internal 的。
+- R62：存在但不在调用者范围内的单条读答 404，与不存在的 id 一样；动作（approve / reject）仍 403。
+
+#### 步骤
+
+1. R51 红测试（新增 `service/logging_test.go`、`partition_test.go`、`module/module_test.go`），原文：
+   ```
+   level=ERROR msg=周分区维护失败 error="context canceled"
+   --- FAIL: TestStart_关停时的取消不记ERROR (0.00s)
+   level=ERROR msg=关闭待办失败 task_id=727 error="关闭待办: 参数不合法: idempotency_key \"log-used-1790945813766083637-3\" 已经被 CreateTask 用过，不能再用于 CloseTask"
+   level=ERROR msg=作废待办失败 task_id=不是数字 error="参数不合法: task_id 不合法：\"不是数字\""
+   level=ERROR msg=关闭待办失败 task_id=999999999999 error="关闭待办: not found: task id=999999999999"
+   level=ERROR msg=关闭待办失败 task_id=727 error="关闭待办: 待办已经不是 PENDING 状态"
+   level=ERROR msg=作废待办失败 task_id=727 error="作废待办: 待办已经不是 PENDING 状态"
+   level=ERROR msg=建待办失败 source_component=erp/sales source_id=log-1 error="建待办: context canceled"
+   --- FAIL: TestWrite_调用方错误与取消不记ERROR (0.07s)
+   --- PASS: TestWrite_服务端故障仍记ERROR (0.00s)
+   level=ERROR msg=扫描超期待办失败 error="扫描超期待办: context canceled"
+   --- FAIL: TestStartOverdueScan_关停时的取消不记ERROR (0.00s)
+   ```
+   改法（提交 6b70e0c，测试与修复同一个 fix 提交，与 mdm/customer 的做法一致）：`service.logFailure`（取消 / 超时 → Warn，Internal → ERROR，其余 → Info）；分区维护与超期扫描在 `ctx.Err() != nil` 时不记。转绿：三条 PASS，对照组仍 PASS。
+2. R62 改测试（单独提交 7c7d945，写明是有意的行为变更）：`TestGetTaskDetail_范围外ErrForbidden` → `…范围外ErrNotFound`、`TestGetTaskDetail_无部门的人看别人的待办是Forbidden` → `…是NotFound`、`TestGetTask_范围外403` → `TestGetTask_范围外404与不存在无法区分`（状态码与错误信息形状都和不存在的 id 一样）；新增 `TestApprove_范围外仍是403`（绿）。红：
+   ```
+   http_test.go:178: 范围外期望 404，实际 403：map[error:无权访问该待办]
+   service_test.go:101: 范围外应该是 ErrNotFound，实际：无权访问该待办
+   service_test.go:296: 没分部门的人看别人的待办（assignee_dept_path="/1/12/"）应该 ErrNotFound，实际：无权访问该待办
+   ```
+   修复（提交 75bb227）：`checkTaskInScope` 范围外返回 `repo.TaskNotFound(taskID)`（与 `GetTask` 查不到时同一个构造函数）。gRPC 没有带用户身份的单条读（`GetTaskStatus` / `BatchGetTasks` 是系统视图），不涉及。OpenAPI（提交 3b8f823）：只改 403 / 404 的说明，响应码集合不变；文档（提交 bb9b9b5）。
+3. 门禁第一次 FAIL：`✗ infra/workflow：声明了 data_scopes 维度 owner+org，但测试文件里找不到任何「越权/超出范围被拒绝」形状的测试`。原因：be-acceptance 的 data-scope-test-scan 强信号只有 `forbidden`，"范围"要与"拒绝 / 看不到 / 查不到 / 没有"成对出现；R62 把名字里的 Forbidden 改掉后就没有一条命中。处理：把 `TestGetTaskDetail_范围外ErrNotFound` 改名为 `TestGetTaskDetail_范围外的待办查不到ErrNotFound`（提交 493d767，断言未动），重跑 `✓ data-scope-test-scan：0 条违规`。
+4. 重跑：component-check `10 项全部 PASS`；docs-check `0 with errors, 0 warnings`；`make check-version test contract-check import-scan module-check dag-check` exit 0（五个包 ok，含新的 module 包）；project gates exit 0，`openapi-additive-scan：0 条违规`、`service-hostname-scan：0 条错误（0 条警告）`。
+5. 重新真机（R51 动了 Start() 启动的两个后台循环；本地 2.0.1 镜像是 41df273 构建的，不重建会一直停在旧代码）：`make verify ID=infra/workflow ROUTE=/infra/workflow/tasks FORCE_BUILD=1` exit 0，输出目录 `$BE_SCRATCH/verify/infra-workflow-20261002-150207`：
+
+   | 检查项 | 结果 | 原因 | 日志 |
+   |---|---|---|---|
+   | brickkit build infra/workflow | PASS |  | build.log |
+   | 镜像 infra-workflow:2.0.1：sh + wget、/app/component.yaml | PASS |  | image-check.log |
+   | brickkit up -f deploy.verify.yaml | PASS |  | up.log |
+   | 迁移容器 Exited (0)（4 个） | PASS |  | migration-*.log |
+   | infra-workflow-2-0-1 running (healthy)（容器服务 infra-workflow-2-0-1） | PASS |  | status.log |
+   | GET /healthz → 200 | PASS |  | http.log |
+   | GET /infra/workflow/tasks 不带 token → 401/503 | PASS | 实际 401 | http.log |
+   | GET /infra/workflow/tasks 带 token → 200 | PASS |  | http.log |
+   | make -C <源目录> seed | SKIP | 没设 SEED=1 |  |
+   | make test-cross ID=infra/workflow | PASS |  | test-cross.log |
+   | brickkit up --focus infra/workflow | SKIP | 没设 FOCUS=1 |  |
+   | brickkit down：docker ps 里没有本项目（brickkit-be-assembly-standard）的容器 | PASS |  | down.log |
+
+   容器日志级别统计：`1 INFO`、`2 WARN`、`0 ERROR`。两条 WARN 是 authz 还在启动时 SDK 首次拉取 bundle 的短退避重试（`拉取 authz bundle 失败，沿用内存里已有的旧版本 … lookup infra-authz-2-0-1 … server misbehaving`），随后带 token 那一行 200。verify 开始前 docker ps 里没有项目容器，authz 工作线的容器当时已经收掉。
+
+#### 结论
+
+组件 HEAD 493d767，在 41df273 之后又有 7 个提交，未推送、未打 tag；版本仍是 2.0.1，契约包仍是 v1.0.4（.proto 未动）。发布说明已补（升级前必须做加 R62 一条，修复加 R51 两条）。
+
+#### 反馈候选
+
+- **be-acceptance data-scope-test-scan 不认 NotFound**：R62 之后所有组件的范围外单条读都会从 Forbidden 改成 NotFound，扫描器的强信号只有 `forbidden`，别的组件改完也会被误判成"没有边界测试"。建议把 `notfound` / `404` 与"范围 / 别人 / 越权"成对时也算作信号（或把 R62 形状的测试名写进总纲）。→ 交控制者（工具仓库）。
+- be-sdk-go 首次拉取 bundle 失败时的 WARN 文案"沿用内存里已有的旧版本"在首次成功之前不准确（内存里还没有任何版本）。小问题。→ SDK 下一次改动时顺带。

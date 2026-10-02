@@ -10,8 +10,8 @@
 
 | 组件 | 数据 | 数量 |
 |---|---|---|
-| infra/iam-casdoor | 四个测试用户，密码都是 `DevSeed123!`：`dev.superuser`（全部权限，无部门）、`dev.sales.east`（华东销售）、`dev.warehouse.south`（华南仓管）、`dev.finance.viewer`（财务只读）；以及只在本地存在的登录应用 `local-dev-seed-app` | 4 个用户，1 个应用 |
-| infra/authz | 四个角色（`dev_superuser` 拥有全部权限键；`dev_sales_rep`、`dev_warehouse_manager`、`dev_finance_viewer` 各有一个子集）和一棵部门树（总公司 → 华东、华南），分别授予上面四个用户。它自己去 Casdoor 查用户的 `sub` | 4 个角色，3 个部门 |
+| infra/iam-casdoor | 四个测试用户，密码都是 `DevSeed123!`：`dev.superuser`（全部权限，总公司）、`dev.sales.east`（华东销售）、`dev.warehouse.south`（华南仓管）、`dev.finance.viewer`（财务只读，无部门）；以及只在本地存在的登录应用 `local-dev-seed-app` | 4 个用户，1 个应用 |
+| infra/authz | 四个角色（`dev_superuser` 拥有全部权限键；`dev_sales_rep`、`dev_warehouse_manager`、`dev_finance_viewer` 各有一个子集）和一棵部门树（总公司 → 华东、华南），分别授予上面四个用户：`dev.superuser` 在总公司（根部门），`dev.sales.east` 在华东，`dev.warehouse.south` 在华南，`dev.finance.viewer` 不分部门。它自己去 Casdoor 查用户的 `sub` | 4 个角色，3 个部门 |
 | mdm/customer | 覆盖零售、软件、食品、建筑、能源、农业、医疗等行业的客户；`ACTIVE` 和 `DISABLED`；信用额度从 0 到 100 万，含一个刻意压得极低的；部分回填了过去的创建时间。1–5 号被下游引用，只增不改 | 12 |
 | mdm/product | 每种 `TrackingType`（`NONE`、`BATCH`、`SERIAL`）都有产品；`ACTIVE` 和 `DISABLED`；单价从几毛到 2200；部分回填了过去的创建时间。1–5 号只增不改 | 12 |
 | erp/inventory | 一套自成一体的数据（四个自造 ID 的产品分布在 WH-EAST、WH-SOUTH 两个仓库：入库、出库、盘盈、盘亏、一条未完结预留）；探测到 mdm/product 的种子数据时，给它的每个产品各灌 200 件；只给 `dev.warehouse.south` 授权 WH-SOUTH | 4 条自造 + mdm/product 每个产品一条 |
@@ -20,7 +20,7 @@
 | erp/finance | 覆盖应收、应付、存货、收入、成本的人工凭证（单行与多行，其中一张被红字冲销）；三种状态的会计期间（2026-04 结账后锁定、2026-05 结账后反结账、2026-07 只结账）；给 `dev.superuser` 和 `dev.finance.viewer` 的法人访问授权 | 5 张凭证，1 张冲销，3 个期间 |
 | infra/print | 两个可渲染的模板：`sales.delivery_note`（PDF，按行循环的表格，模板 ID 与数据形状同前端的打印按钮；两个版本，版本列表与回滚有东西可看）和 `sales.shipping_label`（ZPL，含条码指令）；灌入时各经 gRPC 真实渲染一次 | 2 个模板，3 个版本 |
 
-用这些账号看到的数据范围：`dev.sales.east` 的列表里只有 `seed-opp-6..11` 和本部门的订单；`dev.warehouse.south` 只看得到 WH-SOUTH 的库存。erp/finance 的应收和信用占用不需要灌：库存、销售、商机产生的事件会把它们填满。
+用这些账号看到的数据范围：`dev.superuser` 坐在根部门，根部门的路径是其它所有路径的前缀，所以它看得到每个部门的订单、商机与待办；`dev.sales.east` 的列表里只有 `seed-opp-6..11` 和本部门的订单；`dev.warehouse.south` 只看得到 WH-SOUTH 的库存和华南的待办；`dev.finance.viewer` 没有部门，也没有按部门限定的那些列表的权限键（访问它们答 `403`）；它只读财务，财务按法人限定。没有部门的账号永远不会经 `org` 维看到别人的行。账号没有部门时建的行 `dept_path` 为空，之后只有建它的人看得到；所以在 `dev.superuser` 还没分部门时灌过种子的演示库，重灌前要先 `make -C components/crm/opportunity seed-clean` 和 `make -C components/erp/sales seed-clean`。erp/finance 的应收和信用占用不需要灌：库存、销售、商机产生的事件会把它们填满。
 
 每个人类可读的名字都以 `「本地测试」` 开头，在任何地方都能认出种子数据；每个组件的 `seed-clean` 靠这个前缀加它固定的幂等键找到自己的行。
 
