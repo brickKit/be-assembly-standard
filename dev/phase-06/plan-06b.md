@@ -140,14 +140,15 @@ component-loop §6.2 的试点拍板项 P1–P8，以及本计划新增的几项
 
 ## 组件 Task 通用流程（T7、T9–T20 都按它走）
 
-每一步的细节在 `component-loop.md` 对应小节（T6 已按 v1.1.0 更新）；这里给出用工具后的确切命令和判据。下面的 `$ROOT`、`$ID`、`$REPO`、`$UREPO`、`$C`、`$S`、`$SCHEMA`、`$ROLE`、`$SVC` 由 `env.sh` 给出：
+每一步的细节在 `component-loop.md` 对应小节（T8 已按试点回灌）；这里给出用工具后的确切命令和判据。下面的 `$ROOT`、`$ID`、`$REPO`、`$UREPO`、`$C`、`$S`、`$SCHEMA`、`$ROLE`、`$SVC` 由 `env.sh` 给出。Bash 工具每次调用都是新 shell，**每次调用开头都重跑这三行**：
 
 ```bash
 export ROOT=/home/zhijie/Desktop/github/be-assembly-standard ID=<scope>/<name>
-eval "$(bash $ROOT/dev/phase-06/tools/env.sh $ID)"     # 打印的 export 行见 T3
+export BE_SCRATCH=/tmp/claude-1000/-home-zhijie-Desktop-github-be-assembly-standard/1c264f6e-aaa4-4367-bc16-6601a194d7e7/scratchpad
+E=$(bash $ROOT/dev/phase-06/tools/env.sh $ID) && eval "$E" || exit 2   # 核对 brickkit v1.1.0 与 buf；PATH 追加 ~/go/bin；TEST_PG_DSN/TEST_NATS_URL（不打印值）
 ```
 
-- [ ] **C1 前置**（component-loop 第 1 步）：`git -C $C status -sb` 第一行是 `## main...origin/main` 且下面没有文件行；`make -C $ROOT check` 全绿；`brickkit version` 是 v1.1.0；本 Task 的前置都"已发布"（`git -C $ROOT/components/<上游> ls-remote --tags origin 2.0.0` 有一行）；按 component-loop 1.5 的顺序读文件。开 `dev/test-records/06b/$REPO.md`。
+- [ ] **C1 前置**（component-loop 第 1 步）：上面三行不报错；`command -v protoc-gen-go` 在 `~/go/bin` 下（component-loop 1.4）；`git -C $C status -sb` 第一行是 `## main...origin/main` 且下面没有文件行；`git -C $C fetch --tags -q` 后最后一个 1.x tag 在本地；`make -C $ROOT check` 全绿；本 Task 的前置都"已发布"（`git -C $ROOT/components/<上游> ls-remote --tags origin 2.0.0` 有一行）；按 component-loop 1.5 的顺序读文件。开 `dev/test-records/06b/$REPO.md`。样板是已发布的 `components/mdm/customer`（2.0.0）与它的记录 `dev/test-records/06b/mdm-customer.md`；裁定见 `dev/test-records/06b/T8-pilot-review.md`。
 - [ ] **C2 骨架与文档骨架**（第 2 步）：
   ```bash
   bash $ROOT/dev/phase-06/tools/docs-skel.sh $ID
@@ -160,25 +161,29 @@ eval "$(bash $ROOT/dev/phase-06/tools/env.sh $ID)"     # 打印的 export 行见
   python3 $ROOT/dev/phase-06/tools/migrate-manifest.py $ID --check; echo "exit=$?"
   brickkit lint $ID 2>&1 | tee $S/lint-c3.log
   ```
-  通过：`--check` 输出全部"无"且 `exit=0`；`brickkit lint` 第一行是 `🔎 Only <id> is checked…`，没有 `MANIFEST_INVALID`，只剩 `DOC_*` 警告。按本 Task 的"新权限键"在 `assembly.yaml` 追加后跑 `make -C $ROOT permissions`（拿锁；通过：`registry/permissions.tsv` 只增不删、`make registry-check` 绿）。
+  通过：`--check` 输出全部"无"且 `exit=0`；`brickkit lint` 第一行是 `🔎 Only <id> is checked…`，没有 `MANIFEST_INVALID`，只剩 `DOC_*` 警告。`--write` 同时写出发布说明骨架 `$S/notes-2.0.0.md`（只在不存在时写；每次都刷新 `notes-2.0.0.generated.md`，"升级前必须做"不一致时打印 ⚠️），清掉 `assembly.yaml` 里引用归档文档的注释并把原文列进 `$S/assembly-removed-comments.txt`。**C3 之后对清单的任何增量（新权限键、新配置键、新菜单、新依赖）只写进 `dev/phase-06/tools/manifest-overrides.yaml`（`permissions_add`、`add_properties`、`menus_add`、`edge_routes_add`、`deps_add` 等），再重跑 `--write`；手改 `component.yaml` / `assembly.yaml` 会被手改保护拒绝（exit 3）。** 有新权限键时跑 `make -C $ROOT permissions`（拿锁；通过：`registry/permissions.tsv` 只增不删、`make registry-check` 绿）。
 - [ ] **C4 代码**（第 4 步）：
   ```bash
   bash $ROOT/dev/phase-06/tools/go-v2.sh $ID --sdk v0.4.0; echo "exit=$?"     # 只 Go 组件
   ```
-  通过：`exit=0`（脚本最后跑 component-loop 4.4 的全部判据，任一不满足就非零退出）。`--sdk v0.4.0` 起，脚本顺带把迁移入口改成 SDK 的一行（`migrate.Main(migrations.FS)`）并删掉 `module.go` 的 `Migrations:`，人工只读 diff、核对 Dockerfile。然后：`Makefile` 按 component-loop 4.7；脚本按 4.9；审查按 4.10–4.12（本 Task 的"重构重点"）；补接口按 4.13–4.15（契约先改，`buf generate` 之后再跑一次 `go-v2.sh $ID --recheck` 让根 `go.mod` require 正确的契约包版本）；测试按 4.16–4.17（`make -C $ROOT test-db-init` 拿锁）。每个红绿循环一个提交（组件仓库）。
-- [ ] **C5 文档**（第 5 步）：按 component-loop 5.1 写满八份文件，`docs/design.md` 从 `archive/pre-v1/docs/dev/design/$REPO.md` 只提取结论，并写进本 Task 引入的新设计（新接口、事件方案）。
-- [ ] **C6 版本与 lint**（第 6 步）：`make -C $ROOT docs-check ID=$ID; echo "exit=$?"` → `0 with errors, 0 warnings` 且 `exit=0`；`cd $C && make check-version test migrate-idempotent contract-check import-scan module-check` 全绿（Python / TS 用各自目标）。
+  通过：`exit=0`（脚本最后跑 component-loop 4.4 的全部判据，含"gen 是当前 .proto 的生成结果"，任一不满足就非零退出）。`--sdk v0.4.0` 起，脚本顺带把迁移入口改成 SDK 的一行（`migrate.Main(migrations.FS)`）并删掉 `module.go` 的 `Migrations:`，人工只读 diff、核对 Dockerfile 的目的路径。然后：`Makefile` 照抄 mdm/customer 的模板（R43，component-loop 4.7）；脚本按 4.9；审查按 4.10–4.12（本 Task 的"重构重点"）；补接口按 4.13–4.15（契约先改：`.proto` → `buf generate` → `go-v2.sh $ID --recheck`，让根 `go.mod` require 正确的契约包版本）；测试按 4.16–4.17：`make -C $ROOT test-db-init ID=$ID`（拿锁，只跑本组件的 migrate-idempotent）、`cd $C && make test`（`TEST_PG_DSN` 由开头三行提供；没设时 `make test` 会大声失败，而不是全部 SKIP 显示 ok）。每个红绿循环一个提交（组件仓库）。C4 结束跑一次 `bash $ROOT/dev/phase-06/tools/component-check.sh $ID`（旧键读取、种子脚本、历史引用、文档对称共十项），FAIL 的先修。
+- [ ] **C5 文档**（第 5 步）：按 component-loop 5.1 写满八份文件，`docs/design.md` 从 `archive/pre-v1/docs/dev/design/$REPO.md` 只提取结论，加上 `$S/assembly-removed-comments.txt` 里仍然成立的结论，并写进本 Task 引入的新设计（新接口、事件方案）。旧键 → 新键对照只写在发布说明里，不写进 BRICKKIT.md（R42）。
+- [ ] **C6 版本与门禁**（第 6 步）：
+  - `make -C $ROOT docs-check ID=$ID; echo "exit=$?"` → `0 with errors, 0 warnings` 且 `exit=0`；
+  - `bash $ROOT/dev/phase-06/tools/component-check.sh $ID` → `exit=0`；
+  - `cd $C && make check-version test contract-check import-scan module-check dag-check` 全绿（Python / TS 用各自目标；`contract-check` 打印的 `--against` 行必须是上一个发布 tag，不是 `branch=main`）；`make -C $ROOT test-db-init ID=$ID` 绿（代替组件里直接跑 `migrate-idempotent`）；
+  - `bash $ROOT/infra/scripts/project-lock.sh -- make -C $ROOT gates` 里本组件零违规（别的组件尚未迁移带来的警告不算）。
 - [ ] **C7 接入与真机**（第 7 步，脚本自己拿项目锁）：
   ```bash
-  make -C $ROOT integrate ID=$ID                      # add / config-fill / teardown-sync / lint / up --dry-run
-  make -C $ROOT verify ID=$ID ROUTE=<本 Task 给的受保护路径> FOCUS=1
+  make -C $ROOT integrate ID=$ID                      # add / config-fill / teardown-sync / lint / up --dry-run；db-init 详细输出进日志
+  make -C $ROOT verify ID=$ID ROUTE=<本 Task 给的受保护路径> FOCUS=1 SEED=1   # 组件没有 seed 目标时 SEED 一行是 SKIP
   ```
   `integrate` 列出"需要人给值"的 required 键而失败时（`config-fill.py` 退出 3），按本 Task 的"配置值"一栏直接给值，再重跑 `integrate`（已加入的组件不会重复 add，已有值的键不会被覆盖）：
   ```bash
-  bash $ROOT/infra/scripts/project-lock.sh -- python3 $ROOT/infra/scripts/config-fill.py $ID --set 'KEY=VALUE' …   # 值里有 $ 时用单引号
+  bash $ROOT/infra/scripts/project-lock.sh -- python3 $ROOT/infra/scripts/config-fill.py $ID --set 'KEY=VALUE' …   # 值里有 $ 时用单引号；secret 键只收 ${VAR} / file:// / $var:
   ```
   通过：两条命令都 `exit=0`，`verify` 打印的汇总表每行都是 `PASS` 或写明原因的 `SKIP`（例如"authz/iam 尚未加入项目，只验 401"）；汇总表和输出目录路径贴进记录。
-- [ ] **C8 交接发布**（第 8 步）：在 `$S/notes-2.0.0.md` 写发布说明（component-loop 8.1 格式），组件仓库提交（文档 + 版本），`git -C $C log --oneline -3` 贴进记录。**不推送、不打 tag**。向控制者交付：提交 SHA、发布说明路径、`verify` 汇总表、契约包是否需要新 tag 及版本号。控制者审查通过后执行 `make -C $ROOT ship DIR=components/$ID NOTES=$S/notes-2.0.0.md`，然后在父仓库暂存该组件的指针与项目文件。
+- [ ] **C8 交接发布**（第 8 步）：补全 `$S/notes-2.0.0.md`（C3 生成的骨架；补"新增 / 修复"两节，确认 `--write` 没有打印 ⚠️ 漂移；格式见 component-loop 8.1），组件仓库提交（文档 + 版本），`git -C $C log --oneline -3` 贴进记录。**不推送、不打 tag**。向控制者交付（component-loop 8.2）：提交 SHA、发布说明路径、`verify` 汇总表、契约包是否需要新 tag 及版本号。控制者审查通过后执行 `make -C $ROOT ship DIR=components/$ID NOTES=$S/notes-2.0.0.md`（发布前先跑本组件范围的 `openapi-additive-scan` 与 `config-key-scan --strict`），然后在父仓库按路径提交该组件的指针与项目文件。
 - [ ] **C9 记录**（第 9 步）：补齐过程记录；V 项结论、知识缺口、反馈候选写在记录里。
 
 ---
@@ -631,6 +636,8 @@ docker exec be-postgres psql -U postgres -d brickkit_db -tAc "select count(*) fr
 
 **重构重点**：超时 / 逾期扫描（`task.overdue`）的定时循环是否用 `FOR UPDATE SKIP LOCKED` 认领；`Start()` 里多个后台循环是否并发启动（参照 T7 `module.go` 的写法）。
 
+**已知**：`gen/` 在 v1.0.4 就与 `.proto` 不一致（`ListTasks` 的注释），`go-v2.sh` 的 gen 判据会 FAIL。C4 先 `buf generate` 单独一个提交（只有注释变化），再 `go-v2.sh $ID --recheck --gen-bump patch`（只是重新生成 → 契约包升 patch：`gen/infra/workflow/v1.0.4`）；交接时告诉控制者。
+
 - [ ] **Step 1: C1–C9**。
 
 ---
@@ -709,7 +716,7 @@ docker exec be-postgres psql -U postgres -d brickkit_db -tAc "select count(*) fr
 2. `WEBHOOK_CALLBACK_URL`：旧值 `http://172.18.0.1:8200/…`（写死的网桥地址）。v1 下 Casdoor 是基础资源（不在 brickKit 网络里），要回调本组件：先 `brickkit docs 02-project-guide/03-local-debug-workflow` 与 `brickkit docs 01-three-layers/03-deploy-yaml`（`expose`）找正当做法，候选：deploy 条目 `expose: true` + `http://host.docker.internal:8200/api/iam/webhooks/casdoor`。选定后写进 `docs/design.md` 与 BRICKKIT 的 Before you deploy；外壳托管后（T22）同一地址仍可达是判据之一。翻了 brickKit 源码才定下来的，记知识缺口。
 3. 多行密钥端到端（06a Review Focus 2 的真机半程）：独立部署时 `docker exec <iam 容器> sh -c 'printf %s "$APP_TOKEN_SIGNING_KEY_PEM"' | sha256sum` 与 `sha256sum .secrets/infra-iam-casdoor/app-token-signing-key.pem` 相同；`GET /.well-known/jwks.json` 返回的公钥能验 `get_app_jwt dev.superuser` 拿到的 token。T22 在外壳里再核一次。
 
-**C7 特别说明**：本组件加入项目后，authz + iam 都在，`make verify` 的"带 token"一项第一次能真跑：先 `make -C components/infra/iam-casdoor seed`、`make -C components/infra/authz seed`（种子用户与全权限角色；在锁内、容器起着时跑——用 `KEEP=1` 让 verify 不收尾，种子跑完再 `brickkit down -f deploy.verify.yaml`），然后对 authz 再跑一次 `make verify ID=infra/authz ROUTE=/api/admin/roles`，期望带 token 一项 `200`。`BOOTSTRAP_ADMIN_SUB` 按 component-loop §2.5 用 `sub_of dev.superuser` 查出后写进 `.env`。
+**C7 特别说明**：本组件加入项目后，authz + iam 都在，`make verify` 的"带 token"一项第一次能真跑。种子用户与全权限角色这样灌：`make verify ID=infra/iam-casdoor ROUTE=… SEED=1 KEEP=1`（SEED=1 灌 iam 自己的种子），再在锁内 `make -C components/infra/authz seed`、`brickkit down -f deploy.verify.yaml`、删掉 `deploy.verify.yaml`，然后对 authz 再跑一次 `make verify ID=infra/authz ROUTE=/api/admin/roles`，期望带 token 一项 `200`。`BOOTSTRAP_ADMIN_SUB` 按 component-loop §2.5 用 `sub_of dev.superuser` 查出后写进 `.env`。
 
 **重构重点**：`casdoor/`、`tokens/`、`keys/` 三个包的边界；签名密钥轮换（`APP_TOKEN_PREVIOUS_PUBLIC_KEY_PEM`）有没有测试；Casdoor 管理 API 的超时与错误映射。
 
@@ -736,7 +743,7 @@ L2 测试：赢单事件 → 订单的 `source_opportunity_id` 等于商机 id�
 
 **重构重点**：全仓最大的组件（5707 行）——`tcc/` 的补偿路径是否满足 02-backend.md 的"超时先 `GetStatus`、补偿失败三次 `SUSPENDED` 并开异常待办"；`consumer.go` 里赢单 payload 的结构体与 crm 契约逐字段对照（只读不 import）；`client/` 里同步调用上游的超时与重试；有没有用户请求路径上用了 `SystemClient`（`make gates` 的 `system-client-scan` 也会抓）。
 
-- [ ] **Step 1: C1–C9**。C7 的 `make verify` 闭包里会起 customer、product、inventory、finance（以及 workflow）。`make test-cross ID=erp/sales` 里此前 SKIP 的跨组件测试必须 PASS。交接时告诉控制者需要打 `gen/erp/sales/v1.0.0`。
+- [ ] **Step 1: C1–C9**。C7 的 `make verify` 闭包里会起 customer、product、inventory、finance（以及 workflow）。`make test-cross ID=erp/sales` 里此前 SKIP 的跨组件测试必须 PASS。**V-12** 在本组件的 `FOCUS=1` 里验：本机进程连容器里的 customer / product / inventory / finance（以及 postgres、nats）是否都通，原文记录 `deploy.local.yaml` 的 `vars:` 改写与结果。交接时告诉控制者需要打 `gen/erp/sales/v1.0.0`。
 
 ---
 
