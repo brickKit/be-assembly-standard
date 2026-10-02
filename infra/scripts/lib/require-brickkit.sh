@@ -18,8 +18,12 @@ require_brickkit() {
     echo "❌ PATH 上没有 brickkit：本项目要求 $BRICKKIT_REQUIRED（装在 ~/.local/bin/brickkit）" >&2
     exit 2
   fi
-  # 旧版本会往 stderr 打 JSON 日志：只看 stdout 里第一行 "BrickKit CLI …"
-  line="$(brickkit version 2>/dev/null | grep -m1 '^BrickKit CLI ')" || line=""
+  # 旧版本会往 stderr 打 JSON 日志：只看 stdout 里第一行 "BrickKit CLI …"。
+  # 先把输出整个读完再匹配：管道里接 grep -m1 时，grep 匹配后就关掉管道，brickkit
+  # 写下一行时被 SIGPIPE 杀掉，pipefail 下整条管道失败，已匹配的版本行被丢掉。
+  local out
+  out="$(brickkit version 2>/dev/null)" || out=""
+  line="$(printf '%s\n' "$out" | awk '/^BrickKit CLI /{print; exit}')"
   if [ "$line" != "$BRICKKIT_REQUIRED" ]; then
     echo "❌ PATH 上的 brickkit 是 $bin：${line:-brickkit version 没有输出 BrickKit CLI 版本行}；本项目要求 $BRICKKIT_REQUIRED" >&2
     echo "   多半是 ~/go/bin 排在 ~/.local/bin 前面：export PATH=\$PATH:\$HOME/go/bin（追加，不前置），再 command -v brickkit 核对" >&2
