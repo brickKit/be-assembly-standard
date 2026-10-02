@@ -295,9 +295,10 @@ def test_normal_teardown_runs_once(tmp):  # 修复轮 I-2：trap 与正常收尾
     assert not (tmp / "deploy.verify.yaml").exists()
 
 
-def _interrupt_during_focus(tmp, keep: str):
+def _interrupt_during_focus(tmp, keep: str, wrapper_only: bool = False):
     make(tmp, ALL, [{"id": i} for i in ALL])
-    p = subprocess.Popen(["bash", str(SCRIPT), "mdm/product"], env=fake_env(tmp, FOCUS="1", KEEP=keep, BE_PROJECT_LOCK_HELD="1"),
+    extra = {} if wrapper_only else {"BE_PROJECT_LOCK_HELD": "1"}
+    p = subprocess.Popen(["bash", str(SCRIPT), "mdm/product"], env=fake_env(tmp, FOCUS="1", KEEP=keep, **extra),
                          stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, start_new_session=True)
     pidf = tmp / "focus.pid"
     for _ in range(100):
@@ -307,7 +308,10 @@ def _interrupt_during_focus(tmp, keep: str):
     assert pidf.exists(), calls(tmp)
     focus_pid = int(pidf.read_text())
     time.sleep(1)
-    os.killpg(p.pid, signal.SIGTERM)   # 像 Ctrl+C / 超时那样发给整个前台进程组（p 就是 verify 本身，便于等它收尾完）
+    if wrapper_only:
+        p.send_signal(signal.SIGTERM)   # 只发给 project-lock 包装进程（timeout / kill <pid> 的情形）
+    else:
+        os.killpg(p.pid, signal.SIGTERM)   # 像 Ctrl+C / 超时那样发给整个前台进程组（p 就是 verify 本身，便于等它收尾完）
     p.wait(timeout=60)
     time.sleep(0.5)
     alive = True
@@ -323,6 +327,12 @@ def test_interrupt_cleans_up(tmp):  # 修复轮 I-2
     assert not alive, "focus 进程还活着"
     assert "brickkit local off" in c and "brickkit down -f" in c, c
     assert not (tmp / "deploy.verify.yaml").exists()
+
+
+def test_interrupt_wrapper_only_still_cleans_up(tmp):  # 修复轮 2：project-lock 转发 TERM 并等子进程收尾
+    alive, c = _interrupt_during_focus(tmp, keep="", wrapper_only=True)
+    assert not alive, "focus 进程还活着"
+    assert "brickkit local off" in c and "brickkit down -f" in c, c
 
 
 def test_interrupt_with_keep_leaves_containers(tmp):
