@@ -36,4 +36,10 @@ eq "$(component_version mdm/customer)" 2.0.0
 eq "$(service_name mdm/customer)" mdm-customer-2-0-0
 eq "$(service_host mdm/customer)" be-go-core-1-0-0
 eq "$(service_host infra/authz)" infra-authz-2-0-0
+# 解析失败必须报错退出（不再静默退回推断值）
+printf 'services: [unclosed\n' > "$T/bad.yaml"
+if err="$( (COMPOSE_FILE_GENERATED="$T/bad.yaml"; service_host mdm/customer) 2>&1 )"; then
+  echo "✗ 坏 compose 文件应当报错退出"; exit 1
+fi
+echo "$err" | grep -q "service_host" || { echo "✗ 报错信息应点名 service_host: $err"; exit 1; }
 echo "✓ seed-net 测试通过"

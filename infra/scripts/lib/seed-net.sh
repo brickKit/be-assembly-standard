@@ -70,7 +70,7 @@ service_host() {
   local want f="${COMPOSE_FILE_GENERATED:-$ROOT/.brickkit/generated/compose.yaml}"
   want="$(service_name "$1")"
   [ -f "$f" ] || { echo "$want"; return; }
-  python3 - "$f" "$want" <<'PY' 2>/dev/null || echo "$want"
+  python3 - "$f" "$want" <<'PY' || die "service_host：解析 $f 失败（查 $want）——检查 PyYAML 与该文件是否合法"
 import sys, yaml
 d = yaml.safe_load(open(sys.argv[1])); want = sys.argv[2]
 for name, svc in (d.get("services") or {}).items():

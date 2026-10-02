@@ -12,6 +12,8 @@
 #
 # 用法：infra/scripts/test-db-init.sh
 set -euo pipefail
+# 整个脚本在项目锁里执行（写共享的库/.env；已持锁时直通）
+[ -n "${BE_PROJECT_LOCK_HELD:-}" ] || exec bash "$(dirname "${BASH_SOURCE[0]}")/project-lock.sh" -- bash "${BASH_SOURCE[0]}" "$@"
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 cd "$ROOT"
@@ -48,6 +50,10 @@ echo "▸ ② 对 ${#COMPONENTS[@]} 个已建组件各跑一遍 migrate-idempote
 for c in "${COMPONENTS[@]}"; do
 	echo "  - $c"
 	( cd "components/$c" && \
+	  schema="$(awk -F'\t' -v r="$(basename "$(dirname "components/$c")")-$(basename "$c")" '$1==r {print $2}' "$ROOT/registry/schemas.tsv")"; \
+	  pwvar="$(echo "$(basename "$(dirname "components/$c")")-$(basename "$c")" | tr 'a-z-' 'A-Z_')_DB_PASSWORD"; \
+	  PG_HOST=localhost PG_PORT=5432 PG_DATABASE=brickkit_test_db \
+	  PG_USER="${schema}_rw" PG_PASSWORD="${!pwvar:-}" PG_SCHEMA="$schema" \
 	  DATABASE_HOST=localhost DATABASE_PORT=5432 DATABASE_USER=postgres \
 	  DATABASE_PASSWORD="$POSTGRES_PASSWORD" DATABASE_NAME=brickkit_test_db \
 	  make migrate-idempotent ) || { echo "✗ $c 迁移失败" >&2; exit 1; }

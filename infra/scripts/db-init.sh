@@ -2,6 +2,8 @@
 # 执行 be-ops 产出的建库脚本（幂等）。每个 pw_<role> 变量由 .env 里对应环境变量提供，
 # 缺任何一个就报错并点名，建议跑 dev-env.sh。
 set -euo pipefail
+# 整个脚本在项目锁里执行（写共享的库/.env；已持锁时直通）
+[ -n "${BE_PROJECT_LOCK_HELD:-}" ] || exec bash "$(dirname "${BASH_SOURCE[0]}")/project-lock.sh" -- bash "${BASH_SOURCE[0]}" "$@"
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 cd "$ROOT"
 source "$ROOT/infra/scripts/lib/db-pw.sh"
