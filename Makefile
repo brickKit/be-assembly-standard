@@ -136,7 +136,7 @@ teardown-down:  ## 停掉拆回验证的容器
 .PHONY: teardown-up teardown-down
 
 ##@ 门禁
-gates: docs-boundary docs-mirror  ## 跑全部验收门禁：正式文档边界 + 中英文档树镜像 + 组件互不 import + SystemClient 误用 + 裸路由/裸 resolver + 事件契约破坏性变更 + 数据权限边界测试缺失 + 依赖版本号漂移（外壳 go.mod 钉与镜像 tag）+ 配置里的版本化服务名与 brickkit.yaml 一致 + brickkit up --dry-run（brickKit 自带的依赖/钉/成员漂移检查）
+gates: docs-boundary docs-mirror  ## 跑全部验收门禁：正式文档边界 + 中英文档树镜像 + 组件互不 import + SystemClient 误用 + 裸路由/裸 resolver + 事件契约破坏性变更 + 数据权限边界测试缺失 + 依赖版本号漂移（外壳 go.mod 钉与镜像 tag）+ 配置里的版本化服务名与 brickkit.yaml 一致 + configSchema 键名（大写下划线、不撞保留名；1.x 组件只警告）+ OpenAPI 契约相对上一个发布 tag 只增 + brickkit up --dry-run（brickKit 自带的依赖/钉/成员漂移检查）
 	@cd tools/be-acceptance && go build -o build/be-acceptance ./cmd/be-acceptance
 	@tools/be-acceptance/build/be-acceptance gate import-scan --root .
 	@tools/be-acceptance/build/be-acceptance gate system-client-scan --root .
@@ -145,6 +145,8 @@ gates: docs-boundary docs-mirror  ## 跑全部验收门禁：正式文档边界 
 	@tools/be-acceptance/build/be-acceptance gate data-scope-test-scan --root .
 	@tools/be-acceptance/build/be-acceptance gate dependency-version-scan --root .
 	@tools/be-acceptance/build/be-acceptance gate service-hostname-scan --root .
+	@tools/be-acceptance/build/be-acceptance gate config-key-scan --root .
+	@tools/be-acceptance/build/be-acceptance gate openapi-additive-scan --root .
 	@echo "▸ brickkit up --dry-run（brickKit 自带的漂移检查：依赖/版本钉/外壳成员；不启动任何容器）"
 	@brickkit up --dry-run
 .PHONY: gates
