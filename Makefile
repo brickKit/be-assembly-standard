@@ -75,10 +75,12 @@ docs-mirror:  ## 项目文档 docs/en/ 与 docs/zh/ 逐文件对应：路径相�
 
 ##@ 校验
 lint:  ## brickKit 自身的三层 + 文档检查（严格模式）
+	@bash $(S)/lib/require-brickkit.sh
 	@brickkit lint --strict
 
 docs-check:  ## 只检查一个组件或外壳：make docs-check ID=mdm/customer | ID=be/go-core（整个项目用 make lint）
 	@test -n "$(ID)" || (echo "用法：make docs-check ID=<scope>/<name>（外壳：ID=be/<name>）"; exit 2)
+	@bash $(S)/lib/require-brickkit.sh
 	@brickkit lint --strict $(ID)
 .PHONY: lint docs-check
 
@@ -95,13 +97,13 @@ test-db-init:  ## 建/刷新本地测试专用库 brickkit_test_db（跟真机�
 .PHONY: test-db-init
 
 ##@ 组件接入、真机验证与发布（integrate / verify / permissions 自己拿项目锁，见 infra/scripts/project-lock.sh）
-integrate:  ## 接入一个组件或外壳：dev-env/db-init → add 或 upgrade → 填 config → 同步 deploy.teardown.yaml → lint → up --dry-run。make integrate ID=<id> [VERSION=2.0.0] [OUT=<日志目录>]（db-init 的详细输出进日志，终端只打结果行）
+integrate:  ## 接入一个组件或外壳：dev-env/db-init → add 或 upgrade → 填 config → 同步 deploy.teardown.yaml → lint → up --dry-run。make integrate ID=<id> [VERSION=2.0.0] [INTEGRATE_OUT=<日志目录>]（db-init 的详细输出进日志，终端只打结果行）
 	@test -n "$(ID)" || { echo "用法：make integrate ID=<scope>/<name> [VERSION=<版本>]（外壳 ID=be/<name>，版本默认 1.0.0）"; exit 2; }
 	@bash $(S)/integrate.sh "$(ID)" $(VERSION)
 
 verify:  ## 真机验证一个组件或外壳：build → 只起闭包 → 迁移/健康/鉴权 → test-cross → [focus] → 收尾。make verify ID=<id> [ROUTE='GET /路径'] [FOCUS=1] [KEEP=1] [FORCE_BUILD=1] [SEED=1]（只有 =1 才生效；SEED=1 在健康检查之后灌组件的 make seed）
-	@test -n "$(ID)" || { echo "用法：make verify ID=<scope>/<name> [ROUTE='<METHOD> <路径>'] [FOCUS=1] [KEEP=1] [FORCE_BUILD=1] [OUT=<目录>]"; exit 2; }
-	@ROUTE="$(ROUTE)" FOCUS="$(FOCUS)" KEEP="$(KEEP)" FORCE_BUILD="$(FORCE_BUILD)" OUT="$(OUT)" bash $(S)/verify-component.sh "$(ID)"
+	@test -n "$(ID)" || { echo "用法：make verify ID=<scope>/<name> [ROUTE='<METHOD> <路径>'] [FOCUS=1] [KEEP=1] [FORCE_BUILD=1] [SEED=1] [OUT=<目录>]"; exit 2; }
+	@ROUTE="$(ROUTE)" FOCUS="$(FOCUS)" KEEP="$(KEEP)" FORCE_BUILD="$(FORCE_BUILD)" SEED="$(SEED)" OUT="$(OUT)" bash $(S)/verify-component.sh "$(ID)"
 
 ship:  ## 【只有控制者】发布：发布前门禁（openapi-additive-scan、config-key-scan --strict，只看本组件）→ 推 main → 契约包 tag → brickkit release → v tag → 外壳视角拉取检查。make ship DIR=components/<id>|shell/be/<name> NOTES=<说明文件> [DRY_RUN=1]
 	@test -n "$(DIR)" -a -n "$(NOTES)" || { echo "用法：make ship DIR=<components/<scope>/<name> | shell/be/<name>> NOTES=<发布说明文件> [DRY_RUN=1]"; exit 2; }
@@ -129,9 +131,11 @@ _permissions-locked:
 # -f deploy.teardown.yaml 只读这一份部署文件、忽略本地模式；authz/iam 地址本来就是成员自己的服务名，不用覆盖。
 # 不再临时改 brickkit.yaml，也就没有"事后恢复"这一步。
 teardown-up:  ## 拆回验证：所有成员按独立组件部署（--ignore-shells + deploy.teardown.yaml）
+	@bash $(S)/lib/require-brickkit.sh
 	@brickkit up -f deploy.teardown.yaml --ignore-shells
 
 teardown-down:  ## 停掉拆回验证的容器
+	@bash $(S)/lib/require-brickkit.sh
 	@brickkit down -f deploy.teardown.yaml
 .PHONY: teardown-up teardown-down
 
@@ -148,6 +152,7 @@ gates: docs-boundary docs-mirror  ## 跑全部验收门禁：正式文档边界 
 	@tools/be-acceptance/build/be-acceptance gate config-key-scan --root .
 	@tools/be-acceptance/build/be-acceptance gate openapi-additive-scan --root .
 	@echo "▸ brickkit up --dry-run（brickKit 自带的漂移检查：依赖/版本钉/外壳成员；不启动任何容器）"
+	@bash $(S)/lib/require-brickkit.sh
 	@brickkit up --dry-run
 .PHONY: gates
 

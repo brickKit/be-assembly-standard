@@ -433,7 +433,7 @@ def test_integrate_db_init_output_goes_to_log(tmp):  # T7 摩擦 7：db-init 的
     root = make_root(tmp)
     (root / "Makefile").write_text(DB_MAKEFILE, encoding="utf-8")
     out = tmp / "out"
-    r = integrate(tmp, root, OUT=str(out))
+    r = integrate(tmp, root, INTEGRATE_OUT=str(out))
     assert "第 1 步失败" not in r.stderr, r.stdout + r.stderr
     lines = _out_lines(r)
     assert not any("noise-" in l for l in lines), r.stdout[:2000]
@@ -444,13 +444,23 @@ def test_integrate_db_init_output_goes_to_log(tmp):  # T7 摩擦 7：db-init 的
     assert "GRANT noise-1000" in log and "GRANT noise-1\n" in log
 
 
+def test_integrate_ignores_inherited_out(tmp):  # B2 审查 M-8：上一次 make verify 留下的 OUT 不能把 integrate 的日志带偏
+    root = make_root(tmp)
+    (root / "Makefile").write_text(DB_MAKEFILE, encoding="utf-8")
+    stray = tmp / "verify-out"
+    r = integrate(tmp, root, OUT=str(stray), BE_SCRATCH=str(tmp / "scratch"))
+    assert not (stray / "db-init.log").exists(), r.stdout
+    logs = list((tmp / "scratch" / "integrate").glob("demo-app-*/db-init.log"))
+    assert len(logs) == 1, (logs, r.stdout)
+
+
 def test_integrate_db_init_failure_prints_log_tail(tmp):
     root = make_root(tmp)
     (root / "Makefile").write_text(DB_MAKEFILE.replace(
         'seq 1 1000); do echo "GRANT noise-$$i"; done; echo "✓ 建库脚本已执行（幂等，可重跑）"',
         'seq 1 100); do echo "GRANT noise-$$i"; done; echo "✗ psql 炸了"; exit 1'), encoding="utf-8")
     out = tmp / "out"
-    r = integrate(tmp, root, OUT=str(out))
+    r = integrate(tmp, root, INTEGRATE_OUT=str(out))
     assert r.returncode == 1 and "第 1 步失败" in r.stderr, r.stdout + r.stderr
     lines = _out_lines(r)
     assert "GRANT noise-100" in lines and "GRANT noise-73" in lines and "✗ psql 炸了" in lines, r.stdout + r.stderr
