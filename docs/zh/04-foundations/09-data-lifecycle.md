@@ -99,7 +99,7 @@ DATA_LIFECYCLE: |
   tables: {sales_orders: {retention: {min: 15y after closed}}}
 ```
 
-覆盖值低于声明的下限，启动失败；写了当前 SDK 版本没实现的适配器名，启动失败并提示"本 SDK 版本不支持"。对象存储用 `S3_URL` 和每个组件一套的凭据 `S3_ACCESS_KEY_ID` / `S3_SECRET_ACCESS_KEY`，只授权到组件自己的 bucket；只有选了 `trino` 才需要 `LAKE_QUERY_URL`。一个键装一整块结构，违背了 brickKit 对配置设计的建议；这是有意的例外，因为平铺的键表达不了按表覆盖。
+覆盖值低于声明的下限，启动失败；写了当前 SDK 版本没实现的适配器名，启动失败并提示"本 SDK 版本不支持"。对象存储用 `S3_URL` 和每个组件一套的凭据 `S3_ACCESS_KEY_ID_FILE` / `S3_SECRET_ACCESS_KEY_FILE`，只授权到组件自己的 bucket；只有选了 `trino` 才需要 `LAKE_QUERY_URL`。一个键装一整块结构，违背了 brickKit 对配置设计的建议；这是有意的例外，因为平铺的键表达不了按表覆盖。
 
 ### 单元与状态机
 

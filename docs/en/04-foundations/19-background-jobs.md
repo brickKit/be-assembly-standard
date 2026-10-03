@@ -21,9 +21,9 @@ Not covered here: consuming events ([12-event-bus.md](12-event-bus.md)); the rec
 - **Declared in one place.** A module lists all its jobs and workers in one declaration (one file); its start hook does one-time initialisation only and never starts a loop.
 - **Supervised by the SDK.** A job that fails or panics is logged, counted and restarted with backoff; one job ending never stops another; standalone and shell behave the same.
 - **State lives in the component's own schema**, in three tables the SDK's platform migration creates. A standalone run and a shell run of the same component, side by side, coordinate through the same rows.
-- **No Kubernetes CronJob, no `pg_cron`, no external scheduler.**
+- **No Kubernetes CronJob, no `pg_cron`, no external scheduler.** One measured exception: a job that is too heavy for the process may also run as its own process through the optional **run-once entry**, triggered from outside; it takes the same lease and slot rows, so it still runs once (see [Port contract](#port-contract)).
 
-**Status**: decided; lands with the 3.0.0 sweep. Today twelve components carry hand-copied loops (twelve copies of a partition package, each with its own ticker); in a shell a member whose loop fails stays stopped, while standalone the process exits and is restarted. The Jobs port replaces all of them.
+**Status**: decided; lands with the 3.0.0 sweep. Today twelve components carry hand-copied loops (twelve copies of a partition package, each with its own ticker); in a shell a member whose loop fails stays stopped, while standalone the process exits and is restarted. The Jobs port replaces all of them. brickKit declined a platform schedule (FR06-007: a resident scheduler does not exist on Docker or Podman, and a field that works only on Kubernetes would make one `component.yaml` behave differently per target); its answer cites [0508](../02-decisions/05-runtime/0508-background-work-only-through-jobs.md) as the recommended practice and suggests the run-once entry below for the rare heavy job.
 
 ## Port contract
 
@@ -94,6 +94,14 @@ CREATE INDEX besdk_job_queue_due ON besdk_job_queue (kind, run_at) WHERE state I
 
 **In a shell.** The tables are in each member's own schema and `holder` names the member, so members never share leases, slots or queues ([27-shells.md](27-shells.md)).
 
+**Run-once entry** (optional protocol capability). `<entrypoint> job run <name>` (be-protocol P14.8) uses the same image, configuration and secret files, checks the schema version like the serving entry point, starts no server and no other background work, runs **one** run of the declared job `<name>` through the same tables, and exits. A `cron` job claims the most recent slot at or before now; a `singleton` takes the lease for the run; `every` and a reconciler make one pass, claiming items as usual; `queue` drains that kind's ready rows once within the job's timeout. The holder is `<component ID>/job-run:<instance id>`. Exit `0` after a successful run or a no-op (the slot or lease already taken, logged with its reason), `1` when the run failed, `4` for an unknown job name, `78` for a configuration error; so two triggers, or a trigger and an in-process copy, still execute once. `enabled: false` in `JOBS_OVERRIDES` stops only the in-process scheduling. A runtime that offers the entry lists `job_run` in `/_be/info` `capabilities`. Turning a job over to an external trigger takes three steps, in this order:
+
+1. Keep it in the process (the default); limit its batch size and concurrency.
+2. If it starves its neighbours in a shell, move its component out of the shell into its own container with `resources.limits` (a deploy-file edit, no configuration change).
+3. Only if that is measured insufficient: set `{"<name>": {"enabled": false}}` in `JOBS_OVERRIDES` and trigger the run-once entry from outside brickKit:
+   - **Docker, Podman**: a host cron or systemd timer runs `docker compose --project-directory <project root> -p brickkit-<project> -f <project root>/.brickkit/generated/compose.yaml run --rm --no-deps <versioned service name> job run <name>`, which reuses the image, environment and secret mounts of the last `up`; the service name changes with every upgrade, so the timer line changes with it.
+   - **Kubernetes**: a CronJob written by hand from the component's generated Deployment (its Pod template with the command replaced), regenerated after every `up`, and **without** the `brickkit.io/project` label, so brickKit neither owns nor deletes it; when brickKit created the namespace, `brickkit down` deletes it with the namespace.
+
 ## Alternatives
 
 | | Kubernetes CronJob | `pg_cron` | River (Go) | Graphile Worker / pg-boss (Node) | Temporal Schedules | APScheduler / Celery beat | DBOS | SDK Jobs on PostgreSQL tables (chosen) |
@@ -114,7 +122,7 @@ CREATE INDEX besdk_job_queue_due ON besdk_job_queue (kind, run_at) WHERE state I
 
 ## Why not the others
 
-- **Kubernetes CronJob**: brickKit does not generate it, it is a second image with its own configuration injection, and it does not exist on Docker, so the two targets would behave differently.
+- **Kubernetes CronJob as the scheduler**: brickKit does not generate it (and declined to, FR06-007), it carries a second copy of the configuration, and it does not exist on Docker, so the two targets would behave differently. As a mere trigger of the run-once entry, after step 2 above, it is allowed: the tables still decide that the job runs once.
 - **`pg_cron`**: needs an extension and a superuser, runs only SQL, and is not available on every PostgreSQL-compatible distribution the project targets ([03-database.md](03-database.md)).
 - **River, Graphile Worker, pg-boss, APScheduler, Celery**: each is tied to one language; using one would give each language different semantics.
 - **Temporal Schedules**: needs a Temporal cluster, which is only worth it together with a workflow engine ([11-consistency-across-components.md](11-consistency-across-components.md)).
@@ -122,6 +130,7 @@ CREATE INDEX besdk_job_queue_due ON besdk_job_queue (kind, run_at) WHERE state I
 ## When to switch
 
 - Measured job volume beyond what PostgreSQL absorbs in write amplification (thousands of jobs per second): queued jobs move onto the event bus ([12-event-bus.md](12-event-bus.md)).
+- One job, measured, is too heavy even in its component's own container: the run-once entry with an external trigger (step 3 under [Port contract](#port-contract)).
 - The first long, multi-person, multi-day flow appears: evaluate a workflow engine (DBOS first, then Temporal), as described in [11-consistency-across-components.md](11-consistency-across-components.md). DBOS could then become a second implementation of `queue`.
 
 ## How to switch
@@ -136,7 +145,8 @@ Suite `tools/be-acceptance/conformance/jobs/` (decided), run against a fixture c
 - two replicas: a `singleton` runs in one place at a time; a run whose lease is lost is cancelled;
 - a job that panics restarts with backoff and is counted; one job stopping leaves the others running;
 - `queue`: a rolled-back business transaction leaves no job; exhausted attempts call the dead handler; two replicas execute each job once under normal operation;
-- shell: a member's failed job is restarted, not left stopped (red today).
+- shell: a member's failed job is restarted, not left stopped (red today);
+- run-once, CP-JOBS-06 (for a runtime that lists `job_run`): `job run <name>` started twice at once executes one slot once and both exit `0`; with the in-process copy disabled through `JOBS_OVERRIDES`, nothing runs until the entry is triggered.
 
 Component tests written red before migration: finance "when one loop exits the others are cancelled"; inventory "two replicas maintain partitions concurrently without error" and "partition DDL blocked by a long transaction gives up within `lock_timeout` without blocking writes". Gate `module-ticker-scan` (decided) warns on timer loops in module code.
 
@@ -154,3 +164,4 @@ Component tests written red before migration: finance "when one loop exits the o
 - A crashed singleton's work resumes only after its lease expires (up to one TTL).
 - At least once: handlers must be idempotent.
 - Throughput is bounded by PostgreSQL writes in the component's schema.
+- An external trigger lives outside brickKit: its schedule is not in `component.yaml`, its Docker command names the versioned service and changes on every upgrade, and a hand-written Kubernetes CronJob drifts unless regenerated after each `up`. A shell member has no service of its own to `run`; move it out of the shell first.

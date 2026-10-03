@@ -77,22 +77,27 @@ port_owner() {
   printf '%s' "$owner"
 }
 
-# brickKit 给本项目建的网络：Casdoor 接在上面回调 infra/iam-casdoor（docker-compose.infra.yml 的 brickkit-net）。
-# 名字与 compose 标签照 brickKit 的生成规则（网络 brickkit-<project>-net、compose 项目 brickkit-<project>、
-# 网络键 brickkit-net）；标签对得上，brickkit up 才把预先建好的网络当成自己的，不会删了重建。
+# 本项目的组件网络：项目自己提供（brickKit v1.2.0 起部署文件顶层 network:）。名字以 deploy.yaml 的 network: 为准，
+# 没写时退回 brickKit 的默认名 brickkit-<project>-net。用普通的 network create 建，不带任何 brickKit / compose
+# 内部标签：生成的 compose 与 infra/docker-compose.infra.yml 都把它当 external，谁也不建不删。
 BK_PROJECT="$(awk '/^project:/{print $2; exit}' "$ROOT/brickkit.yaml" 2>/dev/null)"
-BK_NET="brickkit-${BK_PROJECT:-be-assembly-standard}-net"
+BK_NET="$(awk '/^network:/{print $2; exit}' "$ROOT/deploy.yaml" 2>/dev/null)"
+BK_NET="${BK_NET:-brickkit-${BK_PROJECT:-be-assembly-standard}-net}"
+
+# 容器引擎：deploy.yaml 的 target: podman 时用 podman，否则 docker（podman 的 network create/inspect 用法相同）
+engine() {
+  if [ "$(awk '/^target:/{print $2; exit}' "$ROOT/deploy.yaml" 2>/dev/null)" = podman ]; then echo podman; else echo docker; fi
+}
 
 ensure_net() {
-  if ! docker network inspect "$NET" >/dev/null 2>&1; then
-    docker network create "$NET" >/dev/null
+  local e; e="$(engine)"
+  if ! "$e" network inspect "$NET" >/dev/null 2>&1; then
+    "$e" network create "$NET" >/dev/null
     printf '%s\n' "${C_DIM}已创建 external network $NET${C_OFF}"
   fi
-  if ! docker network inspect "$BK_NET" >/dev/null 2>&1; then
-    docker network create \
-      --label com.docker.compose.project="brickkit-${BK_PROJECT:-be-assembly-standard}" \
-      --label com.docker.compose.network=brickkit-net "$BK_NET" >/dev/null
-    printf '%s\n' "${C_DIM}已创建 brickKit 项目网络 $BK_NET（Casdoor 回调 iam 用）${C_OFF}"
+  if ! "$e" network inspect "$BK_NET" >/dev/null 2>&1; then
+    "$e" network create "$BK_NET" >/dev/null
+    printf '%s\n' "${C_DIM}已创建项目网络 $BK_NET（deploy.yaml 的 network:；Casdoor 接在上面回调 iam）${C_OFF}"
   fi
 }
 

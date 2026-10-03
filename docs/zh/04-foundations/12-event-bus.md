@@ -52,7 +52,7 @@
 
 ### 持久消费者
 
-- **每个（组件，subject）一个 pull 型 durable**，命名为 `<组件 ID，/ 换成 _>__<subject，. 换成 _>`：`erp_finance__sales_order_created_v1`。单跑、外壳里、每个副本上都是同一个名字，所以成员搬进或搬出外壳都保留它的位置。分隔符 `__` 不会有歧义，因为 subject 的任何一段都不允许出现连续两个下划线（[13](13-event-contracts.md#subject-命名)），组件 ID 里也没有下划线。在 subject 部分里 `.` 和 `_` 最后都成了 `_`，所以只在这里不同的两个 subject（`a.b.c_d.v1`、`a.b.c.d.v1`）会得到同一个名字；一个组件绝不同时消费这样两个 subject。
+- **每个（组件，subject）一个 pull 型 durable**，命名为 `<组件 ID，/ 换成 _>__<subject，每个 . 换成 __>`：`erp_finance__sales__order__created__v1`（be-protocol P12.5）。单跑、外壳里、每个副本上都是同一个名字，所以成员搬进或搬出外壳都保留它的位置。这个推导是单射的：组件 ID 里没有 `_`，subject 的任何一段都不含 `__`、也不以 `_` 开头或结尾（[13](13-event-contracts.md#subject-命名)），所以名字在每个 `__` 处都能唯一地拆回去；`crm.lead.stage_changed.v1` 和 `crm.lead_stage.changed.v1` 得到不同的名字（`…__crm__lead__stage_changed__v1`、`…__crm__lead_stage__changed__v1`）。
 - **只在不存在时创建，绝不更新。** 启动时 SDK 先查这个 durable，只有不存在才创建；已有的 durable 原样保留，即使设置不同（运维可能调过参）。不用盲目的"新增或更新"调用（nats-py 的 `add_consumer` 会静默更新）；修改已有 durable 是运维的动作。
 - **首次创建会投递流里还留着的全部消息**（`DeliverAll`）：新装的消费者会补上最多 7 天的事件。所以新装的 finance 会记账它安装前 7 天内确认的订单。
 - `ack_wait` 30 秒，处理函数既没确认也没 nak 的消息就靠这个计时器重投；`max_ack_pending` 256；每个订阅同时最多处理 4 条消息，同时受成员的连接预算约束（[10](10-local-transactions.md#端口契约)）；`inactive_threshold` 30 天，所以被移除组件的 durable 会自己消失。

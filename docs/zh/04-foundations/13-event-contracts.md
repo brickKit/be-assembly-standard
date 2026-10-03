@@ -86,7 +86,25 @@
 
 - 只做加法：删字段、改类型或删 subject 会失败（已就位）；
 - 每个事件都声明 `x-aggregate-type`（计划中）；
-- 组件代码发布的 subject 与它契约文件里的恰好一致（计划中）。
+- 组件代码发布的 subject 与它契约文件里的恰好一致（计划中）；
+- `component.yaml` 的 `events:` 段与契约文件和夹具一致（计划中的 `events-declaration-scan`，见下）。
+
+**向 brickKit 声明。** brickKit 1.3 读 `component.yaml` 里可选的 `events:` 段，只用来展示事件流（`brickkit graph` 画出发布方到订阅方的边，`brickkit deps` 列出谁发布、谁订阅，`brickkit lint` 提示项目里没人发布的订阅）；它从不影响启动顺序、谁运行或注入什么，也从不连消息系统。brickKit 把事件名当不透明的字符串，所以上面的 subject 不用改。
+
+```yaml
+# component.yaml（erp/finance）
+events:
+  publishes:
+    - finance.voucher.posted.v1            # 由 contracts/events/*.json 生成，只写确切的名字
+  subscribes:
+    - sales.order.created.v1
+    - infra.workflow.task.completed.v1     # 写确切的 subject；结尾的 * 只给真按前缀订阅的
+```
+
+- 整段由 be-ops 生成，和 `configSchema` 的协议键段放在一起（be-protocol P12.16）：`publishes` 取自契约文件，恰好是其中的 subject（槽位族成员取族的 subject）；`subscribes` 取自组件 `conformance/fixtures.yaml` 里的 `events.consumes`，是它经 durable 消费的每个 subject。尽力而为的信号（[12](12-event-bus.md#尽力而为的信号)）不列。
+- 订阅写确切的 subject。brickKit 以 `*` 结尾的前缀写法只允许出现在 `subscribes` 里，而且只给真按前缀订阅的消费者用；NATS 的 `>` 和写在名字中间的 `*` 从不出现。
+- 门禁 `events-declaration-scan` 拿这一段对照契约和夹具；组件套件拿它对照组件实际发布的事件和启动时建出的 durable（[12](12-event-bus.md#持久消费者)）。
+- 一个槽位族的几个成员发布同一个 subject（`integration.im.result.v1`）没有问题：brickKit 按名字匹配，不关心发布方是谁。
 
 ### 载荷规则
 

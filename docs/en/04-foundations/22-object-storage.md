@@ -33,7 +33,7 @@ Where files and large results live: the S3 API as the port, one bucket and one c
 | `S3_REGION` | yes | `us-east-1` | the signing region |
 | `S3_FORCE_PATH_STYLE` | yes | `false` | `true` for RustFS and MinIO |
 | `S3_BUCKET` | no | — (required; the deployment writes the registry's bucket name) | this component's bucket |
-| `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY` | no, secret (`${…}`) | — | this component's own credential |
+| `S3_ACCESS_KEY_ID_FILE`, `S3_SECRET_ACCESS_KEY_FILE` | no, secret, delivered as files (`mount: file`, value `${…}`) | — | this component's own credential, re-read as a pair when the files change ([24](24-config-and-secrets.md#port-contract)) |
 | `SCAN_URL` | yes (attachment only) | absent = no scanning | the scanner, `clamd://<host>:3310` |
 
 A component uses object storage exactly when its `configSchema` declares `S3_BUCKET`; that also turns on the `blob` profile of the component protocol suite. Every key here except `SCAN_URL` is a protocol key (`be-protocol` `schemas/config-keys.yaml`, P17).

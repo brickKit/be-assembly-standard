@@ -35,7 +35,7 @@ field(P, K, r)   = visible(P, K, r) AND P 持有该字段键
 - **两份契约。** **provider 契约** `infra.authz.v2`，authz 槽位的每个成员都实现；**资源契约**，SDK 在每个声明了资源的组件里自动挂出。规则所需的属性留在拥有这行数据的组件里；authz 只持有显式授予和关系。
 - **决策留在本地。** 键、档位、取值、字段、天花板随 bundle 下发；直接授予进组件自己 schema 里的一张投影表；列表是一条静态参数化 SQL 谓词。只有声明了的 graph 类型、或者投影落后于一致性令牌时，请求才会走到 provider。
 - **槽位族**，全部在阶段 06 内建，顺序是：`infra/authz`（原生，默认）→ `infra/authz-static`（文件，无库）→ `infra/authz-openfga`（ReBAC）。Cedar 或 OPA 只在有真实 ABAC 需求时才建，而且只用于动作判定。族契约放在独立仓库 `contract-infra-authz`（检出在 `contracts/infra/authz`）：proto、REST 与事件契约、错误 reason、bundle 的含义（`EVALUATION.md`）以及锁定它的决策向量。
-- **任何组件都不依赖某个成员。** 所有调用都打共享地址 `AUTHZ_URL`；`infra/iam-casdoor` 到 `infra/authz` 的依赖边删除。
+- **任何组件都不依赖某个成员。** 所有调用都打共享地址 `AUTHZ_URL`（REST）和 `AUTHZ_GRPC_URL`（gRPC）；`infra/iam-casdoor` 到 `infra/authz` 的依赖边删除。
 - **档位**：`own`、`dept`（只本部门，不含下级）、`subtree`、`all`；若干个部门子树的自定义组合，是 `org` 维度的取值。
 - **已经定了的答案**：共享一条记录可以顺带给出对这一条的查看权，但永远不顺带动作键（确认、取消、关闭要角色键；每个关系声明自己授予什么）；共享要持有该类型的 share 键，且自己至少有要授出的那一级；调用者看不见的记录，读和命令一律答 `404`，只有看得见但不允许这个动作时才答 `403`（调用方持有这个动作的键、但这条记录不在该键的范围内时是 `OUT_OF_SCOPE`，调用方没有这个键时是 `MISSING_PERMISSION`）；生产环境只读的"以他人身份查看"要 `infra.authz.impersonate` 键，日志带 `act` 链，并通知被查看的人。
 - **AI 代理只留位子、不开发**：`act.kind` 允许 `agent`，bundle 能力 `agents` 默认 `false`，profile 与天花板的形状一次定好，权限键接受一个可选的 `delegable` 字段，目前没有任何东西填写或读取它。以后启用全部只增。
@@ -44,7 +44,7 @@ field(P, K, r)   = visible(P, K, r) AND P 持有该字段键
 
 ## 端口契约
 
-**寻址。** 共享键 `AUTHZ_URL`（在 `config/vars.yaml`）是已安装成员的基础 URL，用成员自己的服务名（[0107](../02-decisions/01-architecture/0107-authz-and-iam-addresses-are-shared-vars.md)）。它取代 `AUTHZ_BUNDLE_URL`，后者在 3.0.0 统一升级里删除；没有过渡期。
+**寻址。** `config/vars.yaml` 里的两个共享键，都是指向已安装成员的 brickKit `$endpoint:` 引用：`AUTHZ_URL: $endpoint:infra/authz`（REST 基础地址）和 `AUTHZ_GRPC_URL: $endpoint:infra/authz:grpc`（名为 `grpc` 的端口，按 `host:port` 拨号）（[0107](../02-decisions/01-architecture/0107-authz-and-iam-addresses-are-shared-vars.md)）。两者都由 brickKit 按 `brickkit.yaml` 算出，所以成员发版或进外壳，这里都不用改。`AUTHZ_URL` 取代 `AUTHZ_BUNDLE_URL`，后者在 3.0.0 统一升级里删除；没有过渡期。
 
 **身份 claims**（由 IAM 成员签发，见 [21-identity-provider.md](21-identity-provider.md)；token 里仍然一个键都不放，[0203](../02-decisions/02-permissions/0203-jwt-carries-identity-only.md)）：`sub`、`typ`、`roles[]`、`dept_path`、`tenant_id`（`org_id` 弃用）、`act`（`{sub, kind: user|agent|svc}`，可嵌套）、`ceil[]`（天花板 profile 码）、`dg`（委托授予 id）、`azp`。
 
@@ -178,14 +178,14 @@ SDK 也把三个分支分开给出，慢查询可以改写成按同一个游标�
 | 成员 | 适合 | 证明了什么 |
 |---|---|---|
 | `infra/authz`（原生，默认） | 几乎所有 ERP / CRM 客户；除 `graph` 外的全部能力，一跳派生 | 完整契约可以在一个 PostgreSQL 上实现，不新增基础服务 |
-| `infra/authz-static` | 十人左右以内、演示、边缘或离线站点、测试夹具；只有 core，策略文件 `AUTHZ_POLICY_FILE` | 不动前端和 SDK 就能替换，以及明确降级 |
+| `infra/authz-static` | 十人左右以内、演示、边缘或离线站点、测试夹具；只有 core，策略文件在 `AUTHZ_POLICY_PATH`（不叫 `_FILE`：这个后缀只留给密钥） | 不动前端和 SDK 就能替换，以及明确降级 |
 | `infra/authz-openfga` | 协作重的客户：项目、文件夹、嵌套团队、跨组织共享；增加 `graph`、`list_objects`、Expand 和 ListUsers | ReBAC 可以放在同一份契约后面；一致性令牌对得上 OpenFGA 的一致性参数。OpenFGA 本身是基础设施（[0106](../02-decisions/01-architecture/0106-infrastructure-is-not-a-component.md)） |
 | Cedar 或 OPA（不建） | 在动作上有真实 ABAC 规则的客户 | 策略语言可以放在契约后面，只用于动作 |
 
 ## 怎么换
 
 1. 用 `brickkit add` / `brickkit remove` 装上新成员、卸掉旧成员；没有组件要改依赖，因为没有组件依赖成员。
-2. 把 `config/vars.yaml` 里的 `AUTHZ_URL` 指向新成员自己的服务名。
+2. 改掉 `config/vars.yaml` 里 `AUTHZ_URL` 和 `AUTHZ_GRPC_URL` 中的成员 ID（`$endpoint:infra/authz-static`、`$endpoint:infra/authz-static:grpc`）。
 3. 跑 `make gates`：已装组件要求了新成员不提供的能力时，`authz-capability-scan` 失败。
 4. 把分配（角色、档位、维度取值、共享、委托）从旧成员导出成 NDJSON，再导入新成员，格式由族契约 `contract-infra-authz` 定义；和 [21](21-identity-provider.md#怎么换) 里身份链接的导出是同一个做法。导入 `infra/authz-static` 时写的是它的策略文件。新成员答 `410` 时，各组件的投影自己用 `ReadTuples` 重建。
 5. 上线前对新成员跑一致性套件。
@@ -215,7 +215,7 @@ SDK 也把三个分支分开给出，慢查询可以改写成按同一个游标�
 - [0212 调用者看不见的记录答 404](../02-decisions/02-permissions/0212-invisible-records-answer-404.md)：调用者看不见的记录答 404。
 - [0101 组件之间禁止 import](../02-decisions/01-architecture/0101-no-imports-between-components.md)：族契约包是第三类可以跨边界的包。
 - [0104 槽位族需要多种合理实现，而且没有依赖边](../02-decisions/01-architecture/0104-variants-become-slot-families.md)：`slot:authz`。
-- [0107 授权与身份经共享变量访问，从不经依赖](../02-decisions/01-architecture/0107-authz-and-iam-addresses-are-shared-vars.md)：一律经 `AUTHZ_URL`，不对任何成员建边。
+- [0107 族成员的地址是共享变量里的 `$endpoint:` 引用](../02-decisions/01-architecture/0107-authz-and-iam-addresses-are-shared-vars.md)：一律经 `AUTHZ_URL` 和 `AUTHZ_GRPC_URL`，不对任何成员建边。
 
 ## 已知限制
 

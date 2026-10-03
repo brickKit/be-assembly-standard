@@ -71,8 +71,13 @@ container port (5432 → 15432, 8080 → 18080), or the first free port from 180
 the env file / process gets `localhost:<that port>`; a dependency hosted in a shell is published on the
 shell's container. Containers that call the process keep its service name, resolved to the host by
 `extra_hosts: <service>:host-gateway`. These are the ports BrickKit assigns in one run; one already
-used by another program on your machine fails when the engine binds it — so keep 8081+ and
-10000 + your container ports out of the project's own port registry.
+used by another program on your machine fails when the engine binds it. A project's own port registry
+can use 8080, 8081 and their neighbours as usual; a process leaves its `deployment.port` (for the first
+free port from 8081, possibly another component's) only when this `up` already assigned that port —
+write `localPort` to fix it — and 10000 + your container ports must stay free for the mappings.
+In the values such a process receives, `host.docker.internal` (the host machine, as containers call it)
+becomes `localhost`; containers get the value as written, so one `config/` serves both — don't
+override it in `vars:`, which reaches the containers too.
 
 **4. Environments are whole files: `brickkit up -f deploy.prod.yaml`.**
 
@@ -80,7 +85,7 @@ No overlay, no inheritance. `brickkit.yaml` and `config/` are shared; per-enviro
 config go through `$var:NAME` references, overridden by the deploy file's `vars:` block. `-f` ignores
 local mode entirely.
 
-**5. Config keys are env var names; values take five forms.**
+**5. Config keys are env var names; values take six forms.**
 
 ```yaml
 DB_PORT: 5432                          # literal
@@ -88,7 +93,14 @@ DB_HOST: $var:DB_HOST                  # from config/vars.yaml, overridden by th
 DB_PASSWORD: ${DB_PASSWORD}            # process environment, then .env (never committed)
 TLS_CERT: file://.secrets/cert.pem     # file contents, path relative to the project root
 API_TOKEN: { existingSecret: api, key: token }   # K8s only, secret keys only
+IAM_URL: $endpoint:infra/iam/.well-known/jwks.json   # another component's address (+ optional path)
 ```
+
+`$endpoint:<id>[@<version>][:<port name>][/path]` is worked out like `*_ENDPOINT` (versioned service
+name, rewritten for shells and processes on this machine). Use it wherever a component takes an
+address item instead of a dependency (slot families), and put it in `config/vars.yaml` when several
+components share it. It adds no start order and may form cycles; the target runs along with whoever
+refers to it; when the target doesn't run, an optional item is left out and a required one is an error.
 
 The default version reads `config/<scope>-<name>.yaml`; a `requiredBy` version reads
 `config/<scope>-<name>@<version>.yaml`.
@@ -118,8 +130,9 @@ changed code without a version bump needs `--force`. A shell image built with st
 `IMAGE_STALE`. Git / market components with `image:` are pulled.
 
 **8. Shells are chosen in the deploy file.** Nest member entries under the shell entry and they run
-inside it (no own container; their `*_ENDPOINT` points at the shell; their own expose / labels /
-health check don't apply). The hosted version must be the one the shell's `component.yaml` compiles
+inside it (no own container; their `*_ENDPOINT` points at the shell; their own labels / health
+check don't apply, while their `expose` is opened by the shell — a mapping on the shell's container on
+Docker, an Ingress to the member's Service on K8s). The hosted version must be the one the shell's `component.yaml` compiles
 in; otherwise `up` stops with three ways out: upgrade the shell to one that compiles that version;
 move the member entry out of the shell to run on its own; or keep both — a `brickkit.yaml` line for the
 compiled version with `requiredBy: [<shell>]`, `id@that-version` nested under the shell, the other
@@ -185,6 +198,10 @@ several versions coexist.
 **Exposing**: `expose: true`. On K8s it needs a `hostname` (an Ingress is generated; `tlsSecret`
 optional); on Docker the port is mapped to the host (`exposePort` changes the host port). Not written:
 not exposed. `replicas > 1` on K8s adds a PodDisruptionBudget.
+Several components on one domain, split by path: on K8s share the `hostname` and give each entry its
+own `paths: [/api/sales]` (prefix match, no rewriting; a path belongs to one component, and `tlsSecret`
+must be the same); on Docker the platform generates no gateway — write the routes in each entry's
+`labels` for a gateway such as Traefik.
 
 **Migrations**: on K8s a separate Job (not an init container, so several replicas never migrate at
 once); on Docker a one-shot container. A failure keeps the main service from starting.
@@ -203,4 +220,4 @@ service) → start the engine → supervise `mode: local` processes.
 - A component's configuration guide: `.brickkit/manifests/<scope>/<name>/<version>/BRICKKIT.md`
 - The full specification: <https://github.com/brickKit/brickKit> and its root `AGENTS.md`
 
-<!-- brickkit:skill version=v1.1.0 sum=sha256:6f1aad005fc16c1e42055943965d35f02c344c713712b5cae1971aeb1ea82f65 -->
+<!-- brickkit:skill version=v1.3.1 sum=sha256:52e274b3b3f9fa294e9414d6b87c394abdbb6a1af40c489f388cc0cde8f29e1a -->

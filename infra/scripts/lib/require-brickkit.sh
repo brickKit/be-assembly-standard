@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # 核对 PATH 上的 brickkit 是本项目要求的版本；不是就点名二进制路径并退出 2。
 #
-# 为什么要查：~/go/bin 里还留着旧的 v0.4.6，PATH 把 ~/go/bin 放在前面时它会遮住 ~/.local/bin 的 v1.1.0。
+# 为什么要查：~/go/bin 里还留着旧的 v0.4.6，PATH 把 ~/go/bin 放在前面时它会遮住 ~/.local/bin 的新版。
 # 旧 CLI 大多大声失败（未知命令），但 ship.sh 的 brickkit release 会照样跑完，发布就交给了旧 CLI，
 # 没有任何报错。所以每个会调 brickkit 的入口脚本开头都先过这一关。
 #
@@ -9,7 +9,7 @@
 #   source "$S/lib/require-brickkit.sh"; require_brickkit     （脚本里）
 #   bash infra/scripts/lib/require-brickkit.sh                （命令行 / Makefile / env.sh；成功时不输出）
 # 要求的版本只写在下面这一处；升级 brickKit 时只改这一行。
-BRICKKIT_REQUIRED="BrickKit CLI v1.1.0"
+BRICKKIT_REQUIRED="BrickKit CLI v1.3.1"
 
 require_brickkit() {
   local bin line

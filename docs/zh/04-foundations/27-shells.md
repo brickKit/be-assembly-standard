@@ -34,13 +34,16 @@ N 个组件要共用一个进程而互不察觉，需要什么：一个外壳能
 
 外壳启动器是每个官方 SDK 的一部分。不论哪种语言，它承诺：
 
-- **输入。** brickKit 传入 `BRICKKIT_SERVED_MEMBERS` 和 `BRICKKIT_SERVED_MEMBERS_CONFIG`（一个 JSON 值）。启动器恰好启动列出的成员，每个只拿到自己的配置键；列出的成员没有编译进来或编译进来的版本不同、某个成员的 `PG_HOST`、`PG_PORT`、`PG_DATABASE`、`EVENT_BUS_URL`、`AUTHZ_URL`、`IAM_*` 或 `TENANT_ID` 与外壳的不同（这几项撑着那四样进程级共享的东西）、或者任何成员的配置非法（全部错误一起报出）时，拒绝启动，并点名是哪个成员。
-- **端口。** 每个成员在自己的 HTTP 端口和自己的 `extraPorts` 上监听，有自己的 gRPC 服务端和拦截器链。地址按成员自己的服务名解析，brickKit 把它做成外壳的别名（[04-configuration.md](../01-conventions/04-configuration.md#依赖地址)）。
+- **输入。** brickKit 传入 `BRICKKIT_SERVED_MEMBERS` 和 `BRICKKIT_SERVED_MEMBERS_CONFIG`（一个 JSON 值）。启动器恰好启动列出的成员，每个只拿到自己的配置键；列出的成员没有编译进来或编译进来的版本不同、某个成员的 `PG_HOST`、`PG_PORT`、`PG_DATABASE`、`EVENT_BUS_URL`、`AUTHZ_URL`、`AUTHZ_GRPC_URL`、`IAM_*` 或 `TENANT_ID` 与外壳的不同（这几项撑着那四样进程级共享的东西；它们只在 `config/vars.yaml` 里写一次，`$endpoint:` 解析出的值对每个成员本来就完全相同）、或者任何成员的配置非法（全部错误一起报出）时，拒绝启动，并点名是哪个成员。
+- **端口。** 每个成员在自己的 HTTP 端口和自己的 `extraPorts` 上监听，监听所有接口（`0.0.0.0` 和 `::`），有自己的 gRPC 服务端和拦截器链。地址按成员自己的服务名解析：Docker 上 brickKit 把它做成外壳的别名，Kubernetes 上是一个选中外壳 Pod 的 Service；指向成员的 `$endpoint:` 引用解析成外壳加该成员的端口（[04-configuration.md](../01-conventions/04-configuration.md#依赖地址)）。
+- **对外暴露。** 成员条目可以写 `expose: true`（以及 `exposePort`、`hostname`、`tlsSecret`、`paths`）：由外壳替成员打开。Docker 上外壳的容器映射成员的主端口；Kubernetes 上成员有自己的 Ingress，指向它自己的 Service，Service 端口以成员声明的 `protocol` 作 `appProtocol`。边缘的路由标签也写在外壳的条目上，因为成员被承载期间它自己的 `labels` 不生效（[18-edge.md](18-edge.md#be-ops-生成什么)）。
+- **密钥。** 成员的 `mount: file` 密钥挂进外壳的容器，路径和成员单跑时一模一样；成员在 JSON 里的那一项是路径，从不是值（[24-config-and-secrets.md](24-config-and-secrets.md#端口契约)）。
 - **数据库。** 外壳要求 PostgreSQL 16 及以上；单独运行的组件仍以 14 为下限。外壳用它自己的 `PG_USER` 登录，这个登录角色以 `WITH INHERIT FALSE, SET TRUE` 被授予每个成员的运行期角色，因此不持有它们的任何权限。每个事务用 `SET LOCAL ROLE` 切到该成员自己的运行期 `PG_USER`（取自成员的配置，绝不由 schema 名推导；绝不切到属主角色，外壳从不被授予属主角色），把事务内的 `search_path` 设为该成员的 `PG_SCHEMA`，并用 `SET LOCAL application_name` 设为该成员的 ID，让 `pg_stat_activity` 能按成员数连接。成员之间的隔离是 SDK 的职责，不是数据库的：只有运行时的 store 发 `SET LOCAL ROLE`，成员代码从不发 `SET ROLE`（门禁 `identity-literal-scan`）。物理池大小是外壳的 `PG_POOL_MAX`；每个成员经一个容量为它自己 `PG_POOL_MAX` 的限额取连接，预算用尽时怎么办见 [03-database.md](03-database.md)。
 - **advisory 锁**只用事务级的，键由「成员 schema 加锁名」的哈希和锁的各部分的哈希组成，两个成员绝不会争同一个键（[10-local-transactions.md](10-local-transactions.md)）。
 - **遥测。** 每个成员一个 tracer 和 meter provider，`service.name` = 成员的组件 ID；每一处埋点（HTTP 与 gRPC 的服务端和客户端、出站 HTTP、消费者）都显式拿到该成员的 provider 和传播器，从不用 OpenTelemetry 的进程全局对象；全局 tracer provider 只作兜底，带外壳自己的 ID，所以出现这个名字的 span 就说明有埋点漏了；共用一个导出器，只由启动器在所有成员都停下之后关闭；外壳端口上一个汇总的 `/metrics`，每个成员带一个 `component` 标签（[23-observability.md](23-observability.md)）。
-- **健康检查。** `/healthz` 只报告进程活着；一个成员的下游抖动不能让所有成员一起重启（[02-backend.md](../01-conventions/02-backend.md#健康检查与镜像)）。
-- **迁移**在外壳启动之前，从每个成员自己的镜像里跑，绝不在外壳里跑，各自以该成员自己的属主凭据（`PG_OWNER_USER` / `PG_OWNER_PASSWORD`，[08-schema-evolution.md](08-schema-evolution.md#迁移入口)）登录；外壳的登录角色从不被授予属主角色。
+- **健康与就绪。** `/healthz` 只报告进程活着；一个成员的下游抖动不能让所有成员一起重启（[02-backend.md](../01-conventions/02-backend.md#健康检查与镜像)）。外壳的 `/readyz` 在它的 `component.yaml` 里声明为 `readinessCheck: {type: http, path: /readyz}`，所有被承载的成员都就绪后（以及没有成员时）答 `200`，否则答 `503` `NOT_READY` 并点出还在等的成员；brickKit 在容器里经 `127.0.0.1` 探它。
+- **停机。** 外壳声明自己的 `deployment.stopGracePeriodSeconds`，至少等于成员中最大的那个值：承载期间 brickKit 用外壳的值，成员自己的值只在它单跑时生效。外壳自己的 `SHUTDOWN_GRACE` 不小于成员中最大的那个，并且比它的停机宽限期至少小 5 s（默认分别是 25 s 和 30 s）。收到 `SIGTERM` 时，启动器并行停下所有成员，所以停机耗时等于最慢的那个成员，然后关闭共享导出器。
+- **迁移**在外壳启动之前，从每个成员自己的镜像里跑，绝不在外壳里跑，各自以该成员自己的属主凭据（`PG_OWNER_USER` / `PG_OWNER_PASSWORD_FILE`，[08-schema-evolution.md](08-schema-evolution.md#迁移入口)）登录；外壳的登录角色从不被授予属主角色。
 
 **合并安全核对表。** SDK 的每个功能，涉及到哪一项就在这里核对，过了才能叫"合并安全"。
 
@@ -65,7 +68,8 @@ N 个组件要共用一个进程而互不察觉，需要什么：一个外壳能
 | 日志 | SDK 用进程默认 logger 记日志，丢了成员 ID | SDK 只经成员的 logger 记日志 | "消费失败的日志带成员 ID" |
 | 指标 | 默认 registry 在第二个成员上 panic | 每个成员一个 registry，汇总时加 `component` 标签 | 已在用，加汇总测试 |
 | bundle 与 JWKS | — | 每个进程一份（不变量 1）；授权投影按成员，在它自己的 schema 里（[20-authorization-provider.md](20-authorization-provider.md)） | 已在用 |
-| 边缘路由与共享地址 | 指向外壳名，外壳每发一版就失效 | 一律用成员自己的服务名（[0107](../02-decisions/01-architecture/0107-authz-and-iam-addresses-are-shared-vars.md)） | 边缘路由测试、`service-hostname-scan` |
+| 边缘路由与共享地址 | 指向外壳名，外壳每发一版就失效 | 地址是指名成员的 `$endpoint:` 引用，由 brickKit 解析（[0107](../02-decisions/01-architecture/0107-authz-and-iam-addresses-are-shared-vars.md)）；边缘标签同时写在成员和外壳的条目上，router 名不带版本 | 边缘路由测试（黄金部署字段） |
+| 停机宽限 | 外壳按某个成员较短的宽限期被停，切断了另一个成员的在途工作 | 外壳声明自己的 `stopGracePeriodSeconds`，不小于任何成员的；`SHUTDOWN_GRACE` 在它之下 | 门禁比较外壳和成员的值 |
 | 爆炸半径 | 外壳一重启，所有成员同时不可用 | durable 消费者保留进度；reconciler 推进进行中的流程；重试预算吸收这段空档 | 组装后外壳的真机测试 |
 
 ## 备选方案
@@ -114,7 +118,7 @@ N 个组件要共用一个进程而互不察觉，需要什么：一个外壳能
 
 - 上面核对表里的每一条红测试，在每个有启动器的官方 SDK 里都要有。
 - 组件协议套件里（[02-languages-and-component-protocol.md](02-languages-and-component-protocol.md)）：一个夹具组件分别单独运行和在外壳里运行，黑盒结果完全相同。
-- 门禁：`make module-check`（模块代码不读进程环境、不做进程级初始化、不退出进程）；外壳成员检查（注册的成员 = `shell.members` = 模块依赖声明）；`service-hostname-scan`。
+- 门禁：`make module-check`（模块代码不读进程环境、不做进程级初始化、不退出进程）；外壳成员检查（注册的成员 = `shell.members` = 模块依赖声明）；外壳的 `stopGracePeriodSeconds` 不小于任何成员的。（`service-hostname-scan` 已退役：地址是 `$endpoint:` 引用。）
 - 组装后真机：`be/go-core` 里 sales → inventory 的 `Reserve` 走回环 gRPC，记下的操作人是发起确认的用户；然后 `brickkit up --ignore-shells` 得到相同结果。
 
 ## 相关决策
@@ -126,7 +130,7 @@ N 个组件要共用一个进程而互不察觉，需要什么：一个外壳能
 - [0101 组件之间禁止 import](../02-decisions/01-architecture/0101-no-imports-between-components.md)
 - [0102 一个数据库，每个组件一个 schema](../02-decisions/01-architecture/0102-one-schema-per-component.md)
 - [0103 每种语言内部一套锁定的技术栈](../02-decisions/01-architecture/0103-locked-stack-per-language.md)：让每成员不变量能在代码里落实。
-- [0107 授权与身份经共享变量访问，从不经依赖](../02-decisions/01-architecture/0107-authz-and-iam-addresses-are-shared-vars.md)
+- [0107 族成员的地址是共享变量里的 `$endpoint:` 引用](../02-decisions/01-architecture/0107-authz-and-iam-addresses-are-shared-vars.md)：对每个成员都相同，成员被外壳承载期间指向外壳。
 
 ## 已知限制
 

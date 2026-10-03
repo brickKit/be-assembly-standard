@@ -2,7 +2,7 @@
 
 # 0508 后台工作只经 SDK 的 Jobs
 
-**状态**：已决定，随 3.0.0 统一升级落地。
+**状态**：已决定，随 3.0.0 统一升级落地。brickKit 对 FR06-007（平台级 `maintenance` 定时任务）的答复确认了它：不做，并引用本决策作为推荐做法；下面可选的"跑一次就退出"入口就是它建议的出路。
 
 ## 决策
 
@@ -20,6 +20,7 @@
 - 失败或 panic 的任务被记日志、计数，并按退避重启；一个任务结束从不让另一个停下；单跑和外壳行为一致。
 - 每次运行都有超时；任务指标使用 `be_job_*`、`be_queue_*`、`be_reconcile_*` 这些名字。
 - 不用 Kubernetes CronJob，不用 `pg_cron`，不用外部调度器。
+- **一个要经测量才成立的例外，分三步。** (1) 工作留在进程里。(2) 一个重任务挤占了邻居，就把它的组件移出外壳、放进自己的容器并写 `resources.limits`（改部署文件即可）。(3) 只有测量证明这样仍不够，才让这个任务经可选的协议能力"跑一个任务一次就退出"（`<entrypoint> job run <name>`）以独立进程运行；它抢的是和进程内运行同一行租约或时间槽，所以不管谁触发都只执行一次。触发放在 brickKit 之外：Docker 和 Podman 上由宿主机 cron 或 systemd 定时器执行 `docker compose … run --rm --no-deps <service> job run <name>`，Kubernetes 上是一个不带 `brickkit.io/project` 标签的手写 CronJob。`JOBS_OVERRIDES` 给进程里的那一份设 `enabled: false`（[19](../../04-foundations/19-background-jobs.md#端口契约)）。
 
 ## 理由
 
@@ -30,7 +31,7 @@
 - 模块代码里的 ticker、goroutine、线程、`setInterval` 或 sleep 循环（门禁 `module-ticker-scan`）
 - 从启动钩子里启动循环
 - "提交后在后台调一下"却没有队列行
-- 用外部调度器或数据库扩展来跑组件的任务
+- 用外部调度器或数据库扩展来跑组件的任务；例外只有上面第 (3) 步：在前两步经测量不够之后，从外部触发"跑一次就退出"入口
 - 没有超时的任务，或失败后会让进程或其他任务停下的任务
 
 ## 何时重新讨论

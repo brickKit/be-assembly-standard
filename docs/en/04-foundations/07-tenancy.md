@@ -117,7 +117,7 @@ Inside one deployment the neighbours are components, not tenants. They are bound
 - [0102 One database, one schema per component](../02-decisions/01-architecture/0102-one-schema-per-component.md): why schemas cannot also be per tenant.
 - [0206 No row-level security](../02-decisions/02-permissions/0206-no-row-level-security.md): why a pooled model would rest on the SDK alone.
 - [0203 The token carries identity only, and the platform owns `sub`](../02-decisions/02-permissions/0203-jwt-carries-identity-only.md): the `aud`, `iss` and `tenant_id` claims.
-- [0107 Authorization and identity are reached through shared variables, never through dependencies](../02-decisions/01-architecture/0107-authz-and-iam-addresses-are-shared-vars.md): `IAM_ISSUER` and `TENANT_ID` are shared variables.
+- [0107 Family addresses are `$endpoint:` references in shared variables](../02-decisions/01-architecture/0107-authz-and-iam-addresses-are-shared-vars.md): `IAM_ISSUER` and `TENANT_ID` are shared variables.
 - [0205 Data scopes ship with the version](../02-decisions/02-permissions/0205-data-scopes-ship-with-the-version.md): `legal_entity_id` is one of the columns a component declares for its data scopes.
 - [0307 Business dates follow the legal entity's calendar](../02-decisions/03-contracts-and-data/0307-business-dates-and-legal-entity-calendar.md): the legal entity's time zone and fiscal year.
 

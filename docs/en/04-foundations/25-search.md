@@ -84,7 +84,7 @@ Reserved so that no component contract has to change when it is built:
 - **Members**: `infra/search-pg` (default: PostgreSQL full-text plus bigram index in its own schema), `infra/search-meilisearch`, `infra/search-opensearch`. One family contract, in its own repository like the authz and iam families.
 - **Feed**: each owner declares which resource types are globally searchable; the member consumes their events into a projection `{type, id, owner, title, search_text, updated_at, deleted}`. A new member rebuilds it from the owners' `List` backfill, since streams keep only seven days.
 - **Query**: `GET /api/search?q=&types=&page_size=&cursor=` through the edge. Candidates are post-filtered with each owner's `_authz/check` (at most 500 per call), fetching more until a page is full. Nothing the caller may not see is ever returned; no exact totals.
-- **Addressing**: the shared variable `SEARCH_URL`; no component depends on a member ([0104](../02-decisions/01-architecture/0104-variants-become-slot-families.md), [0107](../02-decisions/01-architecture/0107-authz-and-iam-addresses-are-shared-vars.md)).
+- **Addressing**: the shared variable `SEARCH_URL`, filled in `config/vars.yaml` with `$endpoint:<member>` (`$endpoint:infra/search-pg`); absent when no member is installed, and owners and the frontend degrade; no component depends on a member ([0104](../02-decisions/01-architecture/0104-variants-become-slot-families.md), [0107](../02-decisions/01-architecture/0107-authz-and-iam-addresses-are-shared-vars.md)).
 
 ## Alternatives
 
@@ -124,7 +124,7 @@ Reserved so that no component contract has to change when it is built:
 
 - **Index strategy**: install the extension with `make db-init`; at the next `up` the platform migration detects it and builds the index concurrently. No component change.
 - **Normalisation**: a new vectors version in be-protocol and an SDK release; the backfill job rewrites rows; components only bump the SDK.
-- **Global search**: `brickkit add infra/search-pg`, set `SEARCH_URL`, owners declare searchable types. Changing members is `brickkit remove` / `add` and a rebuild of the projection; owners and the frontend do not change.
+- **Global search**: `brickkit add infra/search-pg`, set `SEARCH_URL: $endpoint:infra/search-pg`, owners declare searchable types. Changing members is `brickkit remove` / `add` and a rebuild of the projection; owners and the frontend do not change.
 
 ## Conformance tests
 
@@ -137,7 +137,7 @@ Reserved so that no component contract has to change when it is built:
 ## Decision records
 
 - [0102 One schema per component](../02-decisions/01-architecture/0102-one-schema-per-component.md): global search reads events, never another schema.
-- [0104 Variants become slot families](../02-decisions/01-architecture/0104-variants-become-slot-families.md) and [0107 Authz and IAM addresses are shared variables](../02-decisions/01-architecture/0107-authz-and-iam-addresses-are-shared-vars.md): the search family and `SEARCH_URL`.
+- [0104 Variants become slot families](../02-decisions/01-architecture/0104-variants-become-slot-families.md) and [0107 Family addresses are `$endpoint:` references in shared variables](../02-decisions/01-architecture/0107-authz-and-iam-addresses-are-shared-vars.md): the search family and `SEARCH_URL`.
 - [0206 No row-level security](../02-decisions/02-permissions/0206-no-row-level-security.md): the data scope is a predicate in the same SQL, which is why `q` must be too.
 - No new decision is planned; the global family will add its own when it is built.
 

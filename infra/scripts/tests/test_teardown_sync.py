@@ -103,6 +103,19 @@ def test_check_flags_vars_only_difference(tmp):
     assert r.returncode == 1, r.stdout + r.stderr
 
 
+def test_network_is_carried_over_and_checked(tmp):
+    """deploy.yaml 顶层 network:（项目自己提供的网络，brickKit v1.2.0 起）拆回验证也要用同一个网络。"""
+    root = make(tmp, deploy=DEPLOY.replace("target: docker # docker | podman | k8s\n",
+                                           "target: docker # docker | podman | k8s\nnetwork: proj-net\n"))
+    r = run(root)
+    assert r.returncode == 0, r.stdout + r.stderr
+    assert load(root / "deploy.teardown.yaml")["network"] == "proj-net"
+    assert run(root, "--check").returncode == 0
+    p = root / "deploy.teardown.yaml"
+    p.write_text(p.read_text(encoding="utf-8").replace("network: proj-net\n", ""), encoding="utf-8")
+    assert run(root, "--check").returncode == 1
+
+
 def test_empty_components(tmp):
     root = make(tmp, deploy="target: docker\n\ncomponents: []\n")
     r = run(root)

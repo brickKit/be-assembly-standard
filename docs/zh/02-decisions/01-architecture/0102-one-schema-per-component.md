@@ -9,7 +9,7 @@
 所有组件共用一个 PostgreSQL 方言族的数据库：单独运行的组件要求 PostgreSQL 14 及以上，外壳要求 16 及以上（因为它的 NOINHERIT 授权），或任何讲它的线上协议并通过数据库套件 `tools/be-acceptance/conformance/db/` 的引擎。每个组件拥有一个 schema 和两个角色（属主角色和运行期角色），都取自 `registry/schemas.tsv`；迁移状态表放在自己的 schema 里；从不读、写或 JOIN 别的组件的 schema。别的组件拥有的数据通过该组件的 API 获取（按 id 列表取用 `BatchGet`，见 [0304](../03-contracts-and-data/0304-batch-get-takes-at-most-500-ids.md)）。
 
 - **库身份只来自配置。** 属主角色是 `PG_OWNER_USER`，运行期角色是 `PG_USER`，schema 是 `PG_SCHEMA`；三者都必填、都没有默认值、谁也不从谁推导。迁移里不出现任何角色名或 schema 名。
-- **属主角色与运行期角色分开。** 属主（`PG_OWNER_USER` / `PG_OWNER_PASSWORD`，一个登录角色）拥有表、做全部 DDL；迁移和平台迁移以它登录。运行期角色 `PG_USER` 只有 DML，不是属主角色的成员；运行中的服务只用它。运行期少数必须的 DDL（提前建分区、装封存守卫、删过期的平台分区）经由属主创建的 `SECURITY DEFINER` 函数。一条已记录的限制：brickKit 给迁移容器的环境和主服务相同，所以服务也会拿到属主凭据；SDK 从不使用它们，等 brickKit FR06-013（只给迁移的变量）落地后，就只有迁移容器拿到。
+- **属主角色与运行期角色分开。** 属主（`PG_OWNER_USER` / `PG_OWNER_PASSWORD_FILE`，一个登录角色）拥有表、做全部 DDL；迁移和平台迁移以它登录。运行期角色 `PG_USER` 只有 DML，不是属主角色的成员；运行中的服务只用它。运行期少数必须的 DDL（提前建分区、装封存守卫、删过期的平台分区）经由属主创建的 `SECURITY DEFINER` 函数。一条已记录的限制：brickKit 给迁移容器的环境和挂载与主服务完全相同（它有意不做 FR06-013"只给迁移的变量"），所以服务的容器里也有属主口令文件；SDK 运行期从不读它。
 - **每一次访问都经过 SDK 的库句柄**：它在每个事务里用 `SET LOCAL` 设定角色、`search_path` 和超时；outbox 泵、消费者和后台任务也走它。
 - **SDK 拥有的表**（`besdk_*`）放在组件自己的 schema 里，由 SDK 的平台迁移建；组件的 SQL 从不碰它们。
 - **外壳的登录角色什么都不拥有**：它以 `WITH INHERIT FALSE, SET TRUE` 被授予每个被托管成员的运行期角色 `PG_USER`（从不授予属主角色），只有 `SET LOCAL ROLE` 之后才能干活。

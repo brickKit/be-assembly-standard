@@ -140,7 +140,7 @@ reasons:
 
 - `reason` 是 `UPPER_SNAKE`，在 domain 内唯一。槽位族成员的 reason 列在族契约的 `errors.yaml` 里，归在族的 domain（`infra/authz`）下，不进成员自己的目录。条目**只追加**，和 `registry/permissions.tsv` 一样：绝不改名、删除或复用；用 `deprecated: true` 退役（[07-registries.md](../01-conventions/07-registries.md#只追加)）。
 - 前端从已安装组件的目录生成自己的消息表，就像它从契约生成类型一样。不认识的 reason 显示 `title` 或一条通用消息，并上报。
-- **平台 reason** 用 `domain: be`，随组件协议一起发布（`brickKit/be-protocol` 的 `schemas/errors-be.yaml`，[02](02-languages-and-component-protocol.md#be-protocol-的仓库结构)）。下表是完整集合，共 32 个 reason，与该文件逐行一致；组件不在自己的 domain 里使用这些名字，也不抛该文件之外的 `be` reason：
+- **平台 reason** 用 `domain: be`，随组件协议一起发布（`brickKit/be-protocol` 的 `schemas/errors-be.yaml`，[02](02-languages-and-component-protocol.md#be-protocol-的仓库结构)）。下表是完整集合，共 33 个 reason，与该文件逐行一致；组件不在自己的 domain 里使用这些名字，也不抛该文件之外的 `be` reason：
 
 | Reason | Code | 什么时候抛 |
 |---|---|---|
@@ -176,6 +176,7 @@ reasons:
 | `UPSTREAM_TIMEOUT` | `DEADLINE_EXCEEDED` | 只由边缘抛出：组件没在边缘的截止时间内回答；HTTP 504（[18](18-edge.md)） |
 | `NETWORK_IN_TX` | `INTERNAL` | 事务打开期间发起了出站调用：属于编程错误，在日志和测试运行里写明这个名字，好让它们抓到；调用方收到的仍是上面所说的 `reason: INTERNAL`（[10](10-local-transactions.md#端口契约)、[0501](../02-decisions/05-runtime/0501-no-network-inside-a-transaction.md)） |
 | `DB_TOO_MANY_CONNECTIONS` | `UNAVAILABLE` | 数据库以 SQLSTATE `53300`（连接过多）拒绝了连接；不重试 |
+| `NESTED_TX` | `INTERNAL` | 在同一个工作单元里、一个事务内又打开了另一个事务：属于编程错误，在日志和测试运行里写明这个名字；调用方收到的仍是上面所说的 `reason: INTERNAL`（[10](10-local-transactions.md#端口契约)） |
 
 三个边缘 reason 绝不由组件抛出：边缘自己产生的回答（404、413、429、502、503、504）带同样的 problem 体，`domain: be`。
 

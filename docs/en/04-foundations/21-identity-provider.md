@@ -21,7 +21,7 @@ Not covered: what a person may do once identified ([20-authorization-provider.md
 - **The platform owns `sub`.** The token's `sub` is a platform user id (UUIDv7). The IdP's subject is stored only in the member's link table, so changing IdP never rewrites an `owner_id`, a role assignment or an audit row.
 - **Standards only between the frontend and the IdP**: OIDC discovery, authorization code with PKCE, a token exchange shaped like RFC 8693. No vendor path in the frontend or in a contract field.
 - **A slot family** with contract `infra.iam.v1` in its own repository, `contract-infra-iam`, and suite `iamconf`. Members, in order: `infra/iam-casdoor` (default), `infra/iam-keycloak` (second, built in phase 06), a generic OIDC + SCIM member (third).
-- **No component depends on a member.** Components read `IAM_JWKS_URL` ([0107](../02-decisions/01-architecture/0107-authz-and-iam-addresses-are-shared-vars.md)); the IAM member itself reaches authz only through `AUTHZ_URL`, never through a dependency edge.
+- **No component depends on a member.** Components read `IAM_URL` and fetch the JWKS under it ([0107](../02-decisions/01-architecture/0107-authz-and-iam-addresses-are-shared-vars.md)); the IAM member itself reaches authz only through `AUTHZ_URL` and `AUTHZ_GRPC_URL`, never through a dependency edge.
 
 **Status**: in place: `infra/iam-casdoor` 2.0.x exchanges a Casdoor ID token (field `casdoor_id_token`) for an RS256 token with `sub` (Casdoor's subject), `roles`, `dept_path`, `org_id`, TTL 600 s, refresh rotation, JWKS at `/.well-known/jwks.json`, Casdoor webhooks bridged to user events. Decided (the 3.0.0 sweep): everything else here. The access token does not yet carry `iss`, `aud`, `jti` or `typ`, and a refresh token passes verification as an access token; adding `typ: access` and rejecting `typ: refresh` is the first fix.
 
@@ -58,7 +58,7 @@ The answer carries `access_token`, `issued_token_type`, `token_type`, `expires_i
 | `azp` | the client (PC, mobile) |
 | `locale` | the user's language, for server-side text |
 
-**Signing keys.** JWKS at `IAM_JWKS_URL` publishes the current and the previous key; every key has a `kid` and an `alg`.
+**Signing keys.** The JWKS at `{IAM_URL}/.well-known/jwks.json` publishes one to three keys: the current key, the previous one during a rotation, and optionally the next one ahead of use; every key has a `kid` and an `alg`. The private keys are the secret files `APP_TOKEN_SIGNING_KEY_FILE` and `APP_TOKEN_NEXT_SIGNING_KEY_FILE`, re-read without a restart; the member records every public key it has signed with in its own schema, so the overlap survives restarts and replicas ([24](24-config-and-secrets.md#port-contract)).
 
 **Verification, in every SDK and any language:**
 
@@ -74,13 +74,13 @@ The answer carries `access_token`, `issued_token_type`, `token_type`, `expires_i
 
 **Directory events.** `infra.iam.user.created.v1`, `.updated.v1`, `.disabled.v1`, `.deleted.v1` (deleted is new). The payload carries at least `sub`, `display_name`, `email`, `phone`, `locale`, `im_accounts`, `status`. How a member learns of changes is its own business: Casdoor by webhook, Keycloak by polling admin events, the generic member by SCIM 2.0 inbound (`/scim/v2/Users`, `/scim/v2/Groups`).
 
-**System RPC** (`infra.iam.v1.IamProvider`, reached through `IAM_URL`): `BatchGetUsers` (sub list → display data) and `ListUsers` (core); `ListDepartments` and `ListMemberships` (capability `directory_departments`). There is no `GetTenantFeatures`: the installed components (today's `enabled_components`), keys and capabilities move to the authorization provider's authenticated `GET /api/me/access` ([20-authorization-provider.md](20-authorization-provider.md)); the public `/api/tenant/features` keeps only the login page's fields.
+**System RPC** (`infra.iam.v1.IamProvider`, reached through `IAM_GRPC_URL`; absent, the reads degrade): `BatchGetUsers` (sub list → display data) and `ListUsers` (core); `ListDepartments` and `ListMemberships` (capability `directory_departments`). There is no `GetTenantFeatures`: the installed components (today's `enabled_components`), keys and capabilities move to the authorization provider's authenticated `GET /api/me/access` ([20-authorization-provider.md](20-authorization-provider.md)); the public `/api/tenant/features` keeps only the login page's fields.
 
 **Capabilities**, so the login page degrades by what the member declares: `password_login`, `social_cn` (DingTalk, WeCom, Feishu), `ldap`, `saml`, `scim_inbound`, `mfa`, `token_exchange_delegation`, `service_accounts`.
 
 **Reserved, not built**: service accounts (`sub: svc:<id>` through client credentials, the extension point of the system plane, see [14-system-rpc.md](14-system-rpc.md)); token exchange for delegation (`act`, `ceil`, `dg`), with no branch for agents.
 
-**Configuration.** Shared keys in `config/vars.yaml`: `IAM_JWKS_URL` (in place; `{IAM_URL}/.well-known/jwks.json`), and, decided: `IAM_URL` (the member's base URL by its own service name, like `AUTHZ_URL`; its gRPC port is derived from it by the rule in be-protocol P2), `IAM_ISSUER` (`urn:be:<TENANT_ID>:iam`), `TENANT_ID`, `BOOTSTRAP_ADMIN_LOGIN`. Server metadata (RFC 8414 shape) is at `{IAM_URL}/.well-known/oauth-authorization-server`, relative to `IAM_URL` because the issuer is a name, not a URL. The IdP server (Casdoor, Keycloak) is infrastructure started by `make up`, not a component ([0106](../02-decisions/01-architecture/0106-infrastructure-is-not-a-component.md)), and logs in to its own schema with its own role, never as `postgres`.
+**Configuration.** Shared keys in `config/vars.yaml` (decided): `IAM_URL: $endpoint:infra/iam-casdoor` (the REST base; the JWKS is `{IAM_URL}/.well-known/jwks.json`), `IAM_GRPC_URL: $endpoint:infra/iam-casdoor:grpc` (its port named `grpc`), `IAM_ISSUER` (`urn:be:<TENANT_ID>:iam`), `TENANT_ID`, `BOOTSTRAP_ADMIN_LOGIN`. `IAM_JWKS_URL` retires: it was a second address for the same member. The member hands Casdoor its own webhook address as `$endpoint:infra/iam-casdoor/api/iam/webhooks/casdoor`, a reference to itself. Server metadata (RFC 8414 shape) is at `{IAM_URL}/.well-known/oauth-authorization-server`, relative to `IAM_URL` because the issuer is a name, not a URL. The IdP server (Casdoor, Keycloak) is infrastructure started by `make up`, not a component ([0106](../02-decisions/01-architecture/0106-infrastructure-is-not-a-component.md)), and logs in to its own schema with its own role, never as `postgres`.
 
 ## Alternatives
 
@@ -122,7 +122,7 @@ Two architectural alternatives were also weighed: components verifying the IdP's
 
 1. Export the identity links from the old member (NDJSON) and import them into the new one, linking the new IdP's subjects to the existing platform `sub` values.
 2. `brickkit add` the new member and `brickkit remove` the old one; no component changes its dependencies.
-3. Set `IAM_URL` and `IAM_JWKS_URL` in `config/vars.yaml` to the new member's own service name. `IAM_ISSUER` names the platform, not the IdP, and stays the same.
+3. Change the member ID in `IAM_URL` and `IAM_GRPC_URL` in `config/vars.yaml` (`$endpoint:infra/iam-keycloak`, `$endpoint:infra/iam-keycloak:grpc`). `IAM_ISSUER` names the platform, not the IdP, and stays the same.
 4. People sign in again: tokens signed by the old member's key stop verifying once its key is gone from the JWKS.
 5. Run `iamconf` against the new member. The frontend does not change; it only reads discovery.
 
@@ -146,7 +146,7 @@ SDK side, in every official SDK: reject `typ: refresh`; enforce the `alg` allowl
 
 - [0203 The token carries identity only, and the platform owns `sub`](../02-decisions/02-permissions/0203-jwt-carries-identity-only.md): the token claims and the platform-owned `sub`.
 - [0308 A tenant is a deployment](../02-decisions/03-contracts-and-data/0308-tenant-is-the-deployment.md): the tenant is the deployment: `aud` is `TENANT_ID`, `tenant_id` is reserved on the wire.
-- [0107 Authorization and identity are reached through shared variables](../02-decisions/01-architecture/0107-authz-and-iam-addresses-are-shared-vars.md): `IAM_JWKS_URL`, `IAM_ISSUER` and `TENANT_ID` are shared variables; the iam → authz edge is removed.
+- [0107 Family addresses are `$endpoint:` references in shared variables](../02-decisions/01-architecture/0107-authz-and-iam-addresses-are-shared-vars.md): `IAM_URL`, `IAM_GRPC_URL`, `IAM_ISSUER` and `TENANT_ID` are shared variables; the iam → authz edge is removed.
 - [0210 Delegation and impersonation](../02-decisions/02-permissions/0210-delegation-and-impersonation.md): the token side of delegation, reserved for agents.
 - [0104 A slot family needs several reasonable implementations and no dependency edge](../02-decisions/01-architecture/0104-variants-become-slot-families.md): `slot:iam`.
 - [0106 Infrastructure is not a component](../02-decisions/01-architecture/0106-infrastructure-is-not-a-component.md): the IdP servers.

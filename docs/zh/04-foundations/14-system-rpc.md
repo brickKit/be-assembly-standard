@@ -16,7 +16,7 @@
 - **契约里已有的面向用户的 rpc 保留**（契约只增不减），在每个组件里都以同样的方式回答 `UNAUTHENTICATED`。
 - **连接复用**，按（成员，依赖，端口）一条，带 keepalive；服务端每 5 分钟轮换连接，让负载在 Kubernetes 上摊开。
 - **消息上限 4 MiB，不压缩，不用流式，包名带版本 `<domain>.<name>.v<n>`。**
-- **地址来自 brickKit 注入的 endpoint**，端口名一律是 `grpc`。
+- **地址来自 brickKit**：声明的依赖用端口名为 `grpc` 的注入 endpoint；槽位族成员用 `*_GRPC_URL` 键，填 `$endpoint:<成员>:grpc`。每个端口都在 `component.yaml` 里声明自己的 `protocol`。
 
 **状态**：组件之间的 gRPC 已就位。连接复用、keepalive、截止时间、统一的身份拦截器和 metadata 集合已定，随组件协议和 3.0.0 统一升级落地。今天每次调用都新拨一条连接、用完就关；没有任何调用带截止时间、trace 上下文或调用方身份；面向用户的 rpc 回答 `UNAUTHENTICATED`、`INTERNAL` 还是直接成功，取决于是哪个组件。
 
@@ -26,6 +26,8 @@
 
 - brickKit 为每个声明的依赖注入 `<ID>_ENDPOINT`，一律带 `http://` 前缀，gRPC 端口也一样。运行时去掉 scheme，用名为 `grpc` 的额外端口（[02-backend.md](../01-conventions/02-backend.md#rt-是唯一入口)）。误拨到 HTTP 端口时，TCP 能连上，随后以协议错误失败。
 - 缺席的可选依赖根本没有这个变量；调用方降级。
+- **槽位族成员**（授权、身份）从不是依赖，所以没有 `*_ENDPOINT`。它的 gRPC 地址是自己的键 `AUTHZ_GRPC_URL` 或 `IAM_GRPC_URL`，在 `config/vars.yaml` 里填 `$endpoint:infra/authz:grpc`：brickKit 解析出成员名为 `grpc` 的端口，跟着升级和外壳走。运行时去掉 `http://`，拨 `host:port`。任何地址都不靠端口算术推出（[0107](../02-decisions/01-architecture/0107-authz-and-iam-addresses-are-shared-vars.md)）。
+- **端口协议。** 主端口写 `deployment.protocol: http`，名为 `grpc` 的额外端口写 `protocol: grpc`；brickKit 在 Kubernetes 上把它们写成 Service 端口的 `appProtocol`（集群认的词可以用 `k8s.appProtocols` 替换，例如 `kubernetes.io/h2c`），于是服务网格或 Gateway API 的实现按请求而不是按连接均衡 gRPC。Docker 上不生成什么，也不需要什么。
 - 没有注册中心，除了这些变量之外没有服务发现。
 
 ### 请求 metadata
@@ -72,7 +74,7 @@
 
 - **Docker：** 每个组件或外壳一个容器；没什么可均衡的。
 - **Kubernetes 且 `replicas > 1`：** brickKit 为每个组件生成一个 ClusterIP Service，kube-proxy 按 TCP 连接做均衡。一条被复用的 HTTP/2 连接会永远停在一个 pod 上；服务端 5 分钟的连接寿命到了就发 `GOAWAY`，客户端重连，落到一个重新选出的 pod 上，所以负载大约五分钟内就会均匀。不用 mesh，不用 xDS。
-- **以后：** 每个 gRPC 端口一个 headless Service，客户端基于 DNS 做 `round_robin`，等 brickKit 能生成它之后再做（v1.1.0 只生成 ClusterIP Service）。
+- **以后，测出需要时：** brickKit 不做 headless 伴生 Service（FR06-008：客户端负载均衡是组件自己的选择，而那个变量在 Docker 下没有对应物）。按请求均衡那时由读取 brickKit 所写 `appProtocol` 的服务网格或网关提供；第一次试用时记下用的网格、写的词和每个 Pod 的请求数。
 
 ### 外壳里
 
@@ -110,7 +112,7 @@
 ## 什么时候换
 
 - **浏览器必须直接调用 proto**（这会重新打开系统面这条决策）：用 connect-go handler 提供同一批契约。
-- **多节点且出现部分故障**（一些副本坏了、另一些正常）：先在 headless Service 上做客户端负载均衡，再加离群检测。
+- **多节点且出现部分故障**（一些副本坏了、另一些正常）：经 `appProtocol: grpc` 按请求均衡的服务网格，加离群检测。
 - **组件跨信任边界**（别的组织的网络、不受信任的对端）：先在 `authorization` 上用服务 token，再上双向 TLS。
 
 ## 怎么换
@@ -140,7 +142,7 @@
 - [0208 gRPC 是系统面，人用 REST](../02-decisions/02-permissions/0208-grpc-is-the-system-plane.md)：本文是它的完整分析。
 - [0304 `BatchGet` 最多 500 个 ID](../02-decisions/03-contracts-and-data/0304-batch-get-takes-at-most-500-ids.md)：一次 `BatchGet` 最多 500 个 ID。
 - [0101 组件之间禁止 import](../02-decisions/01-architecture/0101-no-imports-between-components.md) 和 [0108 一个外壳、一个仓库、一个镜像、一份成员清单](../02-decisions/01-architecture/0108-one-repository-per-shell.md)：外壳里的调用也走网络。
-- [0107 授权与身份经共享变量访问，从不经依赖](../02-decisions/01-architecture/0107-authz-and-iam-addresses-are-shared-vars.md)：不对 authz 或 IAM 成员建边；其他调用都声明依赖。
+- [0107 族成员的地址是共享变量里的 `$endpoint:` 引用](../02-decisions/01-architecture/0107-authz-and-iam-addresses-are-shared-vars.md)：不对 authz 或 IAM 成员建边，它们的 gRPC 端口经 `*_GRPC_URL`；其他调用都声明依赖。
 - [0503 截止时间与重试预算](../02-decisions/05-runtime/0503-deadlines-and-retry-budgets.md)：系统面上的截止时间与重试预算。
 - [0301 金额是与币种成对的十进制字符串；列表按游标分页](../02-decisions/03-contracts-and-data/0301-money-as-strings-lists-by-cursor.md) 和 [0302 契约只做加法](../02-decisions/03-contracts-and-data/0302-contracts-are-additive-only.md)：字段规则和演进规则。
 

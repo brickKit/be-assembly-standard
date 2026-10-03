@@ -21,9 +21,9 @@
 - **一处声明。** 模块在一份声明（一个文件）里列出它的全部任务和 worker；它的启动钩子只做一次性初始化，绝不起循环。
 - **由 SDK 监督。** 任务出错或 panic 时记日志、计数、按退避重启；一个任务停下不影响别的任务；单跑和外壳行为相同。
 - **状态放在组件自己的 schema 里**，是 SDK 平台迁移建的三张表。同一个组件的单跑实例和外壳实例同时在跑时，靠同一批行互相协调。
-- **不用 Kubernetes CronJob，不用 `pg_cron`，不用外部调度器。**
+- **不用 Kubernetes CronJob，不用 `pg_cron`，不用外部调度器。** 一个要经测量才成立的例外：对进程来说太重的任务，还可以经可选的 **"跑一次"入口**以独立进程运行、由外部触发；它抢的是同一批租约和时间槽行，所以仍然只跑一次（见[端口契约](#端口契约)）。
 
-**状态**：已定；随 3.0.0 统一升级落地。今天有十二个组件各带一份手抄的循环（十二份分区包，各有各的定时器）；外壳里成员的循环失败后就一直停着，单跑时则是进程退出、被平台重启。Jobs 端口替换掉它们全部。
+**状态**：已定；随 3.0.0 统一升级落地。今天有十二个组件各带一份手抄的循环（十二份分区包，各有各的定时器）；外壳里成员的循环失败后就一直停着，单跑时则是进程退出、被平台重启。Jobs 端口替换掉它们全部。brickKit 不做平台级定时任务（FR06-007：Docker 和 Podman 上没有常驻的调度者，只在 Kubernetes 上生效的字段会让同一份 `component.yaml` 在两种目标上行为不同）；它的答复引用 [0508](../02-decisions/05-runtime/0508-background-work-only-through-jobs.md) 作为推荐做法，并为少见的重任务建议了下面的"跑一次"入口。
 
 ## 端口契约
 
@@ -94,6 +94,14 @@ CREATE INDEX besdk_job_queue_due ON besdk_job_queue (kind, run_at) WHERE state I
 
 **外壳里。** 这些表在每个成员自己的 schema 里，`holder` 写的是成员，所以成员之间从不共用租约、时间槽或队列（[27-shells.md](27-shells.md)）。
 
+**"跑一次"入口**（可选的协议能力）。`<entrypoint> job run <name>`（be-protocol P14.8）用同一个镜像、同一份配置和密钥文件，像服务入口一样核对 schema 版本，不起服务、不起别的后台工作，经同样的表把声明过的任务 `<name>` **跑一次**，然后退出。`cron` 任务认领当前时刻及之前最近的一个时间槽；`singleton` 为这次运行抢租约；`every` 和 reconciler 照常认领、走一遍；`queue` 在任务超时之内把该种类就绪的行处理一遍。holder 是 `<组件 ID>/job-run:<实例 id>`。运行成功或无事可做（时间槽或租约已被拿走，日志里写明原因）退出 `0`，运行失败退出 `1`，任务名不存在退出 `4`，配置错误退出 `78`；所以两次触发、或一次触发加进程内的那一份，仍然只执行一次。`JOBS_OVERRIDES` 里的 `enabled: false` 只停掉进程内的调度。提供这个入口的运行时在 `/_be/info` 的 `capabilities` 里列出 `job_run`。把一个任务交给外部触发，分三步，按顺序：
+
+1. 留在进程里（默认）；限制它的批量和并发。
+2. 它在外壳里挤占了邻居，就把它的组件移出外壳、放进自己的容器并写 `resources.limits`（改部署文件即可，不改配置）。
+3. 只有测量证明这样仍不够：在 `JOBS_OVERRIDES` 里设 `{"<name>": {"enabled": false}}`，从 brickKit 之外触发"跑一次"入口：
+   - **Docker、Podman**：宿主机 cron 或 systemd 定时器执行 `docker compose --project-directory <项目根目录> -p brickkit-<项目名> -f <项目根目录>/.brickkit/generated/compose.yaml run --rm --no-deps <带版本的服务名> job run <name>`，用的是上一次 `up` 的镜像、环境变量和密钥挂载；服务名随每次升级而变，定时器里的那一行要跟着改。
+   - **Kubernetes**：一个按组件生成的 Deployment 手写的 CronJob（取它的 Pod 模板、换掉命令），每次 `up` 之后重新生成，并且**不带** `brickkit.io/project` 标签，所以 brickKit 既不拥有也不删除它；命名空间是 brickKit 建的时候，`brickkit down` 会连同命名空间一起删掉它。
+
 ## 备选方案
 
 | | Kubernetes CronJob | `pg_cron` | River（Go） | Graphile Worker / pg-boss（Node） | Temporal Schedules | APScheduler / Celery beat | DBOS | 基于 PostgreSQL 表的 SDK Jobs（选用） |
@@ -114,7 +122,7 @@ CREATE INDEX besdk_job_queue_due ON besdk_job_queue (kind, run_at) WHERE state I
 
 ## 为什么不选其他
 
-- **Kubernetes CronJob**：brickKit 不生成它；它是第二个镜像，配置注入要再来一遍；Docker 上没有它，两个目标的行为会不一样。
+- **用 Kubernetes CronJob 当调度器**：brickKit 不生成它（也明确不做，FR06-007）；它带着第二份配置；Docker 上没有它，两个目标的行为会不一样。只把它当"跑一次"入口的触发器、而且在上面第 2 步之后，是允许的：只跑一次仍由表来保证。
 - **`pg_cron`**：要扩展和超级用户，只能跑 SQL，项目目标里的 PostgreSQL 兼容发行版也不是都有（[03-database.md](03-database.md)）。
 - **River、Graphile Worker、pg-boss、APScheduler、Celery**：各自绑定一种语言；用了它们，每种语言的语义就各不相同。
 - **Temporal Schedules**：要一个 Temporal 集群，只有连工作流引擎一起引入时才值得（[11-consistency-across-components.md](11-consistency-across-components.md)）。
@@ -122,6 +130,7 @@ CREATE INDEX besdk_job_queue_due ON besdk_job_queue (kind, run_at) WHERE state I
 ## 什么时候换
 
 - 实测作业量超出 PostgreSQL 能承受的写放大（每秒上千个作业）：入队作业改走事件总线（[12-event-bus.md](12-event-bus.md)）。
+- 测量证明某个任务即使在它组件自己的容器里也太重：用"跑一次"入口加外部触发（[端口契约](#端口契约)里的第 3 步）。
 - 出现第一个跨天、多人、长时间的流程：按 [11-consistency-across-components.md](11-consistency-across-components.md) 评估工作流引擎（先 DBOS，再 Temporal）。那时 DBOS 可以成为 `queue` 的第二个实现。
 
 ## 怎么换
@@ -136,7 +145,8 @@ CREATE INDEX besdk_job_queue_due ON besdk_job_queue (kind, run_at) WHERE state I
 - 两个副本：`singleton` 同一时间只在一处跑；丢了租约的那次运行被取消；
 - 任务 panic 后按退避重启并计数；一个任务停下，其余任务照常运行；
 - `queue`：业务事务回滚则作业不存在；尝试用尽时调用尽时的处理函数；正常运行下两个副本每个作业只执行一次；
-- 外壳：成员失败的任务被重启，而不是一直停着（今天是红的）。
+- 外壳：成员失败的任务被重启，而不是一直停着（今天是红的）；
+- 跑一次，CP-JOBS-06（对列出 `job_run` 的运行时）：同时启动两次 `job run <name>`，一个时间槽只执行一次，两个都退出 `0`；用 `JOBS_OVERRIDES` 关掉进程内的那一份之后，入口被触发之前什么都不跑。
 
 迁移前先写红的组件测试：finance"一个循环退出时其余循环被取消"；inventory"两个副本并发维护分区不报错""分区 DDL 被长事务阻塞时在 `lock_timeout` 内放弃且不堵写入"。门禁 `module-ticker-scan`（已定）对模块代码里的定时器循环告警。
 
@@ -154,3 +164,4 @@ CREATE INDEX besdk_job_queue_due ON besdk_job_queue (kind, run_at) WHERE state I
 - 崩溃的 singleton 要等租约到期（最多一个 TTL）才由别处接手。
 - 至少一次：处理函数必须幂等。
 - 吞吐受组件 schema 里 PostgreSQL 写入能力的约束。
+- 外部触发器在 brickKit 之外：它的时间表不在 `component.yaml` 里，Docker 上的命令里写着带版本的服务名、每次升级都要改，手写的 Kubernetes CronJob 不在每次 `up` 后重新生成就会漂移。外壳成员没有自己的服务可以 `run`；先把它移出外壳。

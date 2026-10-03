@@ -29,8 +29,8 @@
 
 | 章 | 管什么 | 细节见 |
 |---|---|---|
-| P1 进程与生命周期 | 两个入口：默认命令起服务，`migration.command` 跑迁移；启动顺序（校验配置、开端口、再在后台连依赖）；配置非法以退出码 78 退出；`/healthz` 只答进程本身；`/readyz`（SHOULD）；SIGTERM 在 `SHUTDOWN_GRACE`（默认 20 s）内收尾；致命错误以非 0 退出；镜像里有 `/bin/sh` 和 `wget` | [27](27-shells.md)、[02-backend.md](../01-conventions/02-backend.md#健康检查与镜像) |
-| P2 配置 | 只来自环境变量；只读组件在 `configSchema` 里声明过的键；类型严格；协议级键列在 `schemas/config-keys.yaml` | [24](24-config-and-secrets.md) |
+| P1 进程与生命周期 | 两个入口：默认命令起服务，`migration.command` 跑迁移；启动顺序（校验配置、开端口、再在后台连依赖）；配置非法以退出码 78 退出；端口监听所有接口；`/healthz` 只答进程本身；`/readyz`，声明为 brickKit 的 `readinessCheck`；SIGTERM 在 `SHUTDOWN_GRACE`（默认 25 s）内收尾，小于声明的 `stopGracePeriodSeconds`（默认 30 s）；致命错误以非 0 退出；镜像里有 `/bin/sh` 和 `wget` | [27](27-shells.md)、[02-backend.md](../01-conventions/02-backend.md#健康检查与镜像) |
+| P2 配置 | 只来自环境变量；只读组件在 `configSchema` 里声明过的键；类型严格；协议级键列在 `schemas/config-keys.yaml`，它们在 `configSchema` 里的那一段是生成的；每个密钥都是以文件交付、会被重读的 `_FILE` 键；槽位族地址用 `$endpoint:` 引用 | [24](24-config-and-secrets.md) |
 | P3 HTTP 面 | 三类路径（用户面 API、运维端点、资源契约端点）；`X-Request-Id`；`traceparent`；按路由的截止时间；服务端超时；请求体上限 1 MiB；`Idempotency-Key`；游标分页 | [15](15-user-api-and-errors.md) |
 | P4 错误 | RFC 9457 problem details，装着 AIP-193 的 `reason`、`domain`、`metadata`；reason 登记表 | [15](15-user-api-and-errors.md) |
 | P5 身份 | JWT 验证，`iss`、`aud`、`typ` | [21](21-identity-provider.md) |
@@ -72,6 +72,21 @@ conformance:
   skip:                        # 只能跳过可选用例，每条写理由
     - { case: CP-OUT-04, reason: "没有幂等的出站方法" }
 ```
+
+### 告诉 brickKit 的东西
+
+协议由套件检查，但其中少数事实也要在 `component.yaml` 里声明，因为 brickKit 要据此行动。凡是由协议或契约推得出的声明都由 be-ops 生成，过时了门禁失败；brickKit 自己从不读 `be-protocol`。
+
+| 协议规则 | 在 `component.yaml` 里声明 | brickKit 拿它做什么 | 由谁写 |
+|---|---|---|---|
+| P1.3、P1.13 `/healthz`，监听所有接口 | `healthCheck: {type: http, path: /healthz}` | 存活探针和启动探针；Docker 上健康检查在容器里对 `127.0.0.1` 跑 `wget`（不是 `localhost`，Alpine 会把它解析成 `::1`），所以协议要求监听所有接口，IPv4 和 IPv6 都听 | 组件（模板） |
+| P1.4、P1.11 `/readyz` | `readinessCheck: {type: http, path: /readyz}` | Kubernetes 的就绪探针（启动和存活仍探 `/healthz`）；Docker 上是 compose 的健康检查，于是依赖方要等 bundle 拉到之后才启动 | 组件（模板） |
+| P1.6、P1.12 优雅停机 | `deployment.stopGracePeriodSeconds`（默认 `30`；部署条目可以覆盖） | Docker 上的 `stop_grace_period`，Kubernetes 上的 `terminationGracePeriodSeconds`；`SHUTDOWN_GRACE`（默认 25 s）始终比它至少小 5 s；外壳声明自己的值，不小于成员的 | 组件（模板） |
+| P2 协议键 | `configSchema` 里的协议键段：名字、类型、默认值、`secret`、`mount: file` | `lint` 按它核对配置的键；`mount: file` 的项变成 `/run/brickkit/secrets/` 下的文件 | be-ops，按 profile 从 `schemas/config-keys.yaml` 生成 |
+| P2.10 槽位族地址 | 什么都不用：这些键是普通的 `configSchema` 项，在 `config/vars.yaml` 里用 `$endpoint:` 填 | 解析出成员的地址，放行 `networkPolicy`，在 `graph` 里画出这条边 | 项目（`config/vars.yaml`） |
+| P3.1 / P7 端口 | `deployment.protocol: http`；`extraPorts: [{name: grpc, port: …, protocol: grpc}]` | Kubernetes Service 端口上的 `appProtocol` | 组件（模板） |
+| P12 事件 | `events: {publishes, subscribes}` | `graph`、`deps`，以及对没人发布的订阅给一条 `lint` 提示；运行期没有任何作用 | be-ops，`publishes` 取自事件契约，`subscribes` 取自 `conformance/fixtures.yaml` 的 `events.consumes`；套件拿两者对照组件的实际行为（[13](13-event-contracts.md#契约文件)） |
+| P14.8 "跑一次"入口（可选） | 什么都不用（`/_be/info` 列出能力 `job_run`） | 什么都不做：外部触发器执行镜像里的 `job run <name>` 命令（[19](19-background-jobs.md#端口契约)） | — |
 
 ### `be-protocol` 的仓库结构
 
@@ -155,7 +170,7 @@ TypeScript 在 v0.6.0 补齐数据库、迁移、事件、幂等和 Jobs，所�
 | Python | `importlib.metadata` | `be/py-render` |
 | TypeScript | 成员包的 `package.json` | 暂时没有：唯一的 TypeScript 组件 BFF 永远不进外壳（[0108](../02-decisions/01-architecture/0108-one-repository-per-shell.md)）；启动器靠对两个 widget 实例跑 `shell` profile 证明可用 |
 
-每门语言的语义相同：读 `BRICKKIT_SERVED_MEMBERS_CONFIG`；缺失、空串或 `null` 都是错误，`[]` 表示没有成员。列出的成员没有编译进来，或编译进来的版本不同，以 2 退出并点名该成员。某个成员的库地址、端口或库名、总线地址、授权地址、`IAM_*` 或 `TENANT_ID` 和外壳的不一样，以 78 退出。然后启动器只建一次进程级共享的四样东西，为每个成员建一个运行时，在成员自己的端口上服务它，用和单跑时同一个监督器监督全部后台工作，并在外壳自己的端口上提供 `/healthz` 和汇总的 `/metrics`。
+每门语言的语义相同：读 `BRICKKIT_SERVED_MEMBERS_CONFIG`；缺失、空串或 `null` 都是错误，`[]` 表示没有成员。列出的成员没有编译进来，或编译进来的版本不同，以 2 退出并点名该成员。某个成员的库地址、端口或库名、总线地址、授权地址（`AUTHZ_URL`、`AUTHZ_GRPC_URL`）、`IAM_*` 或 `TENANT_ID` 和外壳的不一样，以 78 退出。然后启动器只建一次进程级共享的四样东西，为每个成员建一个运行时，在成员自己的端口上服务它，用和单跑时同一个监督器监督全部后台工作，并在外壳自己的端口上提供 `/healthz` 和汇总的 `/metrics`。
 
 ### 第四门语言
 
@@ -228,7 +243,6 @@ TypeScript 在 v0.6.0 补齐数据库、迁移、事件、幂等和 Jobs，所�
 - **没有任何进程混用多门语言。** 所用语言没有启动器的组件，永远单独运行。
 - **INTERNAL 规则套件看不见。** 官方语言之外，它们只能靠评审，扫源码的门禁也不跑。
 - **套件需要真的 PostgreSQL 和 NATS**，每个组件要跑几分钟；它在发版时跑，不是每次保存都跑。
-- **`/readyz` 没接进探针**，要等 brickKit 支持 readiness 探针；它是 SHOULD。
 - **TypeScript 有启动器但没有外壳仓库**，因为今天没有 TypeScript 组件进外壳。
 - **JVM 或 CLR 组件每个进程要 256–512 MiB、启动要几秒**；在单机上，这是不选它的主要理由。
 - **`be-protocol` 打出 v1.0.0 之前**，规范是候选版，还可能随 pilot 组件调整。

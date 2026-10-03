@@ -35,7 +35,7 @@ Inside one person it stays a pure union with no Deny ([0204](../02-decisions/02-
 - **Two contracts.** The **provider contract** `infra.authz.v2`, implemented by every member of the authz slot, and the **resource contract**, mounted by the SDK in every component that declares resources. Rule attributes stay in the component that owns the row; authz holds only explicit grants and relations.
 - **Decisions stay local.** Keys, levels, values, fields and ceilings come in the bundle; direct grants come into a projection table in the component's own schema; a list is one static parameterised SQL predicate. A request reaches the provider only for a declared graph type or when the projection is behind a consistency token.
 - **The family**, all built in phase 06, in this order: `infra/authz` (native, default) → `infra/authz-static` (file, no database) → `infra/authz-openfga` (ReBAC). Cedar or OPA only on a real ABAC need, and only for actions. The family contract lives in its own repository, `contract-infra-authz` (checked out at `contracts/infra/authz`): the proto, the REST and event contracts, the error reasons, the meaning of a bundle (`EVALUATION.md`) and the decision vectors that lock it.
-- **No component depends on a member.** Every call goes to the shared address `AUTHZ_URL`; the dependency edge from `infra/iam-casdoor` to `infra/authz` is removed.
+- **No component depends on a member.** Every call goes to the shared addresses `AUTHZ_URL` (REST) and `AUTHZ_GRPC_URL` (gRPC); the dependency edge from `infra/iam-casdoor` to `infra/authz` is removed.
 - **Levels**: `own`, `dept` (the department only, without sub-departments), `subtree`, `all`; a custom set of department subtrees is a value of the `org` dimension.
 - **Answers already settled**: sharing a record can carry the view right for that record but never an action key (confirm, cancel, close need a role key; each relation declares what it grants); sharing requires the type's share key and at least the level being granted; a record the caller cannot see answers `404` to reads and commands alike, and `403` only when it is visible but the action is not allowed (`OUT_OF_SCOPE` when the caller holds the action's key but this record is outside that key's scope, `MISSING_PERMISSION` when the caller does not hold the key); read-only impersonation in production needs `infra.authz.impersonate`, logs the `act` chain and notifies the person viewed.
 - **AI agents are reserved, not built**: `act.kind` admits `agent`, the bundle capability `agents` defaults to `false`, the profile and ceiling shapes are fixed, permission keys accept an optional `delegable` field that nothing fills or reads yet. Enabling them later only adds.
@@ -44,7 +44,7 @@ Inside one person it stays a pure union with no Deny ([0204](../02-decisions/02-
 
 ## Port contract
 
-**Addressing.** The shared key `AUTHZ_URL` (in `config/vars.yaml`) is the base URL of the installed member, by the member's own service name ([0107](../02-decisions/01-architecture/0107-authz-and-iam-addresses-are-shared-vars.md)). It replaces `AUTHZ_BUNDLE_URL`, which the 3.0.0 sweep removes; there is no transition period.
+**Addressing.** Two shared keys in `config/vars.yaml`, both brickKit `$endpoint:` references to the installed member: `AUTHZ_URL: $endpoint:infra/authz` (the REST base) and `AUTHZ_GRPC_URL: $endpoint:infra/authz:grpc` (the port named `grpc`, dialled as `host:port`) ([0107](../02-decisions/01-architecture/0107-authz-and-iam-addresses-are-shared-vars.md)). brickKit computes both from `brickkit.yaml`, so a member release or a shell changes nothing here. `AUTHZ_URL` replaces `AUTHZ_BUNDLE_URL`, which the 3.0.0 sweep removes; there is no transition period.
 
 **Identity claims** (issued by the IAM member, see [21-identity-provider.md](21-identity-provider.md); still not one key in a token, [0203](../02-decisions/02-permissions/0203-jwt-carries-identity-only.md)): `sub`, `typ`, `roles[]`, `dept_path`, `tenant_id` (`org_id` deprecated), `act` (`{sub, kind: user|agent|svc}`, nestable), `ceil[]` (ceiling profile codes), `dg` (delegation grant id), `azp`.
 
@@ -178,14 +178,14 @@ The SDK also offers the three branches separately so a slow query can be rewritt
 | Member | Fits | Proves |
 |---|---|---|
 | `infra/authz` (native, default) | almost every ERP / CRM customer; all capabilities except `graph`, one-hop derivation | the full contract on one PostgreSQL with no new base service |
-| `infra/authz-static` | up to about ten users, demos, edge or offline sites, test fixtures; core only, policy file `AUTHZ_POLICY_FILE` | replaceability without touching frontend or SDK, and explicit degradation |
+| `infra/authz-static` | up to about ten users, demos, edge or offline sites, test fixtures; core only, policy file at `AUTHZ_POLICY_PATH` (not `_FILE`: that suffix is reserved for secrets) | replaceability without touching frontend or SDK, and explicit degradation |
 | `infra/authz-openfga` | collaboration-heavy customers: projects, folders, nested teams, cross-organisation sharing; adds `graph`, `list_objects`, Expand and ListUsers | ReBAC behind the same contract; consistency tokens map onto OpenFGA's consistency parameter. OpenFGA itself is infrastructure ([0106](../02-decisions/01-architecture/0106-infrastructure-is-not-a-component.md)) |
 | Cedar or OPA (not built) | a customer with real ABAC rules on actions | policy languages fit behind the contract, actions only |
 
 ## How to switch
 
 1. Install the new member and remove the old one with `brickkit add` / `brickkit remove`; no component changes its dependencies, because none depends on a member.
-2. Point `AUTHZ_URL` in `config/vars.yaml` at the new member's own service name.
+2. Change the member ID in `AUTHZ_URL` and `AUTHZ_GRPC_URL` in `config/vars.yaml` (`$endpoint:infra/authz-static`, `$endpoint:infra/authz-static:grpc`).
 3. Run `make gates`: `authz-capability-scan` fails if an installed component requires a capability the new member does not provide.
 4. Export the assignments (roles, levels, dimension values, shares, delegations) from the old member as NDJSON and import them into the new one, in the format the family contract `contract-infra-authz` defines; it is the same pattern as the identity-link export in [21](21-identity-provider.md#how-to-switch). Importing into `infra/authz-static` writes its policy file. The components' projections rebuild themselves from `ReadTuples` when the new member answers `410`.
 5. Run the conformance suite against the new member before going live.
@@ -215,7 +215,7 @@ The output is a capability matrix (member × capability × pass / degraded corre
 - [0212 A record the caller cannot see answers 404](../02-decisions/02-permissions/0212-invisible-records-answer-404.md): 404 for records the caller cannot see.
 - [0101 Components never import each other](../02-decisions/01-architecture/0101-no-imports-between-components.md): the family contract package is a third kind of package that crosses boundaries.
 - [0104 A slot family needs several reasonable implementations and no dependency edge](../02-decisions/01-architecture/0104-variants-become-slot-families.md): `slot:authz`.
-- [0107 Authorization and identity are reached through shared variables](../02-decisions/01-architecture/0107-authz-and-iam-addresses-are-shared-vars.md): everything through `AUTHZ_URL`, no edge to any member.
+- [0107 Family addresses are `$endpoint:` references in shared variables](../02-decisions/01-architecture/0107-authz-and-iam-addresses-are-shared-vars.md): everything through `AUTHZ_URL` and `AUTHZ_GRPC_URL`, no edge to any member.
 
 ## Known limits
 

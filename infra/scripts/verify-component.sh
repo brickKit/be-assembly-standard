@@ -201,16 +201,12 @@ stop_focus() {  # 停掉 focus 的整个进程组（setsid 起的，自己一个
   kill -TERM -- "-$FPID" 2>/dev/null; sleep 1; kill -KILL -- "-$FPID" 2>/dev/null; wait "$FPID" 2>/dev/null
   FPID=""
 }
-# focus 进程跑在宿主机上：config/vars.yaml 里写的 host.docker.internal 在宿主机解析不了（brickKit 只改写它
-# 自己算出的 *_ENDPOINT，手写在 config 里的地址原样注入——brickkit docs 10-troubleshooting/02-local-debug-issues
-# "The process on this machine can't reach an address written in config"，修法是 deploy.local.yaml 的 vars:）。
-# 依赖容器与宿主机进程读的是同一份 vars:，所以不能写 localhost（容器里 localhost 是它自己），而写 Docker 的
-# host-gateway 实际映射到的 IP：容器里 host.docker.internal 本来就解析成它，宿主机上它是本机网卡地址。
-# 这套改写只适用于 Linux 原生 Docker，也只在它上面验证过（Docker Desktop / rootless 下 host-gateway 的 IP 宿主机未必可达，
-# 那时 focus 大声 FAIL，不会静默通过）。
+# focus 进程跑在宿主机上：config/vars.yaml 里的 host.docker.internal 由 brickKit 自己处理（v1.2.0 起，FR06-010）：
+# 给宿主机进程生成环境时换成 localhost，容器拿到的仍是原文（外加 extra_hosts）。所以这里不再改写 vars:
+# （原先的 host-gateway IP 绕法 R39 已删）；deploy.local.yaml 只由 brickkit local on 复制，收尾照样还原。
 # deploy.local.yaml 的三种起点，收尾（含中断、KEEP=1、local off 失败）一律还原：
 #   不存在                → local on 从 deploy.yaml 复制一份；收尾时删掉（否则下一次 focus 会沿用这份副本）
-#   存在且本地模式开着    → 是正在用的个人副本：备份后在它上面加 vars:；收尾时原样恢复
+#   存在且本地模式开着    → 是正在用的个人副本：先备份（focus 期间 brickkit 可能改写它）；收尾时原样恢复
 #   存在但本地模式关着    → 多半是过期副本（local on 会沿用它而不是重新复制）：移到 $OUT，让 local on 从
 #                           deploy.yaml 重新复制；收尾时放回原处
 LOCAL_FILE="$ROOT/deploy.local.yaml"; LOCAL_BACKUP=""; LOCAL_CREATED=0; LOCAL_TOUCHED=0
@@ -225,27 +221,6 @@ focus_prepare() {  # focus_prepare <验证前 brickkit local status 的第一行
     echo "  本地模式关着却留有 deploy.local.yaml：先移到 $LOCAL_BACKUP，focus 用从 deploy.yaml 新复制的一份，收尾时放回"
   fi
   runlog "$(log local-on.log)" brickkit local on || true
-  local gw
-  gw="$(docker run --rm --add-host hgw:host-gateway alpine:3.20 getent hosts hgw 2>/dev/null | awk '{print $1}' | head -1)"
-  [[ "$gw" =~ ^[0-9]{1,3}(\.[0-9]{1,3}){3}$ ]] || { echo "  （查不到 host-gateway 的 IP，focus 不改写 host.docker.internal）"; return 0; }
-  [ -f "$LOCAL_FILE" ] || { echo "  （没有 deploy.local.yaml，focus 不改写 host.docker.internal）"; return 0; }
-  [ -f "$ROOT/config/vars.yaml" ] || { echo "  （没有 config/vars.yaml，focus 不改写 host.docker.internal）"; return 0; }
-  python3 - "$ROOT/config/vars.yaml" "$LOCAL_FILE" "$gw" <<'PY'
-import sys, yaml
-vars_file, local_file, gw = sys.argv[1:]
-shared = yaml.safe_load(open(vars_file, encoding="utf-8")) or {}
-local = yaml.safe_load(open(local_file, encoding="utf-8")) or {}
-v = local.get("vars") or {}
-changed = [k for k, val in shared.items() if isinstance(val, str) and "host.docker.internal" in val and k not in v]
-for k in changed:
-    v[k] = shared[k].replace("host.docker.internal", gw)
-if changed:
-    local["vars"] = v
-    with open(local_file, "w", encoding="utf-8") as f:
-        f.write("# brickkit local on 的副本；verify-component.sh 为 focus 运行临时加了 vars:（宿主机解析不了 host.docker.internal），收尾时删除或恢复\n")
-        yaml.safe_dump(local, f, allow_unicode=True, sort_keys=False)
-print("  focus 用 deploy.local.yaml 的 vars: 把 host.docker.internal 换成 host-gateway IP " + gw + "：" + (", ".join(changed) or "（没有要换的）"))
-PY
 }
 focus_restore() {
   [ "$LOCAL_TOUCHED" = 1 ] || return 0

@@ -99,7 +99,7 @@ DATA_LIFECYCLE: |
   tables: {sales_orders: {retention: {min: 15y after closed}}}
 ```
 
-An override below the declared minimum stops start-up; an adapter name the SDK version does not implement stops start-up with "not supported by this SDK version". Object storage uses `S3_URL` and a per-component credential, `S3_ACCESS_KEY_ID` / `S3_SECRET_ACCESS_KEY`, limited to the component's own bucket; `LAKE_QUERY_URL` only with `trino`. One key holding a structure goes against brickKit's advice on configuration design; it is a deliberate exception, because flat keys could not express per-table overrides.
+An override below the declared minimum stops start-up; an adapter name the SDK version does not implement stops start-up with "not supported by this SDK version". Object storage uses `S3_URL` and a per-component credential, `S3_ACCESS_KEY_ID_FILE` / `S3_SECRET_ACCESS_KEY_FILE`, limited to the component's own bucket; `LAKE_QUERY_URL` only with `trino`. One key holding a structure goes against brickKit's advice on configuration design; it is a deliberate exception, because flat keys could not express per-table overrides.
 
 ### Units and the state machine
 

@@ -30,7 +30,7 @@
 | 项 | 契约 |
 |---|---|
 | 命令 | 镜像的 `migration.command`；官方 SDK 是同一个二进制带子命令，`[./component, migrate, up]` |
-| 连接 | 以属主 `PG_OWNER_USER`（密码 `PG_OWNER_PASSWORD`）登录，直连 PostgreSQL：设了 `PG_MIGRATION_HOST` / `PG_MIGRATION_PORT` 就用它们，从而绕过 transaction 模式的连接池代理（[03](03-database.md#配置键)）。运行期角色 `PG_USER` 只有 DML，执行不了 DDL（[03](03-database.md#角色)） |
+| 连接 | 以属主 `PG_OWNER_USER` 登录（密码从 `PG_OWNER_PASSWORD_FILE` 指向的文件读），直连 PostgreSQL：设了 `PG_MIGRATION_HOST` / `PG_MIGRATION_PORT` 就用它们，否则退回 `PG_HOST` / `PG_PORT`，从而绕过 transaction 模式的连接池代理（[03](03-database.md#配置键)）。这是组件自己的可选键，也是 brickKit 推荐的做法，用来代替只给迁移的变量（FR06-013，不做）。运行期角色 `PG_USER` 只有 DML，执行不了 DDL（[03](03-database.md#角色)） |
 | 会话参数 | `lock_timeout = 5s`、`statement_timeout = 15min`。迁移连接是一个专用、不进池的会话，用完即关：会话级设置、工具的会话级 `search_path` 和它的会话级 advisory 锁都允许用在它上面，这是"不在会话级设置任何东西"唯一的例外（[03](03-database.md#每个事务做什么)）。迁移锁按 schema 区分：两个组件同时迁移同一个库，都能成功 |
 | 等锁 | 拿锁超时就退避重试三次；仍失败时，点名是哪条迁移、等的是什么锁，以及阻塞者的 pid 和它 SQL 的前 200 个字符 |
 | 状态表 | 在组件的 schema 里；表名由工具决定（`schema_migrations_<PG_SCHEMA>`、`_yoyo_*` 那几张表、`pgmigrations_<PG_SCHEMA>`，be-protocol P11 列出）。官方 SDK 的状态表不受下文 `lifecycle.yaml` 声明规则的约束；不是官方 SDK 的运行时，把它所用工具的状态表声明为 `class: platform` |

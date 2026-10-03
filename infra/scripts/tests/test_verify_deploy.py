@@ -171,7 +171,7 @@ def test_disabled_target_fails_early(tmp):  # 修复轮 M-8
 
 # ---------- 用假 brickkit / docker / curl 跑完整流程 ----------
 FAKE_BRICKKIT = """#!/bin/sh
-[ "$1" = version ] && { echo "BrickKit CLI ${FAKE_BK_VERSION:-v1.1.0}"; exit 0; }
+[ "$1" = version ] && { echo "BrickKit CLI ${FAKE_BK_VERSION:-v1.3.1}"; exit 0; }
 echo "brickkit $*" >> "$FAKE_CALLS"
 case "$1 $2" in
   "local status") echo "Local mode: ${FAKE_LOCAL_MODE:-off}" ;;
@@ -190,7 +190,6 @@ case "$1" in
   inspect) case "$*" in *RestartCount*) echo "0 running" ;; *) echo "running healthy" ;; esac ;;
   run)
     case "$*" in
-      *"getent hosts hgw"*) [ -n "$FAKE_GW_EMPTY" ] || echo "172.17.0.1      hgw  hgw" ;;
       *" -d "*) echo toolbox ;;
       *Authorization*) printf 200 ;;
       *"/healthz") printf 200 ;;
@@ -223,7 +222,7 @@ def fake_env(tmp: pathlib.Path, **extra) -> dict:
     env = {**os.environ, "PATH": f"{b}:{os.environ['PATH']}", "BE_ROOT": str(tmp), "OUT": str(tmp / "out"),
            "FAKE_CALLS": str(tmp / "calls"), "FAKE_FOCUS_PID": str(tmp / "focus.pid"),
            "BE_PROJECT_LOCK": str(tmp / "lock"), "ROUTE": "", "FOCUS": "", "KEEP": "", "FAKE_FOCUS_SNAPSHOT": "",
-           "FAKE_LOCAL_MODE": "", "FAKE_LOCAL_OFF_FAIL": "", "SEED": "", "FAKE_GW_EMPTY": ""}
+           "FAKE_LOCAL_MODE": "", "FAKE_LOCAL_OFF_FAIL": "", "SEED": ""}
     env.pop("BE_PROJECT_LOCK_HELD", None)
     env.update(extra)
     return env
@@ -332,9 +331,9 @@ def _interrupt_during_focus(tmp, keep: str, wrapper_only: bool = False, setup=No
     return alive, calls(tmp)
 
 
-def test_focus_rewrites_host_docker_internal_and_removes_its_local_copy(tmp):
-    """focus 是宿主机进程：config/vars.yaml 里的 host.docker.internal 在宿主机解析不了，verify 在 deploy.local.yaml
-    的 vars: 里换成 host-gateway IP（容器与宿主机都能到）；deploy.local.yaml 是 verify 建的就在收尾时删掉。"""
+def test_focus_leaves_vars_alone_and_removes_its_local_copy(tmp):
+    """focus 是宿主机进程：host.docker.internal 由 brickKit 换成 localhost（v1.2.0 起，FR06-010），verify 不再往
+    deploy.local.yaml 的 vars: 里写 host-gateway IP（R39 绕法已删）；deploy.local.yaml 是 verify 建的就在收尾时删掉。"""
     make(tmp, ALL, [{"id": i} for i in ALL])
     (tmp / "config").mkdir(exist_ok=True)
     (tmp / "config" / "vars.yaml").write_text(
@@ -342,10 +341,8 @@ def test_focus_rewrites_host_docker_internal_and_removes_its_local_copy(tmp):
     snap = tmp / "focus-local.yaml"
     verify(tmp, "mdm/product", FOCUS="1", FAKE_FOCUS_SNAPSHOT=str(snap))
     assert snap.exists(), calls(tmp)
-    v = (yaml.safe_load(snap.read_text(encoding="utf-8")) or {}).get("vars") or {}
-    assert v.get("NATS_URL") == "nats://172.17.0.1:4222", v
-    assert v.get("PG_HOST") == "h", v                    # deploy 文件里已有的 vars 不覆盖
-    assert "OTEL_BASE_URL" not in v, v
+    assert snap.read_text(encoding="utf-8") == (tmp / "deploy.yaml").read_text(encoding="utf-8")   # local on 的原样副本
+    assert "getent hosts hgw" not in calls(tmp), calls(tmp)   # 不再探 host-gateway
     assert not (tmp / "deploy.local.yaml").exists(), "verify 建的 deploy.local.yaml 应在收尾时删掉"
 
 
@@ -381,7 +378,6 @@ def test_focus_stale_local_copy_set_aside(tmp):
     r = verify(tmp, "mdm/product", FOCUS="1", FAKE_FOCUS_SNAPSHOT=str(snap))
     d = yaml.safe_load(snap.read_text(encoding="utf-8"))
     assert [c["id"] for c in d["components"]] == ALL, d          # 来自 deploy.yaml，不是过期副本的 components: []
-    assert d["vars"]["NATS_URL"] == "nats://172.17.0.1:4222", d
     assert "我的个人副本" not in snap.read_text(encoding="utf-8")
     assert (tmp / "deploy.local.yaml").read_text(encoding="utf-8") == USER_LOCAL
     assert "移到" in r.stdout, r.stdout
@@ -393,7 +389,7 @@ def test_focus_local_mode_on_uses_and_restores_personal_copy(tmp):
     snap = tmp / "snap.yaml"
     verify(tmp, "mdm/product", FOCUS="1", FAKE_FOCUS_SNAPSHOT=str(snap), FAKE_LOCAL_MODE="on")
     d = yaml.safe_load(snap.read_text(encoding="utf-8"))
-    assert d["components"] == [] and d["vars"]["PG_HOST"] == "172.17.0.1", d   # 用的是正在用的个人副本
+    assert d["components"] == [] and "vars" not in d, d   # 用的是正在用的个人副本，verify 不往里加 vars:
     assert (tmp / "deploy.local.yaml").read_text(encoding="utf-8") == USER_LOCAL
 
 
@@ -421,16 +417,6 @@ def test_interrupt_with_keep_restores_local_copy(tmp):
     assert "brickkit down" not in c, c                       # KEEP 照样保留容器
     assert "brickkit local off" in c, c
     assert (tmp / "deploy.local.yaml").read_text(encoding="utf-8") == USER_LOCAL
-
-
-def test_focus_no_host_gateway_ip_degrades_without_rewrite(tmp):  # T7 审查 (e)：getent 查不到时降级
-    make(tmp, ALL, [{"id": i} for i in ALL])
-    _vars(tmp)
-    snap = tmp / "snap.yaml"
-    r = verify(tmp, "mdm/product", FOCUS="1", FAKE_FOCUS_SNAPSHOT=str(snap), FAKE_GW_EMPTY="1")
-    assert "查不到 host-gateway 的 IP，focus 不改写 host.docker.internal" in r.stdout, r.stdout
-    assert snap.read_text(encoding="utf-8") == (tmp / "deploy.yaml").read_text(encoding="utf-8")   # local on 的原样副本
-    assert not (tmp / "deploy.local.yaml").exists()
 
 
 def test_interrupt_restores_set_aside_local_copy(tmp):  # T7 审查 (e)：中断后 deploy.local.yaml 与原文逐字节相同

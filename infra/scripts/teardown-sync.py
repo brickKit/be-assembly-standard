@@ -4,8 +4,9 @@
 用法：python3 infra/scripts/teardown-sync.py [--check] [--root <项目根>]
 
 brickkit add / remove / upgrade 只维护 deploy.yaml（和存在时的 deploy.local.yaml），拆回验证的
-deploy.teardown.yaml 由本脚本同步：target 相同、components 一字不差（含外壳的 members 嵌套）、
-没有 vars:（authz / iam 地址本来就是成员自己的服务名，不需要覆盖）。文件头的注释保留。
+deploy.teardown.yaml 由本脚本同步：target、network（项目自己提供的网络）、k8s 相同，components 一字不差
+（含外壳的 members 嵌套），没有 vars:（authz / iam 地址是 config/vars.yaml 里的 $endpoint: 引用，拆回后
+brickKit 自动算成成员自己的服务名，不需要覆盖）。文件头的注释保留。
   --check  只核对：不一致时打印差异并退出 1，不写文件。
 """
 import argparse
@@ -54,6 +55,8 @@ def render(deploy_text: str, teardown_text: str | None) -> str:
     d = yaml.safe_load(deploy_text) or {}
     header = header_of(teardown_text) if teardown_text else DEFAULT_HEADER
     parts = [header.rstrip("\n") + "\n", f"target: {d.get('target', 'docker')}\n"]
+    if "network" in d:
+        parts.append(section(deploy_text, "network"))
     if "k8s" in d:
         parts.append(section(deploy_text, "k8s"))
     parts.append(section(deploy_text, "components") or "components: []\n")
@@ -64,7 +67,7 @@ def consistent(deploy_text: str, teardown_text: str) -> bool:
     d = yaml.safe_load(deploy_text) or {}
     t = yaml.safe_load(teardown_text) or {}
     return (t.get("target") == d.get("target") and (t.get("components") or []) == (d.get("components") or [])
-            and "vars" not in t and t.get("k8s") == d.get("k8s"))
+            and "vars" not in t and t.get("k8s") == d.get("k8s") and t.get("network") == d.get("network"))
 
 
 def main() -> int:
@@ -96,7 +99,7 @@ def main() -> int:
         return 0
     tp.write_text(want, encoding="utf-8")
     assert consistent(deploy_text, want), "内部错误：同步结果与 deploy.yaml 不一致"
-    print("✓ deploy.teardown.yaml 已从 deploy.yaml 同步（target、components；不带 vars:）")
+    print("✓ deploy.teardown.yaml 已从 deploy.yaml 同步（target、network、k8s、components；不带 vars:）")
     return 0
 
 

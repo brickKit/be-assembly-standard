@@ -78,6 +78,12 @@ if net_ok; then
 else
   printf 'network be-net  %s\n' "${C_RED}✗ 不存在（跑 make net）${C_OFF}"; FAIL=1
 fi
+# 项目网络（deploy.yaml 的 network:）：brickkit up 只加入、不创建，缺了 up 会停下
+if "$(engine)" network inspect "$BK_NET" >/dev/null 2>&1; then
+  printf 'network %s  %s\n' "$BK_NET" "${C_GRN}✓${C_OFF}"
+else
+  printf 'network %s  %s\n' "$BK_NET" "${C_RED}✗ 不存在（跑 make net）${C_OFF}"; FAIL=1
+fi
 
 if ((FAIL)); then
   cat <<'HINT'

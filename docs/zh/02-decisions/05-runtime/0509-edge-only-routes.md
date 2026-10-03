@@ -2,7 +2,7 @@
 
 # 0509 边缘只做路由，认证和授权留在服务里
 
-**状态**：已决定，随 3.0.0 统一升级落地。
+**状态**：已决定，随 3.0.0 统一升级落地。为 brickKit 1.3 修订：路由生成进 brickKit 读的部署条目（Kubernetes 上是 `paths`，Docker 和 Podman 上是 Traefik `labels`），不再另写一份路由文件。
 
 ## 决策
 
@@ -17,6 +17,7 @@
 - 每个服务自己用本地 JWKS 验 token，自己判定路由的权限键、数据范围和可见性，不管前面有没有边缘。
 - `edge_routes` 里路由的 `auth: required | none` 只表明意图、驱动端到端测试；服务照样自己强制执行。
 - 边缘自己产生的回答（404、413、429、502、503、504）带平台的 problem 错误体，`domain: be`（`RATE_LIMITED`、`UPSTREAM_UNAVAILABLE`、`UPSTREAM_TIMEOUT`）。
+- **路由是生成的，从不手写。** be-ops 读每个组件的 `edge_routes`，把路由写进该组件的部署条目：Kubernetes 上是条目的 `paths`（brickKit 为每个组件生成一份 Ingress，前缀以路径段为界，共用一个 `hostname` 和一个 `tlsSecret`）；Docker 和 Podman 上是 Traefik 路由 `labels`，规则以路径段为界（``PathRegexp(`^/erp/sales(/|$)`)``，从不用按字符串匹配的裸 `PathPrefix`），由接在项目 `network:` 上的 Traefik 3.2 或更新版本读取。标签和 Ingress 的后端跟着带版本的服务名走，所以升级不改任何路由。
 
 ## 理由
 
@@ -29,6 +30,7 @@
 - 按请求体或业务取值路由
 - 把 gRPC、`/healthz`、`/readyz`、`/metrics` 或 `/_be/info` 暴露到外部
 - 在边缘重试非幂等请求；在边缘缓存 API 响应
+- 为组件的用户面手写路由、Ingress 或 Traefik 规则；裸 `PathPrefix` 规则，它会让 `/erp/sales` 接走 `/erp/salesman`
 
 ## 何时重新讨论
 

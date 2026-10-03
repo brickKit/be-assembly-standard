@@ -33,7 +33,7 @@
 | `S3_REGION` | 是 | `us-east-1` | 签名用的 region |
 | `S3_FORCE_PATH_STYLE` | 是 | `false` | RustFS 和 MinIO 用 `true` |
 | `S3_BUCKET` | 否 | —（必填；部署时写入 registry 里的 bucket 名） | 本组件的 bucket |
-| `S3_ACCESS_KEY_ID`、`S3_SECRET_ACCESS_KEY` | 否，密钥（`${…}`） | — | 本组件自己的凭据 |
+| `S3_ACCESS_KEY_ID_FILE`、`S3_SECRET_ACCESS_KEY_FILE` | 否，密钥，以文件交付（`mount: file`，值写 `${…}`） | — | 本组件自己的凭据，文件变了就成对重读（[24](24-config-and-secrets.md#端口契约)） |
 | `SCAN_URL` | 是（只有附件组件用） | 缺省 = 不扫描 | 扫描器，`clamd://<host>:3310` |
 
 组件的 `configSchema` 声明了 `S3_BUCKET`，就表示它用对象存储；这同时打开组件协议套件的 `blob` profile。这里除 `SCAN_URL` 之外的键都是协议键（`be-protocol` 的 `schemas/config-keys.yaml`，P17）。

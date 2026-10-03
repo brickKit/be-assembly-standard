@@ -34,7 +34,7 @@
 | [0104](01-architecture/0104-variants-become-slot-families.md) | 槽位族需要多种合理实现，**并且**该位置没有依赖边；否则是一种默认实现加客户 Fork | 成本核算 / 拣货槽位族（"让客户选先进先出还是移动加权平均成本" → 默认实现 + Fork）；按客户堆 `if costingMethod == ...`；"把算法做成可配置" | `01-architecture/` |
 | [0105](01-architecture/0105-any-language-one-protocol.md) | 任何语言，一份协议：一致性报告全绿即可进项目；进外壳需要该语言的 SDK 和启动器 | 一个进程里混用语言；没有一致性报告的组件；对 JVM 内存开销只字不提 | `01-architecture/` |
 | [0106](01-architecture/0106-infrastructure-is-not-a-component.md) | 事件总线、对象存储、网关、可观测性、IdP 服务器不是组件；总线经按 URL scheme 选用的 SDK 适配器更换 | `infra/nats` 或网关组件；没有适配器就改一个设置把 NATS 换成 Kafka | `01-architecture/` |
-| [0107](01-architecture/0107-authz-and-iam-addresses-are-shared-vars.md) | authz 与 IAM 经 `AUTHZ_URL`、`IAM_JWKS_URL`、`IAM_ISSUER`、`TENANT_ID` 访问；任何组件都不依赖族成员 | 对 `infra/authz` 或 IAM 成员建依赖边；`AUTHZ_BUNDLE_URL` | `01-architecture/` |
+| [0107](01-architecture/0107-authz-and-iam-addresses-are-shared-vars.md) | 族地址（`AUTHZ_URL`、`AUTHZ_GRPC_URL`、`IAM_URL`、`IAM_GRPC_URL`）是 `config/vars.yaml` 里的 `$endpoint:` 引用，与 `IAM_ISSUER`、`TENANT_ID` 并列；任何组件都不依赖族成员 | 对 `infra/authz` 或 IAM 成员建依赖边；手写成员地址；gRPC 端口 = HTTP 端口 + 1000；`AUTHZ_BUNDLE_URL` | `01-architecture/` |
 | [0108](01-architecture/0108-one-repository-per-shell.md) | 一个外壳、一个仓库（以子模块挂在 `shell/<scope>/<name>/`，在那里发布，tag 是裸 `<版本>`）、一个镜像、一份成员清单、一门语言和一个 SDK 版本 | 把外壳代码提交在本仓库；在本仓库发布外壳；外壳里写逻辑；只升成员不升外壳 | `01-architecture/` |
 | [0109](01-architecture/0109-language-neutral-component-protocol.md) | 规则写在语言中立的组件协议（`be-protocol`）里，由黑盒套件检查；SDK 是它的参考实现 | 只有 SDK 知道的规则；没有全绿报告就发版；按语言变体的协议 | `01-architecture/` |
 | [0201](02-permissions/0201-no-redis.md) | 不用 Redis，不设缓存服务器；缓存只在进程内、经 SDK | 加缓存服务器、Redis 存会话、分布式锁、Redis 限流；缓存判定结果 | `02-permissions/` |
@@ -69,5 +69,5 @@
 | [0505](05-runtime/0505-cloudevents-envelope-and-aggregate-cursor.md) | 信封是二进制模式的 CloudEvents；按聚合流各记一个游标 | `X-` 头；按 subject 建键的游标；依赖 broker 的顺序 | `05-runtime/` |
 | [0506](05-runtime/0506-at-least-once-delivery-and-streams.md) | 经 outbox 至少送达一次；每个 subject 第一段一个流 | 绕过 outbox 发布；假设恰好一次；按组件建流 | `05-runtime/` |
 | [0507](05-runtime/0507-idempotency-keys-namespaced-by-caller.md) | 幂等键按调用方划分命名空间，绑定到命令、目标和指纹 | 共用的键空间；换了请求体的重放；授权之前就查键 | `05-runtime/` |
-| [0508](05-runtime/0508-background-work-only-through-jobs.md) | 后台工作只经 SDK 的 Jobs | 模块代码里的 ticker 和循环；外部调度器 | `05-runtime/` |
-| [0509](05-runtime/0509-edge-only-routes.md) | 边缘只做路由，认证和授权留在服务里 | 只在网关验 token（ForwardAuth、JWT 插件）；在边缘做授权、数据范围或按业务内容路由；路由 gRPC 或 `/healthz`、`/metrics`、`/_be/info` | `05-runtime/` |
+| [0508](05-runtime/0508-background-work-only-through-jobs.md) | 后台工作只经 SDK 的 Jobs；只有在移出外壳经测量仍不够之后，才可从外部触发"跑一次就退出"入口 | 模块代码里的 ticker 和循环；外部调度器 | `05-runtime/` |
+| [0509](05-runtime/0509-edge-only-routes.md) | 边缘只做路由，认证和授权留在服务里；路由生成进部署条目（`paths`、Traefik `labels`） | 手写路由；裸 `PathPrefix`；只在网关验 token（ForwardAuth、JWT 插件）；在边缘做授权、数据范围或按业务内容路由；路由 gRPC 或 `/healthz`、`/metrics`、`/_be/info` | `05-runtime/` |

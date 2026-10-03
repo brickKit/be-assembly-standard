@@ -25,7 +25,7 @@
 | 种类 | 放在哪里 | 由什么选 | 例子 |
 |---|---|---|---|
 | **SDK 适配器** | 编译进每个官方 SDK，按 URL scheme 或某个配置值注册 | 一个共享配置值 | 事件总线、密钥来源、冷存储 |
-| **槽位族成员** | 一个独立的组件，所有成员共用一份契约 | 项目装哪个成员（`brickkit add` / `remove`），加上共享变量 | 授权 provider、身份提供方、全局搜索 |
+| **槽位族成员** | 一个独立的组件，所有成员共用一份契约 | 项目装哪个成员（`brickkit add` / `remove`），加上用 `$endpoint:<成员>` 填的共享地址键 | 授权 provider、身份提供方、全局搜索 |
 | **标准协议背后的产品** | 没有我们的代码：PostgreSQL 线协议、S3 API 或 OTLP 后面的一个官方镜像 | 共享配置里的地址 | 数据库引擎、对象存储、可观测性后端 |
 
 每个端口都有四样东西：线协议层面的契约、一个默认实现、具名的备选、一个放在 `tools/be-acceptance/conformance/<套件>/` 下的套件。
@@ -48,6 +48,8 @@
 **缺能力的适配器要大声失败。** 必需的能力缺了，它就拒绝启动，并点名是哪项能力；可选的能力缺了，它就答契约为这项能力声明的那个错误。静默地什么也不做是 bug：症状是某个功能对着默认适配器测试时"能用"，到了生产环境却悄悄什么也没做。
 
 **槽位族的契约放在单独的仓库里**，绝不放在某个成员的仓库里：`contract-infra-authz`、`contract-infra-iam`。成员依赖契约，从不互相依赖；也没有任何组件依赖某个成员（[0104](../02-decisions/01-architecture/0104-variants-become-slot-families.md)）。
+
+**槽位族经 brickKit 的 `$endpoint:` 寻址，从不经依赖。** 每个使用方在自己的 `configSchema` 里声明族的地址键（`AUTHZ_URL`、`AUTHZ_GRPC_URL`）；项目在 `config/vars.yaml` 里用指名已安装成员的引用把它们填一次（`$endpoint:infra/authz`、`$endpoint:infra/authz:grpc`）。使用方的清单里从不出现成员的名字，所以换成员不碰任何组件；brickKit 仍然知道这条边（跟着上层运行、焦点运行、`networkPolicy`、`graph`），却不强加启动顺序。成员不在时可选键就不存在，使用方自行降级（[0107](../02-decisions/01-architecture/0107-authz-and-iam-addresses-are-shared-vars.md)）。
 
 ### 版本
 
@@ -96,7 +98,7 @@
 
 1. 读那个端口的**怎么换**一节：它会说明这次更换是改一个配置值、换一个槽位族成员，还是换一个基础设施产品。
 2. 对目标跑那个端口的套件。套件红了就停。
-3. 在 `config/vars.yaml` 里把共享值改一次（只针对某个环境时，改部署文件的 `vars:`）。槽位族就用 `brickkit remove` / `brickkit add` 换成员，并更新共享地址变量（[04-configuration.md](../01-conventions/04-configuration.md#依赖地址)）。
+3. 在 `config/vars.yaml` 里把共享值改一次（只针对某个环境时，改部署文件的 `vars:`）。槽位族就用 `brickkit remove` / `brickkit add` 换成员，并把族的 `$endpoint:` 引用里的成员 ID 改掉，每个键一行（`AUTHZ_URL: $endpoint:infra/authz-static`）；地址由 brickKit 算出，跟着成员的版本和外壳走，并放行 `networkPolicy`（[0107](../02-decisions/01-architecture/0107-authz-and-iam-addresses-are-shared-vars.md)）。
 4. 组件代码不动。如果不得不动，说明端口的契约不完整：去补契约，而不是改组件。
 
 新加一个适配器：

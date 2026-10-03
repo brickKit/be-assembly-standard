@@ -79,7 +79,7 @@
 | [21-identity-provider.md](21-identity-provider.md) | IAM 槽位、token 形状、JWKS、平台自有的 `sub`、目录事件、Keycloak 成员 | 已写 |
 | [22-object-storage.md](22-object-storage.md) | S3 端口、每组件一个 bucket、blob 客户端、附件、预签名 URL、冷存储 | 已写 |
 | [23-observability.md](23-observability.md) | 传播、按成员的 resource、指标、日志字段、审计日志与应用日志 | 已写 |
-| [24-config-and-secrets.md](24-config-and-secrets.md) | 环境变量配置面、brickKit 的几种值形式、密钥端口与轮换 | 已写 |
+| [24-config-and-secrets.md](24-config-and-secrets.md) | 环境变量配置面、brickKit 的几种值形式（含 `$endpoint:`）、以文件交付的密钥与轮换 | 已写 |
 | [25-search.md](25-search.md) | 组件内的 `q` 帮手、全局搜索槽位族 | 已写 |
 | [26-i18n-data.md](26-i18n-data.md) | 可翻译的主数据、标准代码、服务端语言 | 已写 |
 | [27-shells.md](27-shells.md) | 合并安全：逐项核对表与四条外壳不变量 | 已写 |
@@ -98,14 +98,14 @@
 | 系统 RPC | 组件之间的 gRPC、身份 metadata、截止时间、带 reason 的 `google.rpc.Status` | 各官方 SDK 里的 gRPC，连接复用 | connect-go 服务端（与 gRPC 线协议兼容） | `rpc` | gRPC 已在用；连接复用与截止时间已定 | [14](14-system-rpc.md)、[16](16-deadlines-and-retries.md) |
 | 用户 API | REST、每条路由一个权限键、带 reason 的 RFC 9457 problem details | 各语言锁定的 HTTP 栈 | 无，单适配器端口 | `userapi` | 已定 | [15](15-user-api-and-errors.md) |
 | 缓存 | 线上没有任何东西：只在进程内 | 进程内 LRU 加 TTL | 无：没有缓存服务器 | `cache` | 已定 | [17](17-caching.md) |
-| 边缘 | `assembly.yaml` 里的 `edge_routes`，由 be-ops 生成路由 | Traefik file provider | Kubernetes Ingress 或 Gateway API、nginx | `edge`（黄金路由表加端到端） | 已定 | [18](18-edge.md) |
+| 边缘 | `assembly.yaml` 里的 `edge_routes`，由 be-ops 变成部署条目的字段：Docker 和 Podman 上是 Traefik 标签，Kubernetes 上是 `paths` | Traefik（3.2 或更新版本），Docker provider 接在项目网络上 | 任何能合并同一主机多份 Ingress 的控制器（nginx-ingress、HAProxy）；Gateway API（以后） | `edge`（黄金部署字段加端到端） | 已定 | [18](18-edge.md) |
 | 可观测性 | OTLP、W3C `traceparent`、`service.name` = 成员的组件 ID | OTLP 发给 OpenTelemetry Collector | 任何 OTLP 后端，在 collector 里换 | `telemetry` | 导出已在用；传播已定 | [23](23-observability.md) |
 | 对象存储 | `S3_URL` 上的 S3 API，每个组件一个 bucket、一份凭据 | RustFS | MinIO、AWS S3、阿里云 OSS | `blob` | 地址已在用；客户端已定 | [22](22-object-storage.md) |
 | 冷存储 | 冻结数据在对象存储里的格式与清单 | `s3-parquet` | `none`（显式降级）；Iceberg（以后再做） | `lifecycle` | 已定 | [09](09-data-lifecycle.md) |
 | 冷查询 | 把冻结的行读回来 | `none`（答一个声明过的"该范围已冷"错误） | `scan`（已定）；Trino（以后再做） | `lifecycle` | 已定 | [09](09-data-lifecycle.md) |
-| 密钥来源 | 密钥值怎么读取、怎么重读，从而轮换不用重启 | 环境变量 | 挂载文件，变更后重读；OpenBao（以后再做） | `secret` | 环境变量已在用；文件已定 | [24](24-config-and-secrets.md) |
-| 授权 provider（槽位族） | provider 契约、`AUTHZ_URL` 下的 bundle、每个组件都提供的资源契约端点 | `infra/authz` | `infra/authz-static`、`infra/authz-openfga`（都在阶段 06 内建）；Cedar 或 OPA（以后再做） | `authz` | `infra/authz` 已在用；族已定 | [20](20-authorization-provider.md) |
-| 身份提供方（槽位族） | OIDC discovery、按 RFC 8693 形状的 token 交换、`IAM_JWKS_URL` 上的 JWKS、平台自有的 `sub`、目录事件 | `infra/iam-casdoor` | `infra/iam-keycloak`（第二个）；通用 OIDC + SCIM 成员（第三个） | `iam` | Casdoor 成员已在用；族已定 | [21](21-identity-provider.md) |
+| 密钥来源 | 密钥值怎么读取、怎么重读，从而轮换不用重启 | brickKit 挂载的文件（`mount: file`、`_FILE` 键），变更后重读 | OpenBao（以后再做） | `secret` | 环境变量已在用；文件已定（brickKit 1.3） | [24](24-config-and-secrets.md) |
+| 授权 provider（槽位族） | provider 契约、`AUTHZ_URL` 下的 bundle、`AUTHZ_GRPC_URL` 上的 rpc、每个组件都提供的资源契约端点 | `infra/authz` | `infra/authz-static`、`infra/authz-openfga`（都在阶段 06 内建）；Cedar 或 OPA（以后再做） | `authz` | `infra/authz` 已在用；族已定 | [20](20-authorization-provider.md) |
+| 身份提供方（槽位族） | OIDC discovery、按 RFC 8693 形状的 token 交换、`IAM_URL` 之下的 JWKS、平台自有的 `sub`、目录事件 | `infra/iam-casdoor` | `infra/iam-keycloak`（第二个）；通用 OIDC + SCIM 成员（第三个） | `iam` | Casdoor 成员已在用；族已定 | [21](21-identity-provider.md) |
 | 全局搜索（槽位族） | 由事件喂入、按调用者的访问权限过滤的投影 | 暂无 | `infra/search-*` 成员 | `search` | 以后再做 | [25](25-search.md) |
 
 共享语义不是端口，没有套件：每个官方 SDK 读同一份 JSON 向量，必须算出相同的结果。全协议通用的向量放在 `brickKit/be-protocol` 仓库的 `vectors/` 里（[02](02-languages-and-component-protocol.md#be-protocol-的仓库结构)），旁边是协议正文、它的 schema 和平台表的参考 DDL。槽位族的向量放在族契约仓库里，以那里为准：授权决策在 `contract-infra-authz`（`contracts/infra/authz`）的 `vectors/decision/`，锁定它的 `EVALUATION.md`；token 在 `contract-infra-iam`（`contracts/infra/iam`）的 `vectors/tokens/`；be-protocol 按标签引用它们，从不复制。套件和 SDK 的单元测试都从固定的标签读取每一套。

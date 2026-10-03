@@ -25,7 +25,7 @@ An implementation behind a port is one of three kinds:
 | Kind | Where it lives | Chosen by | Examples |
 |---|---|---|---|
 | **SDK adapter** | compiled into every official SDK, registered by URL scheme or by a config value | a shared configuration value | event bus, secret source, cold store |
-| **Slot-family member** | a component of its own, all members with one contract | which member the project installs (`brickkit add` / `remove`) plus shared variables | authorization provider, identity provider, global search |
+| **Slot-family member** | a component of its own, all members with one contract | which member the project installs (`brickkit add` / `remove`) plus shared address keys filled with `$endpoint:<member>` | authorization provider, identity provider, global search |
 | **Product behind a standard protocol** | no code of ours: an official image behind the PostgreSQL wire protocol, the S3 API or OTLP | the address in shared configuration | database engine, object storage, telemetry backend |
 
 Every port has four things: a contract at the wire level, a default implementation, named alternatives, and a suite under `tools/be-acceptance/conformance/<suite>/`.
@@ -48,6 +48,8 @@ What every port's document must specify in its own **Port contract** section, an
 **An adapter that lacks a capability fails loudly.** It refuses to start, naming the capability, when the capability is required; when it is optional it answers the error the contract declares for it. A silent no-op is a bug: the symptom is a feature that "works" in tests against the default adapter and quietly does nothing in production.
 
 **A slot-family contract lives in its own repository**, never in a member's: `contract-infra-authz`, `contract-infra-iam`. Members depend on the contract, never on each other, and no component depends on a member ([0104](../02-decisions/01-architecture/0104-variants-become-slot-families.md)).
+
+**A slot family is addressed through brickKit's `$endpoint:`, never through a dependency.** Each consumer declares the family's address keys in its `configSchema` (`AUTHZ_URL`, `AUTHZ_GRPC_URL`); the project fills them once in `config/vars.yaml` with a reference naming the installed member (`$endpoint:infra/authz`, `$endpoint:infra/authz:grpc`). The consumer's manifest never names a member, so swapping the member touches no component; brickKit still knows the edge (start-along, focus runs, `networkPolicy`, `graph`) without imposing a start order. A missing member leaves an optional key absent, and the consumer degrades ([0107](../02-decisions/01-architecture/0107-authz-and-iam-addresses-are-shared-vars.md)).
 
 ### Versions
 
@@ -96,7 +98,7 @@ Switching the implementation behind any port:
 
 1. Read the port's **How to switch** section: it says whether the switch is a configuration value, a slot-family member or an infrastructure product.
 2. Run the port's suite against the target. A red suite stops the switch.
-3. Change the shared value once in `config/vars.yaml` (or the `vars:` of a deploy file for one environment). For a slot family, swap the member with `brickkit remove` / `brickkit add` and update the shared address variables ([04-configuration.md](../01-conventions/04-configuration.md#dependency-addresses)).
+3. Change the shared value once in `config/vars.yaml` (or the `vars:` of a deploy file for one environment). For a slot family, swap the member with `brickkit remove` / `brickkit add` and change the member ID in the family's `$endpoint:` references, one line per key (`AUTHZ_URL: $endpoint:infra/authz-static`); brickKit computes the address, follows the member's version and shell, and opens `networkPolicy` ([0107](../02-decisions/01-architecture/0107-authz-and-iam-addresses-are-shared-vars.md)).
 4. Component code is not touched. If it would have to be, the port's contract is incomplete: fix the contract, not the components.
 
 Adding a new adapter:

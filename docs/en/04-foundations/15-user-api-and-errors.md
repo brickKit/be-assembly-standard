@@ -140,7 +140,7 @@ reasons:
 
 - `reason` is `UPPER_SNAKE`, unique within the domain. A slot-family member's reasons are listed in its family contract's `errors.yaml` under the family's domain (`infra/authz`), not in the member's own catalogue. Entries are **append-only**, like `registry/permissions.tsv`: never renamed, removed or reused; retired with `deprecated: true` ([07-registries.md](../01-conventions/07-registries.md#append-only)).
 - The frontend generates its message tables from the catalogues of the installed components, the same way it generates types from the contracts. An unknown reason shows `title` or a generic message and is reported.
-- **Platform reasons** use `domain: be` and ship with the component protocol (`schemas/errors-be.yaml` of `brickKit/be-protocol`, [02](02-languages-and-component-protocol.md#repository-layout-of-be-protocol)). This table is the complete set, 32 reasons, row for row the same as that file; a component never raises one of these names in its own domain, and never raises a `be` reason that is not in it:
+- **Platform reasons** use `domain: be` and ship with the component protocol (`schemas/errors-be.yaml` of `brickKit/be-protocol`, [02](02-languages-and-component-protocol.md#repository-layout-of-be-protocol)). This table is the complete set, 33 reasons, row for row the same as that file; a component never raises one of these names in its own domain, and never raises a `be` reason that is not in it:
 
 | Reason | Code | Raised when |
 |---|---|---|
@@ -176,6 +176,7 @@ reasons:
 | `UPSTREAM_TIMEOUT` | `DEADLINE_EXCEEDED` | edge only: the component did not answer within the edge's deadline; HTTP 504 ([18](18-edge.md)) |
 | `NETWORK_IN_TX` | `INTERNAL` | an outbound call started while a transaction is open: a programming error, named in the log and in test runs so they catch it; the caller still receives `reason: INTERNAL` as above ([10](10-local-transactions.md#port-contract), [0501](../02-decisions/05-runtime/0501-no-network-inside-a-transaction.md)) |
 | `DB_TOO_MANY_CONNECTIONS` | `UNAVAILABLE` | the database refused a connection with SQLSTATE `53300` (too many connections); not retried |
+| `NESTED_TX` | `INTERNAL` | a transaction opened inside another one in the same unit of work: a programming error, named in the log and in test runs; the caller still receives `reason: INTERNAL` as above ([10](10-local-transactions.md#port-contract)) |
 
 The three edge reasons are never raised by a component: answers the edge produces itself (404, 413, 429, 502, 503, 504) carry this problem body with `domain: be`.
 

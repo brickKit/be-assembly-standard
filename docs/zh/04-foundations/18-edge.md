@@ -2,24 +2,27 @@
 
 # 边缘层
 
-浏览器、移动端或外部系统与组件 REST 端口之间的一切：路由从哪来；请求进出时边缘对它做什么、绝不做什么；同一张路由表怎么在 Docker 上变成 Traefik 配置、在 Kubernetes 上变成 Ingress 或 Gateway API 对象。读者是要加一条公网路径、改网关、规划对外 API，或者想提议把鉴权挪到网关的人。
+浏览器、移动端或外部系统与组件 REST 端口之间的一切：路由从哪来；请求进出时边缘对它做什么、绝不做什么；同一组声明怎么在 Docker 和 Podman 上变成 Traefik 容器标签、在 Kubernetes 上变成 brickKit 的 Ingress 路径。读者是要加一条公网路径、改网关、规划对外 API，或者想提议把鉴权挪到网关的人。
 
 ## 范围
 
-- **覆盖：** TLS 终结；按路径前缀路由；中立的路由表及其生成器；边缘的请求体上限、超时和粗粒度限流；请求 ID 和 trace 的起点；剥掉客户端不该带的头；CORS；对外 API 的 API key 将在哪里限流；边缘的 HTTP 缓存；BFF 的取舍；浏览器怎么到达对象存储。
+- **覆盖：** TLS 终结；按路径前缀路由；be-ops 怎么把路由声明变成部署条目的字段；边缘的请求体上限、超时和粗粒度限流；请求 ID 和 trace 的起点；剥掉客户端不该带的头；CORS；对外 API 的 API key 将在哪里限流；边缘的 HTTP 缓存；BFF 的取舍；浏览器怎么到达对象存储。
 - **不覆盖：** token 验签和授权，它们留在每个服务里（[21-identity-provider.md](21-identity-provider.md)、[20-authorization-provider.md](20-authorization-provider.md)）；用户请求与错误的形状（[15-user-api-and-errors.md](15-user-api-and-errors.md)）；路由截止时间和服务端超时（[16-deadlines-and-retries.md](16-deadlines-and-retries.md)）；gRPC，它从不经过边缘（[14-system-rpc.md](14-system-rpc.md)）；系统内部的 trace 传播（[23-observability.md](23-observability.md)）；部署文件怎么生成（`brickkit docs 01-three-layers/03-deploy-yaml`）。
 
 ## 选择
 
-- **路由由声明派生，绝不手写。** 每个组件在自己 `assembly.yaml` 的 `edge_routes` 里声明公网路径。be-ops 读全部声明加上 `brickkit.yaml` 里的确切版本，写出一张中立的路由表 `build/edge/routes.json`。每种目标一个生成器把它渲染出来：Docker 和 Podman 上是 Traefik 的 file provider；Kubernetes 上是 Ingress（或 Gateway API 的 `HTTPRoute`）对象。生成的路由表与 `brickkit.yaml` 不一致时，门禁失败。
-- **Traefik 是默认的边缘**：`make up` 已经部署了它，体量小，会监视 file provider 的目录，内建 OpenTelemetry tracing。
+- **路由由声明派生，绝不手写。** 每个组件在自己 `assembly.yaml` 的 `edge_routes` 里声明公网路径前缀，它 OpenAPI 契约里的每条路径都落在其中某个前缀之下。be-ops 把这些声明变成 brickKit 本来就读的部署条目字段，于是每个服务名和版本都由 brickKit 自己解析：
+  - **Kubernetes**：条目的 `expose: true`、`hostname`、`tlsSecret` 和 `paths`（声明的前缀）。brickKit 为每个组件生成一份 Ingress（名为 `<scope>-<name>`，新版本滚动更新完成后才切过去），按路径段匹配，所以 `/erp/sales` 永远接不走 `/erp/salesman`。
+  - **Docker 和 Podman**：条目上的 Traefik 路由 `labels`。规则以路径段为界，``Host(`app.example.com`) && PathRegexp(`^/erp/sales(/|$)`)``，从不用按字符串比较的裸 `PathPrefix`。Traefik 接到部署文件顶层 `network:` 指定的项目网络上，经 Docker provider 发现容器；标签跟着容器走。
+  - 生成的字段与声明不一致，或某条 OpenAPI 路径不在任何声明的前缀之下时，门禁失败。
+- **Traefik 是默认的边缘**：`make up` 已经部署了它（3.2 或更新版本），体量小，会发现带标签的容器，内建 OpenTelemetry tracing。Kubernetes 上，任何能合并同一主机多份 Ingress 的控制器都行（Traefik、nginx-ingress、HAProxy）。
 - **边缘负责**：TLS；按最长路径前缀路由；每条路由一个请求体上限；由路由截止时间推出的边缘超时；按 IP 的粗粒度限流；开启 trace 和请求 ID；剥掉内部头和可伪造的头；只在存在独立来源时才配 CORS 白名单。
 - **边缘不负责**：充当唯一一道鉴权、授权、套用数据范围、按业务内容路由、重试非幂等请求、缓存 API 响应。每个服务自己验签，所以绕过边缘、或者单独部署一个组件，都不会让安全变弱（[0509](../02-decisions/05-runtime/0509-edge-only-routes.md)）。
 - **永不路由的**：gRPC 端口；`/healthz`、`/readyz`、`/metrics`、`/_be/info`；组件有意不写进 `edge_routes` 的内部路径（`/authz/bundle`、JWKS、Casdoor webhook）。
 - **BFF**：移动端保留 `infra/bff-mobile`；PC 前端直接调各组件的 REST，名称靠属主的 `BatchGet` 补全；没有 PC BFF。
 - **默认同源**：前端和 API 经边缘共用一个主机名，所以不需要 CORS。静态资源由前端自己的容器带缓存头发出；边缘什么都不缓存。
 
-**状态**：已就位：Traefik v3.0，带 Docker 和 file 两个 provider（`infra/traefik/`）；全部十四个组件都声明了 `edge_routes`。还没有任何东西读 `edge_routes`：file provider 的目录是空的，所以浏览器到组件的路由没有任何生成物，边缘也没有任何中间件（没有上限、没有超时、没有剥头）。已定（随 3.0.0 统一升级落地）：路由表、Traefik 和 Kubernetes Ingress 两个生成器、中间件集合、新鲜度门禁。以后：按 API key 限流（随对外 API）、跨边缘实例的全局限流、Gateway API 生成器。
+**状态**：已就位：Traefik v3.0，带 Docker 和 file 两个 provider（`infra/traefik/`）；`deploy.yaml` 里的项目网络；全部十四个组件都声明了 `edge_routes`。还没有任何东西读 `edge_routes`，边缘也没有任何中间件（没有上限、没有超时、没有剥头）。brickKit 1.3 补上了本设计用到的两块平台能力：部署条目上的 `paths`（Kubernetes 上按路径共用一个主机名）和外壳替成员 `expose`；它按设计不在 Docker 上生成网关，推荐用 Traefik 标签。已定（随 3.0.0 统一升级落地）：Traefik 3.2 或更新版本、be-ops 生成 `paths` 和标签的生成器、中间件集合、新鲜度门禁。以后：按 API key 限流（随对外 API）、跨边缘实例的全局限流、Gateway API 生成器。
 
 ## 端口契约
 
@@ -37,31 +40,36 @@
 
 组件的资源契约路径（`/{domain}/{name}/_authz/*`、`/_shares/*`、`/_lifecycle/*`）都在它自己的前缀之下，所以随前缀一起路由（[20](20-authorization-provider.md#端口契约)）。
 
-### 路由表
+### be-ops 生成什么
 
-`build/edge/routes.json`，生成物，绝不手改：
+be-ops 读每个已安装组件的 `edge_routes`，把前缀排好序，两个组件声明同一个前缀时拒绝生成（点出两者），再把下面这些字段写进每份部署文件（`deploy.yaml`、每一份 `deploy.<env>.yaml`）；它只拥有这些字段和 `traefik.*` 标签键，条目里别的东西一概不动。`mode` 让它不运行的组件什么都不贡献。
 
-```json
-{
-  "version": 1,
-  "source": { "brickkit_yaml_sha256": "…" },
-  "routes": [
-    { "path": "/erp/sales/", "component": "erp/sales", "version": "3.0.0",
-      "service": "erp-sales-3-0-0", "port": 8084,
-      "auth": "required", "body_limit": 1048576, "timeout_s": 20,
-      "rate": { "per_ip_rps": 100, "burst": 200 } }
-  ]
-}
+| 目标 | 写在组件条目上的字段 | `erp/sales`、前缀 `/erp/sales/**` 的例子 |
+|---|---|---|
+| Kubernetes | `expose: true`，来自边缘设置的 `hostname` 和 `tlsSecret`，`paths` | `paths: [/erp/sales]` |
+| Docker、Podman | `labels`：每个前缀一个 router，service 指向组件的主端口，挂共享的中间件链和该路由自己的限制 | 见下 |
+
+```yaml
+# deploy.yaml（一个条目里生成的字段；target: docker）
+- id: erp/sales
+  labels:
+    traefik.enable: "true"
+    traefik.http.routers.erp-sales-0.rule: Host(`app.example.com`) && PathRegexp(`^/erp/sales(/|$)`)
+    traefik.http.routers.erp-sales-0.priority: "10"              # 前缀长度：最长前缀优先
+    traefik.http.routers.erp-sales-0.service: erp-sales
+    traefik.http.routers.erp-sales-0.middlewares: be-edge@file,erp-sales-0-limits
+    traefik.http.middlewares.erp-sales-0-limits.buffering.maxRequestBodyBytes: "1048576"
+    traefik.http.services.erp-sales.loadbalancer.server.port: "8084"
 ```
 
-- `service` 是成员自己带版本的服务名，单跑、在外壳里、在 Kubernetes 上都能解析（[0107](../02-decisions/01-architecture/0107-authz-and-iam-addresses-are-shared-vars.md)、[27](27-shells.md#端口契约)）；绝不是外壳的名字。升一次版本路由表就变，这正是它必须生成的原因。
-- 按最长前缀匹配；兜底的 `/` 排在最后。
-- 两个已安装的组件声明同一个前缀时，生成失败，并点出两者的名字。
-- `mode` 让它不运行的组件不贡献路由。
+- router 和 service 的名字是 `<scope>-<name>`，从不带版本；Traefik 按容器在项目网络上的地址找到它：升级不改任何标签。Kubernetes 上，Ingress 后面那个带版本的 Service 由 brickKit 自己填。
+- **外壳成员。** 外壳承载成员期间，成员自己的 `labels` 不生效，所以 be-ops 把成员的 router 既写在成员自己的条目上（它单跑时用），也写在外壳的条目上、service 端口用成员的端口（外壳运行时用）；两个容器同一时刻只存在一个。Kubernetes 上，成员的 `expose`、`hostname` 和 `paths` 经外壳生效：成员有自己的 Ingress，指向它自己的 Service，而这个 Service 选中的是外壳的 Pod（[27](27-shells.md#端口契约)）。
+- **同一个主机，一张证书。** Kubernetes 上，共用边缘主机名的每个条目带同一个 `tlsSecret`；同一主机下同一条路径写两次，brickKit 拒绝并点出两个组件。
+- 前端声明 `/**`：Kubernetes 上它的条目不写 `paths`（整个主机，"其余一切"），Docker 上它的 router 优先级最低。
 
 ### 边缘设置
 
-不按路由区分的东西放在一个项目文件里（计划中的 `infra/edge.yaml`，由 be-ops 读）：主机名和 TLS（Docker 上是证书文件或 ACME，Kubernetes 上是 `tlsSecret` 或 cert-manager）、生成器、默认限流、边缘前面受信任的代理、CORS 白名单、对象存储的主机名。默认值：
+不按路由区分的东西放在一个项目文件里（计划中的 `infra/edge.yaml`，由 be-ops 读）：主机名和 TLS（Docker 上是证书文件或 ACME，Kubernetes 上是 `tlsSecret` 或 cert-manager）、默认限流、边缘前面受信任的代理、CORS 白名单、对象存储的主机名。be-ops 由它渲染出共享的中间件链 `be-edge`（剥头、请求 ID、默认限流、错误服务）：Docker 上是一份 Traefik file provider 文件，里面不出现任何服务名，所以永不过时；Kubernetes 上是部署文件的 `k8s.ingressAnnotations`，由 brickKit 写到每一份 Ingress 上。默认值：
 
 | 设置 | 默认 |
 |---|---|
@@ -89,13 +97,13 @@
 
 ### 目标
 
-| 目标 | 生成器 | 写出什么 |
-|---|---|---|
-| Docker、Podman | `traefik-file`（默认） | `infra/traefik/dynamic/routes.yml`：router、service 和中间件（请求体上限用 `buffering`，另有 `ratelimit`、`headers`、错误服务）；Traefik 监视这个目录，所以重新生成不用重启 |
-| Kubernetes | `k8s-ingress` | 共用主机名的 Ingress 对象，每条路由一条 path 规则，外加控制器自己的限流对象（Traefik 的 `Middleware`，或 ingress-nginx 的注解），与 brickKit 生成的清单并列应用 |
-| Kubernetes | `gateway-api`（以后） | `HTTPRoute` 对象；上限经实现方自己的 policy 设置 |
+| 目标 | be-ops 写什么 | brickKit 据此生成什么 | 上限与限流 |
+|---|---|---|---|
+| Docker、Podman | 每个条目上的 Traefik 路由 `labels`；放 `be-edge` 链的 `infra/traefik/dynamic/edge.yml` | 原样写出的容器标签；项目网络标成 `external`，`up` 之前先核对它存在 | 按路由，写在标签里（`buffering`、`ratelimit`） |
+| Kubernetes | 每个条目上的 `expose`、`hostname`、`tlsSecret`、`paths`；共享链写进 `k8s.ingressAnnotations` | 每个组件一份 Ingress，名为 `<scope>-<name>`；Service 端口的 `appProtocol` 取自声明的 `protocol` | 共享注解引用的控制器自有对象（Traefik 的 `Middleware`，或 ingress-nginx 的注解）；所有路由一样 |
+| Kubernetes | `gateway-api`（以后） | be-ops 写出的 `HTTPRoute` 对象 | 实现方自己的 policy |
 
-brickKit 1.1.0 只为 `expose: true` 的组件生成 Ingress，而且每个组件一个主机名；它没法让多个组件按路径共用一个主机名。在它支持之前（计划提功能请求），由 be-ops 写出这些对象，部署时一并应用。
+每条用户面路径都在自己的前缀之下提供：边缘从不改写路径，请求到达组件时和浏览器发出时一样。
 
 ## 备选方案
 
@@ -119,7 +127,8 @@ brickKit 1.1.0 只为 `expose: true` 的组件生成 Ingress，而且每个组�
 
 ## 为什么选它
 
-- **派生胜过手写**：brickKit 自己的设计原则就拿手写网关配置当反例：版本一变，这份第二副本就静默失效。本项目的服务名带版本，这种失效是必然的。
+- **派生胜过手写**：brickKit 自己的设计原则就拿手写网关配置当反例：版本一变，这份第二副本就静默失效。本项目的服务名带版本，这种失效是必然的，所以生成的字段里不出现任何服务名：Kubernetes 上由 brickKit 解析，Docker 上由 Traefik 找到带标签的容器。
+- **部署文件本来就归 brickKit 生成**：把路由写进它读的条目，Ingress 和容器就只有一个生成者，不必在 brickKit 的产物旁边再应用一套对象。
 - **安全不依赖边缘。** "每个组件都能单独运行"包括前面没有我们的网关也能运行。
 - **网关是基础设施，不是组件**（[0106](../02-decisions/01-architecture/0106-infrastructure-is-not-a-component.md)）：官方镜像加生成的配置，换产品就是换一个生成器。
 - **Traefik 已经在了**，会监视 file provider、不用 reload，免费版就覆盖了全部中间件。
@@ -139,11 +148,11 @@ brickKit 1.1.0 只为 `expose: true` 的组件生成 Ingress，而且每个组�
 - **多个边缘实例，并且有一个必须跨实例成立的限额**（防滥用、合同约定的配额）：全局限流器，也就是 Envoy Gateway 加它的限流服务，或者在前面加云网关。
 - **对外 API 开放**（[15](15-user-api-and-errors.md#版本策略)）：在边缘按 API key 限流；配额留在服务里，按 key 在 PostgreSQL 的计数窗口里计，不上 Redis（[0201](../02-decisions/02-permissions/0201-no-redis.md)）。
 - **客户统一用 nginx 或某个 Gateway API 控制器**：换成那个生成器。
-- **brickKit 能按路径共用主机名了**：Kubernetes 的路由改由 brickKit 生成，不再由 be-ops 生成。
+- **客户集群的控制器给每份 Ingress 各建一个负载均衡器**（GKE 自带的那种）：它合并不了同一主机下各组件的 Ingress；这时 be-ops 为这个主机自己写一份 Ingress（或 `HTTPRoute`），条目不写 `expose`。
 
 ## 怎么换
 
-- **换网关产品**：在边缘设置里改生成器，重新生成。路由表、各组件的声明和每个组件都不变；端到端套件必须对新边缘跑通。
+- **换网关产品**：Kubernetes 上，任何能合并同一主机 Ingress 的控制器都行：改 `k8s.ingressClass` 和共享注解；Docker 上，带 Docker 标签 provider 的网关在 be-ops 里加一个它自己的标签渲染器。各组件的声明和每个组件都不变；端到端套件必须对新边缘跑通。
 - **全局限流器**：把限流服务加进基础设施，让生成器的限流中间件指向它；路由的 `rate` 取值不变。
 - **API key**：限流中间件加一个 key 来源（API key 的标识，等它的形状在权限契约里定下来，[20](20-authorization-provider.md)）；路由和组件都不变。
 
@@ -151,25 +160,27 @@ brickKit 1.1.0 只为 `expose: true` 的组件生成 Ingress，而且每个组�
 
 计划中的套件 `tools/be-acceptance/conformance/edge/`，对每个生成器各跑一遍：
 
-- **黄金路由表**：一组固定的 `assembly.yaml` 加一份 `brickkit.yaml`，必须恰好生成期望的 `routes.json`，每个生成器也必须恰好生成期望的文件；升版本之后服务名随之改变；
-- **端到端**，经过边缘：`auth: required` 的路由不带 token 答 401（由服务答）；未知路径 404；请求体超上限 413；突发超速率 429；每个响应都带 `X-Request-Id`；客户端伪造的 `X-Request-Id` 或 `be-caller` 永远到不了服务和它的日志；从外面访问不到 `/healthz`、`/metrics` 和 gRPC 端口；经对象存储主机名的预签名上传能成功。
+- **黄金部署字段**：一组固定的 `assembly.yaml` 加一份部署文件，每种目标必须恰好生成期望的 `paths`、`labels` 和注解；升版本不改任何生成的字段；外壳成员的 router 同时出现在它自己的条目和外壳的条目上；
+- **端到端**，经过边缘：`auth: required` 的路由不带 token 答 401（由服务答）；未知路径 404；`/erp/salesman` 不会被路由到 `erp/sales`；请求体超上限 413；突发超速率 429；每个响应都带 `X-Request-Id`；客户端伪造的 `X-Request-Id` 或 `be-caller` 永远到不了服务和它的日志；从外面访问不到 `/healthz`、`/metrics` 和 gRPC 端口；经对象存储主机名的预签名上传能成功。
 
-先写成红的测试：be-ops "从 `assembly.yaml` 生成 Traefik 动态配置"（还没有生成器）、"组件升版本后服务名随之改变"；项目端到端："登录接口按 IP 超速率答 429"、"请求体超上限答 413"、"伪造的 `X-Request-Id` 进不了日志"。门禁（计划中的 `edge-routes-fresh`）：生成的路由表与 `brickkit.yaml` 不一致；先对一份过期的路由表跑红一次。
+先写成红的测试：be-ops "从 `assembly.yaml` 生成 Traefik 标签和 Kubernetes `paths`"（还没有生成器）、"前缀以路径段为界"；项目端到端："登录接口按 IP 超速率答 429"、"请求体超上限答 413"、"伪造的 `X-Request-Id` 进不了日志"。门禁（计划中的 `edge-routes-fresh`）：部署文件里生成的字段与声明不一致，或某条 OpenAPI 路径不在任何声明的前缀之下；先对一份过期的部署文件跑红一次。
 
 ## 相关决策
 
 - [0106 基础设施不是组件](../02-decisions/01-architecture/0106-infrastructure-is-not-a-component.md)：网关是官方镜像加配置。
-- [0107 权限 bundle 与 token 公钥地址是共享变量](../02-decisions/01-architecture/0107-authz-and-iam-addresses-are-shared-vars.md)：用成员自己的服务名，绝不用外壳的。
+- [0107 族成员的地址是 `$endpoint:` 引用](../02-decisions/01-architecture/0107-authz-and-iam-addresses-are-shared-vars.md)：同一原则用在地址上，每个服务名都由 brickKit 解析。
 - [0108 一个外壳、一个仓库、一个镜像、一份成员清单](../02-decisions/01-architecture/0108-one-repository-per-shell.md)：BFF 和前端永不进外壳。
 - [0201 不引入 Redis](../02-decisions/02-permissions/0201-no-redis.md)：限流在边缘，配额在 PostgreSQL。
 - [0208 gRPC 是系统面，人用 REST](../02-decisions/02-permissions/0208-grpc-is-the-system-plane.md)：只路由 REST；gRPC 端口从不经过边缘。
-- [0509 边缘只做路由，认证和授权留在服务里](../02-decisions/05-runtime/0509-edge-only-routes.md)：本文就是它的完整分析。
-- 计划中、尚未编号："边缘路由由声明生成"。
+- [0509 边缘只做路由，认证和授权留在服务里](../02-decisions/05-runtime/0509-edge-only-routes.md)：本文就是它的完整分析，包括路由生成进部署条目这一条。
 
 ## 已知限制
 
 - **限流按边缘实例计数**；有两个实例时，在全局限流器出现之前，客户端能拿到两倍的额度。
 - **族级前缀只容得下一个成员**：`/integration/im/**` 由 IM 成员声明，同时装两个 IM 成员就会撞车，直到每个成员声明自己的子前缀。
-- **Kubernetes 的路由在 brickKit 之外生成**，直到 brickKit 能按路径共用主机名。
+- **Kubernetes 上按路由的上限其实不分路由。** brickKit 把 `k8s.ingressAnnotations` 写到每一份 Ingress 上，所以那里某条路由自己的 `body_limit` 或 `rate` 没法和默认值不同；Docker 上由标签携带。brickKit 若有按条目的注解字段就能补上（等测出它真的要紧，再提功能请求）。
+- **每个组件一份 Ingress**，需要能合并同一主机多份 Ingress 的控制器（nginx-ingress、Traefik、HAProxy 可以；GKE 自带的控制器不行）。
+- **生成的标签放在部署文件里。** 个人的 `deploy.local.yaml` 会整体取代 `deploy.yaml`，所以重新生成之后，用 `brickkit local refresh` 把新标签带进去。
+- **Traefik 3.1 及更早版本连不上 Docker 29**（它们的 Docker 客户端太旧）；边缘需要 3.2 或更新版本。
 - **Traefik 的 dashboard 是不安全模式**（`api.insecure: true`），只用于开发；生产要么保护起来，要么关掉。
 - **今天什么都没有生成**：生成器落地之前，公网路径只能靠临时配置才到得了组件。

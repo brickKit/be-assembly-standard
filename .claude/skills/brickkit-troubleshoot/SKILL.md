@@ -93,7 +93,7 @@ one key and hides the conflict.
 | `PORT_CONFLICT` | Duplicate `localPort` / `exposePort`, or the host port is taken | Change the port — in `deploy.local.yaml` if it's only your machine |
 | `ENGINE_MISSING` | docker / podman / kubectl not on `PATH` or not running — or only Podman is installed while the deploy file says `target: docker` | Install/start it, or set `target: podman` |
 | `PROJECT_MISSING` | Not in a project, or `deploy.yaml` missing — or local mode is on but `deploy.local.yaml` was deleted | `brickkit init` completes a project without touching existing files; `brickkit local on` writes the local file again |
-| `LINT_FAILED` | `brickkit lint` found problems, each printed with file and field | Fix and rerun; warnings fail only with `--strict` |
+| `LINT_FAILED` | `brickkit lint` found problems, each printed with its own code in brackets (`⚠️ [DOC_PLACEHOLDER] …`), file and field | Look each code up in this table, fix and rerun; warnings fail only with `--strict` |
 | `DOC_FILE_MISSING` / `DOC_SECTION_MISSING` (lint warnings) | A required doc (`BRICKKIT.md`, `AGENTS.md`, `CLAUDE.md`, `README.md`) or one of its fixed sections is missing | Add it; `brickkit new` shows the full set, `brickkit skills update` creates a missing `AGENTS.md` / `CLAUDE.md` |
 | `DOC_PATH_MISSING` / `DOC_LINK_BROKEN` | A Code map path in `AGENTS.md`, or a relative link, points at nothing — the code moved, the doc didn't | Fix the path or link in the doc |
 | `DOC_LINK_NOT_PORTABLE` | `BRICKKIT.md` has a relative link (dead in other projects' caches), or any other component doc — `AGENTS.md`, `README.md`, `docs/` — links out of the component (`../…`) | Name files as inline code in `BRICKKIT.md`; keep component docs self-contained |
@@ -151,4 +151,4 @@ shell is reached at the shell's address. **To see the generated files** without 
 - The full specification and the reasoning behind each design choice:
   <https://github.com/brickKit/brickKit> and its root `AGENTS.md`
 
-<!-- brickkit:skill version=v1.1.0 sum=sha256:ae618720bf3476cdc80784d1bfce0ccccaeae030047dc42eda24d072af83b1f1 -->
+<!-- brickkit:skill version=v1.3.1 sum=sha256:5d92b4aed6197a293b870731136a61a7de7a855ce7624e9dfdedef592e92517f -->

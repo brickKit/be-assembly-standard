@@ -1,6 +1,9 @@
 # deploy.yaml — how this project is deployed: the target, and which components run and how.
 # The team file: commit it. Your personal copy is deploy.local.yaml (brickkit local on).
 target: docker # docker | podman | k8s
+# 项目自己提供的网络（brickKit v1.2.0 起）：make net 预先建好，生成的 compose 标成 external，只加入、不建不删；
+# infra/docker-compose.infra.yml 也把它声明成 external（Casdoor 接在上面按成员服务名回调 iam），谁先起、谁先 down 都行。
+network: brickkit-be-assembly-standard-net
 
 components:
   - id: mdm/customer

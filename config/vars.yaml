@@ -16,12 +16,13 @@ S3_URL: http://host.docker.internal:9000
 # 可观测性（未开 obs 时留空，SDK 视为关闭导出）
 OTEL_BASE_URL: ""
 
-# 权限与身份：用 infra/authz、infra/iam-casdoor 自己的版本化服务名。独立部署、被外壳托管
-# （成员服务名是外壳容器的网络别名；K8s 上是指向外壳 Pod 的成员 Service）都能解析，换拓扑不用覆盖。
-# 只在这两个组件发版时改；与 brickkit.yaml 的版本对不上时 make gates（service-hostname-scan）报错。
-AUTHZ_BUNDLE_URL: http://infra-authz-2-0-1:8223/authz/bundle
-IAM_JWKS_URL: http://infra-iam-casdoor-2-0-0:8200/.well-known/jwks.json
+# 权限与身份：用 brickKit 的 $endpoint:<组件 ID>[/路径]（v1.2.0 起）。值与 *_ENDPOINT 同一规则算出：
+# 版本化服务名 + 端口（brickkit upgrade 后自动跟上，不用手改）；被外壳托管时指向外壳（外壳服务名 + 成员自己的端口），
+# 本机进程（focus / mode: local / debug）换成本机地址；不进启动顺序、允许成环（authz ↔ iam 互相引用、各自引用自己都可以）。换槽位成员只改这里一行。
+AUTHZ_BUNDLE_URL: $endpoint:infra/authz/authz/bundle
+IAM_JWKS_URL: $endpoint:infra/iam-casdoor/.well-known/jwks.json
 
-# Casdoor（基础资源，接在本项目网络上，见 infra/docker-compose.infra.yml）回调 infra/iam-casdoor 的 webhook：
-# 同样用成员自己的版本化服务名，独立部署与外壳托管都能解析；iam 发版时与 IAM_JWKS_URL 一起改（service-hostname-scan 把关）。
-IAM_WEBHOOK_CALLBACK_URL: http://infra-iam-casdoor-2-0-0:8200/api/iam/webhooks/casdoor
+# Casdoor（基础资源，接在本项目网络上，见 deploy.yaml 的 network: 与 infra/docker-compose.infra.yml）回调
+# infra/iam-casdoor 的 webhook：iam 引用自己，算出的是它自己的版本化服务名；被外壳托管时是外壳的服务名 + iam 自己的端口
+# （v1.3.1 生成结果），Casdoor 在同一网络上同样解析得到。iam 自己以本机进程跑（focus）时这里会变成 localhost，Casdoor 回调不到。
+IAM_WEBHOOK_CALLBACK_URL: $endpoint:infra/iam-casdoor/api/iam/webhooks/casdoor

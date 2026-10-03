@@ -36,6 +36,11 @@ rejected on the spot. For metadata the engine should see (gateway routing, scrap
 `deployment.labels`; to ship a file for tooling (a contract, an SDK) use `artifacts` — the CLI
 downloads it to `.brickkit/artifacts/<versioned-service-name>/<type>/` and never parses it.
 
+Does the component publish or subscribe to events through a messaging system? List the event names under
+`events: {publishes: [...], subscribes: [...]}`: `graph` / `deps` / `lint` use it to show who publishes and who
+subscribes, and the deployment doesn't change. Write names as they are; to subscribe to a whole class, write a prefix
+ending in `*` (`orders.*`) — not the messaging system's own wildcards (`>`, `#`, `+`).
+
 **2. `configSchema` keys ARE the environment variable names.**
 
 Write `DB_HOST`, `LOG_LEVEL` — exactly what your code reads. There is no camelCase conversion, so a key
@@ -43,7 +48,12 @@ must be a valid environment variable name (letters, digits, `_`, not starting wi
 project fills values in `config/<scope>-<name>.yaml` under the same keys. Put keys the project must
 supply (a database password, another project's address) in `required` **without** a `default`: `up`
 refuses until they're filled. Everything else gets a `default`. Mark credentials `secret: true` —
-on K8s they go through a generated Secret, never plaintext env. `type` / `enum` / `minimum` /
+on K8s they go through a generated Secret, never plaintext env. For a private key or certificate
+that must be replaceable without a restart, or must not sit in an environment variable, add
+`mount: file`: the key's environment variable then holds a **file path**
+(`/run/brickkit/secrets/<service-name>/<key>`) and the value is in the file — so name the key
+`…_FILE`, read the file in code and re-read it when needed; the platform does not restart the
+component when the value changes. `type` / `enum` / `minimum` /
 `maximum` / `pattern` / `items` are documentation only; values are never validated. A `default` is
 injected exactly as written: `default: 1.10` arrives as `1.10`, not `1.1`.
 
@@ -78,6 +88,10 @@ are fixed (10s/3s/3), so the startup grace `startPeriodSeconds` defaults to 60. 
 than that (heavy Spring Boot, Django preloading, .NET JIT) must raise it: on Docker the component turns
 `unhealthy` and `up` fails; on K8s it CrashLoopBackOffs forever while the logs look fine. The grace
 period only delays "declared dead", never "declared alive", so setting it generously costs nothing.
+Alive but not yet able to serve (a cache warming, a first sync, permission data not fetched yet)?
+Declare `readinessCheck: {type: http, path: /readyz}` too: K8s's readinessProbe and the Docker /
+Podman healthcheck (what dependents and `up` wait for) use it, liveness keeps using `healthCheck`.
+It, too, never fails because a downstream is down.
 
 **7. The migration runs from the same image — fail fast on unknown arguments.**
 
@@ -130,6 +144,11 @@ the deploy file's choice (members nested under the shell entry), and may be none
 enters the project together with its first member: build that member, list it in `shell.members`,
 then `brickkit add` the shell. Callers keep using a hosted member's own service name — it resolves to
 the shell (a network alias on Docker / Podman, a Service selecting the shell's Pod on Kubernetes).
+Members share one process, so process-wide things must not leak between them: per member — its own
+`config` item (never `os.Getenv`), telemetry provider with `service.name` = its component ID, metrics
+registry, database pool, resource limits; session settings (`SET ROLE`, `search_path`) only as
+`SET LOCAL`; once, by the shell — signal handling, the log sink, framework-wide switches
+(`brickkit docs 04-shell/05-shell-development`, "One process, several members").
 
 **12. A component carries five documents, each for one reader — keep them in step with the code.**
 
@@ -204,4 +223,4 @@ treat it as a project; `release` reads only `component.yaml`.
 - The full specification: <https://github.com/brickKit/brickKit> and its root `AGENTS.md`
 - Examples: the cached `BRICKKIT.md` and `component.yaml` of any component under `.brickkit/manifests/`
 
-<!-- brickkit:skill version=v1.1.0 sum=sha256:77767235cf798b1578b0c7bdfb3681602641ead080c09c2e0484c7a9d1e16d4a -->
+<!-- brickkit:skill version=v1.3.1 sum=sha256:0643b08dcb3b508964b75fd8e1e09363d293f4c5d733cf7aed0117f2aaf87d65 -->

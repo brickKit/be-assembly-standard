@@ -2,7 +2,7 @@
 
 # 0508 Background work runs only through the SDK's Jobs
 
-**Status**: decided; lands with the 3.0.0 sweep.
+**Status**: decided; lands with the 3.0.0 sweep. Confirmed by brickKit's answer to FR06-007 (a platform `maintenance` schedule): declined, with this decision cited as the recommended practice; the optional run-once entry below is the escape hatch it suggested.
 
 ## Decision
 
@@ -20,6 +20,7 @@ Every piece of work in a component that no request triggers is declared, in one 
 - A job that fails or panics is logged, counted and restarted with backoff; one job ending never stops another; standalone and shell behave the same.
 - Every run has a timeout; per-job metrics use the `be_job_*`, `be_queue_*` and `be_reconcile_*` names.
 - No Kubernetes CronJob, no `pg_cron`, no external scheduler.
+- **One measured exception, in three steps.** (1) Work stays in the process. (2) A heavy job that starves its neighbours moves its component out of the shell into its own container with `resources.limits` (a deploy-file edit). (3) Only when that is measured to be insufficient, the job runs as its own process through the optional protocol capability "run one job once and exit" (`<entrypoint> job run <name>`), which takes the same lease or slot row as the in-process run, so it executes once whoever triggers it. The trigger is outside brickKit: a host cron or systemd timer running `docker compose … run --rm --no-deps <service> job run <name>` on Docker and Podman, a hand-written CronJob without the `brickkit.io/project` label on Kubernetes. `JOBS_OVERRIDES` sets `enabled: false` for that job in the process ([19](../../04-foundations/19-background-jobs.md#port-contract)).
 
 ## Why
 
@@ -30,7 +31,7 @@ Before 3.0.0 twelve components carried hand-copied loops, each with its own tick
 - A ticker, goroutine, thread, `setInterval` or sleep loop in module code (gate `module-ticker-scan`)
 - Starting a loop from the start hook
 - "After commit, call it in the background" without a queue row
-- An external scheduler or a database extension to run a component's jobs
+- An external scheduler or a database extension to run a component's jobs, except step (3) above: an external trigger of the run-once entry, after the first two steps are measured insufficient
 - A job without a timeout, or whose failure stops the process or another job
 
 ## Revisit only if

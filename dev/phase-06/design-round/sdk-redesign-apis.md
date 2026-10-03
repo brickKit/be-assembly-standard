@@ -3,6 +3,7 @@
 > 开发文档，只给本项目自己用；正式文档不得链接本文件。写于 2026-10-02（06b 设计轮，lane A）。
 > 这是 `sdk-redesign.md` 的姊妹篇。那一篇里有协议（P1–P20）、compconf、现状盘点、迁移路径；本篇只写**签名和用法**。签名是 v0.6.0 的目标形状，pilot（阶段 C）可以在冻结之前修改；修改要同时改三门语言和本文件。
 > **修订（phase A 收尾，lane X2）**：按控制者对九个 lane 报告的裁决（a…bc）和 R1 最小复现的结果（`../repros/README.md`）修订。be-protocol rc.1（`tools/be-protocol`）已经是规范正文，名字和说法不一致时以它为准，本文件只是设计记录。
+> **修订（2026-10-03，lane L2b）**：随 brickKit v1.2–v1.3.1（裁决 bk1–bk14）补上：密钥文件的读取与重读（§1 第 7 条、§2.2、§3、§4，→ P2.7、P2.9、P2.12）；族地址键 `AUTHZ_GRPC_URL` / `IAM_GRPC_URL`（→ P2.10）；`job run` 入口（§2.1、§2.9，→ P14.8）；外壳启动器的停机与就绪（§5，→ P19.9、P19.10）。
 
 ## 0. 怎么读
 
@@ -18,6 +19,13 @@
 4. **一切都有界**：池、并发、批量、等待、重试、日志行长度都有默认上限。签名里能写成"可选参数取默认值"的，就不暴露成必填。
 5. **事务函数可以被重放**：`Store.Tx` 遇到 40001 / 40P01 会重跑传进来的函数，所以函数里只碰 `tx`。网络调用被守卫拦下（→ P8.4）。
 6. **错误一律带 reason**：组件写 `Errorf(code, "REASON", meta, …)`；SDK 内部的错误用保留的 `be` reason（→ P4）。
+7. **密钥只从文件读，变了就重读**（→ P2.7、P2.9、P2.12）。`secret: true` 的键都是 `mount: file`、以 `_FILE` 结尾，环境变量里只有路径。三门 SDK 一样：
+   - 启动时校验：文件不存在或读不了，和缺必填键一样以 78 退出、点名键；
+   - 组件只经 `Secret` 取值（Go `rt.Config().Secret(key).Current()`，Python `rt.config.secret(key).current()`，TS `rt.config.secret(key).current()`），从不自己打开文件；`String(key)` 对 `_FILE` 键返回的是路径；
+   - 比较文件的修改时间和大小，两次比较最多相隔 30 s（可以另加文件系统监视）；变了就重读，记一条点名键的 INFO；文本密钥去掉恰好一个结尾 LF / CRLF，二进制用 `Bytes()` 逐字节取；
+   - 变化之后读失败：保留上一个有效值，记 ERROR（只点名键），计 `be_secret_reload_failures_total{key}`；
+   - SDK 内部的使用方：库连接池每建一条新连接调一次 `Current()`（`PG_PASSWORD_FILE`）；对象存储客户端成对读 `S3_ACCESS_KEY_ID_FILE` / `S3_SECRET_ACCESS_KEY_FILE`，变了就换客户端；iam 成员的签名私钥 `APP_TOKEN_SIGNING_KEY_FILE`（加可选的 `APP_TOKEN_NEXT_SIGNING_KEY_FILE`，提前发布）变了就切到新钥；签过名的公钥记在成员自己的 schema 里，JWKS 在停用后继续发布访问令牌寿命 + 60 s（contract-infra-iam `TOKENS.md`；`APP_TOKEN_PREVIOUS_PUBLIC_KEY_PEM` 退役）；
+   - 外壳里成员那一项的配置里也是路径，文件挂在外壳容器里同一个位置，启动器不做任何特殊处理。
 
 ## 2. Go：`github.com/brickKit/be-sdk-go` v0.6.0
 
@@ -33,7 +41,8 @@ type Spec struct {
     New        func(ctx context.Context, rt *Runtime) (*Module, error)
 }
 
-// Main 按 os.Args 分派：无参数 = 起服务；"migrate up|down N|status" = 迁移（→ P1.1、P11）。
+// Main 按 os.Args 分派：无参数 = 起服务；"migrate up|down N|status" = 迁移（→ P1.1、P11）；不认识的参数在读配置之前以 64 退出；
+// "job run <name>" = 把一个声明过的任务跑一次就退出（可选能力 job_run，→ P14.8，§2.9）。
 // 这是 SDK 里唯一会读进程环境、唯一会调 os.Exit 的地方。
 func Main(s Spec)
 
@@ -83,8 +92,16 @@ func (c *Config) Int(key string, def int) int
 func (c *Config) Bool(key string, def bool) bool
 func (c *Config) Duration(key string, def time.Duration) time.Duration
 func (c *Config) JSON(key string, into any) error
-func (c *Config) Secret(key string) Secret                          // Secret.Current() 每次取最新值（为文件热更新预留）
+func (c *Config) Secret(key string) Secret                          // 只接受 _FILE 键（→ P2.12）；§1 第 7 条
+
+type Secret interface {
+    Current() string                    // 文本密钥的当前值（去掉一个结尾换行）；文件变了就是新值
+    Bytes() []byte                      // 组件自己的二进制密钥，逐字节
+    Changed() <-chan struct{}           // 每次重读成功后通知一次；签名私钥、凭据对这类要"换实例"的用
+}
 ```
+
+族地址（`AUTHZ_URL`、`AUTHZ_GRPC_URL`、`IAM_URL`、`IAM_GRPC_URL`）是普通配置键，值由 brickKit 的 `$endpoint:` 算出（→ P2.10）。SDK 自己读它们（bundle、changes、JWKS、`Check`、`ResolveClaims`、目录读取），组件代码不碰；`*_GRPC_URL` 去掉 `http://` 当拨号目标，从不由 `*_URL` 推端口。
 
 `Config` 读值的方法不返回 error。原因：`New` 被调用之前，SDK 已经按 `component.yaml` 的 `configSchema` 把每个键都解析、校验过一遍，任何错误都在启动时一次报出，退出码 78（→ P2.3）。读一个没声明的键会 panic，被启动阶段的 recover 接住，同样以 78 退出，这属于编程错误。
 
@@ -309,6 +326,8 @@ func NewReconciler[T any](s ReconcilerSpec[T]) ReconcilerRunner
 
 SDK 自己的平台任务，名字都以 `be.` 开头（`be.outbox`、`be.lifecycle`、`be.cleanup`、`be.authz.changes`、`be.snapshot.<name>`），同样受监督、同样可以用 `JOBS_OVERRIDES` 调整，组件不需要登记它们。
 
+**跑一次就退出**（可选能力 `job_run`，→ P14.8）。`besdk.Main` 收到 `job run <name>` 时：读配置和密钥文件、核对 schema 版本（同服务入口）、不起 HTTP / gRPC、不起别的后台工作，按任务种类经同一批表跑**一次**（`Cron` 认领当前时刻及之前最近的槽，`Singleton` 抢租约，`Every` / Reconciler 走一遍，`Queue` 在超时内把该种类的就绪行处理一遍），holder 是 `<组件 ID>/job-run:<实例 id>`，指标在退出前推一次。退出码：成功或无事可做 0，失败 1，任务名不存在 4，配置错误 78；入口不认识的参数在读配置之前就以 64 退出（→ P1.1）。`JOBS_OVERRIDES` 的 `enabled: false` 只停进程内调度，不影响 `job run`。三门 SDK 同样实现（Python `main` 的 `job run`，TS `main` 的 `job run`），并在 `/_be/info` 的 `capabilities` 里列出 `job_run`。外部触发方式见 foundations 19。
+
 ### 2.10 其它帮手
 
 ```go
@@ -444,7 +463,7 @@ class Spec:
     contracts: Path
     create: Callable[[Runtime], Awaitable[Module]]
 
-def main(spec: Spec) -> NoReturn            # 起服务 | "migrate apply|rollback|status"
+def main(spec: Spec) -> NoReturn            # 起服务 | "migrate apply|rollback|status" | "job run <name>"（→ P14.8）
 
 @dataclass
 class Module:
@@ -539,7 +558,7 @@ export function defineComponent(spec: {
   contracts: string;
   create: (rt: Runtime) => Promise<Module>;
 }): Spec;
-export function main(spec: Spec): never;    // 起服务 | "migrate up|down|status"
+export function main(spec: Spec): never;    // 起服务 | "migrate up|down|status" | "job run <name>"（→ P14.8）
 
 export interface Module {
   http?: (r: Router) => void;               // Router 包着本成员的 Fastify 实例（只开放 get/post/put/patch/delete）
@@ -612,7 +631,8 @@ shellCfg := 外壳自己的配置（同样只装 configSchema 声明过的键）
 for m in members:
     spec := compiled[m.componentId]                     // 没有 → 退出 2，点名成员
     assert compiledVersion(spec) == m.version           // 不一致 → 退出 2（Go 用 build info，Py 用 importlib.metadata，TS 用 package.json）
-    assert m.config 里的 PG_HOST/PORT/DATABASE、EVENT_BUS_URL（或 NATS_URL）、AUTHZ_URL、IAM_*、TENANT_ID == shellCfg 里的值   // 不一致 → 退出 78
+    assert m.config 里的 PG_HOST/PORT/DATABASE、EVENT_BUS_URL（或 NATS_URL）、AUTHZ_URL、AUTHZ_GRPC_URL、IAM_*、TENANT_ID == shellCfg 里的值   // 不一致 → 退出 78（$endpoint: 解析出的值对每个成员本来就相同）
+    assert shellCfg.SHUTDOWN_GRACE >= max(成员的 SHUTDOWN_GRACE)                        // → P19.9；stopGracePeriodSeconds 由门禁对照 component.yaml
 assert server_version_num >= 160000                    // 外壳要 PG16（WITH INHERIT FALSE, SET TRUE，→ P10.7、P19.5）
 platform := 进程级：OTel 导出器 + 传播器（全局只装传播器；全局 TracerProvider 设成外壳自己的）；JWKS 验签器 + bundle；PG 物理池（大小 = min(Σ 成员 PG_POOL_MAX, 外壳的 PG_POOL_MAX)，以外壳的登录角色连）；总线连接
 for m in members:
@@ -621,8 +641,8 @@ for m in members:
     mod := spec.New(rt)                                  // 失败 → 整个外壳退出非 0
     serve(m.httpPort, mod.HTTP); serve(m.extraPorts.grpc, mod.GRPC)
     supervise(mod.Jobs + 平台任务 + 消费者 + Reconcilers + Workers + 投影拉取)   // 和单跑用的是同一个监督器
-serve(shell.port, /healthz + 汇总的 /metrics)
-on SIGTERM: 停止接新请求 → 各成员 Stop（只刷出自己的 span 队列）→ 平台关闭（这时才关真正的导出器，r1-01）
+serve(shell.port, /healthz + /readyz（所有成员都就绪才 200，否则 503 NOT_READY，metadata.waiting 列出没就绪的成员 ID；零个成员时 200，→ P19.10）+ 汇总的 /metrics)
+on SIGTERM: 停止接新请求 → 各成员**并行** Stop，在外壳的 SHUTDOWN_GRACE 内（只刷出自己的 span 队列）→ 平台关闭（这时才关真正的导出器，r1-01）→ 退出 0，落在外壳的 stopGracePeriodSeconds 之内
 ```
 
 ## 6. 夹具组件 `widget`（规格在 be-protocol `fixtures/widget/`，三门 SDK 各实现一份）

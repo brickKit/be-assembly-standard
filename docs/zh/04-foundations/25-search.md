@@ -84,7 +84,7 @@ ORDER BY CASE
 - **成员**：`infra/search-pg`（默认：在它自己的 schema 里用 PostgreSQL 全文检索加 bigram 索引）、`infra/search-meilisearch`、`infra/search-opensearch`。一份族契约，像 authz、iam 两个族一样单独成仓库。
 - **数据来源**：每个属主声明哪些资源类型可被全局搜索；成员消费它们的事件，建一份投影 `{type, id, owner, title, search_text, updated_at, deleted}`。新成员靠属主的 `List` 回填重建投影，因为流只保留七天。
 - **查询**：经边缘的 `GET /api/search?q=&types=&page_size=&cursor=`。候选结果用各属主的 `_authz/check`（每次最多 500 个）做后过滤，不够一页就继续多取。调用方看不到的东西永远不会返回；没有精确总数。
-- **寻址**：共享变量 `SEARCH_URL`；任何组件都不依赖成员（[0104](../02-decisions/01-architecture/0104-variants-become-slot-families.md)、[0107](../02-decisions/01-architecture/0107-authz-and-iam-addresses-are-shared-vars.md)）。
+- **寻址**：共享变量 `SEARCH_URL`，在 `config/vars.yaml` 里用 `$endpoint:<成员>` 填（`$endpoint:infra/search-pg`）；没装成员时它不存在，属主和前端降级；任何组件都不依赖成员（[0104](../02-decisions/01-architecture/0104-variants-become-slot-families.md)、[0107](../02-decisions/01-architecture/0107-authz-and-iam-addresses-are-shared-vars.md)）。
 
 ## 备选方案
 
@@ -124,7 +124,7 @@ ORDER BY CASE
 
 - **索引策略**：用 `make db-init` 装扩展；下次 `up` 时平台迁移探测到它，并发地建好索引。组件不用改。
 - **规范化**：be-protocol 出一版新向量，SDK 发一版；回填任务重写各行；组件只需升 SDK。
-- **全局搜索**：`brickkit add infra/search-pg`，设置 `SEARCH_URL`，属主声明可搜索的类型。换成员就是 `brickkit remove` / `add` 加重建投影；属主和前端都不变。
+- **全局搜索**：`brickkit add infra/search-pg`，设置 `SEARCH_URL: $endpoint:infra/search-pg`，属主声明可搜索的类型。换成员就是 `brickkit remove` / `add` 加重建投影；属主和前端都不变。
 
 ## 一致性测试
 
@@ -137,7 +137,7 @@ ORDER BY CASE
 ## 相关决策
 
 - [0102 一个数据库，每个组件一个 schema](../02-decisions/01-architecture/0102-one-schema-per-component.md)：全局搜索读事件，从不读别人的 schema。
-- [0104 槽位族需要多种合理实现，而且没有依赖边](../02-decisions/01-architecture/0104-variants-become-slot-families.md) 和 [0107 权限 bundle 与 token 公钥地址是共享变量](../02-decisions/01-architecture/0107-authz-and-iam-addresses-are-shared-vars.md)：搜索族和 `SEARCH_URL`。
+- [0104 槽位族需要多种合理实现，而且没有依赖边](../02-decisions/01-architecture/0104-variants-become-slot-families.md) 和 [0107 族成员的地址是共享变量里的 `$endpoint:` 引用](../02-decisions/01-architecture/0107-authz-and-iam-addresses-are-shared-vars.md)：搜索族和 `SEARCH_URL`。
 - [0206 不用行级安全，不做共享引擎](../02-decisions/02-permissions/0206-no-row-level-security.md)：数据范围是同一条 SQL 里的谓词，所以 `q` 也必须在那条 SQL 里。
 - 没有计划中的新决策；全局族建的时候再加它自己的。
 

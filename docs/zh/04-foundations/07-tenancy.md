@@ -89,7 +89,7 @@
 
 - **一套部署里每租户一个库**：一个进程一个共享池，没法按库拆开；每次迁移都要在一套部署启动时按租户各跑一遍。
 - **每租户一个 schema**：本项目已经是每个组件一个 schema；再按租户乘一遍，就是组件数 × 租户数个 schema、迁移和角色。
-- **行级 `tenant_id`**：每张表、每个唯一索引、每条查询都要带租户，而不用行级安全（[0206](../02-decisions/02-permissions/0206-no-row-level-security.md)）时只有 SDK 和门禁能保证它。事后补上，就是每个组件一次大版本。
+- **行级 `tenant_id`**：每张表、每个唯一索引、每条查询都要带租户，而不用行级安全（[0206](../02-decisions/02-permissions/0206-no-row-level-security.md)）时只有 SDK 和门禁能保证它。事后再加，就是每个组件一次大版本。
 
 ## 什么时候换
 
@@ -117,7 +117,7 @@
 - [0102 一个数据库，每个组件一个 schema](../02-decisions/01-architecture/0102-one-schema-per-component.md)：为什么 schema 不能再按租户分。
 - [0206 不用行级安全，不做共享引擎](../02-decisions/02-permissions/0206-no-row-level-security.md)：为什么池化模型只能靠 SDK。
 - [0203 token 只承载身份，`sub` 归平台所有](../02-decisions/02-permissions/0203-jwt-carries-identity-only.md)：`aud`、`iss` 和 `tenant_id` 声明。
-- [0107 授权与身份经共享变量访问，从不经依赖](../02-decisions/01-architecture/0107-authz-and-iam-addresses-are-shared-vars.md)：`IAM_ISSUER` 和 `TENANT_ID` 是共享变量。
+- [0107 族成员的地址是共享变量里的 `$endpoint:` 引用](../02-decisions/01-architecture/0107-authz-and-iam-addresses-are-shared-vars.md)：`IAM_ISSUER` 和 `TENANT_ID` 是共享变量。
 - [0205 数据范围随版本发布](../02-decisions/02-permissions/0205-data-scopes-ship-with-the-version.md)：`legal_entity_id` 是组件为自己的数据范围声明的列之一。
 - [0307 业务日期按法人日历算](../02-decisions/03-contracts-and-data/0307-business-dates-and-legal-entity-calendar.md)：法人的时区与会计年度。
 

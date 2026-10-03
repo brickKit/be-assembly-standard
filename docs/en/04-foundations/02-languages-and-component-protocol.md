@@ -29,8 +29,8 @@ Twenty chapters, `P1`–`P20`. Each rule has a level. **MUST** rules are tested 
 
 | Chapter | Covers | Detail in |
 |---|---|---|
-| P1 Process and lifecycle | two entries: the default command serves, `migration.command` migrates; start order (validate configuration, open ports, then connect in the background); exit code 78 on invalid configuration; `/healthz` answers only for the process; `/readyz` (SHOULD); SIGTERM drains within `SHUTDOWN_GRACE` (default 20 s); a fatal error exits non-zero; the image has `/bin/sh` and `wget` | [27](27-shells.md), [02-backend.md](../01-conventions/02-backend.md#health-check-and-image) |
-| P2 Configuration | environment variables only; only keys the component declares in `configSchema`; strict types; the protocol keys listed in `schemas/config-keys.yaml` | [24](24-config-and-secrets.md) |
+| P1 Process and lifecycle | two entries: the default command serves, `migration.command` migrates; start order (validate configuration, open ports, then connect in the background); exit code 78 on invalid configuration; ports listen on all interfaces; `/healthz` answers only for the process; `/readyz`, declared as brickKit's `readinessCheck`; SIGTERM drains within `SHUTDOWN_GRACE` (default 25 s), below the declared `stopGracePeriodSeconds` (default 30 s); a fatal error exits non-zero; the image has `/bin/sh` and `wget` | [27](27-shells.md), [02-backend.md](../01-conventions/02-backend.md#health-check-and-image) |
+| P2 Configuration | environment variables only; only keys the component declares in `configSchema`; strict types; the protocol keys listed in `schemas/config-keys.yaml`, their `configSchema` block generated; every secret a `_FILE` key delivered as a file and re-read; slot-family addresses as `$endpoint:` references | [24](24-config-and-secrets.md) |
 | P3 HTTP surface | three path classes (user API, operations endpoints, resource-contract endpoints); `X-Request-Id`; `traceparent`; per-route deadlines; server timeouts; 1 MiB body limit; `Idempotency-Key`; cursor paging | [15](15-user-api-and-errors.md) |
 | P4 Errors | RFC 9457 problem details carrying AIP-193 `reason`, `domain`, `metadata`; the reason registry | [15](15-user-api-and-errors.md) |
 | P5 Identity | JWT verification, `iss`, `aud`, `typ` | [21](21-identity-provider.md) |
@@ -72,6 +72,21 @@ conformance:
   skip:                        # only optional cases, each with a reason
     - { case: CP-OUT-04, reason: "no idempotent outbound method" }
 ```
+
+### What brickKit is told
+
+The protocol is checked by the suite, but a few of its facts are also declared in `component.yaml`, because brickKit acts on them. be-ops generates the declarations that follow from the protocol or a contract, and a gate fails when one is stale; brickKit never reads `be-protocol` itself.
+
+| Protocol rule | Declared in `component.yaml` | What brickKit does with it | Written by |
+|---|---|---|---|
+| P1.3, P1.13 `/healthz`, listening on all interfaces | `healthCheck: {type: http, path: /healthz}` | liveness and startup probes; on Docker the health check runs `wget` against `127.0.0.1` inside the container (not `localhost`, which Alpine resolves to `::1`), so the protocol requires listening on all interfaces, IPv4 and IPv6 | the component (template) |
+| P1.4, P1.11 `/readyz` | `readinessCheck: {type: http, path: /readyz}` | the Kubernetes readiness probe (startup and liveness stay on `/healthz`); on Docker the compose health check, so dependants start only once the bundle is loaded | the component (template) |
+| P1.6, P1.12 graceful stop | `deployment.stopGracePeriodSeconds` (default `30`; a deploy entry may override) | `stop_grace_period` on Docker, `terminationGracePeriodSeconds` on Kubernetes; `SHUTDOWN_GRACE` (default 25 s) stays at least 5 s below it; a shell declares its own value, at least its members' | the component (template) |
+| P2 protocol keys | the protocol block of `configSchema`: names, types, defaults, `secret`, `mount: file` | `lint` checks configured keys against it; `mount: file` items become files under `/run/brickkit/secrets/` | be-ops, from `schemas/config-keys.yaml` by profile |
+| P2.10 slot-family addresses | nothing: the keys are ordinary `configSchema` items, filled in `config/vars.yaml` with `$endpoint:` | resolves the member's address, opens `networkPolicy`, draws the edge in `graph` | the project (`config/vars.yaml`) |
+| P3.1 / P7 ports | `deployment.protocol: http`; `extraPorts: [{name: grpc, port: …, protocol: grpc}]` | `appProtocol` on Kubernetes Service ports | the component (template) |
+| P12 events | `events: {publishes, subscribes}` | `graph`, `deps`, a `lint` hint for a subscription nobody publishes; no runtime effect | be-ops, from the event contract (`publishes`) and `events.consumes` in `conformance/fixtures.yaml` (`subscribes`); the suite checks both against what the component does ([13](13-event-contracts.md#the-contract-file)) |
+| P14.8 run-once entry (optional) | nothing (`/_be/info` lists the capability `job_run`) | nothing: an external trigger runs the image's `job run <name>` command ([19](19-background-jobs.md#port-contract)) | — |
 
 ### Repository layout of `be-protocol`
 
@@ -155,7 +170,7 @@ Each official SDK ships the launcher for its language. The four invariants and t
 | Python | `importlib.metadata` | `be/py-render` |
 | TypeScript | the member package's `package.json` | none yet: the only TypeScript component, the BFF, never joins a shell ([0108](../02-decisions/01-architecture/0108-one-repository-per-shell.md)); the launcher is proved by the `shell` profile on two widget instances |
 
-The same semantics in every language: read `BRICKKIT_SERVED_MEMBERS_CONFIG`; missing, empty or `null` is an error, `[]` means no members. A listed member that is not compiled in, or compiled at another version, exits 2 naming the member. A member whose database host, port or name, bus address, authorization address, `IAM_*` or `TENANT_ID` differs from the shell's exits 78. Then the launcher builds the four process-wide things once, builds a runtime per member, serves each member on its own ports, supervises all background work with the same supervisor as standalone, and serves `/healthz` and the aggregated `/metrics` on the shell's own port.
+The same semantics in every language: read `BRICKKIT_SERVED_MEMBERS_CONFIG`; missing, empty or `null` is an error, `[]` means no members. A listed member that is not compiled in, or compiled at another version, exits 2 naming the member. A member whose database host, port or name, bus address, authorization addresses (`AUTHZ_URL`, `AUTHZ_GRPC_URL`), `IAM_*` or `TENANT_ID` differs from the shell's exits 78. Then the launcher builds the four process-wide things once, builds a runtime per member, serves each member on its own ports, supervises all background work with the same supervisor as standalone, and serves `/healthz` and the aggregated `/metrics` on the shell's own port.
 
 ### A fourth language
 
@@ -228,7 +243,6 @@ The same semantics in every language: read `BRICKKIT_SERVED_MEMBERS_CONFIG`; mis
 - **No process mixes languages.** A component in a language without a launcher always runs standalone.
 - **INTERNAL rules are invisible to the suite.** Outside the official languages they rest on review, and the source-scanning gates do not run.
 - **The suite needs real PostgreSQL and NATS** and takes minutes per component; it is run at release time, not on every save.
-- **`/readyz` is not wired into probes** until brickKit supports readiness probes; it is a SHOULD.
 - **TypeScript has a launcher but no shell repository**, because no TypeScript component joins a shell today.
 - **A JVM or CLR component costs 256–512 MiB and seconds of start-up** per process; on one machine this is the main reason not to choose one.
 - **Until `be-protocol` v1.0.0 is tagged**, the specification is a release candidate and may still change with the pilot components.

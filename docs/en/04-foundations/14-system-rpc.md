@@ -16,7 +16,7 @@ How components call each other synchronously: gRPC as the system plane, who the 
 - **User-facing rpcs already in contracts stay** (contracts only grow) and answer `UNAUTHENTICATED` the same way in every component.
 - **Connections are reused** per (member, dependency, port), with keepalive; servers rotate connections every 5 minutes so load spreads on Kubernetes.
 - **4 MiB messages, no compression, no streaming, packages versioned `<domain>.<name>.v<n>`.**
-- **Addresses come from brickKit's injected endpoints**, always with the port name `grpc`.
+- **Addresses come from brickKit**: the injected endpoint with the port name `grpc` for a declared dependency, and for a slot-family member a `*_GRPC_URL` key filled with `$endpoint:<member>:grpc`. Every port declares its `protocol` in `component.yaml`.
 
 **Status**: gRPC between components is in place. Connection reuse, keepalive, deadlines, the uniform identity interceptor and the metadata set are decided and land with the component protocol and the 3.0.0 sweep. Today every call dials a new connection and closes it; no call carries a deadline, trace context or caller identity; user-facing rpcs answer `UNAUTHENTICATED`, `INTERNAL` or succeed depending on the component.
 
@@ -26,6 +26,8 @@ How components call each other synchronously: gRPC as the system plane, who the 
 
 - brickKit injects `<ID>_ENDPOINT` for each declared dependency, always prefixed with `http://`, gRPC ports included. The runtime strips the scheme and uses the extra port named `grpc` ([02-backend.md](../01-conventions/02-backend.md#the-runtime-is-the-only-way-in)). Dialling the HTTP port by mistake connects at TCP and then fails with a protocol error.
 - An optional dependency that is absent has no variable at all; the caller degrades.
+- **A slot-family member** (authorization, identity) is never a dependency, so it has no `*_ENDPOINT`. Its gRPC address is its own key, `AUTHZ_GRPC_URL` or `IAM_GRPC_URL`, filled in `config/vars.yaml` with `$endpoint:infra/authz:grpc`: brickKit resolves the member's port named `grpc`, following upgrades and shells. The runtime strips `http://` and dials `host:port`. No address is ever derived by port arithmetic ([0107](../02-decisions/01-architecture/0107-authz-and-iam-addresses-are-shared-vars.md)).
+- **Port protocols.** `deployment.protocol: http` on the main port and `protocol: grpc` on the extra port named `grpc`; brickKit writes them as `appProtocol` on Kubernetes Service ports (the cluster's own word can be substituted with `k8s.appProtocols`, for example `kubernetes.io/h2c`), so a mesh or a Gateway API implementation balances gRPC per request instead of per connection. Docker gets nothing from it and needs nothing.
 - No registry, no service discovery beyond these variables.
 
 ### Request metadata
@@ -72,7 +74,7 @@ How components call each other synchronously: gRPC as the system plane, who the 
 
 - **Docker:** one container per component or shell; nothing to balance.
 - **Kubernetes with `replicas > 1`:** brickKit generates one ClusterIP Service per component, and kube-proxy balances per TCP connection. A reused HTTP/2 connection would stay on one pod forever; the server's 5-minute connection age sends `GOAWAY`, the client reconnects and lands on a pod chosen afresh, so load evens out within about five minutes. No mesh, no xDS.
-- **Later:** a headless Service per gRPC port with client-side `round_robin` over DNS, once brickKit can generate one (v1.1.0 generates only the ClusterIP Service).
+- **Later, if measured:** brickKit declined a headless companion Service (FR06-008: client-side balancing is the component's own choice, and the variable would have no Docker counterpart). Per-request balancing then comes from a mesh or gateway reading the `appProtocol` brickKit writes; record the mesh, the word used and the per-Pod request counts when it is first tried.
 
 ### Inside a shell
 
@@ -110,7 +112,7 @@ How components call each other synchronously: gRPC as the system plane, who the 
 ## When to switch
 
 - **Browsers must call proto directly** (which reopens the system-plane decision): serve the same contracts with a connect-go handler.
-- **Several nodes with partial failures** (some replicas bad, others good): client-side balancing over a headless Service, then outlier detection.
+- **Several nodes with partial failures** (some replicas bad, others good): a mesh balancing per request through `appProtocol: grpc`, with outlier detection.
 - **Components across a trust boundary** (another organisation's network, untrusted peers): service tokens on `authorization`, then mutual TLS.
 
 ## How to switch
@@ -140,7 +142,7 @@ Component tests written red first: erp/inventory and crm/opportunity user-facing
 - [0208 gRPC is the system plane; people use REST](../02-decisions/02-permissions/0208-grpc-is-the-system-plane.md): this document is its full analysis.
 - [0304 A `BatchGet` takes at most 500 IDs](../02-decisions/03-contracts-and-data/0304-batch-get-takes-at-most-500-ids.md): a `BatchGet` takes at most 500 IDs.
 - [0101 Components never import each other](../02-decisions/01-architecture/0101-no-imports-between-components.md) and [0108 One shell, one repository, one image, one member list](../02-decisions/01-architecture/0108-one-repository-per-shell.md): calls stay on the network inside a shell.
-- [0107 Authorization and identity are reached through shared variables](../02-decisions/01-architecture/0107-authz-and-iam-addresses-are-shared-vars.md): no edge to an authz or IAM member; every other call declares its dependency.
+- [0107 Family addresses are `$endpoint:` references in shared variables](../02-decisions/01-architecture/0107-authz-and-iam-addresses-are-shared-vars.md): no edge to an authz or IAM member, their gRPC ports through `*_GRPC_URL`; every other call declares its dependency.
 - [0503 Deadlines and retry budgets](../02-decisions/05-runtime/0503-deadlines-and-retry-budgets.md): deadlines and retry budgets on the system plane.
 - [0301 Money is a decimal string paired with a currency; lists page by cursor](../02-decisions/03-contracts-and-data/0301-money-as-strings-lists-by-cursor.md) and [0302 Contracts change by adding only](../02-decisions/03-contracts-and-data/0302-contracts-are-additive-only.md): field and evolution rules.
 

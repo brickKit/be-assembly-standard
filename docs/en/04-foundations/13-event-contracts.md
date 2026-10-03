@@ -86,7 +86,25 @@ Gates (part of `make gates`):
 
 - additive only: deleting a field, changing a type or removing a subject fails (in place today);
 - every event declares `x-aggregate-type` (planned);
-- the subjects a component's code publishes are exactly those in its contract file (planned).
+- the subjects a component's code publishes are exactly those in its contract file (planned);
+- the `events:` block of `component.yaml` agrees with the contract file and the fixtures (planned `events-declaration-scan`, below).
+
+**Declared to brickKit.** brickKit 1.3 reads an optional `events:` block in `component.yaml` and uses it only to show the flow (`brickkit graph` draws publisher-to-subscriber edges, `brickkit deps` lists who publishes and who subscribes, `brickkit lint` notes a subscription nobody in the project publishes); it never affects start order, what runs or what is injected, and it never connects to the bus. brickKit treats an event name as an opaque string, so the subjects above need no change.
+
+```yaml
+# component.yaml (erp/finance)
+events:
+  publishes:
+    - finance.voucher.posted.v1            # generated from contracts/events/*.json, exact names only
+  subscribes:
+    - sales.order.created.v1
+    - infra.workflow.task.completed.v1     # exact subjects; a trailing * only for a real prefix subscription
+```
+
+- be-ops generates the whole block, together with the protocol block of `configSchema` (be-protocol P12.16): `publishes` from the contract file, exactly its subjects (a slot-family member: the family's subjects); `subscribes` from `events.consumes` in the component's `conformance/fixtures.yaml`, every subject it consumes through a durable. Best-effort pokes ([12](12-event-bus.md#best-effort-signals)) are not listed.
+- A subscription is an exact subject. brickKit's trailing-`*` prefix form is allowed only in `subscribes`, and only for a consumer that really subscribes by prefix; NATS `>` and a `*` in the middle of a name are never written.
+- The gate `events-declaration-scan` compares the block with the contract and the fixtures; the component suite compares it with what the component really publishes and the durables it creates at start ([12](12-event-bus.md#durable-consumers)).
+- Several members of one slot family publishing the same subject (`integration.im.result.v1`) is fine: brickKit matches by name, not by publisher.
 
 ### Payload rules
 

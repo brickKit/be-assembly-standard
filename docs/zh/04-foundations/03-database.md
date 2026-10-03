@@ -38,20 +38,20 @@
 |---|---|---|---|
 | `PG_HOST`、`PG_PORT`、`PG_DATABASE` | 是 | — | 数据库在哪里（[04-configuration.md](../01-conventions/04-configuration.md#共享连接键)） |
 | `PG_USER` | 是 | 无 | 运行期角色：只有 DML；每个事务切换到它；单独运行时也是登录角色 |
-| `PG_PASSWORD` | 是 | — | 密钥，`${<REPO>_DB_PASSWORD}` |
+| `PG_PASSWORD_FILE` | 是 | — | 密钥，以文件交付（`mount: file`）；值照旧填 `${<REPO>_DB_PASSWORD}`，变量里是文件路径；每建一条新连接读一次（[24](24-config-and-secrets.md#端口契约)） |
 | `PG_OWNER_USER` | 是 | 无 | 属主角色：拥有 `PG_SCHEMA` 里的表，执行迁移和平台迁移；运行中的服务从不使用它 |
-| `PG_OWNER_PASSWORD` | 是 | — | 密钥；属主的密码，只有迁移步骤使用 |
+| `PG_OWNER_PASSWORD_FILE` | 是 | — | 密钥，以文件交付；属主的密码，只有迁移步骤读它 |
 | `PG_SCHEMA` | 是 | 无 | 组件拥有的 schema；也是它 `search_path` 里唯一的一项 |
 | `PG_POOL_MAX` | 否 | 10 | 单独运行：连接池最多打开的连接数。在外壳里：这个成员在共享池里的并发上限 |
 | `PG_POOL_MIN_IDLE` | 否 | 2 | 保持打开的空闲连接数 |
 | `PG_CONN_MAX_LIFETIME` | 否 | 30m | 连接用满这么久就关掉换新，这样主备切换和 DNS 变化能被感知 |
 | `PG_CONN_MAX_IDLE_TIME` | 否 | 5m | 空闲这么久的连接被关掉 |
 | `PG_POOL_ACQUIRE_TIMEOUT` | 否 | 5s | 取连接最多等多久；不超过调用方剩余的截止时间 |
-| `PG_MIGRATION_HOST`、`PG_MIGRATION_PORT` | 否 | `PG_HOST`、`PG_PORT` | 迁移连到哪里；`PG_HOST` 指向连接池代理时要设它们 |
+| `PG_MIGRATION_HOST`、`PG_MIGRATION_PORT` | 否 | `PG_HOST`、`PG_PORT` | 迁移连到哪里；`PG_HOST` 指向连接池代理时要设它们。迁移需要另一条连接时，这是 brickKit 推荐的做法：组件声明自己的键，只由它的迁移命令读取 |
 
 可选键写进各组件的 `configSchema`。外壳有自己的 `PG_POOL_MAX`：它那一个物理池的大小，默认取"各成员 `PG_POOL_MAX` 之和"与 40 中较小的一个。
 
-一条已记录的限制：brickKit 给迁移容器的环境和主服务完全相同，所以运行中的服务也会拿到 `PG_OWNER_USER` / `PG_OWNER_PASSWORD`。SDK 运行期从不使用它们；等 brickKit 能给迁移步骤单独的变量（功能请求 FR06-013）之后，就只有迁移容器拿到。
+一条已记录的限制：brickKit 给迁移容器的环境和挂载与主服务完全相同，所以运行中的服务也会拿到 `PG_OWNER_USER` 和属主的口令文件。brickKit 有意不做只给迁移的变量（FR06-013）：迁移读到的每个值都在该组件的 `config/` 文件里看得见。SDK 运行期从不读属主凭据。
 
 ### 每个事务做什么
 
@@ -212,5 +212,5 @@ ALTER ROLE <登录角色> SET lock_timeout = '5s';
 - **单写节点。** 横向扩展走 Citus，这条路是设计上留好的，还没测过。
 - **所有进程共用一个 `max_connections`。** 预算门禁让总数如实，但没法让服务器变大。
 - **共享池上的语句缓存**在成员 SDK 版本不同时，靠的是 `/* be:<schema> */` 前缀，而它在 pgx 上还没复现：复现之前，平台 SQL 写明列名，从不用 `*`。
-- **属主凭据也会到达运行中的服务**，不只是迁移容器，直到 brickKit FR06-013 落地；SDK 运行期从不使用它们。
+- **属主凭据也会到达运行中的服务**，不只是迁移容器（brickKit 不做 FR06-013）；SDK 运行期从不读它们。
 - **高可用与备份属于运维**（运维文档 `05-operations/` 还没写）。入口：Kubernetes 上用 CloudNativePG（自带 pooler 和按时间点恢复）；单机用 pgBackRest 或 WAL-G。按时间点恢复是"数据被删"时唯一真正的回退手段。

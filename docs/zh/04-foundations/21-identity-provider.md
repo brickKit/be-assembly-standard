@@ -21,7 +21,7 @@
 - **`sub` 归平台所有。** token 里的 `sub` 是平台用户 id（UUIDv7）。IdP 的主体标识只存在成员的链接表里，所以换 IdP 绝不会改写任何 `owner_id`、角色分配或审计记录。
 - **前端与 IdP 之间只用标准**：OIDC discovery、带 PKCE 的授权码流程、RFC 8693 形状的换 token。前端里、契约字段里都不出现厂商路径。
 - **一个槽位族**，契约 `infra.iam.v1` 放在独立仓库 `contract-infra-iam`，套件 `iamconf`。成员依次是：`infra/iam-casdoor`（默认）、`infra/iam-keycloak`（第二实现，阶段 06 内建）、通用 OIDC + SCIM 成员（第三实现）。
-- **任何组件都不依赖某个成员。** 组件读 `IAM_JWKS_URL`（[0107](../02-decisions/01-architecture/0107-authz-and-iam-addresses-are-shared-vars.md)）；IAM 成员自己也只经 `AUTHZ_URL` 访问 authz，不建依赖边。
+- **任何组件都不依赖某个成员。** 组件读 `IAM_URL`，在它下面取 JWKS（[0107](../02-decisions/01-architecture/0107-authz-and-iam-addresses-are-shared-vars.md)）；IAM 成员自己也只经 `AUTHZ_URL` 和 `AUTHZ_GRPC_URL` 访问 authz，不建依赖边。
 
 **状态**：已在用：`infra/iam-casdoor` 2.0.x 拿 Casdoor 的 ID token（字段 `casdoor_id_token`）换一个 RS256 token，带 `sub`（就是 Casdoor 的主体标识）、`roles`、`dept_path`、`org_id`，TTL 600 秒，refresh 轮换，JWKS 在 `/.well-known/jwks.json`，Casdoor 的 webhook 桥接成用户事件。已定（随 3.0.0 统一升级）：本文其余全部内容。access token 现在还不带 `iss`、`aud`、`jti`、`typ`，refresh token 能当 access token 通过验签；补上 `typ: access`、拒收 `typ: refresh` 是第一个要修的。
 
@@ -58,7 +58,7 @@
 | `azp` | 客户端（PC、移动端） |
 | `locale` | 用户的语言，供服务端出文字用 |
 
-**签名公钥。** `IAM_JWKS_URL` 上的 JWKS 同时发布当前钥和上一把钥；每把钥都有 `kid` 和 `alg`。
+**签名公钥。** `{IAM_URL}/.well-known/jwks.json` 上的 JWKS 发布一到三把钥：当前钥、轮换期间的上一把钥，以及可选的、提前发布的下一把钥；每把钥都有 `kid` 和 `alg`。私钥是密钥文件 `APP_TOKEN_SIGNING_KEY_FILE` 和 `APP_TOKEN_NEXT_SIGNING_KEY_FILE`，不重启就会重读；成员把签过名的每把公钥记在自己的 schema 里，所以重叠期跨重启、跨副本都成立（[24](24-config-and-secrets.md#端口契约)）。
 
 **验签规则，每个 SDK、每种语言都一样：**
 
@@ -74,13 +74,13 @@
 
 **目录事件。** `infra.iam.user.created.v1`、`.updated.v1`、`.disabled.v1`、`.deleted.v1`（deleted 是新增的）。payload 至少含 `sub`、`display_name`、`email`、`phone`、`locale`、`im_accounts`、`status`。成员怎么得知变更是它自己的事：Casdoor 用 webhook，Keycloak 轮询 admin events，通用成员用 SCIM 2.0 入站（`/scim/v2/Users`、`/scim/v2/Groups`）。
 
-**系统 RPC**（`infra.iam.v1.IamProvider`，经 `IAM_URL` 访问）：`BatchGetUsers`（sub 列表 → 展示信息）和 `ListUsers`（core）；`ListDepartments` 和 `ListMemberships`（能力 `directory_departments`）。没有 `GetTenantFeatures`：已安装的组件（今天的 `enabled_components`）、键和能力并进授权提供方要登录的 `GET /api/me/access`（[20-authorization-provider.md](20-authorization-provider.md)）；公开的 `/api/tenant/features` 只保留登录页的字段。
+**系统 RPC**（`infra.iam.v1.IamProvider`，经 `IAM_GRPC_URL` 访问；没有这个键时这些读取降级）：`BatchGetUsers`（sub 列表 → 展示信息）和 `ListUsers`（core）；`ListDepartments` 和 `ListMemberships`（能力 `directory_departments`）。没有 `GetTenantFeatures`：已安装的组件（今天的 `enabled_components`）、键和能力并进授权提供方要登录的 `GET /api/me/access`（[20-authorization-provider.md](20-authorization-provider.md)）；公开的 `/api/tenant/features` 只保留登录页的字段。
 
 **能力**，登录页按成员声明的能力降级：`password_login`、`social_cn`（钉钉、企业微信、飞书）、`ldap`、`saml`、`scim_inbound`、`mfa`、`token_exchange_delegation`、`service_accounts`。
 
 **预留、不开发**：服务账号（`sub: svc:<id>`，走 client credentials，是系统面的扩展点，见 [14-system-rpc.md](14-system-rpc.md)）；用于委托的换 token（`act`、`ceil`、`dg`），不做 agent 分支。
 
-**配置。** `config/vars.yaml` 里的共享键：`IAM_JWKS_URL`（已在用；`{IAM_URL}/.well-known/jwks.json`），以及已定的 `IAM_URL`（成员的基础 URL，用成员自己的服务名，和 `AUTHZ_URL` 一样；它的 gRPC 端口按 be-protocol P2 的规则由它推出）、`IAM_ISSUER`（`urn:be:<TENANT_ID>:iam`）、`TENANT_ID`、`BOOTSTRAP_ADMIN_LOGIN`。服务器元数据（RFC 8414 的形状）在 `{IAM_URL}/.well-known/oauth-authorization-server`，相对 `IAM_URL` 而不是相对签发者，因为签发者是名字而不是 URL。IdP 服务本身（Casdoor、Keycloak）是 `make up` 启动的基础设施，不是组件（[0106](../02-decisions/01-architecture/0106-infrastructure-is-not-a-component.md)），它用自己的角色登录自己的 schema，绝不用 `postgres`。
+**配置。** `config/vars.yaml` 里的共享键（已定）：`IAM_URL: $endpoint:infra/iam-casdoor`（REST 基础地址；JWKS 在 `{IAM_URL}/.well-known/jwks.json`）、`IAM_GRPC_URL: $endpoint:infra/iam-casdoor:grpc`（名为 `grpc` 的端口）、`IAM_ISSUER`（`urn:be:<TENANT_ID>:iam`）、`TENANT_ID`、`BOOTSTRAP_ADMIN_LOGIN`。`IAM_JWKS_URL` 退役：它只是同一个成员的第二个地址。成员把自己的 webhook 地址以 `$endpoint:infra/iam-casdoor/api/iam/webhooks/casdoor` 交给 Casdoor，这是对自己的引用。服务器元数据（RFC 8414 的形状）在 `{IAM_URL}/.well-known/oauth-authorization-server`，相对 `IAM_URL` 而不是相对签发者，因为签发者是名字而不是 URL。IdP 服务本身（Casdoor、Keycloak）是 `make up` 启动的基础设施，不是组件（[0106](../02-decisions/01-architecture/0106-infrastructure-is-not-a-component.md)），它用自己的角色登录自己的 schema，绝不用 `postgres`。
 
 ## 备选方案
 
@@ -122,7 +122,7 @@
 
 1. 从旧成员导出身份链接（NDJSON），导入新成员，把新 IdP 的主体标识链接到已有的平台 `sub`。
 2. `brickkit add` 新成员、`brickkit remove` 旧成员；没有组件要改依赖。
-3. 把 `config/vars.yaml` 里的 `IAM_URL` 和 `IAM_JWKS_URL` 改成新成员自己的服务名。`IAM_ISSUER` 标识的是平台，不是 IdP，保持不变。
+3. 改掉 `config/vars.yaml` 里 `IAM_URL` 和 `IAM_GRPC_URL` 中的成员 ID（`$endpoint:infra/iam-keycloak`、`$endpoint:infra/iam-keycloak:grpc`）。`IAM_ISSUER` 标识的是平台，不是 IdP，保持不变。
 4. 用户重新登录：旧成员的钥从 JWKS 里消失后，它签的 token 就验不过了。
 5. 对新成员跑 `iamconf`。前端不改；它只读 discovery。
 
@@ -146,7 +146,7 @@ SDK 侧，每个官方 SDK：拒收 `typ: refresh`；执行 `alg` 白名单；�
 
 - [0203 token 只承载身份，`sub` 归平台所有](../02-decisions/02-permissions/0203-jwt-carries-identity-only.md)：token 的 claim 和平台自有的 `sub`。
 - [0308 租户就是部署](../02-decisions/03-contracts-and-data/0308-tenant-is-the-deployment.md)：租户就是部署：`aud` 是 `TENANT_ID`，`tenant_id` 在线上预留。
-- [0107 授权与身份经共享变量访问，从不经依赖](../02-decisions/01-architecture/0107-authz-and-iam-addresses-are-shared-vars.md)：`IAM_JWKS_URL`、`IAM_ISSUER` 和 `TENANT_ID` 是共享变量；iam → authz 依赖边删除。
+- [0107 族成员的地址是共享变量里的 `$endpoint:` 引用](../02-decisions/01-architecture/0107-authz-and-iam-addresses-are-shared-vars.md)：`IAM_URL`、`IAM_GRPC_URL`、`IAM_ISSUER` 和 `TENANT_ID` 是共享变量；iam → authz 依赖边删除。
 - [0210 委托与扮演](../02-decisions/02-permissions/0210-delegation-and-impersonation.md)：委托在 token 一侧的形状，代理人只留位子。
 - [0104 槽位族需要多种合理实现，而且没有依赖边](../02-decisions/01-architecture/0104-variants-become-slot-families.md)：`slot:iam`。
 - [0106 基础设施不是组件](../02-decisions/01-architecture/0106-infrastructure-is-not-a-component.md)：IdP 服务。

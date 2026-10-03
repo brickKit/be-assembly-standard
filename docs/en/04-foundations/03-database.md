@@ -38,20 +38,20 @@ The engine port is "the PostgreSQL wire protocol plus this capability list". The
 |---|---|---|---|
 | `PG_HOST`, `PG_PORT`, `PG_DATABASE` | yes | — | where the database is ([04-configuration.md](../01-conventions/04-configuration.md#shared-connection-keys)) |
 | `PG_USER` | yes | none | the runtime role: DML only; every transaction switches to it; standalone it is also the login role |
-| `PG_PASSWORD` | yes | — | secret, `${<REPO>_DB_PASSWORD}` |
+| `PG_PASSWORD_FILE` | yes | — | secret, delivered as a file (`mount: file`); the value is filled as `${<REPO>_DB_PASSWORD}` and the variable holds the file's path; read for every new connection ([24](24-config-and-secrets.md#port-contract)) |
 | `PG_OWNER_USER` | yes | none | the owner role: owns the tables in `PG_SCHEMA`, runs migrations and the platform migration; the running service never uses it |
-| `PG_OWNER_PASSWORD` | yes | — | secret; the owner's password, used by the migration step only |
+| `PG_OWNER_PASSWORD_FILE` | yes | — | secret, delivered as a file; the owner's password, read by the migration step only |
 | `PG_SCHEMA` | yes | none | the schema the component owns; the only entry on its `search_path` |
 | `PG_POOL_MAX` | no | 10 | standalone: the pool's maximum open connections. In a shell: this member's concurrency limit inside the shared pool |
 | `PG_POOL_MIN_IDLE` | no | 2 | idle connections kept open |
 | `PG_CONN_MAX_LIFETIME` | no | 30m | a connection is closed and replaced after this long, so failovers and DNS changes are picked up |
 | `PG_CONN_MAX_IDLE_TIME` | no | 5m | an idle connection is closed after this long |
 | `PG_POOL_ACQUIRE_TIMEOUT` | no | 5s | the longest wait for a connection; capped by the caller's remaining deadline |
-| `PG_MIGRATION_HOST`, `PG_MIGRATION_PORT` | no | `PG_HOST`, `PG_PORT` | where migrations connect; set them when `PG_HOST` points at a pooler |
+| `PG_MIGRATION_HOST`, `PG_MIGRATION_PORT` | no | `PG_HOST`, `PG_PORT` | where migrations connect; set them when `PG_HOST` points at a pooler. This is brickKit's recommended pattern for a migration that needs another connection: the component declares keys of its own, read only by its migration command |
 
 The optional keys are declared in each component's `configSchema`. A shell has its own `PG_POOL_MAX`: the size of its one physical pool, default the smaller of the sum of its members' `PG_POOL_MAX` and 40.
 
-A documented limitation: brickKit gives the migration container exactly the service's environment, so the running service also receives `PG_OWNER_USER` / `PG_OWNER_PASSWORD`. The SDK runtime never uses them; once brickKit can give the migration step variables of its own (feature request FR06-013), only the migration container receives them.
+A documented limitation: brickKit gives the migration container exactly the service's environment and mounts, so the running service also receives `PG_OWNER_USER` and the owner's password file. brickKit declined migration-only variables (FR06-013) on purpose: every value a migration reads stays visible in the component's `config/` file. The SDK runtime never reads the owner's credentials.
 
 ### What every transaction does
 
@@ -212,5 +212,5 @@ Tests to write red first:
 - **One writer.** Scale-out goes through Citus, which is designed for, not tested.
 - **Every process draws on one `max_connections`.** The budget gate keeps the sum honest; it cannot make the server bigger.
 - **The statement cache on a shared pool** with members on different SDK versions rests on the `/* be:<schema> */` prefix, which is not yet reproduced for pgx: until it is, platform SQL names its columns and never uses `*`.
-- **The owner credentials reach the running service** as well as the migration container, until brickKit FR06-013 lands; the SDK never uses them at run time.
+- **The owner credentials reach the running service** as well as the migration container (brickKit declined FR06-013); the SDK never reads them at run time.
 - **High availability and backup are operations** (the operations documents, `05-operations/`, are not written yet). Pointers: CloudNativePG on Kubernetes (with its pooler and point-in-time recovery); pgBackRest or WAL-G on a single machine. Point-in-time recovery is the only real undo for deleted data.
