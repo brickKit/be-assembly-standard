@@ -185,6 +185,10 @@ What every release of this component must pass (tests, a conformance suite) goes
 not in a habit: `release: {checks: [[go, test, ./...], [./scripts/conformance.sh]]}`. Each check is
 argv (no shell — put pipes and `&&` in a script), run in the component directory after the checks
 above; the first non-zero exit stops the release with `RELEASE_CHECK_FAILED` and nothing tagged.
+A check must only report, never fix: after the checks `release` makes sure the component directory
+is still clean and the current commit is the same, and refuses (`RELEASE_BLOCKED`) otherwise — a tag
+must hold what was checked. Use `gofmt -l`, not `gofmt -w`; put what a check leaves behind (build
+output, coverage reports) in `.gitignore`.
 `publish` runs the same checks before uploading. `--skip-checks` skips them and the output says so —
 don't reach for it to get past a failing check; fix what it reports.
 
@@ -230,4 +234,4 @@ treat it as a project; `release` reads only `component.yaml`.
 - The full specification: <https://github.com/brickKit/brickKit> and its root `AGENTS.md`
 - Examples: the cached `BRICKKIT.md` and `component.yaml` of any component under `.brickkit/manifests/`
 
-<!-- brickkit:skill version=v1.4.0 sum=sha256:51f7db2369d8b584fa85e4636c3a43bb3fc06f14793d44da28b2e9b0b7a67c4f -->
+<!-- brickkit:skill version=v1.4.1 sum=sha256:505bb6f3b54812489dac56c0a606ad40ef92a0f3ed7480e649be2c52983ac704 -->

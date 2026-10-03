@@ -129,7 +129,7 @@ profile 从清单自动选出，组件不用声明：
 
 **报告、发布与门禁。** 套件写出 `compconf-report.json`（schema 在 `be-protocol` 里）：套件版本、协议、组件与版本、镜像引用与摘要、SDK、基础设施版本、逐 profile 逐用例的结果、跳过和不适用的用例及理由。任何一条 MUST 失败，这次运行就失败。`make conformance ID=<组件> [SHELL=<外壳>]` 在本地跑。
 
-套件接进了发布本身。组件或外壳在自己的 `component.yaml` 里声明 `release: {checks: [[make, conformance]]}`（P20.5，SHOULD；需要 brickKit v1.4.0 或更新版本）。之后 `brickkit release`、`brickkit publish` 和 `brickkit release --local` 会对发布提交跑套件，失败就拒绝打 tag（`RELEASE_CHECK_FAILED`）；`--skip-checks` 可以跳过检查，brickKit 会把跳过这件事打印出来。所以这样的组件只要有 tag，就意味着套件已经全绿。
+套件接进了发布本身。组件或外壳在自己的 `component.yaml` 里声明 `release: {checks: [[make, conformance]]}`（P20.5，SHOULD；需要 brickKit v1.4.0 或更新版本）。之后 `brickkit release`、`brickkit publish` 和 `brickkit release --local` 会对发布提交跑套件，失败就拒绝打 tag（`RELEASE_CHECK_FAILED`）；`--skip-checks` 可以跳过检查，brickKit 会把跳过这件事打印出来。从 brickKit v1.4.1 起，检查改动了组件目录或当前提交时发布同样会停下（`RELEASE_BLOCKED`），所以检查不能改写已跟踪的文件，必须留下的东西（构建产物、覆盖率报告）要写进 `.gitignore`。所以这样的组件只要有 tag，就意味着套件在被打 tag 的那个提交上已经全绿。
 
 计划中的门禁 `compconf-record-scan` 进 `make gates`，离线运行，现在只管 `release.checks` 管不到的部分：项目不自己发布的组件。钉住版本的清单里声明了带 `[make, conformance]` 的 `release.checks` 的组件或外壳，它不再要求报告，因为否则 brickKit 根本不会给它打 tag。`brickkit.yaml` 里的其余组件和外壳（别家厂商的组件、去掉了这项检查的 fork），仍然要求项目里保存一份通过的报告：对应精确版本，镜像摘要等于本地镜像的摘要，套件版本不低于最低要求，必测 profile 全部通过。这类组件的镜像重建了，就要新报告。
 
