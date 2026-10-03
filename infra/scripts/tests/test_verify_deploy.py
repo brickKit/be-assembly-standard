@@ -171,7 +171,7 @@ def test_disabled_target_fails_early(tmp):  # 修复轮 M-8
 
 # ---------- 用假 brickkit / docker / curl 跑完整流程 ----------
 FAKE_BRICKKIT = """#!/bin/sh
-[ "$1" = version ] && { echo "BrickKit CLI ${FAKE_BK_VERSION:-v1.3.1}"; exit 0; }
+[ "$1" = version ] && { echo "BrickKit CLI ${FAKE_BK_VERSION:-v1.4.0}"; exit 0; }
 echo "brickkit $*" >> "$FAKE_CALLS"
 case "$1 $2" in
   "local status") echo "Local mode: ${FAKE_LOCAL_MODE:-off}" ;;

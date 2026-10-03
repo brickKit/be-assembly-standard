@@ -89,6 +89,7 @@ one key and hides the conflict.
 | `mode` rejected on `target: k8s` | `local` / `debug` need a process on your machine | Use docker / podman, e.g. `target:` in `deploy.local.yaml` |
 | `RELEASE_BLOCKED` | Uncommitted changes, no upstream, unpushed commits, or the tag already exists / is on another commit | Commit, push, bump `metadata.version`, then `brickkit release` again |
 | `RELEASE_PUSH_FAILED` | The push was rejected or unreachable; the local tag was removed | Fix access/network and rerun unchanged |
+| `RELEASE_CHECK_FAILED` | A command under the component's `release.checks` exited non-zero, or couldn't run; nothing was tagged or uploaded | Read its output right above the error and fix that; "couldn't run" means a wrong argv (each item one argument, no shell) or a script without the execute bit |
 | `MIGRATION_FAILED` | The migration command failed (or a typo'd argument the entrypoint didn't reject) | Read the migration container's log, fix, rerun |
 | `PORT_CONFLICT` | Duplicate `localPort` / `exposePort`, or the host port is taken | Change the port — in `deploy.local.yaml` if it's only your machine |
 | `ENGINE_MISSING` | docker / podman / kubectl not on `PATH` or not running — or only Podman is installed while the deploy file says `target: docker` | Install/start it, or set `target: podman` |
@@ -151,4 +152,4 @@ shell is reached at the shell's address. **To see the generated files** without 
 - The full specification and the reasoning behind each design choice:
   <https://github.com/brickKit/brickKit> and its root `AGENTS.md`
 
-<!-- brickkit:skill version=v1.3.1 sum=sha256:5d92b4aed6197a293b870731136a61a7de7a855ce7624e9dfdedef592e92517f -->
+<!-- brickkit:skill version=v1.4.0 sum=sha256:f6333dcb6b08921b668b02ddb414fe8510a6aff3308f57d345b682f55f3296e9 -->

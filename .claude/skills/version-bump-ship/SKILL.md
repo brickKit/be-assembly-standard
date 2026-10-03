@@ -98,7 +98,7 @@ dry-run 时重点核对：
    brickkit upgrade <id>@<新版本>             # 确认后去掉 --dry-run
    ```
 
-   `upgrade` 会让 `brickkit.yaml`、`deploy.yaml`、`config/` 和 `AGENTS.md` 的受管块保持同步，不要手改这些。例外：发布了 infra/authz 或 infra/iam-casdoor 之后，`config/vars.yaml` 里的 `AUTHZ_BUNDLE_URL` / `IAM_JWKS_URL` 要手改成新的成员服务名（`upgrade` 不碰 `$var` 的值），对不上时下一步的 `make gates`（`service-hostname-scan`）会报错。
+   `upgrade` 会让 `brickkit.yaml`、`deploy.yaml`、`config/` 和 `AGENTS.md` 的受管块保持同步，不要手改这些。infra/authz、infra/iam-casdoor 发版后不用改 `config/vars.yaml`：那几个地址写的是 `$endpoint:` 引用，brickKit 每次生成时按 `brickkit.yaml` 填入当前地址（brickKit v1.2.0 起；`service-hostname-scan` 已退役）。
 2. `make gates`、`make version-check`——两个都要绿。
 3. **真机验证**：
    - 先聚焦：`brickkit up --focus <id>`，再 `make test-cross ID=<scope>/<name>`（需要过滤时加 `ARGS="-run X"`）。⚠️ `--focus` 会打开本地模式（第一次会把 `deploy.yaml` 复制成 `deploy.local.yaml`），`brickkit up --all` 只清焦点、不关本地模式；之后要改 `deploy.yaml`（比如给外壳挂成员），先 `brickkit local off`，或改完 `brickkit local refresh`，否则改动不生效。

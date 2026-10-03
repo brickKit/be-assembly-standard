@@ -52,8 +52,9 @@ gets no container; other containers reach your IDE process through `extra_hosts`
 `localhost` ports). Set `localPort` to what your process listens on. No migration is run for it.
 `mode: local` is different: BrickKit detects the start command from the local repo, launches and
 supervises the process in the foreground (`Ctrl+C` stops it), and it may go in `deploy.yaml`;
-`localPort` may be left out (a free port is picked). The process inherits your terminal's environment
-except the names the platform owns (`COMPONENT_ID`, `COMPONENT_VERSION`, `PORT`,
+`localPort` may be left out (a free port is picked); its variables are written to the same
+`local-debug.<…>.env` for running its migration by hand (no migration is run for it either). The
+process inherits your terminal's environment except the names the platform owns (`COMPONENT_ID`, `COMPONENT_VERSION`, `PORT`,
 `BRICKKIT_SERVED_MEMBERS`, `BRICKKIT_SERVED_MEMBERS_CONFIG`, every `*_ENDPOINT`, the component's own
 `configSchema` keys) — those come only from BrickKit, so a stale `export` can't stand in for them.
 Both work on docker / podman and are rejected on `target: k8s` (a Pod can't reach your machine). Both
@@ -93,7 +94,7 @@ DB_HOST: $var:DB_HOST                  # from config/vars.yaml, overridden by th
 DB_PASSWORD: ${DB_PASSWORD}            # process environment, then .env (never committed)
 TLS_CERT: file://.secrets/cert.pem     # file contents, path relative to the project root
 API_TOKEN: { existingSecret: api, key: token }   # K8s only, secret keys only
-IAM_URL: $endpoint:infra/iam/.well-known/jwks.json   # another component's address (+ optional path)
+IAM_JWKS_URL: $endpoint:infra/iam/.well-known/jwks.json   # another component's address (+ optional path)
 ```
 
 `$endpoint:<id>[@<version>][:<port name>][/path]` is worked out like `*_ENDPOINT` (versioned service
@@ -220,4 +221,4 @@ service) → start the engine → supervise `mode: local` processes.
 - A component's configuration guide: `.brickkit/manifests/<scope>/<name>/<version>/BRICKKIT.md`
 - The full specification: <https://github.com/brickKit/brickKit> and its root `AGENTS.md`
 
-<!-- brickkit:skill version=v1.3.1 sum=sha256:52e274b3b3f9fa294e9414d6b87c394abdbb6a1af40c489f388cc0cde8f29e1a -->
+<!-- brickkit:skill version=v1.4.0 sum=sha256:b454887991fb989371296418d4ed4ad9f64cb1d4455ea34ed262a2390dfdc13c -->

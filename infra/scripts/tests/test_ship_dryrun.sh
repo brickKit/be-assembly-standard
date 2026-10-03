@@ -20,7 +20,7 @@ mkdir -p "$T/bin"
 cat > "$T/bin/brickkit" <<'EOF'
 #!/usr/bin/env bash
 # version 不记进调用日志（版本核对每次都跑；FAKE_BK_VERSION 模拟 PATH 上是别的版本）
-[ "$1" = version ] && { echo "BrickKit CLI ${FAKE_BK_VERSION:-v1.3.1}"; echo "Supported deploy targets: docker"; exit 0; }
+[ "$1" = version ] && { echo "BrickKit CLI ${FAKE_BK_VERSION:-v1.4.0}"; echo "Supported deploy targets: docker"; exit 0; }
 echo "brickkit $*" >> "$FAKE_CALLS"
 if [ "$1" = release ]; then
   ver="$(awk '/^  version:/{print $2; exit}' component.yaml)"

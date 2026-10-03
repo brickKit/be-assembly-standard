@@ -321,7 +321,7 @@ def test_integrate_refuses_missing_schemas_tsv(tmp):  # 修复轮 M-10：integra
 
 
 FAKE_BK = """#!/bin/sh
-[ "$1" = version ] && { echo "BrickKit CLI ${FAKE_BK_VERSION:-v1.3.1}"; exit 0; }
+[ "$1" = version ] && { echo "BrickKit CLI ${FAKE_BK_VERSION:-v1.4.0}"; exit 0; }
 echo "brickkit $*" >> "$FAKE_CALLS"
 """
 

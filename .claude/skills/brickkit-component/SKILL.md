@@ -181,6 +181,13 @@ files still count for "the component directory is clean": commit the workbench (
 `deploy.yaml`, `config/`, `.gitignore`) or `release` refuses. A tag that exists only locally (never
 pushed) is not a release: push it or delete it. `brickkit publish` to a market is separate.
 
+What every release of this component must pass (tests, a conformance suite) goes in `component.yaml`,
+not in a habit: `release: {checks: [[go, test, ./...], [./scripts/conformance.sh]]}`. Each check is
+argv (no shell — put pipes and `&&` in a script), run in the component directory after the checks
+above; the first non-zero exit stops the release with `RELEASE_CHECK_FAILED` and nothing tagged.
+`publish` runs the same checks before uploading. `--skip-checks` skips them and the output says so —
+don't reach for it to get past a failing check; fix what it reports.
+
 Release notes are optional but are what projects read before they upgrade: `brickkit release
 --notes-file <file>` (or `--notes "<text>"`) writes Markdown, verbatim, into an annotated tag, and
 `brickkit upgrade` prints the notes of every version it crosses before changing anything. Lead with
@@ -223,4 +230,4 @@ treat it as a project; `release` reads only `component.yaml`.
 - The full specification: <https://github.com/brickKit/brickKit> and its root `AGENTS.md`
 - Examples: the cached `BRICKKIT.md` and `component.yaml` of any component under `.brickkit/manifests/`
 
-<!-- brickkit:skill version=v1.3.1 sum=sha256:0643b08dcb3b508964b75fd8e1e09363d293f4c5d733cf7aed0117f2aaf87d65 -->
+<!-- brickkit:skill version=v1.4.0 sum=sha256:51f7db2369d8b584fa85e4636c3a43bb3fc06f14793d44da28b2e9b0b7a67c4f -->

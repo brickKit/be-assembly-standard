@@ -9,7 +9,7 @@
 #   source "$S/lib/require-brickkit.sh"; require_brickkit     （脚本里）
 #   bash infra/scripts/lib/require-brickkit.sh                （命令行 / Makefile / env.sh；成功时不输出）
 # 要求的版本只写在下面这一处；升级 brickKit 时只改这一行。
-BRICKKIT_REQUIRED="BrickKit CLI v1.3.1"
+BRICKKIT_REQUIRED="BrickKit CLI v1.4.0"
 
 require_brickkit() {
   local bin line
