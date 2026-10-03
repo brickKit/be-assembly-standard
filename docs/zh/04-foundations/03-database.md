@@ -41,15 +41,16 @@
 | `PG_PASSWORD_FILE` | 是 | — | 密钥，以文件交付（`mount: file`）；值照旧填 `${<REPO>_DB_PASSWORD}`，变量里是文件路径；每建一条新连接读一次（[24](24-config-and-secrets.md#端口契约)） |
 | `PG_OWNER_USER` | 是 | 无 | 属主角色：拥有 `PG_SCHEMA` 里的表，执行迁移和平台迁移；运行中的服务从不使用它 |
 | `PG_OWNER_PASSWORD_FILE` | 是 | — | 密钥，以文件交付；属主的密码，只有迁移步骤读它 |
-| `PG_SCHEMA` | 是 | 无 | 组件拥有的 schema；也是它 `search_path` 里唯一的一项 |
+| `PG_SCHEMA` | 是 | 无 | 组件拥有的 schema；也是它 `search_path` 里唯一的一项。最多 40 个字符，这样运行时由它派生出的名字（例如 `besdk_migrations_<PG_SCHEMA>`）不会超出 PostgreSQL 63 字节的标识符上限 |
 | `PG_POOL_MAX` | 否 | 10 | 单独运行：连接池最多打开的连接数。在外壳里：这个成员在共享池里的并发上限 |
-| `PG_POOL_MIN_IDLE` | 否 | 2 | 保持打开的空闲连接数 |
 | `PG_CONN_MAX_LIFETIME` | 否 | 30m | 连接用满这么久就关掉换新，这样主备切换和 DNS 变化能被感知 |
 | `PG_CONN_MAX_IDLE_TIME` | 否 | 5m | 空闲这么久的连接被关掉 |
 | `PG_POOL_ACQUIRE_TIMEOUT` | 否 | 5s | 取连接最多等多久；不超过调用方剩余的截止时间 |
 | `PG_MIGRATION_HOST`、`PG_MIGRATION_PORT` | 否 | `PG_HOST`、`PG_PORT` | 迁移连到哪里；`PG_HOST` 指向连接池代理时要设它们。迁移需要另一条连接时，这是 brickKit 推荐的做法：组件声明自己的键，只由它的迁移命令读取 |
 
 可选键写进各组件的 `configSchema`。外壳有自己的 `PG_POOL_MAX`：它那一个物理池的大小，默认取"各成员 `PG_POOL_MAX` 之和"与 40 中较小的一个。
+
+协议没有"最少空闲连接数"这个键（原来的 `PG_POOL_MIN_IDLE` 已退役）：那是各运行时连接池自己的行为，由各 SDK 分别说明（Go 的 pgxpool、Python asyncpg 的 `min_size`、TypeScript 的 pg-pool）。只有一个下限属于协议：服务期间运行时为每个成员至少保持一个会话开着，好让迁移器始终看得到它的版本（[08](08-schema-evolution.md#expand-与-contract)）；单跑时连接池从不降到一个连接以下，外壳为每个成员保持一个空闲的在场会话。
 
 一条已记录的限制：brickKit 给迁移容器的环境和挂载与主服务完全相同，所以运行中的服务也会拿到 `PG_OWNER_USER` 和属主的口令文件。brickKit 有意不做只给迁移的变量（FR06-013）：迁移读到的每个值都在该组件的 `config/` 文件里看得见。SDK 运行期从不读属主凭据。
 
@@ -67,14 +68,14 @@ COMMIT;
 
 在池化的连接上从不在会话级设置任何东西：不带 `LOCAL` 的 `SET` 会留在连接上，下一个借用者就会在你的 schema 里执行。唯一的例外是专用、不进池的迁移连接：它以属主登录，用完即关（[08-schema-evolution.md](08-schema-evolution.md#迁移入口)）。会话时区是 UTC，从不修改（[05-time-and-calendars.md](05-time-and-calendars.md)）。
 
-区分成员的连接靠 `application_name`：在外壳里 `usename` 永远是外壳的登录角色，所以 `pg_stat_activity` 按 `application_name` 给成员计数（一致性用例 `CP-DB-03`）。SDK 还给成员的每条语句加上注释前缀 `/* be:<schema> */`，这样 asyncpg 和 pgx 的语句缓存不会让两个平台表结构不同的成员共用同一条预备语句；TypeScript 的 `pg` 驱动保持用未命名语句。
+区分成员的连接靠 `application_name`：在外壳里 `usename` 永远是外壳的登录角色，所以 `pg_stat_activity` 按 `application_name` 给成员计数（一致性用例 `CP-DB-03`）。在事务之外，连接带着会话级的 `application_name` `<组件 ID>@<版本>`（外壳的在场会话是 `<成员 ID>@<成员版本>`），它在建立连接时作为连接参数给出，而不是事后 `SET`；迁移器读它，在旧版本仍连着时暂缓 contract 迁移（[08](08-schema-evolution.md#expand-与-contract)）。SDK 还给成员的每条语句加上注释前缀 `/* be:<schema> */`，这样 asyncpg 和 pgx 的语句缓存不会让两个平台表结构不同的成员共用同一条预备语句；TypeScript 的 `pg` 驱动保持用未命名语句。
 
 组件代码自己从不发 `SET ROLE` 或 `SET LOCAL ROLE`：只有 store 会发（门禁 `identity-literal-scan`）。
 
 ### SDK 在启动时检查什么
 
-- **能力**：`server_version_num >= 140000`（外壳里 `>= 160000`）、声明式分区、`FOR UPDATE SKIP LOCKED`。缺了哪一项就停止启动，并点名那项能力。
-- **身份**：在一个以 `PG_USER` 执行的事务里检查：这个角色对 `PG_SCHEMA` 有 `USAGE`、没有 `CREATE`，不是 `PG_OWNER_USER` 的成员；schema 里每张表的属主都是 `PG_OWNER_USER`，且 `PG_USER` 对每张表都有 `SELECT, INSERT, UPDATE, DELETE`。失败时记一条 ERROR 日志、导出 `be_db_identity_ok = 0`，并让 `/readyz` 回 `503`；不让模块停下，也绝不放进 `/healthz`。
+- **能力**：`server_version_num >= 140000`（外壳里 `>= 160000`）、声明式分区、`FOR UPDATE SKIP LOCKED`。探测只读 `current_setting('server_version_num')::int`：声明式分区（PostgreSQL 10）和 `SKIP LOCKED`（9.5）都由 14 及以上隐含。缺了哪一项就停止启动，并点名那项能力。
+- **身份**：在 `SET LOCAL ROLE` 到 `PG_USER` 之后的一个事务里，执行列出的目录查询，检查：这个角色对 `PG_SCHEMA` 有 `USAGE`、没有 `CREATE`，不是 `PG_OWNER_USER` 的成员；schema 里每张表的属主都是 `PG_OWNER_USER`，且 `PG_USER` 对每张表都有 `SELECT, INSERT, UPDATE, DELETE`。失败时记一条 ERROR 日志、导出 `be_db_identity_ok = 0`，并让 `/readyz` 回 `503`；不让模块停下，也绝不放进 `/healthz`。
 - **外壳**：成员配置里写的 `PG_HOST`、`PG_PORT` 或 `PG_DATABASE` 和外壳的不同时，外壳拒绝启动，并点名成员和键。否则这个成员会悄悄用上外壳的库。
 
 ### 能力清单
@@ -90,7 +91,7 @@ COMMIT;
 | `INSERT … ON CONFLICT … RETURNING` | 幂等认领、upsert |
 | `uuid`、`NUMERIC`、`timestamptz`、`date`、`JSONB`（只作不透明存储） | 列类型 |
 | 带 `SET search_path FROM CURRENT` 的 `SECURITY DEFINER` 函数 | 运行期角色在运行期可以做的那些 DDL |
-| SQLSTATE 23505、40001、40P01、55P03、57014、25P04、53300 | SDK 里的错误分类 |
+| SQLSTATE 23505、40001、40P01、55P03、57014、25P04、53300、08 类、57P01–57P03 | SDK 里的错误分类 |
 
 **可选能力。** `pg_trgm` 和 `pg_bigm` 不是必需的扩展：SDK 启动时探测它们，用现有的最好那个建搜索索引；两个都没有时搜索结果照样正确，只是更慢（[25-search.md](25-search.md)）。缺它们的引擎照样能通过认证。
 
@@ -120,6 +121,7 @@ ALTER ROLE <登录角色> SET lock_timeout = '5s';
 - 每个进程一个池。在外壳里池属于外壳，每个成员经过一个"最多 `PG_POOL_MAX` 条并发连接"的限额去用它。
 - 用完了全部预算的成员，最多等 `PG_POOL_ACQUIRE_TIMEOUT`（调用方剩余截止时间更短时以它为准），然后以 `RESOURCE_EXHAUSTED` 加 reason `DB_POOL_EXHAUSTED` 失败（[15-user-api-and-errors.md](15-user-api-and-errors.md)），只影响这一个成员。其他成员不受影响。成员的连接按 `application_name` 计数。
 - 服务器以 SQLSTATE `53300`（连接数过多）拒绝新连接时，SDK 以 `UNAVAILABLE` / `DB_TOO_MANY_CONNECTIONS` 失败，不重试。
+- 连不上数据库时（连不上、连接断开、SQLSTATE `08` 类、`57P01`、`57P02`、`57P03`），请求以 `UNAVAILABLE` / `DEPENDENCY_UNAVAILABLE` 失败，`metadata.dependency = db`（[15](15-user-api-and-errors.md#reason-目录)）。
 - 一个任务同一时刻最多占一条连接；嵌套事务会被拒绝（[10-local-transactions.md](10-local-transactions.md)）。池有上限之后，同时占两条连接正是池把自己饿死的方式。
 - `be-ops` 里的连接预算门禁：把部署文件里每个进程的 `PG_POOL_MAX` 加起来，再加上迁移、Casdoor、Keycloak 的预留，总数超过 `max_connections - superuser_reserved_connections` 就失败。
 

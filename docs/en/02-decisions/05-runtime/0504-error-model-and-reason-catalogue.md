@@ -10,11 +10,12 @@
 - **`domain` + `reason` identify the error.** Each component declares its reasons in `contracts/errors.yaml`, append-only, with a message template in every frontend language. Platform reasons use `domain: be` and ship with the component protocol; a component never raises one of them in its own domain.
 - **The frontend translates**; the server's `detail` is in the deployment's default language, for logs and debugging.
 - **An internal error never leaks**: `INTERNAL`, `UNKNOWN` and `DATA_LOSS` always answer `reason: INTERNAL`, `domain: be`, a generic `detail` and the `trace_id`; the original goes only to the log. Component code cannot opt out.
-- **Log levels follow the status**, decided by the SDK, not by each component.
+- **Every non-OK answer the runtime produces carries a reason.** The platform catalogue has 36 reasons. Besides the access, transaction and edge reasons it names the three cases a runtime meets on every request: `REQUEST_INVALID` (400, the request cannot be decoded or does not match the operation's schema, field errors in `violations`), `DEPENDENCY_UNAVAILABLE` (503, the database, the bus, object storage or another component did not answer, named in `metadata.dependency`; a dependency that answered with its own error is relayed as it is, and the edge-only `UPSTREAM_*` reasons stay the edge's) and `REQUEST_CANCELLED` (499, the caller cancelled).
+- **Log levels follow the status**, decided by the SDK, not by each component; the access-log line's level follows the same status, and a cancelled request is never logged as an error.
 
 ## Why
 
-A reason raised in inventory reaches the browser through sales' REST answer, or the phone through the BFF, without being reinvented at each hop. Machine reasons make errors testable (a test asserts `CUSTOMER_CODE_TAKEN`, not a sentence) and translatable where the user's language already lives. The internal case is owned by the runtime's mapping, so nothing internal can leak by construction. Before 3.0.0, an error body was `{"error": "<message in Chinese>"}` and `INTERNAL` errors carried the raw database message to the browser.
+A reason raised in inventory reaches the browser through sales' REST answer, or the phone through the BFF, without being reinvented at each hop. Machine reasons make errors testable (a test asserts `CUSTOMER_CODE_TAKEN`, not a sentence) and translatable where the user's language already lives. The internal case is owned by the runtime's mapping, so nothing internal can leak by construction. A cancel gets a reason of its own rather than falling into `INTERNAL`: a client that closes the connection is not a fault of the component, and counting it as a 500 at ERROR level would page an operator for a user who navigated away. The same goes for a database that is down: `DEPENDENCY_UNAVAILABLE` says which dependency is missing, where `INTERNAL` would hide it. Before 3.0.0, an error body was `{"error": "<message in Chinese>"}` and `INTERNAL` errors carried the raw database message to the browser.
 
 ## What this rules out
 
@@ -23,6 +24,7 @@ A reason raised in inventory reaches the browser through sales' REST answer, or 
 - A server-translated message as the only identity of an error
 - Database messages, stack traces or secrets in `detail` or `metadata`; personal data in `metadata` beyond what the user sent
 - A component raising a `be` reason under its own domain, or mapping a dependency's meaningful reason to a vaguer one of its own
+- A non-OK answer from the runtime without a reason; a cancelled request or an unreachable dependency reported as `INTERNAL` / 500; a component or its runtime raising the edge-only `UPSTREAM_*` reasons
 
 ## Revisit only if
 

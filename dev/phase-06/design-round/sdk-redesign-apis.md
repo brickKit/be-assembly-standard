@@ -4,6 +4,7 @@
 > 这是 `sdk-redesign.md` 的姊妹篇。那一篇里有协议（P1–P20）、compconf、现状盘点、迁移路径；本篇只写**签名和用法**。签名是 v0.6.0 的目标形状，pilot（阶段 C）可以在冻结之前修改；修改要同时改三门语言和本文件。
 > **修订（phase A 收尾，lane X2）**：按控制者对九个 lane 报告的裁决（a…bc）和 R1 最小复现的结果（`../repros/README.md`）修订。be-protocol rc.1（`tools/be-protocol`）已经是规范正文，名字和说法不一致时以它为准，本文件只是设计记录。
 > **修订（2026-10-03，lane L2b）**：随 brickKit v1.2–v1.3.1（裁决 bk1–bk14）补上：密钥文件的读取与重读（§1 第 7 条、§2.2、§3、§4，→ P2.7、P2.9、P2.12）；族地址键 `AUTHZ_GRPC_URL` / `IAM_GRPC_URL`（→ P2.10）；`job run` 入口（§2.1、§2.9，→ P14.8）；外壳启动器的停机与就绪（§5，→ P19.9、P19.10）。
+> **修订（2026-10-03，rc.2 spec lane 的文档 lane）**：按阶段 B 第一波审查裁决接受三门 SDK 已实现的名字：Go `Spec.Manifest`、`Spec.Catalog`、`Spec.ErrorDomain`、`besdk.ResourceType`、`PermKey.List` / `On`、`Subscription.AggregateType` / `TransactionDocument`、`Runtime.Now()`；Python `manifest`、`error_domain`、`Subscription.aggregate_type`；TS `ComponentSpec.manifest`、`errorDomain`、`aggregateType`；命令行统一为 `migrate up|down <n>|status`、`job run <name>`，不认识的参数和不存在的任务名都以 64 退出；reason 用 `REQUEST_INVALID`、`DEPENDENCY_UNAVAILABLE`；§3、§4 末尾列出接受的语言差异。
 
 ## 0. 怎么读
 
@@ -35,14 +36,18 @@
 package besdk
 
 type Spec struct {
-    ID         string      // "erp/sales"；启动时与 COMPONENT_ID 核对，不一致就以 78 退出
-    Migrations fs.FS       // *.up.sql / *.down.sql + lifecycle.yaml（同一个 embed）
-    Contracts  fs.FS       // contracts/：errors.yaml、events/*.json（查 x-aggregate-type、校验 payload、/_be/info 用）
-    New        func(ctx context.Context, rt *Runtime) (*Module, error)
+    ID          string      // "erp/sales"；启动时与 COMPONENT_ID、清单的 metadata.id 核对，不一致就以 78 退出
+    Manifest    []byte      // 组件自己的 component.yaml（go:embed）：configSchema、端口、events（→ P2.2）
+    Migrations  fs.FS       // <version>_<name>.up.sql / .down.sql + lifecycle.yaml（同一个 embed）；nil = 没有库
+    Contracts   fs.FS       // contracts/：errors.yaml、events/*.json（查 x-aggregate-type、校验 payload、/_be/info 用）
+    Catalog     string      // authzgen.CatalogJSON：本组件的键和资源类型；"" = 没有
+    ErrorDomain string      // 槽位族成员填族 ID（→ P4.1）；"" = 组件 ID
+    New         func(ctx context.Context, rt *Runtime) (*Module, error)
 }
 
-// Main 按 os.Args 分派：无参数 = 起服务；"migrate up|down N|status" = 迁移（→ P1.1、P11）；不认识的参数在读配置之前以 64 退出；
+// Main 按 os.Args 分派：无参数 = 起服务；"migrate up" | "migrate down <n>" | "migrate status" = 迁移（→ P1.1、P11）；
 // "job run <name>" = 把一个声明过的任务跑一次就退出（可选能力 job_run，→ P14.8，§2.9）。
+// 不认识的参数、不存在的任务名、环境里没有 COMPONENT_ID，都在读配置之前以 64 退出。
 // 这是 SDK 里唯一会读进程环境、唯一会调 os.Exit 的地方。
 func Main(s Spec)
 
@@ -83,7 +88,7 @@ func (rt *Runtime) Calendar() Calendar                 // → P11.9
 func (rt *Runtime) Blob() (*Blob, error)               // → P17
 func (rt *Runtime) Lifecycle() *lifecycle.Engine       // → P16
 func (rt *Runtime) Capabilities() Capabilities         // 当前 authz provider 的能力位（→ P6）
-func (rt *Runtime) Clock() Clock                       // 业务代码取"现在"只经它；besdktest 可以替换
+func (rt *Runtime) Now() time.Time                     // 业务代码取"现在"只经它；besdktest 可以替换时钟
 
 type Config struct{ /* 只装 configSchema 声明过的键 */ }
 func (c *Config) Require(key string) string                         // 启动期校验过，运行期不会失败
@@ -152,15 +157,19 @@ var (
 
 每个事务开头 `SET LOCAL ROLE` / `search_path` / `application_name` + 三个超时（→ P10.2、P10.3）。`Tx` 的 `ExecContext` / `QueryContext` / `QueryRowContext` 在 SQL 前加 `/* be:<PG_SCHEMA> */ `，pgx 保持默认的 `QueryExecModeCacheStatement`（`CacheDescribe` 不行，r1-04b）；外壳里 `StatementCacheCapacity` 按成员数放大（→ P10.2）。几条 `SET LOCAL` 可以合成一条 `SELECT set_config(…, true), …` 省往返，是否做由实现时实测决定。
 
-SQLSTATE 由 SDK 统一分类并映射（→ P10.4；`53300` → `DB_TOO_MANY_CONNECTIONS`）。组件里不再写 `pgerr.go`；需要判断错误类型时，用 `besdk.IsUniqueViolation(err)`、`IsLockTimeout(err)` 这类函数。
+SQLSTATE 由 SDK 统一分类并映射（→ P10.4；`53300` → `DB_TOO_MANY_CONNECTIONS`；连不上库、类 `08`、`57P01`–`57P03` → `DEPENDENCY_UNAVAILABLE`，`metadata.dependency = db`；调用方取消引起的 `57014` → `REQUEST_CANCELLED`）。组件里不再写 `pgerr.go`；需要判断错误类型时，用 `besdk.IsUniqueViolation(err)`、`IsLockTimeout(err)` 这类函数。
 
 ### 2.4 路由与守卫
 
 ```go
 type Router struct{ /* 包着 gin.RouterGroup，前缀是 /{domain}/{name} */ }
 
-type Guard interface{ guard() }         // PermKey、Public、Authenticated、authzgen 生成的 ResourceGuard 都实现它
+type Guard interface{ guard() }         // PermKey、Public、Authenticated、ResourceGuard 都实现它
 type PermKey string
+type ResourceType string                // 资源类型名，如 "erp.sales.order"；authzgen 生成它的常量
+type ResourceGuard struct{ Key PermKey; Type ResourceType; Param string } // Param：放记录 ID 的路径参数，List 时为空
+func (k PermKey) List(t ResourceType) ResourceGuard             // 列表路由：按键的范围过滤
+func (k PermKey) On(t ResourceType, param string) ResourceGuard // 单条记录路由：记录 ID 在路径参数 param 里
 const Public PermKey = ""
 const Authenticated PermKey = "__authenticated__"
 
@@ -171,12 +180,12 @@ func PUT(…); func PATCH(…); func DELETE(…)
 func Timeout(d time.Duration) RouteOption   // 编排类路由用 15 s（→ P3.4）
 func BodyLimit(n int64) RouteOption         // 默认 1 MiB，路由可以声明更大（→ P3.6）
 
-// authzgen 由 be-ops 从 assembly.yaml 生成（authz-architecture §4.2）：
+// authzgen 由 be-ops 从 assembly.yaml 生成（authz-architecture §4.2），它的 CatalogJSON 填进 Spec.Catalog：
 //   besdk.GET(r, "/orders",     authzgen.SalesView.List(authzgen.SalesOrder), h)
 //   besdk.GET(r, "/orders/:id", authzgen.SalesView.On(authzgen.SalesOrder, "id"), h)
 
 // handler 里用的辅助：
-func Bind[T any](c *gin.Context) (T, error)           // 解析 JSON；失败答 400 + violations
+func Bind[T any](c *gin.Context) (T, error)           // 解析 JSON；失败答 400 REQUEST_INVALID + violations
 func Respond(c *gin.Context, status int, v any)
 func Fail(c *gin.Context, err error)                  // 统一走 problem+json（→ P4）
 ```
@@ -249,12 +258,14 @@ type Events struct {
     Subscribe []Subscription
 }
 type Subscription struct {
-    Subject     string
-    Consumer    string                                              // 游标的消费者名（投影名），默认 ""（→ P12.6）
-    Apply       func(ctx context.Context, tx *Tx, ev Event) error   // 和 Run 二选一
-    Run         func(ctx context.Context, ev Event) error
-    MaxDeliver  int                                                 // 0 = 取配置或默认的 8；由 SDK 判（NumDelivered > 它 → DLQ + Term），不写进 consumer（→ P12.5、P12.7）
-    Backoff     []time.Duration                                     // SDK 的 NakWithDelay 延迟表；EVENTS_BACKOFF 优先；不写进 consumer
+    Subject             string
+    Consumer            string                                      // 游标的消费者名（投影名），默认 ""（→ P12.6）
+    AggregateType       string                                      // 可选：生产方契约的 x-aggregate-type；空 = 取消息的 ce-aggregatetype（→ P12.6）
+    TransactionDocument bool                                        // 生产方契约的 x-transaction-document：缺法人的进 DLQ（→ P11.8）
+    Apply               func(ctx context.Context, tx *Tx, ev Event) error // 和 Run 二选一
+    Run                 func(ctx context.Context, ev Event) error
+    MaxDeliver          int                                         // EVENTS_MAX_DELIVER 设了以它为准，否则取这里，0 = 8；由 SDK 判：d = max 的失败照常 Nak，d > max 时先进 DLQ + Term 再说（→ P12.5、P12.7），不写进 consumer
+    Backoff             []time.Duration                             // SDK 的 NakWithDelay 延迟表；EVENTS_BACKOFF 设了以它为准；不写进 consumer
     StartFrom   StartFrom                                           // 默认 StartAll（E3）
     Concurrency int                                                 // 默认 4
 }
@@ -326,7 +337,7 @@ func NewReconciler[T any](s ReconcilerSpec[T]) ReconcilerRunner
 
 SDK 自己的平台任务，名字都以 `be.` 开头（`be.outbox`、`be.lifecycle`、`be.cleanup`、`be.authz.changes`、`be.snapshot.<name>`），同样受监督、同样可以用 `JOBS_OVERRIDES` 调整，组件不需要登记它们。
 
-**跑一次就退出**（可选能力 `job_run`，→ P14.8）。`besdk.Main` 收到 `job run <name>` 时：读配置和密钥文件、核对 schema 版本（同服务入口）、不起 HTTP / gRPC、不起别的后台工作，按任务种类经同一批表跑**一次**（`Cron` 认领当前时刻及之前最近的槽，`Singleton` 抢租约，`Every` / Reconciler 走一遍，`Queue` 在超时内把该种类的就绪行处理一遍），holder 是 `<组件 ID>/job-run:<实例 id>`，指标在退出前推一次。退出码：成功或无事可做 0，失败 1，任务名不存在 4，配置错误 78；入口不认识的参数在读配置之前就以 64 退出（→ P1.1）。`JOBS_OVERRIDES` 的 `enabled: false` 只停进程内调度，不影响 `job run`。三门 SDK 同样实现（Python `main` 的 `job run`，TS `main` 的 `job run`），并在 `/_be/info` 的 `capabilities` 里列出 `job_run`。外部触发方式见 foundations 19。
+**跑一次就退出**（可选能力 `job_run`，→ P14.8）。`besdk.Main` 收到 `job run <name>` 时：读配置和密钥文件、核对 schema 版本（同服务入口）、不起 HTTP / gRPC、不起别的后台工作，按任务种类经同一批表跑**一次**（`Cron` 认领当前时刻及之前最近的槽，`Singleton` 抢租约，`Every` / Reconciler 走一遍，`Queue` 在超时内把该种类的就绪行处理一遍），holder 是 `<组件 ID>/job-run:<实例 id>`，指标在退出前推一次。退出码：成功或无事可做 0，失败 1，配置错误 78；任务名不存在和入口不认识的参数一样，在读配置之前就以 64 退出（→ P1.1）。`JOBS_OVERRIDES` 的 `enabled: false` 只停进程内调度，不影响 `job run`。三门 SDK 同样实现（Python `main` 的 `job run`，TS `main` 的 `job run`），并在 `/_be/info` 的 `capabilities` 里列出 `job_run`。外部触发方式见 foundations 19。
 
 ### 2.10 其它帮手
 
@@ -462,8 +473,10 @@ class Spec:
     migrations: Path            # 目录：yoyo 的 .sql/.rollback.sql + lifecycle.yaml
     contracts: Path
     create: Callable[[Runtime], Awaitable[Module]]
+    manifest: Path | None = None    # 默认 <contracts>/../component.yaml
+    error_domain: str | None = None # 槽位族成员填族 ID（→ P4.1）
 
-def main(spec: Spec) -> NoReturn            # 起服务 | "migrate apply|rollback|status" | "job run <name>"（→ P14.8）
+def main(spec: Spec) -> NoReturn            # 起服务 | "migrate up" | "migrate down <n>" | "migrate status" | "job run <name>"（→ P14.8）；其它参数、不存在的任务名 → 64
 
 @dataclass
 class Module:
@@ -485,7 +498,7 @@ class Runtime:
     def conn(self, dep: str, port: str = "grpc") -> grpc.aio.Channel
     def user_http(self, dep: str) -> UserHTTP                  # httpx.AsyncClient 的包装
     def external_http(self, name: str, *, timeout: float = 10, max_conns: int = 32) -> httpx.AsyncClient
-    calendar: Calendar; clock: Clock
+    calendar: Calendar; clock: Clock          # Go 是 rt.Now()
     def blob(self) -> Blob
     def lifecycle(self) -> lifecycle.Engine
     def capabilities(self) -> Capabilities
@@ -526,6 +539,7 @@ class Subscription:
     backoff: tuple[float, ...] | None = None
     start_from: StartFrom = StartFrom.ALL
     concurrency: int = 4
+    aggregate_type: str = ""        # 可选；空 = 取消息的 ce-aggregatetype（→ P12.6）
 
 @dataclass(frozen=True)
 class Job:
@@ -539,7 +553,7 @@ class Job:
 - **一个进程一个事件循环**（0103 不变）。阻塞调用（PyJWT 验签、pyarrow）一律经 `asyncio.to_thread`；SDK 里没有任何同步 IO。
 - **`Store.tx` 是"传函数"而不是 `async with`**：上下文管理器没法在 40001 时重跑代码块。
 - **运行时是 CPython 3.14**（`python:3.14-slim`，镜像里不需要编译器；r1-10）。`uuid.uuid7` 用标准库；`pyarrow` 只在 `besdk[cold]` 里。
-- **迁移入口进 SDK**：`python -m <pkg> migrate apply` 以 `PG_OWNER_USER` 登录调 yoyo（同步驱动 `psycopg[binary]==3.3.6`，`postgresql+psycopg://` 后端），状态表放在本组件的 schema 里（`_yoyo_*`、`yoyo_lock`；平台迁移 id 带 `besdk-` 前缀）。print 的 `migrate.py` 删掉。
+- **迁移入口进 SDK**：`python -m <pkg> migrate up` 以 `PG_OWNER_USER` 登录调 yoyo（同步驱动 `psycopg[binary]==3.3.6`，`postgresql+psycopg://` 后端），状态表放在本组件的 schema 里（`_yoyo_*`、`yoyo_lock`；平台迁移 id 带 `besdk-` 前缀）。print 的 `migrate.py` 删掉。
 - **pytest 插件 `besdk.testing`**：
   - fixture：`rt`（随机身份）、`shell_view`、`fake_iam`、`fake_authz`、`fake_peer`；
   - 辅助函数：`with_user(...)`（上下文管理器）、`published(rt)`、`deliver(rt, ev)`、`run_job(rt, name)`、`vectors(dir)`。
@@ -548,17 +562,22 @@ class Job:
 - **批量上限**：besdk 随包附带生成好的 `be/v1/limits_pb2.py`（顶层包 `be`），SDK 用 `field.GetOptions().Extensions[limits_pb2.max_items]` 读上限，`HasExtension` 为假时取 500（r1-03b，→ P7.10）。
 - **JWT**：`jwt.decode(..., audience=TENANT_ID, issuer=IAM_ISSUER, options={"require": ["exp","iat","sub","jti","iss","aud"]})`，并另外检查 `typ`（→ P5.3）。
 - **冷层**：`pip install besdk[cold]` 才有 `s3-parquet`；没装时，加载 `lifecycle.yaml` 那一刻就报"不支持"。
+- **栈里另外两项**（0103 的 Python 行）：事件 payload 用 `jsonschema==4.26.0` 校验；Meter 经 `opentelemetry-exporter-prometheus==0.59b0` 写进成员的 CollectorRegistry。
+- **接受的差异**（阶段 B 审查）：`rt.conn(dep)` 返回 channel 代理；事务开头的设置用 `set_config(…)` 一次往返完成；运维端点的访问日志按 debug 记（→ P3.10）。
 
 ## 4. TypeScript：`@brickkit/be-sdk-ts` v0.6.0
 
 ```ts
-export function defineComponent(spec: {
-  id: string;
-  migrations: string;                       // 目录：node-pg-migrate 的 SQL 文件 + lifecycle.yaml
-  contracts: string;
+export interface ComponentSpec {
+  id: string;                               // 启动时与 COMPONENT_ID 核对，不一致 → 78
+  migrations?: string;                      // 目录：node-pg-migrate 的 SQL 文件 + lifecycle.yaml；没有 = 不连库
+  contracts?: string;
+  manifest?: string;                        // 镜像里的 component.yaml；默认工作目录下的 component.yaml
+  errorDomain?: string;                     // 槽位族成员填族 ID（→ P4.1）
   create: (rt: Runtime) => Promise<Module>;
-}): Spec;
-export function main(spec: Spec): never;    // 起服务 | "migrate up|down|status" | "job run <name>"（→ P14.8）
+}
+export function defineComponent(spec: ComponentSpec): Spec;
+export function main(spec: Spec): never;    // 起服务 | "migrate up" | "migrate down <n>" | "migrate status" | "job run <name>"（→ P14.8）；其它参数、不存在的任务名 → 64
 
 export interface Module {
   http?: (r: Router) => void;               // Router 包着本成员的 Fastify 实例（只开放 get/post/put/patch/delete）
@@ -575,7 +594,7 @@ export interface Runtime {
   readonly logger: pino.Logger; readonly tracer: Tracer; readonly meter: Meter; readonly registry: Registry;
   store(): Store;
   conn(dep: string, port?: string): grpc.Channel;                         // 缓存；拦截器链同 Go
-  client<C>(ctor: new (addr: string, cred: grpc.ChannelCredentials, opts?: object) => C, dep: string): C; // 共用 conn
+  client<C>(ctor: new (addr: string, cred: grpc.ChannelCredentials, opts?: object) => C, dep: string, schema: ProtoMetadataLike, port?: string): C; // 共用 conn；第三个参数是 ts-proto 的 protoMetadata（推服务配置和 max_items）
   userHttp(dep: string): UserHttp;                                        // 基于 undici
   externalHttp(name: string, opts?: { timeoutMs?: number; maxConns?: number }): ExternalHttp;
   readonly calendar: Calendar; readonly clock: Clock;
@@ -611,7 +630,7 @@ export function createBatchGetLoader<K, V>(batchGet: (ids: readonly K[]) => Prom
 
 - **上下文用 `AsyncLocalStorage`**：Fastify 的 `onRequest` 钩子、grpc-js 的服务端包装、事件 handler 和 Job 运行器各自 `als.run(ctx, …)`。组件代码不传 `ctx`，但截止时间和取消信号可以用 `deadline()`、`signal()` 取到，交给 `pg` 和 `fetch`。
 - **截止时间到 pg**：用 `SET LOCAL statement_timeout`，再加 `AbortSignal` 驱动 `client.query` 的取消（`pg` 的 `cancel` 走 `pg_cancel_backend`）。pg 保持默认的未命名语句；要用命名语句时 `name` 必须是 `<schema>:<name>`（r1-04，→ P10.2）。
-- **Fastify 实例的固定选项**（r1-08，→ P3.4–P3.6；Fastify ≥ 5.12）：`http: { headersTimeout: 5000, connectionsCheckingInterval: 1000 }`（Node 只按这个周期检查，默认 30 s 会让 5 s 变成最多 35 s）、`requestTimeout: 30000`、`keepAliveTimeout: 120000`、`bodyLimit: 1 MiB`（路由声明更大时用路由级 `bodyLimit`）、`handlerTimeout` = 路由截止时间（默认 `HTTP_DEFAULT_TIMEOUT`）。错误处理器把 `FST_ERR_HANDLER_TIMEOUT`（Fastify 默认答 503）改成 504 + `DEADLINE_EXCEEDED`，`FST_ERR_CTP_BODY_TOO_LARGE` 改成 413 + `BODY_TOO_LARGE`；`request.signal` 交给 pg 的取消和 undici。**错误处理器和 `onTimeout` 钩子里不读 ALS**（定时器上下文里 ALS 为空），成员身份和 request id 从 `request` 和闭包里取。
+- **Fastify 实例的固定选项**（r1-08，→ P3.4–P3.6；Fastify ≥ 5.12）：`http: { headersTimeout: 5000, connectionsCheckingInterval: 1000 }`（Node 只按这个周期检查，默认 30 s 会让 5 s 变成最多 35 s）、`requestTimeout: 30000`、`keepAliveTimeout: 120000`、`bodyLimit: 1 MiB`（路由声明更大时用路由级 `bodyLimit`）、`handlerTimeout` = 路由截止时间（默认 `HTTP_DEFAULT_TIMEOUT`）。错误处理器把 `FST_ERR_HANDLER_TIMEOUT`（Fastify 默认答 503）改成 504 + `DEADLINE_EXCEEDED`，`FST_ERR_CTP_BODY_TOO_LARGE` 改成 413 + `BODY_TOO_LARGE`；取消信号（SDK 自己建，见本节末尾接受的差异）交给 pg 的取消和 undici。**错误处理器和 `onTimeout` 钩子里不读 ALS**（定时器上下文里 ALS 为空），成员身份和 request id 从 `request` 和闭包里取。
 - **迁移**（r1-06，→ P11.1、P11.3）：node-pg-migrate 以 `PG_OWNER_USER` 登录，必须显式传 `ignorePattern: '(\\..*)|(.*(?<!\\.sql))'`（只认 `.sql`，否则 `lifecycle.yaml` 让整次迁移失败）、`lockValue`（由 `PG_SCHEMA` + 状态表名派生，例如 FNV-1a 截到 53 位，不能用默认的全库常量）和 `advisoryLockMode: 'wait'`；状态表 `pgmigrations_<PG_SCHEMA>` + `besdk_migrations_<PG_SCHEMA>`。
 - **gRPC 生成与批量上限**（r1-03、r1-03b，→ P7.8、P7.10）：ts-proto 选项 `outputServices=grpc-js,esModuleInterop=true,outputSchema=true,importSuffix=.ts,enumsAsLiterals=true`。SDK 从 `protoMetadata` 推服务配置（`idempotencyLevel`）；批量上限读 `protoMetadata.options.messages.<Msg>.fields.<字段>.max_items`（扩展短名，嵌套消息在 `.nested` 下，跨文件沿 `dependencies` 查），默认 500 来自遍历入参消息的每个 repeated 字段。grpc-js 的重试预算按（进程，目标）共享，服务端没有 `MinTime` 强制（→ P7.5、P7.8）。
 - **金额**：`decimal.js` 的实例只在 SDK 的 money 模块里构造，线上一律是字符串（0301）；`number` 永远不承载金额（门禁里加一条 TS 的 `parseFloat` 扫描）。
@@ -621,6 +640,8 @@ export function createBatchGetLoader<K, V>(batchGet: (ids: readonly K[]) => Prom
   - resolver 用 `access()` 和下游的键（I6）；
   - `userHttp` 替换 `restForward.ts`；
   - `rt.client` 替换"每批建一个 gRPC 客户端"。
+- **事件订阅**：`Subscription` 有可选的 `aggregateType`（空 = 取 `ce-aggregatetype`，→ P12.6）；延迟表字段叫 `backoffMs`（毫秒数组）。payload 用 **AJV** 按契约校验（0103 的 TS 行）。
+- **接受的差异**（阶段 B 审查）：`rt.client` 的第三个参数是 `protoMetadata`；`backoffMs`；`isBeError` 靠品牌 symbol 判定；取消信号由 SDK 自己建；`close()` 会继续关闭空闲连接；运维端点的访问日志按 debug 记（→ P3.10）。
 - **测试包 `@brickkit/be-sdk-ts/testing`**：`newRuntime()`（随机身份）、`withUser()`、`fakeIam()`、`fakeAuthz()`、`fakePeer()`、`published()`、`deliver()`、`runJob()`、`vectors()`。用 vitest，属性测试用 fast-check。
 
 ## 5. 外壳启动器（三门语言同一段语义，→ P19）
@@ -713,7 +734,7 @@ widget 的 `conformance/fixtures.yaml` 也在 be-protocol 里，就是 compconf 
 
 | v0.5.0 | v0.6.0 |
 |---|---|
-| `besdk.RunStandalone(module.New)`、`cmd/migrate` 的 `migrate.Main(fs)` | `besdk.Main(module.Spec)`，迁移是同一个二进制的 `migrate` 子命令；`component.yaml` 改为 `migration.command: [./component, migrate, up]` |
+| `besdk.RunStandalone(module.New)`、`cmd/migrate` 的 `migrate.Main(fs)` | `besdk.Main(module.Spec)`（`Spec` 带 `Manifest`、`Catalog`），迁移是同一个二进制的 `migrate up` / `migrate down <n>` / `migrate status` 子命令；`component.yaml` 改为 `migration.command: [./component, migrate, up]` |
 | `besdk.Module{HTTPHandler, RegisterGRPC, Start, Stop}` | `besdk.Module{HTTP, GRPC, Events, Jobs, Workers, Reconcilers, Snapshots, Sharing, Lifecycle, Start, Stop}` |
 | `rt.Config.StringOr("PG_SCHEMA", "…")`、`schema + "_rw"` | `rt.Store()`（身份来自 `PG_USER` / `PG_SCHEMA`） |
 | `besdk.WithTx(ctx, rt.DB, role, schema, fn(*sql.Tx))` | `store.Tx(ctx, fn(ctx, *besdk.Tx))` |
@@ -726,6 +747,7 @@ widget 的 `conformance/fixtures.yaml` 也在 be-protocol 里，就是 compconf 
 | `besdk.ContextWithClaims(ctx, claims)` | `besdktest.WithUser(ctx, u, …)` |
 | `besdk.ListWindow(q)`、`BatchGetRouted` | 分页按 P3.8；`besdk.BatchGetAll`；冷热由生命周期引擎负责 |
 | `status.go` 里手写的 `ToStatus`、`pgerr.go` | `besdk.Errorf` + `contracts/errors.yaml`；`besdk.Is*` |
-| `time.Now()`、SQL 里的 `CURRENT_DATE` | `rt.Clock().Now()`、`rt.Calendar().Today(ctx, le)` 作为参数传进 SQL |
-| Python 的 `with_tx(pool, role, schema, fn)`、`start_outbox_pump`、`scope_of()` | `await store.tx(fn)`、`await tx.publish(ev)`、`besdk.access()` |
+| `time.Now()`、SQL 里的 `CURRENT_DATE` | `rt.Now()`（Python `rt.clock`、TS `rt.clock.now()`）、`rt.Calendar().Today(ctx, le)` 作为参数传进 SQL |
+| Python 的 `with_tx(pool, role, schema, fn)`、`start_outbox_pump`、`scope_of()`、print 的 `migrate.py` | `await store.tx(fn)`、`await tx.publish(ev)`、`besdk.access()`、`python -m <pkg> migrate up` |
+| TS 的 `MALFORMED_REQUEST`；Go 提议的 `DB_UNAVAILABLE`、TS store 借用的 `UPSTREAM_UNAVAILABLE` | `be` 的 `REQUEST_INVALID`；`DEPENDENCY_UNAVAILABLE`（`metadata.dependency`）；`UPSTREAM_*` 只留给边缘 |
 | TS 的 `runStandalone`、`newGraphQLServer`、`requirePermission(perm, resolver)`、`userClient` | `main(defineComponent(…))`、`Module.graphql`、`guard(perm, resolver)`、`rt.client(Ctor, dep)` 或 `rt.userHttp(dep)` |

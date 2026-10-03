@@ -29,7 +29,7 @@ Which message broker carries events between components, what delivery it promise
 | `postgres://host:5432/<db>?schema=be_bus` | PostgreSQL queue | decided, built in phase 06 |
 | `kafka://broker1:9092,broker2:9092` | Kafka | later |
 
-`EVENT_BUS_URL` is a new shared key in `config/vars.yaml`, referenced as `$var:EVENT_BUS_URL` ([04-configuration.md](../01-conventions/04-configuration.md#shared-connection-keys)). When it is absent the SDK uses `NATS_URL`. Every component of a project uses the same adapter: two adapters would be two separate buses.
+`EVENT_BUS_URL` is a new shared key in `config/vars.yaml`, referenced as `$var:EVENT_BUS_URL` ([04-configuration.md](../01-conventions/04-configuration.md#shared-connection-keys)). When it is absent the SDK uses `NATS_URL`; at least one of the two must be set. A scheme the runtime has no adapter for (`kafka://` today) fails the start, naming the scheme, with a non-zero exit code that is not 78 (be-protocol P12.12). The official SDKs ship `nats://` first; the PostgreSQL queue adapter follows. Every component of a project uses the same adapter: two adapters would be two separate buses.
 
 ### Operations every adapter provides
 
@@ -60,10 +60,11 @@ Which message broker carries events between components, what delivery it promise
 
   | Key | Default | Used by the SDK as |
   |---|---|---|
-  | `EVENTS_BACKOFF` | `1s,10s,1m,5m,15m,30m,1h` | the `NakWithDelay` schedule: the delay of the nak after the n-th failed delivery |
-  | `EVENTS_MAX_DELIVER` | `8` | the delivery limit: a message received with `NumDelivered` > `EVENTS_MAX_DELIVER` is not handled; the SDK writes it to the dead letters, then terminates it |
+  | `EVENTS_BACKOFF` | `1s,10s,1m,5m,15m,30m,1h` when neither the key nor the subscription sets one | the `NakWithDelay` schedule: the delay of the nak after the n-th failed delivery |
+  | `EVENTS_MAX_DELIVER` | `8` when neither the key nor the subscription sets one | the delivery limit: a message received with `NumDelivered` > `EVENTS_MAX_DELIVER` is not handled; the SDK writes it to the dead letters, then terminates it |
 
-  A subscription may declare its own values; the keys, when set, override them (be-protocol P12.5).
+  The keys have no catalogue default. A subscription may declare its own values; precedence is the key when it is set (present in the configuration), then the subscription's value, then the built-in value above (be-protocol P12.5).
+- **The last allowed delivery** is an ordinary one: a delivery with count `d = EVENTS_MAX_DELIVER` that fails is nak'ed like any other. The message is dead-lettered at its next receipt (`d > EVENTS_MAX_DELIVER`), before the handler runs. So a message is handled at most `EVENTS_MAX_DELIVER` times.
 - **Acknowledge after the handler's transaction committed.** On error: nak with the next delay of `EVENTS_BACKOFF`. On a permanent error (unparsable, contract violation): publish to the dead-letter subject, then terminate. While a handler runs: "in progress" every 10 s (a third of `ack_wait`).
 
 ### Dead letters
@@ -92,11 +93,14 @@ Which message broker carries events between components, what delivery it promise
 
 ### Best-effort signals
 
-Signals such as the authorization provider's "bundle changed" go through notify: core NATS publish on JetStream; `LISTEN`/`NOTIFY` on the PostgreSQL queue; a short-retention topic on Kafka. They may be lost, and every user of one also polls.
+Signals such as the authorization provider's "bundle changed" (`infra.authz.changed.v1`) are marked `x-signal: true` in the producer's events contract ([13](13-event-contracts.md#the-contract-file)): no outbox row, no durable, not listed in `component.yaml` `events.publishes`. They go through notify: core NATS publish on JetStream; `LISTEN`/`NOTIFY` on the PostgreSQL queue; a short-retention topic on Kafka. They may be lost, and every user of one also polls.
 
 ### PostgreSQL queue adapter
 
 Tables in the schema `be_bus`, which belongs to the infrastructure like NATS does; `make db-init` creates it and grants every component's role `SELECT, INSERT, UPDATE, DELETE` on these tables. Components still never read each other's schemas ([0102](../02-decisions/01-architecture/0102-one-schema-per-component.md)).
+
+- **Connection**: the adapter connects with the component's own `PG_USER` and `PG_PASSWORD_FILE`, so a component on the queue bus declares the database keys even when it has no tables of its own.
+- **Partitions**: the adapter maintains the partitions of `be_bus.message` only through `SECURITY DEFINER` functions owned by the `NOLOGIN` role `be_bus_owner`, the same pattern as the lifecycle functions ([09](09-data-lifecycle.md)); no component role holds DDL rights on `be_bus`. The project's database setup also creates a DEFAULT partition of `be_bus.message`, so a publish never fails for want of a partition.
 
 ```sql
 CREATE TABLE be_bus.message (

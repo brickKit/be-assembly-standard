@@ -17,9 +17,10 @@ Inside each language every cell of the stack is fixed; a component of that langu
 | Migrations | `golang-migrate`, plain `.sql` files | `yoyo-migrations`, plain `.sql` files, entry in the SDK | `node-pg-migrate`, plain SQL files |
 | Events | `nats.go` `jetstream` | `nats-py` JetStream | `@nats-io/jetstream` + `@nats-io/transport-node` |
 | Decimal | `cockroachdb/apd/v3` | `decimal` | `decimal.js` |
+| JSON Schema (payload validation) | `santhosh-tekuri/jsonschema/v6` | `jsonschema==4.26.0` | `ajv` 8.20.0 |
 | JWT | `golang-jwt/v5` + `keyfunc/v3` | PyJWT, always with `audience` | `jose` 6 |
 | Outbound HTTP | `net/http` | `httpx` | `undici`, one Agent per dependency |
-| Logs / metrics | `slog` / `client_golang`, one registry per module | `logging` with the SDK's JSON formatter / `prometheus-client`, one `CollectorRegistry` per module | `pino` / a Prometheus client, one registry per module |
+| Logs / metrics | `slog` / `client_golang`, one registry per module | `logging` with the SDK's JSON formatter / `prometheus-client`, one `CollectorRegistry` per module, OpenTelemetry metrics through `opentelemetry-exporter-prometheus==0.59b0` | `pino` / a Prometheus client, one registry per module |
 | Traces | `otel-go` + `otelgrpc` | `opentelemetry-python` + gRPC interceptors | `@opentelemetry/sdk-trace-base`, no auto-instrumentation |
 | Object storage | `aws-sdk-go-v2` | `aioboto3` | `@aws-sdk/client-s3` |
 | UUIDv7 / pinyin | `google/uuid` / `go-pinyin` | `uuid6` / `pypinyin` | `uuid` 11 / `pinyin-pro` |

@@ -57,7 +57,7 @@ What an event is on the wire: the CloudEvents envelope in message headers, subje
 
 - Every subject of one aggregate type, from one producer, shares one strictly increasing `aggregate_version`. The business version of the row (incremented on every write) qualifies, since state mode tolerates gaps.
 - An aggregate that only ever emits one event per instance (a credit decision about one order) declares an aggregate type of its own (`erp.finance.credit_decision`) rather than borrowing another's with a fixed version 1.
-- The consumer cursor is keyed by `(consumer, aggregate_type, aggregate_id)` ([11](11-consistency-across-components.md#consumer-cursor)).
+- The consumer cursor is keyed by `(consumer, aggregate_type, aggregate_id)` ([11](11-consistency-across-components.md#consumer-cursor)). A subscription may declare the aggregate type it expects; when it does not, the runtime takes it from the message's `ce-aggregatetype` header.
 
 ### Consumption modes
 
@@ -76,6 +76,7 @@ Each component lists its events in `contracts/events/<name>.events.json`: an `en
 | `x-aggregate-type` | the declared aggregate type (new; required) |
 | `x-consumption` | `state` (default) or `sequence` (new) |
 | `x-transaction-document` | `true` when the event is about a transaction document: the payload schema must require `legal_entity_id`, and the runtime sets `ce-legalentity` from it (new; default `false`) |
+| `x-signal` | `true` marks a best-effort poke ([12](12-event-bus.md#best-effort-signals)), not an event: no outbox row, no durable, and not listed in `component.yaml` `events.publishes` (authz's `infra.authz.changed.v1` carries it; default `false`) |
 | `grade` | `core` (business-critical: persisted, deduplicated, may reach dead letters) or `peripheral` (informational side events) |
 | `note` | who consumes it and why, in prose |
 | `payload` | a JSON Schema (2020-12) object for the payload |
@@ -101,7 +102,7 @@ events:
     - infra.workflow.task.completed.v1     # exact subjects; a trailing * only for a real prefix subscription
 ```
 
-- be-ops generates the whole block, together with the protocol block of `configSchema` (be-protocol P12.16): `publishes` from the contract file, exactly its subjects (a slot-family member: the family's subjects); `subscribes` from `events.consumes` in the component's `conformance/fixtures.yaml`, every subject it consumes through a durable. Best-effort pokes ([12](12-event-bus.md#best-effort-signals)) are not listed.
+- be-ops generates the whole block, together with the protocol block of `configSchema` (be-protocol P12.16): `publishes` from the contract file, exactly its subjects (a slot-family member: the family's subjects); `subscribes` from `events.consumes` in the component's `conformance/fixtures.yaml`, every subject it consumes through a durable. Best-effort pokes ([12](12-event-bus.md#best-effort-signals)), the entries marked `x-signal: true`, are not listed.
 - A subscription is an exact subject. brickKit's trailing-`*` prefix form is allowed only in `subscribes`, and only for a consumer that really subscribes by prefix; NATS `>` and a `*` in the middle of a name are never written.
 - The gate `events-declaration-scan` compares the block with the contract and the fixtures; the component suite compares it with what the component really publishes and the durables it creates at start ([12](12-event-bus.md#durable-consumers)).
 - Several members of one slot family publishing the same subject (`integration.im.result.v1`) is fine: brickKit matches by name, not by publisher.
@@ -114,7 +115,7 @@ events:
 - **Enough state for state mode:** an event carries what a consumer needs to reach the aggregate's state at that version, not just the name of the change.
 - **Events are system data.** A payload is never shown to a person as it is: a notification built from an event is masked for its recipient or carries only a link, because a field such as a price may be hidden from that recipient ([20-authorization-provider.md](20-authorization-provider.md)).
 - **No secrets, no tokens, as little personal data as the consumers need.**
-- **Size:** up to 64 KiB is normal. The protocol's hard limit is 1 MiB, enforced at publish with a clear error (be-protocol P12.2); the broker's own limit is 8 MB including headers.
+- **Size:** at most 64 KiB (65,536 bytes of serialised JSON). A larger payload MUST be refused at publish: the outbox write fails, as a programming error (`INTERNAL`) (be-protocol P12.2). The broker's own limit (8 MB including headers) is never approached.
 - **Larger than 64 KiB: claim check** ([22-object-storage.md](22-object-storage.md#large-results)). The producer writes the content as an object in its own bucket; the payload carries `{key, sha256, size}` of that object, never the bytes; the producer offers an rpc that returns a short-lived URL for that key. A consumer calls the rpc, downloads, and checks `size` and `sha256`; it never holds the producer's bucket credentials.
 
 ### Evolution

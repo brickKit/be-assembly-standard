@@ -47,6 +47,7 @@ CREATE TABLE besdk_outbox (
     aggregate_version BIGINT      NOT NULL,
     occurred_at       TIMESTAMPTZ NOT NULL,
     traceparent       TEXT        NOT NULL DEFAULT '',
+    tracestate        TEXT        NOT NULL DEFAULT '',  -- sent as the tracestate header when non-empty
     causation_id      TEXT        NOT NULL DEFAULT '',
     hop_count         INT         NOT NULL DEFAULT 0,
     headers           JSONB       NOT NULL DEFAULT '{}', -- other ce-* extensions, such as legalentity
@@ -62,6 +63,7 @@ CREATE TABLE besdk_outbox (
 ```
 
 - The row is inserted in the same transaction as the business change. A pump claims rows atomically, publishes, and marks `PUBLISHED` only after the broker confirmed it stored the message ([12-event-bus.md](12-event-bus.md#port-contract)).
+- **Partitions** are weekly ranges of `created_at`, created ahead by the runtime and named by the general rule for runtime-created range partitions: `<parent>_<ISO week-year>w<WW>` for a week (`besdk_outbox_2026w40`), `<parent>_<YYYY>m<MM>` for a month, `<parent>_<YYYY>` for a year; bounds are `[start, end)` in UTC.
 - **The outbox is the source of truth for replay**; the broker is transport. Rows stay online 14 days after publication; older history is read from the producer's `List` or its published datasets ([12](12-event-bus.md)).
 - All subjects of one `aggregate_type` share one strictly increasing `aggregate_version` ([13-event-contracts.md](13-event-contracts.md)).
 
@@ -93,6 +95,7 @@ RETURNING 1;
 - **State mode (the default):** a handler is written as "bring my projection to the aggregate's state at version v". An older version is skipped. Example: finance receives `cancelled` (v3) before `created` (v2). With nothing booked yet it records "cancelled, not booked"; `created` (v2) is then skipped. The result is right, where a cursor per subject would have booked a receivable for a cancelled order.
 - **Sequence mode** (every change, in order) is reserved and not built ([13-event-contracts.md](13-event-contracts.md)).
 - Two independent projections in one component that both need every version use two `consumer` names.
+- **Where the cursor's `aggregate_type` comes from**: a subscription may declare its aggregate type (an optional field in all three SDKs); when it does not, the runtime takes the message's `ce-aggregatetype` header.
 
 ### Command idempotency (callee)
 

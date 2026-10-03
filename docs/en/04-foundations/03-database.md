@@ -41,15 +41,16 @@ The engine port is "the PostgreSQL wire protocol plus this capability list". The
 | `PG_PASSWORD_FILE` | yes | — | secret, delivered as a file (`mount: file`); the value is filled as `${<REPO>_DB_PASSWORD}` and the variable holds the file's path; read for every new connection ([24](24-config-and-secrets.md#port-contract)) |
 | `PG_OWNER_USER` | yes | none | the owner role: owns the tables in `PG_SCHEMA`, runs migrations and the platform migration; the running service never uses it |
 | `PG_OWNER_PASSWORD_FILE` | yes | — | secret, delivered as a file; the owner's password, read by the migration step only |
-| `PG_SCHEMA` | yes | none | the schema the component owns; the only entry on its `search_path` |
+| `PG_SCHEMA` | yes | none | the schema the component owns; the only entry on its `search_path`. At most 40 characters, so the names the runtime derives from it (such as `besdk_migrations_<PG_SCHEMA>`) stay within PostgreSQL's 63-byte identifier limit |
 | `PG_POOL_MAX` | no | 10 | standalone: the pool's maximum open connections. In a shell: this member's concurrency limit inside the shared pool |
-| `PG_POOL_MIN_IDLE` | no | 2 | idle connections kept open |
 | `PG_CONN_MAX_LIFETIME` | no | 30m | a connection is closed and replaced after this long, so failovers and DNS changes are picked up |
 | `PG_CONN_MAX_IDLE_TIME` | no | 5m | an idle connection is closed after this long |
 | `PG_POOL_ACQUIRE_TIMEOUT` | no | 5s | the longest wait for a connection; capped by the caller's remaining deadline |
 | `PG_MIGRATION_HOST`, `PG_MIGRATION_PORT` | no | `PG_HOST`, `PG_PORT` | where migrations connect; set them when `PG_HOST` points at a pooler. This is brickKit's recommended pattern for a migration that needs another connection: the component declares keys of its own, read only by its migration command |
 
 The optional keys are declared in each component's `configSchema`. A shell has its own `PG_POOL_MAX`: the size of its one physical pool, default the smaller of the sum of its members' `PG_POOL_MAX` and 40.
+
+There is no protocol key for a floor of idle connections (the former `PG_POOL_MIN_IDLE` is retired): that is each runtime's own pool behaviour, documented per SDK (pgxpool in Go, asyncpg's `min_size` in Python, pg-pool in TypeScript). One floor is protocol: while it serves, a runtime keeps at least one session per member open, so its version stays visible to the migrator ([08](08-schema-evolution.md#expand-and-contract)); standalone the pool never drops below one connection, and a shell keeps one idle presence session per member.
 
 A documented limitation: brickKit gives the migration container exactly the service's environment and mounts, so the running service also receives `PG_OWNER_USER` and the owner's password file. brickKit declined migration-only variables (FR06-013) on purpose: every value a migration reads stays visible in the component's `config/` file. The SDK runtime never reads the owner's credentials.
 
@@ -67,14 +68,14 @@ COMMIT;
 
 Nothing is ever set at session level on a pooled connection: a `SET` without `LOCAL` stays on it and the next borrower runs in your schema. The one exception is the dedicated, unpooled migration connection, which logs in as the owner and is closed after use ([08-schema-evolution.md](08-schema-evolution.md#the-migration-entry)). The session time zone is UTC and is never changed ([05-time-and-calendars.md](05-time-and-calendars.md)).
 
-`application_name` is how a member's connections are told apart: inside a shell `usename` is always the shell's login role, so `pg_stat_activity` counts a member by `application_name` (conformance case `CP-DB-03`). The SDK also prefixes every statement of a member with the comment `/* be:<schema> */`, so the asyncpg and pgx statement caches never share a prepared statement between two members whose platform tables have different shapes; the TypeScript `pg` driver keeps unnamed statements.
+`application_name` is how a member's connections are told apart: inside a shell `usename` is always the shell's login role, so `pg_stat_activity` counts a member by `application_name` (conformance case `CP-DB-03`). Outside a transaction a connection carries the session-level `application_name` `<component ID>@<version>` (in a shell's presence session `<member ID>@<member version>`), given as a connection parameter when it connects, not by a later `SET`; the migrator reads it to hold back a contract migration while an old version is still connected ([08](08-schema-evolution.md#expand-and-contract)). The SDK also prefixes every statement of a member with the comment `/* be:<schema> */`, so the asyncpg and pgx statement caches never share a prepared statement between two members whose platform tables have different shapes; the TypeScript `pg` driver keeps unnamed statements.
 
 Component code never issues `SET ROLE` or `SET LOCAL ROLE` itself: only the store does (gate `identity-literal-scan`).
 
 ### What the SDK checks at start
 
-- **Capabilities**: `server_version_num >= 140000` (`>= 160000` in a shell), declarative partitioning, `FOR UPDATE SKIP LOCKED`. A missing one stops the start and names the capability.
-- **Identity**: inside a transaction as `PG_USER`, the role has `USAGE` but not `CREATE` on `PG_SCHEMA`, is not a member of `PG_OWNER_USER`, every table in the schema is owned by `PG_OWNER_USER`, and `PG_USER` holds `SELECT, INSERT, UPDATE, DELETE` on each. A failure is logged at ERROR, exported as `be_db_identity_ok = 0` and makes `/readyz` answer `503`; it does not stop the module, and it is never part of `/healthz`.
+- **Capabilities**: `server_version_num >= 140000` (`>= 160000` in a shell), declarative partitioning, `FOR UPDATE SKIP LOCKED`. The probe reads only `current_setting('server_version_num')::int`: declarative partitioning (PostgreSQL 10) and `SKIP LOCKED` (9.5) are implied by 14 or later. A missing one stops the start and names the capability.
+- **Identity**: the listed catalogue queries, in one transaction after `SET LOCAL ROLE` to `PG_USER`: the role has `USAGE` but not `CREATE` on `PG_SCHEMA`, is not a member of `PG_OWNER_USER`, every table in the schema is owned by `PG_OWNER_USER`, and `PG_USER` holds `SELECT, INSERT, UPDATE, DELETE` on each. A failure is logged at ERROR, exported as `be_db_identity_ok = 0` and makes `/readyz` answer `503`; it does not stop the module, and it is never part of `/healthz`.
 - **Shell**: when a member's configuration names a `PG_HOST`, `PG_PORT` or `PG_DATABASE` different from the shell's, the shell refuses to start and names the member and the key. Otherwise the member would silently use the shell's database.
 
 ### Capability list
@@ -90,7 +91,7 @@ Component code never issues `SET ROLE` or `SET LOCAL ROLE` itself: only the stor
 | `INSERT … ON CONFLICT … RETURNING` | idempotency claims, upserts |
 | `uuid`, `NUMERIC`, `timestamptz`, `date`, `JSONB` (opaque storage only) | column types |
 | `SECURITY DEFINER` functions with `SET search_path FROM CURRENT` | the DDL the runtime role may perform at run time |
-| SQLSTATE 23505, 40001, 40P01, 55P03, 57014, 25P04, 53300 | error classification in the SDK |
+| SQLSTATE 23505, 40001, 40P01, 55P03, 57014, 25P04, 53300, class 08, 57P01–57P03 | error classification in the SDK |
 
 **Optional capabilities.** `pg_trgm` and `pg_bigm` are not required extensions: the SDK probes them at start and uses the best one present for search indexes; without either, search is correct but slower ([25-search.md](25-search.md)). An engine that lacks them still qualifies.
 
@@ -120,6 +121,7 @@ They apply to the role that logs in. After `SET ROLE` PostgreSQL does not apply 
 - One pool per process. In a shell the pool belongs to the shell, and each member reaches it through a limit of its own `PG_POOL_MAX` concurrent connections.
 - A member that has used its whole budget waits up to `PG_POOL_ACQUIRE_TIMEOUT` (or the caller's remaining deadline, if shorter) and then fails with `RESOURCE_EXHAUSTED` and the reason `DB_POOL_EXHAUSTED` ([15-user-api-and-errors.md](15-user-api-and-errors.md)), confined to that member. The other members are unaffected. A member's connections are counted by `application_name`.
 - When the server refuses a new connection with SQLSTATE `53300` (too many connections), the SDK fails with `UNAVAILABLE` / `DB_TOO_MANY_CONNECTIONS`, without retrying.
+- When the database cannot be reached (cannot connect, connection lost, SQLSTATE class `08`, `57P01`, `57P02`, `57P03`), the request fails with `UNAVAILABLE` / `DEPENDENCY_UNAVAILABLE`, `metadata.dependency = db` ([15](15-user-api-and-errors.md#the-reason-catalogue)).
 - One task holds at most one connection at a time; a nested transaction is refused ([10-local-transactions.md](10-local-transactions.md)). With bounded pools, holding two connections at once is how a pool starves itself.
 - A connection budget gate in `be-ops` adds up `PG_POOL_MAX` for every process in the deploy file plus reserves for migrations, Casdoor and Keycloak, and fails when the total exceeds `max_connections - superuser_reserved_connections`.
 

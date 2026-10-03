@@ -7,6 +7,7 @@
 ## Decision
 
 - **One customer, one deployment.** The project is deployed privately, one installation per customer. There is no multi-customer SaaS mode in which several customers share one database.
+- **One customer, one fork of the project repository.** brickKit has no multi-customer concept: each customer's fork holds its own `brickkit.yaml` (its lock file, so versions move customer by customer), `config/`, secrets and deploy files; shared changes are merged from the upstream repository with Git ([07-tenancy.md](../../04-foundations/07-tenancy.md#operating-many-tenants)).
 - **The tenant is reserved on the wire, not in the tables.** Tokens carry `tenant_id`, and `aud` is the deployment's `TENANT_ID` ([0203](../02-permissions/0203-jwt-carries-identity-only.md)); contracts may carry a tenant field. No table has a `tenant_id` column.
 - **Several companies of one customer are legal entities**, a dimension inside the deployment, owned by `mdm/org`:
   - every transactional document carries `legal_entity_id`;

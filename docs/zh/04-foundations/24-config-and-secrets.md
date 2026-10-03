@@ -20,7 +20,7 @@
 - **密钥的值从不放进环境变量。** 每个声明了 `secret: true` 的键，不论是协议键还是组件自己的键，都同时声明 `mount: file`、键名以 `_FILE` 结尾，其他键都不以 `_FILE` 结尾（be-protocol P2.12）（`PG_PASSWORD_FILE`、`PG_OWNER_PASSWORD_FILE`、`S3_SECRET_ACCESS_KEY_FILE`、`APP_TOKEN_SIGNING_KEY_FILE`）：brickKit 把值写进一个挂进容器的文件，变量里放的是这个文件的路径。
 - **SDK 在用的那一刻读密钥文件，文件变了就重读**（比较修改时间和大小，两次比较最多相隔 30 s）。数据库连接池每建一条新连接都读一次口令，所以口令不重启就能轮换；签名私钥靠 JWKS 里新旧两把钥重叠来轮换。
 - **值用 brickKit 的形式写**：字面值、`$var:NAME`、`${NAME}`、`file://path`、`$endpoint:<组件 ID>[:<端口>][/<路径>]`、`{existingSecret: name, key: key}`。不是声明依赖的另一个组件（槽位族成员）的地址，一律写 `$endpoint:`，从不手写（[0107](../02-decisions/01-architecture/0107-authz-and-iam-addresses-are-shared-vars.md)）。
-- **每个 `configSchema` 里的协议键那一段是生成的。** be-ops 按 `be-protocol` 的 `schemas/config-keys.yaml`，把组件的 profile 需要的协议键连同目录里的类型、默认值、`secret` 和 `mount` 标记写进去；这一段不是最新时门禁失败。brickKit 不做 `configSchema` 片段引用（FR06-014）：已发布的 `component.yaml` 必须自己说完自己，所以拷贝在发版前由生成器做，而不是读取时去引用。
+- **每个 `configSchema` 里的协议键那一段是生成的。** be-ops 按 `be-protocol` 的 `schemas/config-keys.yaml`，把组件的 profile 需要的协议键连同目录里的类型、默认值、`secret` 和 `mount` 标记写进去；这一段不是最新时门禁失败。组件只为自己用到的、由配置选中的 profile 各手写一个触发键：`db` 用 `PG_SCHEMA` 或 `PG_HOST`，`blob` 用 `S3_BUCKET` 或 `S3_URL`；其余部分由 be-ops 生成（[02](02-languages-and-component-protocol.md#黑盒套件)）。brickKit 不做 `configSchema` 片段引用（FR06-014）：已发布的 `component.yaml` 必须自己说完自己，所以拷贝在发版前由生成器做，而不是读取时去引用。
 - **解析是严格的**：类型不对的值让启动失败并点名键；不静默回退；模块绝不因配置而 panic。外壳收集所有成员的配置错误，在开始服务前一次报出。
 - **Kubernetes**：External Secrets Operator 加 `existingSecret`，和别的密钥一样挂成文件；零代码。
 - **开发机**：一份用 SOPS 加密、提交进 Git 的密钥文件，本地解密成 `.env`，取代单独一份明文 `.env`。
@@ -33,7 +33,7 @@
 
 - 键就是环境变量名，在 `configSchema` 里声明类型、是否必填、默认值、是否 `secret: true`，密钥还要声明 `mount: file`（[04-configuration.md](../01-conventions/04-configuration.md#键名)）。
 - 组件代码只从 SDK 交给它的运行时读配置，绝不读进程环境（[02-backend.md](../01-conventions/02-backend.md#合并安全)）。
-- 外壳里，brickKit 把所有成员的配置打成一个 JSON 值（`BRICKKIT_SERVED_MEMBERS_CONFIG`）传进来；启动器只把每个成员自己的键交给它（[27-shells.md](27-shells.md)）。成员的 `mount: file` 项不进 JSON：JSON 里是路径，文件挂进外壳的容器，路径和成员单跑时一模一样。
+- 外壳里，brickKit 把所有成员的配置打成一个 JSON 值（`BRICKKIT_SERVED_MEMBERS_CONFIG`）传进来；启动器只把每个成员自己的键交给它（[27-shells.md](27-shells.md)）。每个协议键在 `schemas/config-keys.yaml` 里写明外壳是对整个进程读一次（`shell: process`，从外壳自己的配置读），还是按成员读（`shell: member`）。成员的 `mount: file` 项不进 JSON：JSON 里是路径，文件挂进外壳的容器，路径和成员单跑时一模一样。
 
 **容易弄错的协议键。** 不是完整列表；每个键名和默认值以 `be-protocol` 的 `schemas/config-keys.yaml` 为准。
 
@@ -44,10 +44,11 @@
 | `PG_MIGRATION_HOST`、`PG_MIGRATION_PORT` | `PG_HOST`、`PG_PORT` | `PG_HOST` 是 transaction 模式的 pooler 时，迁移改连这里，直连 PostgreSQL。迁移需要另一条连接时，这正是 brickKit 推荐的做法：由组件声明自己的键（[08-schema-evolution.md](08-schema-evolution.md#迁移入口)） |
 | `AUTHZ_URL`、`AUTHZ_GRPC_URL`、`IAM_URL`、`IAM_GRPC_URL` | — | 已安装的授权 / 身份成员的主端口和名为 `grpc` 的端口，在 `config/vars.yaml` 里以 `$endpoint:` 引用写一次（`$endpoint:infra/authz:grpc`），从不是依赖边，也从不手写地址。值是 `http://host:port`，末尾不带 `/`；SDK 把 `*_GRPC_URL` 当 `host:port` 拨号（[0107](../02-decisions/01-architecture/0107-authz-and-iam-addresses-are-shared-vars.md)） |
 | `S3_PUBLIC_URL` | `S3_URL` | 浏览器使用的地址；预签名 URL 按它签名（[22-object-storage.md](22-object-storage.md)） |
-| `DEFAULT_LOCALE` | `zh-CN` | 部署的默认语言（BCP 47），共享：错误体的 `title` 和 `detail`，以及服务端文本的回退语言（[26-i18n-data.md](26-i18n-data.md)） |
+| `DEFAULT_LOCALE` | `zh-CN` | 部署的默认语言（BCP 47），共享：错误体的 `title` 和 `detail`，以及服务端文本的回退语言（[26-i18n-data.md](26-i18n-data.md)）。只用目录里带的语言：主语言子标签是 `zh` 或 `en` 的值选中该语言；其他任何值回退到 `en`，启动时记一条 WARN（不退出） |
+| `DEPLOY_ENV` | `dev` | 部署的环境名（`dev`、`test`、`staging`、`prod`……），共享；作为资源属性 `deployment.environment.name` 导出（[23-observability.md](23-observability.md)） |
 | `BOOTSTRAP_ADMIN_LOGIN` | — | 第一位管理员在 IdP 的登录名或电子邮箱，共享；在此人第一次登录时绑定到平台 `sub`，因为平台 `sub` 事先无法知道。不存在 `BOOTSTRAP_ADMIN_SUB` |
-| `EVENTS_MAX_DELIVER` | `8` | SDK 一侧的死信阈值：消息的 `NumDelivered` 超过它时，SDK 写入死信消息并终止原消息；服务端的 `MaxDeliver` 是 `-1`（[12-event-bus.md](12-event-bus.md)） |
-| `EVENTS_BACKOFF` | `1s,10s,1m,5m,15m,30m,1h` | SDK 的 `NakWithDelay` 延迟序列；消费者没有服务端 `BackOff` |
+| `EVENTS_MAX_DELIVER` | 无 | SDK 一侧的死信阈值。目录里没有默认值：键不存在时用订阅自己的值，订阅也没有就是 `8`；键设置了（在配置里出现）就压过这两者：消息的 `NumDelivered` 超过它时，SDK 写入死信消息并终止原消息；服务端的 `MaxDeliver` 是 `-1`（[12-event-bus.md](12-event-bus.md)） |
+| `EVENTS_BACKOFF` | 无 | SDK 的 `NakWithDelay` 延迟序列；消费者没有服务端 `BackOff`。优先级与 `EVENTS_MAX_DELIVER` 相同：设置了就用键，否则用订阅自己的序列，再否则用 `1s,10s,1m,5m,15m,30m,1h` |
 | `SHUTDOWN_GRACE` | `25s` | 收到 `SIGTERM` 后留给在途工作的时间；比平台的停机宽限期至少小 5 s，后者由组件在 `component.yaml` 的 `deployment.stopGracePeriodSeconds` 里声明（默认 `30`）（[27-shells.md](27-shells.md#端口契约)） |
 
 **值形式**，写在 `config/vars.yaml`、`config/<scope>-<name>.yaml` 或部署文件的 `vars:` 里：
@@ -76,8 +77,10 @@
 
 **解析规则**，每个 SDK 都一样：
 
-- 整数、布尔、时长解析失败时，启动失败并点名键；有值但非法时绝不回退到默认值。
-- 缺必填键时启动失败并点名键；`_FILE` 键的文件在启动时不存在或读不了，也一样。
+- 整数、布尔、时长解析失败时，启动失败并点名键（退出码 78）；有值但非法时绝不回退到默认值。布尔值只能是 `true`、`false`、`1` 或 `0`，区分大小写。
+- **空值一律算没设置，任何类型都是，字符串也一样**：用默认值，或者报必填键缺失。
+- 缺必填键时启动失败并点名键（退出码 78）；`_FILE` 键的文件在启动时不存在或读不了，也一样。声明为 `one_of` 的一组键（`EVENT_BUS_URL`、`NATS_URL`）至少要设置其中一个。
+- 环境里没有 `COMPONENT_ID`，说明进程不是平台启动的：立即以退出码 64 退出，和遇到未知参数一样。`COMPONENT_ID` 与镜像自己的组件 ID 不同，属于配置错误，退出码 78。
 - 外壳里收集所有成员的错误一起打印，外壳不启动；模块返回错误，绝不退出进程。
 
 **运行期的密钥文件。**

@@ -32,7 +32,7 @@
 | 命令 | 镜像的 `migration.command`；官方 SDK 是同一个二进制带子命令，`[./component, migrate, up]` |
 | 连接 | 以属主 `PG_OWNER_USER` 登录（密码从 `PG_OWNER_PASSWORD_FILE` 指向的文件读），直连 PostgreSQL：设了 `PG_MIGRATION_HOST` / `PG_MIGRATION_PORT` 就用它们，否则退回 `PG_HOST` / `PG_PORT`，从而绕过 transaction 模式的连接池代理（[03](03-database.md#配置键)）。这是组件自己的可选键，也是 brickKit 推荐的做法，用来代替只给迁移的变量（FR06-013，不做）。运行期角色 `PG_USER` 只有 DML，执行不了 DDL（[03](03-database.md#角色)） |
 | 会话参数 | `lock_timeout = 5s`、`statement_timeout = 15min`。迁移连接是一个专用、不进池的会话，用完即关：会话级设置、工具的会话级 `search_path` 和它的会话级 advisory 锁都允许用在它上面，这是"不在会话级设置任何东西"唯一的例外（[03](03-database.md#每个事务做什么)）。迁移锁按 schema 区分：两个组件同时迁移同一个库，都能成功 |
-| 等锁 | 拿锁超时就退避重试三次；仍失败时，点名是哪条迁移、等的是什么锁，以及阻塞者的 pid 和它 SQL 的前 200 个字符 |
+| 等锁 | 拿锁超时就退避重试三次；仍失败时，点名是哪条迁移、等的是什么锁，并记录各阻塞后端的 pid 和等待事件。它们的 SQL 文本（前 200 个字符）只在可见时才记：`pg_stat_activity` 会隐藏其他角色的查询文本，而 owner 有意不被授予 `pg_read_all_stats` |
 | 状态表 | 在组件的 schema 里；表名由工具决定（`schema_migrations_<PG_SCHEMA>`、`_yoyo_*` 那几张表、`pgmigrations_<PG_SCHEMA>`，be-protocol P11 列出）。官方 SDK 的状态表不受下文 `lifecycle.yaml` 声明规则的约束；不是官方 SDK 的运行时，把它所用工具的状态表声明为 `class: platform` |
 | 库比镜像新 | 迁移入口记一条警告、以 0 退出，这样 brickKit 的多版本串联（每次 `up` 先跑低版本、再跑高版本）能工作；**服务**入口拒绝启动 |
 | 退出码 | 成功为 0，任何失败为非 0 |
@@ -50,7 +50,7 @@
 
 SDK 在组件的迁移之后立即运行，在同一个迁移步骤里、以属主身份，按下面的顺序，每一步都幂等：
 
-1. 按协议 `ddl/` 里的参考 DDL 建或升级 `besdk_*` 表和平台函数（运行期角色借以维护分区的那些 `SECURITY DEFINER` 函数，[09](09-data-lifecycle.md)），把级别记进 `besdk_platform_version`（[02](02-languages-and-component-protocol.md)）；
+1. 按协议 `ddl/` 里的参考 DDL 建或升级 `besdk_*` 表和平台函数（运行期角色借以维护分区的那些 `SECURITY DEFINER` 函数，[09](09-data-lifecycle.md)；授权投影表 `besdk_authz_acl` 和 `besdk_authz_cursor`，即 `ddl/07-authz-projection.sql`，只建在 `assembly.yaml` 里声明了 `resources` 的组件的 schema 中，一致性用例 `CP-DB-04` 也恰好在这时才要求它们存在），把级别记进 `besdk_platform_version`（[02](02-languages-and-component-protocol.md)）；
 2. 按 `lifecycle.yaml` 建出当前分区窗口，组件装好的当天就能写入；
 3. 确保事件流和本组件的 durable 消费者存在（[12](12-event-bus.md)）。
 
@@ -80,7 +80,10 @@ ALTER TABLE sales_orders DROP COLUMN legacy_note;
 CREATE INDEX CONCURRENTLY sales_orders_customer_idx ON sales_orders (customer_id);
 ```
 
-**规则**：只有当不再有任何不高于 `after` 的版本对着这个 schema 运行时，contract 迁移才能发。计划中的 `contract-migration-scan` 读 `brickkit.yaml`（并存的版本列在那里），只要其中有一个不高于 `after`，就报错。
+**规则**：`after=<version>` 指的是仍在使用这一步要删掉的东西的最后一个版本；只有当这个版本及更旧版本的会话都不再连着时，这一步才执行。有两处把关：
+
+- **运行期，由迁移器把关**（brickKit 没有为此提供钩子，它拒绝了这个功能请求）。组件的每个池化连接都带会话级的 `application_name` `<组件 ID>@<版本>`，在连接时设置；每个事务里的 `SET LOCAL application_name = '<成员 ID>'`（[03](03-database.md#每个事务做什么)）保持不变。运行时在服务期间每个成员至少保持一个会话开着，所以它的版本始终可见：单跑时连接池从不降到一个连接以下；在外壳里，每个成员一个空闲的在场会话，名为 `<成员 ID>@<成员版本>`。遇到首行是 `-- be:contract after=<version>` 的文件之前，迁移器查 `pg_stat_activity`（其中的 `application_name` 对每个角色都可见）。只要还有别的会话名为 `<同一组件 ID>@<v>` 且 `v` 不高于 `<version>`（按 semver 比较）连着，它就停在这个文件之前：之前的文件保持已应用，记一条 ERROR，点名这个文件、阻塞的版本及其数量，以退出码 1 退出。旧版本消失之后的下一次 `up` 会应用它。
+- **部署之前，由门禁把关**：计划中的 `contract-migration-scan` 读 `brickkit.yaml`（并存的版本列在那里），只要其中有一个不高于 `after`，就报错。
 
 ### 并存版本
 

@@ -32,7 +32,7 @@ How a component's tables change over time: the migration tools, the guards aroun
 | Command | the image's `migration.command`; for the official SDKs one binary with a subcommand, `[./component, migrate, up]` |
 | Connection | logs in as the owner `PG_OWNER_USER` (password read from the file named by `PG_OWNER_PASSWORD_FILE`), straight to PostgreSQL: `PG_MIGRATION_HOST` / `PG_MIGRATION_PORT` when set, falling back to `PG_HOST` / `PG_PORT`, so a transaction-mode pooler is bypassed ([03](03-database.md#configuration-keys)). These are the component's own optional keys, the pattern brickKit recommends instead of migration-only variables (FR06-013, declined). The runtime role `PG_USER` has DML only and cannot run DDL ([03](03-database.md#roles)) |
 | Session settings | `lock_timeout = 5s`, `statement_timeout = 15min`. The migration connection is a dedicated, unpooled session, closed after use: session-level settings, the tool's session-level `search_path` and its session-level advisory lock are allowed on it, the one exception to "nothing at session level" ([03](03-database.md#what-every-transaction-does)). The migration lock is per schema: two components migrating one database at once both succeed |
-| Lock wait | on a lock timeout, back off and retry three times; then fail naming the migration, the lock waited for, and the blocker's pid and the first 200 characters of its SQL |
+| Lock wait | on a lock timeout, back off and retry three times; then fail naming the migration and the lock waited for, and log the blocking backends' pids and wait events. Their SQL text (first 200 characters) is logged only when visible: `pg_stat_activity` hides another role's query text, and the owner is deliberately not granted `pg_read_all_stats` |
 | State table | in the component's schema; its name is the tool's (`schema_migrations_<PG_SCHEMA>`, the `_yoyo_*` tables, `pgmigrations_<PG_SCHEMA>`, listed in be-protocol P11). The official SDKs' state tables are exempt from the `lifecycle.yaml` declaration below; a runtime that is not an official SDK declares its tool's state tables as `class: platform` |
 | Database newer than the image | the migration entry logs a warning and exits 0, so brickKit's multi-version chain (lower versions first, then higher, on every `up`) works; the **service** entry refuses to start |
 | Exit code | 0 on success, non-zero on any failure |
@@ -50,7 +50,7 @@ How a component's tables change over time: the migration tools, the guards aroun
 
 Run by the SDK right after the component's migrations, in the same migration step and as the owner, in this order, each step idempotent:
 
-1. create or upgrade the `besdk_*` tables and the platform functions (the `SECURITY DEFINER` functions through which the runtime role maintains partitions, [09](09-data-lifecycle.md)) to the reference DDL in the protocol's `ddl/`, recording the level in `besdk_platform_version` ([02](02-languages-and-component-protocol.md));
+1. create or upgrade the `besdk_*` tables and the platform functions (the authorization projection tables `besdk_authz_acl` and `besdk_authz_cursor`, `ddl/07-authz-projection.sql`, only in the schema of a component that declares `resources` in `assembly.yaml`; conformance case `CP-DB-04` expects them exactly then) (the `SECURITY DEFINER` functions through which the runtime role maintains partitions, [09](09-data-lifecycle.md)) to the reference DDL in the protocol's `ddl/`, recording the level in `besdk_platform_version` ([02](02-languages-and-component-protocol.md));
 2. create the current partition window from `lifecycle.yaml`, so the component can write on the day it is installed;
 3. ensure the event streams and this component's durable consumers exist ([12](12-event-bus.md)).
 
@@ -80,7 +80,10 @@ ALTER TABLE sales_orders DROP COLUMN legacy_note;
 CREATE INDEX CONCURRENTLY sales_orders_customer_idx ON sales_orders (customer_id);
 ```
 
-**The rule**: a contract migration ships only when no version at or below `after` still runs against the schema. The planned `contract-migration-scan` reads `brickkit.yaml`, where coexisting versions are listed, and fails while any of them is at or below `after`.
+**The rule**: `after=<version>` names the last version that still uses what the step removes; the step runs only once no session of that version or older is connected. It is enforced twice:
+
+- **At run time, by the migrator** (brickKit has no hook for it; it declined that feature request). Every pooled connection of a component carries the session-level `application_name` `<component ID>@<version>`, set at connect; the per-transaction `SET LOCAL application_name = '<member ID>'` ([03](03-database.md#what-every-transaction-does)) stays as it is. A runtime keeps at least one session per member open while it serves, so its version is always visible: standalone, the pool never drops below one connection; in a shell, one idle presence session per member, named `<member ID>@<member version>`. Before a file whose first line is `-- be:contract after=<version>`, the migrator reads `pg_stat_activity` (its `application_name` is visible to every role). While any other session named `<same component ID>@<v>` with `v` at or below `<version>` (semver order) is connected, it stops before that file: the files before it stay applied, it logs one ERROR naming the file, the blocking versions and their count, and exits 1. The next `up` after the old version is gone applies it.
+- **Before deployment, by a gate**: the planned `contract-migration-scan` reads `brickkit.yaml`, where coexisting versions are listed, and fails while any of them is at or below `after`.
 
 ### Coexisting versions
 

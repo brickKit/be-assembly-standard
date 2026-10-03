@@ -53,13 +53,14 @@ SET LOCAL transaction_timeout = '<remaining deadline>';  -- 仅 PostgreSQL 17 �
 | `40001` | 序列化失败 | 回滚，等待 `10 ms · 2^n` ± 抖动，重跑事务体；最多 3 次尝试 | 最后一次尝试之后：`ABORTED` / `TX_CONFLICT` |
 | `40P01` | 检测到死锁 | 同 `40001` | 同上 |
 | `55P03` | 拿不到锁（`lock_timeout`） | 不重试 | `ABORTED` / `LOCK_TIMEOUT` |
-| `57014` | 语句被取消（`statement_timeout`） | 不重试 | `DEADLINE_EXCEEDED` / `STATEMENT_TIMEOUT` |
+| `57014` | 语句被取消（`statement_timeout`） | 不重试 | `DEADLINE_EXCEEDED` / `STATEMENT_TIMEOUT`；取消来自调用方取消了请求时：`CANCELLED` / `REQUEST_CANCELLED` |
 | `25P04` | 事务超时（PostgreSQL 17+） | 不重试 | `DEADLINE_EXCEEDED` / `STATEMENT_TIMEOUT` |
 | `25P03` | 事务内空闲过久 | 服务端关闭了连接 | `INTERNAL`：这是组件的 bug |
 | `53300` | 连接数过多 | 不重试 | `UNAVAILABLE` / `DB_TOO_MANY_CONNECTIONS` |
+| `08` 类、`57P01`、`57P02`、`57P03` | 连不上、连接断开、服务器正在关闭或尚未接受连接 | 不重试 | `UNAVAILABLE` / `DEPENDENCY_UNAVAILABLE`，`metadata.dependency = db` |
 | `23505` | 唯一约束冲突 | 不重试 | 组件把它映射成自己的 reason，通常是 `ALREADY_EXISTS` |
 
-重试是在一个新事务里从头重跑事务体。这样做之所以安全，只是因为事务体除了这个事务什么都不碰，而这一点由下面两条规则保证。调用方想重试 `LOCK_TIMEOUT`，要在更上一层用同一个幂等键去重试。重试次数计入 `be_tx_retries_total{component,reason}`。
+重试是在一个新事务里从头重跑事务体。这样做之所以安全，只是因为事务体除了这个事务什么都不碰，而这一点由下面两条规则保证。调用方想重试 `LOCK_TIMEOUT`，要在更上一层用同一个幂等键去重试。重试次数计入 `be_tx_retries_total{component,sqlstate}`（`sqlstate` 取 `40001` 或 `40P01`）。
 
 **事务里不做网络调用。** 一个工作单元持有打开的事务时，运行时提供的每一种出站调用（gRPC、面向用户的 HTTP、直接向总线发布）都拒绝发起，并以 `INTERNAL` / `NETWORK_IN_TX` 失败：这是编程错误，在开发和测试中暴露出来（测试构建里直接让测试中止）。出口只有两个：
 

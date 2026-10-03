@@ -154,9 +154,9 @@ DATA_LIFECYCLE: |
 
 ### 分区窗口与平台表
 
-- 边界锚定 UTC（周从周一 00:00 开始，月从 1 日开始）；命名 `<表>_YYYY_MM_DD`；判断是否存在时从目录读边界；部分重叠就跳过并警告。
+- 边界锚定 UTC（周从周一 00:00 开始，月从 1 日开始）；边界是 `[start, end)`；周粒度命名 `<表>_<ISO 周年>w<WW>`（`besdk_outbox_2026w40`），月粒度 `<表>_<YYYY>m<MM>`，年粒度 `<表>_<YYYY>`；判断是否存在时从目录读边界；部分重叠就跳过并警告。
 - erp/finance 按会计期间的 list 分区，由它的"开会计年度"命令经 SDK 建出，绝不靠每年一份迁移（[05](05-time-and-calendars.md)）。
-- 平台表的保留：`besdk_outbox` 按周分区，全部行发布后 14 天删除分区；`besdk_event_cursor` 和 `besdk_idempotency` 删除 30 天以前的行；`besdk_lifecycle_log` 永久保存。
+- 平台表的保留：`besdk_outbox` 按周分区，全部行发布后 14 天删除分区；`besdk_event_cursor` 和 `besdk_idempotency` 删除 30 天以前的行；`besdk_job_queue` 里状态为 `done` 的行 7 天后删除；`besdk_job_slot` 的行 30 天后删除（[19](19-background-jobs.md)）；`besdk_lifecycle_log` 永久保存。
 - 生命周期的表：`besdk_lifecycle_units`（单元、边界、状态、行数、最小和最大 id、单元摘要与链摘要、清单、各时间点、阻塞原因）、`besdk_lifecycle_log`（只追加，已封存）、`besdk_holds`、`besdk_erasures`、`besdk_exports`；参考 DDL 在 `be-protocol` 里。
 
 ### 端口与适配器

@@ -100,7 +100,7 @@ nats.js 3.4.0:           T3 consumers.add again, MaxDeliver 8->9: ERR JetStreamA
 建议改 P12.5、P12.7、P12.9（三门 SDK 和 busconf 一致）：
 
 1. **consumer 上不设 BackOff。** `AckWait` 固定 30 s（就是 handler 的真实期限，P9 "AckWait − 5 s" 才成立）。`EVENTS_BACKOFF` 改为 SDK 侧的 Nak 延迟表：第 n 次投递失败 → `NakWithDelay(EVENTS_BACKOFF[min(n-1, len-1)])`。三个客户端都有这个 API（Go `NakWithDelay`、Python `nak(delay=)`、JS `nak(millis)`）。超时或崩溃造成的重投固定隔 AckWait（30 s），不再走退避表，这可以接受。
-2. **服务端 `MaxDeliver = -1`，上限由 SDK 判。** 投递到达时 `NumDelivered > EVENTS_MAX_DELIVER`，就不跑 handler，直接写 DLQ（`Nats-Msg-Id = dlq:<durable>:<stream_seq>`，多副本或外壳里重复写会被去重）然后 `Term`。handler 在最后一次投递里失败，也是写 DLQ + `Term`，**不再 Nak**。这样 DLQ 覆盖"最后一次投递时进程崩溃"，不需要订阅 advisory。
+2. **服务端 `MaxDeliver = -1`，上限由 SDK 判。** 投递到达时 `NumDelivered > EVENTS_MAX_DELIVER`，就不跑 handler，直接写 DLQ（`Nats-Msg-Id = dlq:<durable>:<stream_seq>`，多副本或外壳里重复写会被去重）然后 `Term`。handler 在最后一次允许的投递（`NumDelivered = EVENTS_MAX_DELIVER`）里失败，照常 Nak（带退避延迟）；消息下一次到达时 `NumDelivered > 上限`，才写 DLQ + `Term`。这样 DLQ 也覆盖"最后一次投递时进程崩溃"，不需要订阅 advisory。（2026-10-03 更正：本复现最初建议"最后一次失败直接写 DLQ、不再 Nak"；stage B 裁决以 be-protocol P12.7 和 `envelope` 向量为准，即 d = 上限时 Nak、d > 上限时进 DLQ，三门 SDK 一致。）
 3. 有了 1 和 2，**服务端 durable 上就不再有任何部署层面要调的参数**（AckWait 30 s、MaxAckPending 256、MaxDeliver -1、DeliverAll、InactiveThreshold 30 天都是协议常量）。P12.4/P12.5 的"没有就建，有就不碰"可以照字面执行，`EVENTS_MAX_DELIVER` / `EVENTS_BACKOFF` 改了立刻生效，不需要更新 consumer。SDK 必须自己实现"仅创建"：Go/JS 用 create 动作，Python 先 `consumer_info`，不存在才 `add_consumer`，**不能直接调 nats-py 的 `add_consumer`**（它会改掉已有 durable 的配置）。读回的配置与协议常量不一致时记 WARN，不覆盖。
 4. **P12.9 不改文字**（InProgress 每 AckWait/3），但它只有在第 1 条落地后才成立；compconf events-sub 应加一条：handler 耗时 > AckWait/2 且持续发 InProgress → 只执行一次。
 5. compconf 的加速值改为 `EVENTS_BACKOFF=200ms,500ms,1s`、`EVENTS_MAX_DELIVER=3`，语义不变；它们不再受 `MaxDeliver ≥ len(BackOff)` 约束。

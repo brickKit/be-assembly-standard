@@ -10,8 +10,8 @@
 - **Delivery is at least once.** Effects in the consumer's database are effectively once because its cursor advances in the same transaction as its write ([0505](0505-cloudevents-envelope-and-aggregate-cursor.md)); a handler with an external side effect is idempotent on a business key. Exactly-once is not promised.
 - **The producer's outbox is the source of truth for replay**, kept 14 days after publishing; the broker's retention is a transport buffer. Older history is backfilled through the producer's `List`, not replayed as events.
 - **One stream per first subject segment** (`BE_ERP`, `BE_MDM`, …, `BE_SALES` and `BE_FINANCE` for the older subjects), created by whoever needs it first, "create if missing, never touch if present", in the migration step and again at start. Defaults: 7 days, 1 GiB, discard old, a 10-minute duplicate window; dead letters in `BE_DLQ` for 30 days.
-- **One durable per (component, subject)**, with the same name standalone, in a shell and on every replica. A new durable starts with everything still in the stream (`DeliverAll`). Acknowledge after commit; nak with backoff on error; after 8 deliveries, or on a permanent error, the message goes to the dead letters.
-- **Best-effort signals** (the authz poke) travel on core NATS: may be lost, never persisted.
+- **One durable per (component, subject)**, with the same name standalone, in a shell and on every replica. A new durable starts with everything still in the stream (`DeliverAll`). Acknowledge after commit; nak with backoff on error, the last allowed delivery included; a message received again after its last allowed delivery (8 by default, `EVENTS_MAX_DELIVER` or the subscription's own value) goes to the dead letters before the handler runs, and so does one with a permanent error.
+- **Best-effort signals** (the authz poke), marked `x-signal: true` in the events contract, travel on core NATS: may be lost, never persisted, no outbox row and no durable.
 
 ## Why
 

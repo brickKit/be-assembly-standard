@@ -65,7 +65,18 @@
 | 看得到，调用方也持有这个操作的键，但这条记录不在这个键的范围内 | — | 403 `OUT_OF_SCOPE` |
 | 请求参数本身就是一个维度取值，且不在调用方的范围内（`warehouse_id=7`） | 403 `OUT_OF_SCOPE` | 403 `OUT_OF_SCOPE` |
 | 看得到也允许，但状态不允许 | — | 400 `FAILED_PRECONDITION`，带组件自己的 reason（`ORDER_NOT_DRAFT`） |
-| 权限 bundle 还没加载 | 503 `AUTHZ_NOT_READY` | 503 |
+| 权限 bundle 还没加载，且路由不是 Public（Authenticated 路由也算） | 503 `AUTHZ_NOT_READY` | 503 |
+
+**检查的顺序。** 路由守卫按固定顺序判定，同一个请求永远得到同一个回答：
+
+1. Public 路由直接放行；
+2. 校验令牌（格式、算法、密钥与签名、各 claim 的类型、`iss`、`aud`、`typ`、`sub`、`exp`/`nbf`/`iat`、`jti`）：令牌缺失或无效回答 401 `TOKEN_INVALID`，bundle 还没加载时也是这样；
+3. 还没有加载任何 bundle：对每一个非 Public 路由回答 503 `AUTHZ_NOT_READY`；
+4. bundle 里的令牌检查，按授权契约规定的顺序：令牌签发早于用户角色变更，或者带着一个已撤销的委托授予，回答 401 `TOKEN_STALE`；然后，委托令牌需要提供方具备 `delegation` 能力，参与者链里有 agent 需要 `agents`，一个用户代另一个用户操作（模拟登录）需要 `impersonation`，否则回答 401 `UNSUPPORTED_DELEGATION`（[21](21-identity-provider.md)、[0210](../02-decisions/02-permissions/0210-delegation-and-impersonation.md)）。所以过期判定先于委托判定；
+5. Authenticated 路由放行；
+6. 路由的权限键（叠加各层上限之后）：缺少则 403 `MISSING_PERMISSION`。
+
+有一种回答可以早于以上全部：请求体超过路由的上限时，可以在守卫运行之前、也就是认证之前，以 413 `BODY_TOO_LARGE` 拒绝；这时它的访问日志行不带 `sub` 和 `perm`。
 
 ### 错误体
 
@@ -100,7 +111,10 @@
 | `request_id`、`trace_id` | 总是有 |
 
 - **`INTERNAL`、`UNKNOWN` 和 `DATA_LOSS`** 一律回答 `reason: INTERNAL`、`domain: be`、一条通用的 `detail` 和 `trace_id`；原始错误只进日志。运行时的映射强制这一点；组件代码无法选择不用。
-- **转发依赖的错误：** 它的 `reason` 和 `domain` 对用户有意义时（库存不足）就保留；只有你添加了含义时，才映射成你自己的 reason。
+- **转发依赖的错误：** 依赖用它自己的 `ErrorInfo` 回答了，就原样转发：它的 `reason` 和 `domain` 对用户有意义时（库存不足）就保留；只有你添加了含义时，才映射成你自己的 reason。
+- **依赖根本没有回答**，这不是依赖的错误，而是本次请求的错误：运行时回答 503 `DEPENDENCY_UNAVAILABLE`，由 `metadata.dependency` 指明是哪个依赖（见下面的目录）。
+- **请求无法解码**，或者不符合操作的 schema（JSON 格式错误、类型不对、缺少必填字段、未知的枚举值、路径或查询参数格式不对，例如 UUID 不合法或十进制字符串格式错误），回答 400 `REQUEST_INVALID`，字段错误放在 `violations` 里。运行时的请求解码会抛它，组件自己对请求形状的校验也抛它。
+- **调用方取消的请求**（客户端关闭了连接、gRPC 客户端取消）回答 499 `REQUEST_CANCELLED`，PostgreSQL 把这次取消报成 SQLSTATE `57014` 时也一样。它从不按错误记日志，访问日志行的级别是 info。运行时产生的每一个非 OK 回答都带 reason，所以一次取消绝不会变成 `INTERNAL` 和 500。
 
 ### gRPC 形式
 
@@ -140,7 +154,7 @@ reasons:
 
 - `reason` 是 `UPPER_SNAKE`，在 domain 内唯一。槽位族成员的 reason 列在族契约的 `errors.yaml` 里，归在族的 domain（`infra/authz`）下，不进成员自己的目录。条目**只追加**，和 `registry/permissions.tsv` 一样：绝不改名、删除或复用；用 `deprecated: true` 退役（[07-registries.md](../01-conventions/07-registries.md#只追加)）。
 - 前端从已安装组件的目录生成自己的消息表，就像它从契约生成类型一样。不认识的 reason 显示 `title` 或一条通用消息，并上报。
-- **平台 reason** 用 `domain: be`，随组件协议一起发布（`brickKit/be-protocol` 的 `schemas/errors-be.yaml`，[02](02-languages-and-component-protocol.md#be-protocol-的仓库结构)）。下表是完整集合，共 33 个 reason，与该文件逐行一致；组件不在自己的 domain 里使用这些名字，也不抛该文件之外的 `be` reason：
+- **平台 reason** 用 `domain: be`，随组件协议一起发布（`brickKit/be-protocol` 的 `schemas/errors-be.yaml`，[02](02-languages-and-component-protocol.md#be-protocol-的仓库结构)）。下表是完整集合，共 36 个 reason，与该文件逐行一致；组件不在自己的 domain 里使用这些名字，也不抛该文件之外的 `be` reason：
 
 | Reason | Code | 什么时候抛 |
 |---|---|---|
@@ -177,8 +191,17 @@ reasons:
 | `NETWORK_IN_TX` | `INTERNAL` | 事务打开期间发起了出站调用：属于编程错误，在日志和测试运行里写明这个名字，好让它们抓到；调用方收到的仍是上面所说的 `reason: INTERNAL`（[10](10-local-transactions.md#端口契约)、[0501](../02-decisions/05-runtime/0501-no-network-inside-a-transaction.md)） |
 | `DB_TOO_MANY_CONNECTIONS` | `UNAVAILABLE` | 数据库以 SQLSTATE `53300`（连接过多）拒绝了连接；不重试 |
 | `NESTED_TX` | `INTERNAL` | 在同一个工作单元里、一个事务内又打开了另一个事务：属于编程错误，在日志和测试运行里写明这个名字；调用方收到的仍是上面所说的 `reason: INTERNAL`（[10](10-local-transactions.md#端口契约)） |
+| `REQUEST_INVALID` | `INVALID_ARGUMENT` | 请求无法解码，或者不符合操作的 schema（JSON 格式错误、类型不对、缺少必填字段、未知的枚举值、路径或查询参数格式不对，例如 UUID 不合法、十进制字符串格式错误）；字段错误放在 `violations` 里 |
+| `DEPENDENCY_UNAVAILABLE` | `UNAVAILABLE` | 运行时连不上本次请求需要的东西；`metadata.dependency` 取 `db`（PostgreSQL：连不上、连接断开、SQLSTATE `08` 类、`57P01`、`57P02`、`57P03`）、`bus`（事件总线，直接发布时）、`blob`（对象存储），或者没有回答的那个依赖的组件 ID 或槽位族 ID（连接被拒绝或重置，或者回答了 `UNAVAILABLE` 却没有自己的 `ErrorInfo`）；HTTP 503 |
+| `REQUEST_CANCELLED` | `CANCELLED` | 调用方取消了请求（客户端关闭连接、gRPC 客户端取消），包括这种取消引起的 SQLSTATE `57014`；HTTP 499；从不按错误记日志 |
 
 三个边缘 reason 绝不由组件抛出：边缘自己产生的回答（404、413、429、502、503、504）带同样的 problem 体，`domain: be`。
+
+**哪种"不可用"用在哪里。** 三种情况看起来相似，要分开：
+
+- 边缘连不上组件，或者组件没有在时限内回答：`UPSTREAM_UNAVAILABLE` 或 `UPSTREAM_TIMEOUT`，只由边缘抛出，组件和它的运行时从不抛；
+- 组件连不上自己的数据库、总线、对象存储或另一个组件：`DEPENDENCY_UNAVAILABLE`，由该组件的运行时抛出，`metadata.dependency` 说明是哪一个。数据库因为连接过多而拒绝连接时，保留它自己的 reason `DB_TOO_MANY_CONNECTIONS`；
+- 依赖用它自己的错误（`ErrorInfo`）回答了，包括 `UNAVAILABLE`：原样转发，保留依赖的 `reason` 和 `domain`。
 
 ### 版本策略
 

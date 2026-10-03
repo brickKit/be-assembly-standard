@@ -46,9 +46,9 @@ How components call each other synchronously: gRPC as the system plane, who the 
 
 ### Server requirements
 
-- Interceptor order, unary and streaming alike: panic recovery → identity (mark the call as a system principal, read `be-caller` and `be-actor-sub`) → deadline floor (10 s when the caller sent no `grpc-timeout`) → batch limit → error-detail normalisation ([15](15-user-api-and-errors.md#port-contract)) → RED metrics → tracing.
+- Interceptor order, unary and streaming alike, outermost first: tracing → RED metrics → panic recovery → error-detail normalisation ([15](15-user-api-and-errors.md#port-contract)) → identity (mark the call as a system principal, read `be-caller` and `be-actor-sub`) → deadline floor (10 s when the caller sent no `grpc-timeout`) → batch limit. So every call, including one refused for its identity (`MISSING_CALLER`) or its size (`BATCH_TOO_LARGE`), is traced, counted in the RED metrics and answered with normalised error details.
 - A call without `be-caller` answers `UNAUTHENTICATED` / `MISSING_CALLER`.
-- A user-facing rpc kept for compatibility answers `UNAUTHENTICATED` from the runtime, before any component code runs.
+- A user-facing rpc kept for compatibility answers `UNAUTHENTICATED` with reason `TOKEN_INVALID` (domain `be`) from the runtime, before any component code runs.
 - `max receive message size` 4 MiB, set explicitly.
 - Keepalive: `max connection age` 5 min (`GRPC_MAX_CONNECTION_AGE`) with 30 s grace (`MaxConnectionAgeGrace`); minimum client ping interval 20 s (`MinTime`); pings without active calls refused.
 - **The grace must exceed the longest inbound deadline** (30 s against the 10 s default and the 15 s of an orchestrating route); otherwise calls in flight are cut when the connection is replaced.
@@ -66,7 +66,7 @@ How components call each other synchronously: gRPC as the system plane, who the 
 
 - Package `<domain>.<name>.v<n>`; changes only add ([0302](../02-decisions/03-contracts-and-data/0302-contracts-are-additive-only.md)); `buf breaking` runs in `make contract-check`.
 - Every method declares `option idempotency_level`: `NO_SIDE_EFFECTS` for reads, `BatchGet` and `GetStatus`; `IDEMPOTENT` for every write that takes an `idempotency_key`. A gate checks it (planned `idempotency-level-scan`).
-- Every aggregate root offers `BatchGet`, limited to 500 IDs per call (the limit is declared as a method option); more fail with `INVALID_ARGUMENT` / `BATCH_TOO_LARGE`. Every cross-component write offers `GetStatus` by key ([11](11-consistency-across-components.md#command-idempotency-callee)).
+- Every aggregate root offers `BatchGet`, limited to 500 IDs per call (the limit is declared as a method option); more fail with `INVALID_ARGUMENT` / `BATCH_TOO_LARGE`. The limit counts repeated fields; map fields are not counted as repeated fields. Every cross-component write offers `GetStatus` by key ([11](11-consistency-across-components.md#command-idempotency-callee)).
 - Money as decimal strings, lists by cursor ([0301](../02-decisions/03-contracts-and-data/0301-money-as-strings-lists-by-cursor.md)).
 - No streaming rpcs. A large result is written to object storage and announced by an event (claim check, [22-object-storage.md](22-object-storage.md#large-results), [13](13-event-contracts.md#payload-rules)).
 

@@ -34,7 +34,7 @@
 
 | 一跳 | 载体 | 规则 |
 |---|---|---|
-| HTTP 入站 | `traceparent`、`tracestate`、`baggage` 头 | 提取；服务端 span 是调用方 span 的子 span |
+| HTTP 入站 | `traceparent`、`tracestate`、`baggage` 头 | 提取；服务端 span 是调用方 span 的子 span。入站 `traceparent` 的采样标志为 0 时照样传播（保留 trace ID，子 span 也不采样），但它的 span 既不记录也不导出；`trace_id` 仍然出现在日志和 problem 体里 |
 | HTTP 出站（用户面，见 [15-user-api-and-errors.md](15-user-api-and-errors.md)） | 同样的头，再加 `X-Request-Id` | 注入 |
 | gRPC 入站与出站（[14-system-rpc.md](14-system-rpc.md)） | metadata 里同样的键 | 每次调用都提取、注入 |
 | 发布事件 | 信封里的 trace 上下文（[13-event-contracts.md](13-event-contracts.md)） | 生产者的 span 上下文写进消息 |
@@ -44,7 +44,7 @@
 
 **关联。** `X-Request-Id` 是客户端能看到、能报给我们的 id。请求进来没带它时，第一个服务把它设为 trace id。出站调用时继续往下传。每条日志都带 `trace_id`；事件带 `ce-causationid`（[13-event-contracts.md](13-event-contracts.md)）。
 
-**resource 属性**，每个成员一份：`service.name` = 组件 ID（`erp/sales`）、`service.version` = 组件版本、`service.namespace` = 项目、`service.instance.id` = 容器或 Pod、`deployment.environment`。外壳里每个成员有自己的 tracer provider 和 meter provider，带这些属性；导出器共用，只由外壳在所有成员都停下之后关闭。停掉一个成员只冲刷这个成员自己的 span 队列。
+**resource 属性**，每个成员一份：`service.name` = 组件 ID（`erp/sales`）、`service.version` = 组件版本、`service.namespace` = 组件所属的领域（组件 ID 的第一段，`erp`）、`service.instance.id` = 容器或 Pod、`deployment.environment.name` = `DEPLOY_ENV`（默认 `dev`；OpenTelemetry 语义约定 1.27 起的名字，以前叫 `deployment.environment`）。外壳里每个成员有自己的 tracer provider 和 meter provider，带这些属性；导出器共用，只由外壳在所有成员都停下之后关闭。停掉一个成员只冲刷这个成员自己的 span 队列。
 
 **导出。** OTLP 发往 `OTEL_BASE_URL`（[04-configuration.md](../01-conventions/04-configuration.md#共享连接键)）。为空表示不导出、也不报错；组件照常运行。
 
@@ -66,7 +66,9 @@
 | `component_id`、`component_version` | 组件，外壳里是成员自己的值 |
 | `trace_id`、`span_id` | 取自当前 span |
 | `request_id` | 这一行属于某个请求时 |
-| 访问日志还带 | `sub` 和 `perm`（路由要求的权限键），被拒的请求能追到人和键 |
+| 访问日志还带 | `sub` 和 `perm`（路由要求的权限键），被拒的请求能追到人和键；在守卫运行之前就回答的 413 两者都不带 |
+
+- **访问日志**只覆盖用户平面和资源契约。运维端点（`/healthz`、`/readyz`、`/metrics`、`/_be/info`）不记；运行时可以（MAY）以 debug 级别记它们。访问日志行的级别按状态码定：500（`INTERNAL`、`UNKNOWN`、`DATA_LOSS`）是 ERROR，503 和 504（`UNAVAILABLE`、`DEADLINE_EXCEEDED`）是 WARN，其余一切（2xx、3xx、4xx、499、501）是 INFO。
 
 - **级别**：键 `LOG_LEVEL`（`debug|info|warn|error`，默认 `info`），外壳里按成员各自生效。
 - **一个错误记什么级别**，由 SDK 在它的 HTTP 和 gRPC 错误映射里决定，不由各组件自己定：
@@ -75,7 +77,7 @@
 |---|---|
 | `INTERNAL`、`UNKNOWN`、`DATA_LOSS` / 500 | ERROR |
 | `UNAVAILABLE`、`DEADLINE_EXCEEDED` / 503、504 | WARN |
-| `CANCELLED`，包括停机时的取消 | 不记 |
+| `CANCELLED`（`REQUEST_CANCELLED`），包括停机时的取消 | 不按错误记；它的访问日志行是 INFO |
 | 调用方的错误：`INVALID_ARGUMENT`、`NOT_FOUND`、`PERMISSION_DENIED`、`FAILED_PRECONDITION` …… / 4xx | INFO |
 
   ERROR 表示运维必须处理。调用方的错误永远不是 ERROR。
@@ -83,7 +85,7 @@
   - 受保护的名字：`phone`、`mobile`、`id_card`、`password`、`bank_card`、`email`、`token`、`secret`、`authorization`、`cookie`、`set-cookie`、`api_key`；
   - 字段名先拆成词：按 camelCase 拆，`_`、`-`、`.` 都当分隔符，转小写。受保护名字的词在其中作为一段连续的完整词出现时就算匹配（最后一个词可带复数 `s`）：`phone_number`、`accessToken`、`user.email` 匹配；`telephone`、`tokenizer` 不匹配；
   - 匹配字段的值，不论什么类型，都换成字符串 `"[REDACTED]"`，不再往里走；值从不被扫描，所以个人数据绝不写进自由文本；信封字段从不改动；
-  - 超过 2 KiB 的行被截断，截断后仍是一个合法的 JSON 对象。
+  - 一行最多 2048 字节，含行尾换行符，并且始终是一个合法的 JSON 对象。信封字段永不截断：`time`、`level`、`msg`、`component_id`、`component_version`、`trace_id`、`span_id`、`request_id`、`truncated`。其余字符串值都可以截断，最长的先截，在字符边界上截，结尾加 `…[TRUNCATED]`。
 - 组件不自己经网络发日志；stdout 是唯一出口。collector 读容器日志（Docker 上用文件日志 receiver，Kubernetes 上用其日志管道），转给 Loki。
 
 **审计日志**不是应用日志：

@@ -98,7 +98,7 @@
 | 系统 RPC | 组件之间的 gRPC、身份 metadata、截止时间、带 reason 的 `google.rpc.Status` | 各官方 SDK 里的 gRPC，连接复用 | connect-go 服务端（与 gRPC 线协议兼容） | `rpc` | gRPC 已在用；连接复用与截止时间已定 | [14](14-system-rpc.md)、[16](16-deadlines-and-retries.md) |
 | 用户 API | REST、每条路由一个权限键、带 reason 的 RFC 9457 problem details | 各语言锁定的 HTTP 栈 | 无，单适配器端口 | `userapi` | 已定 | [15](15-user-api-and-errors.md) |
 | 缓存 | 线上没有任何东西：只在进程内 | 进程内 LRU 加 TTL | 无：没有缓存服务器 | `cache` | 已定 | [17](17-caching.md) |
-| 边缘 | `assembly.yaml` 里的 `edge_routes`，由 be-ops 变成部署条目的字段：Docker 和 Podman 上是 Traefik 标签，Kubernetes 上是 `paths` | Traefik（3.2 或更新版本），Docker provider 接在项目网络上 | 任何能合并同一主机多份 Ingress 的控制器（nginx-ingress、HAProxy）；Gateway API（以后） | `edge`（黄金部署字段加端到端） | 已定 | [18](18-edge.md) |
+| 边缘 | `assembly.yaml` 里的 `edge_routes`，由 be-ops 变成部署条目的字段：Docker 和 Podman 上是 Traefik 标签，Kubernetes 上是 `paths` | Traefik（3.6 或更新版本），Docker provider 接在项目网络上 | 任何能合并同一主机多份 Ingress 的控制器（nginx-ingress、HAProxy）；Gateway API（以后） | `edge`（黄金部署字段加端到端） | 已定 | [18](18-edge.md) |
 | 可观测性 | OTLP、W3C `traceparent`、`service.name` = 成员的组件 ID | OTLP 发给 OpenTelemetry Collector | 任何 OTLP 后端，在 collector 里换 | `telemetry` | 导出已在用；传播已定 | [23](23-observability.md) |
 | 对象存储 | `S3_URL` 上的 S3 API，每个组件一个 bucket、一份凭据 | RustFS | MinIO、AWS S3、阿里云 OSS | `blob` | 地址已在用；客户端已定 | [22](22-object-storage.md) |
 | 冷存储 | 冻结数据在对象存储里的格式与清单 | `s3-parquet` | `none`（显式降级）；Iceberg（以后再做） | `lifecycle` | 已定 | [09](09-data-lifecycle.md) |

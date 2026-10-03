@@ -60,8 +60,9 @@ What a tenant is in this project, how one tenant's data is kept apart from anoth
 ### Operating many tenants
 
 - A SaaS operator runs one deployment per tenant. On Kubernetes that is one namespace per tenant; on Docker or Podman, one project directory per tenant.
-- A tenant's deploy file is the shared `deploy.yaml` plus an environment file (`brickkit … -f deploy.<tenant>.yaml`) that overrides only `vars:`: `TENANT_ID`, `IAM_ISSUER`, database and bus addresses, hostnames.
-- Upgrades, backups and restores happen per tenant. One tenant can stay on an older component version while another moves.
+- **One customer is one fork of the project repository.** brickKit has no multi-customer concept and will not get one (it declined that feature request): each customer's fork has its own `brickkit.yaml`, which is that customer's lock file (its own component versions, upgraded customer by customer), its own `config/`, secrets and deploy files, with `TENANT_ID`, `IAM_ISSUER`, database and bus addresses and hostnames in its own `config/vars.yaml`. Changes meant for every customer are made in the upstream repository and merged into each fork with Git.
+- Several `-f deploy.<customer>.yaml` files in one repository still work, but they share one `brickkit.yaml` and so one set of versions; that is not the recommended shape.
+- Upgrades, backups and restores happen per tenant. One tenant can stay on an older component version while another moves, because each has its own lock file.
 
 ### Noisy neighbours inside a tenant
 
@@ -80,7 +81,7 @@ Inside one deployment the neighbours are components, not tenants. They are bound
 ## Why this choice
 
 - **It is how mainstream ERP clouds isolate tenants**, and it matches the main way this product is sold: one private deployment per customer.
-- **It needs no code**: one schema per component ([0102](../02-decisions/01-architecture/0102-one-schema-per-component.md)) and "one brickKit project is one deployment" already give one tenant per deployment, and `-f deploy.<env>.yaml` already gives one file per tenant.
+- **It needs no code**: one schema per component ([0102](../02-decisions/01-architecture/0102-one-schema-per-component.md)) and "one brickKit project is one deployment" already give one tenant per deployment, and a fork of the project repository per customer gives each tenant its own lock file, configuration and deploy files, kept in step with upstream by Git.
 - **Isolation, upgrades, backups and restores are per tenant**, and one tenant's load never slows another.
 - **Legal entities now, not later**: group companies are in scope, and adding a column to partitioned transaction tables after they hold data means a backfill and rebuilt unique indexes. Adding it in the 3.0.0 baseline costs nothing.
 - **`aud` and `iss` cost one comparison each** and close the one way tenants could leak into each other: two deployments trusting the same signing key.
@@ -98,7 +99,7 @@ Inside one deployment the neighbours are components, not tenants. They are bound
 
 ## How to switch
 
-- **A new tenant**: a new deployment. Copy the project, write the tenant's `vars:` (`TENANT_ID`, `IAM_ISSUER`, addresses), run `make db-init` against its database, create its IdP organisation, `brickkit up`. No code or pin changes.
+- **A new tenant**: a new deployment. Fork the project repository, write the tenant's `vars:` (`TENANT_ID`, `IAM_ISSUER`, addresses), run `make db-init` against its database, create its IdP organisation, `brickkit up`. No code or pin changes.
 - **A new legal entity**: create it in mdm/org and give roles its value in the authorization provider. No deployment change.
 - **To a pooled model**: not a configuration change. It is a major version of every component: declare `tenant_key` in `lifecycle.yaml`; add the tenant column to every table, primary key and unique index; have the SDK's store add the tenant predicate to every statement, with a gate and a suite to prove it; set `ce-tenantid`; take the tenant from the token's `tenant_id`. The fields reserved now keep the wire contracts additive when that happens.
 

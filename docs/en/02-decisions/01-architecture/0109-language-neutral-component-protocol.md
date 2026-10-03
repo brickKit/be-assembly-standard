@@ -15,7 +15,7 @@ Everything a component must do to be a proper member of this project is written 
 | The official SDKs | `be-sdk-go`, `be-sdk-python`, `be-sdk-ts` | reference implementations of the protocol with the same nouns in all three; each ships the fixture component `widget` and runs the suite on it |
 
 - Each rule is **MUST** (the suite tests it), **SHOULD** (the suite warns) or **INTERNAL** (invisible from outside, such as "no network call inside a transaction"; the official SDKs hold it with their own tests, a component in another language says in its `AGENTS.md` how it holds it, and review checks).
-- **A component's release needs a green report** for its exact version and image digest; `make gates` checks that the report exists.
+- **A component's release needs a green suite run.** A component declares `release: {checks: [[make, conformance]]}` in `component.yaml`, and `brickkit release` (brickKit v1.4.0 or later) runs the suite against the release commit and refuses to tag on a failure (`RELEASE_CHECK_FAILED`). For a component the project does not release itself (another vendor's, a fork without the check), `make gates` (`compconf-record-scan`) requires a green report kept in the project for its exact version and image digest.
 - **No SDK behaviour the specification does not define.** A change goes specification and schema first, then vectors, then a suite case seen red against a broken fixture, then the three SDKs, then the tag.
 - **A minor protocol version only adds optional surface**; a change that makes a conforming component non-conforming is a major.
 - Infrastructure ports below the protocol (database, bus, jobs, cache, secrets, telemetry and the rest) each have a suite of their own under `tools/be-acceptance/conformance/<port>/`.
@@ -27,7 +27,7 @@ Components may be written in any language ([0105](0105-any-language-one-protocol
 ## What this rules out
 
 - A rule that exists only in an SDK's code or documentation; an SDK feature that the specification does not describe
-- Releasing a component without a green report for its current version and image
+- Releasing a component without a green suite run for its current version: tagging it with `--skip-checks` as routine, or pinning another vendor's component without a green report for its version and image
 - A per-language variant of a protocol rule (different header names, table shapes or error reasons in one SDK)
 - Vectors or schemas copied into an SDK by hand instead of synchronised from a `be-protocol` tag
 - A suite case written after the implementation and never seen failing

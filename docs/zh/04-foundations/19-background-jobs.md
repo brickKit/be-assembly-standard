@@ -84,7 +84,7 @@ CREATE INDEX besdk_job_queue_due ON besdk_job_queue (kind, run_at) WHERE state I
 
 - **cron 的时区。** cron 表达式按部署的业务时区求值，即共享键 `BUSINESS_TIMEZONE`（默认 `Asia/Shanghai`，见 [05-time-and-calendars.md](05-time-and-calendars.md)），除非任务自己声明了别的时区；没有单独的任务时区配置键。按法人工作的任务每个槽跑一次，在运行时为每个法人算出它自己的业务日期。
 - **处理函数必须幂等。** 至少一次意味着处理函数可能跑两次；它按 `unique_key` 或业务键去重。
-- **保留期。** `done` 的队列行和旧的时间槽行，过了保留期由一个 `singleton` 清理任务删除。这几张表不分区，靠保留期保持有界，与事件游标表、命令幂等表是同一个例外。
+- **保留期。** `besdk_job_queue` 里状态为 `done` 的行 7 天后删除，`besdk_job_slot` 的行 30 天后删除，都由一个 `singleton` 清理任务执行（平台默认值，与 outbox 发布后 14 天、游标和幂等行 30 天并列，[09](09-data-lifecycle.md#分区窗口与平台表)）。这几张表不分区，靠保留期保持有界，与事件游标表、命令幂等表是同一个例外。
 
 **监督。** 每个任务和 worker 各自独立运行。出错或 panic 时，用成员的 logger 按原因该有的级别记一条、计数，按指数退避从 1 秒到 5 分钟重启。一个任务停下绝不停掉别的任务。停机时取消正在跑的运行，给它们宽限期收尾。单跑和外壳用同一个监督者。
 

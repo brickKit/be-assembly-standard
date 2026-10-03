@@ -47,6 +47,7 @@ CREATE TABLE besdk_outbox (
     aggregate_version BIGINT      NOT NULL,
     occurred_at       TIMESTAMPTZ NOT NULL,
     traceparent       TEXT        NOT NULL DEFAULT '',
+    tracestate        TEXT        NOT NULL DEFAULT '',  -- 非空时作为 tracestate 头发出
     causation_id      TEXT        NOT NULL DEFAULT '',
     hop_count         INT         NOT NULL DEFAULT 0,
     headers           JSONB       NOT NULL DEFAULT '{}', -- 其他 ce-* 扩展属性，例如 legalentity
@@ -62,6 +63,7 @@ CREATE TABLE besdk_outbox (
 ```
 
 - 这一行和业务变更在同一个事务里插入。推送泵原子地认领行、发布，只有在 broker 确认已存下消息之后才标记为 `PUBLISHED`（[12-event-bus.md](12-event-bus.md#端口契约)）。
+- **分区**是按 `created_at` 的周范围，由运行时提前建好，命名遵循运行时所建范围分区的通用规则：周粒度 `<父表>_<ISO 周年>w<WW>`（`besdk_outbox_2026w40`），月粒度 `<父表>_<YYYY>m<MM>`，年粒度 `<父表>_<YYYY>`；边界是 UTC 下的 `[start, end)`。
 - **outbox 是回放的事实来源**；broker 只是传输。行在发布后在线保留 14 天；更早的历史从生产者的 `List` 或它发布的数据集读（[12](12-event-bus.md)）。
 - 同一个 `aggregate_type` 的所有 subject 共用一个严格递增的 `aggregate_version`（[13-event-contracts.md](13-event-contracts.md)）。
 
@@ -93,6 +95,7 @@ RETURNING 1;
 - **状态模式（默认）：** 处理函数写成"把我的投影推进到该聚合在版本 v 时的状态"。更旧的版本被跳过。例子：finance 先收到 `cancelled`（v3），后收到 `created`（v2）。此时还什么都没入账，它记下"已取消，未入账"；随后到来的 `created`（v2）被跳过。结果是对的；换成按 subject 的游标，就会给一张已取消的订单记一笔应收。
 - **序列模式**（每一次变更，按顺序）保留不建（[13-event-contracts.md](13-event-contracts.md)）。
 - 一个组件里有两个独立的投影都需要每个版本时，用两个 `consumer` 名字。
+- **游标的 `aggregate_type` 从哪来**：订阅可以声明自己的聚合类型（三个 SDK 都提供这个可选字段）；没有声明时，运行时取消息的 `ce-aggregatetype` 头。
 
 ### 被调方的命令幂等
 

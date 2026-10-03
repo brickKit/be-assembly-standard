@@ -14,7 +14,7 @@
 | 只读扮演（`act_as`） | 客服以张三的身份查看系统，排查问题 | token 的 `act` 写明真实的人，`ceil` 只允许读；需要键 `infra.authz.impersonate`，生产环境允许；每一行访问日志都带 `act` 链，并通知被查看的人 |
 | AI 代理人 | 无 | **只留位子**：`act.kind` 允许 `agent`，bundle 能力 `agents` 默认 `false`，profile 和天花板的形状定死，权限键接受一个可选字段 `delegable`，没有任何东西填写或读取它。带 `act.kind: agent` 的 token 答 `401 UNSUPPORTED_DELEGATION` |
 
-没有对应能力的 provider，对带 `ceil` 或 `dg` 的 token 答 `401 UNSUPPORTED_DELEGATION`，并隐藏入口。委托链以 `be-actor-act` 传给其他组件，用于审计。
+每种方式都需要对应的能力：委托令牌（带 `act`、非空的 `ceil` 或 `dg`）需要 `delegation`；`act` 链里的 agent 需要 `agents`，一个用户以另一个人的身份操作（模拟登录）需要 `impersonation`；服务账号不需要额外能力。没有对应能力的 provider，对这样的 token 答 `401 UNSUPPORTED_DELEGATION`，并隐藏入口。过期判定在前：token 签发早于这个人的角色变更，或者它的授予 `dg` 已被撤销（bundle 里的 `revoked_grants`），在任何委托检查之前就答 `401 TOKEN_STALE`，所以撤销的委托在下一次请求就失效，同一个请求也永远得到同一个回答。委托链以 `be-actor-act` 传给其他组件，用于审计。
 
 ## 理由
 

@@ -14,15 +14,16 @@
 - **路由由声明派生，绝不手写。** 每个组件在自己 `assembly.yaml` 的 `edge_routes` 里声明公网路径前缀，它 OpenAPI 契约里的每条路径都落在其中某个前缀之下。be-ops 把这些声明变成 brickKit 本来就读的部署条目字段，于是每个服务名和版本都由 brickKit 自己解析：
   - **Kubernetes**：条目的 `expose: true`、`hostname`、`tlsSecret` 和 `paths`（声明的前缀）。brickKit 为每个组件生成一份 Ingress（名为 `<scope>-<name>`，新版本滚动更新完成后才切过去），按路径段匹配，所以 `/erp/sales` 永远接不走 `/erp/salesman`。
   - **Docker 和 Podman**：条目上的 Traefik 路由 `labels`。规则以路径段为界，``Host(`app.example.com`) && PathRegexp(`^/erp/sales(/|$)`)``，从不用按字符串比较的裸 `PathPrefix`。Traefik 接到部署文件顶层 `network:` 指定的项目网络上，经 Docker provider 发现容器；标签跟着容器走。
-  - 生成的字段与声明不一致，或某条 OpenAPI 路径不在任何声明的前缀之下时，门禁失败。
-- **Traefik 是默认的边缘**：`make up` 已经部署了它（3.2 或更新版本），体量小，会发现带标签的容器，内建 OpenTelemetry tracing。Kubernetes 上，任何能合并同一主机多份 Ingress 的控制器都行（Traefik、nginx-ingress、HAProxy）。
+  - 生成的字段与声明不一致，或某条 OpenAPI 路径不在任何声明的前缀之下时，门禁失败。标了 `x-be-internal: true` 的操作不计入这项覆盖检查，因为它们永不被路由。
+  - 每个承载用户流量的操作都在 `x-be-permission` 里声明自己的守卫（一个权限键、`authenticated` 或 `public`）。缺少 `x-be-permission` 永远不算声明了守卫：该操作按受保护处理，契约门禁拒绝它（失败即关闭）。唯一的例外是标了 `x-be-internal: true` 的操作（提供方平面和运维端点），它不是用户流量，不需要 `x-be-permission`。
+- **Traefik 是默认的边缘**：`make up` 已经部署了它（3.6 或更新版本：Docker Engine 29 拒绝旧版 Traefik 请求的 API 版本，3.3.7 就会失败），体量小，会发现带标签的容器，内建 OpenTelemetry tracing。Kubernetes 上，任何能合并同一主机多份 Ingress 的控制器都行（Traefik、nginx-ingress、HAProxy）。
 - **边缘负责**：TLS；按最长路径前缀路由；每条路由一个请求体上限；由路由截止时间推出的边缘超时；按 IP 的粗粒度限流；开启 trace 和请求 ID；剥掉内部头和可伪造的头；只在存在独立来源时才配 CORS 白名单。
 - **边缘不负责**：充当唯一一道鉴权、授权、套用数据范围、按业务内容路由、重试非幂等请求、缓存 API 响应。每个服务自己验签，所以绕过边缘、或者单独部署一个组件，都不会让安全变弱（[0509](../02-decisions/05-runtime/0509-edge-only-routes.md)）。
-- **永不路由的**：gRPC 端口；`/healthz`、`/readyz`、`/metrics`、`/_be/info`；组件有意不写进 `edge_routes` 的内部路径（`/authz/bundle`、JWKS、Casdoor webhook）。
+- **永不路由的**：gRPC 端口；`/healthz`、`/readyz`、`/metrics`、`/_be/info`；标了 `x-be-internal: true` 的每个 OpenAPI 操作，即只有其他组件调用的提供方平面（authz 的 `/authz/v2/*`、iam 的 `/.well-known/*`）；组件有意不写进 `edge_routes` 的内部路径（Casdoor webhook）。
 - **BFF**：移动端保留 `infra/bff-mobile`；PC 前端直接调各组件的 REST，名称靠属主的 `BatchGet` 补全；没有 PC BFF。
 - **默认同源**：前端和 API 经边缘共用一个主机名，所以不需要 CORS。静态资源由前端自己的容器带缓存头发出；边缘什么都不缓存。
 
-**状态**：已就位：Traefik v3.0，带 Docker 和 file 两个 provider（`infra/traefik/`）；`deploy.yaml` 里的项目网络；全部十四个组件都声明了 `edge_routes`。还没有任何东西读 `edge_routes`，边缘也没有任何中间件（没有上限、没有超时、没有剥头）。brickKit 1.3 补上了本设计用到的两块平台能力：部署条目上的 `paths`（Kubernetes 上按路径共用一个主机名）和外壳替成员 `expose`；它按设计不在 Docker 上生成网关，推荐用 Traefik 标签。已定（随 3.0.0 统一升级落地）：Traefik 3.2 或更新版本、be-ops 生成 `paths` 和标签的生成器、中间件集合、新鲜度门禁。以后：按 API key 限流（随对外 API）、跨边缘实例的全局限流、Gateway API 生成器。
+**状态**：已就位：Traefik v3.0，带 Docker 和 file 两个 provider（`infra/traefik/`）；`deploy.yaml` 里的项目网络；全部十四个组件都声明了 `edge_routes`。还没有任何东西读 `edge_routes`，边缘也没有任何中间件（没有上限、没有超时、没有剥头）。brickKit 1.3 补上了本设计用到的两块平台能力：部署条目上的 `paths`（Kubernetes 上按路径共用一个主机名）和外壳替成员 `expose`；它按设计不在 Docker 上生成网关，推荐用 Traefik 标签。已定（随 3.0.0 统一升级落地）：Traefik 3.6 或更新版本、be-ops 生成 `paths` 和标签的生成器、中间件集合、新鲜度门禁。以后：按 API key 限流（随对外 API）、跨边缘实例的全局限流、Gateway API 生成器。
 
 ## 端口契约
 
@@ -86,8 +87,10 @@ be-ops 读每个已安装组件的 `edge_routes`，把前缀排好序，两个�
 | 进 | 丢掉客户端带来的 `X-Request-Id`、`traceparent`、`tracestate`、`baggage` 和所有 `be-*` 头；用自己的值替换 `X-Forwarded-For`、`X-Forwarded-Proto`、`X-Forwarded-Host`（只保留受信任代理给的） |
 | 进 | 打开了边缘 tracing 时由边缘开启 trace；服务随后用 trace id 当请求 ID（[23](23-observability.md#端口契约)） |
 | 进 | 请求体超过路由的 `body_limit` 答 413，速率超过路由的 `rate` 答 429，未知路径答 404 |
-| 出 | 等响应头最多等路由的 `timeout_s`，之后答 504；带请求体的请求绝不重试 |
+| 出 | 等响应头最多等路由的 `timeout`，之后答 504；带请求体的请求绝不重试 |
 | 出 | 服务给的 `X-Request-Id`、`Retry-After`、`Deprecation`、`Sunset`、`X-Data-As-Of` 原样保留 |
+
+**Traefik 上按路由设超时。** Traefik 只从 `serversTransport` 读取响应头超时，而 `serversTransport` 只有 file provider 能定义：标签设不了超时。所以 be-ops 把每条路由的超时写成生成出来的 file provider 文件（`infra/traefik/dynamic/edge.yml`）里的一个 `serversTransport`，路由所用服务的标签只按名字引用它。transport 属于服务而不属于路由器，所以一个前缀的超时如果和同组件其他前缀不同，就需要一个自己的服务。
 
 边缘自己产生的回答（404、413、429、502、503、504）带平台的 problem 错误体（[15](15-user-api-and-errors.md#错误体)），由一个静态错误服务给出，`domain: be`，reason 用 `NOT_FOUND`、`BODY_TOO_LARGE`，以及平台表里的三个边缘 reason：`RATE_LIMITED`（`RESOURCE_EXHAUSTED`，429）、`UPSTREAM_UNAVAILABLE`（`UNAVAILABLE`，502 和 503）、`UPSTREAM_TIMEOUT`（`DEADLINE_EXCEEDED`，504）。
 
@@ -99,7 +102,7 @@ be-ops 读每个已安装组件的 `edge_routes`，把前缀排好序，两个�
 
 | 目标 | be-ops 写什么 | brickKit 据此生成什么 | 上限与限流 |
 |---|---|---|---|
-| Docker、Podman | 每个条目上的 Traefik 路由 `labels`；放 `be-edge` 链的 `infra/traefik/dynamic/edge.yml` | 原样写出的容器标签；项目网络标成 `external`，`up` 之前先核对它存在 | 按路由，写在标签里（`buffering`、`ratelimit`） |
+| Docker、Podman | 每个条目上的 Traefik 路由 `labels`；放 `be-edge` 链和各路由 `serversTransports` 的 `infra/traefik/dynamic/edge.yml` | 原样写出的容器标签；项目网络标成 `external`，`up` 之前先核对它存在 | 按路由：请求体上限和速率写在标签里（`buffering`、`ratelimit`），超时写在 file provider 的 `serversTransport` 里 |
 | Kubernetes | 每个条目上的 `expose`、`hostname`、`tlsSecret`、`paths`；共享链写进 `k8s.ingressAnnotations` | 每个组件一份 Ingress，名为 `<scope>-<name>`；Service 端口的 `appProtocol` 取自声明的 `protocol` | 共享注解引用的控制器自有对象（Traefik 的 `Middleware`，或 ingress-nginx 的注解）；所有路由一样 |
 | Kubernetes | `gateway-api`（以后） | be-ops 写出的 `HTTPRoute` 对象 | 实现方自己的 policy |
 
@@ -181,6 +184,6 @@ be-ops 读每个已安装组件的 `edge_routes`，把前缀排好序，两个�
 - **Kubernetes 上按路由的上限其实不分路由。** brickKit 把 `k8s.ingressAnnotations` 写到每一份 Ingress 上，所以那里某条路由自己的 `body_limit` 或 `rate` 没法和默认值不同；Docker 上由标签携带。brickKit 若有按条目的注解字段就能补上（等测出它真的要紧，再提功能请求）。
 - **每个组件一份 Ingress**，需要能合并同一主机多份 Ingress 的控制器（nginx-ingress、Traefik、HAProxy 可以；GKE 自带的控制器不行）。
 - **生成的标签放在部署文件里。** 个人的 `deploy.local.yaml` 会整体取代 `deploy.yaml`，所以重新生成之后，用 `brickkit local refresh` 把新标签带进去。
-- **Traefik 3.1 及更早版本连不上 Docker 29**（它们的 Docker 客户端太旧）；边缘需要 3.2 或更新版本。
+- **较旧的 Traefik 连不上 Docker Engine 29**，它拒绝这些版本请求的 API 版本（3.3.7 就会失败）；在 Docker 29 上边缘需要 Traefik 3.6 或更新版本。`infra/` 里的开发环境仍然钉在 v3.0，等 3.0.0 统一升级时再改。
 - **Traefik 的 dashboard 是不安全模式**（`api.insecure: true`），只用于开发；生产要么保护起来，要么关掉。
 - **今天什么都没有生成**：生成器落地之前，公网路径只能靠临时配置才到得了组件。

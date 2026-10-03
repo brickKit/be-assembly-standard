@@ -62,7 +62,7 @@
 }
 ```
 
-外壳上的 `members` 是同样形状的对象数组，每一项不带 `members`。组件在 `assembly.yaml` 里声明它按哪个协议版本受测；套件为每个协议 minor 各保留一套用例，所以旧组件永远按它声明的版本来测：
+`profiles` 必须（MUST）等于套件从清单里选出的 profile 集合（见下文）；运行时报多了或报少了，`CP-CORE-11` 就失败。外壳上的 `members` 是同样形状的对象数组，每一项不带 `members`。组件在 `assembly.yaml` 里声明它按哪个协议版本受测；套件为每个协议 minor 各保留一套用例，所以旧组件永远按它声明的版本来测：
 
 ```yaml
 protocol: "1.0"
@@ -87,6 +87,7 @@ conformance:
 | P3.1 / P7 端口 | `deployment.protocol: http`；`extraPorts: [{name: grpc, port: …, protocol: grpc}]` | Kubernetes Service 端口上的 `appProtocol` | 组件（模板） |
 | P12 事件 | `events: {publishes, subscribes}` | `graph`、`deps`，以及对没人发布的订阅给一条 `lint` 提示；运行期没有任何作用 | be-ops，`publishes` 取自事件契约，`subscribes` 取自 `conformance/fixtures.yaml` 的 `events.consumes`；套件拿两者对照组件的实际行为（[13](13-event-contracts.md#契约文件)） |
 | P14.8 "跑一次"入口（可选） | 什么都不用（`/_be/info` 列出能力 `job_run`） | 什么都不做：外部触发器执行镜像里的 `job run <name>` 命令（[19](19-background-jobs.md#端口契约)） | — |
+| P20.5 发布前跑一致性套件（SHOULD） | `release: {checks: [[make, conformance]]}` | `brickkit release`、`brickkit publish` 和 `brickkit release --local` 对发布提交跑组件的套件，失败就拒绝打 tag（`RELEASE_CHECK_FAILED`）；`--skip-checks` 可以跳过，跳过这件事会被打印出来。需要 brickKit v1.4.0 或更新版本 | 组件（模板）；widget 示例组件声明了它 |
 
 ### `be-protocol` 的仓库结构
 
@@ -106,7 +107,7 @@ conformance:
 
 - **真的基础设施：** `make up` 起的 PostgreSQL，库 `brickkit_test_db`，每次运行现建一个随机 schema、一个随机属主角色（`PG_OWNER_USER`，拥有表）、一个随机运行期角色（`PG_USER`，只有 DML，不是属主的成员）和一个以 `WITH INHERIT FALSE, SET TRUE` 获授运行期角色的外壳登录角色，跑完全部删掉；每次运行起一个一次性的 `nats-server -js`。
 - **套件内的假服务：** 一个身份提供方（JWKS 加签发器，也签错 `iss`、错 `aud`、刷新令牌和 `HS256` 的令牌）、一个讲 `contract-infra-authz` v2 的授权提供方、每个依赖一个假对端（按依赖的 proto 描述符应答，记录 metadata、截止时间和连接数，可以挂起或报错），以及一个 OTLP 接收器。
-- **配置：** 先取 `configSchema` 的默认值，盖上套件的值（随机库身份、假服务地址），再盖上任何运维都能调的调优键（`EVENTS_BACKOFF`、`EVENTS_MAX_DELIVER`、`GRPC_MAX_CONNECTION_AGE`、`JOBS_OVERRIDES`）。协议级配置键就是可测性接口：没有任何"测试模式"开关。
+- **配置：** 先取 `configSchema` 的默认值，盖上套件的值（随机库身份、假服务地址，以及 fixtures 里为组件自己的必填键给出的 `config`），再盖上任何运维都能调的调优键（`EVENTS_BACKOFF`、`EVENTS_MAX_DELIVER`、`GRPC_MAX_CONNECTION_AGE`、`JOBS_OVERRIDES`）。协议级配置键就是可测性接口：没有任何"测试模式"开关。
 - **运行：** 先迁移两次，再起一个或两个副本；外壳则按 `BRICKKIT_SERVED_MEMBERS_CONFIG` 起。
 
 profile 从清单自动选出，组件不用声明：
@@ -116,22 +117,30 @@ profile 从清单自动选出，组件不用声明：
 | `core`、`obs`、`err` | 一律 | `events-pub` | 它的事件契约里有它发布的 subject |
 | `auth` | 有任何非公开路由 | `events-sub` | 订阅了任何 subject |
 | `scope` | `data_scopes` 不是 `none`，或声明了资源 | `idempotency` | 任何写操作带幂等键 |
-| `grpc` | 有名为 `grpc` 的 `extraPorts` | `db`、`jobs`、`lifecycle` | `configSchema` 里有 `PG_SCHEMA` |
-| `outbound` | 有组件依赖 | `blob` | `configSchema` 里有 `S3_BUCKET` |
+| `grpc` | 有名为 `grpc` 的 `extraPorts` | `db`、`jobs`、`lifecycle` | `configSchema` 里有 `PG_SCHEMA` 或 `PG_HOST` |
+| `outbound` | 有组件依赖 | `blob` | `configSchema` 里有 `S3_BUCKET` 或 `S3_URL` |
 | `shell` | `component.yaml` 有 `shell.members`；每个成员的 profile 都按外壳形态重跑一遍 | | |
 
-`conformance/fixtures.yaml` 告诉套件怎样让组件做事、怎样看到结果：测试用户及其授权，每种资源怎么建、读、列、发命令，每个依赖怎么应答，它产出和消费哪些事件，以及一条 `observe.sql`，用来读组件自己的表、观察没有公开读接口的效果。它是数据，不是代码，所以第四门语言的组件写的是同一份文件。
+这两个配置触发键是协议配置块里手写的部分：组件为自己用到的这两种 profile 各手写一个触发键（`db` 用 `PG_SCHEMA` 或 `PG_HOST`，`blob` 用 `S3_BUCKET` 或 `S3_URL`），然后由 be-ops 把该 profile 的其余键生成进 `configSchema`。运行时的 `/_be/info` 报告的正是这张表选出的 profile。
 
-**报告与门禁。** 套件写出 `compconf-report.json`（schema 在 `be-protocol` 里）：套件版本、协议、组件与版本、镜像引用与摘要、SDK、基础设施版本、逐 profile 逐用例的结果、跳过的用例及理由。任何一条 MUST 失败，这次运行就失败。`make conformance ID=<组件> [SHELL=<外壳>]` 在本地跑。计划中的门禁 `compconf-record-scan` 进 `make gates`，离线运行：`brickkit.yaml` 里的每个组件和外壳，都要有对应精确版本的报告，报告里的镜像摘要等于本地镜像的摘要，套件版本不低于最低要求，必测 profile 全部通过。镜像重建了，就要新报告。
+`conformance/fixtures.yaml` 告诉套件怎样让组件做事、怎样看到结果：测试用户及其授权，每种资源怎么建、读、列、发命令，每个依赖怎么应答，它产出和消费哪些事件，以及一条 `observe.sql`，用来读组件自己的表、观察没有公开读接口的效果。它是数据，不是代码，所以第四门语言的组件写的是同一份文件。其中两个字段直接引导套件：操作上的 `paired_with`（`resources.<res>.<op>`）指出同一资源、同一代码路径上的 REST 或 gRPC 操作，`CP-ERR-02` 拿它来比较；顶层的 `config` 给出套件为组件自己的必填键设置的值。
+
+用例目录里的用例可以带 `applies_when`：条件不成立的用例报告为"不适用"，既不算跳过也不算失败。`CP-ERR-02` 只在组件有 `grpc` 端口时适用，`CP-ERR-03` 只在组件有数据库时适用。`CP-CORE-06` 只在 fixtures 声明了 `slow` 操作时才检查停机期间在途工作能否完成；否则检查退出码为 0 以及退出用时。
+
+**报告、发布与门禁。** 套件写出 `compconf-report.json`（schema 在 `be-protocol` 里）：套件版本、协议、组件与版本、镜像引用与摘要、SDK、基础设施版本、逐 profile 逐用例的结果、跳过和不适用的用例及理由。任何一条 MUST 失败，这次运行就失败。`make conformance ID=<组件> [SHELL=<外壳>]` 在本地跑。
+
+套件接进了发布本身。组件或外壳在自己的 `component.yaml` 里声明 `release: {checks: [[make, conformance]]}`（P20.5，SHOULD；需要 brickKit v1.4.0 或更新版本）。之后 `brickkit release`、`brickkit publish` 和 `brickkit release --local` 会对发布提交跑套件，失败就拒绝打 tag（`RELEASE_CHECK_FAILED`）；`--skip-checks` 可以跳过检查，brickKit 会把跳过这件事打印出来。所以这样的组件只要有 tag，就意味着套件已经全绿。
+
+计划中的门禁 `compconf-record-scan` 进 `make gates`，离线运行，现在只管 `release.checks` 管不到的部分：项目不自己发布的组件。钉住版本的清单里声明了带 `[make, conformance]` 的 `release.checks` 的组件或外壳，它不再要求报告，因为否则 brickKit 根本不会给它打 tag。`brickkit.yaml` 里的其余组件和外壳（别家厂商的组件、去掉了这项检查的 fork），仍然要求项目里保存一份通过的报告：对应精确版本，镜像摘要等于本地镜像的摘要，套件版本不低于最低要求，必测 profile 全部通过。这类组件的镜像重建了，就要新报告。
 
 ### 两道关
 
 | | 能单独运行 | 能进外壳 |
 |---|---|---|
 | 谁 | 任何语言的组件 | 所用语言有官方 SDK 和外壳启动器的组件 |
-| 需要 | 本版本的套件报告全绿；`assembly.yaml` 里写了 `protocol`；栈写进它的 `AGENTS.md` | 以上全部，并且与外壳的其他成员用同一个 SDK 版本构建；`shell` profile 全绿；外壳的成员核对（[27](27-shells.md)） |
+| 需要 | 本版本的套件运行全绿（它的发布检查，或项目里保存的报告）；`assembly.yaml` 里写了 `protocol`；栈写进它的 `AGENTS.md` | 以上全部，并且与外壳的其他成员用同一个 SDK 版本构建；`shell` profile 全绿；外壳的成员核对（[27](27-shells.md)） |
 | 扫源码的门禁（`bare-route-scan`、`identity-literal-scan`、import 检查） | 只对官方语言；其他语言由套件加上按 INTERNAL 清单的评审替代 | 全部适用 |
-| `compconf-record-scan` | 适用 | 适用 |
+| `compconf-record-scan` | 钉住版本的清单没有声明带 `[make, conformance]` 的 `release.checks` 时适用；声明了就由发布检查代替它 | 同左 |
 
 ### 官方 SDK
 
@@ -151,6 +160,8 @@ profile 从清单自动选出，组件不用声明：
 | 迁移 | golang-migrate | yoyo-migrations，配 psycopg[binary] 3.3.6 | node-pg-migrate |
 | 事件 | nats.go JetStream | nats-py JetStream | @nats-io/jetstream |
 | 十进制 | cockroachdb/apd v3 | `decimal` | decimal.js |
+| JSON Schema（载荷校验） | santhosh-tekuri/jsonschema v6 | jsonschema 4.26.0 | ajv 8.20.0 |
+| 指标 | client_golang | prometheus-client、opentelemetry-exporter-prometheus 0.59b0 | Prometheus 客户端、@opentelemetry/exporter-prometheus |
 | JWT | golang-jwt v5 + keyfunc v3 | PyJWT（必须传 `audience`） | jose 6 |
 | trace | otel-go | opentelemetry-python | @opentelemetry/sdk-trace-base，不用 auto-instrumentation |
 | 时区数据（MUST 内嵌） | `time/tzdata` | `tzdata` 包 | full ICU |

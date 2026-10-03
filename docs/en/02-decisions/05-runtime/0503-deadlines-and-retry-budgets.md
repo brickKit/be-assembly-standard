@@ -7,7 +7,7 @@
 ## Decision
 
 - **Every request has a deadline, and it only shrinks** as it travels: each hop gives its children less time than it has itself.
-- **User-facing defaults**: an ordinary action 10 s; a declared orchestration such as confirming an order 15 s; exports are asynchronous jobs. One outbound call gets `min(3 s, remaining − 50 ms)` and is not sent with less than 50 ms left (`DEADLINE_EXCEEDED` / `DEADLINE_BUDGET_EXHAUSTED`); a database statement gets `min(5 s, remaining)`.
+- **User-facing defaults**: an ordinary action 10 s; a declared orchestration such as confirming an order 15 s; exports are asynchronous jobs. One outbound call gets `min(3 s, remaining − 50 ms)` and is not sent with 50 ms or less left (`DEADLINE_EXCEEDED` / `DEADLINE_BUDGET_EXHAUSTED`); a database statement gets `min(5 s, remaining)`.
 - **A gRPC method is retried only if its contract declares it free of side effects or idempotent** (`idempotency_level`), only on `UNAVAILABLE`, at most 3 attempts, through the service configuration every SDK generates from the contract.
 - **A retry budget per connection** (gRPC retry throttling, about 10 % of normal traffic) stops retries when a dependency is broadly down; connections are per member, so one member's storm cannot spend another's budget.
 - **Bulkheads instead of circuit breakers**: at most 64 concurrent outbound calls per (member, dependency), failing at once with `RESOURCE_EXHAUSTED` / `OUTBOUND_LIMIT`; a connection budget per member (`DB_POOL_EXHAUSTED`).

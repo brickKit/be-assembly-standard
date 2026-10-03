@@ -29,7 +29,7 @@
 | `postgres://host:5432/<db>?schema=be_bus` | PostgreSQL 队列 | 已定，阶段 06 建 |
 | `kafka://broker1:9092,broker2:9092` | Kafka | 以后 |
 
-`EVENT_BUS_URL` 是 `config/vars.yaml` 里新增的共享键，以 `$var:EVENT_BUS_URL` 引用（[04-configuration.md](../01-conventions/04-configuration.md#共享连接键)）。没有它时 SDK 用 `NATS_URL`。一个项目的所有组件用同一个适配器：两个适配器就是两条互不相通的总线。
+`EVENT_BUS_URL` 是 `config/vars.yaml` 里新增的共享键，以 `$var:EVENT_BUS_URL` 引用（[04-configuration.md](../01-conventions/04-configuration.md#共享连接键)）。没有它时 SDK 用 `NATS_URL`；两者至少要设置一个。运行时没有适配器的 scheme（目前是 `kafka://`）会让启动失败，并点名这个 scheme，退出码非零且不是 78（be-protocol P12.12）。官方 SDK 先提供 `nats://`，PostgreSQL 队列适配器随后。一个项目的所有组件用同一个适配器：两个适配器就是两条互不相通的总线。
 
 ### 每个适配器提供的操作
 
@@ -60,10 +60,11 @@
 
   | 键 | 默认值 | SDK 拿它做什么 |
   |---|---|---|
-  | `EVENTS_BACKOFF` | `1s,10s,1m,5m,15m,30m,1h` | `NakWithDelay` 的时间表：第 n 次投递失败后那次 nak 的延迟 |
-  | `EVENTS_MAX_DELIVER` | `8` | 投递上限：收到的消息 `NumDelivered` > `EVENTS_MAX_DELIVER` 时不再处理；SDK 把它写进死信，然后 terminate |
+  | `EVENTS_BACKOFF` | 键和订阅都没设置时为 `1s,10s,1m,5m,15m,30m,1h` | `NakWithDelay` 的时间表：第 n 次投递失败后那次 nak 的延迟 |
+  | `EVENTS_MAX_DELIVER` | 键和订阅都没设置时为 `8` | 投递上限：收到的消息 `NumDelivered` > `EVENTS_MAX_DELIVER` 时不再处理；SDK 把它写进死信，然后 terminate |
 
-  订阅可以声明自己的值；这两个键一旦设置就覆盖它们（be-protocol P12.5）。
+  这两个键在目录里没有默认值。订阅可以声明自己的值；优先级是：键设置了（在配置里出现）就用键，否则用订阅的值，再否则用上表的内置值（be-protocol P12.5）。
+- **最后一次允许的投递**和普通投递一样：计数 `d = EVENTS_MAX_DELIVER` 的那次投递失败了，照常 nak。消息在下一次被收到时（`d > EVENTS_MAX_DELIVER`）、处理函数运行之前进入死信。所以一条消息最多被处理 `EVENTS_MAX_DELIVER` 次。
 - **处理函数的事务提交之后再确认。** 出错时：按 `EVENTS_BACKOFF` 的下一档延迟 nak。永久性错误（无法解析、违反契约）时：先发布到死信 subject，再 terminate。处理函数运行期间：每 10 秒发一次 "in progress"（`ack_wait` 的三分之一）。
 
 ### 死信
@@ -92,11 +93,14 @@
 
 ### 尽力而为的信号
 
-授权提供方的"bundle 已变更"这类信号走 notify：在 JetStream 上是 core NATS publish；在 PostgreSQL 队列上是 `LISTEN`/`NOTIFY`；在 Kafka 上是一个短保留期的 topic。它们可能丢失，所以每个使用方同时也轮询。
+授权提供方的"bundle 已变更"（`infra.authz.changed.v1`）这类信号，在生产者的事件契约里标 `x-signal: true`（[13](13-event-contracts.md#契约文件)）：没有 outbox 行，没有 durable，不列进 `component.yaml` 的 `events.publishes`。它们走 notify：在 JetStream 上是 core NATS publish；在 PostgreSQL 队列上是 `LISTEN`/`NOTIFY`；在 Kafka 上是一个短保留期的 topic。它们可能丢失，所以每个使用方同时也轮询。
 
 ### PostgreSQL 队列适配器
 
 表在 schema `be_bus` 里，它和 NATS 一样属于基础设施；`make db-init` 创建它，并给每个组件的角色授予这些表上的 `SELECT, INSERT, UPDATE, DELETE`。组件之间仍然绝不读对方的 schema（[0102](../02-decisions/01-architecture/0102-one-schema-per-component.md)）。
+
+- **连接**：适配器用组件自己的 `PG_USER` 和 `PG_PASSWORD_FILE` 连接，所以走队列总线的组件即使自己没有表，也要声明数据库相关的键。
+- **分区**：适配器只通过 `SECURITY DEFINER` 函数维护 `be_bus.message` 的分区，这些函数属于 `NOLOGIN` 角色 `be_bus_owner`，和生命周期函数是同一个模式（[09](09-data-lifecycle.md)）；没有任何组件角色在 `be_bus` 上有 DDL 权限。项目的数据库初始化还会建一个 `be_bus.message` 的 DEFAULT 分区，所以发布永远不会因为缺分区而失败。
 
 ```sql
 CREATE TABLE be_bus.message (

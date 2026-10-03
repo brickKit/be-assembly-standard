@@ -63,10 +63,11 @@ The answer carries `access_token`, `issued_token_type`, `token_type`, `expires_i
 **Verification, in every SDK and any language:**
 
 - `alg` comes from the JWKS key and must be one of `RS256`, `ES256`, `EdDSA`; the token header cannot choose it.
-- `kid` is required. An unknown `kid` refetches the JWKS, rate-limited, then fails.
+- `kid` is required. An unknown `kid` refetches the JWKS at most once per 30 s, then fails; that limit does not apply to the fetch at start-up or to the hourly refresh.
 - `iss` must equal `IAM_ISSUER`; `aud` must contain `TENANT_ID`; `exp` and `nbf` are checked.
 - `typ` must be `access`; `refresh` and a missing `typ` are rejected.
-- A token whose `iat` is before the bundle's `stale_since` for its `sub` answers `401` with reason `TOKEN_STALE` and `WWW-Authenticate: Bearer error="token_stale"`, and the frontend refreshes silently.
+- A token that fails any of the checks above (or is missing) answers `401 TOKEN_INVALID`, before anything else, even while no permission bundle is loaded; with a valid token and no bundle yet, a route that is not Public answers `503 AUTHZ_NOT_READY`.
+- Then the bundle's token checks, in the authorization contract's order. A token whose `iat` is before the bundle's `stale_since` for its `sub`, or whose delegation grant `dg` is in the bundle's `revoked_grants`, answers `401` with reason `TOKEN_STALE` and `WWW-Authenticate: Bearer error="token_stale"`, and the frontend refreshes silently. Only after that is delegation checked: a delegated token (`act`, a non-empty `ceil` or a non-empty `dg`) needs the provider's capability `delegation`; in the `act` chain an agent needs `agents`, a user (impersonation) needs `impersonation`, a service account nothing more; otherwise `401 UNSUPPORTED_DELEGATION` ([15](15-user-api-and-errors.md#status-codes-for-access)).
 
 **Platform `sub` and identity links.** The member keeps `identity_links(idp, idp_issuer, idp_sub, user_id)` with one row per IdP account. The first login of an unknown IdP account creates a platform user. Linking to an existing user is by exact `(idp_issuer, idp_sub)` by default; automatic linking by e-mail is an opt-in with a security risk. The family defines an NDJSON export of the links so a new member can import them and keep every `sub`.
 

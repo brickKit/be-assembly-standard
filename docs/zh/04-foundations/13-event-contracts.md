@@ -57,7 +57,7 @@
 
 - 同一个生产者的同一聚合类型的所有 subject，共用一个严格递增的 `aggregate_version`。行的业务版本（每次写入都加一）就符合要求，因为状态模式容忍跳号。
 - 每个实例只会发出一个事件的聚合（针对一张订单的信用决定），声明一个自己的聚合类型（`erp.finance.credit_decision`），而不是借用别人的聚合类型、再把版本固定为 1。
-- 消费者游标以 `(consumer, aggregate_type, aggregate_id)` 为键（[11](11-consistency-across-components.md#消费者游标)）。
+- 消费者游标以 `(consumer, aggregate_type, aggregate_id)` 为键（[11](11-consistency-across-components.md#消费者游标)）。订阅可以声明它预期的聚合类型；没有声明时，运行时从消息的 `ce-aggregatetype` 头里取。
 
 ### 消费模式
 
@@ -76,6 +76,7 @@
 | `x-aggregate-type` | 声明的聚合类型（新增；必填） |
 | `x-consumption` | `state`（默认）或 `sequence`（新增） |
 | `x-transaction-document` | 事件关于一张交易单据时为 `true`：载荷 schema 必须把 `legal_entity_id` 列为必填，运行时据此设置 `ce-legalentity`（新增；默认 `false`） |
+| `x-signal` | `true` 表示这是一个尽力而为的通知（[12](12-event-bus.md#尽力而为的信号)），不是事件：没有 outbox 行，没有 durable，也不列进 `component.yaml` 的 `events.publishes`（authz 的 `infra.authz.changed.v1` 带它；默认 `false`） |
 | `grade` | `core`（业务关键：持久化、去重、可能进死信）或 `peripheral`（信息性的旁路事件） |
 | `note` | 谁消费它、为什么，用文字写 |
 | `payload` | 描述载荷的 JSON Schema（2020-12）对象 |
@@ -101,7 +102,7 @@ events:
     - infra.workflow.task.completed.v1     # 写确切的 subject；结尾的 * 只给真按前缀订阅的
 ```
 
-- 整段由 be-ops 生成，和 `configSchema` 的协议键段放在一起（be-protocol P12.16）：`publishes` 取自契约文件，恰好是其中的 subject（槽位族成员取族的 subject）；`subscribes` 取自组件 `conformance/fixtures.yaml` 里的 `events.consumes`，是它经 durable 消费的每个 subject。尽力而为的信号（[12](12-event-bus.md#尽力而为的信号)）不列。
+- 整段由 be-ops 生成，和 `configSchema` 的协议键段放在一起（be-protocol P12.16）：`publishes` 取自契约文件，恰好是其中的 subject（槽位族成员取族的 subject）；`subscribes` 取自组件 `conformance/fixtures.yaml` 里的 `events.consumes`，是它经 durable 消费的每个 subject。尽力而为的信号（[12](12-event-bus.md#尽力而为的信号)），也就是标了 `x-signal: true` 的条目，不列。
 - 订阅写确切的 subject。brickKit 以 `*` 结尾的前缀写法只允许出现在 `subscribes` 里，而且只给真按前缀订阅的消费者用；NATS 的 `>` 和写在名字中间的 `*` 从不出现。
 - 门禁 `events-declaration-scan` 拿这一段对照契约和夹具；组件套件拿它对照组件实际发布的事件和启动时建出的 durable（[12](12-event-bus.md#持久消费者)）。
 - 一个槽位族的几个成员发布同一个 subject（`integration.im.result.v1`）没有问题：brickKit 按名字匹配，不关心发布方是谁。
@@ -114,7 +115,7 @@ events:
 - **为状态模式带够状态：** 事件带上消费者推到聚合在该版本时状态所需的内容，而不只是变更的名字。
 - **事件是系统数据。** 载荷绝不原样展示给人：由事件生成的通知要按接收人脱敏，或者只带一个链接，因为价格这类字段可能对那个接收人隐藏（[20-authorization-provider.md](20-authorization-provider.md)）。
 - **不带密钥，不带 token，个人数据只带消费者需要的最少部分。**
-- **大小：** 64 KiB 以内是常态。协议的硬上限是 1 MiB，发布时检查并给出明确的错误（be-protocol P12.2）；broker 自己的上限是 8 MB，含消息头。
+- **大小：** 最多 64 KiB（序列化后的 JSON 65,536 字节）。更大的载荷必须（MUST）在发布时被拒绝：outbox 写入失败，按编程错误（`INTERNAL`）处理（be-protocol P12.2）。broker 自己的上限（8 MB，含消息头）永远碰不到。
 - **超过 64 KiB：claim check**（[22-object-storage.md](22-object-storage.md#大结果)）。生产者把内容作为一个对象写进自己的 bucket；载荷带这个对象的 `{key, sha256, size}`，绝不带字节本身；生产者提供一个 rpc，按这个 key 返回一个短时有效的 URL。消费者调用这个 rpc、下载、校验 `size` 和 `sha256`；它绝不持有生产者 bucket 的凭据。
 
 ### 演进

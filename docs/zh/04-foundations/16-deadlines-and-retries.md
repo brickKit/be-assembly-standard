@@ -31,7 +31,7 @@
 | 入站 HTTP | 路由的截止时间 | 请求上下文从读到第一个字节起就带着它 |
 | HTTP 服务器 | 读请求头 5 s；读 30 s；写 = 路由截止时间 + 5 s；空闲 120 s；请求体最多 1 MiB，除非路由声明了更多 | 单跑和外壳里取值相同；文件经预签名 URL 进对象存储，绝不经过组件的请求体 |
 | 入站 gRPC | 调用方的 `grpc-timeout`；没有时 10 s | [14](14-system-rpc.md#服务端要求) |
-| 一次出站调用 | `min(3 s, remaining − 50 ms)` | 剩余不到 50 ms 时不发出调用：`DEADLINE_EXCEEDED` / `DEADLINE_BUDGET_EXHAUSTED`。确实需要更久的系统 rpc（关闭会计期间）作为方法 option 声明（计划中） |
+| 一次出站调用 | `min(3 s, remaining − 50 ms)` | 剩余 50 ms 或更少时不发出调用：`DEADLINE_EXCEEDED` / `DEADLINE_BUDGET_EXHAUSTED`。确实需要更久的系统 rpc（关闭会计期间）作为方法 option 声明（计划中） |
 | 数据库语句 | `min(5 s, remaining)`；锁等待 2 s；事务内空闲 30 s | 按事务设置（[10](10-local-transactions.md#端口契约)） |
 | 事件处理函数 | 总线的确认等待（30 s）减 5 s | 本地写入预期在 1 s 内完成；有副作用的处理函数每 10 s 报告一次进度（[12](12-event-bus.md#持久消费者)） |
 | 任务运行、reconciler 步骤 | 任务声明的超时 | [19](19-background-jobs.md#端口契约) |
@@ -144,7 +144,7 @@ SDK 的错误处理器从不读 `AsyncLocalStorage` 上下文：处理函数超�
 计划中，放在 `tools/be-acceptance/conformance/rpc/` 和 `tools/be-acceptance/conformance/userapi/` 里；除非另有注明，今天都是红的。
 
 - 入站 HTTP 请求带着路由的截止时间，出站调用继承剩余的预算；
-- 剩余不到 50 ms 时出站调用不发出，以 `DEADLINE_BUDGET_EXHAUSTED` 失败；
+- 剩余 50 ms 或更少时出站调用不发出，以 `DEADLINE_BUDGET_EXHAUSTED` 失败；
 - 没带截止时间的 gRPC 调用拿到默认值；
 - 只有 `NO_SIDE_EFFECTS` 或 `IDEMPOTENT` 方法会重试，而且只在 `UNAVAILABLE` 时；
 - 重试预算用完后，不再发生重试；

@@ -13,7 +13,7 @@
 | 系统面 | 组件之间的 gRPC | 永远是系统主体：项目里的另一个组件，由 `be-caller` metadata 指明 | `data_scopes: none` 的主数据；系统协议（预留的 try / confirm / cancel、建待办、检查期间）；按 ID 补全（`BatchGet`，[0304](../03-contracts-and-data/0304-batch-get-takes-at-most-500-ids.md)），ID 必须是调用方正当持有的 |
 | 用户面 | REST（以及移动端 BFF 的 GraphQL） | 人，凭其 token | 一切按这个人的数据范围过滤的数据 |
 
-不带 `be-caller` 的系统调用答 `UNAUTHENTICATED` / `MISSING_CALLER`。用户的 `sub` 和委托链以 `be-actor-sub`、`be-actor-act` 传递，只用于审计，从不用来授予访问。契约里已有的面向用户的 rpc 保留（契约只增），在每个组件里都由运行时统一答 `UNAUTHENTICATED`。一个组件需要替用户取另一个组件的数据时，经 SDK 的用户面客户端，带着用户的 token 调对方的 REST API。
+不带 `be-caller` 的系统调用答 `UNAUTHENTICATED` / `MISSING_CALLER`。用户的 `sub` 和委托链以 `be-actor-sub`、`be-actor-act` 传递，只用于审计，从不用来授予访问。契约里已有的面向用户的 rpc 保留（契约只增），在每个组件里都由运行时统一答 `UNAUTHENTICATED`，reason 为 `TOKEN_INVALID`（domain `be`）。一个组件需要替用户取另一个组件的数据时，经 SDK 的用户面客户端，带着用户的 token 调对方的 REST API。
 
 ## 理由
 

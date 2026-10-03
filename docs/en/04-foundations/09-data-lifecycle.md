@@ -154,9 +154,9 @@ Every component with a database mounts `/{domain}/{name}/_lifecycle/*` (OpenAPI 
 
 ### Partition windows and platform tables
 
-- Boundaries are anchored in UTC (weeks from Monday 00:00, months from the 1st); names `<table>_YYYY_MM_DD`; the existence check reads boundaries from the catalogue; a partial overlap is skipped with a warning.
+- Boundaries are anchored in UTC (weeks from Monday 00:00, months from the 1st); bounds are `[start, end)`; names `<table>_<ISO week-year>w<WW>` for a week (`besdk_outbox_2026w40`), `<table>_<YYYY>m<MM>` for a month, `<table>_<YYYY>` for a year; the existence check reads boundaries from the catalogue; a partial overlap is skipped with a warning.
 - erp/finance's list partitions per accounting period are created by its open-fiscal-year command through the SDK, never by a yearly migration ([05](05-time-and-calendars.md)).
-- Platform retention: `besdk_outbox`, weekly partitions, dropped 14 days after every row is published; `besdk_event_cursor` and `besdk_idempotency`, rows older than 30 days deleted; `besdk_lifecycle_log`, kept for ever.
+- Platform retention: `besdk_outbox`, weekly partitions, dropped 14 days after every row is published; `besdk_event_cursor` and `besdk_idempotency`, rows older than 30 days deleted; `besdk_job_queue`, rows in state `done` deleted after 7 days; `besdk_job_slot`, rows deleted after 30 days ([19](19-background-jobs.md)); `besdk_lifecycle_log`, kept for ever.
 - Lifecycle tables: `besdk_lifecycle_units` (unit, bounds, state, rows, min and max id, unit and chain digests, manifest, times, blocked reason), `besdk_lifecycle_log` (append-only, sealed), `besdk_holds`, `besdk_erasures`, `besdk_exports`; reference DDL in `be-protocol`.
 
 ### Ports and adapters

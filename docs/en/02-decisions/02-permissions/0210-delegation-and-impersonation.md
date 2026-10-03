@@ -14,7 +14,7 @@ When one principal acts for another, the effective permissions are the actor's o
 | read-only impersonation (`act_as`) | support looks at the system as Zhang San to diagnose a problem | a token whose `act` names the real person and whose `ceil` allows reads only; needs the key `infra.authz.impersonate`, allowed in production; every access log line carries the `act` chain, and the person viewed is notified |
 | AI agent | none | **reserved only**: `act.kind` admits `agent`, the bundle capability `agents` defaults to `false`, the profile and ceiling shapes are fixed, permission keys accept an optional `delegable` field that nothing fills or reads. A token with `act.kind: agent` answers `401 UNSUPPORTED_DELEGATION` |
 
-A provider without the capability answers a token carrying `ceil` or `dg` with `401 UNSUPPORTED_DELEGATION` and hides the entry points. The chain travels to other components as `be-actor-act`, for audit.
+Each mode needs its capability: a delegated token (`act`, a non-empty `ceil` or `dg`) needs `delegation`; in the `act` chain an agent needs `agents` and a user acting as another (impersonation) needs `impersonation`; a service account needs nothing more. A provider without the capability answers such a token with `401 UNSUPPORTED_DELEGATION` and hides the entry points. Staleness is decided first: a token issued before the person's roles changed, or whose grant `dg` has been revoked (`revoked_grants` in the bundle), answers `401 TOKEN_STALE` before any delegation check, so a revoked delegation ends with the next request and the same request always gets the same answer. The chain travels to other components as `be-actor-act`, for audit.
 
 ## Why
 

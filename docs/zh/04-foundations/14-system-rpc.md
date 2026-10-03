@@ -46,9 +46,9 @@
 
 ### 服务端要求
 
-- 拦截器顺序，unary 和 streaming 相同：panic 恢复 → 身份（把这次调用标为系统主体，读 `be-caller` 和 `be-actor-sub`）→ 截止时间下限（调用方没发 `grpc-timeout` 时为 10 s）→ 批量上限 → 错误详情规范化（[15](15-user-api-and-errors.md#端口契约)）→ RED 指标 → tracing。
+- 拦截器顺序，unary 和 streaming 相同，从最外层起：tracing → RED 指标 → panic 恢复 → 错误详情规范化（[15](15-user-api-and-errors.md#端口契约)）→ 身份（把这次调用标为系统主体，读 `be-caller` 和 `be-actor-sub`）→ 截止时间下限（调用方没发 `grpc-timeout` 时为 10 s）→ 批量上限。所以每一次调用，包括因身份（`MISSING_CALLER`）或批量大小（`BATCH_TOO_LARGE`）被拒的调用，都会被 trace、计入 RED 指标，并以规范化的错误详情回答。
 - 没带 `be-caller` 的调用回答 `UNAUTHENTICATED` / `MISSING_CALLER`。
-- 为兼容而保留的面向用户的 rpc，由运行时在任何组件代码运行之前回答 `UNAUTHENTICATED`。
+- 为兼容而保留的面向用户的 rpc，由运行时在任何组件代码运行之前回答 `UNAUTHENTICATED`，reason 为 `TOKEN_INVALID`（domain `be`）。
 - `max receive message size` 4 MiB，显式设置。
 - Keepalive：`max connection age` 5 分钟（`GRPC_MAX_CONNECTION_AGE`），宽限 30 s（`MaxConnectionAgeGrace`）；客户端 ping 的最小间隔 20 s（`MinTime`）；没有活跃调用时的 ping 一律拒绝。
 - **宽限必须大于最长的入站截止时间**（30 s 对默认的 10 s 和编排路由的 15 s）；否则换连接时在途调用会被切断。
@@ -66,7 +66,7 @@
 
 - 包名 `<domain>.<name>.v<n>`；改动只做加法（[0302](../02-decisions/03-contracts-and-data/0302-contracts-are-additive-only.md)）；`buf breaking` 在 `make contract-check` 里跑。
 - 每个方法都声明 `option idempotency_level`：读、`BatchGet` 和 `GetStatus` 用 `NO_SIDE_EFFECTS`；每个带 `idempotency_key` 的写用 `IDEMPOTENT`。有门禁检查（计划中的 `idempotency-level-scan`）。
-- 每个聚合根都提供 `BatchGet`，每次最多 500 个 ID（上限作为方法 option 声明）；超过的以 `INVALID_ARGUMENT` / `BATCH_TOO_LARGE` 失败。每个跨组件写入都提供按键查询的 `GetStatus`（[11](11-consistency-across-components.md#被调方的命令幂等)）。
+- 每个聚合根都提供 `BatchGet`，每次最多 500 个 ID（上限作为方法 option 声明）；超过的以 `INVALID_ARGUMENT` / `BATCH_TOO_LARGE` 失败。上限统计的是 repeated 字段；map 字段不算 repeated 字段。每个跨组件写入都提供按键查询的 `GetStatus`（[11](11-consistency-across-components.md#被调方的命令幂等)）。
 - 金额用十进制字符串，列表按游标分页（[0301](../02-decisions/03-contracts-and-data/0301-money-as-strings-lists-by-cursor.md)）。
 - 不用流式 rpc。大结果写进对象存储，再用一条事件通知（claim check，[22-object-storage.md](22-object-storage.md#大结果)、[13](13-event-contracts.md#载荷规则)）。
 

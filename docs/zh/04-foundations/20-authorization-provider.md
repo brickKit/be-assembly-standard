@@ -92,7 +92,7 @@ field(P, K, r)   = visible(P, K, r) AND P 持有该字段键
 | `sharing` | `_shares` 答 `501`，reason 为 `CAPABILITY_UNAVAILABLE`，`metadata.capability = sharing`（[15](15-user-api-and-errors.md)）；投影保持为空 | 隐藏共享入口 |
 | `check` | 落后于令牌的单条读答"不可见 + stale"，不回落 | 提示稍后再试 |
 | `graph` | graph ids 为空，响应头 `X-Authz-Degraded: graph` | 提示 |
-| `delegation`、`agents`、`impersonation` | 带 `ceil` 或 `dg` 的 token 答 `401 UNSUPPORTED_DELEGATION` | 隐藏入口 |
+| `delegation`、`agents`、`impersonation` | 委托令牌（带 `act`、非空的 `ceil` 或 `dg`）而没有 `delegation`、`act` 链里有 agent 而没有 `agents`、一个用户代另一个用户操作（模拟登录）而没有 `impersonation`，都答 `401 UNSUPPORTED_DELEGATION`；链里的服务账号不需要额外能力 | 隐藏入口 |
 
 组件在 `assembly.yaml` 写 `requires_capabilities`，成员写 `provides_capabilities`；前者不是后者的子集时，门禁 `authz-capability-scan` 在组装期失败。
 
@@ -136,7 +136,7 @@ AND (
 
 SDK 也把三个分支分开给出，慢查询可以改写成按同一个游标合并的 `UNION ALL`，语义不变。组件怎么写这段，见 [02-backend.md](../01-conventions/02-backend.md#数据范围)。
 
-**声明**，在 `assembly.yaml` 里与 `data_scopes` 并列：`permissions` 的条目增加 `type: page|action|field` 和可选、目前不用的 `delegable`；新增 `resources` 段，写明每个类型（`<domain>.<name>.<aggregate>`，唯一属主，登记在只增的 `registry/resource-types.tsv`）、它的表、它的 `view_key`（决定这个类型的记录到底看不看得见的键，列表和单条读取都用它；必填）、它的键、关系（`viewer: {grants: [...]}`、`editor: {includes: [viewer], grants: [...]}`，组件主责的关系标 `owned_by: component`）、共享规则（键、关系、主体种类）、字段集（列、读键、写键）、一跳的 `inherits`，以及 `derivation: direct|graph`。be-ops 校验这些声明，并为每种语言生成键和类型的常量；生成物过期时门禁 `authzgen-fresh` 失败。
+**声明**，在 `assembly.yaml` 里与 `data_scopes` 并列：`permissions` 的条目增加 `type: page|action|field` 和可选、目前不用的 `delegable`（记在 `registry/permissions.tsv` 末尾追加的 `delegable` 列里）；新增 `resources` 段，写明每个类型（`<domain>.<name>.<aggregate>`，唯一属主，登记在只增的 `registry/resource-types.tsv`）、它的表、它的 `view_key`（决定这个类型的记录到底看不看得见的键，列表和单条读取都用它；必填）、它的键、关系（`viewer: {grants: [...]}`、`editor: {includes: [viewer], grants: [...]}`，组件主责的关系标 `owned_by: component`）、共享规则（键、关系、主体种类）、字段集（列、读键、写键）、一跳的 `inherits`，以及 `derivation: direct|graph`。be-ops 校验这些声明，并为每种语言生成键和类型的常量；生成物过期时门禁 `authzgen-fresh` 失败。
 
 **字段级权限。** 字段键是 `type: field` 的权限键。属主组件把被掩码的字段置为 `null` 并列进 `_masked`；写被掩码的字段答 `403 FIELD_FORBIDDEN`；按被掩码的字段排序、过滤、聚合一律拒绝。事件是系统面，绝不未经掩码就展示给人。
 
@@ -144,7 +144,7 @@ SDK 也把三个分支分开给出，慢查询可以改写成按同一个游标�
 
 **管理与自助 REST**（经网关；管理页只按族契约生成）：角色、带档位的键、维度取值；profile；`/api/me/delegations`、`/api/admin/delegations`；`/api/me/shares?direction=by_me|with_me`、`/api/admin/shares`；`/api/admin/keys/{key}/holders`、`/api/admin/access-review?type=&id=`；以及 `GET /api/me/access`，一次给全：`sub`、`act`、部门、已装组件、能力、带档位的键、取值、字段、天花板、委托给我的、revision。它替代原来分开的特性和权限两次请求。
 
-**状态码。** bundle 标记 token 过期时答 `401 TOKEN_STALE`（随后静默刷新）；第一份 bundle 到达之前答 `503 AUTHZ_NOT_READY`（`/healthz` 保持绿）；看不见答 `404 NOT_FOUND`，由类型的 `view_key` 判定；看得见但不允许答 `403`：调用方持有路由键、但这条记录不在该键的范围内时是 `OUT_OF_SCOPE`，调用方没有这个键时是 `MISSING_PERMISSION`（[15](15-user-api-and-errors.md#访问相关的状态码)）。
+**状态码。** bundle 标记 token 过期，或者它的委托授予在 `revoked_grants` 里时，答 `401 TOKEN_STALE`（随后静默刷新），这一检查先于任何委托能力检查；第一份 bundle 到达之前答 `503 AUTHZ_NOT_READY`（`/healthz` 保持绿）；看不见答 `404 NOT_FOUND`，由类型的 `view_key` 判定；看得见但不允许答 `403`：调用方持有路由键、但这条记录不在该键的范围内时是 `OUT_OF_SCOPE`，调用方没有这个键时是 `MISSING_PERMISSION`（[15](15-user-api-and-errors.md#访问相关的状态码)）。
 
 **错误 domain。** 成员以自己名义抛出的 reason 一律用族的 ID，`domain: infra/authz`，不管装的是哪个成员，并列在族契约的 `errors.yaml` 里；这是"`domain` 就是组件 ID"这条规则的槽位族例外（[15](15-user-api-and-errors.md#错误体)），这样前端每个族只维护一张表。
 

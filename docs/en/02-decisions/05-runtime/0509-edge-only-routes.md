@@ -12,12 +12,12 @@ The edge (Traefik by default) sits between a browser, the mobile app or an exter
 |---|---|
 | **The edge does** | TLS; routing by longest path prefix; a body limit per route; edge timeouts derived from the route deadline; coarse per-IP rate limits; starting the trace and the request ID; stripping internal and spoofable headers (`X-Request-Id`, `traceparent`, every `be-*` header, untrusted `X-Forwarded-*`); a CORS allow-list only for a separate origin |
 | **The edge does not** | authenticate as the only gate, authorize, apply data scopes, route on business content, retry a request that has a body, or cache API responses |
-| **The edge never routes** | gRPC ports; `/healthz`, `/readyz`, `/metrics`, `/_be/info`; internal paths a component leaves out of `edge_routes` (`/authz/bundle`, the JWKS, the Casdoor webhook) |
+| **The edge never routes** | gRPC ports; `/healthz`, `/readyz`, `/metrics`, `/_be/info`; OpenAPI operations marked `x-be-internal: true`, the provider plane that only other components call (authz `/authz/v2/*`, the iam JWKS under `/.well-known/*`), which are also exempt from the edge-route coverage gate; internal paths a component leaves out of `edge_routes` (the Casdoor webhook) |
 
 - Every service verifies the token itself against the local JWKS and decides the route's permission key, data scopes and visibility itself, whether or not an edge is in front of it.
 - A route's `auth: required | none` in `edge_routes` documents intent and drives the end-to-end tests; the service still enforces it.
 - Answers the edge produces itself (404, 413, 429, 502, 503, 504) carry the platform problem body with `domain: be` (`RATE_LIMITED`, `UPSTREAM_UNAVAILABLE`, `UPSTREAM_TIMEOUT`).
-- **Routes are generated, never hand-written.** be-ops reads each component's `edge_routes` and writes the route into that component's deploy entry: on Kubernetes the entry's `paths` (brickKit's Ingress per component, path-segment-bounded prefixes, one shared `hostname` and one `tlsSecret`); on Docker and Podman Traefik router `labels` with segment-bounded rules (``PathRegexp(`^/erp/sales(/|$)`)``, never a bare `PathPrefix`, which matches by string), read by Traefik 3.2 or later on the project's `network:`. Labels and Ingress back ends follow the versioned service name, so an upgrade changes no route.
+- **Routes are generated, never hand-written.** be-ops reads each component's `edge_routes` and writes the route into that component's deploy entry: on Kubernetes the entry's `paths` (brickKit's Ingress per component, path-segment-bounded prefixes, one shared `hostname` and one `tlsSecret`); on Docker and Podman Traefik router `labels` with segment-bounded rules (``PathRegexp(`^/erp/sales(/|$)`)``, never a bare `PathPrefix`, which matches by string), read by Traefik 3.6 or later on the project's `network:` (Docker Engine 29 refuses the API version older releases ask for). Labels and Ingress back ends follow the versioned service name, so an upgrade changes no route.
 
 ## Why
 
@@ -28,7 +28,7 @@ The edge (Traefik by default) sits between a browser, the mobile app or an exter
 - Checking the token only at the gateway (Traefik ForwardAuth, a JWT plugin) and trusting a header the gateway sets
 - Permission keys, data scopes, field masks or quotas evaluated at the edge
 - Routing on request bodies or business values
-- Routing gRPC, `/healthz`, `/readyz`, `/metrics` or `/_be/info` to the outside
+- Routing gRPC, `/healthz`, `/readyz`, `/metrics`, `/_be/info` or an `x-be-internal` operation to the outside
 - Retrying a non-idempotent request at the edge; caching API responses at the edge
 - A hand-written route, Ingress or Traefik rule for a component's user plane; a bare `PathPrefix` rule, which lets `/erp/sales` take `/erp/salesman`
 

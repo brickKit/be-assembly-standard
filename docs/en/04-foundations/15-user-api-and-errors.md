@@ -65,7 +65,18 @@ The REST plane that people reach through the browser, the mobile BFF and, later,
 | visible, the caller holds the action's key, but this record is outside that key's scope | — | 403 `OUT_OF_SCOPE` |
 | a request parameter that is itself a scope value outside the caller's scope (`warehouse_id=7`) | 403 `OUT_OF_SCOPE` | 403 `OUT_OF_SCOPE` |
 | visible and allowed, but the state forbids it | — | 400 `FAILED_PRECONDITION` with the component's reason (`ORDER_NOT_DRAFT`) |
-| the permission bundle has not loaded yet | 503 `AUTHZ_NOT_READY` | 503 |
+| the permission bundle has not loaded yet, on any route that is not Public (Authenticated routes included) | 503 `AUTHZ_NOT_READY` | 503 |
+
+**The order of the checks.** A route's guard decides in a fixed order, so the same request always gets the same answer:
+
+1. a Public route is allowed;
+2. the token is verified (format, algorithm, key and signature, claim types, `iss`, `aud`, `typ`, `sub`, `exp`/`nbf`/`iat`, `jti`): a missing or invalid token answers 401 `TOKEN_INVALID`, even before the bundle has loaded;
+3. no bundle loaded yet: 503 `AUTHZ_NOT_READY`, for every route that is not Public;
+4. the bundle's token checks, in the authorization contract's order: a token issued before the user's roles changed, or one carrying a revoked delegation grant, answers 401 `TOKEN_STALE`; then a delegated token needs the provider's `delegation` capability, an agent in the actor chain needs `agents` and a user acting for another (impersonation) needs `impersonation`, otherwise 401 `UNSUPPORTED_DELEGATION` ([21](21-identity-provider.md), [0210](../02-decisions/02-permissions/0210-delegation-and-impersonation.md)). Staleness is therefore answered before delegation;
+5. an Authenticated route is allowed;
+6. the route's key, with any ceilings applied: 403 `MISSING_PERMISSION`.
+
+One answer may come before all of these: a body over the route's limit may be refused with 413 `BODY_TOO_LARGE` before the guard runs, so before authentication; its access-log line then carries no `sub` or `perm`.
 
 ### The error body
 
@@ -100,7 +111,10 @@ The REST plane that people reach through the browser, the mobile BFF and, later,
 | `request_id`, `trace_id` | always present |
 
 - **`INTERNAL`, `UNKNOWN` and `DATA_LOSS`** always answer `reason: INTERNAL`, `domain: be`, a generic `detail` and the `trace_id`; the original error goes only to the log. The runtime's mapping enforces this; component code cannot opt out.
-- **Relaying a dependency's error:** keep its `reason` and `domain` when they mean something to the user (insufficient stock); map to a reason of your own only when you add meaning.
+- **Relaying a dependency's error:** a dependency that answered with its own `ErrorInfo` is relayed as it is: keep its `reason` and `domain` when they mean something to the user (insufficient stock); map to a reason of your own only when you add meaning.
+- **A dependency that did not answer** is not the dependency's error but this request's: the runtime answers 503 `DEPENDENCY_UNAVAILABLE` with `metadata.dependency` naming it (see the catalogue below).
+- **A request that cannot be decoded** or does not match the operation's schema (malformed JSON, a wrong type, a missing required field, an unknown enum value, a path or query parameter of the wrong form such as a bad UUID or a malformed decimal string) answers 400 `REQUEST_INVALID`, with the field errors in `violations`. The runtime's request decoding raises it, and so does a component's own check of the request's shape.
+- **A request the caller cancelled** (the client closed the connection, a gRPC client cancelled) answers 499 `REQUEST_CANCELLED`, also when PostgreSQL reports the cancel as SQLSTATE `57014`. It is never logged as an error, and its access-log line is at level info. Every non-OK answer the runtime produces carries a reason, so a cancel never turns into `INTERNAL` and 500.
 
 ### gRPC form
 
@@ -140,7 +154,7 @@ reasons:
 
 - `reason` is `UPPER_SNAKE`, unique within the domain. A slot-family member's reasons are listed in its family contract's `errors.yaml` under the family's domain (`infra/authz`), not in the member's own catalogue. Entries are **append-only**, like `registry/permissions.tsv`: never renamed, removed or reused; retired with `deprecated: true` ([07-registries.md](../01-conventions/07-registries.md#append-only)).
 - The frontend generates its message tables from the catalogues of the installed components, the same way it generates types from the contracts. An unknown reason shows `title` or a generic message and is reported.
-- **Platform reasons** use `domain: be` and ship with the component protocol (`schemas/errors-be.yaml` of `brickKit/be-protocol`, [02](02-languages-and-component-protocol.md#repository-layout-of-be-protocol)). This table is the complete set, 33 reasons, row for row the same as that file; a component never raises one of these names in its own domain, and never raises a `be` reason that is not in it:
+- **Platform reasons** use `domain: be` and ship with the component protocol (`schemas/errors-be.yaml` of `brickKit/be-protocol`, [02](02-languages-and-component-protocol.md#repository-layout-of-be-protocol)). This table is the complete set, 36 reasons, row for row the same as that file; a component never raises one of these names in its own domain, and never raises a `be` reason that is not in it:
 
 | Reason | Code | Raised when |
 |---|---|---|
@@ -177,8 +191,17 @@ reasons:
 | `NETWORK_IN_TX` | `INTERNAL` | an outbound call started while a transaction is open: a programming error, named in the log and in test runs so they catch it; the caller still receives `reason: INTERNAL` as above ([10](10-local-transactions.md#port-contract), [0501](../02-decisions/05-runtime/0501-no-network-inside-a-transaction.md)) |
 | `DB_TOO_MANY_CONNECTIONS` | `UNAVAILABLE` | the database refused a connection with SQLSTATE `53300` (too many connections); not retried |
 | `NESTED_TX` | `INTERNAL` | a transaction opened inside another one in the same unit of work: a programming error, named in the log and in test runs; the caller still receives `reason: INTERNAL` as above ([10](10-local-transactions.md#port-contract)) |
+| `REQUEST_INVALID` | `INVALID_ARGUMENT` | the request cannot be decoded or does not match the operation's schema (malformed JSON, wrong types, missing required fields, an unknown enum value, a path or query parameter of the wrong form such as a bad UUID, a malformed decimal string); field errors in `violations` |
+| `DEPENDENCY_UNAVAILABLE` | `UNAVAILABLE` | the runtime could not reach something the request needs; `metadata.dependency` is `db` (PostgreSQL: cannot connect, connection lost, SQLSTATE class `08`, `57P01`, `57P02`, `57P03`), `bus` (the event bus, for a direct publish), `blob` (object storage), or the component ID or slot-family ID of a dependency that did not answer (connection refused or reset, or `UNAVAILABLE` without an `ErrorInfo` of its own); HTTP 503 |
+| `REQUEST_CANCELLED` | `CANCELLED` | the caller cancelled the request (the client closed the connection, a gRPC client cancel), including SQLSTATE `57014` caused by such a cancel; HTTP 499; never logged as an error |
 
 The three edge reasons are never raised by a component: answers the edge produces itself (404, 413, 429, 502, 503, 504) carry this problem body with `domain: be`.
+
+**Which "unavailable" applies where.** Three cases look alike and are kept apart:
+
+- the edge could not reach the component, or the component did not answer in time: `UPSTREAM_UNAVAILABLE` or `UPSTREAM_TIMEOUT`, raised by the edge only, never by a component or its runtime;
+- a component could not reach its database, the bus, object storage or another component: `DEPENDENCY_UNAVAILABLE`, raised by that component's runtime, with `metadata.dependency` saying which. A database that refuses a connection because it has too many keeps its own reason, `DB_TOO_MANY_CONNECTIONS`;
+- a dependency answered with an error of its own (`ErrorInfo`), `UNAVAILABLE` included: relayed as it is, with the dependency's `reason` and `domain`.
 
 ### Versioning
 

@@ -34,7 +34,7 @@ Not covered: dashboards, alert rules and on-call procedures (planned `05-operati
 
 | Hop | Carrier | Rule |
 |---|---|---|
-| HTTP in | `traceparent`, `tracestate`, `baggage` headers | extracted; the server span is a child of the caller's span |
+| HTTP in | `traceparent`, `tracestate`, `baggage` headers | extracted; the server span is a child of the caller's span. An inbound `traceparent` with the sampled flag 0 is propagated (the trace ID is kept and children are unsampled), but its spans are neither recorded nor exported; `trace_id` still appears in the logs and problem bodies |
 | HTTP out (user plane, see [15-user-api-and-errors.md](15-user-api-and-errors.md)) | same headers, plus `X-Request-Id` | injected |
 | gRPC in and out ([14-system-rpc.md](14-system-rpc.md)) | the same keys in metadata | extracted and injected on every call |
 | Event publish | the envelope's trace context ([13-event-contracts.md](13-event-contracts.md)) | the producer's span context is written into the message |
@@ -44,7 +44,7 @@ The propagator and the OTLP exporter are the only process-wide telemetry. Both b
 
 **Correlation.** `X-Request-Id` is the id a client sees and may quote. When a request arrives without one, the first service sets it to the trace id. It is propagated on outbound calls. Every log line carries `trace_id`; events carry `ce-causationid` ([13-event-contracts.md](13-event-contracts.md)).
 
-**Resource attributes**, per member: `service.name` = the component ID (`erp/sales`), `service.version` = the component version, `service.namespace` = the project, `service.instance.id` = the container or Pod, `deployment.environment`. In a shell each member has its own tracer provider and meter provider with these attributes; the exporter is shared and only the shell shuts it down, after every member has stopped. Stopping one member flushes only that member's own span queue.
+**Resource attributes**, per member: `service.name` = the component ID (`erp/sales`), `service.version` = the component version, `service.namespace` = the component's domain (the first segment of its ID, `erp`), `service.instance.id` = the container or Pod, `deployment.environment.name` = `DEPLOY_ENV` (default `dev`; the OpenTelemetry semantic-conventions name from 1.27, formerly `deployment.environment`). In a shell each member has its own tracer provider and meter provider with these attributes; the exporter is shared and only the shell shuts it down, after every member has stopped. Stopping one member flushes only that member's own span queue.
 
 **Export.** OTLP to `OTEL_BASE_URL` ([04-configuration.md](../01-conventions/04-configuration.md#shared-connection-keys)). Empty means no export and no error; the component still runs.
 
@@ -66,7 +66,9 @@ The propagator and the OTLP exporter are the only process-wide telemetry. Both b
 | `component_id`, `component_version` | the component, in a shell the member's own values |
 | `trace_id`, `span_id` | from the active span |
 | `request_id` | when the line belongs to a request |
-| access log lines also | `sub` and `perm` (the permission key the route required), so a refused request can be traced to a person and a key |
+| access log lines also | `sub` and `perm` (the permission key the route required), so a refused request can be traced to a person and a key; a 413 answered before the guard ran carries neither |
+
+- **The access log** covers the user plane and the resource contract only. The operations endpoints (`/healthz`, `/readyz`, `/metrics`, `/_be/info`) are excluded; a runtime MAY log them at debug. An access-log line's level follows its status: 500 (`INTERNAL`, `UNKNOWN`, `DATA_LOSS`) is ERROR, 503 and 504 (`UNAVAILABLE`, `DEADLINE_EXCEEDED`) are WARN, everything else (2xx, 3xx, 4xx, 499, 501) is INFO.
 
 - **Level**: the key `LOG_LEVEL` (`debug|info|warn|error`, default `info`), applied per member in a shell.
 - **Which level an error gets**, decided by the SDK in its HTTP and gRPC error mapping, not by each component:
@@ -75,7 +77,7 @@ The propagator and the OTLP exporter are the only process-wide telemetry. Both b
 |---|---|
 | `INTERNAL`, `UNKNOWN`, `DATA_LOSS` / 500 | ERROR |
 | `UNAVAILABLE`, `DEADLINE_EXCEEDED` / 503, 504 | WARN |
-| `CANCELLED`, including a cancel during shutdown | not logged |
+| `CANCELLED` (`REQUEST_CANCELLED`), including a cancel during shutdown | not logged as an error; its access-log line is INFO |
 | caller errors: `INVALID_ARGUMENT`, `NOT_FOUND`, `PERMISSION_DENIED`, `FAILED_PRECONDITION` … / 4xx | INFO |
 
   ERROR means an operator must act. A caller's mistake is never ERROR.
@@ -83,7 +85,7 @@ The propagator and the OTLP exporter are the only process-wide telemetry. Both b
   - protected names: `phone`, `mobile`, `id_card`, `password`, `bank_card`, `email`, `token`, `secret`, `authorization`, `cookie`, `set-cookie`, `api_key`;
   - a field name is split into tokens: camelCase words, and `_`, `-`, `.` as separators, lower-cased. It matches when a protected name's tokens appear in it as one contiguous run of whole tokens (the last may carry a plural `s`): `phone_number`, `accessToken`, `user.email` match; `telephone`, `tokenizer` do not;
   - the matching field's value, of any type, is replaced by the string `"[REDACTED]"` and not walked further; values are never scanned, so personal data never goes into free text; the envelope fields are never touched;
-  - a line longer than 2 KiB is truncated so that it stays one valid JSON object.
+  - a line is at most 2048 bytes, its terminating newline included, and stays one valid JSON object. The envelope fields are never cut: `time`, `level`, `msg`, `component_id`, `component_version`, `trace_id`, `span_id`, `request_id`, `truncated`. Every other string value may be cut, longest first, at a character boundary, ending in `…[TRUNCATED]`.
 - No component sends logs over the network itself; stdout is the only output. The collector reads container logs (a file-log receiver on Docker, the Kubernetes log pipeline on Kubernetes) and forwards them to Loki.
 
 **Audit logs** are not application logs:

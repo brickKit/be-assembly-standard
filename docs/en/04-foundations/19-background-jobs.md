@@ -84,7 +84,7 @@ CREATE INDEX besdk_job_queue_due ON besdk_job_queue (kind, run_at) WHERE state I
 
 - **Cron time zone.** A cron expression is evaluated in the deployment's business time zone, the shared key `BUSINESS_TIMEZONE` (default `Asia/Shanghai`, see [05-time-and-calendars.md](05-time-and-calendars.md)), unless the job declares another zone; there is no separate jobs time-zone key. A job that works per legal entity runs once per slot and computes each legal entity's business date inside the run.
 - **Handlers are idempotent.** At least once means a handler may run twice; it deduplicates by `unique_key` or by a business key.
-- **Retention.** `done` queue rows and old slot rows are deleted after a retention period by a `singleton` cleanup job. These tables are not partitioned; they stay bounded by retention, the same exception as the event cursor and command idempotency tables.
+- **Retention.** `besdk_job_queue` rows in state `done` are deleted after 7 days and `besdk_job_slot` rows after 30 days, by a `singleton` cleanup job (the platform defaults, beside the outbox's 14 days after publication and the cursor and idempotency rows' 30 days, [09](09-data-lifecycle.md#partition-windows-and-platform-tables)). These tables are not partitioned; they stay bounded by retention, the same exception as the event cursor and command idempotency tables.
 
 **Supervision.** Each job and worker runs on its own. An error or panic is logged with the member's logger at the level its cause deserves, counted, and the job restarts with exponential backoff from 1 s to 5 min. One job stopping never stops another. On shutdown runs are cancelled and given the grace period to finish. The same supervisor runs standalone and in a shell.
 

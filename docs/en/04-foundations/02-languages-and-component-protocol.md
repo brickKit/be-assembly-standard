@@ -62,7 +62,7 @@ Twenty chapters, `P1`–`P20`. Each rule has a level. **MUST** rules are tested 
 }
 ```
 
-On a shell, `members` is an array of the same objects, each without `members`. A component declares the protocol version it is tested against in `assembly.yaml`; the suite keeps one case set per protocol minor, so an older component is always tested against the version it declares:
+`profiles` MUST equal the set of profiles the suite selects from the manifests (below); a runtime that reports more or fewer fails `CP-CORE-11`. On a shell, `members` is an array of the same objects, each without `members`. A component declares the protocol version it is tested against in `assembly.yaml`; the suite keeps one case set per protocol minor, so an older component is always tested against the version it declares:
 
 ```yaml
 protocol: "1.0"
@@ -87,6 +87,7 @@ The protocol is checked by the suite, but a few of its facts are also declared i
 | P3.1 / P7 ports | `deployment.protocol: http`; `extraPorts: [{name: grpc, port: …, protocol: grpc}]` | `appProtocol` on Kubernetes Service ports | the component (template) |
 | P12 events | `events: {publishes, subscribes}` | `graph`, `deps`, a `lint` hint for a subscription nobody publishes; no runtime effect | be-ops, from the event contract (`publishes`) and `events.consumes` in `conformance/fixtures.yaml` (`subscribes`); the suite checks both against what the component does ([13](13-event-contracts.md#the-contract-file)) |
 | P14.8 run-once entry (optional) | nothing (`/_be/info` lists the capability `job_run`) | nothing: an external trigger runs the image's `job run <name>` command ([19](19-background-jobs.md#port-contract)) | — |
+| P20.5 conformance before a release (SHOULD) | `release: {checks: [[make, conformance]]}` | `brickkit release`, `brickkit publish` and `brickkit release --local` run the component's suite against the release commit and refuse to tag when it fails (`RELEASE_CHECK_FAILED`); `--skip-checks` bypasses it and the bypass is printed. Needs brickKit v1.4.0 or later | the component (template); the widget fixture declares it |
 
 ### Repository layout of `be-protocol`
 
@@ -106,7 +107,7 @@ The protocol is checked by the suite, but a few of its facts are also declared i
 
 - **Real infrastructure:** the PostgreSQL started by `make up`, database `brickkit_test_db`, with a fresh random schema, a random owner role (`PG_OWNER_USER`, owns the tables), a random runtime role (`PG_USER`, DML only, not a member of the owner) and a shell login role granted the runtime role `WITH INHERIT FALSE, SET TRUE` for each run, all dropped afterwards; a throwaway `nats-server -js` per run.
 - **Fakes inside the suite:** an identity provider (JWKS plus a token signer that also signs wrong-`iss`, wrong-`aud`, refresh and `HS256` tokens), an authorization provider speaking `contract-infra-authz` v2, a fake peer for every dependency (answering from the dependency's proto descriptors, recording metadata, deadlines and connection counts, able to hang or fail), and an OTLP receiver.
-- **Configuration:** the `configSchema` defaults, overlaid with the suite's values (random database identity, fake addresses), overlaid with tuning keys any operator may set (`EVENTS_BACKOFF`, `EVENTS_MAX_DELIVER`, `GRPC_MAX_CONNECTION_AGE`, `JOBS_OVERRIDES`). The protocol keys are the testability interface: there is no test-mode switch.
+- **Configuration:** the `configSchema` defaults, overlaid with the suite's values (random database identity, fake addresses, and the fixtures' `config` for the component's own required keys), overlaid with tuning keys any operator may set (`EVENTS_BACKOFF`, `EVENTS_MAX_DELIVER`, `GRPC_MAX_CONNECTION_AGE`, `JOBS_OVERRIDES`). The protocol keys are the testability interface: there is no test-mode switch.
 - **Run:** migrate twice, then serve one or two replicas; for a shell, start it from `BRICKKIT_SERVED_MEMBERS_CONFIG`.
 
 Profiles are selected from the manifests; a component does not declare them:
@@ -116,22 +117,30 @@ Profiles are selected from the manifests; a component does not declare them:
 | `core`, `obs`, `err` | always | `events-pub` | its event contracts list a subject it publishes |
 | `auth` | any non-public route | `events-sub` | it subscribes to any subject |
 | `scope` | `data_scopes` is not `none`, or it declares resources | `idempotency` | any write takes an idempotency key |
-| `grpc` | an `extraPorts` entry named `grpc` | `db`, `jobs`, `lifecycle` | `configSchema` has `PG_SCHEMA` |
-| `outbound` | it has component dependencies | `blob` | `configSchema` has `S3_BUCKET` |
+| `grpc` | an `extraPorts` entry named `grpc` | `db`, `jobs`, `lifecycle` | `configSchema` has `PG_SCHEMA` or `PG_HOST` |
+| `outbound` | it has component dependencies | `blob` | `configSchema` has `S3_BUCKET` or `S3_URL` |
 | `shell` | `component.yaml` has `shell.members`; each member's profiles are re-run in shell form | | |
 
-`conformance/fixtures.yaml` tells the suite how to make the component act and how to observe the result: test users and their grants, how to create, read, list and command each resource, what each dependency answers, which events it produces and consumes, and an `observe.sql` that reads the component's own tables for effects with no public read API. It is data, not code, so a fourth-language component writes the same file.
+The two configuration triggers are the hand-written part of the protocol block: a component writes one trigger key by hand for each of these profiles it uses (`PG_SCHEMA` or `PG_HOST` for `db`, `S3_BUCKET` or `S3_URL` for `blob`), and be-ops then generates the rest of that profile's keys into `configSchema`. The runtime's `/_be/info` reports exactly the profiles this table selects.
 
-**Report and gate.** The suite writes `compconf-report.json` (schema in `be-protocol`): suite version, protocol, component and version, image reference and digest, SDK, infrastructure versions, per-profile and per-case results, skipped cases with reasons. A failed MUST makes the run fail. `make conformance ID=<component> [SHELL=<shell>]` runs it locally. The planned gate `compconf-record-scan`, part of `make gates`, is offline: every component and shell in `brickkit.yaml` has a report for its exact version, whose image digest equals the local image's, from a suite no older than the minimum, with every required profile passed. A rebuilt image needs a new report.
+`conformance/fixtures.yaml` tells the suite how to make the component act and how to observe the result: test users and their grants, how to create, read, list and command each resource, what each dependency answers, which events it produces and consumes, and an `observe.sql` that reads the component's own tables for effects with no public read API. It is data, not code, so a fourth-language component writes the same file. Two of its fields steer the suite directly: an operation's `paired_with` (`resources.<res>.<op>`) names the REST or gRPC operation on the same resource and code path, which `CP-ERR-02` compares with it; the top-level `config` holds the values the suite sets for the component's own required keys.
+
+A case may carry `applies_when` in the case catalogue: a case whose condition does not hold is reported "not applicable", neither skipped nor failed. `CP-ERR-02` applies only when the component has a `grpc` port, `CP-ERR-03` only when it has a database. `CP-CORE-06` checks that in-flight work completes during a stop only when the fixtures declare a `slow` operation; otherwise it checks the exit code 0 and the time to exit.
+
+**Report, release and gate.** The suite writes `compconf-report.json` (schema in `be-protocol`): suite version, protocol, component and version, image reference and digest, SDK, infrastructure versions, per-profile and per-case results, skipped and not-applicable cases with reasons. A failed MUST makes the run fail. `make conformance ID=<component> [SHELL=<shell>]` runs it locally.
+
+The suite is wired into the release itself. A component or shell declares `release: {checks: [[make, conformance]]}` in its `component.yaml` (P20.5, SHOULD; brickKit v1.4.0 or later). `brickkit release`, `brickkit publish` and `brickkit release --local` then run the suite against the release commit and refuse to tag on a failure (`RELEASE_CHECK_FAILED`); `--skip-checks` bypasses the check and brickKit prints that it did. A tag on such a component therefore already means a green suite.
+
+The planned gate `compconf-record-scan`, part of `make gates`, is offline and now covers only what `release.checks` cannot: components the project does not release itself. It asks for no report for a component or shell whose manifest at the pinned version declares `release.checks` with `[make, conformance]`, since brickKit would have refused to tag it otherwise. For every other component or shell in `brickkit.yaml` (another vendor's component, a fork that dropped the check) it still requires a passing report kept in the project: for its exact version, with an image digest equal to the local image's, from a suite no older than the minimum, with every required profile passed. A rebuilt image of such a component needs a new report.
 
 ### The two gates
 
 | | Runs standalone | Joins a shell |
 |---|---|---|
 | Who | a component in any language | a component in a language with an official SDK and a shell launcher |
-| Needs | a green suite report for its version; `protocol` in `assembly.yaml`; its stack written in its `AGENTS.md` | the above, built with the same SDK version as the shell's other members; the `shell` profile green; the shell's member checks ([27](27-shells.md)) |
+| Needs | a green suite run for its version (its release check, or a report kept in the project); `protocol` in `assembly.yaml`; its stack written in its `AGENTS.md` | the above, built with the same SDK version as the shell's other members; the `shell` profile green; the shell's member checks ([27](27-shells.md)) |
 | Source-scanning gates (`bare-route-scan`, `identity-literal-scan`, import checks) | official languages only; for another language, the suite plus a review against the INTERNAL list replace them | all apply |
-| `compconf-record-scan` | applies | applies |
+| `compconf-record-scan` | applies when the manifest at the pinned version declares no `release.checks` with `[make, conformance]`; otherwise the release check stands in for it | the same |
 
 ### Official SDKs
 
@@ -151,6 +160,8 @@ The stack each official SDK locks ([0103](../02-decisions/01-architecture/0103-l
 | Migrations | golang-migrate | yoyo-migrations with psycopg[binary] 3.3.6 | node-pg-migrate |
 | Events | nats.go JetStream | nats-py JetStream | @nats-io/jetstream |
 | Decimal | cockroachdb/apd v3 | `decimal` | decimal.js |
+| JSON Schema (payload validation) | santhosh-tekuri/jsonschema v6 | jsonschema 4.26.0 | ajv 8.20.0 |
+| Metrics | client_golang | prometheus-client, opentelemetry-exporter-prometheus 0.59b0 | a Prometheus client, @opentelemetry/exporter-prometheus |
 | JWT | golang-jwt v5 + keyfunc v3 | PyJWT (with `audience`) | jose 6 |
 | Tracing | otel-go | opentelemetry-python | @opentelemetry/sdk-trace-base, no auto-instrumentation |
 | Time zone data (MUST be embedded) | `time/tzdata` | the `tzdata` package | full ICU |

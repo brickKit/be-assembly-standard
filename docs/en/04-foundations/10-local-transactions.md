@@ -53,13 +53,14 @@ SET LOCAL transaction_timeout = '<remaining deadline>';  -- PostgreSQL 17 or lat
 | `40001` | serialization failure | roll back, wait `10 ms · 2^n` ± jitter, re-run the body; at most 3 attempts | after the last attempt: `ABORTED` / `TX_CONFLICT` |
 | `40P01` | deadlock detected | same as `40001` | same |
 | `55P03` | lock not available (`lock_timeout`) | no retry | `ABORTED` / `LOCK_TIMEOUT` |
-| `57014` | statement cancelled (`statement_timeout`) | no retry | `DEADLINE_EXCEEDED` / `STATEMENT_TIMEOUT` |
+| `57014` | statement cancelled (`statement_timeout`) | no retry | `DEADLINE_EXCEEDED` / `STATEMENT_TIMEOUT`; when the cancel came from the caller cancelling the request: `CANCELLED` / `REQUEST_CANCELLED` |
 | `25P04` | transaction timeout (PostgreSQL 17+) | no retry | `DEADLINE_EXCEEDED` / `STATEMENT_TIMEOUT` |
 | `25P03` | idle in transaction too long | the server closed the connection | `INTERNAL`: it is a bug in the component |
 | `53300` | too many connections | no retry | `UNAVAILABLE` / `DB_TOO_MANY_CONNECTIONS` |
+| class `08`, `57P01`, `57P02`, `57P03` | cannot connect, connection lost, server shutting down or not yet accepting connections | no retry | `UNAVAILABLE` / `DEPENDENCY_UNAVAILABLE`, `metadata.dependency = db` |
 | `23505` | unique violation | no retry | the component maps it to its own reason, usually `ALREADY_EXISTS` |
 
-A retry re-runs the body from the start in a new transaction. That is safe only because the body touches nothing but the transaction, which the next two rules guarantee. A caller that wants to retry a `LOCK_TIMEOUT` does so a layer higher, with the same idempotency key. Retries are counted in `be_tx_retries_total{component,reason}`.
+A retry re-runs the body from the start in a new transaction. That is safe only because the body touches nothing but the transaction, which the next two rules guarantee. A caller that wants to retry a `LOCK_TIMEOUT` does so a layer higher, with the same idempotency key. Retries are counted in `be_tx_retries_total{component,sqlstate}` (`sqlstate` is `40001` or `40P01`).
 
 **No network inside a transaction.** While a unit of work holds an open transaction, every outbound call the runtime offers (gRPC, user-facing HTTP, a direct publish to the bus) refuses to start and fails with `INTERNAL` / `NETWORK_IN_TX`: a programming error, surfaced in development and tests (in test builds it aborts the test). The only exits are:
 

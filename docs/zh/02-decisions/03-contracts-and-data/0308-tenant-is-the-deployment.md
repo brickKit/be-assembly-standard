@@ -7,6 +7,7 @@
 ## 决策
 
 - **一个客户，一套部署。** 项目以私有化部署为主，每个客户一套安装。没有多个客户共用一个数据库的多客户 SaaS 模式。
+- **一个客户，一个项目仓库 fork。** brickKit 没有多客户的概念：每个客户的 fork 持有自己的 `brickkit.yaml`（它的锁文件，所以版本按客户逐个推进）、`config/`、密钥和部署文件；共用的改动用 Git 从上游仓库合并进来（[07-tenancy.md](../../04-foundations/07-tenancy.md#运营多个租户)）。
 - **租户在线上预留，不进表。** token 带 `tenant_id`，`aud` 是本部署的 `TENANT_ID`（[0203](../02-permissions/0203-jwt-carries-identity-only.md)）；契约可以带租户字段。任何表都没有 `tenant_id` 列。
 - **一个客户下的多家公司是法人**，是部署内的一个维度，归 `mdm/org` 所有：
   - 每张交易单据都带 `legal_entity_id`；

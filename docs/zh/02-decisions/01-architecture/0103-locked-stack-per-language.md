@@ -17,9 +17,10 @@
 | 迁移 | `golang-migrate`，裸 `.sql` 文件 | `yoyo-migrations`，裸 `.sql` 文件，入口收进 SDK | `node-pg-migrate`，纯 SQL 文件 |
 | 事件 | `nats.go` `jetstream` | `nats-py` JetStream | `@nats-io/jetstream` + `@nats-io/transport-node` |
 | 十进制 | `cockroachdb/apd/v3` | `decimal` | `decimal.js` |
+| JSON Schema（载荷校验） | `santhosh-tekuri/jsonschema/v6` | `jsonschema==4.26.0` | `ajv` 8.20.0 |
 | JWT | `golang-jwt/v5` + `keyfunc/v3` | PyJWT，一律传 `audience` | `jose` 6 |
 | 出站 HTTP | `net/http` | `httpx` | `undici`，每个依赖一个 Agent |
-| 日志 / 指标 | `slog` / `client_golang`，每个模块一个 registry | `logging` 配 SDK 的 JSON formatter / `prometheus-client`，每个模块一个 `CollectorRegistry` | `pino` / Prometheus 客户端，每个模块一个 registry |
+| 日志 / 指标 | `slog` / `client_golang`，每个模块一个 registry | `logging` 配 SDK 的 JSON formatter / `prometheus-client`，每个模块一个 `CollectorRegistry`，OpenTelemetry 指标经 `opentelemetry-exporter-prometheus==0.59b0` 导出 | `pino` / Prometheus 客户端，每个模块一个 registry |
 | 链路追踪 | `otel-go` + `otelgrpc` | `opentelemetry-python` + gRPC 拦截器 | `@opentelemetry/sdk-trace-base`，不用自动插桩 |
 | 对象存储 | `aws-sdk-go-v2` | `aioboto3` | `@aws-sdk/client-s3` |
 | UUIDv7 / 拼音 | `google/uuid` / `go-pinyin` | `uuid6` / `pypinyin` | `uuid` 11 / `pinyin-pro` |

@@ -31,7 +31,7 @@ How much time one request may take at each hop, from the user's click through th
 | Inbound HTTP | the route's deadline | the request context carries it from the first byte read |
 | HTTP server | read header 5 s; read 30 s; write = route deadline + 5 s; idle 120 s; body at most 1 MiB unless the route declares more | the same values standalone and in a shell; files go to object storage through presigned URLs, never through a component's body |
 | Inbound gRPC | the caller's `grpc-timeout`; 10 s when absent | [14](14-system-rpc.md#server-requirements) |
-| One outbound call | `min(3 s, remaining − 50 ms)` | with less than 50 ms left the call is not sent: `DEADLINE_EXCEEDED` / `DEADLINE_BUDGET_EXHAUSTED`. A system rpc that legitimately needs longer (closing a period) declares it as a method option (planned) |
+| One outbound call | `min(3 s, remaining − 50 ms)` | with 50 ms or less left the call is not sent: `DEADLINE_EXCEEDED` / `DEADLINE_BUDGET_EXHAUSTED`. A system rpc that legitimately needs longer (closing a period) declares it as a method option (planned) |
 | Database statement | `min(5 s, remaining)`; lock wait 2 s; idle in transaction 30 s | set per transaction ([10](10-local-transactions.md#port-contract)) |
 | Event handler | the bus's acknowledgement wait (30 s) minus 5 s | a local write is expected within 1 s; a handler with side effects reports progress every 10 s ([12](12-event-bus.md#durable-consumers)) |
 | Job run, reconciler step | the timeout the job declares | [19](19-background-jobs.md#port-contract) |
@@ -144,7 +144,7 @@ All of these live inside the SDK's client chain or the generated service config:
 Planned, in `tools/be-acceptance/conformance/rpc/` and `tools/be-acceptance/conformance/userapi/`; red today unless noted.
 
 - an inbound HTTP request has the route's deadline, and an outbound call inherits the remaining budget;
-- with less than 50 ms left an outbound call is not sent and fails with `DEADLINE_BUDGET_EXHAUSTED`;
+- with 50 ms or less left an outbound call is not sent and fails with `DEADLINE_BUDGET_EXHAUSTED`;
 - a gRPC call without a deadline receives the default;
 - only `NO_SIDE_EFFECTS` or `IDEMPOTENT` methods are retried, and only on `UNAVAILABLE`;
 - after the retry budget is spent, no further retries happen;

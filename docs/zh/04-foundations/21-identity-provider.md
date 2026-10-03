@@ -63,10 +63,11 @@
 **验签规则，每个 SDK、每种语言都一样：**
 
 - `alg` 取自 JWKS 里那把钥，且必须是 `RS256`、`ES256`、`EdDSA` 之一；token 头不能自己选。
-- `kid` 必填。没见过的 `kid` 先重新拉一次 JWKS（限频），仍找不到就失败。
+- `kid` 必填。没见过的 `kid` 会重新拉 JWKS，每 30 s 最多一次，仍找不到就失败；这个限频不适用于启动时的拉取和每小时的刷新。
 - `iss` 必须等于 `IAM_ISSUER`；`aud` 必须包含 `TENANT_ID`；检查 `exp` 和 `nbf`。
 - `typ` 必须是 `access`；`refresh` 和缺失 `typ` 的一律拒收。
-- token 的 `iat` 早于 bundle 里该 `sub` 的 `stale_since` 时答 `401`，reason 为 `TOKEN_STALE`，并带 `WWW-Authenticate: Bearer error="token_stale"`，前端静默刷新。
+- 没有 token，或 token 没通过上面任何一项检查，答 `401 TOKEN_INVALID`，先于其他一切，权限 bundle 还没加载时也一样；token 有效但还没有 bundle 时，非 Public 路由答 `503 AUTHZ_NOT_READY`。
+- 然后是 bundle 里的令牌检查，按授权契约规定的顺序。token 的 `iat` 早于 bundle 里该 `sub` 的 `stale_since`，或者它的委托授予 `dg` 在 bundle 的 `revoked_grants` 里，答 `401`，reason 为 `TOKEN_STALE`，并带 `WWW-Authenticate: Bearer error="token_stale"`，前端静默刷新。之后才检查委托：委托令牌（带 `act`、非空的 `ceil` 或非空的 `dg`）需要提供方具备 `delegation` 能力；`act` 链里的 agent 需要 `agents`，用户（模拟登录）需要 `impersonation`，服务账号不需要额外能力；否则答 `401 UNSUPPORTED_DELEGATION`（[15](15-user-api-and-errors.md#访问相关的状态码)）。
 
 **平台 `sub` 与身份链接。** 成员维护 `identity_links(idp, idp_issuer, idp_sub, user_id)`，每个 IdP 账号一行。一个陌生 IdP 账号首次登录时建一个平台用户。默认只按 `(idp_issuer, idp_sub)` 精确链接到已有用户；按 e-mail 自动链接是一个有安全风险的可选项。族契约定义链接的 NDJSON 导出格式，新成员导入后每个 `sub` 都保持不变。
 
