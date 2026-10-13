@@ -70,6 +70,7 @@
 | [安全 10 成员能力与切换](../security/10-providers-and-member-switching.md) | 记录为权威、引擎为索引；外部产品已核实能力；能力矩阵；静态成员；成员切换协议 | C05、C07–C11 | 候选（未经独立复查） | 写成时自查；等价核验模型已运行 | — |
 | [安全 07 有限表达](../security/07-finite-expressions-containment-and-queries.md) | 有限原子、包含证明、求交、查询编译 | C07–C09、C11 | 候选（未经独立复查） | 写成时自查；参考模型已运行 | I18、I19 |
 | [协议 01 后台工作](../protocols/01-background-work.md) | 工作项状态、认领与接管、副作用种类、死信与暂停、cron 时间槽与夏令时、补跑与水位、清理资格 | C26、C14、C32 | 候选（未经独立复查） | 写成时自查；作业恢复模型已运行 | I27 |
+| [协议 02 本地副本](../protocols/02-projections.md) | 投影用途、行状态、来源契约、接收规则、取回、对账、回填、墓碑 | C14、C25、C30 | 候选（未经独立复查） | 写成时自查；投影修复模型已运行 | I30、I22 |
 | [权限验收矩阵](../validation/authorization-matrix.md) | PA01–PA36 | C06–C11 | 候选 | rounds/06 | — |
 | [数据与一致性矩阵](../validation/data-and-consistency-matrix.md) | DT01–DT30 | C12–C23、C37 | 候选 | rounds/04 | — |
 
