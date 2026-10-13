@@ -6,8 +6,8 @@
 
 | 流程 | 已明确的组件与新能力 | 具体选择或替换的说明 |
 | --- | --- | --- |
-| 订单确认与数量 | `erp/sales`、`erp/inventory`，独立信用新 ID／仓库待定 | [业务组件与仓库](replacements/business-and-channels.md#选择对象与组件仓库)；它们协作，不互相替代 |
-| 成本、账务与资金 | `erp/finance`，独立存货成本／收付款／出账等新身份待定 | [财务选择对象](replacements/finance-and-settlement.md#选择对象与组件仓库)；更换某种权威实现仍须保留跨组件不变量 |
+| 订单确认与数量 | `erp/sales`、`erp/inventory`，以及候选身份 `erp/credit`（[边界卡](components/erp-finance.md#erpcredit)） | [业务组件与仓库](replacements/business-and-channels.md#选择对象与组件仓库)；它们协作，不互相替代 |
+| 成本、账务与资金 | `erp/finance`，以及候选身份 `erp/costing`、`erp/payment`、`erp/billing`、`erp/credit`（[边界卡](components/erp-finance.md)） | [财务选择对象](replacements/finance-and-settlement.md#选择对象与组件仓库)；更换某种权威实现仍须保留跨组件不变量 |
 | 异步事实运输 | be-sdk-go／be-sdk-python／be-sdk-ts 的 JetStream／PG 队列适配路线 | [消息替换对象](replacements/messaging.md#选择对象与组件仓库)；broker 不接替业务事实属主 |
 | 后台授权与审批 | 选定 Authz，业务组件与 `infra/workflow`／可选引擎按职责协作 | [授权成员](replacements/authorization.md#哪些组件可以相互替换)、[支撑能力](replacements/supporting-capabilities.md#选择对象与组件仓库) |
 

@@ -11,7 +11,7 @@
 | 日志／指标／追踪 | Collector、Loki、Prometheus、Tempo、Grafana 等运行资源与配置 | 同类采集／存储／展示后端按协议替换；基本／完整方案是部署组合 | 完整样板已有，基本方案与资源成本待验；不是五个相互替换的组件 |
 | 打印渲染 | `infra/print`，[infra-print](https://github.com/brickKit/infra-print) | 相同渲染契约的实现或客户 Fork 可接替；内部渲染引擎也可按明确接口调整 | 2.x 已有，没有已交付的第二个通用渲染成员 |
 | 统一待办 | `infra/workflow`，[infra-workflow](https://github.com/brickKit/infra-workflow) | 新待办实现／Fork 接替待办聚合；可选流程引擎与其协作 | 轻量待办已有；新职责下身份、重构与迁移待定 |
-| 复杂流程 | 可选流程引擎及项目适配，产品、组件 ID 与仓库未定 | 同流程契约的引擎适配可接替流程推进；不能替代待办入口或业务放行 | 方向已定，尚无候选仓库交付承诺 |
+| 复杂流程 | 可选流程引擎及项目适配，产品未选，组件身份在选定产品后登记 | 同流程契约的引擎适配可接替流程推进；不能替代待办入口或业务放行 | 方向已定，尚无候选仓库交付承诺 |
 | 业务审计 | `infra/audit`，规划仓库 `infra-audit` | 满足可靠采集、查询、保留与权限的审计实现／Fork 接替 | 未实现；运行日志或观测后端不替代审计责任 |
 | 附件业务 | `infra/attachment`，规划仓库 `infra-attachment` | 同附件契约实现／Fork 接替；对象存储为技术依赖 | 未实现；详见[附件选型](files-and-attachments.md) |
 | 通知路由 | `infra/notification`，[infra-notification](https://github.com/brickKit/infra-notification) | 同意图／偏好／路由职责的实现或 Fork 接替；IM 成员分别选配 | 2.x 已有，通道成员不代替通知协调 |

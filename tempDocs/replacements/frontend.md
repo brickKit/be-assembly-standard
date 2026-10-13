@@ -22,7 +22,7 @@ flowchart TB
     W --> B
 ```
 
-图展示两层选择：入口可以多选，每个入口分别选一个实现。不同入口可采用不同版本／Fork；原 frontend/standard 与 frontend/advanced 的最终拆分仍待设计，图不分配新组件身份。前端能力与字段权限由真实业务契约约束。
+图展示两层选择：入口可以多选，每个入口分别选一个实现。不同入口可采用不同版本／Fork；原 frontend/standard 拆为按入口的候选身份 `frontend/pc`、`frontend/mobile`、`frontend/terminal`，frontend/advanced 保留为行业或高级入口（[前端边界卡](../components/frontend.md)）。前端能力与字段权限由真实业务契约约束。
 
 ## 按使用入口选择
 

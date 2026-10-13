@@ -33,7 +33,7 @@
 
 ```mermaid
 flowchart LR
-    I[erp/inventory<br/>库存数量事实] --> C[独立存货成本组件<br/>新 ID／仓库未定]
+    I[erp/inventory<br/>库存数量事实] --> C[erp/costing<br/>候选身份]
     P[采购价格、发票及费用等事实] --> C
     C --> F[erp/finance<br/>总账与过账]
 ```
@@ -72,7 +72,7 @@ flowchart LR
 
 ```mermaid
 flowchart LR
-    R[独立收付款组件<br/>新 ID／仓库未定] --> A[银行或支付通道适配器]
+    R[erp/payment<br/>候选身份] --> A[银行或支付通道适配器]
     A --> E[外部执行与查询结果]
     E --> R
     R -->|收付款事实| F[erp/finance<br/>核销与总账]
@@ -101,9 +101,9 @@ flowchart LR
 
 ```mermaid
 flowchart LR
-    S[销售、项目或服务来源事实] --> B[独立客户出账组件<br/>新 ID／仓库未定]
+    S[销售、项目或服务来源事实] --> B[erp/billing<br/>候选身份]
     B -->|正式出账事实| F[erp/finance<br/>应收与总账]
-    R[独立收付款组件<br/>新 ID／仓库未定] -->|资金事实| F
+    R[erp/payment<br/>候选身份] -->|资金事实| F
 ```
 
 图表示责任与事实关系，具体出账资格、来源进度权威、财务确认时点和接口待设计；不表示多个组件共同提交，也不把所有出账方式设为同一记账时点。前端可以统一操作，后台如实表达草稿、正式出账、应收形成／过账、核销和资金进度。
@@ -125,9 +125,9 @@ flowchart LR
 
 ```mermaid
 flowchart LR
-    B[业务单据与税务上下文] --> T[独立税计算组件<br/>新 ID／仓库未定]
+    B[业务单据与税务上下文] --> T[erp/tax<br/>候选身份]
     T -->|依据、版本与结果| B
-    B --> E[合规电子开票组件<br/>新 ID／仓库未定]
+    B --> E[integration/einvoice-地区<br/>候选身份]
     E --> X[外部响应与结果查询]
     X --> E
 ```

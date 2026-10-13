@@ -8,12 +8,12 @@
 
 | 业务选择点 | 原组件与仓库 | 可以替换或承接什么 | 状态与详细入口 |
 | --- | --- | --- | --- |
-| 伙伴身份与角色 | `mdm/customer`／[mdm-customer](https://github.com/brickKit/mdm-customer)，原 `mdm/supplier`／规划 `mdm-supplier` | 新统一伙伴组件承接两者基础身份与角色；不是客户与供应商任选其一 | 新身份／仓库未定；[边界](../01-component-boundaries.md#业务伙伴与角色) |
+| 伙伴身份与角色 | `mdm/customer`／[mdm-customer](https://github.com/brickKit/mdm-customer)，原 `mdm/supplier`／规划 `mdm-supplier` | 新统一伙伴组件承接两者基础身份与角色；不是客户与供应商任选其一 | 候选身份 `mdm/partner`（[边界卡](../components/mdm.md#mdmpartner)）；[边界](../01-component-boundaries.md#业务伙伴与角色) |
 | 产品主数据 | `mdm/product`／[mdm-product](https://github.com/brickKit/mdm-product) | 同产品职责的兼容实现／客户 Fork 接替 | 有 2.x；没有已交付的另一标准产品成员 |
 | 销售订单 | `erp/sales`／[erp-sales](https://github.com/brickKit/erp-sales) | 深度行业订单实现或客户 Fork 接替；实物／服务基础仍在标准组件内选配 | 有 2.x，新能力与缺件保护待实现；[销售边界](../01-component-boundaries.md#销售类型与按需依赖) |
-| 库存与复杂仓储 | `erp/inventory`／[erp-inventory](https://github.com/brickKit/erp-inventory)，复杂仓储新 ID／仓库待定 | 库存兼容实现／Fork接替库存；仓储可另换同任务契约实现 | 两种职责相互协作，不互为替代；[库存与仓储](../01-component-boundaries.md#库存核心与仓库作业) |
+| 库存与复杂仓储 | `erp/inventory`／[erp-inventory](https://github.com/brickKit/erp-inventory)，复杂仓储候选身份 `erp/warehouse`（[边界卡](../components/erp-trade.md#erpwarehouse)） | 库存兼容实现／Fork接替库存；仓储可另换同任务契约实现 | 两种职责相互协作，不互为替代；[库存与仓储](../01-component-boundaries.md#库存核心与仓库作业) |
 | CRM 关系与商机 | `crm/opportunity`／[crm-opportunity](https://github.com/brickKit/crm-opportunity)，`crm/customer` 等为规划条目 | 各自能力的兼容实现或 Fork 接替；CRM 关系不接替伙伴基础身份 | 商机已有，其余见[CRM 货架](../components/catalog.md#客户关系) |
-| 组织与任职 | `mdm/org`／规划 `mdm-org`，独立员工任职能力新 ID／仓库待定 | 同组织／任职契约的对应实现或 Fork 接替 | 与 IAM、薪资相互协作，不互为替代 |
+| 组织与任职 | `mdm/org`／规划 `mdm-org`，员工与任职候选身份 `mdm/employee`（[边界卡](../components/mdm.md#mdmemployee)） | 同组织／任职契约的对应实现或 Fork 接替 | 与 IAM、薪资相互协作，不互为替代 |
 | 其他 ERP／HR／项目业务 | 原组件 ID 与规划仓库见[完整货架](../components/catalog.md) | 明确对应能力的兼容实现、内部策略或客户 Fork；没有已指定的通用替代仓库 | 未实现条目按原状态；不因能 Fork 就宣称有现成替代件 |
 
 定制仓库按被定制组件的来源、客户差异与新版本登记，不编造统一的 Fork 名称。选择另一业务身份时，调用方、事件与数据迁移可能需要受控修改；保留同 ID 的 Fork 也须正常升版。

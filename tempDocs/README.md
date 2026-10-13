@@ -65,6 +65,7 @@
 | [底层推荐基线](09-foundation-baseline.md) | 全局理论复审的推荐、取舍、可以定下的原则与冻结前阻塞 |
 | [数据与一致性矩阵](validation/data-and-consistency-matrix.md) | 冷热、并发、预占、增量事实、关账与恢复的 30 项具体反例 |
 | [组件货架](components/catalog.md) | 原始 60 个候选条目、后续新增方向及当前状态 |
+| [全货架边界卡](components/README.md) | 每个组件的数据、不变量、依赖、缺件、替换与验证故事；新增与退役的候选身份；当前重建范围的候选；客户组合的闭包 |
 | [能力分图与替换关系](components/selection-map.md) | 从项目全景逐层展示组件，区分替换、并存、协作、策略和 Fork，并定位仓库与选型专篇 |
 | [替换指南](replacements/README.md) | 选择、取舍、适配成本、共同切换流程与失败恢复 |
 | [身份方案](replacements/identity.md) | Casdoor／Keycloak／通用适配的组件、仓库、场景、部署与切换 |

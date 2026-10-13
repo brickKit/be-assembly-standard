@@ -2,7 +2,7 @@
 
 > 状态：初步审查方法与已发现的边界问题；全量组件的新划分尚未冻结。
 
-本页说明职责和一致性边界。具体组件 ID 与仓库看[货架清单](components/catalog.md)，谁与谁替换、并存或协作看[组件选择关系](components/selection-map.md)。各[选型专篇](replacements/README.md)在开头点名选择对象与仓库；新能力身份未分配时明确标注，不用抽象能力名代替已确定的成员。
+本页说明职责和一致性边界。具体组件 ID 与仓库看[货架清单](components/catalog.md)，谁与谁替换、并存或协作看[组件选择关系](components/selection-map.md)。各[选型专篇](replacements/README.md)在开头点名选择对象与仓库；新能力的候选身份与每个组件的边界卡见[全货架边界卡](components/README.md)。
 
 ## 先区分四种边界
 
