@@ -75,3 +75,5 @@
 2026-10-13 设计第七份候选时发现知识库《权限系统设计》的授出规则按维度分别比较，会接受交叉配对，与其 D3 冲突；D12 未列独立授出上限。已提交[知识库反馈 PR #10](https://github.com/ZhijieQ/knowledge-base/pull/10)，待审未合并。
 
 2026-10-13 设计第九份候选时发现知识库《幂等键》的请求指纹“拼接后算 SHA-256”未要求无歧义分帧，且缺少规范编码与内容摘要主题；已提交[知识库反馈 PR #11](https://github.com/ZhijieQ/knowledge-base/pull/11)，待审未合并。
+
+2026-10-13 设计第十份候选时发现知识库的 ReBAC 列表路线未提醒 ListObjects 默认截断、列表完整性需与单对象判定分开测试、建缓存时的一致性档位；已提交[知识库反馈 PR #12](https://github.com/ZhijieQ/knowledge-base/pull/12)，待审未合并。

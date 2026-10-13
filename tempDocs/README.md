@@ -34,6 +34,7 @@
 | [有限表达与查询候选规格](security/07-finite-expressions-containment-and-queries.md) | 段的有限原子与规范化、包含证明与单维拆分、委托求交、完整查询编译与逐行字段、预算及 FX01–FX24 独立预期；参考模型已运行，SDK 未验证 |
 | [状态与变更协议候选规格](security/08-state-and-change-protocol.md) | 安全记录的通用生命周期、生效点、有效段 = 记录 ∩ 来源、影响闭包、受保护操作、最后管理员、安装认领与恢复、紧急访问及 CP01–CP24 独立预期；参考模型已运行 |
 | [正式编码与能力 profile 候选规格](security/09-encoding-and-profiles.md) | 基本类型与规范形式、RFC 8785 摘要规则、引用、资源／操作／字段定义、授予段与原子、各类安全记录、变更协议、视图核验（含随机数防重放）、严格路径、错误分类、能力目录与 profile，EN01–EN20；编码检查已运行 |
+| [授权成员能力与切换候选规格](security/10-providers-and-member-switching.md) | 记录为权威、引擎为索引；OpenFGA、SpiceDB、OPA、Cerbos、Cedar、Casbin 的已核实能力；能力矩阵；静态成员；成员切换协议与摘要等价核验，PV01–PV20；等价核验模型已运行 |
 | [部署与资源](03-deployment-and-resources.md) | 单跑、外壳、混合、多副本的成本与验证 |
 | [数据与生命周期](04-data-and-lifecycle.md) | 数据归属、共享语义、冷热分层与查询 |
 | [事务与消息](05-transactions-and-messaging.md) | 用户响应、业务完成、故障恢复与 MQ |
