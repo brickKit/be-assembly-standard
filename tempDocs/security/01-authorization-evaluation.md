@@ -176,7 +176,7 @@ Writable(C,K,r,f) = PermissionAllowed(C,K,r)
 | AE16 | provider 截断、未知表达、图分支超时，当前页仍有本地行 | 不能伪称完整列表或无权数据为零；独立单对象已证许可另判断 |
 | AE17 | 当前游标之后撤权或授予到期 | 不继续旧授权，按安全重查／中止处理，不承诺旧分页永远完整 |
 
-本页提出可核对的求值模型，不将 I18／I28 标为闭环。有限表达的原子、规范化、查询编译与逐行字段已由[第七份候选](07-finite-expressions-containment-and-queries.md)细化；还要确定正式 schema、逐记录字段／查询 API、动作元数据、向量与版本迁移。旧 `authz/2` 的维度并集和字段规则含义变化，须显式处理新主版本或候选版本重建，不能以新增 JSON 字段名掩盖破坏性语义变化。
+本页提出可核对的求值模型，不将 I18／I28 标为闭环。有限表达的原子、规范化、查询编译与逐行字段已由[第七份候选](07-finite-expressions-containment-and-queries.md)细化；还要确定正式 schema、逐记录字段／查询 API、动作元数据与向量。
 
 服务主体与属性来源已有[第二份候选规格](02-trusted-identity-and-attributes.md)，授权接受／撤销已有[时间候选规格](03-authorization-acceptance-and-revocation.md)，管理／任职已有[第四份候选](04-authorization-administration-and-appointments.md)，均仍需审查和运行验收。下一件工作与尚缺细节见[接续清单](../work/04-next-steps.md)。它们均使用本页的段与集合语义，不另建一套更宽求值。
 

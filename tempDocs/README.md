@@ -38,7 +38,7 @@
 | [工程与项目规范](06-engineering-conventions.md) | 契约、配置、发布、Fork、文档与 AI 工作边界 |
 | [验证体系](07-validation.md) | 怎样证明设计、实现、替换和真实部署成立；覆盖 12 项组合变更／失败恢复场景 |
 | [权限验收矩阵](validation/authorization-matrix.md) | 兼任、越权、字段、新鲜度、审批和替换的具体正反场景 |
-| [推进路线](08-roadmap.md) | 设计迭代、冻结、当前升级、未来货架扩展及完成后的成果总结计划 |
+| [推进路线](08-roadmap.md) | 设计迭代、冻结、开发顺序、未来货架扩展及完成后的成果总结计划 |
 | [底层推荐基线](09-foundation-baseline.md) | 全局理论复审的推荐、取舍、可以定下的原则与冻结前阻塞 |
 | [数据与一致性矩阵](validation/data-and-consistency-matrix.md) | 冷热、并发、预占、增量事实、关账与恢复的 30 项具体反例 |
 | [组件货架](components/catalog.md) | 原始 60 个候选条目、后续新增方向及当前状态 |
