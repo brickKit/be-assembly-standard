@@ -17,6 +17,8 @@
 | 通知路由 | `infra/notification`，[infra-notification](https://github.com/brickKit/infra-notification) | 同意图／偏好／路由职责的实现或 Fork 接替；IM 成员分别选配 | 2.x 已有，通道成员不代替通知协调 |
 | 死信处理 | `infra/dlq-monitor`，规划仓库 `infra-dlq-monitor` | 同声明运输与恢复能力下更换观察／处理实现 | 未实现；不替代原业务幂等、对账与授权 |
 
+通知的意图、路由与投递，打印渲染的数据与模板规则，见[协议 10：外部集成、回调与对外副作用](../protocols/10-external-integration.md#通知)。
+
 需要更换具体支撑能力时先确认相同职责。审批引擎、待办、通知、审计和打印不是一组互斥成员；独立仓库与基础资源也分别维护。完整仓库来源在[组件货架](../components/catalog.md)。
 
 ```mermaid
