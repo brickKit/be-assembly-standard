@@ -1,5 +1,7 @@
 # 阶段 06 总计划
 
+> **当前接续（2026-10-12）**：当前先重建中文设计与测试规格，主任务见 [`tempDocs`](../../tempDocs/README.md) 和[交接](../../tempDocs/work/handoff.md)。06b 阶段 B 停在 S1 完成之后，不直接恢复旧 S2 清单。用户已定：实验相关规格审清后，按新计划补齐最小目标版 SDK／代表组件／外壳，先做部署对照、反馈并修订设计，再推广现有组件全量升级；完整性能基线仍在阶段 06 后。当前实验尚未执行，具体实施计划待补；下文保留原阶段路线，不覆盖新设计与排期。
+
 > **For agentic workers:** 本文件只是路线图。每个子阶段都有一份单独的详细计划（`plan-06x.md`），执行时以详细计划为准。REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement each sub-plan task-by-task.
 
 **Goal:** 按 brickKit v1.0.0 的命令和规范从头重建整个项目，然后在重建后的项目上大规模验证 brickKit，并把验证中发现的问题整理成反馈交给 brickKit。
