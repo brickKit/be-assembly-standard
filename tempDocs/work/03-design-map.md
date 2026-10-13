@@ -72,6 +72,7 @@
 | [协议 01 后台工作](../protocols/01-background-work.md) | 工作项状态、认领与接管、副作用种类、死信与暂停、cron 时间槽与夏令时、补跑与水位、清理资格 | C26、C14、C32 | 候选（未经独立复查） | 写成时自查；作业恢复模型已运行 | I27 |
 | [协议 02 本地副本](../protocols/02-projections.md) | 投影用途、行状态、来源契约、接收规则、取回、对账、回填、墓碑 | C14、C25、C30 | 候选（未经独立复查） | 写成时自查；投影修复模型已运行 | I30、I22 |
 | [协议 03 审计保存](../protocols/03-audit-durability.md) | 必需审计、第一落点、读取与拒绝、转运回执、删除资格、积压、装配 | C35、C14 | 候选（未经独立复查） | 写成时自查；审计可靠保存模型已运行 | I29 |
+| [协议 04 订单预占](../protocols/04-order-reservation.md) | 参加方、分支状态机、命令、确认过程、同步与恢复、取消与修订、消耗 | C13、C14 | 候选（未经独立复查） | 写成时自查；订单预占模型已运行 | I23 |
 | [权限验收矩阵](../validation/authorization-matrix.md) | PA01–PA36 | C06–C11 | 候选 | rounds/06 | — |
 | [数据与一致性矩阵](../validation/data-and-consistency-matrix.md) | DT01–DT30 | C12–C23、C37 | 候选 | rounds/04 | — |
 
