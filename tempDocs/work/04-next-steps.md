@@ -79,3 +79,11 @@ python3 tempDocs/work/checks/33-expectation-ids.py
 ## 交给新会话的任务说明
 
 > 继续 `/home/zhijie/Desktop/github/be-assembly-standard` 的终局设计（中文 tempDocs）。先读根 AGENTS.md、tempDocs/work/handoff.md 和 tempDocs/work/04-next-steps.md；用户决定见 tempDocs/work/02-decisions.md 的总表，文档状态见 tempDocs/work/03-design-map.md。保留未提交工作，不动五个工具子模块的指针。项目处于“设计完整优先”阶段：现有代码只作参考（D59），协议先写到可冻结（D56），默认小公司、按客户情形扩展，不重复追问规模。从接续清单任务顺序的第一项未完成任务继续；候选、预期与实际验收分开记录；每完成一项同步设计地图、台账与证据。给用户的回复一律用中文。
+
+## 独立复查的任务说明
+
+> 你是 `/home/zhijie/Desktop/github/be-assembly-standard` 终局设计（中文 `tempDocs`）的独立复查者，不是作者。先读根 `AGENTS.md`、`tempDocs/work/00-brief.md`（用户原话）、`tempDocs/work/02-decisions.md` 的总表（U01–U13、D01–D59），再读 `tempDocs/work/03-design-map.md` 列出的全部设计文档：正文 00–09、`security/01–10`、`protocols/01–21`、`components/`、`replacements/`、`validation/`。从用户目标与决定出发，先找反例，再看作者的理由；不要因为作者的自查（`rounds/09-author-cross-review.md`）说没问题就相信。
+>
+> 重点：一、文档之间的矛盾（同一件事两处说法不同、参数不一致、职责归属冲突）；二、违背用户决定或 BrickKit 两条原则（组件独立运行、只在部署时合并）的设计；三、协议的漏洞：给出具体的交错或失败时序，说明哪条不变量被破坏；四、独立预期是否真由协议正文推出、是否漏了重要失败情形；五、参考模型（`work/checks/`）的坏变体是否覆盖协议的关键条款，可以运行它们；六、边界卡的组合闭包与缺件行为是否自洽；七、`rounds/09` 列出的 18 项 AI 设计选择中，有没有明显更好的备选或会推翻其他设计的问题。
+>
+> 产出：在 `tempDocs/work/rounds/10-independent-review.md` 写复查记录：读了什么、方法、发现表（编号、严重程度 阻塞／重要／一般、位置、问题、为什么、建议改法）、需要用户裁定的问题（每个给背景、推荐与备选）、结论（哪些文档可以标“已复查”）。只写这份记录，不修改设计文档，不提交 git，不动五个工具子模块。全部用中文。
