@@ -62,9 +62,10 @@
 | [安全 01 求值](../security/01-authorization-evaluation.md) | 完整授予、读取／动作／字段、三类列表 | C08、C09 | 候选（未经独立复查） | 写成时自查 | I18、I28 |
 | [安全 02 身份](../security/02-trusted-identity-and-attributes.md) | 可信身份、调用模式、属性来源、凭据 | C06、C16、C36 | 候选（未经独立复查） | 写成时自查 | I14、I19 |
 | [安全 03 时间](../security/03-authorization-acceptance-and-revocation.md) | 接受与撤销、读取期限、提交屏障 | C10 | 候选，待按 D57 改写 | 写成时自查 | I19 |
-| [安全 04 管理](../security/04-authorization-administration-and-appointments.md) | 管理上限、角色版本、任职生命周期 | C07、C11 | 候选（未经独立复查） | 写成时自查 | I19 |
+| [安全 04 管理](../security/04-authorization-administration-and-appointments.md) | 管理上限、角色版本、任职生命周期 | C07、C11 | 候选（未经独立复查；上限收紧的处理已按第八份修正） | 写成时自查 | I19 |
 | [安全 05 共享与委托](../security/05-sharing-delegation-and-impersonation.md) | 共享、委托、扮演 | C08、C11 | 候选（未经独立复查） | 写成时自查 | — |
 | [安全 06 共同契约](../security/06-security-contracts-and-capabilities.md) | 共同结构、接口属主、能力准入 | C06–C11、C16、C30、C36 | 候选（未经独立复查） | 写成时自查 | I18、I19、I28 |
+| [安全 08 状态与变更](../security/08-state-and-change-protocol.md) | 通用生命周期、生效点、有效段 = 记录 ∩ 来源、影响闭包、受保护操作、最后管理员、安装认领、恢复、紧急访问 | C07、C10、C11 | 候选（未经独立复查） | 写成时自查；参考模型已运行 | I19 |
 | [安全 07 有限表达](../security/07-finite-expressions-containment-and-queries.md) | 有限原子、包含证明、求交、查询编译 | C07–C09、C11 | 候选（未经独立复查） | 写成时自查；参考模型已运行 | I18、I19 |
 | [权限验收矩阵](../validation/authorization-matrix.md) | PA01–PA36 | C06–C11 | 候选 | rounds/06 | — |
 | [数据与一致性矩阵](../validation/data-and-consistency-matrix.md) | DT01–DT30 | C12–C23、C37 | 候选 | rounds/04 | — |
@@ -104,6 +105,7 @@
 | [管理与任职](../security/04-authorization-administration-and-appointments.md) | 管理上限、角色绑定、批量计划、任职与交接，AM01–AM20 | 包含算法／预算、完整管理状态机、模板／操作清单、实际联动 |
 | [共享／委托／扮演](../security/05-sharing-delegation-and-impersonation.md) | 机构共享／个人来源、派生段、有限链、会话／副作用／通知，SD01–SD22 | 正式源类型／资格证明和链编码、共享治理、profile／通知落点及真实验收 |
 | [有限表达／包含／查询](../security/07-finite-expressions-containment-and-queries.md) | 段的有限原子与规范化、逐维包含与单维拆分、委托求交、查询编译与命中位图字段、预算，FX01–FX24；参考模型已运行 | 关系原子与投影、正式编码、三语言向量、PostgreSQL 与预算实测 |
+| [状态与变更协议](../security/08-state-and-change-protocol.md) | 通用生命周期与生效点、有效段 = 记录 ∩ 来源、闭包只记账、受保护操作与部署所有者确认、最后管理员、安装认领、恢复、紧急访问，CP01–CP24；参考模型已运行 | 逐字段编码、部署所有者凭据的形式与保管、身份系统不可用时紧急访问的认证路径、profile 默认值 |
 | [共同结构／接口／能力](../security/06-security-contracts-and-capabilities.md) | 类型化记录、接口属主、资源／副作用、能力路径与兼容，SC01–SC24 | 逐字段正式编码、有限算法／预算、状态／DDL／profile、精确版本矩阵及真实证明 |
 
 以上 AE／TI／AT／AM／SD／SC 都是验收预期，没有运行 SDK、真实数据库或业务链路。已运行的三个小脚本只演算文档反例、原子抽象顺序与有限表达算法；不能把它们叫安全合规通过。

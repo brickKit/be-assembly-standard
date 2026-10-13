@@ -36,7 +36,7 @@
 
 | 编号 | 问题与证据 | 去向／尚未证明 |
 | --- | --- | --- |
-| I19 | 系统自报 `be-caller` 非认证；实时 Check 不证明提交时有效，新内容／旧关系及管理上限表达缺口；F01–F03 | 身份／时间／管理已补机制，[共同契约候选](../security/06-security-contracts-and-capabilities.md)补接口属主、记录与能力准入；管理上限的有限包含算法已形成[第七份候选](../security/07-finite-expressions-containment-and-queries.md)并经参考模型核对；TI／AT／AM／SC／FX 未运行，正式编码／状态和真实守卫仍待补，不标解决 |
+| I19 | 系统自报 `be-caller` 非认证；实时 Check 不证明提交时有效，新内容／旧关系及管理上限表达缺口；F01–F03 | 身份／时间／管理已补机制，[共同契约候选](../security/06-security-contracts-and-capabilities.md)补接口属主、记录与能力准入；管理上限的有限包含算法已形成[第七份候选](../security/07-finite-expressions-containment-and-queries.md)并经参考模型核对；TI／AT／AM／SC／FX 未运行，正式编码／状态和真实守卫仍待补，不标解决；2026-10-13 管理与变更的状态协议形成[第八份候选](../security/08-state-and-change-protocol.md)，参考模型已运行 |
 | I20 | 旧摘要编码两组不同内容生成同字节；F04 最小脚本已执行 | 数据协议的版本化编码、向量与解冻转换。没有测 SDK 实现或 DB |
 | I21 | 转层写／读／保全竞争、分区全局唯一和 UUID 定位前提；F05–F06 | 数据目录、业务单元、身份登记、读引用及代次；尚未实现 |
 | I22 | 增量事实不适用最大版本覆盖；短期去重、运输缺口／MaxDeliver 死信及重建来源；F07–F08 | 事件模式与长期业务唯一性、保留／恢复和真实队列验收 |

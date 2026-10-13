@@ -243,7 +243,7 @@ protobuf 二进制的可解析性不能直接推导 JSON／业务兼容；ProtoJ
 
 本页形成共同语义结构、接口责任与准入矩阵；仍缺逐字段正式编码、有限算法／预算、完整状态机／DDL、各动作 profile、签发／回读机制、精确版本转换和真实合规证据。C06–C11／C16／C30／C36 与 I18／I19／I28 仍未闭环。
 
-有限表达、包含见证与完整查询算法已形成[第七份候选](07-finite-expressions-containment-and-queries.md)。当前任务顺序和全部未完细节统一在[接续清单](../work/04-next-steps.md)，不在各份规格里各排不同下一步。
+有限表达、包含见证与完整查询算法已形成[第七份候选](07-finite-expressions-containment-and-queries.md)；安全记录的通用状态、生效点与影响闭包已形成[第八份候选](08-state-and-change-protocol.md)。当前任务顺序和全部未完细节统一在[接续清单](../work/04-next-steps.md)，不在各份规格里各排不同下一步。
 
 ## 依据与项目判断
 

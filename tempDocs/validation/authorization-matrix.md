@@ -33,6 +33,8 @@ PA13–PA18 的管理／任职／模板升级，结合[管理候选 AM01–AM20]
 
 实例化所有场景时对照[共同结构与能力候选 SC01–SC24](../security/06-security-contracts-and-capabilities.md)：区分身份／事实／求值／接受／业务回执，核对实际资源、动作与出口的完整能力路径及新旧版本。SC 同为未执行预期，不以接口表或可解析 schema 替代 SDK 与真实依赖证据。
 
+PA13–PA18、PA21 与 PA32 的管理、任职、扮演与恢复部分，结合[状态与变更协议候选 CP01–CP24](../security/08-state-and-change-protocol.md#独立预期)实例化。
+
 PA04–PA11、PA13–PA15 与 PA35 的范围／字段／授出部分，结合[有限表达候选 FX01–FX24](../security/07-finite-expressions-containment-and-queries.md#独立预期)实例化；其参考模型只在 SQLite 上核对算法与编译模板，不计作 SDK 或 PA 场景通过。
 
 ## 身份、入口与完整授予
