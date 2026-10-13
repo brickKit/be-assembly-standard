@@ -6,11 +6,17 @@
 
 用户已授权重新审查现有理念、组件边界、技术选择和推进计划。已有实现、旧决策和 SDK 草案都是需要核对的输入；新的推荐在审查完成前标为建议，不自动成为已批准的规则。
 
+**持续规模前提：默认以小公司规模开发；长期根据客户业务、并发、资源、历史与监控需求，提供配置、专项组件及部署升级路线。用户暂时没有统一规模计划，已多次答复，不再重复询问统一并发量、单据量或年限，也不把缺少统一数字当作设计阻塞。**完整原话在[任务简报](work/00-brief.md#本次终局审查的规模前提重申)。
+
+最新[终局文档审查](work/rounds/06-final-goal-document-audit.md)确认总体方向合理，但作业恢复、List／Can 语义、审计保存资格和局部投影有具体设计反例，导入／期初及引用生命周期等仍缺规格；不应认为全部底层已完整。该报告不批准实现或冻结，后续按[覆盖清单](work/03-checklist.md)收敛。
+
 ## 两条阅读路线
 
 面向客户：先读[项目主体与全景](00-project-overview.md)，按[能力分图与替换关系](components/selection-map.md)逐层展示，再进入[替换与定制指南](replacements/README.md)比较方案、仓库、场景和部署；需要完整目录时读[组件货架与仓库](components/catalog.md)，选定组合后读[部署与资源](03-deployment-and-resources.md)。只有“已实现且对应验证通过”的选项可以作为已交付能力介绍。
 
 面向设计与开发：先读[任务简报](work/00-brief.md)、[用户决定](work/02-decisions.md)和[交接](work/handoff.md)，再按[覆盖与验收清单](work/03-checklist.md)选择议题。每轮同时更新问题、证据、受影响文档和交接。
+
+换到 Claude Code 或其他新会话时，直接从[未完细节与接续安排](work/04-next-steps.md)继续：包含当前候选状态、下一件具体工作、全项目 C01–C44 的细化缺口、工作区注意事项和可复制任务说明。
 
 ## 文档地图
 
@@ -19,6 +25,12 @@
 | [项目主体](00-project-overview.md) | 产品目标、装配方式、长期与近期范围 |
 | [组件边界与 DDD](01-component-boundaries.md) | 业务领域、限界上下文、事务边界怎样落成组件 |
 | [权限与身份](02-security-and-permissions.md) | 安全边界、可替换权限方案、全路径的数据访问控制 |
+| [授权求值候选规格](security/01-authorization-evaluation.md) | 完整授予的结构、读取／动作／字段公式、列表契约与 AE01–AE17 独立预期；尚未冻结 |
+| [可信身份候选规格](security/02-trusted-identity-and-attributes.md) | 用户／服务／责任主体、跨组件调用模式、属性权威、凭据演进与 TI01–TI22 独立预期；尚未冻结 |
+| [接受与撤销候选规格](security/03-authorization-acceptance-and-revocation.md) | 读取窗口、持久接受、严格提交屏障、恢复与 AT01–AT22 独立预期；含待测起始参数，尚未冻结 |
+| [管理与任职候选规格](security/04-authorization-administration-and-appointments.md) | 完整授出上限、角色版本／批量计划、任职／交接／收紧及 AM01–AM20 独立预期；尚未冻结 |
+| [共享与委托候选规格](security/05-sharing-delegation-and-impersonation.md) | 机构共享／个人委托、团队继承、只读扮演、有限再委托及 SD01–SD22 独立预期；尚未冻结 |
+| [共同安全契约候选规格](security/06-security-contracts-and-capabilities.md) | 类型化结构、接口与属主、资源／副作用声明、能力准入／兼容及 SC01–SC24 独立预期；正式编码与真实验证待补 |
 | [部署与资源](03-deployment-and-resources.md) | 单跑、外壳、混合、多副本的成本与验证 |
 | [数据与生命周期](04-data-and-lifecycle.md) | 数据归属、共享语义、冷热分层与查询 |
 | [事务与消息](05-transactions-and-messaging.md) | 用户响应、业务完成、故障恢复与 MQ |
