@@ -11,10 +11,13 @@ Checks:
   SCAN_BOUND   bytes served for download are always the bytes that were scanned clean
   NO_DANGLING  an available attachment always has its object
   HOLD         an attachment under hold is never purged
+  DIGEST_MATCH bytes served always match the digest, size and type recorded at confirmation,
+               also in deployments with scanning disabled
   REVOKE_BOUND after a revocation at time t, no download happens later than t + link TTL
 
 Bad variants (each must be caught): scan and serve the staging key; replace the file of an
-attachment in place under the same key and keep the earlier scan result;
+attachment in place under the same key and keep the earlier scan result; read the staging
+object for the checks and copy it to the final key afterwards;
 orphan cleanup decides by object age instead of checking metadata references; purge ignores holds; download links without an expiry.
 """
 import random
@@ -31,6 +34,7 @@ def run(rng, variant, fails):
     links = []                 # (issued_at, expires_at)
     revoked_at = None
     now = 0
+    scanning = rng.random() < 0.7          # some deployments disable scanning (marked unscanned)
     for step in range(60):
         now += 1
         a = rng.choice(["create", "put", "put", "finalize", "scan", "download", "download", "download",
@@ -47,12 +51,21 @@ def run(rng, variant, fails):
             content = store[att["staging"]]
             if variant == "staging_served":
                 att["final"] = att["staging"]
+            elif variant == "read_then_copy":
+                att["digest"] = content                   # checks run on the staging object ...
+                if rng.random() < 0.3:
+                    store[att["staging"]] = rng.choice(["clean", "virus"])   # ... which is overwritten
+                key = f"fin/{step}"
+                store[key] = store[att["staging"]]       # before the copy
+                att["final"] = key
             else:
                 key = f"fin/{step}"
-                store[key] = content                      # server-side copy to an immutable key
+                store[key] = content                      # copy first (conditional write) ...
                 att["final"] = key
-            att["digest"] = content
-            att["state"] = "pending_scan"
+                content = store[key]                      # ... then read the final object
+            if variant != "read_then_copy":
+                att["digest"] = content
+            att["state"] = "pending_scan" if scanning else "available"
         elif a == "replace" and att and att["state"] == "available" and att["session_open"] and att["staging"] in store:
             # the user replaces the file of an existing attachment
             content = store[att["staging"]]
@@ -84,7 +97,9 @@ def run(rng, variant, fails):
             obj = store.get(att["final"])
             if obj is None:
                 fails.append("NO_DANGLING"); return
-            if obj != att["scanned"] or obj != "clean":
+            if obj != att["digest"]:
+                fails.append("DIGEST_MATCH"); return
+            if scanning and (obj != att["scanned"] or obj != "clean"):
                 fails.append("SCAN_BOUND"); return
         elif a == "cleanup":
             referenced = {att["final"]} if att and att["final"] else set()
@@ -110,7 +125,7 @@ def run(rng, variant, fails):
 
 
 def main():
-    variants = ["good", "staging_served", "digest_unbound", "cleanup_by_age", "purge_ignores_hold", "no_expiry"]
+    variants = ["good", "staging_served", "digest_unbound", "cleanup_by_age", "purge_ignores_hold", "no_expiry", "read_then_copy"]
     res = {}
     for v in variants:
         rng = random.Random(SEED)
@@ -118,7 +133,7 @@ def main():
         for _ in range(RUNS):
             run(rng, v, fails)
         res[v] = sorted(set(fails))
-    print(f"good: {'ok' if not res['good'] else 'FAIL ' + str(res['good'])} (SCAN_BOUND, NO_DANGLING, HOLD, REVOKE_BOUND over {RUNS} runs)")
+    print(f"good: {'ok' if not res['good'] else 'FAIL ' + str(res['good'])} (SCAN_BOUND, DIGEST_MATCH, NO_DANGLING, HOLD, REVOKE_BOUND over {RUNS} runs)")
     caught = True
     for v in variants[1:]:
         print(f"bad variant {v}: {'caught ' + str(res[v]) if res[v] else 'NOT CAUGHT'}")

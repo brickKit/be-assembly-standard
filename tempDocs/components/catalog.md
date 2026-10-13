@@ -28,7 +28,7 @@
 | `infra/authz` | [infra-authz](https://github.com/brickKit/infra-authz)（已接入源码） | 权限目录、授予与授权策略 | 项目已锁定 2.0.1 | 已有预留 | [选型与适配](../replacements/authorization.md) |
 | `infra/iam-keycloak` | `infra-iam-keycloak`（规划名） | 另一种身份提供方适配 | 原始规划，未实现 | 已有预留 | [选型与适配](../replacements/identity.md) |
 | `infra/bff-mobile` | [infra-bff-mobile](https://github.com/brickKit/infra-bff-mobile)（已接入源码） | 跨组件展示聚合 | 项目已锁定 2.0.0 | 已有预留 | [选型与适配](../replacements/supporting-capabilities.md) |
-| `infra/workflow` | [infra-workflow](https://github.com/brickKit/infra-workflow)（已接入源码） | 现有轻量审批／异常待办；新设计待办与流程分开，具体去处待审 | 项目已锁定 2.0.1，尚未按新方向重构 | 已有预留 | [选型与适配](../replacements/supporting-capabilities.md) |
+| `infra/workflow` | [infra-workflow](https://github.com/brickKit/infra-workflow)（已接入源码） | 身份保留，职责改为统一待办（[基础能力卡](infra.md#infraworkflow)）；流程由业务组件或可选引擎管理 | 项目已锁定 2.0.1，尚未按新方向重构 | 已有预留 | [选型与适配](../replacements/supporting-capabilities.md) |
 | `infra/notification` | [infra-notification](https://github.com/brickKit/infra-notification)（已接入源码） | 通知意图、偏好与通道路由 | 项目已锁定 2.0.0 | 已有预留 | [选型与适配](../replacements/supporting-capabilities.md) |
 | `infra/attachment` | `infra-attachment`（规划名） | 附件元数据与用户访问，向父记录所属组件检查授权 | 原始规划，未实现 | 已有预留 | [附件与存储](../replacements/files-and-attachments.md) |
 | `infra/storage` | `infra-storage`（规划名） | 纯物理转发由 SDK 适配器承担；有独立治理价值时再审 | 原始规划，未实现；纯转发形态退出标准开发货架 | 已有预留，不回收身份或注册值 | [附件与存储](../replacements/files-and-attachments.md) |

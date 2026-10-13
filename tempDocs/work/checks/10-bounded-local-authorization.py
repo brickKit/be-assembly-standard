@@ -7,8 +7,8 @@ The business transaction checks, inside the transaction just before commit, that
 still valid. Random timelines (tightening time, authz outages, network delays, transaction
 durations, wall-clock offsets, clock rate drift) check:
 
-  BOUND        after a tightening commits at authz at t0, no commit that relies on the old view
-               happens later than t0 + W * (1 + drift)
+  BOUND        after a tightening commits at authz at t0, no decision that relies on the old view
+               happens later than t0 + W (validity is W * (1 - drift) on the local clock)
   NO_STATIC    no commit happens unless some verification answered by authz was *sent* within the
                last W * (1 + drift): an outage longer than the window stops operations
   AVAILABLE    during outages shorter than the renewal margin, operations still commit
@@ -78,7 +78,7 @@ def run(rng, variant, out):
                 until_wall = a["answer_at"] + W                 # authz wall clock
                 valid = (lambda u: (lambda x: x + wall_offset < u))(until_wall)
             else:
-                until = mono(a["send"]) + W
+                until = mono(a["send"]) + W * (1 - DRIFT)
                 valid = (lambda u: (lambda x: mono(x) < u))(until)
             view = dict(rev=a["rev"], valid=valid)
 
@@ -89,7 +89,7 @@ def run(rng, variant, out):
             if used is not None and used["valid"](start) and \
                     (variant == "check_at_start" or used["valid"](commit)):
                 out["commits"] += 1
-                if used["rev"] == 0 and commit > t0 + W * (1 + DRIFT) + 1e-9:
+                if used["rev"] == 0 and commit > t0 + W + 1e-9:
                     out["fails"].append(("BOUND", round(t0, 2), round(commit, 2)))
                 recent = [s for s in answered_sends if commit - W * (1 + DRIFT) - 1e-9 <= s <= commit]
                 if not recent:

@@ -10,7 +10,7 @@
 | 高级／行业体验 | `frontend/advanced`，规划仓库 `frontend-advanced` | 在相同入口、功能与权限满足时接替对应标准入口；不同入口也可并存 | 原货架候选，未实现；不能推导最终仍是两个整套互斥仓库 |
 | 客户页面与入口 Fork | 从被定制入口派生的独立仓库，来源与版本按客户登记 | 接替同一入口或构建时选定模块，保留业务契约和权限 | 已定定制路线，没有统一的“客户前端”固定 ID |
 
-具体入口和页面模块的最终仓库划分未定，不提前命名 PC／移动新组件。更换前端不替代 `erp/sales` 等后端事实权威；多个前端对同一后端访问也必须各自受控。完整候选定位见[组件货架](../components/catalog.md#前端)。
+按入口的候选身份为 `frontend/pc`、`frontend/mobile`、`frontend/terminal`（[前端卡](../components/frontend.md)）；页面模块的仓库划分随实施计划。更换前端不替代 `erp/sales` 等后端事实权威；多个前端对同一后端访问也必须各自受控。完整候选定位见[组件货架](../components/catalog.md#前端)。
 
 ```mermaid
 flowchart TB

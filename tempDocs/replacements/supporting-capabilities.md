@@ -63,7 +63,7 @@ flowchart TB
 
 ```mermaid
 flowchart LR
-    U[用户] --> I[共同待办入口<br/>旧 infra/workflow 的去向待审]
+    U[用户] --> I[统一待办入口<br/>infra/workflow，职责改为待办]
     I --> S[业务组件的简单流程]
     I --> E[可选复杂流程引擎]
     E --> B[业务组件校验与执行]

@@ -72,17 +72,17 @@
 
 ## 当前重建范围的候选
 
-路线第 3 步“按新设计重建当前约 20 个组件的范围”（[路线](../08-roadmap.md#开发的前提与顺序)）在新边界下对应下列组件。它们覆盖一条代表业务链（报价 → 订单确认与预占 → 出库 → 出账 → 应收 → 收款与核销 → 关账）及其支撑能力，用于第 4 步的完整部署矩阵：
+路线第 3 步“按新设计重建当前约 20 个组件的范围”（[路线](../08-roadmap.md#开发的前提与顺序)）在新边界下对应下列组件。它们覆盖代表业务链（报价 → 订单确认与预占 → 出库 → 出账 → 应收 → 收款与核销 → 关账；采购 → 入库 → 暂估 → 票据匹配 → 成本调整）及其支撑能力，用于第 4 步的完整部署矩阵：
 
 | 类别 | 组件 |
 | --- | --- |
 | 主数据 | `mdm/partner`、`mdm/product`、`mdm/org`、`mdm/employee`、`mdm/currency` |
 | 基础 | `infra/iam-casdoor`、`infra/authz`、`infra/workflow`、`infra/notification`、`infra/print`、`infra/attachment`、`infra/audit`、`infra/bff-mobile` |
-| 业务 | `erp/sales`、`erp/inventory`、`erp/finance`、`erp/credit`、`erp/billing`、`erp/costing`、`erp/payment`、`crm/opportunity` |
+| 业务 | `erp/sales`、`erp/purchase`、`erp/inventory`、`erp/finance`、`erp/credit`、`erp/billing`、`erp/costing`、`erp/payment`、`crm/opportunity` |
 | 渠道 | `integration/im-dingtalk` |
 | 前端 | `frontend/pc`、`frontend/mobile` |
 
-共 22 个后端组件与 2 个入口，加上外壳；内置基础报表（`ana/bi`，D52）是否同时进入，随计划确认。这是候选：确切范围在第 8 项的实施与实验计划中经用户确认（与现在的 13 个组件相比，新增的是边界调整带来的伙伴、员工、币种、信用、出账、成本、收付款、附件与审计）。
+共 23 个后端组件与 2 个入口，加上外壳（D63 加入采购，使“采购 → 入库 → 暂估 → 票据匹配 → 成本调整”可以验证）；内置基础报表（`ana/bi`，D52）是否同时进入，随计划确认。这是候选：确切范围在第 8 项的实施与实验计划中经用户确认（与现在的 13 个组件相比，新增的是边界调整带来的伙伴、员工、币种、信用、出账、成本、收付款、附件、审计与采购）。
 
 ## 依赖总图
 
@@ -118,12 +118,12 @@ flowchart TB
 
 | 组合 | 必需组件 | 可选 | 检查 |
 | --- | --- | --- | --- |
-| 精简进销存 | 身份、授权、伙伴、产品、组织、币种、销售、采购、库存、出账、财务、收付款（可只用线下登记）、前端 PC | 信用、成本、税计算、打印、通知、员工 | 缺信用时订单确认不做信用占用，销售声明“无信用控制”且客户在装配时确认；缺成本时财务不记存货成本，报表注明“未计成本”；缺税计算时出账只能由有权限的人逐张录入税额并标为人工税额，不能当作“不适用税”；缺员工时审批只按账号与角色分配，岗位类分配不可用 |
-| 服务销售 | 身份、授权、伙伴、产品（服务类型）、组织、币种、销售、出账、财务、收付款、前端 | 信用、税计算、CRM | 不装库存；服务订单不请求库存预占（D44） |
-| CRM 与销售协作 | 上一行 + `crm/customer`、`crm/opportunity`、`crm/activity` | 线索、营销、服务 | 商机赢单生成报价；CRM 与 ERP 只经事件协作，没有同步调用 |
-| 多法人集团 | 精简进销存 + 员工 + 各法人的业务实现选择 | 各国薪资、电子开票 | 每法人单账簿（D51）；伙伴角色按法人开通；授权范围含法人维度；同一范围只有一个权威实现（D16） |
-| 制造 | 精简进销存 + 制造、质量、成本 | 设备维护、复杂仓储 | 领料与完工入库只经库存写入；工单成本经成本组件进入财务 |
-| 人事与项目 | 身份、授权、组织、员工 + 考勤、请假、报销、项目、工时 | 各国薪资、收付款 | 报销付款经收付款；工时成本归集到项目，再经财务 |
+| 精简进销存 | `infra/iam-casdoor`、`infra/authz`、`infra/audit`、`mdm/partner`、`mdm/product`、`mdm/org`、`mdm/currency`、`erp/sales`、`erp/purchase`、`erp/inventory`、`erp/billing`、`erp/finance`、`erp/payment`、`frontend/pc` | `erp/credit`、`erp/costing`、`erp/tax`、`infra/print`、`infra/notification`、`mdm/employee`、`infra/workflow` | 收付款可只用线下登记；缺信用时订单确认不做信用占用，销售声明“无信用控制”且客户在装配时确认；缺成本时财务不记存货成本，报表注明“未计成本”；缺税计算时出账只能由有权限的人逐张录入税额并标为人工税额，不能当作“不适用税”；缺员工时审批只按账号与角色分配，岗位类分配不可用，职责分离按账号比较；缺统一待办时人工审批在各组件页面中处理 |
+| 服务销售 | `infra/iam-casdoor`、`infra/authz`、`infra/audit`、`mdm/partner`、`mdm/product`、`mdm/org`、`mdm/currency`、`erp/sales`、`erp/billing`、`erp/finance`、`erp/payment`、`frontend/pc` | `erp/credit`、`erp/tax`、`crm/opportunity` | 不装库存；服务订单不请求库存预占（D44） |
+| CRM 与销售协作 | 服务销售的全部 + `mdm/employee`、`crm/customer`、`crm/opportunity`、`crm/activity` | `crm/lead`、`crm/campaign`、`crm/case` | `crm/customer` 需要员工（负责人）；商机赢单生成报价；CRM 与 ERP 只经事件协作，没有同步调用 |
+| 多法人集团 | 精简进销存的全部 + `mdm/employee` | 各国薪资、`integration/einvoice-<地区>` | 每法人单账簿（D51）；伙伴角色按法人开通；授权范围含法人维度；同一范围只有一个权威实现（D16） |
+| 制造 | 精简进销存的全部 + `erp/manufacturing`、`erp/quality`、`erp/costing` | `erp/maintenance`、`erp/warehouse` | 领料与完工入库只经库存写入；工单成本经成本组件进入财务 |
+| 人事与项目 | `infra/iam-casdoor`、`infra/authz`、`infra/audit`、`mdm/org`、`mdm/employee`、`mdm/partner`、`mdm/currency`、`infra/attachment`、`hrm/attendance`、`hrm/leave`、`hrm/expense`、`prj/project`、`prj/timesheet`、`frontend/pc` | 各国薪资、`erp/payment`、`erp/finance` | 项目引用客户（伙伴）；报销需要附件；缺收付款时报销线下支付；缺财务时工时与报销成本只在项目中归集，不入账 |
 
 缺件的行为由各卡片的“可选依赖与缺件”给出；装配检查（[安全 09 的准入](../security/09-encoding-and-profiles.md#能力声明)与组件的能力声明）在缺少必需能力时拒绝装配。
 

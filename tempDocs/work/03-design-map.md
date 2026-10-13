@@ -31,7 +31,7 @@
 
 ## 设计文档
 
-> 2026-10-13 作者对全部文档做了一轮横切复查（[rounds/09](rounds/09-author-cross-review.md)），不计为独立复查，下表的“最近整体复查”列不因此改变。
+> 2026-10-13 作者对全部文档做了一轮横切复查（[rounds/09](rounds/09-author-cross-review.md)），不计为独立复查。2026-10-14 第一轮独立复查（[rounds/10](rounds/10-independent-review.md)）：复查后没有再修改、且复查者认为可标“已复查”的文档已标“已复查”；其余文档按复查发现（I35–I51）修正后仍为“候选”，等第二轮独立复查。
 
 | 文档 | 回答什么 | 主要覆盖 | 状态 | 最近整体复查 | 遗留问题 |
 | --- | --- | --- | --- | --- | --- |
@@ -39,62 +39,62 @@
 | [项目主体](../00-project-overview.md) | 产品是什么、装配全景、设计原则 | C01 | 候选 | [rounds/06](rounds/06-final-goal-document-audit.md) | I01 |
 | [组件边界](../01-component-boundaries.md) | 边界方法、数据归属、业务伙伴、组织与员工、库存与仓储、销售类型 | C01–C03、C05 | 候选 | rounds/06 | I02、I03、I26、I31 |
 | [权限主文档](../02-security-and-permissions.md) | 权限语义、执行推荐、管理与任职、审计范围 | C06–C11、C35 | 候选 | rounds/06 | I09、I19、I28、I29 |
-| [部署与资源](../03-deployment-and-resources.md) | 部署形态、规模阶梯、外壳风险、维护窗口、网络前提 | C31–C34 | 候选 | rounds/06 | I16、I24 |
+| [部署与资源](../03-deployment-and-resources.md) | 部署形态、规模阶梯、外壳风险、维护窗口、网络前提 | C31–C34 | 已复查 | [rounds/10](rounds/10-independent-review.md)（第一轮独立复查） | I16、I24 |
 | [数据与生命周期](../04-data-and-lifecycle.md) | 数据归属、库选择、冷热分层、跨层查询、灾难恢复 | C12、C17–C23、C37、C44 | 候选 | rounds/06 | I17、I20、I21、I25、I31、I33 |
 | [事务与消息](../05-transactions-and-messaging.md) | 本地事务、预占、跨组件协调、消息运输、用户响应 | C13–C16、C26 | 候选 | rounds/06 | I15、I22、I23、I27、I30 |
-| [工程规范](../06-engineering-conventions.md) | 规则归属、定制层级、配置与密钥、版本与客户维护、AI 文档 | C04、C29、C39、C41 | 候选 | rounds/06 | I26、I34 |
-| [验证体系](../07-validation.md) | 证据规则、代表性部署实验 | C30、C40 | 候选 | rounds/06 | I11、I13、I16 |
+| [工程规范](../06-engineering-conventions.md) | 规则归属、定制层级、配置与密钥、版本与客户维护、AI 文档 | C04、C29、C39、C41 | 已复查 | [rounds/10](rounds/10-independent-review.md)（第一轮独立复查） | I26、I34 |
+| [验证体系](../07-validation.md) | 证据规则、代表性部署实验 | C30、C40 | 已复查 | [rounds/10](rounds/10-independent-review.md)（第一轮独立复查） | I11、I13、I16 |
 | [路线](../08-roadmap.md) | 范围线、切换正式文档的步骤 | C42 | 候选 | rounds/06 | — |
 | [底层基线](../09-foundation-baseline.md) | 各方面的推荐组合与冻结条件 | 全部 | 候选 | [rounds/04](rounds/04-global-foundation-audit.md)、rounds/06 | I19–I26 |
 | [货架清单](../components/catalog.md) | 长期货架条目、仓库与实现状态 | C01 | 候选 | rounds/03 | — |
 | [选择关系图](../components/selection-map.md) | 能力分图、单选／多选／协作的标注 | C01、C05、C41 | 候选 | rounds/03 | — |
 | [全货架边界卡](../components/README.md) | 每个组件的边界卡（11 个领域文件）、新增与退役身份、当前重建范围候选、组合闭包、五项检查 | C01–C05 | 候选（未经独立复查） | 写成时自查 | I01–I06、I26 |
-| [选型指南](../replacements/README.md) | 选配与替换的共同协议 | C05 | 候选 | rounds/03 | — |
-| [报表与分析](../replacements/analytics-and-reporting.md) | 内置报表与自助 BI | C25 | 候选 | rounds/03 | — |
-| [授权选型](../replacements/authorization.md) | 授权模型与成员方案 | C07–C11 | 候选 | rounds/03 | I18 |
-| [业务与渠道](../replacements/business-and-channels.md) | 业务定制、算法差异、渠道组合 | C04、C05、C28 | 候选 | rounds/03 | I05、I06 |
-| [组件生命周期](../replacements/component-lifecycle.md) | 停用、历史查阅与退出 | C05、C21 | 候选 | rounds/03 | — |
-| [数据与存储选型](../replacements/data-and-storage.md) | 数据库、对象存储与冷查询的选择 | C12、C22、C23 | 候选 | rounds/03 | I17 |
-| [附件与存储](../replacements/files-and-attachments.md) | 附件职责与 SDK 存储适配 | C24 | 候选 | rounds/03 | I04 |
+| [选型指南](../replacements/README.md) | 选配与替换的共同协议 | C05 | 已复查 | [rounds/10](rounds/10-independent-review.md)（第一轮独立复查） | — |
+| [报表与分析](../replacements/analytics-and-reporting.md) | 内置报表与自助 BI | C25 | 已复查 | [rounds/10](rounds/10-independent-review.md)（第一轮独立复查） | — |
+| [授权选型](../replacements/authorization.md) | 授权模型与成员方案 | C07–C11 | 已复查 | [rounds/10](rounds/10-independent-review.md)（第一轮独立复查） | I18 |
+| [业务与渠道](../replacements/business-and-channels.md) | 业务定制、算法差异、渠道组合 | C04、C05、C28 | 已复查 | [rounds/10](rounds/10-independent-review.md)（第一轮独立复查） | I05、I06 |
+| [组件生命周期](../replacements/component-lifecycle.md) | 停用、历史查阅与退出 | C05、C21 | 已复查 | [rounds/10](rounds/10-independent-review.md)（第一轮独立复查） | — |
+| [数据与存储选型](../replacements/data-and-storage.md) | 数据库、对象存储与冷查询的选择 | C12、C22、C23 | 已复查 | [rounds/10](rounds/10-independent-review.md)（第一轮独立复查） | I17 |
+| [附件与存储](../replacements/files-and-attachments.md) | 附件职责与 SDK 存储适配 | C24 | 已复查 | [rounds/10](rounds/10-independent-review.md)（第一轮独立复查） | I04 |
 | [财务与结算](../replacements/finance-and-settlement.md) | 成本、收付款、出账、税务、票据、账簿 | C13、C17、C18、C28 | 候选 | rounds/03 | I23 |
 | [前端](../replacements/frontend.md) | 按入口选择与构建发布 | C38 | 候选 | rounds/03 | I07 |
-| [身份](../replacements/identity.md) | 身份方案与替换 | C06 | 候选 | rounds/03 | I14 |
-| [消息](../replacements/messaging.md) | 运输适配器比较 | C15 | 候选 | rounds/03 | I22 |
+| [身份](../replacements/identity.md) | 身份方案与替换 | C06 | 已复查 | [rounds/10](rounds/10-independent-review.md)（第一轮独立复查） | I14 |
+| [消息](../replacements/messaging.md) | 运输适配器比较 | C15 | 已复查 | [rounds/10](rounds/10-independent-review.md)（第一轮独立复查） | I22 |
 | [运行与部署选型](../replacements/runtime-and-deployment.md) | SDK、外壳与运行方式 | C30–C33 | 候选 | rounds/03 | I11、I12 |
 | [支撑能力](../replacements/supporting-capabilities.md) | 边缘、观测、审批、通知、打印 | C27、C35 | 候选 | rounds/03 | I29 |
-| [安全 01 求值](../security/01-authorization-evaluation.md) | 完整授予、读取／动作／字段、三类列表 | C08、C09 | 候选（未经独立复查） | 写成时自查 | I18、I28 |
+| [安全 01 求值](../security/01-authorization-evaluation.md) | 完整授予、读取／动作／字段、三类列表 | C08、C09 | 已复查 | [rounds/10](rounds/10-independent-review.md)（第一轮独立复查） | I18、I28 |
 | [安全 02 身份](../security/02-trusted-identity-and-attributes.md) | 可信身份、调用模式、属性来源、凭据 | C06、C16、C36 | 候选（未经独立复查） | 写成时自查 | I14、I19 |
 | [安全 03 时间](../security/03-authorization-acceptance-and-revocation.md) | 默认有界本地授权与可选严格路径（持久接受、提交屏障）、输出期限、内容水位 | C10 | 候选（2026-10-13 按 D57 整份改写，未经独立复查） | 写成时自查；参考模型已运行 | I19 |
 | [安全 04 管理](../security/04-authorization-administration-and-appointments.md) | 管理上限、角色版本、任职生命周期 | C07、C11 | 候选（未经独立复查；上限收紧的处理已按第八份修正） | 写成时自查 | I19 |
-| [安全 05 共享与委托](../security/05-sharing-delegation-and-impersonation.md) | 共享、委托、扮演 | C08、C11 | 候选（未经独立复查） | 写成时自查 | — |
-| [安全 06 共同契约](../security/06-security-contracts-and-capabilities.md) | 共同结构、接口属主、能力准入 | C06–C11、C16、C30、C36 | 候选（未经独立复查） | 写成时自查 | I18、I19、I28 |
+| [安全 05 共享与委托](../security/05-sharing-delegation-and-impersonation.md) | 共享、委托、扮演 | C08、C11 | 已复查 | [rounds/10](rounds/10-independent-review.md)（第一轮独立复查） | — |
+| [安全 06 共同契约](../security/06-security-contracts-and-capabilities.md) | 共同结构、接口属主、能力准入 | C06–C11、C16、C30、C36 | 已复查 | [rounds/10](rounds/10-independent-review.md)（第一轮独立复查） | I18、I19、I28 |
 | [安全 07 有限表达](../security/07-finite-expressions-containment-and-queries.md) | 有限原子、包含证明、求交、查询编译 | C07–C09、C11 | 候选（未经独立复查） | 写成时自查；参考模型已运行 | I18、I19 |
 | [安全 08 状态与变更](../security/08-state-and-change-protocol.md) | 通用生命周期、生效点、有效段 = 记录 ∩ 来源、影响闭包、受保护操作、最后管理员、安装认领、恢复、紧急访问 | C07、C10、C11 | 候选（未经独立复查） | 写成时自查；参考模型已运行 | I19 |
 | [安全 09 正式编码](../security/09-encoding-and-profiles.md) | 基本类型、规范编码与摘要、全部安全结构的字段表、视图核验、错误分类、能力目录、profile | C06–C11、C16、C30、C36 | 候选（未经独立复查） | 写成时自查；编码检查已运行 | I18、I19、I20 |
 | [安全 10 成员能力与切换](../security/10-providers-and-member-switching.md) | 记录为权威、引擎为索引；外部产品已核实能力；能力矩阵；静态成员；成员切换协议 | C05、C07–C11 | 候选（未经独立复查） | 写成时自查；等价核验模型已运行 | — |
-| [协议 01 后台工作](../protocols/01-background-work.md) | 工作项状态、认领与接管、副作用种类、死信与暂停、cron 时间槽与夏令时、补跑与水位、清理资格 | C26、C14、C32 | 候选（未经独立复查） | 写成时自查；作业恢复模型已运行 | I27 |
+| [协议 01 后台工作](../protocols/01-background-work.md) | 工作项状态、认领与接管、副作用种类、死信与暂停、cron 时间槽与夏令时、补跑与水位、清理资格 | C26、C14、C32 | 已复查 | [rounds/10](rounds/10-independent-review.md)（第一轮独立复查） | I27 |
 | [协议 02 本地副本](../protocols/02-projections.md) | 投影用途、行状态、来源契约、接收规则、取回、对账、回填、墓碑 | C14、C25、C30 | 候选（未经独立复查） | 写成时自查；投影修复模型已运行 | I30、I22 |
-| [协议 03 审计保存](../protocols/03-audit-durability.md) | 必需审计、第一落点、读取与拒绝、转运回执、删除资格、积压、装配 | C35、C14 | 候选（未经独立复查） | 写成时自查；审计可靠保存模型已运行 | I29 |
-| [协议 04 订单预占](../protocols/04-order-reservation.md) | 参加方、分支状态机、命令、确认过程、同步与恢复、取消与修订、消耗 | C13、C14 | 候选（未经独立复查） | 写成时自查；订单预占模型已运行 | I23 |
+| [协议 03 审计保存](../protocols/03-audit-durability.md) | 必需审计、第一落点、读取与拒绝、转运回执、删除资格、积压、装配 | C35、C14 | 已复查 | [rounds/10](rounds/10-independent-review.md)（第一轮独立复查） | I29 |
+| [协议 04 订单预占](../protocols/04-order-reservation.md) | 参加方、分支状态机、命令、确认过程、同步与恢复、取消与修订、消耗 | C13、C14 | 已复查 | [rounds/10](rounds/10-independent-review.md)（第一轮独立复查） | I23 |
 | [协议 05 出账核销成本](../protocols/05-billing-settlement-and-costing.md) | 增量事实规则、出账认领、信用转换、核销、成本、应付匹配 | C13、C14、C17、C18、C28 | 候选（未经独立复查） | 写成时自查；模型已运行 | I23、I22 |
 | [协议 06 期间关闭](../protocols/06-period-close.md) | 关账批次、封存与覆盖、迟到单据、重开 | C14、C17 | 候选（未经独立复查） | 写成时自查；模型已运行 | I23 |
 | [协议 07 跨组件引用](../protocols/07-references.md) | 两类引用、声明、生命周期、资格检查、合并与别名、解析结果、修复、擦除 | C44、C03 | 候选（未经独立复查） | 写成时自查；引用生命周期模型已运行 | I31 |
-| [协议 08 扩展字段](../protocols/08-extension-fields.md) | 可扩展实体、字段定义、存储、演进、边界、出口、配额 | C20 | 候选（未经独立复查） | 写成时自查；扩展字段模型已运行 | I33 |
+| [协议 08 扩展字段](../protocols/08-extension-fields.md) | 可扩展实体、字段定义、存储、演进、边界、出口、配额 | C20 | 已复查 | [rounds/10](rounds/10-independent-review.md)（第一轮独立复查） | I33 |
 | [协议 09 审批与流程](../protocols/09-approval-and-workflow.md) | 三方分工、审批依据、流程选择、决定提交、放行核对、修订重审、版本迁移、重分配、截止、待办、引擎契约 | C27 | 候选（未经独立复查） | 写成时自查；审批流程模型已运行 | — |
-| [协议 10 外部集成](../protocols/10-external-integration.md) | 适配器、对外命令、回调、事实、对账、凭据、通知、打印、开放接口 | C28、C27 | 候选（未经独立复查） | 写成时自查；对外命令模型已运行 | — |
+| [协议 10 外部集成](../protocols/10-external-integration.md) | 适配器、对外命令、回调、事实、对账、凭据、通知、打印、开放接口 | C28、C27 | 已复查 | [rounds/10](rounds/10-independent-review.md)（第一轮独立复查） | — |
 | [协议 11 冷热转层](../protocols/11-tiering.md) | 转层资格、单元目录、封存与写屏障、复制校验发布、释放、保全与销毁、跨层读取、解冻、恢复核对 | C22、C23 | 候选（未经独立复查） | 写成时自查；转层模型已运行 | I17、I21 |
 | [协议 12 附件与对象存储](../protocols/12-attachments-and-object-storage.md) | 对象属主与凭据、上传与最终键、扫描、下载授权、清除与保全、对账、后端更换 | C24 | 候选（未经独立复查） | 写成时自查；附件模型已运行 | I04 |
-| [协议 13 搜索报表与数据集](../protocols/13-search-reports-and-datasets.md) | 数据集、指标、水位、授权、导出与订阅、自助 BI、搜索、资源隔离 | C25 | 候选（未经独立复查） | 写成时自查；数据集与搜索模型已运行 | — |
+| [协议 13 搜索报表与数据集](../protocols/13-search-reports-and-datasets.md) | 数据集、指标、水位、授权、导出与订阅、自助 BI、搜索、资源隔离 | C25 | 已复查 | [rounds/10](rounds/10-independent-review.md)（第一轮独立复查） | — |
 | [协议 14 数据基础](../protocols/14-data-foundations.md) | 数据库使用、身份与唯一、单号、时间与期间、金额与单位、游标与筛选、迁移与兼容 | C12、C17–C19、C21 | 候选（未经独立复查） | 写成时自查；数据基础模型已运行 | — |
 | [协议 15 备份与恢复](../protocols/15-backup-and-recovery.md) | 恢复组、证据存储、发件表保留、恢复流程、局部修复、高可用、演练 | C37 | 候选（未经独立复查） | 写成时自查；一致性恢复模型已运行 | I25 |
 | [协议 16 客户上线](../protocols/16-go-live-and-import.md) | 导入机制、期初事实、批次激活、切点、试迁移与签字 | C43 | 候选（未经独立复查） | 写成时自查；上线导入模型已运行 | I32 |
 | [协议 17 运行与资源](../protocols/17-runtime-and-resources.md) | 资源声明、外壳预算、过载与故障、启停、多副本、引擎矩阵、观测、容量测量、维护升级 | C31–C35 | 候选（未经独立复查） | 写成时自查；共享预算模型已运行 | I16、I24 |
-| [协议 18 SDK 与一致性](../protocols/18-sdk-and-conformance.md) | 组件协议、套件与报告、语义向量、官方 SDK、准入、版本对应 | C30 | 候选（未经独立复查） | 写成时自查；一致性报告模型已运行 | — |
-| [协议 19 配置密钥注册表发布](../protocols/19-config-secrets-registries-release.md) | 配置、密钥轮换、注册表、版本与产物、供应链、客户基线 | C29、C36、C39 | 候选（未经独立复查） | 写成时自查；密钥轮换模型已运行 | I34、I08、I26 |
+| [协议 18 SDK 与一致性](../protocols/18-sdk-and-conformance.md) | 组件协议、套件与报告、语义向量、官方 SDK、准入、版本对应 | C30 | 已复查 | [rounds/10](rounds/10-independent-review.md)（第一轮独立复查） | — |
+| [协议 19 配置密钥注册表发布](../protocols/19-config-secrets-registries-release.md) | 配置、密钥轮换、注册表、版本与产物、供应链、客户基线 | C29、C36、C39 | 已复查 | [rounds/10](rounds/10-independent-review.md)（第一轮独立复查） | I34、I08、I26 |
 | [协议 20 前端](../protocols/20-frontend.md) | 入口与模块、会话、显示规则、断网草稿、旧客户端、多语言、浏览器安全 | C38 | 候选（未经独立复查） | 写成时自查；断网草稿模型已运行 | I07 |
 | [协议 21 验证映射与迁移](../protocols/21-verification-and-migration.md) | 证据四层、预期登记、模型清单、C 项验证映射、冻结报告、正式文档迁移 | C40–C42 | 候选（未经独立复查） | 写成时自查；预期编号检查已运行 | I13、I34 |
-| [权限验收矩阵](../validation/authorization-matrix.md) | PA01–PA36 | C06–C11 | 候选 | rounds/06 | — |
-| [数据与一致性矩阵](../validation/data-and-consistency-matrix.md) | DT01–DT30 | C12–C23、C37 | 候选 | rounds/04 | — |
+| [权限验收矩阵](../validation/authorization-matrix.md) | PA01–PA36 | C06–C11 | 已复查 | [rounds/10](rounds/10-independent-review.md)（第一轮独立复查） | — |
+| [数据与一致性矩阵](../validation/data-and-consistency-matrix.md) | DT01–DT30 | C12–C23、C37 | 已复查 | [rounds/10](rounds/10-independent-review.md)（第一轮独立复查） | — |
 
 ## 仍待设计的部分
 

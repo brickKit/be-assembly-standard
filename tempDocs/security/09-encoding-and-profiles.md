@@ -215,7 +215,7 @@
 | 记录 | 属主 | 字段（类型；必填） |
 | --- | --- | --- |
 | 任职实例 `appointment` | 员工组件 | `employee: Id`；`legal_entity: Id`；`org_unit: Id`；`position: Key`；`valid: TimeWindow`；`state: Enum(planned, active, ended)`；`revision: RevisionRef` |
-| 账号关联 `account_link` | IAM | `account: PrincipalRef`；`employee: Id`；`state`（通用状态）；`confirmations: List<Id>`；`revision: RevisionRef` |
+| 账号关联 `account_link` | 员工组件（确认记录在 Authz） | `account: PrincipalRef`；`employee: Id`；`state`（通用状态）；`confirmations: List<Id>`；`revision: RevisionRef` |
 | 账号状态 `account_status` | IAM | `account: PrincipalRef`；`status: Enum(active, disabled, security_frozen)`；`revision: RevisionRef` |
 
 ## 变更协议
@@ -387,6 +387,8 @@
 | `review_within_ms` | `DurationMs` | 否 | 紧急访问起始值 2 个工作日 |
 | `max_chain_depth` | `Int` | 否 | 委托边；基础 profile 为 1 |
 
+**业务确认 profile**（由业务组件按操作声明，第八份“确认与受保护操作”）：与生命周期 profile 的确认字段相同（`confirmations_required`、`confirmer_basis` 只能是 `holding`、`confirmation_valid_ms`、`notify`），用于关账、重开、流程实例迁移、额度维护等业务动作；不使用部署所有者确认，不进入安全受保护操作清单。
+
 起始值与第三份、第八份的参数表一致，待评审与实测。
 
 ## 参考检查
@@ -423,7 +425,7 @@
 - 冻结时由本页生成 protobuf 与 JSON Schema，并写出三门语言的共同向量（EN、FX、CP、AT、PA 合并映射）。
 - 视图分片方式、分片大小与核验频率对 Authz 负载的影响，需在代表实验中测量。
 - 错误 reason 的最终名称、HTTP 映射与可显示文案在新错误目录中统一登记。
-- 能力目录的最终命名与版本规则，随第 4 项（provider 能力与成员切换）一起确定。
+- 能力目录的最终命名与版本规则在冻结时确认（第十份只用到能力名，没有改变命名）。
 
 ## 依据与独立判断
 
