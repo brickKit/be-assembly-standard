@@ -34,7 +34,7 @@
 
 1. [任务简报](00-brief.md)：用户原话与范围。
 2. [当前决定](02-decisions.md)和[问题](01-questions.md)：不重问已答前提。
-3. [覆盖清单](03-checklist.md)、[问题台账](issues.md)、[证据](evidence.md)：选择本轮风险最高的项。
+3. [覆盖清单](03-design-map.md)、[问题台账](issues.md)、[证据](evidence.md)：选择本轮风险最高的项。
 4. [接续任务](04-next-steps.md)和对应正文与来源；无需每次重读全部知识库和全部旧设计。
 
 ## 已完成的第 0 轮产出
