@@ -76,6 +76,7 @@
 | [协议 05 出账核销成本](../protocols/05-billing-settlement-and-costing.md) | 增量事实规则、出账认领、信用转换、核销、成本、应付匹配 | C13、C14、C17、C18、C28 | 候选（未经独立复查） | 写成时自查；模型已运行 | I23、I22 |
 | [协议 06 期间关闭](../protocols/06-period-close.md) | 关账批次、封存与覆盖、迟到单据、重开 | C14、C17 | 候选（未经独立复查） | 写成时自查；模型已运行 | I23 |
 | [协议 07 跨组件引用](../protocols/07-references.md) | 两类引用、声明、生命周期、资格检查、合并与别名、解析结果、修复、擦除 | C44、C03 | 候选（未经独立复查） | 写成时自查；引用生命周期模型已运行 | I31 |
+| [协议 08 扩展字段](../protocols/08-extension-fields.md) | 可扩展实体、字段定义、存储、演进、边界、出口、配额 | C20 | 候选（未经独立复查） | 写成时自查；扩展字段模型已运行 | I33 |；2026-10-13 [协议 08](../protocols/08-extension-fields.md) 给出扩展字段协议，模型已运行
 | [权限验收矩阵](../validation/authorization-matrix.md) | PA01–PA36 | C06–C11 | 候选 | rounds/06 | — |
 | [数据与一致性矩阵](../validation/data-and-consistency-matrix.md) | DT01–DT30 | C12–C23、C37 | 候选 | rounds/04 | — |
 

@@ -16,7 +16,7 @@
 | 2（已形成候选） | 时间与内容发布，按 D57 改写安全 03：[第三份](../security/03-authorization-acceptance-and-revocation.md) | 默认路径：本地求值 + 短有效期的权威核验、超期拒绝或暂缓；可选严格路径：authz 持久接受（A 档）与提交屏障（B 档）。权威裁决与属主守卫的 DDL、隔离、重试，依赖域与 B 档参与者登记；安全属性变更、资源发布意图与水位、输出停止；外部发现、证据发行与时钟预算 | 已改写：默认路径的视图核验、有效期计算、事务内截止检查、撤权上界与不可用时的分级行为由参考模型验证；严格路径保留 A／B 档；剩操作分类与路径声明的编码并入第 3 项，参数实测并入第 8 项 |
 | 3（已形成候选） | 正式编码与能力 profile：[第九份](../security/09-encoding-and-profiles.md) | 完整授予、管理职责与计划、身份、资源与字段、P／A／B、四类代次、水位、源类型与链、保护错误的逐字段编码；runtime 与装配的正式接口；有限摘要编码、签发或认证回读、动作 profile；第七份的段、原子、见证、计划摘要编码 | 已形成：逐字段表、规范编码与摘要（编码检查已运行）、能力目录与准入、操作与生命周期 profile；冻结时生成 protobuf／JSON Schema 与三语言向量 |
 | 4（已形成候选） | provider 能力与成员切换：[第十份](../security/10-providers-and-member-switching.md) | 本地、静态、关系图、策略各方案支持哪些能力（第七份的“原子 × 算法”表）；客户换成员时的完整授予、角色与治理、源类型、资格、许可与水位、旧实例与恢复（新版本发布之后的切换） | 已形成：能力矩阵（外部产品按官方文档核对）、静态成员、切换协议与摘要等价核验（模型已运行）；剩一致性套件并入第 8 项，身份成员切换并入身份专题 |
-| 5 | 数据与业务协议（进行中：I27 已形成[协议 01](../protocols/01-background-work.md)，I30 已形成[协议 02](../protocols/02-projections.md)，I29 已形成[协议 03](../protocols/03-audit-durability.md)，I23 已形成[协议 04](../protocols/04-order-reservation.md)、[05](../protocols/05-billing-settlement-and-costing.md)、[06](../protocols/06-period-close.md)；I31 已形成[协议 07](../protocols/07-references.md)；剩 I33） | 作业认领后的恢复（I27）、局部投影修复（I30）、审计可靠保存（I29）、代表订单与财务时序（预占、出账、核销、关账，I23）、跨组件引用生命周期（I31）、扩展字段（I33） | 状态机、不变量、故障时序与 DT 向量 |
+| 5（已形成候选） | 数据与业务协议：[协议 01–08](../protocols/01-background-work.md)（I27、I30、I29、I23、I31、I33） | 作业认领后的恢复（I27）、局部投影修复（I30）、审计可靠保存（I29）、代表订单与财务时序（预占、出账、核销、关账，I23）、跨组件引用生命周期（I31）、扩展字段（I33） | 状态机、不变量、故障时序与 DT 向量 |
 | 6 | 全覆盖细节 | 全货架边界卡、数据／历史／恢复、客户导入与期初（C43）、工程与前端规范；见设计地图“待补的设计” | 每个 C 项都有设计文档与验证方式 |
 | 7 | 整体复查与冻结报告 | 按设计地图的“一轮复查”做独立复查，可能多轮；文档状态推进到“已复查”“可冻结” | 冻结报告；用户确认后进入正式文档迁移（路线文档的切换步骤） |
 | 8 | 代表部署实验 | 按新设计开发实验所需的代表组件、SDK 与外壳，做 D41 的部署对照（含连接池代理与仅 PG 对照组）；把 AE／TI／AT／AM／SD／SC／FX 预期对接 PA01–PA36，用黑盒套件真正测试 SDK，字段与查询用真实数据库，覆盖服务凭据、接受与撤销及至少一条业务链，套件要有坏变体与部分执行的边界 | 先写范围明确的实施与实验计划，经用户确认再写代码；据结果修订设计，再进入路线的第 3、4 步（重建当前范围、完整部署矩阵）；未测的未来成员仍标计划 |
@@ -58,6 +58,7 @@ python3 tempDocs/work/checks/16-order-reservation.py
 python3 tempDocs/work/checks/17-billing-settlement-costing.py
 python3 tempDocs/work/checks/18-period-close.py
 python3 tempDocs/work/checks/19-reference-lifecycle.py
+python3 tempDocs/work/checks/20-extension-fields.py
 ```
 
 这组命令只查当前工作树、正式文档边界／镜像和最小文档模型，不运行 PA／DT／ST 或 SDK 合规。还要核对本次修改的 Markdown 本地目标／标题锚点、表格列与场景编号；此前的数量／结果在[证据](evidence.md)，新修改后不能照抄通过数字。

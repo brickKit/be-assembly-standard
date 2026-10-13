@@ -103,6 +103,8 @@
 | `fields` | `Map<Key,FieldDefinition>` | 是 | 全部可输出字段；未列出的字段不得输出 |
 | `shareable` | `Bool` | 否 | 缺省 `false` |
 | `governance_dimension` | `Key` | 条件 | `shareable` 为真时必填：共享治理按哪个维度划分（例如法人） |
+| `extensible` | `Bool` | 否 | 缺省 `false`；为真时允许客户扩展字段（[协议 08](../protocols/08-extension-fields.md)） |
+| `extension_quota` | `Map<Key,Int>` | 条件 | `extensible` 为真时必填：字段数、可排序字段数、单条扩展数据字节数、多值上限 |
 
 **维度定义 `DimensionDefinition`**
 
