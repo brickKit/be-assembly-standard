@@ -66,6 +66,7 @@
 | [安全 05 共享与委托](../security/05-sharing-delegation-and-impersonation.md) | 共享、委托、扮演 | C08、C11 | 候选（未经独立复查） | 写成时自查 | — |
 | [安全 06 共同契约](../security/06-security-contracts-and-capabilities.md) | 共同结构、接口属主、能力准入 | C06–C11、C16、C30、C36 | 候选（未经独立复查） | 写成时自查 | I18、I19、I28 |
 | [安全 08 状态与变更](../security/08-state-and-change-protocol.md) | 通用生命周期、生效点、有效段 = 记录 ∩ 来源、影响闭包、受保护操作、最后管理员、安装认领、恢复、紧急访问 | C07、C10、C11 | 候选（未经独立复查） | 写成时自查；参考模型已运行 | I19 |
+| [安全 09 正式编码](../security/09-encoding-and-profiles.md) | 基本类型、规范编码与摘要、全部安全结构的字段表、视图核验、错误分类、能力目录、profile | C06–C11、C16、C30、C36 | 候选（未经独立复查） | 写成时自查；编码检查已运行 | I18、I19、I20 |
 | [安全 07 有限表达](../security/07-finite-expressions-containment-and-queries.md) | 有限原子、包含证明、求交、查询编译 | C07–C09、C11 | 候选（未经独立复查） | 写成时自查；参考模型已运行 | I18、I19 |
 | [权限验收矩阵](../validation/authorization-matrix.md) | PA01–PA36 | C06–C11 | 候选 | rounds/06 | — |
 | [数据与一致性矩阵](../validation/data-and-consistency-matrix.md) | DT01–DT30 | C12–C23、C37 | 候选 | rounds/04 | — |
@@ -106,6 +107,7 @@
 | [共享／委托／扮演](../security/05-sharing-delegation-and-impersonation.md) | 机构共享／个人来源、派生段、有限链、会话／副作用／通知，SD01–SD22 | 正式源类型／资格证明和链编码、共享治理、profile／通知落点及真实验收 |
 | [有限表达／包含／查询](../security/07-finite-expressions-containment-and-queries.md) | 段的有限原子与规范化、逐维包含与单维拆分、委托求交、查询编译与命中位图字段、预算，FX01–FX24；参考模型已运行 | 关系原子与投影、正式编码、三语言向量、PostgreSQL 与预算实测 |
 | [状态与变更协议](../security/08-state-and-change-protocol.md) | 通用生命周期与生效点、有效段 = 记录 ∩ 来源、闭包只记账、受保护操作与部署所有者确认、最后管理员、安装认领、恢复、紧急访问，CP01–CP24；参考模型已运行 | 逐字段编码、部署所有者凭据的形式与保管、身份系统不可用时紧急访问的认证路径、profile 默认值 |
+| [正式编码与能力 profile](../security/09-encoding-and-profiles.md) | 基本类型与规范形式、RFC 8785 摘要、引用、定义、段与原子、各类记录、变更协议、视图核验与随机数、严格路径、错误分类、能力目录与准入、profile，EN01–EN20；编码检查已运行 | 生成 protobuf 与 JSON Schema、三语言共同向量、视图分片的负载实测、reason 最终命名、能力命名与版本规则 |
 | [共同结构／接口／能力](../security/06-security-contracts-and-capabilities.md) | 类型化记录、接口属主、资源／副作用、能力路径与兼容，SC01–SC24 | 逐字段正式编码、有限算法／预算、状态／DDL／profile、精确版本矩阵及真实证明 |
 
 以上 AE／TI／AT／AM／SD／SC 都是验收预期，没有运行 SDK、真实数据库或业务链路。已运行的三个小脚本只演算文档反例、原子抽象顺序与有限表达算法；不能把它们叫安全合规通过。
