@@ -37,6 +37,7 @@
 | [授权成员能力与切换候选规格](security/10-providers-and-member-switching.md) | 记录为权威、引擎为索引；OpenFGA、SpiceDB、OPA、Cerbos、Cedar、Casbin 的已核实能力；能力矩阵；静态成员；成员切换协议与摘要等价核验，PV01–PV20；等价核验模型已运行 |
 | [协议 01：后台工作与崩溃恢复](protocols/01-background-work.md) | 统一工作项、认领与接管（租约、代次、数据库时钟）、按副作用种类保证只发生一次、死信与暂停、cron 时间槽身份与夏令时、补跑策略与物化水位、清理资格，JB01–JB20；作业恢复模型已运行 |
 | [协议 02：本地副本的完整性与修复](protocols/02-projections.md) | 投影的用途限制、行的完整性状态、来源契约、接收规则（相同版本不完整时接受完整快照）、取回、对账、回填与墓碑，PJ01–PJ18；投影修复模型已运行 |
+| [协议 03：审计的可靠保存](protocols/03-audit-durability.md) | 必需审计类别、本地审计表（审计专用 Outbox）、读取与拒绝的记录点、拒绝的容量保护、转运与回执、删除资格（回执加备份水位）、积压与故障、装配要求，AU01–AU18；审计可靠保存模型已运行 |
 | [部署与资源](03-deployment-and-resources.md) | 单跑、外壳、混合、多副本的成本与验证 |
 | [数据与生命周期](04-data-and-lifecycle.md) | 数据归属、共享语义、冷热分层与查询 |
 | [事务与消息](05-transactions-and-messaging.md) | 用户响应、业务完成、故障恢复与 MQ |
