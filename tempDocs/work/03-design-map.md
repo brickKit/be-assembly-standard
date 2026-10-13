@@ -61,7 +61,7 @@
 | [支撑能力](../replacements/supporting-capabilities.md) | 边缘、观测、审批、通知、打印 | C27、C35 | 候选 | rounds/03 | I29 |
 | [安全 01 求值](../security/01-authorization-evaluation.md) | 完整授予、读取／动作／字段、三类列表 | C08、C09 | 候选（未经独立复查） | 写成时自查 | I18、I28 |
 | [安全 02 身份](../security/02-trusted-identity-and-attributes.md) | 可信身份、调用模式、属性来源、凭据 | C06、C16、C36 | 候选（未经独立复查） | 写成时自查 | I14、I19 |
-| [安全 03 时间](../security/03-authorization-acceptance-and-revocation.md) | 接受与撤销、读取期限、提交屏障 | C10 | 候选，待按 D57 改写 | 写成时自查 | I19 |
+| [安全 03 时间](../security/03-authorization-acceptance-and-revocation.md) | 默认有界本地授权与可选严格路径（持久接受、提交屏障）、输出期限、内容水位 | C10 | 候选（2026-10-13 按 D57 整份改写，未经独立复查） | 写成时自查；参考模型已运行 | I19 |
 | [安全 04 管理](../security/04-authorization-administration-and-appointments.md) | 管理上限、角色版本、任职生命周期 | C07、C11 | 候选（未经独立复查；上限收紧的处理已按第八份修正） | 写成时自查 | I19 |
 | [安全 05 共享与委托](../security/05-sharing-delegation-and-impersonation.md) | 共享、委托、扮演 | C08、C11 | 候选（未经独立复查） | 写成时自查 | — |
 | [安全 06 共同契约](../security/06-security-contracts-and-capabilities.md) | 共同结构、接口属主、能力准入 | C06–C11、C16、C30、C36 | 候选（未经独立复查） | 写成时自查 | I18、I19、I28 |
@@ -101,7 +101,7 @@
 | --- | --- | --- |
 | [完整授予与求值](../security/01-authorization-evaluation.md) | 读取、动作、字段、三类列表，AE01–AE17 | schema／API、包含及查询生成、真实字段出口和 SDK 等价 |
 | [可信身份与属性](../security/02-trusted-identity-and-attributes.md) | 用户／服务／履职／代办、来源、凭据，TI01–TI22 | 真实凭据签发／轮换、入口保护、属性新鲜度、IAM 已知问题修复 |
-| [接受与撤销时间](../security/03-authorization-acceptance-and-revocation.md) | P／A／B、有界读取、严格提交屏障、内容水位，AT01–AT22 | 真正原子守卫、变化闭包、时间上界、参与者完整登记与恢复 |
+| [接受与撤销时间](../security/03-authorization-acceptance-and-revocation.md) | 默认有界本地授权（有效期从发出核验请求按单调时钟起算、事务内截止检查、撤权上界、authz 不可用的分级行为）与可选严格路径，AT01–AT28；有界本地授权模型已运行 | 操作分类与路径声明的编码、视图核验接口、真正原子守卫、依赖域闭包、B 档参与者完整登记与恢复、参数实测 |
 | [管理与任职](../security/04-authorization-administration-and-appointments.md) | 管理上限、角色绑定、批量计划、任职与交接，AM01–AM20 | 包含算法／预算、完整管理状态机、模板／操作清单、实际联动 |
 | [共享／委托／扮演](../security/05-sharing-delegation-and-impersonation.md) | 机构共享／个人来源、派生段、有限链、会话／副作用／通知，SD01–SD22 | 正式源类型／资格证明和链编码、共享治理、profile／通知落点及真实验收 |
 | [有限表达／包含／查询](../security/07-finite-expressions-containment-and-queries.md) | 段的有限原子与规范化、逐维包含与单维拆分、委托求交、查询编译与命中位图字段、预算，FX01–FX24；参考模型已运行 | 关系原子与投影、正式编码、三语言向量、PostgreSQL 与预算实测 |

@@ -27,7 +27,7 @@
 | [权限与身份](02-security-and-permissions.md) | 安全边界、可替换权限方案、全路径的数据访问控制 |
 | [授权求值候选规格](security/01-authorization-evaluation.md) | 完整授予的结构、读取／动作／字段公式、列表契约与 AE01–AE17 独立预期；尚未冻结 |
 | [可信身份候选规格](security/02-trusted-identity-and-attributes.md) | 用户／服务／责任主体、跨组件调用模式、属性权威、凭据演进与 TI01–TI22 独立预期；尚未冻结 |
-| [接受与撤销候选规格](security/03-authorization-acceptance-and-revocation.md) | 读取窗口、持久接受、严格提交屏障、恢复与 AT01–AT22 独立预期；含待测起始参数，尚未冻结 |
+| [接受与撤销候选规格](security/03-authorization-acceptance-and-revocation.md) | 默认有界本地授权（视图有效期、事务内截止检查、撤权上界、授权服务不可用时的行为）与可选严格路径（持久接受、提交屏障），AT01–AT28；参考模型已运行，尚未冻结 |
 | [管理与任职候选规格](security/04-authorization-administration-and-appointments.md) | 完整授出上限、角色版本／批量计划、任职／交接／收紧及 AM01–AM20 独立预期；尚未冻结 |
 | [共享与委托候选规格](security/05-sharing-delegation-and-impersonation.md) | 机构共享／个人委托、团队继承、只读扮演、有限再委托及 SD01–SD22 独立预期；尚未冻结 |
 | [共同安全契约候选规格](security/06-security-contracts-and-capabilities.md) | 类型化结构、接口与属主、资源／副作用声明、能力准入／兼容及 SC01–SC24 独立预期；正式编码与真实验证待补 |
