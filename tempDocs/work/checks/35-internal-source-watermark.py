@@ -1,110 +1,148 @@
 #!/usr/bin/env python3
 """Reference model for security 03: internal sources, watermarks, suspension and scheduled ends.
 
-An internal source (the employee component) commits a revocation (an employee leaves) at s0.
-Its changes reach Authz through an ordered stream whose lag varies and can grow to minutes.
-Authz probes the source every P seconds; the source writes an echo of each probe into the same
-ordered stream. Authz renews a component's view only while its watermark (Authz's monotonic
-time when the last applied echo's probe was sent) is no older than D_src. The component uses a
-view for W after it sent the verification request, on a clock that counts suspension; its host
-is sometimes suspended. Some revocations are scheduled (an end date known in advance) and travel
-with the view. Checks:
+The source (the employee component) runs transactions that insert outbox rows: ordinary changes,
+the employee's leave at s0, and probe echoes. Some transactions roll back; the leave transaction
+is sometimes long. A single relay numbers the rows visible in its snapshot ("numbered after
+commit") and publishes them; the stream can stall for minutes; the leave delivery can fail and be
+redelivered 120 s later while later entries arrive. Authz keeps the contiguous applied position
+and a watermark: the probe time of the last echo within that position, on one clock. When the
+stream stalls or falls behind (entries keep arriving, ever later) Authz calls the source's pull
+endpoint directly once the watermark is half of D_SRC old; the pull is itself a probe. The
+component uses a view for W after it asked, on a clock that counts suspension; some appointments
+have scheduled ends. Checks:
 
   BOUND_SRC   no decision relying on the employee being active happens later than
-              s0 + D_src + W
+              s0 + D_SRC + W
   BOUND_END   no decision relying on a scheduled appointment happens after its end date
+  AVAILABLE   while the source is reachable, decisions keep being made during long stream
+              stalls (the pull path keeps the watermark fresh)
 
-The leave event sometimes fails on first delivery and is redelivered 60 s later while later echoes
-are applied (a shared durable consumer); the watermark only advances through the contiguous
-applied position. When the stream stalls, Authz pulls committed changes by sequence (D64).
-
-Bad variants (each must be caught): no watermark (Authz renews regardless of source lag);
-watermark taken from the echo's arrival time instead of the probe's send time; watermark advanced
-by any applied echo even behind an entry waiting for redelivery; a component clock
-that stops while the host is suspended; scheduled end dates not carried in the view.
+Bad variants (each must be caught): no watermark; watermark from the echo's arrival time;
+watermark advanced past an entry waiting for redelivery; relay numbers rows in insert order and
+skips rows not yet committed (publishing them later); no pull path; clock stops while the host is
+suspended; scheduled ends not in the view.
 """
 import random
 import sys
 
 SEED = 20261013
 RUNS = 3000
-P = 5            # probe interval
-D_SRC = 60       # maximum watermark age for high-risk decisions (D64)
-REDELIVER = 60   # a failed delivery is redelivered after this delay
-W = 5            # view validity
+P = 5             # probe interval
+D_SRC = 60        # D_src_high (D64)
+W = 5             # view validity
+REDELIVER = 120   # longer than D_SRC: a redelivery delay alone must not be able to hide a leave
+GAP_TIMEOUT = 120 # the bad relay publishes skipped rows only after this
 HORIZON = 400
 
 
-def run(rng, variant, fails):
-    s0 = rng.randint(50, 250)                       # unscheduled leave committed at the source
+def run(rng, variant, fails, stats):
+    s0 = rng.randint(50, 250)
     scheduled_end = rng.choice([None, rng.randint(60, 300)])
-    lag_base = rng.choice([1, 2, 5])
-    surge = (rng.randint(40, 200), rng.choice([0, 120, 900]))   # (start, extra lag) for a stream stall
-    suspend = (rng.randint(20, 300), rng.choice([0, 0, 60, 600]))  # (start, duration) of host suspension
+    stall = (rng.randint(40, 200), rng.choice([0, 0, 120, 900]))    # stream stall: (start, length)
+    suspend = (rng.randint(20, 300), rng.choice([0, 0, 60, 600]))
+    leave_fails_first = rng.random() < 0.3
+    long_tx = rng.random() < 0.3      # the leave transaction inserted at s0 - 30, commits at s0
+    lag_from = rng.choice([None, None, rng.randint(0, 200)])   # from here the stream falls behind:
+    # an entry published at p arrives p - lag_from later, so entries keep arriving, ever later
 
-    def lag(t):
-        start, extra = surge
-        return lag_base + (extra if start <= t < start + extra else 0)
+    # source transactions: [insert time, commit time or None if rolled back, kind, payload]
+    txs = []
+    for t in range(0, HORIZON, 7):
+        if rng.random() < 0.15:
+            txs.append((t, None, "change", t))                 # rolled back: never visible
+        else:
+            txs.append((t, t + rng.choice([0, 0, 1, 3]), "change", t))
+    txs.append((s0 - 30 if long_tx else s0, s0, "leave", s0))
+    published = []                    # (position, kind, payload, publish time)
+    numbered = set()
+    skipped = []
+    state = {"pos": 0}
 
-    commits = [(p, "echo", p) for p in range(0, HORIZON, P)]   # echo committed when the probe arrives
-    commits.append((s0, "leave", s0))
-    commits.sort(key=lambda c: (c[0], c[1] != "leave"))
-    stream = []            # (arrival, kind, payload) -- one ordered stream: arrivals keep commit order
-    last = 0
-    for commit_t, kind, payload in commits:
-        last = max(last, commit_t + lag(commit_t))
-        stream.append((last, kind, payload))
-    applied_leave = False
+    def relay(now):
+        if variant == "insert_number_skip":
+            order = sorted(range(len(txs)), key=lambda i: txs[i][0])
+            for i in order:
+                ins, com, kind, pay = txs[i]
+                if i in numbered or i in [x[0] for x in skipped] or ins > now or com is None:
+                    continue
+                if com <= now:
+                    numbered.add(i); state["pos"] += 1; published.append((state["pos"], kind, pay, now))
+                elif i not in [x[0] for x in skipped]:
+                    skipped.append((i, now))                   # gap skipped; published after a timeout
+            for i, at in list(skipped):
+                ins, com, kind, pay = txs[i]
+                if com <= now and now >= at + GAP_TIMEOUT and i not in numbered:
+                    skipped.remove((i, at)); numbered.add(i); state["pos"] += 1
+                    published.append((state["pos"], kind, pay, now))
+            return
+        vis = [i for i, (ins, com, k, p) in enumerate(txs)
+               if com is not None and com <= now and i not in numbered]
+        for i in sorted(vis, key=lambda i: txs[i][0]):
+            numbered.add(i); state["pos"] += 1
+            published.append((state["pos"], txs[i][2], txs[i][3], now))
+
+    applied_upto = 0
+    waiting = None                    # (due, position) of the leave waiting for redelivery
+    leave_applied = False
     watermark = None
-    fail_first = rng.random() < 0.3      # the leave event fails on first delivery and is redelivered
-    pending = []                         # entries waiting for redelivery: (due, kind, payload)
-    blocked = False                      # an earlier entry is pending: the contiguous position stops
-    decisions = 0
-    view = None            # (sent_local, active, end)
-    comp_clock = 0.0       # component's local clock reading
+    view = None
+    comp_clock = 0.0
+    next_probe = 0
     for t in range(HORIZON):
-        # Authz applies stream entries; another replica may apply later entries while one waits
-        for item in sorted([x for x in pending if x[0] <= t]):
-            pending.remove(item)
-            applied_leave = True
-            blocked = False
-        for item in [x for x in stream if x[0] <= t]:
-            stream.remove(item)
-            _, kind, payload = item
-            if kind == "leave":
-                if fail_first:
-                    fail_first = False
-                    pending.append((t + REDELIVER, kind, payload)); blocked = True
-                else:
-                    applied_leave = True
-            elif kind == "echo":
-                if blocked and variant != "applied_watermark":
-                    continue                     # behind a pending entry: not contiguous, no advance
-                watermark = t if variant == "arrival_watermark" else payload
-        # pull path (D64): when the stream has stalled, fetch committed changes directly by sequence
-        if variant not in ("no_watermark", "applied_watermark") and (watermark is None or watermark < t - 3 * P):
-            if not stream or stream[0][0] > t + P:
-                if s0 <= t:
-                    applied_leave = True
-                blocked = False; pending.clear()
-                watermark = t
-        # component clock: counts suspension unless the bad variant
+        if t >= next_probe:           # a direct call; the echo commits when the probe arrives
+            next_probe = t + P
+            txs.append((t, t, "echo", t))
+        relay(t)
+        stalled = stall[0] <= t < stall[0] + stall[1]
+        if not stalled:
+            for (p_, kind, pay, pub) in [x for x in published if x[0] > applied_upto]:
+                if lag_from is not None and pub + max(0, pub - lag_from) > t:
+                    break                                      # not delivered yet
+                if waiting and variant != "applied_watermark":
+                    break                                      # contiguous position stops here
+                if kind == "leave" and leave_fails_first:
+                    leave_fails_first = False
+                    waiting = (t + REDELIVER, p_)
+                    if variant == "applied_watermark":
+                        applied_upto = p_                      # later entries keep being applied
+                        continue
+                    break
+                applied_upto = p_
+                if kind == "leave":
+                    leave_applied = True
+                elif kind == "echo":
+                    watermark = t if variant == "arrival_watermark" else pay
+        if waiting and t >= waiting[0]:
+            leave_applied = True
+            waiting = None
+        # pull path: when the watermark is getting old the pull request is a probe; numbered rows
+        # up to its echo are returned directly (not through the stream)
+        if variant not in ("no_pull", "no_watermark") and (watermark is None or watermark < t - D_SRC // 2):
+            txs.append((t, t, "echo", t))
+            relay(t)
+            for (p_, kind, pay, pub) in [x for x in published if x[0] > applied_upto]:
+                applied_upto = p_
+                if kind == "leave":
+                    leave_applied = True; waiting = None
+                elif kind == "echo":
+                    watermark = pay
         suspended = suspend[0] <= t < suspend[0] + suspend[1]
         if not (suspended and variant == "clock_stops"):
             comp_clock += 1
         if suspended:
             continue
-        # renewal every 2 s
         if t % 2 == 0:
             fresh = watermark is not None and watermark >= t - D_SRC
             if variant == "no_watermark" or fresh:
                 end = None if variant == "drop_end_date" else scheduled_end
-                view = (comp_clock, not applied_leave, end)
-        # a decision that needs the employee to be active
+                view = (comp_clock, not leave_applied, end)
+        long_stall = stalled and stall[1] > D_SRC + 2 * W and t > stall[0] + D_SRC + W
         if view is not None and rng.random() < 0.5:
             sent_local, active, end = view
             if comp_clock < sent_local + W and active and (end is None or t < end):
-                decisions += 1
+                if long_stall:
+                    stats["during_stall"] += 1
                 if t > s0 + D_SRC + W:
                     fails.append("BOUND_SRC"); return
                 if scheduled_end is not None and t >= scheduled_end:
@@ -112,20 +150,27 @@ def run(rng, variant, fails):
 
 
 def main():
-    variants = ["good", "no_watermark", "arrival_watermark", "applied_watermark", "clock_stops", "drop_end_date"]
+    variants = ["good", "no_watermark", "arrival_watermark", "applied_watermark", "insert_number_skip",
+                "no_pull", "clock_stops", "drop_end_date"]
     res = {}
     for v in variants:
         rng = random.Random(SEED)
         fails = []
+        stats = {"during_stall": 0}
         for _ in range(RUNS):
-            run(rng, v, fails)
-        res[v] = sorted(set(fails))
-    print(f"good: {'ok' if not res['good'] else 'FAIL ' + str(res['good'])} (BOUND_SRC, BOUND_END over {RUNS} runs)")
+            run(rng, v, fails, stats)
+        if stats["during_stall"] == 0:
+            fails.append("AVAILABLE")
+        res[v] = (sorted(set(fails)), stats)
+    g, gs = res["good"]
+    print(f"good: {'ok' if not g else 'FAIL ' + str(g)} (BOUND_SRC, BOUND_END, AVAILABLE over {RUNS} runs; "
+          f"{gs['during_stall']} decisions during long stream stalls)")
     caught = True
     for v in variants[1:]:
-        print(f"bad variant {v}: {'caught ' + str(res[v]) if res[v] else 'NOT CAUGHT'}")
-        caught &= bool(res[v])
-    if res["good"] or not caught:
+        f, st = res[v]
+        print(f"bad variant {v}: {'caught ' + str(f) if f else 'NOT CAUGHT'}")
+        caught &= bool(f)
+    if g or not caught:
         sys.exit(1)
 
 

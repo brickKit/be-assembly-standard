@@ -114,7 +114,7 @@
 | --- | --- | --- |
 | [完整授予与求值](../security/01-authorization-evaluation.md) | 读取、动作、字段、三类列表，AE01–AE17 | schema／API、包含及查询生成、真实字段出口和 SDK 等价 |
 | [可信身份与属性](../security/02-trusted-identity-and-attributes.md) | 用户／服务／履职／代办、来源、凭据，TI01–TI22 | 真实凭据签发／轮换、入口保护、属性新鲜度、IAM 已知问题修复 |
-| [接受与撤销时间](../security/03-authorization-acceptance-and-revocation.md) | 默认有界本地授权（有效期从发出核验请求按单调时钟起算、事务内截止检查、撤权上界、authz 不可用的分级行为）与可选严格路径，AT01–AT28；有界本地授权模型已运行 | 操作分类与路径声明的编码、视图核验接口、真正原子守卫、依赖域闭包、B 档参与者完整登记与恢复、参数实测 |
+| [接受与撤销时间](../security/03-authorization-acceptance-and-revocation.md) | 默认有界本地授权（有效期从发出核验请求按单调时钟起算、事务内截止检查、撤权上界、authz 不可用的分级行为）与可选严格路径，AT01–AT41；有界本地授权模型已运行 | 操作分类与路径声明的编码、视图核验接口、真正原子守卫、依赖域闭包、B 档参与者完整登记与恢复、参数实测 |
 | [管理与任职](../security/04-authorization-administration-and-appointments.md) | 管理上限、角色绑定、批量计划、任职与交接，AM01–AM20 | 包含算法／预算、完整管理状态机、模板／操作清单、实际联动 |
 | [共享／委托／扮演](../security/05-sharing-delegation-and-impersonation.md) | 机构共享／个人来源、派生段、有限链、会话／副作用／通知，SD01–SD22 | 正式源类型／资格证明和链编码、共享治理、profile／通知落点及真实验收 |
 | [有限表达／包含／查询](../security/07-finite-expressions-containment-and-queries.md) | 段的有限原子与规范化、逐维包含与单维拆分、委托求交、查询编译与命中位图字段、预算，FX01–FX24；参考模型已运行 | 关系原子与投影、正式编码、三语言向量、PostgreSQL 与预算实测 |
@@ -142,7 +142,7 @@
 | C07 | 功能授权 | 每个入口权限声明，公开与内部例外明确 | 管理上限与角色绑定（安全 04）、包含证明（安全 07）、受保护操作（安全 08）、编码与准入（安全 09），参考模型已运行。剩余：AM01–AM20 未运行；动作清单随组件声明；SDK 未验 | [管理候选](../security/04-authorization-administration-and-appointments.md) |
 | C08 | 数据与对象范围 | 列表／详情／命令／共享／组织／法人语义一致 | 完整段与列表契约（安全 01）、共享治理（安全 05）、有限原子与查询编译（安全 07），参考模型已运行。剩余：AE 与 SD 未运行；关系原子的投影、真实层验收；I28 未闭环 | [求值候选](../security/01-authorization-evaluation.md) |
 | C09 | 字段与批量动作 | 掩码、写限制、排序／筛选／导出不越权 | 字段公式、查询字段资格、旧／新状态守卫（安全 01）；命中位图逐行字段（安全 07）；受限字段的筛选排序（[协议 14](../protocols/14-data-foundations.md#列表游标排序与筛选)）。剩余：I18 的正式字段与批量契约随编码（安全 09）与 SDK 共同契约（协议 18）落实；AE 未运行 | [求值候选](../security/01-authorization-evaluation.md) |
-| C10 | 授权一致性 | 修订、撤销、缓存、投影故障与 provider 回退 | 按 D57 改写的安全 03：默认有界本地授权与可选严格路径（AT01–AT28），模型已运行；成员切换（安全 10）。剩余：操作分类与路径声明的编码、视图核验接口、原子守卫、B 档参与者登记、参数实测 | [时间候选](../security/03-authorization-acceptance-and-revocation.md) |
+| C10 | 授权一致性 | 修订、撤销、缓存、投影故障与 provider 回退 | 按 D57 改写的安全 03：默认有界本地授权与可选严格路径（AT01–AT41），模型已运行；成员切换（安全 10）。剩余：操作分类与路径声明的编码、视图核验接口、原子守卫、B 档参与者登记、参数实测 | [时间候选](../security/03-authorization-acceptance-and-revocation.md) |
 | C11 | 委托、扮演、职责分离 | 上限、链、时效、审批资格与审计 | 共享、委托、扮演（安全 05），委托逐维求交（安全 07），审批的职责分离与代理链（[协议 09](../protocols/09-approval-and-workflow.md#决定的提交)）。剩余：SD01–SD22 未运行；源类型与链的编码随安全 09 生成；通知落点 | [共享／委托候选](../security/05-sharing-delegation-and-impersonation.md) |
 | C12 | 数据库适配 | 方言、驱动、锁、迁移、角色、分区与恢复兼容 | PostgreSQL 标准与分离形态（数据正文）；数据库使用规则与身份登记（[协议 14](../protocols/14-data-foundations.md)），模型已运行。剩余：外壳分池实测（协议 17 规则）；组件库迁到独立实例的切点与旧写路径退出按数据正文的步骤实测；跨方言按需专项；引擎兼容实测 | [数据](../04-data-and-lifecycle.md) |
 | C13 | 事务与并发 | 隔离／重试／锁、版本标记、库存和记账不变量 | 短本地事务与约束／锁序（事务正文、协议 14）；预占（协议 04）、出账核销成本（协议 05）、关账（协议 06），模型已运行。剩余：API 与表结构随组件设计；DT 未执行 | [事务](../05-transactions-and-messaging.md) |
