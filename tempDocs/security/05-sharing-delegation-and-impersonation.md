@@ -179,7 +179,7 @@ agent 仍是预留，不实现令牌交换或自动审批。未来允许时，�
 
 共同 schema、来源类型／资格证明、共享治理、链解析／包含算法、风险／副作用／期限／通知 profile、影响索引和版本迁移仍待收敛；SD01–SD22 未运行。C08／C09／C11 不因本页存在就闭环。
 
-共同结构／接口／能力和兼容表已有[第六份候选](06-security-contracts-and-capabilities.md)，正式编码、有限包含与链／查询算法仍待收敛。当前任务顺序、未完细节和 Claude Code 接续说明统一更新[接续清单](../work/04-next-steps.md)。
+共同结构／接口／能力和兼容表已有[第六份候选](06-security-contracts-and-capabilities.md)；创建上限的包含证明、委托链与扮演的逐维求交已写入[第七份候选](07-finite-expressions-containment-and-queries.md#求交委托和扮演的派生段)，正式编码仍待收敛。当前任务顺序、未完细节和 Claude Code 接续说明统一更新[接续清单](../work/04-next-steps.md)。
 
 ## 依据与独立判断
 

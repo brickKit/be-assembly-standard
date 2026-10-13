@@ -177,7 +177,7 @@
 
 I19 管理上限分支已有候选，C07／C11 尚未闭环。还须收敛管理职责／角色／资格 schema、各管理动作与独立确认清单、包含证明算法和预算、上限收紧影响闭包、正式模板及治理 profile，再执行 AM／PA 验收。
 
-共享、委托与扮演已有[第五份生命周期候选](05-sharing-delegation-and-impersonation.md)，共同结构／接口与能力准入已有[第六份候选](06-security-contracts-and-capabilities.md)，均未冻结或验收。正式编码、包含算法及迁移仍待补；全部尚缺的细节及项目后续安排集中在[接续任务清单](../work/04-next-steps.md)，不在各工作记录另排一套实施顺序。
+包含证明的逐维规则、单维拆分、见证与失败原因已写入[第七份候选](07-finite-expressions-containment-and-queries.md#包含证明)。共享、委托与扮演已有[第五份生命周期候选](05-sharing-delegation-and-impersonation.md)，共同结构／接口与能力准入已有[第六份候选](06-security-contracts-and-capabilities.md)，均未冻结或验收。正式编码、包含算法及迁移仍待补；全部尚缺的细节及项目后续安排集中在[接续任务清单](../work/04-next-steps.md)，不在各工作记录另排一套实施顺序。
 
 ## 依据与独立判断
 

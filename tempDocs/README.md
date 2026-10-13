@@ -31,6 +31,7 @@
 | [管理与任职候选规格](security/04-authorization-administration-and-appointments.md) | 完整授出上限、角色版本／批量计划、任职／交接／收紧及 AM01–AM20 独立预期；尚未冻结 |
 | [共享与委托候选规格](security/05-sharing-delegation-and-impersonation.md) | 机构共享／个人委托、团队继承、只读扮演、有限再委托及 SD01–SD22 独立预期；尚未冻结 |
 | [共同安全契约候选规格](security/06-security-contracts-and-capabilities.md) | 类型化结构、接口与属主、资源／副作用声明、能力准入／兼容及 SC01–SC24 独立预期；正式编码与真实验证待补 |
+| [有限表达与查询候选规格](security/07-finite-expressions-containment-and-queries.md) | 段的有限原子与规范化、包含证明与单维拆分、委托求交、完整查询编译与逐行字段、预算与迁移及 FX01–FX24 独立预期；参考模型已运行，SDK 未验证 |
 | [部署与资源](03-deployment-and-resources.md) | 单跑、外壳、混合、多副本的成本与验证 |
 | [数据与生命周期](04-data-and-lifecycle.md) | 数据归属、共享语义、冷热分层与查询 |
 | [事务与消息](05-transactions-and-messaging.md) | 用户响应、业务完成、故障恢复与 MQ |
