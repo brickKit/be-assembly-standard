@@ -14,8 +14,13 @@ with the view. Checks:
               s0 + D_src + W
   BOUND_END   no decision relying on a scheduled appointment happens after its end date
 
+The leave event sometimes fails on first delivery and is redelivered 60 s later while later echoes
+are applied (a shared durable consumer); the watermark only advances through the contiguous
+applied position. When the stream stalls, Authz pulls committed changes by sequence (D64).
+
 Bad variants (each must be caught): no watermark (Authz renews regardless of source lag);
-watermark taken from the echo's arrival time instead of the probe's send time; a component clock
+watermark taken from the echo's arrival time instead of the probe's send time; watermark advanced
+by any applied echo even behind an entry waiting for redelivery; a component clock
 that stops while the host is suspended; scheduled end dates not carried in the view.
 """
 import random
@@ -24,7 +29,8 @@ import sys
 SEED = 20261013
 RUNS = 3000
 P = 5            # probe interval
-D_SRC = 30       # maximum watermark age
+D_SRC = 60       # maximum watermark age for high-risk decisions (D64)
+REDELIVER = 60   # a failed delivery is redelivered after this delay
 W = 5            # view validity
 HORIZON = 400
 
@@ -50,17 +56,38 @@ def run(rng, variant, fails):
         stream.append((last, kind, payload))
     applied_leave = False
     watermark = None
+    fail_first = rng.random() < 0.3      # the leave event fails on first delivery and is redelivered
+    pending = []                         # entries waiting for redelivery: (due, kind, payload)
+    blocked = False                      # an earlier entry is pending: the contiguous position stops
+    decisions = 0
     view = None            # (sent_local, active, end)
     comp_clock = 0.0       # component's local clock reading
     for t in range(HORIZON):
-        # Authz applies stream entries in order
+        # Authz applies stream entries; another replica may apply later entries while one waits
+        for item in sorted([x for x in pending if x[0] <= t]):
+            pending.remove(item)
+            applied_leave = True
+            blocked = False
         for item in [x for x in stream if x[0] <= t]:
             stream.remove(item)
             _, kind, payload = item
             if kind == "leave":
-                applied_leave = True
+                if fail_first:
+                    fail_first = False
+                    pending.append((t + REDELIVER, kind, payload)); blocked = True
+                else:
+                    applied_leave = True
             elif kind == "echo":
+                if blocked and variant != "applied_watermark":
+                    continue                     # behind a pending entry: not contiguous, no advance
                 watermark = t if variant == "arrival_watermark" else payload
+        # pull path (D64): when the stream has stalled, fetch committed changes directly by sequence
+        if variant not in ("no_watermark", "applied_watermark") and (watermark is None or watermark < t - 3 * P):
+            if not stream or stream[0][0] > t + P:
+                if s0 <= t:
+                    applied_leave = True
+                blocked = False; pending.clear()
+                watermark = t
         # component clock: counts suspension unless the bad variant
         suspended = suspend[0] <= t < suspend[0] + suspend[1]
         if not (suspended and variant == "clock_stops"):
@@ -77,6 +104,7 @@ def run(rng, variant, fails):
         if view is not None and rng.random() < 0.5:
             sent_local, active, end = view
             if comp_clock < sent_local + W and active and (end is None or t < end):
+                decisions += 1
                 if t > s0 + D_SRC + W:
                     fails.append("BOUND_SRC"); return
                 if scheduled_end is not None and t >= scheduled_end:
@@ -84,7 +112,7 @@ def run(rng, variant, fails):
 
 
 def main():
-    variants = ["good", "no_watermark", "arrival_watermark", "clock_stops", "drop_end_date"]
+    variants = ["good", "no_watermark", "arrival_watermark", "applied_watermark", "clock_stops", "drop_end_date"]
     res = {}
     for v in variants:
         rng = random.Random(SEED)

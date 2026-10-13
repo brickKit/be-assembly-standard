@@ -9,7 +9,8 @@ appear in its "必需依赖" row (plus 身份 -> infra/iam-casdoor, 授权 -> in
   CLOSURE   every combination in the README table lists the transitive closure of the
             required dependencies of its own listed components
   BASELINE  every combination contains the deployment-level components every formal
-            deployment needs (identity, authorization, audit; protocol 03)
+            deployment needs: one identity member (any infra/iam-*), authorization, audit
+            (protocol 03)
 
 Exit status is non-zero when a check fails.
 """
@@ -20,8 +21,9 @@ import sys
 
 ROOT = os.path.join(os.path.dirname(__file__), "..", "..", "components")
 ID = re.compile(r"\b((?:mdm|erp|crm|hrm|prj|ana|infra|integration|frontend)/[a-z0-9<>\-]+)")
-ALIASES = {"身份": "infra/iam-casdoor", "授权": "infra/authz"}
-BASELINE = {"infra/iam-casdoor", "infra/authz", "infra/audit"}
+ALIASES = {"身份": "infra/iam-casdoor", "授权": "infra/authz"}   # 身份 stands for the identity family; Casdoor is its representative
+BASELINE = {"infra/authz", "infra/audit"}
+IDENTITY = re.compile(r"^infra/iam-")
 
 
 def cards():
@@ -114,6 +116,8 @@ def main():
             fails.append(f"CLOSURE: {name} misses {sorted(missing)}")
         if BASELINE - listed:
             fails.append(f"BASELINE: {name} misses {sorted(BASELINE - listed)}")
+        if not any(IDENTITY.match(c) for c in listed):
+            fails.append(f"BASELINE: {name} has no identity member (infra/iam-*)")
     print(f"{len(deps)} components with cards; {sum(len(v) for v in deps.values())} required edges; {len(combos())} combinations")
     for f in fails:
         print(f)

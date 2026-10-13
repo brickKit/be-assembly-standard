@@ -15,7 +15,8 @@ log. At a random time the deployment is restored to an earlier point T. Checks a
 Bad variants (each must be caught): keep the old stream (ghost events delivered); recreate the
 stream without republishing; republish only a fixed time window instead of from each
 consumer's recorded progress; no consumer repair for facts beyond the republish retention;
-revocations made while the evidence store was unavailable are neither flagged nor reviewed; resend commands found in "sending"
+revocations made while the evidence store was unavailable are not carried in an alert;
+commit the revocation before writing its evidence (a crash in between loses it); resend commands found in "sending"
 without querying the provider; restore security state from the backup only.
 """
 import random
@@ -23,7 +24,7 @@ import sys
 
 SEED = 20261013
 RUNS = 3000
-WINDOW = 10            # the fixed window of the bad variant
+WINDOW = 4             # the fixed window of the bad variant (shorter than the retention)
 CAP = 8                # published outbox rows are kept this long for republishing
 
 
@@ -33,7 +34,8 @@ def run(rng, variant, fails):
     stream = []                                   # (event_id, publish_time)
     provider = {}                                 # cmd -> times executed
     evidence = set()                              # independent security evidence log
-    flagged = set()                               # revocations made while evidence was unavailable (alerted)
+    alerts = set()                                # revocations carried in external alerts (evidence unavailable)
+    declared_loss = set()                         # evidence and alert channel both unavailable: declared loss
     revocations = set()                           # every revocation that took effect
     snapshots = {}
 
@@ -65,11 +67,26 @@ def run(rng, variant, fails):
                     db["cmds"][c] = "succeeded"
         elif r < 0.85:                                         # security revocation
             g = f"g{rng.randint(0, 3)}"
-            db["revoked"].add(g); revocations.add(g)
-            if rng.random() < 0.8:
-                evidence.add(g)                                # synchronous write with receipt
-            elif variant != "no_flag":
-                flagged.add(g)                                 # evidence unavailable: alert, listed for review
+            ev_up, alert_up = rng.random() < 0.8, rng.random() < 0.9
+            if variant == "commit_then_evidence":
+                db["revoked"].add(g); revocations.add(g)       # committed first ...
+                if rng.random() < 0.15:
+                    pass                                       # ... crash before the evidence write
+                elif ev_up:
+                    evidence.add(g)
+                elif alert_up:
+                    alerts.add(g)
+                else:
+                    declared_loss.add(g)
+            else:
+                if ev_up:
+                    evidence.add(g)                            # evidence first, with receipt ...
+                elif alert_up:
+                    if variant != "no_flag":
+                        alerts.add(g)                          # ... or the full record in an external alert
+                else:
+                    declared_loss.add(g)                       # both channels down: declared residual risk
+                db["revoked"].add(g); revocations.add(g)       # then commit locally
         for e, row in list(db["outbox"].items()):              # republish retention has a fixed cap
             if row["published"] is not None and t - row["published"] > CAP:
                 del db["outbox"][e]
@@ -109,15 +126,17 @@ def run(rng, variant, fails):
                 db["cmds"][c] = "succeeded"
     # security: replay the evidence log, then review and re-apply the flagged period
     if variant != "backup_security_only":
-        db["revoked"] |= evidence | flagged
+        db["revoked"] |= evidence | alerts
     # consumer drains the stream
     for e, _ in stream:
         if e not in db["inbox"]:
             db["inbox"].add(e); db["applied"].add(e)
-    # beyond the republish retention: the consumer repairs from the producer's facts
-    if variant not in ("no_consumer_repair", "fixed_window", "no_republish", "keep_stream"):
+    # beyond the republish retention: the consumer repairs only the facts whose outbox rows
+    # were already removed by the retention cap at T (the same rule for every variant)
+    if variant != "no_consumer_repair":
         for e in db["facts"] - db["applied"]:
-            db["inbox"].add(e); db["applied"].add(e)
+            if e not in db["outbox"]:
+                db["inbox"].add(e); db["applied"].add(e)
 
     if db["applied"] - db["facts"]:
         fails.append("NO_GHOST"); return
@@ -127,12 +146,12 @@ def run(rng, variant, fails):
         fails.append("NO_REEXEC"); return
     if set(provider) - set(db["cmds"]):
         fails.append("EXT_KNOWN"); return
-    if revocations - db["revoked"]:
+    if (revocations - declared_loss) - db["revoked"]:
         fails.append("REVOKED"); return
 
 
 def main():
-    variants = ["good", "keep_stream", "no_republish", "fixed_window", "no_consumer_repair", "resend_without_query", "backup_security_only", "no_flag"]
+    variants = ["good", "keep_stream", "no_republish", "fixed_window", "no_consumer_repair", "resend_without_query", "backup_security_only", "no_flag", "commit_then_evidence"]
     res = {}
     for v in variants:
         rng = random.Random(SEED)

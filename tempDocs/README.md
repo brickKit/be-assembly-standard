@@ -14,7 +14,7 @@
 
 面向客户：先读[项目主体与全景](00-project-overview.md)，按[能力分图与替换关系](components/selection-map.md)逐层展示，再进入[替换与定制指南](replacements/README.md)比较方案、仓库、场景和部署；需要完整目录时读[组件货架与仓库](components/catalog.md)，选定组合后读[部署与资源](03-deployment-and-resources.md)。只有“已实现且对应验证通过”的选项可以作为已交付能力介绍。
 
-面向设计与开发：先读[交接入口](work/handoff.md)，再看[决定台账](work/02-decisions.md)的总表、[设计地图](work/03-design-map.md)（文档状态、仍待设计的部分、C01–C44、一轮复查的做法）和[接续清单](work/04-next-steps.md)（任务顺序）。用户原话在[任务简报](work/00-brief.md)。每轮同时更新设计地图、问题台账、证据记录和受影响文档。
+面向设计与开发：先读[交接入口](work/handoff.md)，再看[决定台账](work/02-decisions.md)的总表、[设计地图](work/03-design-map.md)（文档状态、仍待设计的部分、C01–C44、一轮复查的做法）和[接续清单](work/04-next-steps.md)（任务顺序）。用户原话在[任务简报](work/00-brief.md)；AI 自行做出、待用户复核的设计选择在 [AI 选择清单](work/05-ai-choices.md)。每轮同时更新设计地图、问题台账、证据记录和受影响文档。
 
 ## 文档地图
 
