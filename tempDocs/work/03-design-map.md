@@ -86,6 +86,7 @@
 | [协议 15 备份与恢复](../protocols/15-backup-and-recovery.md) | 恢复组、证据存储、发件表保留、恢复流程、局部修复、高可用、演练 | C37 | 候选（未经独立复查） | 写成时自查；一致性恢复模型已运行 | I25 |
 | [协议 16 客户上线](../protocols/16-go-live-and-import.md) | 导入机制、期初事实、批次激活、切点、试迁移与签字 | C43 | 候选（未经独立复查） | 写成时自查；上线导入模型已运行 | I32 |
 | [协议 17 运行与资源](../protocols/17-runtime-and-resources.md) | 资源声明、外壳预算、过载与故障、启停、多副本、引擎矩阵、观测、容量测量、维护升级 | C31–C35 | 候选（未经独立复查） | 写成时自查；共享预算模型已运行 | I16、I24 |
+| [协议 18 SDK 与一致性](../protocols/18-sdk-and-conformance.md) | 组件协议、套件与报告、语义向量、官方 SDK、准入、版本对应 | C30 | 候选（未经独立复查） | 写成时自查；一致性报告模型已运行 | — |
 | [权限验收矩阵](../validation/authorization-matrix.md) | PA01–PA36 | C06–C11 | 候选 | rounds/06 | — |
 | [数据与一致性矩阵](../validation/data-and-consistency-matrix.md) | DT01–DT30 | C12–C23、C37 | 候选 | rounds/04 | — |
 
@@ -166,7 +167,7 @@
 | C27 | 审批、通知、打印 | 能力边界、路由、模板、通道、副作用与替换 | 审批部分：[协议 09](../protocols/09-approval-and-workflow.md) 已给出三方分工、审批依据、决定、放行、修订、版本、重分配与超时的候选，模型已运行；通知与打印见[协议 10](../protocols/10-external-integration.md#通知) | [支撑](../replacements/supporting-capabilities.md) |
 | C28 | 外部集成与开放 API | 回调、凭据、幂等、查询结果、版本／配额和失败 | [协议 10](../protocols/10-external-integration.md) 已给出对外命令、回调、对账、凭据与开放接口的候选，模型已运行；各外部系统的能力声明随适配器设计填写 | [业务与渠道](../replacements/business-and-channels.md) |
 | C29 | 配置与密钥 | 权威源、schema、缺省／校验、文件轮换与运行变化 | 有限业务设置归属已定；目标／实际生效、完整候选校验及密钥分阶段轮换推荐已写，具体 schema、刷新／连接和旧值窗口待补，ST08–ST09 未执行 | [规范](../06-engineering-conventions.md) |
-| C30 | 多语言与 SDK | 同协议、语义向量、黑盒、语言 API 与入口 | 三个官方 SDK 的仓库／语言与外壳选择已明确；widget 黑盒未验，语义与实现差异未闭环 | [验证](../07-validation.md) |
+| C30 | 多语言与 SDK | 同协议、语义向量、黑盒、语言 API 与入口 | [协议 18](../protocols/18-sdk-and-conformance.md) 已给出组件协议的层级与章节、套件的五种结果与自检、语义向量、功能矩阵与准入的候选，模型已运行；套件与向量未运行 | [验证](../07-validation.md) |
 | C31 | 单跑与外壳 | 同版成员等价、身份／配置／数据／资源不串扰 | 独立开发、外壳优先候选与测后定案已定；共进程信任、共同池数据库目标及分池扩展条件已写，四骨架真实组装／拆回待验；2026-10-13 [协议 17](../protocols/17-runtime-and-resources.md) 给出候选，共享预算模型已运行 | [部署](../03-deployment-and-resources.md) |
 | C32 | 多副本与故障隔离 | 无重复副作用，预算与异常不拖垮其他成员 | 原子认领、版本／代次及共享预算推荐已写；公平／保留服务能力、故障域与停止协议需具体绑定，真实多副本矩阵未执行；2026-10-13 [协议 17](../protocols/17-runtime-and-resources.md) 给出候选，共享预算模型已运行 | [部署](../03-deployment-and-resources.md) |
 | C33 | 部署引擎与环境 | 目标支持、迁移、真实请求、事件、升级、收尾 | Podman 小型部署重点候选、测后定案；标准维护窗口已定，代表矩阵与恢复待验；2026-10-13 [协议 17](../protocols/17-runtime-and-resources.md) 给出候选，共享预算模型已运行 | [部署](../03-deployment-and-resources.md) |
