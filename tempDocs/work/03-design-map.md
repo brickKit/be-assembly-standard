@@ -81,6 +81,7 @@
 | [协议 10 外部集成](../protocols/10-external-integration.md) | 适配器、对外命令、回调、事实、对账、凭据、通知、打印、开放接口 | C28、C27 | 候选（未经独立复查） | 写成时自查；对外命令模型已运行 | — |
 | [协议 11 冷热转层](../protocols/11-tiering.md) | 转层资格、单元目录、封存与写屏障、复制校验发布、释放、保全与销毁、跨层读取、解冻、恢复核对 | C22、C23 | 候选（未经独立复查） | 写成时自查；转层模型已运行 | I17、I21 |
 | [协议 12 附件与对象存储](../protocols/12-attachments-and-object-storage.md) | 对象属主与凭据、上传与最终键、扫描、下载授权、清除与保全、对账、后端更换 | C24 | 候选（未经独立复查） | 写成时自查；附件模型已运行 | I04 |
+| [协议 13 搜索报表与数据集](../protocols/13-search-reports-and-datasets.md) | 数据集、指标、水位、授权、导出与订阅、自助 BI、搜索、资源隔离 | C25 | 候选（未经独立复查） | 写成时自查；数据集与搜索模型已运行 | — |
 | [权限验收矩阵](../validation/authorization-matrix.md) | PA01–PA36 | C06–C11 | 候选 | rounds/06 | — |
 | [数据与一致性矩阵](../validation/data-and-consistency-matrix.md) | DT01–DT30 | C12–C23、C37 | 候选 | rounds/04 | — |
 
@@ -156,7 +157,7 @@
 | C22 | 热温冷与保留 | 终态、可变历史、保全、搬运校验、销毁 | [协议 11](../protocols/11-tiering.md) 已给出转层资格、单元目录、封存与写屏障、代次发布、读取租约、保全与销毁的候选，模型已运行；Parquet 规范结构与跨语言摘要向量随 SDK 共同契约 | [数据](../04-data-and-lifecycle.md) |
 | C23 | 冷查询与数据治理 | 完整结果、排序分页、权限、导出／解冻与恢复 | [协议 11](../protocols/11-tiering.md#读取) 已给出定位索引、目录快照读取、完整或明确不完整、当前授权与解冻的候选；冷读取端口的实现与预算待代表部署实验 | [数据](../04-data-and-lifecycle.md) |
 | C24 | 文件与附件 | 桶、凭据、权限、预签名、内容校验和生命周期 | [协议 12](../protocols/12-attachments-and-object-storage.md) 已给出对象属主与凭据、上传与扫描的内容绑定、下载授权与暴露窗口、引用／清除／保全与对账的候选，模型已运行；后端接口子集待一致性套件实测 | [附件与存储](../replacements/files-and-attachments.md) |
-| C25 | 搜索、报表、分析 | 投影新鲜度、范围与字段、重建、交易资源隔离 | 标准内置基础报表、自助 BI 选配已定；口径、时效、数据供给与适配验收待设计，搜索既有方向仍待承接 | [报表与分析](../replacements/analytics-and-reporting.md) |
+| C25 | 搜索、报表、分析 | 投影新鲜度、范围与字段、重建、交易资源隔离 | [协议 13](../protocols/13-search-reports-and-datasets.md) 已给出数据集、指标、完整水位、查询时授权、订阅、自助 BI 路线与搜索的候选，模型已运行；报表目录与数据集清单随边界卡 | [报表与分析](../replacements/analytics-and-reporting.md) |
 | C26 | 后台任务与缓存 | 多实例认领、租约、恢复、时间槽、负载和失效 | 任务授权分类、预算和代次方向已写；I27 的 cron 认领后崩溃模型证明插入唯一性不保证可恢复完成，先补槽状态／接管／副作用幂等与清理资格；运行未验；2026-10-13 [协议 01](../protocols/01-background-work.md) 给出工作项状态机、接管与副作用种类，作业恢复模型已运行，SDK 与数据库未验 | [验证](../07-validation.md) |
 | C27 | 审批、通知、打印 | 能力边界、路由、模板、通道、副作用与替换 | 审批部分：[协议 09](../protocols/09-approval-and-workflow.md) 已给出三方分工、审批依据、决定、放行、修订、版本、重分配与超时的候选，模型已运行；通知与打印见[协议 10](../protocols/10-external-integration.md#通知) | [支撑](../replacements/supporting-capabilities.md) |
 | C28 | 外部集成与开放 API | 回调、凭据、幂等、查询结果、版本／配额和失败 | [协议 10](../protocols/10-external-integration.md) 已给出对外命令、回调、对账、凭据与开放接口的候选，模型已运行；各外部系统的能力声明随适配器设计填写 | [业务与渠道](../replacements/business-and-channels.md) |
