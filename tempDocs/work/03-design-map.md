@@ -83,6 +83,7 @@
 | [协议 12 附件与对象存储](../protocols/12-attachments-and-object-storage.md) | 对象属主与凭据、上传与最终键、扫描、下载授权、清除与保全、对账、后端更换 | C24 | 候选（未经独立复查） | 写成时自查；附件模型已运行 | I04 |
 | [协议 13 搜索报表与数据集](../protocols/13-search-reports-and-datasets.md) | 数据集、指标、水位、授权、导出与订阅、自助 BI、搜索、资源隔离 | C25 | 候选（未经独立复查） | 写成时自查；数据集与搜索模型已运行 | — |
 | [协议 14 数据基础](../protocols/14-data-foundations.md) | 数据库使用、身份与唯一、单号、时间与期间、金额与单位、游标与筛选、迁移与兼容 | C12、C17–C19、C21 | 候选（未经独立复查） | 写成时自查；数据基础模型已运行 | — |
+| [协议 15 备份与恢复](../protocols/15-backup-and-recovery.md) | 恢复组、证据存储、发件表保留、恢复流程、局部修复、高可用、演练 | C37 | 候选（未经独立复查） | 写成时自查；一致性恢复模型已运行 | [协议 15](../protocols/15-backup-and-recovery.md) 已给出恢复组、独立证据存储、按消费者进度补发、十步流程与演练的候选，模型已运行；工具与恢复时间待实测，演练未执行 |
 | [权限验收矩阵](../validation/authorization-matrix.md) | PA01–PA36 | C06–C11 | 候选 | rounds/06 | — |
 | [数据与一致性矩阵](../validation/data-and-consistency-matrix.md) | DT01–DT30 | C12–C23、C37 | 候选 | rounds/04 | — |
 
