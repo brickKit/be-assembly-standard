@@ -2,6 +2,10 @@
 
 > 仓库基线核对：2026-10-12；文档与契约对照增量：2026-10-13。历史通过来自对应记录；未重跑业务或 SDK 的完整测试。
 
+## 协议 21：验证映射与正式文档迁移（2026-10-13）
+
+C40–C42。写成[协议 21](../protocols/21-verification-and-migration.md)：证据的四层、独立预期的登记、参考模型清单、C01–C44 的验证映射、从预期到测试的规则（每条预期至少一个测试，坏变体转负例，覆盖报告列缺口）、冻结报告的内容（含 AI 自行做出的设计选择清单）、正式文档的目标结构（新增 `00-overview`、`05-operations`、`06-protocols`，组件规则进入 `be-protocol`，验收矩阵进入 `be-acceptance`）与迁移步骤，VM01–VM12。新增[编号检查](checks/33-expectation-ids.py)：本次写协议时两次手工避开前缀冲突（附件的 AT、前端的 FE），改为机械检查；结果 34 个前缀、703 条预期，各前缀只属一份文档、编号唯一且连续。第 6 项完成。
+
 ## 全货架边界卡（2026-10-13）
 
 C01–C05、I01–I06、I26。按组件边界正文的审查卡格式与五项检查，在 `tempDocs/components/` 按领域写成 11 个文件与目录页，覆盖货架全部原始条目与后续方向：主数据 5、交易与库存 4、财务与结算 6、生产与资产 4、客户关系 7、人事与薪资 6 组（含薪资族）、项目 2、基础能力 12、外部集成 9 族、分析 3、前端 4。提出候选身份 `mdm/partner`、`mdm/employee`、`mdm/currency`、`erp/warehouse`、`erp/credit`、`erp/costing`、`erp/billing`、`erp/payment`、`erp/tax`、`integration/einvoice-<地区>`、`integration/bank-<格式>`、`integration/print-agent`、`ana/search`、`frontend/pc`、`frontend/mobile`、`frontend/terminal`；退役 `mdm/customer`、`mdm/supplier`（由伙伴承接）、`infra/storage`（D53）、`frontend/standard`（按入口拆分）；`infra/workflow` 身份保留、职责改为统一待办。当前重建范围的候选为 22 个后端组件与 2 个入口，需在第 8 项计划中经用户确认。写客户组合闭包时修正了一处初稿错误：初稿让精简进销存可以不装出账与收付款，但按 D48、D47 开票与收款各有独立权威，改为必需（收付款可只用线下登记），缺信用、成本、税计算时的行为分别写明。同步货架清单（后续方向表改为指向边界卡与候选身份）、选择关系图、各选型专篇与事务正文中“新身份未定”的旧表述（选定产品前的流程引擎与 BI 适配、策略引擎成员仍为未定）。

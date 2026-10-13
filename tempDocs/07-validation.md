@@ -6,6 +6,8 @@
 
 ## 三种验证阶段
 
+每个覆盖要求的设计依据、独立预期、参考模型与将来的验证，以及预期编号的登记，见[协议 21：验证映射与正式文档迁移](protocols/21-verification-and-migration.md)。
+
 第一份具体矩阵为[权限验收矩阵与反例](validation/authorization-matrix.md)。后续数据／事务／部署矩阵沿用本页的记录格式，按对象写真实预期，不把只列专项名称当作用例已经完成。
 
 第二份为[数据、事务与恢复的反例](validation/data-and-consistency-matrix.md)，DT01–DT30 覆盖全局唯一、封存竞争、内容编码、目录切换、预占、出账／核销／关账、增量运输、长期去重和恢复。它们均为未执行规格。理论冻结候选与剩余阻塞统一见[底层推荐基线](09-foundation-baseline.md)。
