@@ -31,7 +31,7 @@
 | 组件 ID | 能力 | 范围 | 选型说明 |
 | --- | --- | --- | --- |
 | `mdm/partner` | 业务伙伴：共有身份、客户／供应商角色、正式联络资料、伙伴银行账户 | 当前重建 | [业务与渠道](guides/business-and-channels.md) |
-| `mdm/product` | 产品、物料、单位换算、批次与序列追踪政策、标准成本 | 当前重建 | [业务与渠道](guides/business-and-channels.md) |
+| `mdm/product` | 产品、物料、单位换算、批次与序列追踪政策 | 当前重建 | [业务与渠道](guides/business-and-channels.md) |
 | `mdm/org` | 法人、部门、岗位、汇报关系、地点、工作日历 | 当前重建 | [业务与渠道](guides/business-and-channels.md) |
 | `mdm/employee` | 员工、任职、员工与账号的映射 | 当前重建 | [业务与渠道](guides/business-and-channels.md) |
 | `mdm/currency` | 币种、汇率类型与汇率 | 当前重建 | [财务与结算](guides/finance-and-settlement.md) |

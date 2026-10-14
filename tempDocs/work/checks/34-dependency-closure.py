@@ -12,9 +12,13 @@ appear in its "必需依赖" row (plus 身份 -> the identity family, 授权 -> 
   BASELINE  every combination contains the deployment-level components every formal
             deployment needs: exactly one identity member (any infra/iam-*), authorization, audit
             (protocol 03)
+  ONE-OF    a card's "可选依赖与缺件" row may name a group that "装配准入要求至少有一个" (BrickKit
+            has no either-or dependency; assembly admission checks it, security 09): every
+            combination listing that component lists at least one member of the group
 
-A self-test runs first: adding "授权" as a required dependency of an identity member must be
-reported as a cycle (authorization requires identity).
+Self-tests run first: adding "授权" as a required dependency of an identity member must be
+reported as a cycle (authorization requires identity); a combination of `erp/billing` alone must
+fail ONE-OF (billing needs a source).
 
 Exit status is non-zero when a check fails.
 """
@@ -32,8 +36,12 @@ BASELINE = {"infra/authz", "infra/audit"}
 IDENTITY = re.compile(r"^infra/iam-")
 
 
+ONE_OF_MARK = "装配准入要求至少有一个"
+
+
 def cards():
-    deps = {}
+    """Returns the required dependencies and the at-least-one groups of every card."""
+    deps, oneof = {}, {}
     for path in sorted(glob.glob(os.path.join(ROOT, "*.md"))):
         name = os.path.basename(path)
         if name in ("README.md", "catalog.md", "selection-map.md"):
@@ -52,9 +60,25 @@ def cards():
                 for word, cid in ALIASES.items():
                     if re.search(r"(^|[、，（ ])" + word + r"($|[、，（）(])", cell):
                         req.add(cid)
+            groups = []
+            m = re.search(r"^\| 可选依赖与缺件 \| (.*) \|$", sec, re.M)
+            if m:
+                for seg in m.group(1).split("；"):
+                    if ONE_OF_MARK in seg:
+                        groups.append(set(ID.findall(seg.split("：", 1)[0])))
             for cid in ids:
                 deps[cid] = req - {cid}
-    return deps
+                oneof[cid] = groups
+    return deps, oneof
+
+
+def one_of_fails(oneof, name, listed):
+    out = []
+    for n in sorted(listed):
+        for g in oneof.get(n, ()):
+            if not g & listed:
+                out.append(f"ONE-OF: {name} lists {n} but none of {sorted(g)}")
+    return out
 
 
 def expand_family(deps):
@@ -122,8 +146,10 @@ def combos():
 
 
 def main():
-    deps = cards()
+    deps, oneof = cards()
     fails = []
+    if not one_of_fails(oneof, "probe", {"erp/billing"}):
+        fails.append("SELF-TEST: erp/billing without a source was not reported")
     probe = {n: set(ds) for n, ds in deps.items()}
     member = next(n for n in sorted(probe) if IDENTITY.match(n))
     probe[member].add("infra/authz")
@@ -145,12 +171,13 @@ def main():
         ids = [c for c in listed if IDENTITY.match(c)]
         if len(ids) != 1:
             fails.append(f"BASELINE: {name} needs exactly one identity member (infra/iam-*), has {ids}")
+        fails += one_of_fails(oneof, name, listed)
     print(f"{len(deps)} components with cards; {sum(len(v) for v in deps.values())} required edges; {len(combos())} combinations")
     for f in fails:
         print(f)
     if fails:
         sys.exit(1)
-    print("ACYCLIC, KNOWN, CLOSURE, BASELINE: ok")
+    print("ACYCLIC, KNOWN, CLOSURE, BASELINE, ONE-OF: ok")
 
 
 if __name__ == "__main__":
