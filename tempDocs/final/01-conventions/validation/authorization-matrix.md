@@ -4,7 +4,7 @@
 
 ## 目的与使用范围
 
-共同语义以[权限设计](../../../02-security-and-permissions.md)为准，本矩阵将已定方向落实为可区分正确与错误实现的场景。认证、授权、业务约束、投影与出口的责任分别检查，不能只验证 provider 返回允许／拒绝。矩阵不重新裁定权限模型、管理员 Deny、默认 MQ 或数据库行级安全。
+共同语义以[权限设计](../../06-protocols/security/README.md)为准，本矩阵将已定方向落实为可区分正确与错误实现的场景。认证、授权、业务约束、投影与出口的责任分别检查，不能只验证 provider 返回允许／拒绝。矩阵不重新裁定权限模型、管理员 Deny、默认 MQ 或数据库行级安全。
 
 具体的权限模型、成员与切换关系见[授权选型](../../00-overview/guides/authorization.md)。实例化时绑定实际的成员、SDK 与契约版本，标准、静态、关系图、策略引擎成员各按所选能力验证；只有模型名称、产品支持 Check 或替身的自测，不能作为成员已通过的证明。
 
@@ -25,11 +25,11 @@
 
 涉及撤权、任职变更、到期和同步的预期，按所选操作的风险、确认点与声明的新鲜度窗口实例化；不要求未声明的同瞬间全副本生效，也不能以最终生效掩盖窗口越界。不同入口确实使用不同权限点或附加业务条件时分别说明，集合对照使用同一读取动作和条件。
 
-时间节点与风险分档见[接受与撤销](../../../security/03-authorization-acceptance-and-revocation.md)。PA26–PA30、PA32、PA36 实例化时结合 AT01–AT55，分别断言关闭新接受与关闭旧提交，不把 Check 成功、许可或部分屏障回执当作已完成。
+时间节点与风险分档见[接受与撤销](../../06-protocols/security/03-authorization-acceptance-and-revocation.md)。PA26–PA30、PA32、PA36 实例化时结合 AT01–AT55，分别断言关闭新接受与关闭旧提交，不把 Check 成功、许可或部分屏障回执当作已完成。
 
-PA13–PA18 的管理、任职与模板升级，结合[管理与任职 AM01–AM20](../../../security/04-authorization-administration-and-appointments.md)实例化，保持完整上限、目标影响与生效点的检查；正常卸任与机构上限收紧分别断言。
+PA13–PA18 的管理、任职与模板升级，结合[管理与任职 AM01–AM20](../../06-protocols/security/04-authorization-administration-and-appointments.md)实例化，保持完整上限、目标影响与生效点的检查；正常卸任与机构上限收紧分别断言。
 
-共享、代办与只读扮演的场景结合[共享与委托 SD01–SD22](../../../security/05-sharing-delegation-and-impersonation.md)，特别检查来源类型、创建时与当前的完整上限、任务责任、有限链、隐蔽副作用与通知落点。
+共享、代办与只读扮演的场景结合[共享与委托 SD01–SD22](../../06-protocols/security/05-sharing-delegation-and-impersonation.md)，特别检查来源类型、创建时与当前的完整上限、任务责任、有限链、隐蔽副作用与通知落点。
 
 实例化所有场景时对照[共同结构与能力 SC01–SC24](../../../security/06-security-contracts-and-capabilities.md)：区分身份、事实、求值、接受与业务回执，核对实际资源、动作与出口的完整能力路径及新旧版本；接口表或可解析的 schema 不代替 SDK 与真实依赖的证据。
 

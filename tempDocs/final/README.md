@@ -11,5 +11,5 @@
 | `02-decisions/` | 决定记录 | 第 8 批 |
 | [04-foundations/](04-foundations/README.md) | 底层选择：部署与运行、数据与生命周期、事务与消息 | 第 2 批已整理 |
 | `05-operations/` | 运维手册 | 第 7 批 |
-| `06-protocols/` | 安全 01–10 与协议 01–21 | 协议 14 已整理（第 2 批）；其余第 3–7 批 |
+| `06-protocols/` | 安全 01–10（[security/](06-protocols/security/README.md)）与协议 01–21 | 安全总页与安全 01–05 已整理（第 3 批）；协议 14 已整理（第 2 批）；其余第 4–7 批 |
 | [07-components/](07-components/README.md) | 组件边界卡 | 第 1b 批已整理 |

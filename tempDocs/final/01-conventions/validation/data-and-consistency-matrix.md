@@ -4,7 +4,7 @@
 
 ## 怎样使用
 
-依据[数据与生命周期](../../04-foundations/02-data-and-lifecycle.md)、[事务与消息](../../04-foundations/03-transactions-and-messaging.md)与[权限语义](../../../02-security-and-permissions.md)，先固定独立预期，再绑定真实协议／SDK／组件／适配器版本。故障与并发应可控制地发生在指定提交点，配正常正例；只启动成功、最终不崩溃或全拒绝不算通过。
+依据[数据与生命周期](../../04-foundations/02-data-and-lifecycle.md)、[事务与消息](../../04-foundations/03-transactions-and-messaging.md)与[权限语义](../../06-protocols/security/README.md)，先固定独立预期，再绑定真实协议／SDK／组件／适配器版本。故障与并发应可控制地发生在指定提交点，配正常正例；只启动成功、最终不崩溃或全拒绝不算通过。
 
 ## 数据定位、转层与当前授权
 
