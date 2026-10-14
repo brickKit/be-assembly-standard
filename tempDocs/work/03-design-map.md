@@ -31,14 +31,14 @@
 
 ## 设计文档
 
-> 2026-10-13 作者对全部文档做了一轮横切复查（[rounds/09](rounds/09-author-cross-review.md)），不计为独立复查。2026-10-14 第一轮独立复查（[rounds/10](rounds/10-independent-review.md)）：复查后没有再修改、且复查者认为可标“已复查”的文档已标“已复查”；2026-10-14 第二轮独立复查（[rounds/11](rounds/11-second-independent-review.md)）：其结论中可标“已复查”、且本轮之后只做了一般项修正的文档已标“已复查”；安全 03、04、10，协议 02、15，权限主文档与基础能力卡按重要发现（I52–I57）修正后仍为“候选”，等第三轮复查。边界卡中的领域卡未单独列在本表，随目录页一起记录。
+> 2026-10-13 作者对全部文档做了一轮横切复查（[rounds/09](rounds/09-author-cross-review.md)），不计为独立复查。2026-10-14 第一轮独立复查（[rounds/10](rounds/10-independent-review.md)）：复查后没有再修改、且复查者认为可标“已复查”的文档已标“已复查”；2026-10-14 第二轮独立复查（[rounds/11](rounds/11-second-independent-review.md)）：其结论中可标“已复查”、且本轮之后只做了一般项修正的文档已标“已复查”；安全 03、04、10，协议 02、15，权限主文档与基础能力卡按重要发现（I52–I57）修正后仍为“候选”，等第三轮复查。2026-10-14 第三轮独立复查（[rounds/12](rounds/12-third-review.md)）：安全 04 与权限主文档标“已复查”（累计 55 份）；安全 03、10，协议 02、15 与基础能力卡按重要发现（I59–I61）修正后仍为“候选”，等第四轮只看这些改动的聚焦复查。边界卡中的领域卡未单独列在本表，随目录页一起记录。
 
 | 文档 | 回答什么 | 主要覆盖 | 状态 | 最近整体复查 | 遗留问题 |
 | --- | --- | --- | --- | --- | --- |
 | [工作区入口](../README.md) | 阅读路线、文档索引 | C41 | 已复查 | [rounds/11](rounds/11-second-independent-review.md)（第二轮；一般项已修正） | — |
 | [项目主体](../00-project-overview.md) | 产品是什么、装配全景、设计原则 | C01 | 已复查 | [rounds/11](rounds/11-second-independent-review.md)（第二轮；一般项已修正） | I01 |
 | [组件边界](../01-component-boundaries.md) | 边界方法、数据归属、业务伙伴、组织与员工、库存与仓储、销售类型 | C01–C03、C05 | 候选 | rounds/06 | I02、I03、I26、I31 |
-| [权限主文档](../02-security-and-permissions.md) | 权限语义、执行推荐、管理与任职、审计范围 | C06–C11、C35 | 候选 | rounds/06 | I09、I19、I28、I29 |
+| [权限主文档](../02-security-and-permissions.md) | 权限语义、执行推荐、管理与任职、审计范围 | C06–C11、C35 | 已复查 | rounds/06、rounds/12 | I09、I19、I28、I29、I62 |
 | [部署与资源](../03-deployment-and-resources.md) | 部署形态、规模阶梯、外壳风险、维护窗口、网络前提 | C31–C34 | 已复查 | [rounds/10](rounds/10-independent-review.md)（第一轮独立复查） | I16、I24 |
 | [数据与生命周期](../04-data-and-lifecycle.md) | 数据归属、库选择、冷热分层、跨层查询、灾难恢复 | C12、C17–C23、C37、C44 | 已复查 | [rounds/11](rounds/11-second-independent-review.md)（第二轮；一般项已修正） | I17、I20、I21、I25、I31、I33 |
 | [事务与消息](../05-transactions-and-messaging.md) | 本地事务、预占、跨组件协调、消息运输、用户响应 | C13–C16、C26 | 已复查 | [rounds/11](rounds/11-second-independent-review.md)（第二轮；一般项已修正） | I15、I22、I23、I27、I30 |
@@ -65,7 +65,7 @@
 | [安全 01 求值](../security/01-authorization-evaluation.md) | 完整授予、读取／动作／字段、三类列表 | C08、C09 | 已复查 | [rounds/10](rounds/10-independent-review.md)（第一轮独立复查） | I18、I28 |
 | [安全 02 身份](../security/02-trusted-identity-and-attributes.md) | 可信身份、调用模式、属性来源、凭据 | C06、C16、C36 | 已复查 | [rounds/11](rounds/11-second-independent-review.md)（第二轮；一般项已修正） | I14、I19 |
 | [安全 03 时间](../security/03-authorization-acceptance-and-revocation.md) | 默认有界本地授权与可选严格路径（持久接受、提交屏障）、输出期限、内容水位 | C10 | 候选（2026-10-13 按 D57 整份改写，未经独立复查） | 写成时自查；参考模型已运行 | I19 |
-| [安全 04 管理](../security/04-authorization-administration-and-appointments.md) | 管理上限、角色版本、任职生命周期 | C07、C11 | 候选（未经独立复查；上限收紧的处理已按第八份修正） | 写成时自查 | I19 |
+| [安全 04 管理](../security/04-authorization-administration-and-appointments.md) | 管理上限、角色版本、任职生命周期 | C07、C11 | 已复查 | rounds/12 | I19 |
 | [安全 05 共享与委托](../security/05-sharing-delegation-and-impersonation.md) | 共享、委托、扮演 | C08、C11 | 已复查 | [rounds/10](rounds/10-independent-review.md)（第一轮独立复查） | — |
 | [安全 06 共同契约](../security/06-security-contracts-and-capabilities.md) | 共同结构、接口属主、能力准入 | C06–C11、C16、C30、C36 | 已复查 | [rounds/10](rounds/10-independent-review.md)（第一轮独立复查） | I18、I19、I28 |
 | [安全 07 有限表达](../security/07-finite-expressions-containment-and-queries.md) | 有限原子、包含证明、求交、查询编译 | C07–C09、C11 | 已复查 | [rounds/11](rounds/11-second-independent-review.md)（第二轮；一般项已修正） | I18、I19 |

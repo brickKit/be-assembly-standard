@@ -2,7 +2,7 @@
 """Check the boundary cards' required dependencies and the customer combinations.
 
 Reads every `## <component>` section in tempDocs/components/*.md, takes the component IDs that
-appear in its "必需依赖" row (plus 身份 -> infra/iam-casdoor, 授权 -> infra/authz), and checks:
+appear in its "必需依赖" row (plus 身份 -> the identity family, 授权 -> infra/authz), and checks:
 
   ACYCLIC   the required-dependency graph has no cycle (BrickKit rejects a required cycle)
   KNOWN     every required dependency names a component that has a card
@@ -21,7 +21,8 @@ import sys
 
 ROOT = os.path.join(os.path.dirname(__file__), "..", "..", "components")
 ID = re.compile(r"\b((?:mdm|erp|crm|hrm|prj|ana|infra|integration|frontend)/[a-z0-9<>\-]+)")
-ALIASES = {"身份": "infra/iam-casdoor", "授权": "infra/authz"}   # 身份 stands for the identity family; Casdoor is its representative
+FAMILY = "infra/iam-*"   # 身份 names the identity family: any one infra/iam-* member satisfies it
+ALIASES = {"身份": FAMILY, "授权": "infra/authz"}
 BASELINE = {"infra/authz", "infra/audit"}
 IDENTITY = re.compile(r"^infra/iam-")
 
@@ -73,9 +74,15 @@ def cycle(deps):
 
 
 def closure(deps, roots):
+    """The family placeholder is replaced by the identity members the combination lists itself;
+    with none listed it stays and is reported as missing."""
+    members = [r for r in roots if IDENTITY.match(r) and r != FAMILY]
     out, todo = set(), list(roots)
     while todo:
         n = todo.pop()
+        if n == FAMILY and members:
+            todo += members
+            continue
         if n in out:
             continue
         out.add(n)
@@ -108,7 +115,7 @@ def main():
         fails.append("ACYCLIC: " + " -> ".join(c))
     for n, ds in sorted(deps.items()):
         for d in ds:
-            if d not in deps and "<" not in d:
+            if d not in deps and "<" not in d and d != FAMILY:
                 fails.append(f"KNOWN: {n} requires {d}, which has no card")
     for name, listed in combos().items():
         missing = closure(deps, listed) - listed
