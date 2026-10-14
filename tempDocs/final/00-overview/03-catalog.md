@@ -30,7 +30,7 @@
 
 | 组件 ID | 能力 | 范围 | 选型说明 |
 | --- | --- | --- | --- |
-| `mdm/partner` | 业务伙伴：共有身份、客户／供应商／员工往来角色、正式联络资料、伙伴银行账户 | 当前重建 | [业务与渠道](guides/business-and-channels.md) |
+| `mdm/partner` | 业务伙伴：共有身份、客户／供应商／员工往来／关联方角色、正式联络资料、伙伴银行账户 | 当前重建 | [业务与渠道](guides/business-and-channels.md) |
 | `mdm/product` | 产品、物料、单位换算、批次与序列追踪政策 | 当前重建 | [业务与渠道](guides/business-and-channels.md) |
 | `mdm/org` | 法人、部门、岗位、汇报关系、地点、工作日历 | 当前重建 | [业务与渠道](guides/business-and-channels.md) |
 | `mdm/employee` | 员工、任职、员工与账号的映射 | 当前重建 | [业务与渠道](guides/business-and-channels.md) |
@@ -44,6 +44,7 @@
 | `erp/purchase` | 采购申请、订单与到货 | 当前重建 | [业务与渠道](guides/business-and-channels.md) |
 | `erp/inventory` | 库存数量、预占与物理变动（唯一写入者） | 当前重建 | [业务与渠道](guides/business-and-channels.md) |
 | `erp/contract` | 客户合同、框架协议、订阅与周期出账计划（D70） | 远期 | [业务与渠道](guides/business-and-channels.md) |
+| `erp/intercompany` | 公司间规则、对开单据与内部往来对账（D72） | 远期 | [财务与结算](guides/finance-and-settlement.md) |
 | `erp/planning` | 补货规则（再订货点、安全库存）、需求预测与物料需求计划（D71） | 远期 | [业务与渠道](guides/business-and-channels.md) |
 | `erp/warehouse` | 可选的复杂仓库作业（波次、拣货、复核、打包） | 远期 | [业务与渠道](guides/business-and-channels.md) |
 
@@ -56,6 +57,7 @@
 | `erp/costing` | 存货计价与成本子账 | 当前重建 | [财务与结算](guides/finance-and-settlement.md) |
 | `erp/billing` | 客户账单与商业发票 | 当前重建 | [财务与结算](guides/finance-and-settlement.md) |
 | `erp/payment` | 收付款业务与银行／渠道对账 | 当前重建 | [财务与结算](guides/finance-and-settlement.md) |
+| `erp/consolidation` | 集团结构、抵销、外币报表折算与合并报表（D72） | 远期 | [财务与结算](guides/finance-and-settlement.md) |
 | `erp/tax` | 税计算 | 远期 | [财务与结算](guides/finance-and-settlement.md) |
 
 ## 生产与资产
@@ -126,7 +128,7 @@
 
 ## 新增与退役的身份
 
-新增的身份在正式迁移时登记端口与 schema（协议 19）：`mdm/partner`、`mdm/employee`、`mdm/currency`、`erp/contract`、`erp/planning`、`erp/warehouse`、`erp/credit`、`erp/costing`、`erp/billing`、`erp/payment`、`erp/tax`、`integration/einvoice-<地区>`、`integration/bank-<格式>`、`integration/print-agent`、`infra/authz-static`、`infra/authz-openfga`、`ana/search`、`frontend/pc`、`frontend/mobile`、`frontend/terminal`。可选流程引擎的适配组件、通用 OIDC／目录适配在选定产品后登记。
+新增的身份在正式迁移时登记端口与 schema（协议 19）：`mdm/partner`、`mdm/employee`、`mdm/currency`、`erp/contract`、`erp/planning`、`erp/intercompany`、`erp/consolidation`、`erp/warehouse`、`erp/credit`、`erp/costing`、`erp/billing`、`erp/payment`、`erp/tax`、`integration/einvoice-<地区>`、`integration/bank-<格式>`、`integration/print-agent`、`infra/authz-static`、`infra/authz-openfga`、`ana/search`、`frontend/pc`、`frontend/mobile`、`frontend/terminal`。可选流程引擎的适配组件、通用 OIDC／目录适配在选定产品后登记。
 
 | 退役的身份 | 去向 |
 | --- | --- |
