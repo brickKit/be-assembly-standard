@@ -58,7 +58,7 @@ def cards():
                 cell = m.group(1)
                 req |= set(ID.findall(cell))
                 for word, cid in ALIASES.items():
-                    if re.search(r"(^|[、，（ ])" + word + r"($|[、，（）(])", cell):
+                    if re.search(r"(^|[、，；（ ])" + word + r"($|[、，；（）(])", cell):
                         req.add(cid)
             groups = []
             m = re.search(r"^\| 可选依赖与缺件 \| (.*) \|$", sec, re.M)
