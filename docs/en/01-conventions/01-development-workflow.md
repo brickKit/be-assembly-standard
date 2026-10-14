@@ -28,7 +28,7 @@ Step ① is [08-documentation.md](08-documentation.md#component-documents), step
 
 - One red-green cycle per commit. The message says which business conclusion the cycle locked in, not which files changed.
 - A commit that changes a test is its own commit and says where the old assertion was wrong ([06-testing.md](06-testing.md#red-green-and-the-iron-rule)).
-- Commit messages are written in Chinese, into a file, and committed with `git commit -F <file>`. Look at `git log --oneline -1` before tagging: a message with unbalanced quotes on the command line can fail silently and leave the tag on the previous commit.
+- Commit messages are written in English, into a file, and committed with `git commit -F <file>`. Look at `git log --oneline -1` before tagging: a message with unbalanced quotes on the command line can fail silently and leave the tag on the previous commit.
 - Tags are always annotated (`git tag -a`); `git push --follow-tags` skips lightweight tags without a word.
 
 ## Before writing code

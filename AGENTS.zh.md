@@ -35,7 +35,7 @@
 - **子模块映射**：`.gitmodules` 与子模块指针记录每个组件和外壳来自哪个仓库、哪一个确切提交；只通过 `git submodule` 命令改动，指针与需要它的那次 `brickkit upgrade` 一起提交（[01-development-workflow.md](docs/zh/01-conventions/01-development-workflow.md#发布)）。
 - **每个组件两份清单**：`component.yaml` 只放 brickKit 读的内容；本项目自己的键（`permissions`、`data_scopes`、`menus`，以及 `domain`、`tier` 这类项目自己的元数据）放在旁边的 `assembly.yaml`，由 be-ops 读取（[02-backend.md](docs/zh/01-conventions/02-backend.md#仓库结构)）。组件由哪个外壳托管，在部署文件里选（[0108](docs/zh/02-decisions/01-architecture/0108-one-repository-per-shell.md)）。
 - **版本号**：每次改动都升版本，版本号是精确值，组件在 `2.x`、外壳在 `1.x`；Go 组件在同一个提交上打两个 tag（brickKit 用的 `2.0.0`、Go 用的 `v2.0.0`），模块路径以 `/v2` 结尾；外壳在它自己的仓库发布，只打裸 tag（`1.0.0`）；用 `make bump-version` 传播（[01-development-workflow.md](docs/zh/01-conventions/01-development-workflow.md#版本号)）。
-- **提交与发布**：提交信息用中文、写进文件、`git commit -F`，tag 一律带注释，按 `bump-version` 打印的顺序发布（[01-development-workflow.md](docs/zh/01-conventions/01-development-workflow.md#发布)）。
+- **提交与发布**：提交信息用英文、写进文件、`git commit -F`，tag 一律带注释，按 `bump-version` 打印的顺序发布（[01-development-workflow.md](docs/zh/01-conventions/01-development-workflow.md#发布)）。
 - **业务逻辑**：先自己设计，卡住才看参考实现，绝不照抄（[10-reference-implementations.md](docs/zh/01-conventions/10-reference-implementations.md)）。
 - **按 AI 的尺寸写代码**：只在帮 AI 读懂时才用模式；函数、文件、一次会话的大小都有上限（[09-ai-development.md](docs/zh/01-conventions/09-ai-development.md)）。
 - **文档**：英文为准，两种语言 `##` 小节一致；项目文档是 `docs/en/` 与 `docs/zh/` 两棵镜像树（`make docs-mirror`），根目录文档和组件文档沿用 brickKit 的 `.zh.md` 后缀；正式文档不得链接 `dev/` 或 `archive/`（`make docs-boundary`）（[08-documentation.md](docs/zh/01-conventions/08-documentation.md)）。

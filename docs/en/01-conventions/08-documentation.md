@@ -25,7 +25,7 @@ A formal document holds what is true now. How it got there (what happened, in wh
 - Both versions have the same `##` sections in the same order. A change edits both in the same commit; when they drift, the English one is right.
 - Parity is in the prose, not in every byte: check that relative links resolve from both files. A link to a section of a Chinese document uses the Chinese heading's anchor.
 - **`make docs-mirror`** fails when the two trees differ: a file on one side only, a pair with a different number of `##` sections, or a first line that does not link the counterpart. It is part of `make gates` and of the pre-commit hook.
-- `dev/` is Chinese only. Code comments are Chinese. Conversation with the maintainer is always in Chinese, whatever language the file under discussion is in.
+- `dev/` is Chinese only. Code (identifiers, comments, logs, error messages) is English. Conversation with the maintainer is always in Chinese, whatever language the file under discussion is in.
 
 ## Project documents
 
