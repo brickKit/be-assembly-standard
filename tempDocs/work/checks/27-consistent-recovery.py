@@ -27,7 +27,8 @@ The process can crash before or after the commit, conclusions and grant records 
 undelivered, and an intent can be written before T and committed after it. Recovery replays each
 record whose id is not in the restored change history, per object in version order, intent-only
 tightenings (version unknown) last: confirmed ones re-executed, cancelled ones ignored, intent-only
-revocations executed and flagged, intent-only destructions listed for review.
+revocations executed and flagged, intent-only destructions listed for review. Tightenings are
+re-executed as result states, not through business preconditions on other objects.
 
 Bad variants (each must be caught): keep the old stream (ghost events delivered); recreate the
 stream without republishing; republish only a fixed time window instead of from each
@@ -36,7 +37,9 @@ records written while the evidence store was unavailable are not carried in an a
 commit before writing the intent (a crash in between loses it); resend commands found in
 "sending" without querying the provider; restore security state from the backup only; choose
 the records to replay by comparing their time with T; execute intent-only destructions; execute
-intent-only revocations without flagging them; replay in the evidence's append order.
+intent-only revocations without flagging them; replay in the evidence's append order; re-execute
+tightenings through the owner's business preconditions (another object's state, which may not have
+been replayed yet, rejects them).
 """
 import random
 import sys
@@ -69,12 +72,12 @@ def run(rng, variant, fails):
                     cmds={k: v for k, v in db["cmds"].items()}, access=dict(db["access"]),
                     destroyed=set(db["destroyed"]), reflected=set(db["reflected"]))
 
-    def append(rid, kind, target, status, ver=None):
+    def append(rid, kind, target, status, ver=None, dep=None):
         ev_up, alert_up = rng.random() < 0.8, rng.random() < 0.9
         channel = "evidence" if ev_up else "alert" if alert_up else "lost"
         appended[0] += 1
         records[rid] = dict(kind=kind, target=target, seq=appended[0], at=t, channel=channel,
-                            status=status, ver=ver)
+                            status=status, ver=ver, dep=dep)
 
     def commit(rid, kind, target):
         u = rng.random()
@@ -137,6 +140,10 @@ def run(rng, variant, fails):
             u = rng.random()
             kind = "revoke" if u < 0.5 else "grant" if u < 0.75 else "destroy"
             target = rng.choice(subjects) if kind != "destroy" else f"o{step}"
+            # some revocations had a business precondition on another object when they were made
+            # (e.g. revoking an org unit needs its appointments moved out first)
+            others = [g for g in subjects if g != target and real["access"][g] == "revoked"]
+            dep = rng.choice(others) if kind == "revoke" and others and rng.random() < 0.5 else None
             if kind == "grant":
                 commit(rid, kind, target)                      # recorded through the outbox afterwards
             elif variant == "commit_then_evidence":
@@ -144,7 +151,7 @@ def run(rng, variant, fails):
                 if rng.random() >= 0.15:                       # ... unless it crashes before the intent
                     append(rid, kind, target, "intent")
             else:
-                append(rid, kind, target, "intent")            # intent first, outside the transaction
+                append(rid, kind, target, "intent", dep=dep)   # intent first, outside the transaction
                 pending.append((rid, kind, target))            # committed in this or a later step
         for e, row in list(db["outbox"].items()):              # republish retention has a fixed cap
             if row["published"] is not None and t - row["published"] > CAP:
@@ -209,6 +216,8 @@ def run(rng, variant, fails):
             if status == "intent" and kind == "destroy" and variant != "destroy_on_intent":
                 review.add(target)
                 continue
+            if variant == "precondition_blocks" and rec["dep"] and db["access"][rec["dep"]] != "revoked":
+                continue                                       # re-execution rejected by the precondition
             if kind == "destroy":
                 db["destroyed"].add(target)
             else:
@@ -251,7 +260,7 @@ def run(rng, variant, fails):
 
 def main():
     variants = ["good", "keep_stream", "no_republish", "fixed_window", "no_consumer_repair", "resend_without_query", "backup_security_only", "no_flag", "commit_then_evidence", "time_select", "destroy_on_intent",
-                "unflagged_intent", "append_order"]
+                "unflagged_intent", "append_order", "precondition_blocks"]
     res = {}
     for v in variants:
         rng = random.Random(SEED)
