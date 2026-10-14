@@ -17,7 +17,8 @@
 2. [领域与组件边界](02-domains-and-boundaries.md)：边界怎样确定，三个枢纽与依赖方向，边界结论与数据归属。
 3. [组件货架](03-catalog.md)与各组件的边界卡。
 4. [选配变更、替换与停用](05-change-and-retirement.md)：所有选择点共用的变更协议。
-5. 机制的完整设计在协议与安全文档中（第 3–7 批整理）。
+5. 机制的完整设计在协议与安全文档中（第 3–7 批整理）；底层选择在 [04-foundations](../04-foundations/README.md)，规范在 [01-conventions](../01-conventions/README.md)。
+6. 开发的范围与顺序见[路线](06-roadmap.md)。
 
 ## 本目录的文件
 
@@ -28,4 +29,5 @@
 | [03-catalog.md](03-catalog.md) | 全部组件的身份、能力与范围；新增与退役的身份；当前重建范围 |
 | [04-selection.md](04-selection.md) | 五种选择方式、能力分图、选择点一览、客户组合与闭包、客户故事 |
 | [05-change-and-retirement.md](05-change-and-retirement.md) | 替换的四种路径、从候选到生效、失败恢复、组件的停用与退出 |
+| [06-roadmap.md](06-roadmap.md) | 三条范围线、开发的五步、设计稿切换成正式文档、问题反馈、项目完成后的整体总结 |
 | [guides/](guides/README.md) | 各选择点的方案比较 |
