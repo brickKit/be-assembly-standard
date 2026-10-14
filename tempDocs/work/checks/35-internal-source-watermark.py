@@ -8,10 +8,11 @@ positions are (epoch, sequence). The relay numbers and publishes while the messa
 and is blocked while it is down. The stream can stall for minutes, fall behind gradually, fail the
 leave's first delivery (redelivered 120 s later) or drop the leave altogether. The source database
 can fail over asynchronously, before or after the leave, losing its last 5 or 40 seconds of commits
-(the counter rewinds; a lost leave comes back only through the source's evidence replay). After a
-failover the source answers pulls with "aligning" (no echo) until its replay is done; Authz adopts a
-new epoch only from a pull response, abandons the pull in flight, and does not advance the watermark
-until its own full reconciliation (5-60 s, reading the source at that moment) completes. Authz pulls when its
+(the counter rewinds); tightenings such as the leave are committed synchronously (D65), so they are
+not lost. The new primary's epoch is larger. Authz adopts only a larger epoch declared by a pull
+response, abandons the pull in flight, ignores smaller epochs (a late duplicate of an old response),
+and does not advance the watermark until its own re-fetch of the source (5-60 s, reading the new
+primary at that moment) completes. Authz pulls when its
 watermark is half of D_SRC old: the pull is the probe (the source commits an echo, numbers, and
 returns the rows after Authz's position up to the echo; the response can take a while). Authz
 subscribes to every event of the partition and advances only by contiguous positions. The
@@ -23,7 +24,12 @@ appointments have scheduled ends. Checks:
   BOUND_END   no decision relying on a scheduled appointment happens after its end date
   AVAILABLE   at every moment the watermark is at most D_SRC old: the source stays reachable, so
               stalls and lag must not close anything (allowance: start-up, and once per real
-              failover for the source's and Authz's alignment)
+              failover for Authz's re-fetch)
+
+Besides the random runs, directed scenarios construct the key interleavings on purpose, each with
+50 seeds for the other parameters: a failover 10 s after the leave while the stream lags (the leave
+survives in the old epoch, not yet applied); a failover 3 s after the leave losing 40 s; and a late
+duplicate of a pre-failover response arriving after the new epoch was adopted.
 
 Bad variants (each must be caught): no watermark; watermark from the pull response's arrival
 time; contiguous position advanced past an entry waiting for redelivery; relay numbers rows in
@@ -31,9 +37,10 @@ insert order and skips rows not yet committed (publishing them later); no pull; 
 stream is stalled; pull only after the watermark has expired; pull returns numbered rows without
 numbering first; relay and pull number without the lock (duplicate positions); no numbering epoch
 (the counter rewinds after a failover); a gap in positions treated as filtered out; any other epoch
-seen on the stream switches epochs; new-epoch echoes advance the watermark before the reconciliation
-completes; the source writes echoes while it is still aligning (before its evidence replay); clock stops
-while the host is suspended; scheduled ends not in the view.
+seen on the stream switches epochs; any different epoch in a response is adopted (no order);
+new-epoch echoes advance the watermark before the re-fetch completes; the re-fetch reads a lagging
+replica; tightenings committed asynchronously (a failover can lose the leave); clock stops while the
+host is suspended; scheduled ends not in the view.
 """
 import random
 import sys
@@ -48,7 +55,8 @@ SETTLE = 25         # start-up and epoch-change allowance for AVAILABLE (longer 
 HORIZON = 400
 
 
-def run(rng, variant, fails, stats):
+def run(rng, variant, fails, stats, fixed=None):
+    fixed = fixed or {}
     s0 = rng.randint(80, 250)
     scheduled_end = rng.choice([None, rng.randint(60, 300)])
     stall = (rng.randint(40, 200), rng.choice([0, 0, 120, 900]))    # message system down: (start, length)
@@ -64,9 +72,21 @@ def run(rng, variant, fails, stats):
     failover = rng.choice([rng.randint(30, s0 - 40), rng.randint(s0 - 10, s0 - 1),
                            rng.randint(s0 + 1, s0 + 30)]) if rng.random() < 0.5 else None
     lost = rng.choice([5, 40])        # replication lag at the failover: commits lost
-    src_align = rng.randint(5, 40)    # the source's own alignment (evidence replay) after a failover
-    recon = rng.randint(5, 60)        # the consumer's alignment (full reconciliation) after adopting
+    recon = rng.randint(5, 60)        # Authz's re-fetch of the source after adopting a new epoch
     latency = rng.choice([0, 0, 1, 20])                         # pull response time
+    dup_late = rng.random() < 0.3     # a pre-failover response is delivered again after adoption
+    if "failover_after" in fixed:
+        failover = s0 + fixed["failover_after"]
+    if "lost" in fixed:
+        lost = fixed["lost"]
+    if "lag_before" in fixed:
+        lag_from = s0 - fixed["lag_before"]
+    recon = fixed.get("recon", recon)
+    latency = fixed.get("latency", latency)
+    dup_late = fixed.get("dup_late", dup_late)
+    if fixed:
+        stall = (0, 0)
+        drop_leave = leave_fails_first = False
 
     # source transactions: dict(ins, com (None if rolled back), kind, pay, alive)
     txs = []
@@ -114,8 +134,9 @@ def run(rng, variant, fails, stats):
         return new
 
     a = dict(epoch=0, applied=0, watermark=None, leave=False, waiting=None, aligned_at=0, need_pull=False)
-    aligning_until = [None]           # the source answers "aligning" (no echo) until then
     inflight = None
+    old_response = None               # the last response applied before the failover
+    late = None                       # when its late duplicate arrives
     view = None
     comp_clock = 0.0
 
@@ -124,14 +145,19 @@ def run(rng, variant, fails, stats):
 
     def adopt(epoch, t):
         # a new epoch: positions and versions mean nothing; a pull still in flight is abandoned;
-        # the watermark stays unproven until a full reconciliation (taking `recon`) completes
+        # the watermark stays unproven until the re-fetch (taking `recon`) completes
         a.update(epoch=epoch, applied=0, watermark=None, waiting=None, abandon=True, need_pull=True,
                  aligned_at=t + recon)
+
+    def takes(ep):
+        return ep > a["epoch"] if variant != "adopt_any_different" else ep != a["epoch"]
 
     for t in range(HORIZON):
         stalled = stall[0] <= t < stall[0] + stall[1]
         if failover == t:
             for i, x in enumerate(txs):
+                if x["kind"] == "leave" and variant != "async_tightening":
+                    continue                                    # tightenings commit synchronously (D65)
                 if x["com"] is not None and failover - lost < x["com"] <= failover:
                     x["alive"] = False                          # lost with the old primary
                     numbered.pop(i, None); published.discard(i)
@@ -139,13 +165,9 @@ def run(rng, variant, fails, stats):
             src["seq"] = max(same, default=0)
             if variant != "no_epoch":
                 src["db_epoch"] += 1                            # new timeline: a new numbering epoch
-            aligning_until[0] = failover + src_align
-            if not source_has_leave(failover) and s0 <= failover:
-                # the leave was lost; the source's evidence replay re-executes it when aligned
-                txs.append(dict(ins=failover + src_align, com=failover + src_align, kind="leave",
-                                pay=failover + src_align, alive=True))
         if t == a["aligned_at"] and t > 0:
-            a["leave"] = source_has_leave(t)                    # the reconciliation reads the source now
+            # the re-fetch reads the new primary now (the bad variant reads a replica 30 s behind)
+            a["leave"] = source_has_leave(t - 30 if variant == "align_from_replica" else t)
         this_tick = []
         if not stalled:                                         # the relay is blocked while the stream is down
             this_tick = number(t)
@@ -206,10 +228,7 @@ def run(rng, variant, fails, stats):
             trigger = age is None or age >= D_SRC // 2 or a["need_pull"]
         if trigger and inflight is None and variant not in ("no_pull", "no_watermark"):
             a["need_pull"] = False
-        if trigger and inflight is None and aligning_until[0] is not None and t < aligning_until[0] \
-                and variant != "echo_while_aligning":
-            inflight = (t + latency, None, src["epoch"], [], None)             # "aligning": no echo
-        elif trigger and inflight is None:
+        if trigger and inflight is None:
             txs.append(dict(ins=t, com=t, kind="echo", pay=t, alive=True))   # committed before numbering
             e = len(txs) - 1
             if variant == "pull_without_numbering":
@@ -225,20 +244,27 @@ def run(rng, variant, fails, stats):
                               key=lambda i: numbered[i])
             rows = [(numbered[i][1], txs[i]["kind"]) for i in rows]   # the response's content is fixed when sent
             inflight = (t + latency, t, src["epoch"], rows, echo_sq)
+        if late is not None and late == t and old_response is not None:
+            inflight, late = (t,) + old_response[1:], None       # the late duplicate arrives now
         if inflight is not None and inflight[0] <= t:
             _, m_p, ep, rows, echo_sq = inflight
             inflight = None
             if ep != a["epoch"]:
-                adopt(ep, t)                                    # the source declares its epoch
-                a.pop("abandon", None)
-            elif m_p is not None:
+                if takes(ep):
+                    adopt(ep, t)                                # the source declares a larger epoch
+                    a.pop("abandon", None)
+                    if dup_late and old_response is not None:
+                        late = t + 5
+            else:
+                if failover is None or t < failover:
+                    old_response = (t, m_p, ep, rows, echo_sq)
                 for sq, kind in rows:
                     if sq > a["applied"] and kind == "leave":
                         a["leave"] = True; a["waiting"] = None
                 a["applied"] = max(a["applied"], echo_sq)
                 if t >= a["aligned_at"] or variant == "advance_before_reconcile":
                     a["watermark"] = t if variant == "arrival_watermark" else m_p
-        in_failover = failover is not None and failover <= t <= failover + src_align + recon + 80
+        in_failover = failover is not None and failover <= t <= failover + D_SRC // 2 + recon + 2 * latency + 15
         if t >= SETTLE and not in_failover:
             if a["watermark"] is None or t - a["watermark"] > D_SRC:
                 fails.append("AVAILABLE"); return
@@ -268,8 +294,11 @@ def run(rng, variant, fails, stats):
 def main():
     variants = ["good", "no_watermark", "arrival_watermark", "applied_watermark", "insert_number_skip",
                 "no_pull", "pull_only_when_stalled", "pull_after_expiry", "pull_without_numbering",
-                "unlocked_numbering", "no_epoch", "skip_gap", "switch_on_any_epoch", "advance_before_reconcile",
-                "echo_while_aligning", "clock_stops", "drop_end_date"]
+                "unlocked_numbering", "no_epoch", "skip_gap", "switch_on_any_epoch", "adopt_any_different",
+                "advance_before_reconcile", "align_from_replica", "async_tightening", "clock_stops", "drop_end_date"]
+    directed = [dict(failover_after=10, lost=5, lag_before=20, recon=60, latency=0),
+                dict(failover_after=3, lost=40, recon=10, latency=0),
+                dict(failover_after=-15, lost=5, recon=20, latency=20, dup_late=True)]
     res = {}
     for v in variants:
         rng = random.Random(SEED)
@@ -277,6 +306,11 @@ def main():
         stats = {"during_stall": 0}
         for _ in range(RUNS):
             run(rng, v, fails, stats)
+        for n, fixed in enumerate(directed):
+            for k in range(50):
+                f = []
+                run(random.Random(SEED + 1000 * n + k), v, f, {"during_stall": 0}, fixed)
+                fails += [x + f"@D{n + 1}" for x in f]
         res[v] = ({f: fails.count(f) for f in sorted(set(fails))}, stats)
     g, gs = res["good"]
     print(f"good: {'ok' if not g else 'FAIL ' + str(g)} (BOUND_SRC, BOUND_END, AVAILABLE over {RUNS} runs; "

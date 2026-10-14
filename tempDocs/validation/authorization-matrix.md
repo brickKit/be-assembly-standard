@@ -25,7 +25,7 @@
 
 涉及撤权、任职变更、到期和同步的预期，按所选操作的风险、确认点与声明的新鲜度窗口实例化；不要求未声明的同瞬间全副本生效，也不能以最终生效掩盖窗口越界。不同入口确实使用不同权限点或附加业务条件时分别说明，集合对照使用同一读取动作和条件。
 
-时间节点和分档候选见[接受与撤销规格](../security/03-authorization-acceptance-and-revocation.md)。PA26–PA30／PA32／PA36 实例化时结合 AT01–AT52，分别断言关闭新接受与关闭旧提交，不将 Check 成功、P 或部分屏障回执当作已完成；该候选及其起始参数尚未冻结，原矩阵未执行状态不变。
+时间节点和分档候选见[接受与撤销规格](../security/03-authorization-acceptance-and-revocation.md)。PA26–PA30／PA32／PA36 实例化时结合 AT01–AT53，分别断言关闭新接受与关闭旧提交，不将 Check 成功、P 或部分屏障回执当作已完成；该候选及其起始参数尚未冻结，原矩阵未执行状态不变。
 
 PA13–PA18 的管理／任职／模板升级，结合[管理候选 AM01–AM20](../security/04-authorization-administration-and-appointments.md)实例化，保持完整上限、目标影响和生效点检查；正常卸任与机构上限收紧分别断言。该候选同样未运行，不据其存在更新原矩阵为通过。
 
@@ -33,7 +33,7 @@ PA13–PA18 的管理／任职／模板升级，结合[管理候选 AM01–AM20]
 
 实例化所有场景时对照[共同结构与能力候选 SC01–SC24](../security/06-security-contracts-and-capabilities.md)：区分身份／事实／求值／接受／业务回执，核对实际资源、动作与出口的完整能力路径及新旧版本。SC 同为未执行预期，不以接口表或可解析 schema 替代 SDK 与真实依赖证据。
 
-PA29 与 PA34 的成员能力与切换部分，结合[成员能力与切换候选 PV01–PV29](../security/10-providers-and-member-switching.md#独立预期)实例化。
+PA29 与 PA34 的成员能力与切换部分，结合[成员能力与切换候选 PV01–PV30](../security/10-providers-and-member-switching.md#独立预期)实例化。
 
 PA13–PA18、PA21 与 PA32 的管理、任职、扮演与恢复部分，结合[状态与变更协议候选 CP01–CP24](../security/08-state-and-change-protocol.md#独立预期)实例化。
 

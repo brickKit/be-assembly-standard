@@ -14,9 +14,9 @@ The consumer keeps one projection row per record: content, version, completeness
   BACKFILL    a rebuild that reads old snapshots never overwrites newer events applied meanwhile
   FAILOVER    after the source fails over asynchronously (its last commits are lost, so versions
               are reused with other content) and one alignment plus one reconciliation pass,
-              every row equals the source; versions are compared only within one epoch, the new
-              epoch is adopted from a direct response, alignment compares content digests and
-              overwrites without comparing versions
+              every row equals the source; versions are compared only within one epoch, the
+              epoch check comes before every rule (tombstones included), the new epoch is adopted
+              from a direct response and the rows are re-fetched one by one while events arrive
 
 Bad variants (each must be caught): strict-greater rule only (R04); partial applied and marked
 complete; no reconciliation; deletion removes the row instead of keeping a tombstone; backfill
@@ -182,67 +182,91 @@ def run(rng, variant, fails):
 
 
 def run_failover(rng, variant, fails):
-    """The source fails over and loses its last commits; consumers had applied them."""
+    """The source fails over and loses its last commits (versions are reused afterwards, deletions
+    can be undone); the consumer had applied them. Epoch 1 brings complete, partial and delete
+    events; the consumer adopts epoch 1 from a direct response and re-fetches row by row while
+    events keep arriving."""
     ids = list(range(rng.randint(2, 5)))
-    src = {i: dict(v=1, c=f"n{i}") for i in ids}
-    proj = {i: dict(v=1, c=f"n{i}", epoch=0) for i in ids}
+    src = {i: dict(v=1, c=f"n{i}", d=False) for i in ids}
+    proj = {i: dict(v=1, c=f"n{i}", d=False, epoch=0, complete=True) for i in ids}
     hist = []
     for _ in range(rng.randint(3, 10)):                        # epoch 0: consumer keeps up
         i = rng.choice(ids)
         hist.append((i, dict(src[i])))
-        src[i] = dict(v=src[i]["v"] + 1, c=f"a{rng.randint(0, 9)}")
-        proj[i] = dict(src[i], epoch=0)
+        if rng.random() < 0.2:
+            src[i] = dict(v=src[i]["v"] + 1, c=None, d=True)
+        else:
+            src[i] = dict(v=src[i]["v"] + 1, c=f"a{rng.randint(0, 9)}", d=False)
+        proj[i] = dict(src[i], epoch=0, complete=True)
     for _ in range(rng.randint(1, min(4, len(hist)))):        # lost with the old primary
         i, before = hist.pop()
         src[i] = before
     events = []
     for _ in range(rng.randint(1, 6)):                        # epoch 1: versions are reused
         i = rng.choice(ids)
-        src[i] = dict(v=src[i]["v"] + 1, c=f"b{rng.randint(0, 9)}")
-        events.append((1, i, src[i]["v"], src[i]["c"]))
+        v = src[i]["v"] + 1
+        r = rng.random()
+        if r < 0.2:
+            src[i] = dict(v=v, c=None, d=True)
+            events.append(("delete", 1, i, v, None))
+        elif r < 0.5 and not src[i]["d"]:
+            src[i] = dict(v=v, c=f"p{rng.randint(0, 9)}", d=False)
+            events.append(("partial", 1, i, v, src[i]["c"]))
+        else:
+            src[i] = dict(v=v, c=f"b{rng.randint(0, 9)}", d=False)
+            events.append(("full", 1, i, v, src[i]["c"]))
     events = [e for e in events if rng.random() > 0.2]          # lost, duplicated, reordered
     events += [e for e in events if rng.random() < 0.2]
     rng.shuffle(events)
-    adopt_at = rng.randrange(len(events) + 1)
     epochs = variant not in ("no_epoch", "digest_version_rule")
     adopted = 0 if epochs else 1
+    pending = []                                                # rows still to re-fetch after adoption
 
-    def accept(i, epoch, v, c, align=False):
+    def accept(kind, epoch, i, v, c):
         row = proj[i]
-        if not epochs:
-            if v > row["v"]:
-                proj[i] = dict(v=v, c=c, epoch=epoch)
+        if not epochs:                                          # versions compared across the failover
+            if variant == "no_epoch" or kind != "partial":
+                if v > row["v"] and not (row["d"] and v <= row["v"]):
+                    proj[i] = dict(v=v, c=c, d=kind == "delete", epoch=1, complete=kind != "partial")
             return
+        if variant == "tombstone_before_epoch" and row["d"] and v <= row["v"]:
+            return                                              # the tombstone rule checked first
         if epoch != adopted:
             return                                              # other epochs are not applied
-        if align or row["epoch"] != epoch or v > row["v"]:
-            proj[i] = dict(v=v, c=c, epoch=epoch)
+        if row["epoch"] != epoch:                               # the epoch check comes before everything
+            proj[i] = dict(v=v, c=c, d=kind == "delete", epoch=epoch, complete=kind != "partial")
+            return
+        if row["d"] and v <= row["v"]:
+            return
+        if v > row["v"] or (v == row["v"] and not row["complete"] and kind != "partial"):
+            proj[i] = dict(v=v, c=c, d=kind == "delete", epoch=epoch, complete=kind != "partial")
 
-    def reconcile(align):
-        for i in ids:
-            row = proj[i]
-            if variant == "no_epoch":
-                differs = row["v"] != src[i]["v"]
-            elif not epochs:
-                differs = (row["v"], row["c"]) != (src[i]["v"], src[i]["c"])
-            else:
-                differs = row["epoch"] != adopted or (row["v"], row["c"]) != (src[i]["v"], src[i]["c"])
-            if differs or align:
-                if align and row["c"] == src[i]["c"]:
-                    proj[i] = dict(src[i], epoch=adopted)      # same content: restamp
-                else:
-                    accept(i, adopted, src[i]["v"], src[i]["c"], align=align)
+    def refetch(i):                                             # written through the receive rule
+        s_ = src[i]
+        accept("delete" if s_["d"] else "full", adopted, i, s_["v"], s_["c"])
 
-    for n, (epoch, i, v, c) in enumerate(events):
+    adopt_at = rng.randrange(len(events) + 1)
+    for n, (kind, epoch, i, v, c) in enumerate(events):
         if n == adopt_at and epochs:
             adopted = 1                                         # a direct response declares epoch 1
-            reconcile(align=True)
-        accept(i, epoch, v, c)
+            pending = list(ids); rng.shuffle(pending)
+        if pending and rng.random() < 0.5:
+            refetch(pending.pop())                              # the re-fetch proceeds row by row
+        accept(kind, epoch, i, v, c)
     if epochs and adopted == 0:
         adopted = 1
-        reconcile(align=True)
-    reconcile(align=False)                                      # the next regular reconciliation
-    if any((proj[i]["v"], proj[i]["c"]) != (src[i]["v"], src[i]["c"]) for i in ids):
+        pending = list(ids)
+    for i in pending:
+        refetch(i)
+    for i in ids:                                               # the next regular reconciliation
+        row = proj[i]
+        if variant == "no_epoch":
+            differs = row["v"] != src[i]["v"]
+        else:
+            differs = (row["v"], row["c"], row["d"]) != (src[i]["v"], src[i]["c"], src[i]["d"]) or not row["complete"]
+        if differs:
+            refetch(i)
+    if any((proj[i]["v"], proj[i]["c"], proj[i]["d"]) != (src[i]["v"], src[i]["c"], src[i]["d"]) for i in ids):
         fails.append("FAILOVER")
 
 
@@ -260,7 +284,7 @@ def r04(variant):
 
 def main():
     variants = ["good", "strict_greater", "partial_marks_complete", "no_reconcile", "delete_removes_row",
-                "backfill_overwrites", "no_epoch", "digest_version_rule"]
+                "backfill_overwrites", "no_epoch", "digest_version_rule", "tombstone_before_epoch"]
     res = {}
     for v in variants:
         rng = random.Random(SEED)

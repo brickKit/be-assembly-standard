@@ -16,6 +16,8 @@ log. At a random time the deployment is restored to an earlier point T. Checks a
   DESTROYED    a destruction that took effect is re-executed or listed for review
   FLAGGED      a subject left more restricted than it really was is flagged, listed for review or
                covered by a declared loss (over-tightening is allowed only when visible)
+  ZERO_ADMIN   while confirmed records are replayed, the subjects (all administrators) are never all
+               revoked at once unless that really happened after T (D62 is judged after the replay)
 
 Tightenings (revocations, destructions) are written in two parts: an intent outside the local
 transaction (to the evidence store; if unreachable, the full record in an external alert; if both
@@ -25,10 +27,10 @@ only after commit, through the outbox, with their version. Several tightenings c
 at once and commit in any order, so the evidence's append order differs from the order of effect.
 The process can crash before or after the commit, conclusions and grant records can be
 undelivered, and an intent can be written before T and committed after it. Recovery replays each
-record whose id is not in the restored change history, per object in version order, intent-only
-tightenings (version unknown) last: confirmed ones re-executed, cancelled ones ignored, intent-only
-revocations executed and flagged, intent-only destructions listed for review. Tightenings are
-re-executed as result states, not through business preconditions on other objects.
+record whose id is not in the restored change history, in the owner's original commit order,
+intent-only tightenings (order unknown) last: confirmed ones re-executed, cancelled ones ignored, intent-only
+revocations executed and flagged, intent-only destructions listed for review. Records are
+re-executed as the original changes, without re-running business preconditions.
 
 Bad variants (each must be caught): keep the old stream (ghost events delivered); recreate the
 stream without republishing; republish only a fixed time window instead of from each
@@ -37,9 +39,9 @@ records written while the evidence store was unavailable are not carried in an a
 commit before writing the intent (a crash in between loses it); resend commands found in
 "sending" without querying the provider; restore security state from the backup only; choose
 the records to replay by comparing their time with T; execute intent-only destructions; execute
-intent-only revocations without flagging them; replay in the evidence's append order; re-execute
-tightenings through the owner's business preconditions (another object's state, which may not have
-been replayed yet, rejects them).
+intent-only revocations without flagging them; replay in the evidence's append order; replay per object with objects in any order (an administrator
+handover passes through zero administrators); re-check "the granter must be an administrator" when
+replaying a grant.
 """
 import random
 import sys
@@ -52,7 +54,7 @@ CAP = 8                # published outbox rows are kept this long for republishi
 
 def run(rng, variant, fails):
     t = 0
-    subjects = [f"g{i}" for i in range(4)]
+    subjects = [f"g{i}" for i in range(2)]          # two administrators: handovers matter
     db = dict(facts=set(), outbox={}, inbox=set(), applied=set(), cmds={},
               access={g: "granted" for g in subjects}, destroyed=set(), reflected=set())
     stream = []                                   # (event_id, publish_time)
@@ -60,7 +62,7 @@ def run(rng, variant, fails):
     records = {}                                  # security records outside the deployment: id -> dict(kind,
     # target, seq (append order), at, channel: evidence / alert / lost, status: intent / confirmed /
     # cancelled, ver: the committed object version, known once a conclusion or a grant record arrives)
-    real = dict(access={g: "granted" for g in subjects}, destroyed=set(), last={}, ver={})   # what took effect
+    real = dict(access={g: "granted" for g in subjects}, destroyed=set(), last={}, hist=[])  # what took effect
     pending = []                                  # tightening intents written, local commit not yet attempted
     outbox_sec = []                               # conclusions and grant records waiting in the outbox
     appended = [0]
@@ -72,12 +74,12 @@ def run(rng, variant, fails):
                     cmds={k: v for k, v in db["cmds"].items()}, access=dict(db["access"]),
                     destroyed=set(db["destroyed"]), reflected=set(db["reflected"]))
 
-    def append(rid, kind, target, status, ver=None, dep=None):
+    def append(rid, kind, target, status, ver=None):
         ev_up, alert_up = rng.random() < 0.8, rng.random() < 0.9
         channel = "evidence" if ev_up else "alert" if alert_up else "lost"
         appended[0] += 1
         records[rid] = dict(kind=kind, target=target, seq=appended[0], at=t, channel=channel,
-                            status=status, ver=ver, dep=dep)
+                            status=status, ver=ver)
 
     def commit(rid, kind, target):
         u = rng.random()
@@ -86,14 +88,14 @@ def run(rng, variant, fails):
             return
         if kind != "grant" and u < 0.2:
             return                                             # crash before the commit: no effect
-        ver = real["ver"].get(target, 0) + 1                   # the object's version, in the same transaction
-        real["ver"][target] = ver
+        ver = real["cseq"] = real.get("cseq", 0) + 1           # the owner's commit sequence, same transaction
         if kind == "destroy":
             db["destroyed"].add(target); real["destroyed"].add(target)
         else:
             db["access"][target] = real["access"][target] = "revoked" if kind == "revoke" else "granted"
             real["last"][target] = rid
         db["reflected"].add(rid)                               # record id in the object's change history
+        real["hist"].append((t, sum(1 for g in subjects if real["access"][g] == "granted")))
         if kind == "grant":
             outbox_sec.append((rid, "grant", (target, ver)))   # a loosening is recorded after commit
         else:
@@ -140,10 +142,6 @@ def run(rng, variant, fails):
             u = rng.random()
             kind = "revoke" if u < 0.5 else "grant" if u < 0.75 else "destroy"
             target = rng.choice(subjects) if kind != "destroy" else f"o{step}"
-            # some revocations had a business precondition on another object when they were made
-            # (e.g. revoking an org unit needs its appointments moved out first)
-            others = [g for g in subjects if g != target and real["access"][g] == "revoked"]
-            dep = rng.choice(others) if kind == "revoke" and others and rng.random() < 0.5 else None
             if kind == "grant":
                 commit(rid, kind, target)                      # recorded through the outbox afterwards
             elif variant == "commit_then_evidence":
@@ -151,7 +149,7 @@ def run(rng, variant, fails):
                 if rng.random() >= 0.15:                       # ... unless it crashes before the intent
                     append(rid, kind, target, "intent")
             else:
-                append(rid, kind, target, "intent", dep=dep)   # intent first, outside the transaction
+                append(rid, kind, target, "intent")   # intent first, outside the transaction
                 pending.append((rid, kind, target))            # committed in this or a later step
         for e, row in list(db["outbox"].items()):              # republish retention has a fixed cap
             if row["published"] is not None and t - row["published"] > CAP:
@@ -207,8 +205,16 @@ def run(rng, variant, fails):
             todo.append((rid, rec))
         if variant == "append_order":
             todo.sort(key=lambda x: x[1]["seq"])
-        else:                                                  # by version; intent-only (unknown) last
+        elif variant == "by_object_order":                     # per object in order, objects in any order
+            rank = {g: rng.random() for g in subjects}
+            todo.sort(key=lambda x: (x[1]["ver"] is None, rank.get(x[1]["target"], 0), x[1]["ver"] or 0))
+        else:                                                  # by commit sequence; intent-only (unknown) last
             todo.sort(key=lambda x: (x[1]["ver"] is None, x[1]["ver"] or 0, x[1]["seq"]))
+        hist_after = [c for (tt, c) in real["hist"] if tt > T]
+        at_T = [c for (tt, c) in real["hist"] if tt <= T]
+        real_zero = 0 in hist_after or (at_T and at_T[-1] == 0)
+        comparable = not any(r["channel"] == "lost" for r in records.values()) and variant != "no_flag" \
+            and not any(what == "grant" for _, what, _ in outbox_sec)
         for rid, rec in todo:
             kind, target, status = rec["kind"], rec["target"], rec["status"]
             if status == "intent" and kind == "revoke" and variant != "unflagged_intent":
@@ -216,13 +222,17 @@ def run(rng, variant, fails):
             if status == "intent" and kind == "destroy" and variant != "destroy_on_intent":
                 review.add(target)
                 continue
-            if variant == "precondition_blocks" and rec["dep"] and db["access"][rec["dep"]] != "revoked":
-                continue                                       # re-execution rejected by the precondition
+            if variant == "revalidate_grants" and kind == "grant" and \
+                    not any(db["access"][g] == "granted" for g in subjects if g != target):
+                continue                                       # "the granter must be an admin" re-checked
             if kind == "destroy":
                 db["destroyed"].add(target)
             else:
                 db["access"][target] = "revoked" if kind == "revoke" else "granted"
             db["reflected"].add(rid)
+            if status != "intent" and comparable and not real_zero and \
+                    not any(db["access"][g] == "granted" for g in subjects):
+                fails.append("ZERO_ADMIN"); return                # no admin at a moment that never existed
     # consumer drains the stream
     for e, _ in stream:
         if e not in db["inbox"]:
@@ -260,7 +270,7 @@ def run(rng, variant, fails):
 
 def main():
     variants = ["good", "keep_stream", "no_republish", "fixed_window", "no_consumer_repair", "resend_without_query", "backup_security_only", "no_flag", "commit_then_evidence", "time_select", "destroy_on_intent",
-                "unflagged_intent", "append_order", "precondition_blocks"]
+                "unflagged_intent", "append_order", "by_object_order", "revalidate_grants"]
     res = {}
     for v in variants:
         rng = random.Random(SEED)
@@ -268,7 +278,7 @@ def main():
         for _ in range(RUNS):
             run(rng, v, fails)
         res[v] = sorted(set(fails))
-    print(f"good: {'ok' if not res['good'] else 'FAIL ' + str(res['good'])} (NO_GHOST, NO_LOSS, NO_REEXEC, EXT_KNOWN, REVOKED, NO_OVER_DESTROY, DESTROYED, FLAGGED over {RUNS} runs)")
+    print(f"good: {'ok' if not res['good'] else 'FAIL ' + str(res['good'])} (NO_GHOST, NO_LOSS, NO_REEXEC, EXT_KNOWN, REVOKED, NO_OVER_DESTROY, DESTROYED, FLAGGED, ZERO_ADMIN over {RUNS} runs)")
     caught = True
     for v in variants[1:]:
         print(f"bad variant {v}: {'caught ' + str(res[v]) if res[v] else 'NOT CAUGHT'}")
