@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
 """Check the boundary cards' required dependencies and the customer combinations.
 
-Reads every `## <component>` section in tempDocs/components/*.md, takes the component IDs that
+Reads every `## <component>` section in tempDocs/final/07-components/*.md, takes the component IDs that
 appear in its "必需依赖" row (plus 身份 -> the identity family, 授权 -> infra/authz), and checks:
 
   ACYCLIC   the required-dependency graph has no cycle (BrickKit rejects a required cycle); the
             identity family stands for every infra/iam-* card, since any of them can be chosen
   KNOWN     every required dependency names a component that has a card
-  CLOSURE   every combination in the README table lists the transitive closure of the
+  CLOSURE   every combination in the selection page's table lists the transitive closure of the
             required dependencies of its own listed components
   BASELINE  every combination contains the deployment-level components every formal
             deployment needs: exactly one identity member (any infra/iam-*), authorization, audit
@@ -23,7 +23,8 @@ import os
 import re
 import sys
 
-ROOT = os.path.join(os.path.dirname(__file__), "..", "..", "components")
+ROOT = os.path.join(os.path.dirname(__file__), "..", "..", "final", "07-components")
+COMBOS = os.path.join(os.path.dirname(__file__), "..", "..", "final", "00-overview", "04-selection.md")
 ID = re.compile(r"\b((?:mdm|erp|crm|hrm|prj|ana|infra|integration|frontend)/[a-z0-9<>\-]+)")
 FAMILY = "infra/iam-*"   # 身份 names the identity family: any one infra/iam-* member satisfies it
 ALIASES = {"身份": FAMILY, "授权": "infra/authz"}
@@ -104,8 +105,8 @@ def closure(deps, roots):
 
 
 def combos():
-    text = open(os.path.join(ROOT, "README.md"), encoding="utf-8").read()
-    sec = text.split("## 客户组合的闭包", 1)[1].split("\n## ", 1)[0]
+    text = open(COMBOS, encoding="utf-8").read()
+    sec = text.split("## 客户组合与闭包", 1)[1].split("\n## ", 1)[0]
     rows = {}
     for line in sec.splitlines():
         if not line.startswith("| ") or line.startswith("| 组合") or line.startswith("| ---"):
