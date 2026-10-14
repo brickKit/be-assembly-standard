@@ -49,6 +49,7 @@ flowchart TB
     B --> EX[制造／资产／质量／维护<br/>远期]
     INV -->|协作扩展| W[erp/warehouse 复杂仓储]
     INV -->|协作扩展| CO[erp/costing 存货成本]
+    INV -->|协作扩展| PL[erp/planning 补货与计划]
     FIN -->|协作能力| PAY[erp/payment 收付款]
     FIN -->|协作能力| BILL[erp/billing 客户出账]
     BILL -->|按业务要求| TAX[erp/tax 税计算]
@@ -96,11 +97,11 @@ flowchart TB
 
 | 组合 | 必需组件 | 可选 | 缺件行为与检查 |
 | --- | --- | --- | --- |
-| 精简进销存 | `infra/iam-casdoor`、`infra/authz`、`infra/audit`、`mdm/partner`、`mdm/product`、`mdm/org`、`mdm/currency`、`erp/sales`、`erp/purchase`、`erp/inventory`、`erp/billing`、`erp/finance`、`erp/payment`、`frontend/pc` | `erp/credit`、`erp/costing`、`erp/tax`、`infra/print`、`infra/notification`、`mdm/employee`、`infra/workflow` | 收付款可以只用线下登记；缺信用时订单确认不做信用占用，销售声明“无信用控制”且客户在装配时确认；缺成本时财务不记存货成本，报表注明“未计成本”；缺税计算时出账只能由有权限的人逐张录入税额并标为人工税额，不能当作“不适用税”；缺员工时审批只按账号与角色分配，岗位类分配不可用，职责分离按账号比较；缺统一待办时人工审批在各组件页面中处理 |
+| 精简进销存 | `infra/iam-casdoor`、`infra/authz`、`infra/audit`、`mdm/partner`、`mdm/product`、`mdm/org`、`mdm/currency`、`erp/sales`、`erp/purchase`、`erp/inventory`、`erp/billing`、`erp/finance`、`erp/payment`、`frontend/pc` | `erp/credit`、`erp/costing`、`erp/tax`、`erp/planning`、`infra/print`、`infra/notification`、`mdm/employee`、`infra/workflow` | 收付款可以只用线下登记；缺信用时订单确认不做信用占用，销售声明“无信用控制”且客户在装配时确认；缺成本时财务不记存货成本，报表注明“未计成本”；缺税计算时出账只能由有权限的人逐张录入税额并标为人工税额，不能当作“不适用税”；缺员工时审批只按账号与角色分配，岗位类分配不可用，职责分离按账号比较；缺统一待办时人工审批在各组件页面中处理 |
 | 服务销售 | `infra/iam-casdoor`、`infra/authz`、`infra/audit`、`mdm/partner`、`mdm/product`、`mdm/org`、`mdm/currency`、`erp/sales`、`erp/billing`、`erp/finance`、`erp/payment`、`frontend/pc` | `erp/credit`、`erp/tax`、`crm/opportunity`、`erp/contract` | 不装库存；订阅与长期合同的周期出账需要合同组件（D70）；服务订单不请求库存预占（D44） |
 | CRM 与销售协作 | 服务销售的全部，加 `mdm/employee`、`crm/customer`、`crm/opportunity`、`crm/activity` | `crm/lead`、`crm/campaign`、`crm/case` | `crm/customer` 需要员工（负责人）；商机赢单生成报价；CRM 与 ERP 只经事件协作 |
 | 多法人集团 | 精简进销存的全部，加 `mdm/employee` | 各国薪资、`integration/einvoice-<地区>` | 每法人单账簿（D51）；伙伴角色按法人开通；授权范围含法人维度；同一范围只有一个权威实现（D16） |
-| 制造 | 精简进销存的全部，加 `erp/manufacturing`、`erp/quality`、`erp/costing` | `erp/maintenance`、`erp/warehouse` | 领料与完工入库只经库存写入；工单成本经成本组件进入财务 |
+| 制造 | 精简进销存的全部，加 `erp/manufacturing`、`erp/quality`、`erp/costing` | `erp/planning`、`erp/maintenance`、`erp/warehouse` | 领料与完工入库只经库存写入；工单成本经成本组件进入财务 |
 | 人事与项目 | `infra/iam-casdoor`、`infra/authz`、`infra/audit`、`mdm/org`、`mdm/employee`、`mdm/currency`、`infra/attachment`、`hrm/attendance`、`hrm/leave`、`hrm/expense`、`prj/project`、`prj/timesheet`、`frontend/pc` | `mdm/partner`、各国薪资、`erp/payment`、`erp/finance` | 客户项目引用客户（伙伴），只有内部项目时不装伙伴；报销需要附件；缺收付款时报销线下支付；缺财务时工时与报销成本只在项目中归集，不入账 |
 
 表中的身份成员以 Casdoor 为代表；身份是一类组件（`infra/iam-*`），组合中换成另一个身份成员同样成立。
