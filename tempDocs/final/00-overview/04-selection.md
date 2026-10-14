@@ -41,6 +41,7 @@ IAM 成员之间是身份能力的替换候选，授权成员之间是授权能�
 flowchart TB
     P[伙伴／产品／组织／币种主数据] --> B[多选协作业务能力<br/>按所选业务检查依赖闭包]
     B --> SAL[erp/sales]
+    B --> CT[erp/contract 合同与订阅]
     B --> PUR[erp/purchase]
     B --> INV[erp/inventory]
     B --> FIN[erp/finance]
@@ -96,7 +97,7 @@ flowchart TB
 | 组合 | 必需组件 | 可选 | 缺件行为与检查 |
 | --- | --- | --- | --- |
 | 精简进销存 | `infra/iam-casdoor`、`infra/authz`、`infra/audit`、`mdm/partner`、`mdm/product`、`mdm/org`、`mdm/currency`、`erp/sales`、`erp/purchase`、`erp/inventory`、`erp/billing`、`erp/finance`、`erp/payment`、`frontend/pc` | `erp/credit`、`erp/costing`、`erp/tax`、`infra/print`、`infra/notification`、`mdm/employee`、`infra/workflow` | 收付款可以只用线下登记；缺信用时订单确认不做信用占用，销售声明“无信用控制”且客户在装配时确认；缺成本时财务不记存货成本，报表注明“未计成本”；缺税计算时出账只能由有权限的人逐张录入税额并标为人工税额，不能当作“不适用税”；缺员工时审批只按账号与角色分配，岗位类分配不可用，职责分离按账号比较；缺统一待办时人工审批在各组件页面中处理 |
-| 服务销售 | `infra/iam-casdoor`、`infra/authz`、`infra/audit`、`mdm/partner`、`mdm/product`、`mdm/org`、`mdm/currency`、`erp/sales`、`erp/billing`、`erp/finance`、`erp/payment`、`frontend/pc` | `erp/credit`、`erp/tax`、`crm/opportunity` | 不装库存；服务订单不请求库存预占（D44） |
+| 服务销售 | `infra/iam-casdoor`、`infra/authz`、`infra/audit`、`mdm/partner`、`mdm/product`、`mdm/org`、`mdm/currency`、`erp/sales`、`erp/billing`、`erp/finance`、`erp/payment`、`frontend/pc` | `erp/credit`、`erp/tax`、`crm/opportunity`、`erp/contract` | 不装库存；订阅与长期合同的周期出账需要合同组件（D70）；服务订单不请求库存预占（D44） |
 | CRM 与销售协作 | 服务销售的全部，加 `mdm/employee`、`crm/customer`、`crm/opportunity`、`crm/activity` | `crm/lead`、`crm/campaign`、`crm/case` | `crm/customer` 需要员工（负责人）；商机赢单生成报价；CRM 与 ERP 只经事件协作 |
 | 多法人集团 | 精简进销存的全部，加 `mdm/employee` | 各国薪资、`integration/einvoice-<地区>` | 每法人单账簿（D51）；伙伴角色按法人开通；授权范围含法人维度；同一范围只有一个权威实现（D16） |
 | 制造 | 精简进销存的全部，加 `erp/manufacturing`、`erp/quality`、`erp/costing` | `erp/maintenance`、`erp/warehouse` | 领料与完工入库只经库存写入；工单成本经成本组件进入财务 |

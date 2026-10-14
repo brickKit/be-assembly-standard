@@ -44,7 +44,7 @@ flowchart TB
       P[mdm/partner]; PR[mdm/product]; O[mdm/org]; E[mdm/employee]; C[mdm/currency]
     end
     subgraph TRADE[交易与库存]
-      S[erp/sales]; PU[erp/purchase]; I[erp/inventory]; W[erp/warehouse]
+      S[erp/sales]; CT[erp/contract]; PU[erp/purchase]; I[erp/inventory]; W[erp/warehouse]
     end
     subgraph FIN[财务与结算]
       F[erp/finance]; CR[erp/credit]; CO[erp/costing]; B[erp/billing]; PAY[erp/payment]; T[erp/tax]
@@ -52,6 +52,7 @@ flowchart TB
     S -->|预占| I
     S -->|信用占用| CR
     S -->|出账来源| B
+    CT -->|出账来源| B
     PU -->|入库| I
     PU -->|暂估单价| CO
     PU -->|匹配依据| F
@@ -79,6 +80,7 @@ flowchart TB
 | 组织、IAM、HR 人员 | `mdm/org` 拥有法人与组织结构；`mdm/employee` 拥有员工与任职；IAM 负责账号与登录 | D04–D06 |
 | 销售、库存、财务 | 订单确认由各属主本地裁决；库存是唯一的数量写入者；财务只接受可靠事实 | 协议 04–06 |
 | 实物与服务销售 | 统一订单基础；服务订单不请求库存；没有库存时只能处理服务订单 | D44 |
+| 合同、订阅与订单 | `erp/contract` 拥有长期合同、框架协议与周期出账计划，订单引用合同的价格与额度；两者生命周期不同 | D70 |
 | 库存核心与复杂仓库作业 | `erp/warehouse` 可选、可替换，不保存余额，以库存的提交结果为准 | D45 |
 | 存货计价与成本子账 | `erp/costing` 按序处理库存流水，向财务提供成本事实 | D46 |
 | 资金收付与财务记账 | `erp/payment` 拥有收付款与对账；通道适配器不是资金权威；财务核销 | D47 |
@@ -103,6 +105,7 @@ flowchart TB
 | 财务 | 总账、应收应付台账、核销与会计期间；应付内部登记与匹配供应商票据 | `erp/finance` |
 | 存货成本 | 计价政策执行、成本子账、暂估与调整；引用库存数量事实，向财务提供成本事实 | `erp/costing` |
 | 收付款 | 收付单据、申请与执行进度、外部交易结果、公司银行账户、银行与渠道对账 | `erp/payment` |
+| 合同与订阅 | 客户合同及版本、框架协议、订阅与周期出账计划、每期的来源额度 | `erp/contract` |
 | 客户出账 | 正式账单与商业发票、来源认领、出账与补差生命周期 | `erp/billing` |
 | 税计算 | 适用税项、计税基础、税额与舍入等计算结果 | `erp/tax` |
 | 合规电子开票 | 票据格式、签名、提交、外部响应与历史 | `integration/einvoice-<地区>` |
@@ -180,6 +183,7 @@ flowchart LR
 ## 已知风险与待定
 
 - 联系人的详细模型、自然人伙伴、伙伴去重规则，随 `mdm/partner` 的组件设计细化。
+- 合同框架额度被订单占用的规则、按用量计费的用量来源、采购侧框架协议是否归合同组件，随 `erp/contract` 的设计细化（D70）。
 - 混合明细订单的部分执行与完成规则，随 `erp/sales` 的设计细化；无库存运行在第 8 项实验中验证。
 - 仓库、库位、批次、库存状态等维度的详细模型，随 `erp/inventory` 的设计细化。
 - 各计价方法的细则、供应商票据的匹配与容差政策、13 期等期间模式，随财务相关组件设计。

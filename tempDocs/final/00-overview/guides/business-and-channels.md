@@ -9,6 +9,7 @@
 | 伙伴身份与角色 | `mdm/partner` | 统一承接客户与供应商的基础身份与角色（承接退役的 `mdm/customer`、`mdm/supplier`）；不是客户与供应商二选一 |
 | 产品主数据 | `mdm/product` | 同职责的兼容实现或客户 Fork |
 | 销售订单 | `erp/sales` | 深度行业订单实现或客户 Fork；实物与服务的共同基础在标准组件内选配 |
+| 合同与订阅 | `erp/contract` | 兼容实现或客户 Fork；与销售协作（订单引用合同的价格与额度），不互为替代（D70） |
 | 库存与复杂仓储 | `erp/inventory`、`erp/warehouse` | 库存由兼容实现或 Fork 接替；仓储可换为同任务契约的实现；两者协作，不互为替代 |
 | CRM 关系与商机 | `crm/customer`、`crm/opportunity` 等 | 各自能力的兼容实现或 Fork；CRM 关系不接替伙伴的基础身份 |
 | 组织与任职 | `mdm/org`、`mdm/employee` | 同契约的实现或 Fork；与 IAM、薪资协作，不互为替代 |
