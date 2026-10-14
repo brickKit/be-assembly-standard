@@ -115,6 +115,8 @@
 | `integration/einvoice-<地区>` | 各地区的合规电子开票（例如 `einvoice-es`、`einvoice-cn`） | 远期 | [财务与结算](guides/finance-and-settlement.md#税计算与合规电子开票) |
 | `integration/email`、`integration/sms` | 邮件与短信投递 | 远期 | [业务与渠道](guides/business-and-channels.md) |
 | `integration/edi` | 供应链数据交换 | 远期 | [业务与渠道](guides/business-and-channels.md) |
+| `integration/carrier-<承运商>` | 物流承运：面单、运单号与轨迹（D73） | 远期 | [业务与渠道](guides/business-and-channels.md) |
+| `integration/shop-<平台>` | 电商平台：订单转换与可售量同步（D73） | 远期 | [业务与渠道](guides/business-and-channels.md) |
 | `integration/print-agent` | 客户现场的打印代理 | 远期 | [支撑能力](guides/supporting-capabilities.md) |
 
 ## 使用入口
@@ -125,10 +127,12 @@
 | `frontend/mobile` | 移动外勤入口 | 当前重建 | [前端](guides/frontend.md) |
 | `frontend/terminal` | 仓库终端入口 | 远期 | [前端](guides/frontend.md) |
 | `frontend/advanced` | 行业或高级交互入口 | 远期 | [前端](guides/frontend.md) |
+| 客户与供应商门户（ID 未分配） | 外部人员登录、只看自己公司的数据；需要新的身份与授权模型（D73） | 评估 | — |
+| 门店收银（ID 未分配） | 断网收款、收银班次与现金；与 D24 的在线确认提交冲突，单独设计（D73） | 评估 | — |
 
 ## 新增与退役的身份
 
-新增的身份在正式迁移时登记端口与 schema（协议 19）：`mdm/partner`、`mdm/employee`、`mdm/currency`、`erp/contract`、`erp/planning`、`erp/intercompany`、`erp/consolidation`、`erp/warehouse`、`erp/credit`、`erp/costing`、`erp/billing`、`erp/payment`、`erp/tax`、`integration/einvoice-<地区>`、`integration/bank-<格式>`、`integration/print-agent`、`infra/authz-static`、`infra/authz-openfga`、`ana/search`、`frontend/pc`、`frontend/mobile`、`frontend/terminal`。可选流程引擎的适配组件、通用 OIDC／目录适配在选定产品后登记。
+新增的身份在正式迁移时登记端口与 schema（协议 19）：`mdm/partner`、`mdm/employee`、`mdm/currency`、`erp/contract`、`erp/planning`、`erp/intercompany`、`erp/consolidation`、`erp/warehouse`、`erp/credit`、`erp/costing`、`erp/billing`、`erp/payment`、`erp/tax`、`integration/einvoice-<地区>`、`integration/bank-<格式>`、`integration/carrier-<承运商>`、`integration/shop-<平台>`、`integration/print-agent`、`infra/authz-static`、`infra/authz-openfga`、`ana/search`、`frontend/pc`、`frontend/mobile`、`frontend/terminal`。可选流程引擎的适配组件、通用 OIDC／目录适配在选定产品后登记。
 
 | 退役的身份 | 去向 |
 | --- | --- |

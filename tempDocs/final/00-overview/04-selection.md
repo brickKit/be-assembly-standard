@@ -81,6 +81,8 @@ flowchart TB
 | 业务授权 | `infra/authz`、`infra/authz-static`、`infra/authz-openfga`、策略引擎成员 | 满足客户启用的能力后选一个成员；模型可组合；缺能力时阻止切换 | [授权](guides/authorization.md) |
 | IM 通知 | `integration/im-*` | 按客户生态与收件人路由，可并存 | [业务与渠道](guides/business-and-channels.md#im-通道) |
 | 支付通道 | `integration/payment-*` | 按交易与通道选择，可并存；共同业务控制不随通道丢失 | [业务与渠道](guides/business-and-channels.md#支付与电子签通道) |
+| 物流承运 | `integration/carrier-*` | 按承运商与线路路由，可并存；轨迹不替代业务的交货判断（D73） | [业务与渠道](guides/business-and-channels.md) |
+| 电商平台 | `integration/shop-*` | 每个平台一个成员，可并存；平台订单经销售的接口幂等建单（D73） | [业务与渠道](guides/business-and-channels.md) |
 | 电子签通道 | `integration/esign-*` | 选择或并存，按签署能力与外部结果验收 | [业务与渠道](guides/business-and-channels.md#支付与电子签通道) |
 | 薪资国家实现 | `hrm/payroll-cn`、`-us`、`-es` | 按法人选择；同一范围一个权威 | [业务与渠道](guides/business-and-channels.md#薪资按法人选择) |
 | 前端入口 | `frontend/pc`、`frontend/mobile`、`frontend/terminal`、`frontend/advanced`、客户 Fork | 按入口分别选择 | [前端](guides/frontend.md) |
