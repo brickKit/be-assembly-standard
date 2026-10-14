@@ -17,7 +17,11 @@ log. At a random time the deployment is restored to an earlier point T. Checks a
   FLAGGED      a subject left more restricted than it really was is flagged, listed for review or
                covered by a declared loss (over-tightening is allowed only when visible)
   ZERO_ADMIN   while confirmed records are replayed, the subjects (all administrators) are never all
-               revoked at once unless that really happened after T (D62 is judged after the replay)
+               revoked at once unless that really happened after T, and the final state has an
+               administrator whenever reality does (D62 is judged after the replay; an intent-only
+               revocation that would leave none goes to review)
+
+A directed scenario (50 seeds) replays an administrator handover after T: grant g1, then revoke g0.
 
 Tightenings (revocations, destructions) are written in two parts: an intent outside the local
 transaction (to the evidence store; if unreachable, the full record in an external alert; if both
@@ -41,7 +45,7 @@ commit before writing the intent (a crash in between loses it); resend commands 
 the records to replay by comparing their time with T; execute intent-only destructions; execute
 intent-only revocations without flagging them; replay in the evidence's append order; replay per object with objects in any order (an administrator
 handover passes through zero administrators); re-check "the granter must be an administrator" when
-replaying a grant.
+replaying a grant; execute an intent-only revocation that leaves no administrator.
 """
 import random
 import sys
@@ -52,7 +56,9 @@ WINDOW = 4             # the fixed window of the bad variant (shorter than the r
 CAP = 8                # published outbox rows are kept this long for republishing
 
 
-def run(rng, variant, fails):
+def run(rng, variant, fails, handover=False):
+    """handover=True is the directed scenario: g1 starts without administration; after T an
+    administrator grants it to g1 and then revokes g0 (an administrator handover)."""
     t = 0
     subjects = [f"g{i}" for i in range(2)]          # two administrators: handovers matter
     db = dict(facts=set(), outbox={}, inbox=set(), applied=set(), cmds={},
@@ -63,6 +69,8 @@ def run(rng, variant, fails):
     # target, seq (append order), at, channel: evidence / alert / lost, status: intent / confirmed /
     # cancelled, ver: the committed object version, known once a conclusion or a grant record arrives)
     real = dict(access={g: "granted" for g in subjects}, destroyed=set(), last={}, hist=[])  # what took effect
+    if handover:
+        db["access"]["g1"] = real["access"]["g1"] = "revoked"
     pending = []                                  # tightening intents written, local commit not yet attempted
     outbox_sec = []                               # conclusions and grant records waiting in the outbox
     appended = [0]
@@ -75,7 +83,7 @@ def run(rng, variant, fails):
                     destroyed=set(db["destroyed"]), reflected=set(db["reflected"]))
 
     def append(rid, kind, target, status, ver=None):
-        ev_up, alert_up = rng.random() < 0.8, rng.random() < 0.9
+        ev_up, alert_up = (True, True) if handover else (rng.random() < 0.8, rng.random() < 0.9)
         channel = "evidence" if ev_up else "alert" if alert_up else "lost"
         appended[0] += 1
         records[rid] = dict(kind=kind, target=target, seq=appended[0], at=t, channel=channel,
@@ -83,6 +91,8 @@ def run(rng, variant, fails):
 
     def commit(rid, kind, target):
         u = rng.random()
+        if handover:
+            u = 1.0                                            # the directed scenario commits
         if kind != "grant" and u < 0.12:                       # commit fails (conflict, check)
             outbox_sec.append((rid, "cancelled", None))
             return
@@ -103,7 +113,7 @@ def run(rng, variant, fails):
 
     def relay_sec():
         for item in list(outbox_sec):
-            if rng.random() < 0.6:
+            if handover or rng.random() < 0.6:
                 outbox_sec.remove(item)
                 rid, what, x = item
                 if what == "grant":
@@ -118,6 +128,11 @@ def run(rng, variant, fails):
         if pending and rng.random() < 0.6:                     # commits happen in any order
             commit(*pending.pop(rng.randrange(len(pending))))
         relay_sec()
+        if handover and step == 4:
+            commit("s4", "grant", "g1")                        # grant the administration to g1 ...
+        if handover and step == 5:
+            append("s5", "revoke", "g0", "intent")             # ... then revoke g0
+            commit("s5", "revoke", "g0")
         r = rng.random()
         if r < 0.25:                                           # producer commits a fact + outbox row
             e = f"e{step}"
@@ -137,6 +152,8 @@ def run(rng, variant, fails):
                 provider[c] = provider.get(c, 0) + 1          # provider executed it
                 if rng.random() < 0.6:
                     db["cmds"][c] = "succeeded"
+        elif handover:
+            pass                                               # no random security changes
         elif r < 0.85 and len(pending) < 3:                    # a security change
             rid = f"s{step}"
             u = rng.random()
@@ -157,7 +174,7 @@ def run(rng, variant, fails):
         snapshots[t] = snapshot()
 
     # restore the whole deployment to T
-    T = rng.randint(1, t)
+    T = 3 if handover else rng.randint(1, t)
     db = snapshots[T]
     if variant == "keep_stream":
         pass                                                   # ghosts published after T stay in the stream
@@ -190,6 +207,7 @@ def run(rng, variant, fails):
                 db["cmds"][c] = "succeeded"
     # security: replay each record not reflected in the restored database, per object by version
     flagged, review = set(), set()
+    comparable = False
     if variant != "backup_security_only":
         todo = []
         for rid, rec in records.items():
@@ -221,6 +239,10 @@ def run(rng, variant, fails):
                 flagged.add(target)
             if status == "intent" and kind == "destroy" and variant != "destroy_on_intent":
                 review.add(target)
+                continue
+            if status == "intent" and kind == "revoke" and variant != "intent_zeroes" and \
+                    not any(db["access"][g] == "granted" for g in subjects if g != target):
+                review.add(target)                             # would leave no administrator: review
                 continue
             if variant == "revalidate_grants" and kind == "grant" and \
                     not any(db["access"][g] == "granted" for g in subjects if g != target):
@@ -254,9 +276,13 @@ def run(rng, variant, fails):
         fails.append("EXT_KNOWN"); return
     lost = {r["target"] for r in records.values() if r["channel"] == "lost"}
     lost |= {x[0] for rid, what, x in outbox_sec if what == "grant"}   # grants never recorded: declared loss
+    real_admins = sum(1 for g in subjects if real["access"][g] == "granted")
+    if variant != "backup_security_only" and comparable and real_admins > 0 and \
+            not any(db["access"][g] == "granted" for g in subjects):
+        fails.append("ZERO_ADMIN"); return                    # the final state has no administrator
     for g, rid in real["last"].items():
         if real["access"][g] == "revoked" and records.get(rid, {}).get("channel") != "lost" \
-                and db["access"][g] != "revoked":
+                and db["access"][g] != "revoked" and g not in review:
             fails.append("REVOKED"); return
     if db["destroyed"] - real["destroyed"]:
         fails.append("NO_OVER_DESTROY"); return
@@ -270,13 +296,17 @@ def run(rng, variant, fails):
 
 def main():
     variants = ["good", "keep_stream", "no_republish", "fixed_window", "no_consumer_repair", "resend_without_query", "backup_security_only", "no_flag", "commit_then_evidence", "time_select", "destroy_on_intent",
-                "unflagged_intent", "append_order", "by_object_order", "revalidate_grants"]
+                "unflagged_intent", "append_order", "by_object_order", "revalidate_grants", "intent_zeroes"]
     res = {}
     for v in variants:
         rng = random.Random(SEED)
         fails = []
         for _ in range(RUNS):
             run(rng, v, fails)
+        for k in range(50):                                    # the directed handover scenario
+            f = []
+            run(random.Random(SEED + k), v, f, handover=True)
+            fails += [x + "@handover" for x in f]
         res[v] = sorted(set(fails))
     print(f"good: {'ok' if not res['good'] else 'FAIL ' + str(res['good'])} (NO_GHOST, NO_LOSS, NO_REEXEC, EXT_KNOWN, REVOKED, NO_OVER_DESTROY, DESTROYED, FLAGGED, ZERO_ADMIN over {RUNS} runs)")
     caught = True

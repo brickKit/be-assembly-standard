@@ -69,7 +69,7 @@
 ```sql
 UPDATE work_item
    SET state = 'running', epoch = epoch + 1, attempts = attempts + 1,
-       holder = $me, lease_until = now() + $ttl
+       holder = $me, lease_until = now() + $ttl, claim_db_epoch = current_db_epoch()
  WHERE id = $id
    AND (   state = 'pending'
         OR (state = 'retry_wait' AND run_at <= now())
@@ -79,7 +79,7 @@ RETURNING epoch;
 
 - 租约到期的 `running` 工作项可以被任何工作者接管，**沿用原身份**，代次加一。这是对 R01 的直接修正：认领后崩溃不会让工作永远卡住。
 - 持有者按租约的三分之一续租；续租失败（工作项已被接管）时立即取消本次执行。
-- 所有提交都在条件里核对 `epoch = 自己认领时的代次`；被接管的旧工作者即使醒来，也提交不了任何东西。
+- 所有提交与续租都在条件里同时核对 `epoch = 自己认领时的代次` 与 `claim_db_epoch = current_db_epoch()`；被接管的旧工作者即使醒来，也提交不了任何东西。认领纪元按[协议 14 的库内计数与纪元](14-data-foundations.md#库内计数与纪元)：数据库异步切换丢失了接管者的认领时，新主库上的代次会被重用，只核对代次的旧工作者就能与新认领者同时持有；认领纪元由数据库在语句中读取（`current_db_epoch()` 由 SDK 提供），切换后旧认领一律不符。
 - 数据库围栏挡不住旧工作者已经发出的外部请求。外部副作用靠下一节的幂等键或“结果未知即暂停”来防重复。
 
 ## 副作用种类与“只发生一次”
@@ -90,7 +90,7 @@ RETURNING epoch;
 | --- | --- | --- |
 | `local` | 分区维护、生成本组件的汇总、到期释放本地预占 | **效果恰好一次**：业务写入与“标记完成（核对代次）”在同一个本地事务中提交 |
 | `idempotent_external` | 调用支持幂等键的支付、IM、短信渠道；调用另一个组件的幂等命令 | **对外效果每个键一次**：所有尝试都携带同一 `operation_id`；接管后先按该键查询对方状态，再决定是否重发；对方确认后，在本地事务中标记完成 |
-| `non_idempotent_external` | 调用不支持幂等的外部接口 | **不自动重复**：发出前先在本地事务中把 `outcome_unknown` 置真；确认结果后标记完成；接管时发现 `outcome_unknown` 仍为真，转为 `paused` 交人工核对，不重发 |
+| `non_idempotent_external` | 调用不支持幂等的外部接口 | **不自动重复**：发出前先在本地事务中把 `outcome_unknown` 置真（高可用部署中这个事务同步提交，确认后才发出，D65）；确认结果后标记完成；接管时发现 `outcome_unknown` 仍为真，转为 `paused` 交人工核对，不重发 |
 | `emit_only` | 只写 Outbox 或排入下一个工作项 | 归入 `local`：写 Outbox 与标记完成同事务 |
 
 规则：
@@ -203,6 +203,8 @@ singleton 以作业名为身份持有租约运行。长任务分段提交进度�
 | JB18 | 订单确认后排入的到期释放，确认人已离职 | 以组件服务身份按业务记录执行 |
 | JB19 | 操作者重新排队一个 `dead` 工作项 | 需要运维权限；同一身份新一次尝试；写审计 |
 | JB20 | 外壳内两个成员有同名作业 | 各自表中各自执行，互不影响 |
+| JB21 | 数据库异步切换丢失了接管者的认领，旧工作者重连新主库后续租 | 认领纪元不符，续租与提交都被拒绝；不出现两个持有者 |
+| JB22 | 高可用部署中，`outcome_unknown` 置真后主库立刻坏掉 | 这个事务已同步到备库才发出调用；切换后接管者看到 `outcome_unknown`，转 `paused`，不重发 |
 
 ## 仍未解决与下一步
 

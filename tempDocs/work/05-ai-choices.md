@@ -1,6 +1,6 @@
 # AI 自行做出的设计选择
 
-> 2026-10-14 建立。用户授权 AI 在“适合本项目、业务逻辑完整且有意义”时自行决定设计方案（见[决定台账](02-decisions.md)的 D64 来源说明）；这里汇总这些选择，冻结报告据此请用户逐条复核。用户已裁定、取代了某项 AI 选择的，在“状态”中写明。来源：[作者横切复查](rounds/09-author-cross-review.md)的 18 项、三轮独立复查（[rounds/10](rounds/10-independent-review.md)、[rounds/11](rounds/11-second-independent-review.md)、[rounds/12](rounds/12-third-review.md)）、第四至第六轮聚焦复查（[rounds/13](rounds/13-fourth-review.md)、[rounds/14](rounds/14-fifth-review.md)、[rounds/15](rounds/15-sixth-review.md)）后的修正。
+> 2026-10-14 建立。用户授权 AI 在“适合本项目、业务逻辑完整且有意义”时自行决定设计方案（见[决定台账](02-decisions.md)的 D64 来源说明）；这里汇总这些选择，冻结报告据此请用户逐条复核。用户已裁定、取代了某项 AI 选择的，在“状态”中写明。来源：[作者横切复查](rounds/09-author-cross-review.md)的 18 项、三轮独立复查（[rounds/10](rounds/10-independent-review.md)、[rounds/11](rounds/11-second-independent-review.md)、[rounds/12](rounds/12-third-review.md)）、第四至第七轮聚焦复查（[rounds/13](rounds/13-fourth-review.md)、[rounds/14](rounds/14-fifth-review.md)、[rounds/15](rounds/15-sixth-review.md)、[rounds/16](rounds/16-seventh-review.md)）后的修正。
 
 | 编号 | 选择 | 所在 | 主要备选 | 状态 |
 | --- | --- | --- | --- | --- |
@@ -52,3 +52,6 @@
 | A46 | 协议 07 的投影路径只限卡片声明的水位来源（员工、组织、IAM），其余属主一律同步资格查询 | 协议 07 | 任何属主都可作投影来源 | 待复核 |
 
 | A47 | 成员切换 7.4 围住旧成员、排空、放开新成员之后，旧成员把核验与管理请求代理给新成员，直到全部组件换地址、观察期结束才退役 | 安全 10 | 暂停受保护操作直到换址完成 | 待复核 |
+| A48 | 协议 14 的总规则：在库内分配、别处比较的计数一律带纪元；使库内容回退的操作推进部署恢复代次，权威计数在恢复组之外 | 协议 14 | 各协议分别处理 | 待复核 |
+| A49 | 身份适配组件以自己同步记录的停用为准，识别身份产品的回退并重新停用 | 协议 15、安全 03 | 只要求产品库同步提交 | 待复核 |
+| A50 | 整套恢复的重放结束后运行不变量检查，违反的主体关闭并复核；会造成零管理员的只有意图撤销转复核 | 协议 15 | 重放中途逐条检查 | 待复核 |
