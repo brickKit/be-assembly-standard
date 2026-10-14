@@ -17,9 +17,9 @@ log. At a random time the deployment is restored to an earlier point T. Checks a
   FLAGGED      a subject left more restricted than it really was is flagged, listed for review or
                covered by a declared loss (over-tightening is allowed only when visible)
   ZERO_ADMIN   while confirmed records are replayed, the subjects (all administrators) are never all
-               revoked at once unless that really happened after T, and the final state has an
-               administrator whenever reality does (D62 is judged after the replay; an intent-only
-               revocation that would leave none goes to review)
+               revoked at once unless that really happened after T; when the final state has no
+               administrator but reality does, the deployment is in D62's pending recovery
+               (intent-only revocations are executed and flagged even when they leave none)
 
 A directed scenario (50 seeds) replays an administrator handover after T: grant g1, then revoke g0.
 
@@ -45,7 +45,8 @@ commit before writing the intent (a crash in between loses it); resend commands 
 the records to replay by comparing their time with T; execute intent-only destructions; execute
 intent-only revocations without flagging them; replay in the evidence's append order; replay per object with objects in any order (an administrator
 handover passes through zero administrators); re-check "the granter must be an administrator" when
-replaying a grant; execute an intent-only revocation that leaves no administrator.
+replaying a grant; leave no administrator without entering D62's pending recovery; keep an
+intent-only-revoked subject as administrator until review.
 """
 import random
 import sys
@@ -208,6 +209,7 @@ def run(rng, variant, fails, handover=False):
     # security: replay each record not reflected in the restored database, per object by version
     flagged, review = set(), set()
     comparable = False
+    pending_recovery = False                                  # D62: no administrator left
     if variant != "backup_security_only":
         todo = []
         for rid, rec in records.items():
@@ -240,9 +242,9 @@ def run(rng, variant, fails, handover=False):
             if status == "intent" and kind == "destroy" and variant != "destroy_on_intent":
                 review.add(target)
                 continue
-            if status == "intent" and kind == "revoke" and variant != "intent_zeroes" and \
+            if status == "intent" and kind == "revoke" and variant == "review_keeps_admin" and \
                     not any(db["access"][g] == "granted" for g in subjects if g != target):
-                review.add(target)                             # would leave no administrator: review
+                review.add(target)                             # bad: kept as administrator until review
                 continue
             if variant == "revalidate_grants" and kind == "grant" and \
                     not any(db["access"][g] == "granted" for g in subjects if g != target):
@@ -255,6 +257,9 @@ def run(rng, variant, fails, handover=False):
             if status != "intent" and comparable and not real_zero and \
                     not any(db["access"][g] == "granted" for g in subjects):
                 fails.append("ZERO_ADMIN"); return                # no admin at a moment that never existed
+    if variant != "backup_security_only" and variant != "intent_zeroes" and \
+            not any(db["access"][g] == "granted" for g in subjects):
+        pending_recovery = True                                # any cause of zero administrators
     # consumer drains the stream
     for e, _ in stream:
         if e not in db["inbox"]:
@@ -277,12 +282,12 @@ def run(rng, variant, fails, handover=False):
     lost = {r["target"] for r in records.values() if r["channel"] == "lost"}
     lost |= {x[0] for rid, what, x in outbox_sec if what == "grant"}   # grants never recorded: declared loss
     real_admins = sum(1 for g in subjects if real["access"][g] == "granted")
-    if variant != "backup_security_only" and comparable and real_admins > 0 and \
+    if variant != "backup_security_only" and comparable and real_admins > 0 and not pending_recovery and \
             not any(db["access"][g] == "granted" for g in subjects):
-        fails.append("ZERO_ADMIN"); return                    # the final state has no administrator
+        fails.append("ZERO_ADMIN"); return                    # no administrator and no pending recovery
     for g, rid in real["last"].items():
         if real["access"][g] == "revoked" and records.get(rid, {}).get("channel") != "lost" \
-                and db["access"][g] != "revoked" and g not in review:
+                and db["access"][g] != "revoked":
             fails.append("REVOKED"); return
     if db["destroyed"] - real["destroyed"]:
         fails.append("NO_OVER_DESTROY"); return
@@ -296,7 +301,8 @@ def run(rng, variant, fails, handover=False):
 
 def main():
     variants = ["good", "keep_stream", "no_republish", "fixed_window", "no_consumer_repair", "resend_without_query", "backup_security_only", "no_flag", "commit_then_evidence", "time_select", "destroy_on_intent",
-                "unflagged_intent", "append_order", "by_object_order", "revalidate_grants", "intent_zeroes"]
+                "unflagged_intent", "append_order", "by_object_order", "revalidate_grants", "intent_zeroes",
+                "review_keeps_admin"]
     res = {}
     for v in variants:
         rng = random.Random(SEED)
