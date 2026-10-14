@@ -31,7 +31,7 @@
 
 ## 设计文档
 
-> 2026-10-13 作者对全部文档做了一轮横切复查（[rounds/09](rounds/09-author-cross-review.md)），不计为独立复查。2026-10-14 第一轮独立复查（[rounds/10](rounds/10-independent-review.md)）：复查后没有再修改、且复查者认为可标“已复查”的文档已标“已复查”；2026-10-14 第二轮独立复查（[rounds/11](rounds/11-second-independent-review.md)）：其结论中可标“已复查”、且本轮之后只做了一般项修正的文档已标“已复查”；安全 03、04、10，协议 02、15，权限主文档与基础能力卡按重要发现（I52–I57）修正后仍为“候选”，等第三轮复查。2026-10-14 第三轮独立复查（[rounds/12](rounds/12-third-review.md)）：安全 04 与权限主文档标“已复查”（累计 55 份）；安全 03、10，协议 02、15 与基础能力卡按重要发现（I59–I61）修正后仍为“候选”，等第四轮只看这些改动的聚焦复查。边界卡中的领域卡未单独列在本表，随目录页一起记录。
+> 2026-10-13 作者对全部文档做了一轮横切复查（[rounds/09](rounds/09-author-cross-review.md)），不计为独立复查。2026-10-14 第一轮独立复查（[rounds/10](rounds/10-independent-review.md)）：复查后没有再修改、且复查者认为可标“已复查”的文档已标“已复查”；2026-10-14 第二轮独立复查（[rounds/11](rounds/11-second-independent-review.md)）：其结论中可标“已复查”、且本轮之后只做了一般项修正的文档已标“已复查”；安全 03、04、10，协议 02、15，权限主文档与基础能力卡按重要发现（I52–I57）修正后仍为“候选”，等第三轮复查。2026-10-14 第三轮独立复查（[rounds/12](rounds/12-third-review.md)）：安全 04 与权限主文档标“已复查”（累计 55 份）；安全 03、10，协议 02、15 与基础能力卡按重要发现（I59–I61）修正后仍为“候选”，等第四轮只看这些改动的聚焦复查。2026-10-14 第四轮聚焦复查（[rounds/13](rounds/13-fourth-review.md)）：协议 05 与权限主文档维持“已复查”；安全 03、10，协议 02、15 与相关卡片按重要发现（I63–I66）修正后仍为“候选”，等第五轮只看 IU01–IU06 的修正。边界卡中的领域卡未单独列在本表，随目录页一起记录。
 
 | 文档 | 回答什么 | 主要覆盖 | 状态 | 最近整体复查 | 遗留问题 |
 | --- | --- | --- | --- | --- | --- |
@@ -48,7 +48,7 @@
 | [底层基线](../09-foundation-baseline.md) | 各方面的推荐组合与冻结条件 | 全部 | 已复查 | [rounds/11](rounds/11-second-independent-review.md)（第二轮；一般项已修正） | I19–I26 |
 | [货架清单](../components/catalog.md) | 长期货架条目、仓库与实现状态 | C01 | 已复查 | [rounds/11](rounds/11-second-independent-review.md)（第二轮；一般项已修正） | — |
 | [选择关系图](../components/selection-map.md) | 能力分图、单选／多选／协作的标注 | C01、C05、C41 | 已复查 | [rounds/11](rounds/11-second-independent-review.md)（第二轮；一般项已修正） | — |
-| [全货架边界卡](../components/README.md) | 每个组件的边界卡（11 个领域文件）、新增与退役身份、当前重建范围候选、组合闭包、五项检查 | C01–C05 | 已复查 | [rounds/11](rounds/11-second-independent-review.md)（第二轮；一般项已修正） | I01–I06、I26 |
+| [全货架边界卡](../components/README.md) | 每个组件的边界卡（11 个领域文件）、新增与退役身份、当前重建范围候选、组合闭包、五项检查 | C01–C05 | 已复查（基础能力卡的 IAM、授权、审计、附件四张与员工卡、组织卡在第三、四轮后修正，随第五轮复查） | [rounds/11](rounds/11-second-independent-review.md)（第二轮；一般项已修正）、[rounds/13](rounds/13-fourth-review.md) | I01–I06、I26 |
 | [选型指南](../replacements/README.md) | 选配与替换的共同协议 | C05 | 已复查 | [rounds/10](rounds/10-independent-review.md)（第一轮独立复查） | — |
 | [报表与分析](../replacements/analytics-and-reporting.md) | 内置报表与自助 BI | C25 | 已复查 | [rounds/10](rounds/10-independent-review.md)（第一轮独立复查） | — |
 | [授权选型](../replacements/authorization.md) | 授权模型与成员方案 | C07–C11 | 已复查 | [rounds/10](rounds/10-independent-review.md)（第一轮独立复查） | I18 |

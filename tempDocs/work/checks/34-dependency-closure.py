@@ -4,13 +4,17 @@
 Reads every `## <component>` section in tempDocs/components/*.md, takes the component IDs that
 appear in its "必需依赖" row (plus 身份 -> the identity family, 授权 -> infra/authz), and checks:
 
-  ACYCLIC   the required-dependency graph has no cycle (BrickKit rejects a required cycle)
+  ACYCLIC   the required-dependency graph has no cycle (BrickKit rejects a required cycle); the
+            identity family stands for every infra/iam-* card, since any of them can be chosen
   KNOWN     every required dependency names a component that has a card
   CLOSURE   every combination in the README table lists the transitive closure of the
             required dependencies of its own listed components
   BASELINE  every combination contains the deployment-level components every formal
-            deployment needs: one identity member (any infra/iam-*), authorization, audit
+            deployment needs: exactly one identity member (any infra/iam-*), authorization, audit
             (protocol 03)
+
+A self-test runs first: adding "授权" as a required dependency of an identity member must be
+reported as a cycle (authorization requires identity).
 
 Exit status is non-zero when a check fails.
 """
@@ -52,7 +56,16 @@ def cards():
     return deps
 
 
+def expand_family(deps):
+    """For cycle detection the family placeholder has the edges of every identity member."""
+    members = sorted(n for n in deps if IDENTITY.match(n) and n != FAMILY)
+    out = {n: set(ds) for n, ds in deps.items()}
+    out[FAMILY] = set(members)
+    return out
+
+
 def cycle(deps):
+    deps = expand_family(deps)
     state, stack = {}, []
     def visit(n):
         state[n] = 1; stack.append(n)
@@ -110,6 +123,11 @@ def combos():
 def main():
     deps = cards()
     fails = []
+    probe = {n: set(ds) for n, ds in deps.items()}
+    member = next(n for n in sorted(probe) if IDENTITY.match(n))
+    probe[member].add("infra/authz")
+    if not cycle(probe):
+        fails.append(f"SELF-TEST: a cycle through {member} was not detected")
     c = cycle(deps)
     if c:
         fails.append("ACYCLIC: " + " -> ".join(c))
@@ -123,8 +141,9 @@ def main():
             fails.append(f"CLOSURE: {name} misses {sorted(missing)}")
         if BASELINE - listed:
             fails.append(f"BASELINE: {name} misses {sorted(BASELINE - listed)}")
-        if not any(IDENTITY.match(c) for c in listed):
-            fails.append(f"BASELINE: {name} has no identity member (infra/iam-*)")
+        ids = [c for c in listed if IDENTITY.match(c)]
+        if len(ids) != 1:
+            fails.append(f"BASELINE: {name} needs exactly one identity member (infra/iam-*), has {ids}")
     print(f"{len(deps)} components with cards; {sum(len(v) for v in deps.values())} required edges; {len(combos())} combinations")
     for f in fails:
         print(f)
