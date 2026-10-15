@@ -7,19 +7,19 @@
 | 旧文档 | 去处 | 状态 |
 | --- | --- | --- |
 | `docs/zh/01-conventions/01-development-workflow.md` | `01-conventions/10-development-workflow.md` | 已写 |
-| `02-backend.md` | `01-conventions/06-component-implementation.md`（新）；技术栈表进底层选择或协议 18（见待定 2） | 待写 |
-| `03-frontend.md` | `04-foundations/04-frontend-stack.md` 增补（主题与视觉、写法约定、商业版核对）；协议 20 的多语言 | 待写 |
-| `04-configuration.md` | 协议 19 的配置与注册表；`06-component-implementation.md` | 待写 |
+| `02-backend.md` | `01-conventions/06-component-implementation.md`；技术栈进底层选择 07 | 已写 |
+| `03-frontend.md` | `04-foundations/04-frontend-stack.md` 增补（主题与视觉、写法约定、商业版核对）；协议 20 的多语言 | 已写 |
+| `04-configuration.md` | 协议 19 的配置（值放在哪里、地址引用不是依赖边）；键目录进 `be-protocol` | 已写 |
 | `05-data.md` | `01-conventions/07-seed-and-test-data.md` | 已写 |
 | `06-testing.md` | `01-conventions/02-testing-and-validation.md#实现测试的分层与节奏` | 已写 |
-| `07-registries.md` | 协议 19 的注册表 | 待写 |
+| `07-registries.md` | 协议 19 的注册表；端口分段与命名进 `be-protocol` | 已覆盖 |
 | `08-documentation.md` | `01-conventions/03-documentation.md`（整理时已承接） | 已覆盖 |
 | `09-ai-development.md` | `01-conventions/09-ai-coding.md`；会话读多少在 `05-ai-navigation.md` | 已写 |
 | `10-reference-implementations.md` | `01-conventions/08-reference-implementations.md` | 已写 |
-| `01-conventions/README.md` | 新的 `01-conventions/README.md` | 待改 |
-| `02-decisions/0101–0509` | 按原编号写进各主题文件；17 条去向需更正（报告 B 第 2 节） | 待写 |
+| `01-conventions/README.md` | 新的 `01-conventions/README.md` | 已改 |
+| `02-decisions/0101–0509` | `02-decisions/10-earlier-decisions.md`；去向表已更正 | 已写 |
 | `03-seed-data.md` | 新的 `03-seed-data.md`（随重建组件补写）；规则进 07 | 已写 |
-| `04-foundations/01–27` 与 README | 规则进协议，比较与改选条件进底层选择（见待定 1、2） | 待定 |
+| `04-foundations/01–27` 与 README | 比较与改选条件进底层选择 05–10 与已有文档；规则进协议；线协议细节进 [`be-protocol` 承接清单](13-be-protocol-carry.md) | 已写 |
 | 根 `AGENTS.md`、`AGENTS.zh.md`、`README*.md`、`docs/*/README.md` | 第 6 步中文重写；易错点按报告 1.14 节逐行处理 | 待写 |
 | `.claude/skills/version-bump-ship` | 第 6 步改写链接与规则（报告 1.17 节） | 待写 |
 
@@ -45,15 +45,9 @@
 
 ## 尚未处理的设计缺口与冲突
 
-以终稿为准的冲突（报告中标“以终稿为准”的）不需要改动，只在承接时不把旧规则带进来。剩下的：
-
-| 来源 | 缺口 | 拟处理 |
-| --- | --- | --- |
-| A-25、B 第 2 节 | 0103 锁定技术栈、0506 流的划分、0101、0201、0206、0304、0504、0505、0509 的规则正文没有落点；17 条去向需更正 | 决定按原编号改写时补齐；技术栈表进“组件协议与语言” |
-| 两份底层报告 | 方案比较、为什么不选、什么时候换、怎么换 | 7 篇按方面的底层选择与协议 14 的方案比较 |
-| 规范报告 1.4 等 | 前端主题与视觉、写法约定、商业版核对；协议 19 的地址引用不是依赖边；产品原则二的否定清单 | 分别增补 |
+无。底层选择与原有决定的承接已完成；线协议细节按已定做法进 [`be-protocol` 承接清单](13-be-protocol-carry.md)。
 
 ## 已定的做法
 
 1. **线协议层面的细节**（头字段清单、超时与重试数值、错误体与 reason 目录、日志字段与指标、搜索与多语言向量、配置键目录）在重建 `be-protocol` 时直接写进协议仓库（用户 2026-10-15 选择）。这次迁移只承接设计层面的内容：决定、方案比较与改选条件、终稿漏掉的保护、要改终稿的冲突。线协议细节按三份报告逐行列成 `be-protocol` 的承接清单，放进 `dev/rebuild/`，重建时对照归档的旧文档逐条重审后写入。
-2. **底层选择的形态**：按协议 21 与维护者“每个关键底层选择一篇”的要求，恢复按方面的文章，每篇写方案对比、为什么选与不选、什么时候换、怎么换、替换时的检查与已知限制；规则只在协议中，文章链到协议。新增 7 篇：数据库引擎与连接、消息运输与事件信封、冷存储与冷读、组件协议与语言、组件间调用与错误（含截止时间、重试、熔断）、边缘入口、观测。缓存不单开（底层 README 的推荐表加一行）；共享语义（身份、单号、时间、金额、本地事务、迁移工具）的方案比较进协议 14 新增的“方案比较”一节。文档规则中“三篇主题”的说法随之改写。
+2. **底层选择的形态**：按协议 21 与维护者“每个关键底层选择一篇”的要求，恢复按方面的文章，每篇写方案对比、为什么选与不选、什么时候换、怎么换、替换时的检查与已知限制；规则只在协议中，文章链到协议。新增 6 篇：数据库引擎与连接、消息运输与事件信封、组件协议与语言、组件间调用与错误（含截止时间、重试、熔断）、边缘入口、观测。冷存储已有数据与生命周期与协议 11 承载，比较补进这两处；缓存不单开（底层 README 的推荐表加一行）；共享语义（身份、单号、时间、金额、本地事务、迁移工具）的方案比较进协议 14 新增的“方案比较”一节。文档规则中“三篇主题”的说法随之改写。
