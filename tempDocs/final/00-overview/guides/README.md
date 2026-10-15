@@ -29,7 +29,7 @@ flowchart TD
 | 附件与对象存储访问 | [附件与存储](files-and-attachments.md) |
 | 使用入口 | [前端](frontend.md) |
 | 边缘、观测、打印、待办与流程、审计 | [支撑能力](supporting-capabilities.md) |
-| 消息、数据库与对象存储、运行与部署 | 底层选择（第 2 批整理） |
+| 消息、数据库与对象存储、运行与部署 | 底层选择 |
 
 ## 每篇的写法
 

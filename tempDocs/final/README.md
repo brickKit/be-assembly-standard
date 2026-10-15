@@ -12,4 +12,4 @@
 | [04-foundations/](04-foundations/README.md) | 底层选择：部署与运行、数据与生命周期、事务与消息、前端技术栈 | 已整理 |
 | [05-operations/](05-operations/README.md) | 运维手册：备份与恢复、升级与维护窗口、告警与处置、客户上线 | 已整理 |
 | [06-protocols/](06-protocols/README.md) | 安全 01–11（[security/](06-protocols/security/README.md)）与协议 01–21 | 已整理 |
-| [07-components/](07-components/README.md) | 组件边界卡 | 已整理；组件分配的多轮复查进行中 |
+| [07-components/](07-components/README.md) | 组件边界卡 | 已整理 |

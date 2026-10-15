@@ -22,7 +22,7 @@
 
 ## 独立预期的登记
 
-各设计文档的“独立预期”表以两个大写字母加两位数字编号。编号检查（检查 33）扫描设计稿，确认每个前缀只属于一份文档、编号不重复且连续、被整理掉的草稿中的编号全部带到了终稿，并打印登记表。新文档使用新前缀前先运行它。
+各设计文档的“独立预期”表以两个大写字母加两位或三位数字编号。编号检查（检查 33）扫描设计稿，确认每个前缀只属于一份文档、编号不重复且连续、被整理掉的草稿中的编号全部带到了终稿，并打印登记表。新文档使用新前缀前先运行它。
 
 | 前缀 | 文档 | 前缀 | 文档 |
 | --- | --- | --- | --- |
@@ -39,7 +39,8 @@
 | IM | [安全 11](security/11-identity-member-switching.md) | TR | [协议 11](11-tiering.md) |
 | PA | [权限验收矩阵](../01-conventions/validation/authorization-matrix.md) | FA | [协议 12](12-attachments-and-object-storage.md) |
 | DT | [数据与一致性矩阵](../01-conventions/validation/data-and-consistency-matrix.md) | DS | [协议 13](13-search-reports-and-datasets.md) |
-| ST | [测试与验证](../01-conventions/02-testing-and-validation.md)（组合变更） | DF | [协议 14](14-data-foundations.md) |
+| ST | [测试与验证](../01-conventions/02-testing-and-validation.md)（组合变更） | IC | [协议 05b](05b-inventory-costing.md) |
+| | | DF | [协议 14](14-data-foundations.md) |
 | VM | 本页 | RC | [协议 15](15-backup-and-recovery.md) |
 | | | GL | [协议 16](16-go-live-and-import.md) |
 | | | RT | [协议 17](17-runtime-and-resources.md) |

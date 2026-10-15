@@ -27,7 +27,7 @@ ROOT = os.path.join(os.path.dirname(__file__), "..", "..")
 SCOPES = ["security/*.md", "protocols/*.md", "validation/*.md", "07-validation.md", "final/**/*.md"]
 SUPERSEDED = os.path.join(os.path.dirname(__file__), "superseded-drafts.txt")
 MOVED = os.path.join(os.path.dirname(__file__), "moved-ids.txt")
-ROW = re.compile(r"^\| ([A-Z]{2})(\d{2}) \|", re.M)
+ROW = re.compile(r"^\| ([A-Z]{2})(\d{2,3}) \|", re.M)
 
 
 def superseded():
