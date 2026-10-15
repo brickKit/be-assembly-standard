@@ -184,7 +184,7 @@
 | `docs/zh/01-conventions/` | 设计稿 `01-conventions/`：工程规范、测试与验证、文档规则、图与表、AI 导航、验收矩阵 |
 | `docs/zh/02-decisions/` | 决定台账（D01 起）改写为决定记录；原有决定逐条承接或标为被取代 |
 | `docs/zh/03-seed-data.md` | 保留，随新组件更新 |
-| `docs/zh/04-foundations/` | 设计稿 `04-foundations/`：每个底层选择一篇 |
+| `docs/zh/04-foundations/` | 设计稿 `04-foundations/`：跨方面的取舍，以及每个可替换的底层方面一篇（方案比较、改选条件、怎样换） |
 | `docs/zh/05-operations/` | 运维手册：备份与恢复、升级与维护窗口、观测与告警、客户上线 |
 | `docs/zh/06-protocols/` | 设计稿 `06-protocols/`：安全 01–11 与协议 01–21 的完整设计（含理由、独立预期与参考模型说明） |
 | `docs/zh/07-components/` | 系统层的组件全景与边界卡；组件仓库中的文档按边界卡展开 |

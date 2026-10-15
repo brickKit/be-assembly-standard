@@ -1,6 +1,6 @@
 # 组件实现约定
 
-本页说明后端组件的代码怎样写，才能既独立运行、又能安全地合进外壳：仓库布局与入口、运行时是唯一入口、合并安全、健康检查与镜像、权限与资源、调用其他组件、数据库、事件与契约。组件必须遵守的外部行为由[协议 18 的组件协议](../06-protocols/18-sdk-and-conformance.md)与各协议规定；各语言锁定的技术栈见[组件协议与语言](../04-foundations/08-component-protocol-and-languages.md)；配置键与注册表见[协议 19](../06-protocols/19-config-secrets-registries-release.md)。
+本页说明后端组件的代码怎样写，才能既独立运行、又能安全地合进外壳：仓库布局与入口、运行时是唯一入口、合并安全、健康检查与镜像、权限与资源、调用其他组件、数据库、事件与契约。组件必须遵守的外部行为由[协议 18 的组件协议](../06-protocols/18-sdk-and-conformance.md)与各协议规定；各语言锁定的技术栈见[组件协议与语言](../04-foundations/07-component-protocol-and-languages.md)；配置键与注册表见[协议 19](../06-protocols/19-config-secrets-registries-release.md)。
 
 ## 两条原则在代码里的意思
 
