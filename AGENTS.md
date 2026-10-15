@@ -35,7 +35,7 @@
 - **子模块地图**：`.gitmodules` 与子模块指针只经 `git submodule` 命令改变，指针与需要它的 `brickkit upgrade` 一起提交。
 - **参考实现**：先自己设计，卡住才看参考，绝不照抄（[参考实现](docs/zh/01-conventions/08-reference-implementations.md)）。
 - **AI 友好的代码**：模式只用在帮助 AI 读懂的地方；函数、文件与会话有大小上限（[AI 编码习惯](docs/zh/01-conventions/09-ai-coding.md)、[AI 导航](docs/zh/01-conventions/05-ai-navigation.md)）。
-- **图、表与样例**：按读者最快理解选图、表、文字、步骤或填好的样例，图不强求；意图类的图表先改再改代码，事实类从代码生成；用了设计模式画角色图，不用示例代码讲结构（[图与表的规范](docs/zh/01-conventions/04-diagrams-and-tables.md)）。
+- **表达方式**：根据情况选图、表、代码、步骤、填好的样例或文字，哪种最好懂用哪种；意图类的图表先改再改代码，事实类从代码生成；用了设计模式画角色图（[图与表的规范](docs/zh/01-conventions/04-diagrams-and-tables.md)）。
 - **文档**：开发完成前只写中文（D67），同一规则只写在一处；正式文档不链接 `dev/` 与 `archive/`（`make gates`）（[文档规则](docs/zh/01-conventions/03-documentation.md)）。
 - **容器默认关着**：`make up` 的基础资源可以常开；组件容器验证完就 `brickkit down`。
 
