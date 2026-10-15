@@ -1,19 +1,21 @@
-# 重建计划（草稿，执行前须用户确认）
+# 重建计划（执行前每一步须用户确认）
 
 > 2026-10-15 起草。依据 D59（按新设计从零重建）与用户 2026-10-15 的要求：“全部设计完毕以后，我们再看看哪些是可以重复利用的，然后把不可以利用的直接改仓库名，进行归档，然后去真实构建我们需要的仓库”。本页只列清单与原则，**不执行**：仓库的改名、归档与新建在设计冻结、用户确认本清单之后进行。
+>
+> 2026-10-15 设计冻结后用户补充：“所有的原仓库都可以复用么？反正不管可不可以，你都可以根据情况重新开始，只要把老的代码放到一个特定的 branch 就行。”据此原则改为全部复用原仓库，旧代码挪到固定分支，不再归档旧仓库。
 
 ## 原则
 
-1. **组件 ID 不变的，沿用仓库**：在原仓库上开新的主版本（组件 3.0.0、外壳 2.0.0，具体号随发布规则），新主版本的代码按新设计从零写，旧版本的标签与历史保留作参考。这样注册表中的身份、端口与 schema 不变（注册表只追加），外部引用不断。
-2. **组件 ID 变了或被拆分的，旧仓库归档、新建仓库**：旧仓库在 GitHub 上改名为 `archived-<原名>` 并设为归档（只读），README 写明去向；新身份在注册表登记后新建仓库。
-3. **工具与协议仓库沿用**：按协议 18、21 的分工重写内容（新主版本）。
-4. 每一步执行前列出将要做的具体动作（改名、归档、新建、注册表追加、`.gitmodules` 变化），用户确认后再做；远端的改名与归档不可轻易撤回。
+1. **全部原仓库复用，旧代码挪到固定分支**：每个原仓库把当前主分支的代码挪到分支 `legacy/v2`（外壳与工具仓库按各自的主版本，例如 `legacy/v1`），旧标签全部保留；主分支从零开始，按新设计写新的主版本（组件 3.0.0、外壳 2.0.0，具体号随发布规则）。Go 模块路径随新主版本改为 `/v3`。旧版本的标签不动，所以根项目 `brickkit.yaml` 钉住的 2.0.x 在切换之前照常可用。
+2. **组件 ID 变了的，改名后复用**：`mdm-customer` 改名为 `mdm-partner`（D20），`frontend-standard` 改名为 `frontend-pc`（D17）；GitHub 保留旧名的跳转。新 ID 在注册表追加，旧 ID 的行标为退役（注册表只追加、不删除）。拆分出来没有原仓库的（`frontend-mobile`）与全新的组件，新建仓库。
+3. **工具与协议仓库复用**：按协议 18、21 的分工重写内容（新主版本），同样先把旧代码挪到 `legacy/` 分支。
+4. 每一步执行前列出将要做的具体动作（挪分支、改名、新建、注册表追加、`.gitmodules` 变化），用户确认后再做；远端的改名不可轻易撤回。
 
 ## 现有仓库的去向
 
 | 现有仓库（子模块路径） | 组件 ID | 去向 | 说明 |
 | --- | --- | --- | --- |
-| `mdm-customer`（`components/mdm/customer`） | `mdm/customer` | 归档 | 由 `mdm/partner` 取代（D20）；新建 `mdm-partner` |
+| `mdm-customer`（`components/mdm/customer`） | `mdm/customer` → `mdm/partner` | 改名为 `mdm-partner` 后复用 | D20；旧代码挪到 `legacy/v2`；子模块路径改为 `components/mdm/partner` |
 | `mdm-product` | `mdm/product` | 沿用，新主版本重建 | — |
 | `erp-inventory` | `erp/inventory` | 沿用，新主版本重建 | 预占改为分支协议（协议 04） |
 | `erp-finance` | `erp/finance` | 沿用，新主版本重建 | 信用、成本、出账、收付款拆到新组件（D03、D46–D48） |
@@ -25,7 +27,7 @@
 | `integration-im-dingtalk` | `integration/im-dingtalk` | 沿用，新主版本重建 | 动作令牌回调（协议 10） |
 | `infra-print` | `infra/print` | 沿用，新主版本重建 | — |
 | `infra-bff-mobile` | `infra/bff-mobile` | 沿用，新主版本重建 | — |
-| `frontend-standard` | `frontend/standard` | 归档 | 拆为 `frontend-pc`、`frontend-mobile`（D17） |
+| `frontend-standard` | `frontend/standard` → `frontend/pc` | 改名为 `frontend-pc` 后复用 | D17；旧代码挪到 `legacy/v2`；`frontend-mobile` 新建 |
 | `crm-opportunity` | `crm/opportunity` | 沿用，新主版本重建 | — |
 | `be-go-core`、`be-go-infra`、`be-go-backoffice`、`be-py-render`（`shell/be/*`） | 外壳 | 沿用 | 成员组合在代表部署实验后确定（D40）；先保留仓库，实验时再定是否增减外壳 |
 | `be-sdk-go`、`be-sdk-python`、`be-sdk-ts` | SDK | 沿用，新主版本重建 | 协议 18 的共同契约与语义向量 |
@@ -40,7 +42,6 @@
 
 | 新仓库 | 组件 ID | 依据 |
 | --- | --- | --- |
-| `mdm-partner` | `mdm/partner` | D20、D21、D69 |
 | `mdm-org` | `mdm/org` | D04、D05 |
 | `mdm-employee` | `mdm/employee` | D06 |
 | `mdm-currency` | `mdm/currency` | 主数据卡 |
@@ -52,7 +53,6 @@
 | `infra-attachment` | `infra/attachment` | D53、协议 12 |
 | `infra-audit` | `infra/audit` | 协议 03、15 |
 | `ana-bi` | `ana/bi` | D52、协议 13 |
-| `frontend-pc` | `frontend/pc` | D17 |
 | `frontend-mobile` | `frontend/mobile` | D17 |
 
 每个新身份先在 `registry/` 追加组件 ID、端口、schema 与数据库角色（协议 19 的注册表规则），再建仓库。
@@ -63,10 +63,10 @@
 2. 代表部署实验（D41）：先在 SDK、协议、验收仓库补最小条件，用少量代表组件做部署对照。实验需要的组件按上表先行。
 3. 按实验结果修订设计后，按依赖顺序重建当前范围：SDK 与协议 → 授权与身份 → 主数据 → 交易、库存与财务 → 支撑组件 → 分析与前端。
 4. 用重建后的组件跑完整部署矩阵（路线第 4 步）。
-5. 归档与改名：重建的新仓库可用后，再对被取代的旧仓库执行改名与归档，避免中途断掉参考。
+5. 根项目切换：重建的组件发布新主版本后，`brickkit upgrade` 切到新版本；`legacy/` 分支与旧标签保留，不归档。
 
 ## 待用户确认
 
-- 原则 1（同 ID 沿用仓库、开新主版本）与原则 2（换 ID 归档、新建）。
-- 归档仓库的命名（`archived-<原名>`）与是否在 GitHub 上设为只读。
-- 外壳仓库在实验前是否先保留不动。
+- 旧代码所在分支的名字（建议统一为 `legacy/v<旧主版本>`，例如组件 `legacy/v2`、外壳与工具 `legacy/v1`）。
+- 两个改名（`mdm-customer` → `mdm-partner`，`frontend-standard` → `frontend-pc`）在执行到该组件时再确认一次。
+- 外壳仓库在代表部署实验前是否先保留不动（不挪分支，等实验确定成员组合再重写）。
