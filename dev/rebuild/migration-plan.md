@@ -25,4 +25,4 @@
 | 4 | `be-acceptance`：挪分支、新 `main`、放入模型与检查、改链接 | 完成（`legacy/v0`、`main` 与 `v1.0.0` 已推送；子模块指针已更新） |
 | 5 | 归档旧文档与 `tempDocs/`；工作文件挪到 `dev/rebuild/` | 完成（根目录的旧 `AGENTS*`、`README*` 在第 6 步归档） |
 | 6 | 入口与工具：根 `AGENTS.md`、`README.md` 中文重写；技能链接；`Makefile`（`docs-mirror` 移出 `gates`，`docs-boundary` 禁止 `tempDocs`，新增 `docs-links`、`docs-ids`、`docs-closure`、`design-models`） | 完成（`version-bump-ship` 技能归档；`brickkit-*` 技能刷新为中文） |
-| 7 | 收尾检查与复查；分批提交 | 完成：链接、边界、编号、闭包、表格结构通过；30 个参考模型在新位置全部通过；一路复查 29 条发现全部修正（[报告](review-migration.md)）。剩 AI 路由测试的新题库（待用户决定何时做）与 A100–A106 的复核 |
+| 7 | 收尾检查与复查；分批提交 | 完成：链接、边界、编号、闭包、表格结构通过；30 个参考模型在新位置全部通过；一路复查 29 条发现全部修正（[报告](review-migration.md)）。A100–A106 用户 2026-10-15 全部确认；剩 AI 路由测试的新题库（待用户决定何时做） |

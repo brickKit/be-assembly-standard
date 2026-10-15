@@ -15,7 +15,7 @@
 ## 现在在哪里
 
 - 设计冻结报告已确认（全部 AI 选择 A01–A98 确认；D70 补充；D75 首批范围），设计阶段的记录在 `archive/design-2026-10/work/`。
-- 正式文档迁移按 [migration-plan.md](migration-plan.md) 进行。迁移中新增的 AI 选择 A99–A106 记在 `docs/zh/02-decisions/09-ai-choices.md`，A100–A106 待维护者复核。
+- 正式文档迁移按 [migration-plan.md](migration-plan.md) 进行。迁移中新增的 AI 选择 A99–A106 记在 `docs/zh/02-decisions/09-ai-choices.md`，A100–A106 用户 2026-10-15 全部确认。
 - 之后：代表部署实验（D41），再按 [rebuild-plan.md](rebuild-plan.md) 重建。
 
 ## 任务结束时：知识库反馈
