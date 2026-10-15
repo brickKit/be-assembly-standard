@@ -93,7 +93,7 @@
 
 ## 定义：资源、维度、操作与字段
 
-定义由业务组件随版本提交，通过 `DefinitionRef` 引用。
+定义由业务组件随版本提交，通过 `DefinitionRef` 引用。**提交的核对**：授权组件只接受服务身份（安全 02）等于 `DefinitionRef.owner_component` 的提交；资源类型与附件类别的键在注册表中登记属主（[协议 19 的注册表](../19-config-secrets-registries-release.md#注册表)），一个资源类型只有一个属主，提交的属主与登记不符时拒绝并记录安全事件。其他组件（例如附件组件核对“申请者是父资源类型的属主”，[协议 12](../12-attachments-and-object-storage.md#访问凭证)）以授权组件保存的、经过这一核对的定义为依据。
 
 **资源定义 `be.security.resource_definition`**
 
@@ -107,6 +107,18 @@
 | `governance_dimension` | `Key` | 条件 | `shareable` 为真时必填：共享治理按哪个维度划分（例如法人） |
 | `extensible` | `Bool` | 否 | 缺省 `false`；为真时允许客户扩展字段（[协议 08](../08-extension-fields.md)） |
 | `extension_quota` | `Map<Key,Int>` | 条件 | `extensible` 为真时必填：字段数、可排序字段数、单条扩展数据的字节数、多值上限 |
+| `attachment_categories` | `Map<Key,AttachmentCategory>` | 否 | 这个资源类型的记录可以带哪些附件类别；缺省为空，表示不能带附件 |
+
+**附件类别 `AttachmentCategory`**（[协议 12 的附件类别](../12-attachments-and-object-storage.md#附件类别)）
+
+| 字段 | 类型 | 必填 | 约束 |
+| --- | --- | --- | --- |
+| `field` | `Key` | 是 | 类别在父资源上对应的字段（`fields` 中已定义）；属主按它的读写资格判断用户能否读写这类附件 |
+| `max_bytes` | `Int` | 是 | 不超过附件组件的全局上限 |
+| `allowed_types` | `Set<Text>` | 是 | 允许的内容类型（按服务端检测） |
+| `sensitivity` | `Enum` | 是 | `normal`、`strict`；`strict` 不签发预签名下载地址 |
+| `retention_class` | `Key` | 是 | 协议 11 的保留类别 |
+| `version` | `Text` | 是 | 类别的版本；附件记录保存创建时的版本 |
 
 **维度定义 `DimensionDefinition`**
 
@@ -250,7 +262,7 @@
 | `new_revision` | `RevisionRef` | 条件 | `applied` 时必填 |
 | `security_revisions` | `List<RevisionRef>` | 条件 | `applied` 时必填：被推进的安全修订 |
 
-**变更计划 `change_plan` 的专有字段**：`items: List<PlanItem>`；`previewed_at: Instant`；`expires_at: Instant`；`plan_state: Enum(draft, previewed, confirmed, executing, completed, partially_completed, cancelled)`。`PlanItem = {item_key: Text, request: change_request, item_state: Enum(pending, applied, rejected, needs_review), result: change_result（否）}`。各状态的含义与转换见[安全 08 的批量计划](08-state-and-change-protocol.md#批量计划)。
+**变更计划 `change_plan` 的专有字段**：`items: List<PlanItem>`；`previewed_at: Instant`；`expires_at: Instant`；`plan_state: Enum(draft, previewed, confirmed, executing, completed, partially_completed, cancelled, expired)`。`PlanItem = {item_key: Text, request: change_request, item_state: Enum(pending, applied, rejected, needs_review), result: change_result（否）}`。各状态的含义与转换见[安全 08 的批量计划](08-state-and-change-protocol.md#批量计划)。
 
 **包含见证 `be.security.containment_witness`**：`candidate_segment: Digest`；`ceiling_records: List<{record: Id, revision: RevisionRef}>`；`rules: Map<Key, Enum>`（每个维度所用的规则：`all`、`subset`、`subtree_cover`、`interval_inside`、`self_instantiated` 等）；`split: {dimension: Key, assignments: List<{value: Text, ceiling: Id}>}`（否）；`instantiation_facts: List<RevisionRef>`；`algorithm_version: Text`；`comparisons: Int`。见证用于审计与解释，生效点现场重算（安全 07）。
 
@@ -369,6 +381,8 @@ EN 预期全部在本页；其中 EN16、EN17 检验的是[安全 09b](09b-capab
 | EN18 | 变更请求同时含收紧与放宽 | 拒绝，要求拆成两个请求 |
 | EN19 | 确认的 `candidate_digest` 与生效时的候选内容不同 | 确认无效 |
 | EN20 | 错误回答中出现无权查看的金额或负责人 | 不允许；只给 reason 与可显示的信息 |
+| EN21 | 组件甲提交一份资源定义，`owner_component` 写成组件乙，或资源类型在注册表中属于组件乙 | 拒绝并记录安全事件 |
+| EN22 | 附件类别引用的字段不在资源定义的 `fields` 中 | 拒绝 |
 
 ## 依据与独立判断
 

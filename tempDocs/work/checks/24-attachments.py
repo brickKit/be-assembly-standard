@@ -30,7 +30,8 @@ attachment in place under the same key and keep the earlier scan result; read th
 object for the checks and copy it to the final key afterwards;
 orphan cleanup decides by object age instead of checking metadata references; purge ignores holds; download links without an expiry;
 grant not bound to the attachment; grant expiry not checked; grant issued to any calling component
-without checking that it owns the parent's resource type.
+without checking that it owns the parent's resource type; grant accepted from a user other than the
+one it was issued for.
 """
 import random
 import sys
@@ -175,6 +176,10 @@ def grant_run(rng, variant, fails):
             if g is None:
                 continue                             # an unknown token is not found
             user, att, op, exp = g
+            presenter = user if rng.random() < 0.7 else rng.choice(["u1", "u2"])   # tokens get passed around
+            if presenter != user and variant != "no_user_check":
+                continue                             # the grant is bound to the user it was issued for
+            user = presenter
             target = att if variant != "unbound" else rng.choice(list(attachments))
             if variant != "no_expiry_check" and now > exp:
                 continue
@@ -196,7 +201,7 @@ def main():
     for v in variants[1:]:
         print(f"bad variant {v}: {'caught ' + str(res[v]) if res[v] else 'NOT CAUGHT'}")
         caught &= bool(res[v])
-    gvariants = ["good", "unbound", "no_expiry_check", "any_caller"]
+    gvariants = ["good", "unbound", "no_expiry_check", "any_caller", "no_user_check"]
     gres = {}
     for v in gvariants:
         rng = random.Random(SEED)
