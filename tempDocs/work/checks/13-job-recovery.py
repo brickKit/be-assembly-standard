@@ -18,9 +18,13 @@ Workers claim work items (cron slots, queue items) and may crash at any point. C
   (FENCING is checked through LOCAL_ONCE: without the epoch check a fenced worker's commit
   duplicates the local effect.)
 
+A non-idempotent call can also end in an ambiguous error (timeout, 5xx): the item is paused at
+once, and any later claim (from any state) that finds the outcome-unknown flag set pauses too.
+
 Bad variants (each must be caught): insert-only claim (no takeover); completion mark in a
 separate transaction; no epoch check on commit; resend non-idempotent calls on takeover;
-cleanup without the watermark.
+cleanup without the watermark; an ambiguous error treated as retryable (flag cleared);
+an ambiguous error sent to retry_wait with the flag kept, but the flag only checked on takeover.
 """
 import random
 import sys
@@ -58,6 +62,7 @@ def run(rng, variant, fails):
             else:
                 ok = it["state"] == "pending" or (it["state"] == "running" and it["lease_until"] <= worker_now)
             if ok:
+                it["takeover"] = it["state"] == "running"
                 it["state"] = "running"
                 it["epoch"] += 1
                 it["attempts"] += 1
@@ -114,12 +119,21 @@ def run(rng, variant, fails):
         else:  # non-idempotent external call
             if crash and point == "after_claim":
                 stale.append((iid, ep)); continue
-            if it["unknown"] and variant != "resend_nonidem":
+            checked = variant != "takeover_check_only" or it["takeover"]
+            if it["unknown"] and variant != "resend_nonidem" and checked:
                 it["state"] = "paused"; continue
             nonidem_sent[iid] = nonidem_sent.get(iid, 0) + 1
             it["unknown"] = True                # recorded before sending: outcome unknown until committed
             if crash and point in ("after_external_send", "before_commit"):
                 stale.append((iid, ep)); continue
+            if rng.random() < 0.2:              # ambiguous error: timeout or 5xx, the target may have acted
+                if variant == "retry_ambiguous":
+                    it["unknown"] = False; it["state"] = "pending"
+                elif variant == "takeover_check_only":
+                    it["state"] = "pending"      # retry_wait with the flag kept
+                else:
+                    it["state"] = "paused"
+                continue
             if it["epoch"] == ep:
                 it["state"] = "done"
         # cleanup: delete done rows below the watermark and advance it
@@ -150,7 +164,8 @@ def run(rng, variant, fails):
                 break
             iid, ep = c
             it = db.items[iid]
-            if it["kind"] == "nonidempotent" and it["unknown"] and variant != "resend_nonidem":
+            checked = variant != "takeover_check_only" or it["takeover"]
+            if it["kind"] == "nonidempotent" and it["unknown"] and variant != "resend_nonidem" and checked:
                 it["state"] = "paused"; continue
             if it["kind"] == "local":
                 db.local_effects[iid] = db.local_effects.get(iid, 0) + 1
@@ -199,7 +214,8 @@ def dst_slots(variant):
 
 
 def main():
-    variants = ["good", "insert_only", "separate_done", "no_epoch_check", "resend_nonidem", "cleanup_no_watermark"]
+    variants = ["good", "insert_only", "separate_done", "no_epoch_check", "resend_nonidem", "cleanup_no_watermark",
+                "retry_ambiguous", "takeover_check_only"]
     results = {}
     for v in variants:
         rng = random.Random(SEED)

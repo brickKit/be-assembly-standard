@@ -62,6 +62,7 @@
 | `RevisionRef` | `domain` | `Key` | 是 | 修订域，例如 `authz.security.legal_entity`；只在同一域内比较 |
 | | `value` | `Text` | 是 | 不透明；比较规则由域声明（多数为十进制整数文本） |
 | | `epoch` | `Text` | 否 | 库内分配、别处比较的计数所带的纪元（[协议 14 的库内计数与纪元](../14-data-foundations.md#库内计数与纪元)）；有它的域，比较按协议 14：同一纪元按整数，不同纪元用分叉点判断旧值是否仍被包含 |
+| | `instance` | `Text` | 否 | 分配处的实现实例（例如授权成员实例）；分配处可以被另一个实现替换时必填。不同实例的值不按数值比较，只经登记的包含关系比较（协议 14） |
 | `DefinitionRef` | `owner_component` | `Key` | 是 | — |
 | | `kind` | `Enum` | 是 | `resource`、`operation`、`field`、`dimension`、`role_template` |
 | | `key` | `Key` | 是 | — |
