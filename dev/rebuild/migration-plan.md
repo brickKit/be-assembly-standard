@@ -22,7 +22,7 @@
 | 1 | 承接表：旧 `docs/`、根 `AGENTS.md`、`README.md`、`.claude/skills/version-bump-ship`、`Makefile` 与文档检查的每一节写明去处 | 完成（根入口与技能在第 6 步） |
 | 2 | 从开发区提取：AI 选择 A01–A99 写成 `02-decisions/09-ai-choices.md`（已完成）；39 条原有决定按原编号写进主题文件；证据摘要并入依据；冻结报告六至八节逐条对照（第六节的机制风险已补进各文档的“已知风险与待定”；第七节转入 `dev/rebuild/`；第八节即 D75） | 完成 |
 | 3 | 写正文：`final/` 用 `git mv` 搬到 `docs/zh/`；安全 08 加任务导航并分组预期（已完成）；协议 05 的预期分组（已完成）；去掉过程性说明；按承接表补写新内容 | 完成（`docs/zh/README.md` 与协议 21、路线的迁移后改写在第 4、6 步） |
-| 4 | `be-acceptance`：挪分支、新 `main`、放入模型与检查、改链接 | 待做 |
+| 4 | `be-acceptance`：挪分支、新 `main`、放入模型与检查、改链接 | 完成（`legacy/v0`、`main` 与 `v1.0.0` 已推送；子模块指针已更新） |
 | 5 | 归档旧文档与 `tempDocs/`；工作文件挪到 `dev/rebuild/` | 完成（根目录的旧 `AGENTS*`、`README*` 在第 6 步归档） |
-| 6 | 入口与工具：根 `AGENTS.md`、`README.md` 中文重写；技能链接；`Makefile`（`docs-mirror` 移出 `gates`，`docs-boundary` 禁止 `tempDocs`，新增 `docs-links`、`docs-ids`、`docs-closure`、`design-models`） | 待做 |
-| 7 | 收尾检查与两路复查；分批提交 | 待做 |
+| 6 | 入口与工具：根 `AGENTS.md`、`README.md` 中文重写；技能链接；`Makefile`（`docs-mirror` 移出 `gates`，`docs-boundary` 禁止 `tempDocs`，新增 `docs-links`、`docs-ids`、`docs-closure`、`design-models`） | 完成（`version-bump-ship` 技能归档；`brickkit-*` 技能刷新为中文） |
+| 7 | 收尾检查与复查；分批提交 | 进行中（链接、边界、编号、闭包、表格结构通过；模型重跑与一路复查进行中） |
