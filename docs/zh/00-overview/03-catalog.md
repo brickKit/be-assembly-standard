@@ -134,7 +134,7 @@
 
 ## 新增与退役的身份
 
-新增的身份在正式迁移时登记端口与 schema（协议 19）：`mdm/partner`、`mdm/employee`、`mdm/currency`、`erp/contract`、`erp/planning`、`erp/intercompany`、`erp/consolidation`、`erp/warehouse`、`erp/credit`、`erp/costing`、`erp/billing`、`erp/payment`、`erp/tax`、`erp/budget`、`integration/einvoice-<地区>`、`integration/bank-<格式>`、`integration/carrier-<承运商>`、`integration/shop-<平台>`、`integration/print-agent`、`infra/authz-static`、`infra/authz-openfga`、`ana/search`、`frontend/pc`、`frontend/mobile`、`frontend/terminal`。可选流程引擎的适配组件、通用 OIDC／目录适配在选定产品后登记。
+新增的身份在重建时先在注册表登记组件 ID、端口与 schema（协议 19）：`mdm/partner`、`mdm/employee`、`mdm/currency`、`erp/contract`、`erp/planning`、`erp/intercompany`、`erp/consolidation`、`erp/warehouse`、`erp/credit`、`erp/costing`、`erp/billing`、`erp/payment`、`erp/tax`、`erp/budget`、`integration/einvoice-<地区>`、`integration/bank-<格式>`、`integration/carrier-<承运商>`、`integration/shop-<平台>`、`integration/print-agent`、`infra/authz-static`、`infra/authz-openfga`、`ana/search`、`frontend/pc`、`frontend/mobile`、`frontend/terminal`。可选流程引擎的适配组件、通用 OIDC／目录适配在选定产品后登记。
 
 | 退役的身份 | 去向 |
 | --- | --- |
