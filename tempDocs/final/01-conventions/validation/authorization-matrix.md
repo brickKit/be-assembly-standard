@@ -25,7 +25,7 @@
 
 涉及撤权、任职变更、到期和同步的预期，按所选操作的风险、确认点与声明的新鲜度窗口实例化；不要求未声明的同瞬间全副本生效，也不能以最终生效掩盖窗口越界。不同入口确实使用不同权限点或附加业务条件时分别说明，集合对照使用同一读取动作和条件。
 
-时间节点与风险分档见[接受与撤销](../../06-protocols/security/03-authorization-acceptance-and-revocation.md)。PA26–PA30、PA32、PA36 实例化时结合 AT01–AT55，分别断言关闭新接受与关闭旧提交，不把 Check 成功、许可或部分屏障回执当作已完成。
+时间节点与风险分档见[接受与撤销](../../06-protocols/security/03-authorization-acceptance-and-revocation.md)。PA26–PA30、PA32、PA36 实例化时结合 AT01–AT64，分别断言关闭新接受与关闭旧提交，不把 Check 成功、许可或部分屏障回执当作已完成。
 
 PA13–PA18 的管理、任职与模板升级，结合[管理与任职 AM01–AM20](../../06-protocols/security/04-authorization-administration-and-appointments.md)实例化，保持完整上限、目标影响与生效点的检查；正常卸任与机构上限收紧分别断言。
 

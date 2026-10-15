@@ -192,14 +192,19 @@
 
 ## 安全记录
 
-**通用部分**（[安全 08](08-state-and-change-protocol.md) 的全部记录类型都带）。记录类型由封装的 `record_type` 表达，取值为 `be.security.` 加上 `management_unit`、`management_holding`、`role_revision`、`grant`、`institutional_share`、`delegation_edge`、`impersonation_session`、`break_glass_session`、`bootstrap_claim`、`change_plan` 之一。
+**通用部分**（[安全 08](08-state-and-change-protocol.md) 的全部记录类型都带）。记录类型由封装的 `record_type` 表达，取值为 `be.security.` 加上 `management_unit`、`management_holding`、`role_revision`、`grant`、`institutional_share`、`delegation_edge`、`impersonation_session`、`break_glass_session`、`bootstrap_claim`、`change_plan`、`security_disposition` 之一。
 
 | 字段 | 类型 | 必填 | 约束 |
 | --- | --- | --- | --- |
 | `state` | `Enum` | 是 | `requested`、`awaiting_confirmation`、`scheduled`、`active`、`held`、`ended`（安全 08 的通用生命周期） |
 | `end_reason` | `Enum` | 条件 | `state = ended` 时必填：`expired`、`revoked`、`relinquished`、`source_ended`、`source_narrowed`、`superseded`、`rejected`、`cancelled`、`withdrawn`；各自的含义见安全 08 |
-| `held_reason` | `Enum` | 条件 | `state = held` 时必填：`security_action`、`constraint_not_computable` |
+| `held_reason` | `Enum` | 条件 | `state = held` 时必填：`security_hold`、`uncomputable` |
 | `review_pending` | `Bool` | 否 | 缺省 `false`；部分越界待复核（安全 08） |
+| `confirmation_backfill_pending` | `Bool` | 否 | 只用于授权管理员持有资格：账号经控制台直接重新启用、事件不带合格的确认 ID 时为 `true`，按不可用处理（安全 08 的“待补确认”） |
+
+**安全处置 `be.security.security_disposition`**（安全 08 的安全处置）：`subject_employee: Id`（否；处置时关联的员工）、`accounts: Set<Id>`（是；处置时的账号）、`suspended_segments: Set<Segment>`（是）、`domain: Id`（是；治理域）、`disposer: PrincipalRef`（是；部署所有者执行管理员恢复时为部署所有者）、`origin: Enum(admin, identity_side, admin_recovery)`（是）、`state: Enum(active, released)`（是）、`released_by: PrincipalRef`（条件）。
+
+**部署的授权状态 `be.security.deployment_admin_state`**：`state: Enum(operational, recovery_pending, admin_recovery)`（是）；`unavailable_holdings: List<{holding: Id, cause: Enum(security_disposition, source_fact)}>`（`recovery_pending` 时必填）；`since: Instant`（是）。
 | `predecessor` | `Id` | 否 | 续期、扩权、改目标、重新授予时引用旧记录 |
 | `sources` | `List<SourceRef>` | 是 | 有效性依赖的来源；`SourceRef = {kind: Enum, ref: Id, role: Enum(ceiling, eligibility, permission_basis, target)}` |
 | `valid` | `TimeWindow` | 是 | — |
@@ -241,7 +246,8 @@
 | `change_key` | `Text` | 是 | 请求者命名空间内唯一；与 `requested_by` 一起构成幂等身份 |
 | `requested_by` | `PrincipalRef` | 是 | — |
 | `acting_as` | `Id` | 条件 | 以管理资格操作时必填：所用的管理持有资格 |
-| `direction` | `Enum` | 是 | `tighten`、`widen`、`neutral`；同时含两者的变更必须拆成两个请求 |
+| `direction` | `Enum` | 是 | `tighten`、`widen`、`neutral`、`restore_security_hold`、`restore_uncomputable`（安全 08 的变更种类）；同时含收紧与放宽的变更必须拆成两个请求 |
+| `confirmation_ids` | `Set<Id>` | 否 | 附上的确认记录 |
 | `target` | `Id` | 条件 | 修改既有记录时必填 |
 | `expected_revision` | `RevisionRef` | 条件 | 修改既有记录时必填：预览时的修订 |
 | `candidate` | 对象 | 条件 | 放宽与新建时必填：候选记录内容（不含封装字段） |
@@ -250,7 +256,7 @@
 | `source_revisions` | `List<RevisionRef>` | 否 | 预览时读取的来源修订；生效点逐项核对 |
 | `reason` | `Text` | 否 | 受保护操作必填（由 profile 声明） |
 
-**确认 `be.security.confirmation`**：`change_key`、`candidate_digest`（是；确认针对的内容）、`confirmer: PrincipalRef`（是）、`confirmer_basis: Enum(holding, deployment_owner)`（是）、`confirmed_at: Instant`（是）、`expires_at: Instant`（是；有 `effective_from` 时不早于它）。生效点核对：确认人与申请人不是同一个自然人（安全 08）、内容摘要一致、未过期。
+**确认 `be.security.confirmation`**：`change_key`（否；针对已提交的放宽请求时填写）、`candidate_digest`（条件；放宽时必填）、`target: Id` 与 `expected_revision: RevisionRef`（条件；收紧时必填）、`target_state: Key` 与 `target_state_version: RevisionRef`（条件；重新启用或解冻账号时必填）、`confirmer: PrincipalRef`（是）、`confirmer_basis: Enum(holding, deployment_owner)`（是）、`confirmed_at: Instant`（是）、`expires_at: Instant`（是；有 `effective_from` 时不早于它）、`consumed_by_change: Id`（否；得到“已生效”的那次生效点写入）。生效点核对：确认人与申请人不是同一个自然人（安全 08）、对象与内容（或版本）一致、未过期、未被使用。
 
 **变更结果 `be.security.change_result`**
 

@@ -34,10 +34,10 @@
 | 有界本地授权 | 默认路径：组件在视图有效期内本地判定，撤权有明确的上界 | `W_read`、`W_high` | 各组件 | 安全 03 |
 | 无法证明 | 判断所需的事实不可得、过期或不相容；按保护处理，不当作拒绝后返回空 | `unprovable`、`AUTHORIZATION_UNPROVABLE` | 各组件 | 安全 03、09a |
 | 生效点 | 授权组件中改变安全记录的那个本地事务；放宽只在这里检查通过才生效 | `effect_point` | `infra/authz` | 安全 08 |
-| 收紧、放宽 | 收紧只减少访问，一提交即生效；放宽须在生效点通过检查。易混：“收窄”是收紧的一种（内容缩小、身份不变） | `tighten`、`widen` | `infra/authz` | 安全 08 |
+| 收紧、放宽 | 收紧只减少访问，经生效点只检查谁有权收紧与最后管理员，不要证明；放宽须在生效点通过全部检查。易混：“收窄”是收紧的一种（内容缩小、身份不变） | `tighten`、`widen` | `infra/authz` | 安全 08 |
 | 受保护暂停 | 记录暂不提供访问：安全处置（`security_hold`）或来源约束无法计算（`uncomputable`） | `held` | `infra/authz` | 安全 08 |
-| 待恢复 | 可证明没有可用的授权管理员时部署所处的状态；经正常来源事实重新证明可用时自动退出；由安全处置进入的只能经管理员恢复退出 | `recovery_pending` | `infra/authz` | 安全 08 |
-| 授权的恢复代次 | 授权成员切换、管理员恢复与整套恢复推进的代次；易混：协议 14 的“部署恢复代次”是纪元的组成部分 | `authz.recovery` | `infra/authz` | 安全 03 |
+| 待恢复 | 可证明没有可用的授权管理员时部署所处的状态；某份因来源事实不可用的持有资格重新被证明可用时自动退出；因安全处置不可用的只能经管理员恢复或处置解除 | `recovery_pending`；`admin_recovery` | `infra/authz` | 安全 08 |
+| 授权的恢复代次 | 授权成员切换、成员回退、管理员恢复与整套恢复推进的代次；易混：协议 14 的“部署恢复代次”是纪元的组成部分 | `authz.recovery` | `infra/authz` | 安全 03 |
 | 委托、共享、只读扮演 | 个人委托（受托人代办）、机构共享（资源给接收人）、只读扮演（支持人员查看）；三者来源与撤销不同 | `delegation_edge`、`share`、`impersonation_session` | `infra/authz` | [安全 05](../06-protocols/security/05-sharing-delegation-and-impersonation.md) |
 
 ## 数据与一致性
@@ -56,7 +56,7 @@
 | 工作项 | 后台工作的一次执行单位，带租约、代次与副作用种类 | `work_item` | 各组件 | [协议 01](../06-protocols/01-background-work.md) |
 | 结果未知 | 对外调用可能已执行、也可能没有；不重发，先查询 | `outcome_unknown`、`unknown` | 各组件 | 协议 01、10 |
 | 幂等键 | 同一操作的所有尝试共用的键，对方据此去重 | `operation_id` | 各组件 | 协议 01 |
-| 证据存储 | 恢复时不能丢的记录（收紧、销毁、对外终态、部署恢复代次）；由审计组件兼任 | `evidence` | `infra/audit` | [协议 15](../06-protocols/15-backup-and-recovery.md) |
+| 证据存储 | 恢复时不能丢的记录（收紧、销毁、对外终态、部署恢复代次与授权的恢复代次）；由审计组件兼任 | `evidence` | `infra/audit` | [协议 15](../06-protocols/15-backup-and-recovery.md) |
 | 单号 | 给人看的编号，与记录身份分开 | `document_number` | 各组件 | 协议 14 |
 | 记录身份 | 不复用的记录 ID（UUIDv7） | `id` | 各组件 | 协议 14 |
 
