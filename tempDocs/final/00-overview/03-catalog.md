@@ -43,7 +43,7 @@
 | `erp/sales` | 报价、计价与销售订单；实物与服务共同基础 | 当前重建 | [业务与渠道](guides/business-and-channels.md) |
 | `erp/purchase` | 采购申请、订单与到货 | 当前重建 | [业务与渠道](guides/business-and-channels.md) |
 | `erp/inventory` | 库存数量、预占与物理变动（唯一写入者） | 当前重建 | [业务与渠道](guides/business-and-channels.md) |
-| `erp/contract` | 客户合同、框架协议、订阅与周期出账计划（D70） | 远期 | [业务与渠道](guides/business-and-channels.md) |
+| `erp/contract` | 客户合同、客户与供应商的框架协议、订阅与周期出账计划（D70） | 远期 | [业务与渠道](guides/business-and-channels.md) |
 | `erp/intercompany` | 公司间规则、对开单据与内部往来对账（D72） | 远期 | [财务与结算](guides/finance-and-settlement.md) |
 | `erp/planning` | 补货规则（再订货点、安全库存）、需求预测与物料需求计划（D71） | 远期 | [业务与渠道](guides/business-and-channels.md) |
 | `erp/warehouse` | 可选的复杂仓库作业（波次、拣货、复核、打包） | 远期 | [业务与渠道](guides/business-and-channels.md) |

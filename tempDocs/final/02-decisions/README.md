@@ -14,7 +14,7 @@
 | [审批与流程](04-approval-and-workflow.md) | D11、D18、D19、D23、D33、D38、D39、D60 |
 | [事务、数据、审计与恢复](05-transactions-data-and-recovery.md) | D12–D14、D26、D28、D65（已被取代）、D66 |
 | [前端与终端](06-frontend.md) | D17、D24、D34 |
-| [部署、交付与维护](07-deployment-and-delivery.md) | D25、D32、D40–D43、D54、D55、D58、D63 |
+| [部署、交付与维护](07-deployment-and-delivery.md) | D25、D32、D40–D43、D54、D55、D58、D63、D75 |
 | [文档与设计推进方式](08-documentation-and-process.md) | D56、D59、D67、D74 |
 
 编号是裁定的先后顺序，不连续出现在同一文件中。D01–D63 来自 2026-10-12 至 10-13 的逐题问答与复查；D64 起来自后续复查与整理。D64 是 AI 按维护者的授权做出的决定；其余都是维护者裁定。设计中 AI 自行做出的选择（A 编号）不在本目录，在冻结报告中列出供复核。
