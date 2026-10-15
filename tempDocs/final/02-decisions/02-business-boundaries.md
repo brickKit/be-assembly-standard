@@ -7,7 +7,7 @@
 - **决定**：信用额度从客户基础资料移出；额度政策、已用信用与超限判断统一归 ERP 的信用能力，明确客户、法人与币种的语义。
 - **理由**：信用额度是业务风险政策，与它的判断依据一起建模；基础资料只保留身份。
 - **不采用**：基础资料保存额度、财务保存已用信用——改动少，但政策与判断要跨组件协调。
-- **落在**：组件见 D03；占用与应收的衔接见[协议 04](../06-protocols/04-order-reservation.md)、[协议 05 的应收形成与信用占用的转换](../06-protocols/05-billing-settlement-and-costing.md#应收形成与信用占用的转换)。
+- **落在**：组件见 D03；占用与应收的衔接见[协议 04](../06-protocols/04-order-reservation.md)、[协议 05 的应收形成与信用占用的转换](../06-protocols/05-billing-settlement-and-payment.md#应收形成与信用占用的转换)。
 
 ## D03 信用管理独立成组件
 
@@ -71,7 +71,7 @@
 - **理由**：部分出账、按交付或阶段、按周期出账有独立的变化与定制价值。
 - **不采用**：账单放在财务应收内部。
 - **约束**：出账不是第二份应收；不在出账时悄悄按当前价格覆盖旧依据；草稿、正式出账、应收形成、核销与资金结果分别表达。
-- **落在**：[`erp/billing`](../07-components/erp-finance.md)；[协议 05 的出账额度与认领](../06-protocols/05-billing-settlement-and-costing.md#出账额度来源裁决的认领)。
+- **落在**：[`erp/billing`](../07-components/erp-finance.md)；[协议 05 的出账额度与认领](../06-protocols/05-billing-settlement-and-payment.md#出账额度来源裁决的认领)。
 
 ## D49 税计算与合规电子开票分别选配与替换
 
@@ -88,7 +88,7 @@
 - **不采用**：独立的收票与匹配组件，财务复核后形成应付。
 - **改选条件**：出现独立受理与匹配的明确业务与维护价值时重审。
 - **约束**：登记、匹配通过、应付确认、过账与付款分别表达；不强制服务或无采购订单的费用伪造三单匹配。
-- **落在**：[`erp/finance`](../07-components/erp-finance.md)；[协议 05 的供应商票据与应付](../06-protocols/05-billing-settlement-and-costing.md#供应商票据与应付)。
+- **落在**：[`erp/finance`](../07-components/erp-finance.md)；[协议 05 的供应商票据与应付](../06-protocols/05-billing-settlement-and-payment.md#供应商票据与应付)。
 
 ## D51 标准版每法人一个正式会计账簿
 

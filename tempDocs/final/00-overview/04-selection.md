@@ -116,7 +116,7 @@ flowchart TB
 | --- | --- | --- | --- |
 | 有库存与财务就要有成本 | 含 `erp/inventory` 与 `erp/finance` | `erp/costing` | [协议 05b 的成本组件未安装](../06-protocols/05b-inventory-costing.md#成本组件未安装)，A74 |
 | 出账要有来源 | 含 `erp/billing` | 其中之一：`erp/sales`、`erp/contract`、`prj/project` | 出账卡（检查 34 的 ONE-OF） |
-| 款到发货要有财务、收付款与出账 | 部署启用“款到发货”订单策略 | `erp/finance`、`erp/payment`、`erp/billing` | [协议 05 的预收与款到发货](../06-protocols/05-billing-settlement-and-costing.md#预收与款到发货) |
+| 款到发货要有财务、收付款与出账 | 部署启用“款到发货”订单策略 | `erp/finance`、`erp/payment`、`erp/billing` | [协议 05 的预收与款到发货](../06-protocols/05-billing-settlement-and-payment.md#预收与款到发货) |
 | 付款受未清项约束要有财务 | 部署要求付给伙伴的钱针对未清项（默认） | `erp/finance`；不装财务时付款只能线下登记 | 收付款卡 |
 | 实物销售流程要有库存 | 部署的销售启用实物交货 | `erp/inventory` | [领域与边界](02-domains-and-boundaries.md) |
 | 每个法人只有一个薪资权威 | 一个法人装了多个薪资实现 | 每个法人只选其中一个 | D16 |

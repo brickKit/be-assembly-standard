@@ -69,11 +69,11 @@
 | 发生时归属与当前责任 | 业务发生时的组织与现在负责的人或部门，分别保存；授权多用当前责任，指标可按发生时归属 | `occurred_org`、`current_owner` | 各业务组件 | [数据与生命周期](../04-foundations/02-data-and-lifecycle.md#发生时归属与当前责任) |
 | 预占 | 订单确认时在库存与信用上保留的数量或金额，以分支表达；易混：出库是库存的实际减少 | `reservation_branch`；`reserving`、`committed`、`consumed`、`released` | `erp/inventory`、`erp/credit` | [协议 04](../06-protocols/04-order-reservation.md) |
 | 期初 | 上线切点之前的结果，以专门的业务类型进入，不伪造成新交易 | `opening` | 各业务组件 | [协议 16](../06-protocols/16-go-live-and-import.md) |
-| 出账额度与认领 | 来源（订单、合同、项目）裁决每次可出账的额度，出账按认领模式向来源认领 | `billable`、`claim` | 来源组件、`erp/billing` | [协议 05](../06-protocols/05-billing-settlement-and-costing.md) |
+| 出账额度与认领 | 来源（订单、合同、项目）裁决每次可出账的额度，出账按认领模式向来源认领 | `billable`、`claim` | 来源组件、`erp/billing` | [协议 05](../06-protocols/05-billing-settlement-and-payment.md) |
 | 增量事实 | 跨组件不可遗漏的事实，带产生方的序号与纪元，按事实身份去重 | `fact`、`fact_sequence` | 产生方 | 协议 05 |
-| 会计事实契约 | 财务定义的共享契约：各来源按它发布会计事实，财务按过账规则键与科目映射生成凭证，不逐个认识来源 | `accounting_fact`、`posting_rule_key` | `erp/finance`（契约）；各来源 | [协议 05](../06-protocols/05-billing-settlement-and-costing.md) |
+| 会计事实契约 | 财务定义的共享契约：各来源按它发布会计事实，财务按过账规则键与科目映射生成凭证，不逐个认识来源 | `accounting_fact`、`posting_rule_key` | `erp/finance`（契约）；各来源 | [协议 05](../06-protocols/05-billing-settlement-and-payment.md) |
 | 关账参与方 | 按参与方接口参加关账的会计事实来源：收到“请求封存”后在本地事务中封存并以增量事实回报覆盖点，提供按序号的补取；成本组件代理库存与制造参加 | `close_participant`；`unsealed`、`sealed`、`reopened` | 各来源 | [协议 06](../06-protocols/06-period-close.md) |
-| 认领模式 | 一方拥有额度、另一方分次使用时的协调：先认领、再确认（在不可撤回的动作之前）、最后正式化，待确认的到期（`expired`）；出账、贷记、付款、预收放行四处共用 | `claim`；`pending`、`confirmed`、`expired`、`released`、`formalized` | 额度的属主 | [协议 05](../06-protocols/05-billing-settlement-and-costing.md) |
+| 认领模式 | 一方拥有额度、另一方分次使用时的协调：先认领、再确认（在不可撤回的动作之前）、最后正式化，待确认的到期（`expired`）；出账、贷记、付款、预收放行四处共用 | `claim`；`pending`、`confirmed`、`expired`、`released`、`formalized` | 额度的属主 | [协议 05](../06-protocols/05-billing-settlement-and-payment.md) |
 | 可用余额 | 未清项的未清余额减去认领中的金额；核销、冲销、调整、抵扣与新认领只能用它；订单的预收另受订单放行台账约束 | `amount − settled − pay_claimed` | `erp/finance` | 协议 05 |
 | 付款认领 | 付款申请在审批前向财务的未清项认领额度，发出前确认，核销时按实付正式化；认领中的部分不能被核销、冲销或另作他用 | `payment_claim`；`pending`、`confirmed`、`formalized`、`released` | `erp/finance`、`erp/payment` | 协议 05 |
 | 预收、预付 | 预收：带订单参考、尚未分配的客户资金；款到发货的交货向订单的放行台账（收款覆盖额、认领中、已放行）认领才放行。预付与员工借款分两阶段：先是只能被付款核销的申请，付款后形成已付余额，已付余额在票据匹配或报销批准时抵扣 | `prepayment`、`advance` | `erp/finance` | 协议 05 |

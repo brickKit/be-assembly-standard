@@ -71,7 +71,7 @@ flowchart TB
 | 身份、组织、员工 → 授权 | 上游提供事实 | 授权组件按来源水位投影这些事实 | [协议 02](../06-protocols/02-projections.md)、[安全 03](../06-protocols/security/03-authorization-acceptance-and-revocation.md) |
 | 授权 → 全部组件 | 上游发行视图 | 组件本地求值，按有效期核验 | 安全 03 |
 | 销售 → 库存、信用 | 命令与可查询的预占 | 订单确认的预占分支；库存与信用各自裁决 | [协议 04](../06-protocols/04-order-reservation.md) |
-| 销售、合同、项目 → 出账 | 来源裁决额度 | 出账向来源认领；红字向销售退货单的可贷记台账认领 | [协议 05](../06-protocols/05-billing-settlement-and-costing.md) |
+| 销售、合同、项目 → 出账 | 来源裁决额度 | 出账向来源认领；红字向销售退货单的可贷记台账认领 | [协议 05](../06-protocols/05-billing-settlement-and-payment.md) |
 | 会计事实的各来源 → 财务 | 共享契约（会计事实） | 出账、收付款、成本、报销、薪资、资产等按契约发布事实；财务按过账规则生成凭证，新来源上线不改财务；核销在财务内 | 协议 05 |
 | 采购 → 财务 | 命令与只读查询 | 预付申请；财务查询采购的匹配依据（票据匹配、期末暂估） | 协议 05 |
 | 财务 → 成本、资产 | 事件（增量事实） | 票据单价确认、费用票据确认（供成本）；资产购置确认（供资产） | 协议 05、05b |
@@ -91,7 +91,7 @@ flowchart TB
 | 流程 | 图在哪里 |
 | --- | --- |
 | 订单确认与预占 | [协议 04](../06-protocols/04-order-reservation.md) |
-| 出账、认领与核销 | [协议 05](../06-protocols/05-billing-settlement-and-costing.md) |
+| 出账、认领与核销 | [协议 05](../06-protocols/05-billing-settlement-and-payment.md) |
 | 关账 | [协议 06](../06-protocols/06-period-close.md) |
 | 审批：决定的提交与执行放行 | [协议 09](../06-protocols/09-approval-and-workflow.md#执行放行) |
 | 对外命令与结果未知 | [协议 10](../06-protocols/10-external-integration.md#结果未知时) |

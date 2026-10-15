@@ -30,7 +30,7 @@
 | TI | [安全 02](security/02-trusted-identity-and-attributes.md) | PJ | [协议 02](02-projections.md) |
 | AT | [安全 03](security/03-authorization-acceptance-and-revocation.md) | AU | [协议 03](03-audit-durability.md) |
 | AM | [安全 04](security/04-authorization-administration-and-appointments.md) | RS | [协议 04](04-order-reservation.md) |
-| SD | [安全 05](security/05-sharing-delegation-and-impersonation.md) | BL | [协议 05](05-billing-settlement-and-costing.md) |
+| SD | [安全 05](security/05-sharing-delegation-and-impersonation.md) | BL | [协议 05](05-billing-settlement-and-payment.md) |
 | SC | [安全 06](security/06-security-contracts-and-capabilities.md) | PC | [协议 06](06-period-close.md) |
 | FX | [安全 07](security/07-finite-expressions-containment-and-queries.md) | RF | [协议 07](07-references.md) |
 | CP | [安全 08](security/08-state-and-change-protocol.md) | EX | [协议 08](08-extension-fields.md) |
