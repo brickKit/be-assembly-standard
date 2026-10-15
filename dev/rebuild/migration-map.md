@@ -1,6 +1,6 @@
 # 承接表（协议 21 第 1 步）
 
-> 2026-10-15。逐行明细在三份对照报告中：[规范与入口](rewrite-reports/migration-map-conventions.md)（287 行）、[底层选择 01–13](rewrite-reports/migration-map-foundations-a.md)（212 行）、[底层选择 14–27 与原有决定](rewrite-reports/migration-map-foundations-b.md)（193 行 + 43 条决定）。本页是汇总：每份旧文档的去处、已经写好的承接、尚未处理的缺口与冲突。逐行状态以报告为准；处理完一项就在本页记下。
+> 2026-10-15。逐行明细在三份对照报告中：[规范与入口](../../archive/design-2026-10/work/rewrite-reports/migration-map-conventions.md)（287 行）、[底层选择 01–13](../../archive/design-2026-10/work/rewrite-reports/migration-map-foundations-a.md)（212 行）、[底层选择 14–27 与原有决定](../../archive/design-2026-10/work/rewrite-reports/migration-map-foundations-b.md)（193 行 + 43 条决定）。本页是汇总：每份旧文档的去处、已经写好的承接、尚未处理的缺口与冲突。逐行状态以报告为准；处理完一项就在本页记下。
 
 ## 旧文档的去处
 
@@ -19,7 +19,7 @@
 | `01-conventions/README.md` | 新的 `01-conventions/README.md` | 已改 |
 | `02-decisions/0101–0509` | `02-decisions/10-earlier-decisions.md`；去向表已更正 | 已写 |
 | `03-seed-data.md` | 新的 `03-seed-data.md`（随重建组件补写）；规则进 07 | 已写 |
-| `04-foundations/01–27` 与 README | 比较与改选条件进底层选择 05–10 与已有文档；规则进协议；线协议细节进 [`be-protocol` 承接清单](13-be-protocol-carry.md) | 已写 |
+| `04-foundations/01–27` 与 README | 比较与改选条件进底层选择 05–10 与已有文档；规则进协议；线协议细节进 [`be-protocol` 承接清单](be-protocol-carry.md) | 已写 |
 | 根 `AGENTS.md`、`AGENTS.zh.md`、`README*.md`、`docs/*/README.md` | 第 6 步中文重写；易错点按报告 1.14 节逐行处理 | 待写 |
 | `.claude/skills/version-bump-ship` | 第 6 步改写链接与规则（报告 1.17 节） | 待写 |
 
@@ -45,7 +45,7 @@
 
 ## 尚未处理的设计缺口与冲突
 
-无。底层选择与原有决定的承接已完成；线协议细节按已定做法进 [`be-protocol` 承接清单](13-be-protocol-carry.md)。
+无。底层选择与原有决定的承接已完成；线协议细节按已定做法进 [`be-protocol` 承接清单](be-protocol-carry.md)。
 
 ## 已定的做法
 

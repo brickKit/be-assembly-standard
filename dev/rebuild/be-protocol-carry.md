@@ -1,6 +1,6 @@
 # `be-protocol` 承接清单
 
-> 2026-10-15 建立。用户选择：线协议层面的细节在重建 `be-protocol` 时直接写进协议仓库，不进这次正式文档迁移（[承接表的已定做法](12-migration-map.md#已定的做法)）。本页按旧文档逐篇列出要在协议仓库中重审后写入的内容；逐行的原文与对照在三份对照报告中（[规范与入口](rewrite-reports/migration-map-conventions.md)、[底层选择 01–13](rewrite-reports/migration-map-foundations-a.md)、[底层选择 14–27](rewrite-reports/migration-map-foundations-b.md)）。旧文档迁移后在 `archive/docs-v2/` 中。
+> 2026-10-15 建立。用户选择：线协议层面的细节在重建 `be-protocol` 时直接写进协议仓库，不进这次正式文档迁移（[承接表的已定做法](migration-map.md#已定的做法)）。本页按旧文档逐篇列出要在协议仓库中重审后写入的内容；逐行的原文与对照在三份对照报告中（[规范与入口](../../archive/design-2026-10/work/rewrite-reports/migration-map-conventions.md)、[底层选择 01–13](../../archive/design-2026-10/work/rewrite-reports/migration-map-foundations-a.md)、[底层选择 14–27](../../archive/design-2026-10/work/rewrite-reports/migration-map-foundations-b.md)）。旧文档迁移后在 `archive/docs-v2/` 中。
 >
 > 原则：旧数值与旧格式不约束新设计（D59），逐条按终局设计重审；与正式文档冲突时以正式文档为准；写进 `be-protocol` 后，正式文档引用它，规则正文只在一处（A99）。
 
