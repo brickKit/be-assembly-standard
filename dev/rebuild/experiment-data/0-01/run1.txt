@@ -1,0 +1,37 @@
+$ go version
+go version go1.26.0 linux/amd64
+
+$ GOPROXY=off go mod download github.com/brickKit/be-sdk-go@v0.5.0
+go: github.com/brickKit/be-sdk-go@v0.5.0: module lookup disabled by GOPROXY=off
+
+$ GOPRIVATE='github.com/brickKit/*' GOPROXY=off GOSUMDB=sum.invalid go mod download -json github.com/brickKit/be-sdk-go@v0.5.0
+{
+	"Path": "github.com/brickKit/be-sdk-go",
+	"Version": "v0.5.0",
+	"Origin": {
+		"VCS": "git",
+		"URL": "https://github.com/brickKit/be-sdk-go",
+		"Hash": "043079f9835cea5bfc44d198f142af79b95f548b",
+		"Ref": "refs/tags/v0.5.0"
+	}
+}
+
+$ GOSUMDB=sum.invalid go mod download github.com/brickKit/be-sdk-go@v0.4.0
+go: github.com/brickKit/be-sdk-go@v0.4.0: verifying go.mod: invalid GOSUMDB: malformed verifier id
+
+$ GOPRIVATE='github.com/brickKit/*' go env GONOPROXY GONOSUMDB GOPROXY
+github.com/brickKit/*
+github.com/brickKit/*
+https://proxy.golang.org,direct
+
+# proxy-only versions (proxy list minus GitHub tags)
+be-sdk-go: []
+be-acceptance: []
+be-ops: []
+be-protocol: []
+erp-sales: []
+erp-inventory: []
+mdm-product: []
+mdm-customer: []
+infra-authz: []
+infra-iam-casdoor: []

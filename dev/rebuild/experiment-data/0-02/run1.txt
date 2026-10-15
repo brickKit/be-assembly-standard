@@ -1,0 +1,42 @@
+# 0-02 run 1 (2026-10-16), BrickKit CLI v1.4.1, git source baseUrl file://<scratch>/remotes/, XDG_CACHE_HOME=<scratch>/cache
+
+$ brickkit release            # first 0.1.0, description "FIRST content of 0.1.0"
+✅ Released demo/hello@0.1.0: tag 0.1.0 pushed
+$ git ls-remote --tags origin
+0cc6908f7162926d90377c3f8efd56e20668c1a9	refs/tags/0.1.0
+
+$ (consumer) brickkit add demo/hello@0.1.0
+➕ Adding demo/hello@0.1.0
+   ✅ demo/hello@0.1.0
+📝 Written: brickkit.yaml, deploy.yaml
+$ grep description .brickkit/manifests/demo/hello/0.1.0/component.yaml
+  description: FIRST content of 0.1.0
+# user-level bare cache: <scratch>/cache/brickkit/repos/local/<scratch>/remotes/demo-hello.git
+
+$ git tag -d 0.1.0 && git push origin :refs/tags/0.1.0
+$ (edit description -> "SECOND content of 0.1.0", commit, push)
+$ brickkit release
+✅ Released demo/hello@0.1.0: tag 0.1.0 pushed
+$ git ls-remote --tags origin
+077a8709e3e92f78e08335a2fbd584b3c4eeb91f	refs/tags/0.1.0
+
+== bare cache tag ==
+$ git -C <bare cache> rev-parse 0.1.0
+0cc6908f7162926d90377c3f8efd56e20668c1a9
+$ git -C <bare cache> show 0.1.0:component.yaml | grep description
+  description: FIRST content of 0.1.0
+
+== A1 same project: brickkit fetch demo/hello@0.1.0 ==
+ℹ️ demo/hello@0.1.0 declares no artifacts, so there is nothing to download
+  description: FIRST content of 0.1.0          (project manifest cache)
+== A2 same project: brickkit sync ==
+📂 The workspace needs no tidying
+  description: FIRST content of 0.1.0
+== B fresh project (no .brickkit/), same user cache: brickkit sync ==
+  description: FIRST content of 0.1.0
+  bare cache tag still 0cc6908f…
+== C fresh project, fresh user cache (XDG_CACHE_HOME=<scratch>/cache2): brickkit sync ==
+  description: SECOND content of 0.1.0
+
+$ git -C <bare cache> fetch origin 'refs/tags/*:refs/tags/*'
+ ! [rejected]        0.1.0      -> 0.1.0  (would clobber existing tag)
