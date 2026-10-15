@@ -192,19 +192,15 @@
 
 ## 安全记录
 
-**通用部分**（[安全 08](08-state-and-change-protocol.md) 的全部记录类型都带）。记录类型由封装的 `record_type` 表达，取值为 `be.security.` 加上 `management_unit`、`management_holding`、`role_revision`、`grant`、`institutional_share`、`delegation_edge`、`impersonation_session`、`break_glass_session`、`bootstrap_claim`、`change_plan`、`security_disposition` 之一。
+**通用部分**（[安全 08](08-state-and-change-protocol.md) 的全部记录类型都带）。记录类型由封装的 `record_type` 表达，取值为 `be.security.` 加上 `management_unit`、`management_holding`、`role_revision`、`grant`、`institutional_share`、`delegation_edge`、`impersonation_session`、`break_glass_session`、`bootstrap_claim`、`change_plan` 之一（安全处置另有字段表，见下文）。
 
 | 字段 | 类型 | 必填 | 约束 |
 | --- | --- | --- | --- |
 | `state` | `Enum` | 是 | `requested`、`awaiting_confirmation`、`scheduled`、`active`、`held`、`ended`（安全 08 的通用生命周期） |
 | `end_reason` | `Enum` | 条件 | `state = ended` 时必填：`expired`、`revoked`、`relinquished`、`source_ended`、`source_narrowed`、`superseded`、`rejected`、`cancelled`、`withdrawn`；各自的含义见安全 08 |
-| `held_reason` | `Enum` | 条件 | `state = held` 时必填：`security_hold`、`uncomputable` |
+| `held_reason` | `Enum` | 条件 | `state = held` 时必填：`security_hold`、`uncomputable`、`restore_pending` |
 | `review_pending` | `Bool` | 否 | 缺省 `false`；部分越界待复核（安全 08） |
 | `confirmation_backfill_pending` | `Bool` | 否 | 只用于授权管理员持有资格：账号经控制台直接重新启用、事件不带合格的确认 ID 时为 `true`，按不可用处理（安全 08 的“待补确认”） |
-
-**安全处置 `be.security.security_disposition`**（安全 08 的安全处置）：`subject_employee: Id`（否；处置时关联的员工）、`accounts: Set<Id>`（是；处置时的账号）、`suspended_segments: Set<Segment>`（是）、`domain: Id`（是；治理域）、`disposer: PrincipalRef`（是；部署所有者执行管理员恢复时为部署所有者）、`origin: Enum(admin, identity_side, admin_recovery)`（是）、`state: Enum(active, released)`（是）、`released_by: PrincipalRef`（条件）。
-
-**部署的授权状态 `be.security.deployment_admin_state`**：`state: Enum(operational, recovery_pending, admin_recovery)`（是）；`unavailable_holdings: List<{holding: Id, cause: Enum(security_disposition, source_fact)}>`（`recovery_pending` 时必填）；`since: Instant`（是）。
 | `predecessor` | `Id` | 否 | 续期、扩权、改目标、重新授予时引用旧记录 |
 | `sources` | `List<SourceRef>` | 是 | 有效性依赖的来源；`SourceRef = {kind: Enum, ref: Id, role: Enum(ceiling, eligibility, permission_basis, target)}` |
 | `valid` | `TimeWindow` | 是 | — |
@@ -213,6 +209,22 @@
 | `last_change` | `Id` | 是 | 最近一次生效的变更请求 |
 
 `sources[].kind` 的取值：`management_unit`、`management_holding`、`role_revision`、`appointment`、`account`、`delegator_permissions`、`resource_governance`、`target_subject`。
+
+**安全处置 `be.security.security_disposition`** 不带通用部分，字段如下（安全 08 的安全处置）：
+
+| 字段 | 类型 | 必填 | 约束 |
+| --- | --- | --- | --- |
+| `state` | `Enum` | 是 | `active`、`released` |
+| `origin` | `Enum` | 是 | `admin`（处置人提交）、`identity_side`（身份侧信号，治理域为部署全局）、`admin_recovery` |
+| `subject_employee` | `Id` | 否 | 处置时关联的员工 |
+| `accounts` | `Set<Id>` | 是 | 处置时的账号 |
+| `suspended_segments` | `Set<Segment>` | 是 | 被暂停的范围；`identity_side` 时为该自然人的全部段 |
+| `domain` | `Id` | 是 | 治理域 |
+| `disposer` | `PrincipalRef` | 条件 | `origin = admin` 时必填；`admin_recovery` 时为部署所有者 |
+| `confirmations` | `List<Id>` | 否 | 处置或解除其他授权管理员时的确认 |
+| `released_by` | `PrincipalRef` | 条件 | `state = released` 时必填 |
+
+**部署的授权状态 `be.security.deployment_admin_state`**：`state: Enum(operational, recovery_pending, admin_recovery)`（是）；`unavailable_holdings: List<{holding: Id, cause: Enum(security_disposition, source_fact, expired, uncomputable, confirmation_backfill)}>`（`recovery_pending` 时必填）；`entered_from: Enum(operational, recovery_pending)`（`admin_recovery` 时必填，中止时回到它）；`since: Instant`（是）。
 
 **各类型的专有字段**
 
@@ -243,7 +255,7 @@
 
 | 字段 | 类型 | 必填 | 约束 |
 | --- | --- | --- | --- |
-| `change_key` | `Text` | 是 | 请求者命名空间内唯一；与 `requested_by` 一起构成幂等身份 |
+| `change_key` | `Text` | 是 | 请求者命名空间内唯一；与 `requested_by` 一起构成幂等身份，绑定已生效、已驳回与保存了记录的结果（安全 08）；作业触发的生效使用授权组件命名空间中的派生键 `<记录身份>:<目标修订>:<触发种类>` |
 | `requested_by` | `PrincipalRef` | 是 | — |
 | `acting_as` | `Id` | 条件 | 以管理资格操作时必填：所用的管理持有资格 |
 | `direction` | `Enum` | 是 | `tighten`、`widen`、`neutral`、`restore_security_hold`、`restore_uncomputable`（安全 08 的变更种类）；同时含收紧与放宽的变更必须拆成两个请求 |
@@ -263,7 +275,7 @@
 | 字段 | 类型 | 必填 | 约束 |
 | --- | --- | --- | --- |
 | `change_key` | `Text` | 是 | — |
-| `outcome` | `Enum` | 是 | `applied`、`rejected`、`processing`、`awaiting_confirmation`、`scheduled` |
+| `outcome` | `Enum` | 是 | `applied`、`rejected`、`processing`、`awaiting_confirmation`、`scheduled`、`held_kept` |
 | `reason` | `Key` | 条件 | `rejected` 时必填，取自下文的错误表 |
 | `record` | `Id` | 条件 | `applied`、`scheduled` 时必填 |
 | `new_revision` | `RevisionRef` | 条件 | `applied` 时必填 |
@@ -346,8 +358,8 @@
 | 最后管理员保护 | `LAST_ADMIN_PROTECTED` | 409 | 否 | — |
 | 管理员可用性无法证明 | `ADMIN_AVAILABILITY_UNPROVABLE` | 202 | 是 | 处理中，请求不保存，调用者稍后重试：会减少可用管理员的变更，或放宽的请求者资格，依赖的来源暂时无法证明（安全 08）；对象持有授权管理资格的只减少访问的操作，请求者资格无法证明且没有确认（安全 03） |
 | 安全处置限制 | `HELD_BY_SECURITY_DISPOSITION` | 403 | 否 | 只出现在解释中：求值时与同一自然人被安全处置暂停的范围相交的段不生效；对外按无权表达（安全 08） |
-| 部署待恢复 | `RECOVERY_IN_PROGRESS` | 503 | 是 | 管理结构的放宽（管理员恢复除外；安全 08 的待恢复）；收紧照常 |
-| 成员切换中 | `MEMBER_SWITCH_IN_PROGRESS` | 503 | 是 | 授权或身份成员切换窗口内的放宽类管理变更（[安全 10](10-providers-and-member-switching.md)、[安全 11](11-identity-member-switching.md)）；身份切换中新成员接管之后，旧地址上的收紧代理失败（安全 11） |
+| 部署待恢复 | `RECOVERY_IN_PROGRESS` | 503 | 是 | 管理结构的放宽（管理员恢复除外；安全 08 的待恢复）；收紧照常；已有的记录不变，可以稍后重新提交 |
+| 成员切换中 | `MEMBER_SWITCH_IN_PROGRESS` | 503 | 是 | 授权成员切换窗口内的全部放宽（`widen` 与 `restore_*`，已有的记录不变），身份成员切换窗口内的放宽类账号变更（[安全 10](10-providers-and-member-switching.md)、[安全 11](11-identity-member-switching.md)）；身份切换中新成员接管之后，旧地址上的收紧代理失败（安全 11） |
 | 能力不支持 | `CAPABILITY_UNSUPPORTED` | 501 | 否 | 装配时应已阻止；运行时发现则保护受影响的路径 |
 | 结果未知 | `RESULT_UNKNOWN` | 504 | 查询后再定 | 用变更键或动作键查询，不换键重试 |
 

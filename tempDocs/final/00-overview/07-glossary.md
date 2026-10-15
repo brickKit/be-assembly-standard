@@ -36,7 +36,7 @@
 | 生效点 | 授权组件中改变安全记录的那个本地事务；放宽只在这里检查通过才生效 | `effect_point` | `infra/authz` | 安全 08 |
 | 收紧、放宽 | 收紧只减少访问，经生效点只检查谁有权收紧与最后管理员，不要证明；放宽须在生效点通过全部检查。易混：“收窄”是收紧的一种（内容缩小、身份不变） | `tighten`、`widen` | `infra/authz` | 安全 08 |
 | 受保护暂停 | 记录暂不提供访问：安全处置（`security_hold`）或来源约束无法计算（`uncomputable`） | `held` | `infra/authz` | 安全 08 |
-| 待恢复 | 可证明没有可用的授权管理员时部署所处的状态；某份因来源事实不可用的持有资格重新被证明可用时自动退出；因安全处置不可用的只能经管理员恢复或处置解除 | `recovery_pending`；`admin_recovery` | `infra/authz` | 安全 08 |
+| 待恢复 | 可证明没有可用的授权管理员时部署所处的状态；只能经部署所有者的管理员恢复退出（管理员恢复进行中是另一个状态 `admin_recovery`） | `recovery_pending` | `infra/authz` | 安全 08 |
 | 授权的恢复代次 | 授权成员切换、成员回退、管理员恢复与整套恢复推进的代次；易混：协议 14 的“部署恢复代次”是纪元的组成部分 | `authz.recovery` | `infra/authz` | 安全 03 |
 | 委托、共享、只读扮演 | 个人委托（受托人代办）、机构共享（资源给接收人）、只读扮演（支持人员查看）；三者来源与撤销不同 | `delegation_edge`、`share`、`impersonation_session` | `infra/authz` | [安全 05](../06-protocols/security/05-sharing-delegation-and-impersonation.md) |
 
