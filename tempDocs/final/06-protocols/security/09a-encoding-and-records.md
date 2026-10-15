@@ -223,7 +223,7 @@
 | `domain` | `Id` | 是 | 治理域 |
 | `disposer` | `PrincipalRef` | 条件 | `origin = admin` 时必填；`admin_recovery` 时为部署所有者 |
 | `confirmations` | `List<Id>` | 否 | 处置或解除其他授权管理员时的确认 |
-| `signal_ref` | `Text` | 条件 | `origin = identity_side` 时必填：（账号，发生转变时的账号状态修订）；同一账号至多一条 `state = active` 的 `identity_side` 处置（安全 08 的身份侧处置的派生） |
+| `signal_ref` | `Text` | 条件 | `origin = identity_side` 时必填：（账号，引起这次冻结或标记的证据记录身份）；同一账号至多一条 `state = active` 的 `identity_side` 处置（安全 08 的身份侧处置的派生） |
 | `released_by` | `PrincipalRef` | 条件 | `state = released` 时必填 |
 
 **部署的授权状态 `be.security.deployment_admin_state`**：`state: Enum(operational, recovery_pending, admin_recovery)`（是）；`unavailable_holdings: List<{holding: Id, cause: Enum(security_disposition, source_fact, expired, uncomputable, confirmation_backfill)}>`（`recovery_pending` 时必填）；`entered_from: Enum(operational, recovery_pending)`（`admin_recovery` 时必填，中止时回到它）；`since: Instant`（是）。
@@ -261,7 +261,7 @@
 | `requested_by` | `PrincipalRef` | 是 | — |
 | `trigger` | `Enum(user, job, recovery)` | 是 | 由生效点从调用通道得出（恢复命令的通道、授权组件自己的工作项），不由请求自称；`recovery` 另要求恢复凭据在同一通道上已核对 |
 | `expected_state_revision` | `RevisionRef` | 条件 | 作业触发与终止时必填：触发时记录的状态修订（安全 08 决策表第 3、4 行） |
-| `termination` | `Enum(withdraw, reject, cancel)` | 条件 | 终止尚未生效的记录时必填：收回、拒绝走安全 08 决策表第 7 行，取消按普通收紧 |
+| `termination` | `Enum(withdraw, reject, cancel)` | 条件 | 终止尚未生效的记录时必填：收回、拒绝走安全 08 决策表第 7 行，取消按普通收紧；子类与请求者的身份不符（例如管理者以 `withdraw` 终止别人的申请）时按第 4 行驳回 |
 | `acting_as` | `Id` | 条件 | 以管理资格操作时必填：所用的管理持有资格 |
 | `direction` | `Enum` | 是 | `tighten`、`widen`、`neutral`、`restore_security_hold`、`restore_uncomputable`（安全 08 的变更种类）；同时含收紧与放宽的变更必须拆成两个请求 |
 | `confirmation_ids` | `Set<Id>` | 否 | 附上的确认记录 |
@@ -273,7 +273,7 @@
 | `source_revisions` | `List<RevisionRef>` | 否 | 预览时读取的来源修订；生效点逐项核对 |
 | `reason` | `Text` | 否 | 受保护操作必填（由 profile 声明） |
 
-**确认 `be.security.confirmation`**：`change_key`（否；针对已提交的放宽请求时填写）、`candidate_digest`（条件；放宽时必填）、`target: Id` 与 `expected_revision: RevisionRef`（条件；收紧时必填；解除处置时为处置身份与处置修订）、`target_state: Key` 与 `target_state_version: RevisionRef`（条件；重新启用或解冻账号时必填）、`confirmer: PrincipalRef`（是）、`confirmer_basis: Enum(holding, deployment_owner)`（是）、`confirmed_at: Instant`（是）、`expires_at: Instant`（是；有 `effective_from` 时为生效时间加确认有效期）、`waiting_since: Instant`（否；生效点返回处理中时记下，再次进入时按等待时长顺延 `expires_at` 并清空；顺延累计不超过处理中的等待上限）、`consumed_by_change: Id`（否；得到“已生效”的那次生效点写入）。生效点核对：确认人与申请人不是同一个自然人，确认人也不是受保护操作的对象本人（[安全 08 的确认与受保护操作](08-state-and-change-protocol.md#确认与受保护操作)）、对象与内容（或版本）一致、未过期、未被使用；`confirmer_basis = holding` 时还核对确认人此刻的资格可证明、合格且未处于安全处置（例外：对象不影响授权管理员可用性时，安全 03 两人规则下的确认人按最后已应用的事实判断，安全 08 决策表第 22 行），`deployment_owner` 时只核对凭据与使用记录。解除处置的确认绑定处置身份与处置修订，`consumed_by_change` 在整个解除完成时写入。
+**确认 `be.security.confirmation`**：`change_key`（否；针对已提交的放宽请求时填写）、`candidate_digest`（条件；放宽时必填）、`target: Id` 与 `expected_revision: RevisionRef`（条件；收紧时必填；解除处置时为处置身份与处置修订）、`target_state: Key` 与 `target_state_version: RevisionRef`（条件；账号状态变更（停用、冻结、重新启用、解冻）时必填）、`confirmer: PrincipalRef`（是）、`confirmer_basis: Enum(holding, deployment_owner)`（是）、`confirmed_at: Instant`（是）、`expires_at: Instant`（是；有 `effective_from` 时为生效时间加确认有效期）、`waiting_since: Instant`（否；生效点返回处理中时记下，再次进入时按等待时长顺延 `expires_at` 并清空；顺延累计不超过处理中的等待上限）、`consumed_by_change: Id`（否；得到“已生效”的那次生效点写入）。生效点核对：确认人与申请人不是同一个自然人，确认人也不是受保护操作的对象本人（[安全 08 的确认与受保护操作](08-state-and-change-protocol.md#确认与受保护操作)）、对象与内容（或版本）一致、未过期、未被使用；`confirmer_basis = holding` 时还核对确认人此刻的资格可证明、合格且未处于安全处置（例外：对象不影响授权管理员可用性时，安全 03 两人规则下的确认人按最后已应用的事实判断，安全 08 决策表第 22 行），`deployment_owner` 时只核对凭据与使用记录。解除处置的确认绑定处置身份与处置修订，`consumed_by_change` 在整个解除完成时写入。
 
 **解除处置的请求 `be.security.disposition_release`**：`change_key`（是）、`disposition: Id` 与 `disposition_revision: RevisionRef`（是）、`requested_by: PrincipalRef`（是；管理员恢复时为部署所有者）、`trigger: Enum(user, recovery)`（是）、`confirmations: List<Id>`（否）。结果用下面的变更结果表达，`outcome` 为整个解除的结果；另带 `items: List<{record: Id, outcome: Enum(applied, held_kept, processing, awaiting_confirmation, rejected), reason: Key（否）}>`，列出使解除未完成的那一条。
 
