@@ -31,7 +31,7 @@
 | 列表、下拉、搜索结果中的显示摘要 | 可以用投影；显示时可附“同步于某时刻” |
 | 详情页 | 调来源的读取接口（展示上推，详情调真相源） |
 | 业务提交依赖当前值（例如确认订单时的信用状态） | 不用投影作依据；由拥有该事实的组件在其命令中检查（信用占用由信用组件裁决），或同步读取来源并在命令中带上来源修订供对方核对 |
-| 安全或资格判断（授权视图中的组织树、任职；[协议 07](../../protocols/07-references.md) 的资格证据；[协议 09](../../protocols/09-approval-and-workflow.md) 的岗位资格） | 只用状态为“完整”、且该来源的**水位**在声明的新鲜度内的行（[来源水位](#来源水位)）；否则按“无法证明”处理（[安全 03](security/03-authorization-acceptance-and-revocation.md)、[安全 08](security/08-state-and-change-protocol.md)） |
+| 安全或资格判断（授权视图中的组织树、任职；[协议 07](07-references.md) 的资格证据；[协议 09](../../protocols/09-approval-and-workflow.md) 的岗位资格） | 只用状态为“完整”、且该来源的**水位**在声明的新鲜度内的行（[来源水位](#来源水位)）；否则按“无法证明”处理（[安全 03](security/03-authorization-acceptance-and-revocation.md)、[安全 08](security/08-state-and-change-protocol.md)） |
 | 报表与分析 | 按报表口径声明可接受的滞后，并显示数据截至时刻 |
 
 ## 投影行的字段

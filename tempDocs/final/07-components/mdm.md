@@ -1,6 +1,6 @@
 # 主数据
 
-主数据组件被所有业务组件读取（经投影或批量查询），自己不调用业务组件；它们的状态变化以事件发布（[协议 02](../06-protocols/02-projections.md)），引用按[协议 07](../../protocols/07-references.md)。
+主数据组件被所有业务组件读取（经投影或批量查询），自己不调用业务组件；它们的状态变化以事件发布（[协议 02](../06-protocols/02-projections.md)），引用按[协议 07](../06-protocols/07-references.md)。
 
 ## mdm/partner
 
