@@ -18,6 +18,16 @@ Random operation sequences against an abstract authorization store check:
   BATCH       a batch reports every item as applied, rejected or needs review; no item silently
               disappears, and applied items are exactly those that passed the effect point
 
+Bad variants (each must make at least one check fail):
+  hold_partial             the closure job pauses a grant that is only partly outside the ceiling
+  ignore_ceiling           effective access ignores the governance ceiling
+  ignore_appointment       effective access ignores the bound appointment's status
+  effect_no_recheck        the effect point does not re-check the requester's eligibility
+  skip_last_admin          normal changes skip the last-admin invariant
+  departure_ends_grants    an admin's normal departure ends the grants that admin issued
+  reactivate_ended         a re-grant reactivates the ended record instead of creating a new one
+  delegation_no_intersect  a delegation edge grants its cap without intersecting the delegator's access
+
 Scopes are finite sets of atoms here; the 7th candidate's segment algebra is assumed.
 This is a model of the protocol, not of any SDK, database or provider.
 """
@@ -25,6 +35,9 @@ import random
 import sys
 
 SEED = 20261013
+BAD = set()
+BAD_VARIANTS = ["hold_partial", "ignore_ceiling", "ignore_appointment", "effect_no_recheck",
+                "skip_last_admin", "departure_ends_grants", "reactivate_ended", "delegation_no_intersect"]
 RUNS = 3000
 STEPS = 40
 ATOMS = list("abcdefgh")
@@ -70,14 +83,14 @@ class Store:
             r = self.records[g]
             if r["subject"] != person or not self.account_active[person]:
                 continue
-            if r.get("appt") and not self.appt_active.get(r["appt"], False):
+            if r.get("appt") and not self.appt_active.get(r["appt"], False) and "ignore_appointment" not in BAD:
                 continue
-            out |= set(r["scope"]) & self.unit_ceiling(r["unit"])
+            out |= set(r["scope"]) if "ignore_ceiling" in BAD else set(r["scope"]) & self.unit_ceiling(r["unit"])
         # delegation: edge cap ∩ delegator's current effective access
         for e in self.of("edge", "active"):
             r = self.records[e]
             if r["to"] == person and self.account_active[person]:
-                out |= set(r["cap"]) & self.effective_direct(r["frm"])
+                out |= set(r["cap"]) if "delegation_no_intersect" in BAD else set(r["cap"]) & self.effective_direct(r["frm"])
         return out
 
     def effective_direct(self, person):
@@ -85,8 +98,8 @@ class Store:
         for g in self.of("grant", "active"):
             r = self.records[g]
             if r["subject"] == person and self.account_active[person] and \
-                    (not r.get("appt") or self.appt_active.get(r["appt"], False)):
-                out |= set(r["scope"]) & self.unit_ceiling(r["unit"])
+                    (not r.get("appt") or self.appt_active.get(r["appt"], False) or "ignore_appointment" in BAD):
+                out |= set(r["scope"]) if "ignore_ceiling" in BAD else set(r["scope"]) & self.unit_ceiling(r["unit"])
         return out
 
     def usable_admins(self):
@@ -102,7 +115,7 @@ class Store:
         r = req
         if self.recovery:
             return "rejected"
-        if not self.requester_can_manage(r["by"], r["unit"]):
+        if not self.requester_can_manage(r["by"], r["unit"]) and "effect_no_recheck" not in BAD:
             return "rejected"
         if not set(r["scope"]) <= self.unit_ceiling(r["unit"]):
             return "rejected"
@@ -113,6 +126,8 @@ class Store:
         return "applied"
 
     def would_break_last_admin(self, change):
+        if "skip_last_admin" in BAD:
+            return False
         snapshot = (dict(self.account_active), dict(self.appt_active),
                     {k: dict(v) for k, v in self.records.items()})
         change()
@@ -138,7 +153,10 @@ class Store:
             elif not set(r["scope"]) & self.unit_ceiling(r["unit"]):
                 self.end(g, "source_narrowed")   # wholly outside: its effect is already empty
             elif not set(r["scope"]) <= self.unit_ceiling(r["unit"]):
-                r["review"] = True               # partly outside: stays active, effect is the intersection
+                if "hold_partial" in BAD:
+                    r["state"] = "held"          # wrong: pausing cuts access still within the ceiling
+                else:
+                    r["review"] = True           # partly outside: stays active, effect is the intersection
         for h in self.of("holding", "active"):
             if not self.appt_active.get(self.records[h]["appt"], False):
                 self.end(h, "source_ended")
@@ -216,7 +234,9 @@ def run(rng, fails):
                 g = rng.choice(ended)
                 # TERMINAL: the old record stays ended; a re-grant is a new instance
                 r = s.records[g]
-                if s.requester_can_manage(r["issued_by"], r["unit"]) and not s.recovery:
+                if "reactivate_ended" in BAD:
+                    r["state"] = "active"
+                elif s.requester_can_manage(r["issued_by"], r["unit"]) and not s.recovery:
                     s.effect_grant(dict(by=r["issued_by"], subject=r["subject"], unit=r["unit"],
                                         scope=set(r["scope"]) & s.unit_ceiling(r["unit"]) or {ATOMS[0]}, appt=None))
                 if s.records[g]["state"] != "ended":
@@ -238,6 +258,9 @@ def run(rng, fails):
                 issued = [g for g in s.of("grant", "active") if s.records[g]["issued_by"] == who]
                 if not s.would_break_last_admin(lambda: s.end(h, "departed")):
                     s.end(h, "departed")
+                    if "departure_ends_grants" in BAD:
+                        for g in issued:
+                            s.end(g, "departed")
                     if any(s.records[g]["state"] != "active" for g in issued):
                         fails.append(("DEPARTURE", h))
         elif op == "batch" and not s.recovery:
@@ -269,13 +292,18 @@ def run(rng, fails):
     return s
 
 
-def main():
+def run_all():
     rng = random.Random(SEED)
     fails = []
     recoveries = 0
     for _ in range(RUNS):
         s = run(rng, fails)
         recoveries += s.recovery
+    return fails, recoveries
+
+
+def main():
+    fails, recoveries = run_all()
     names = ["EFFECTIVE", "CLOSURE", "LASTADMIN", "TERMINAL", "EFFECT", "DEPARTURE", "BATCH"]
     bad = {n for n, *_ in fails}
     for n in names:
@@ -285,6 +313,18 @@ def main():
         for f in fails[:5]:
             print("FAIL", f, file=sys.stderr)
         sys.exit(1)
+    caught = 0
+    for v in BAD_VARIANTS:
+        BAD.clear(); BAD.add(v)
+        vf, _ = run_all()
+        kinds = sorted({f[0] for f in vf})
+        print(f"bad variant {v}: {'detected by ' + ', '.join(kinds) if vf else 'NOT DETECTED'}")
+        caught += bool(vf)
+    BAD.clear()
+    if caught != len(BAD_VARIANTS):
+        print("FAIL: some bad variants were not detected", file=sys.stderr)
+        sys.exit(1)
+    print(f"all {len(BAD_VARIANTS)} bad variants detected")
 
 
 if __name__ == "__main__":

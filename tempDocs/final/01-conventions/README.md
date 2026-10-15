@@ -6,7 +6,7 @@
 | --- | --- |
 | [01-engineering.md](01-engineering.md) | 规则归谁（平台、项目、组件）；必须重审的规范；共享语义；可配置与可定制；有限的业务设置；配置生效与密钥轮换；版本与升级；客户交付版本的维护；AI 用于开发的边界 |
 | [02-testing-and-validation.md](02-testing-and-validation.md) | 三种验证；每类对象最少要证明什么；代表部署对照实验；组合变更的必测情形；证据；独立复核与冻结 |
-| [validation/authorization-matrix.md](validation/authorization-matrix.md) | 权限与授权的验收反例（PA01–PA36） |
+| [validation/authorization-matrix.md](validation/authorization-matrix.md) | 权限与授权的验收反例（PA01–PA39） |
 | [validation/data-and-consistency-matrix.md](validation/data-and-consistency-matrix.md) | 数据、事务与恢复的验收反例（DT01–DT30） |
 | [03-documentation.md](03-documentation.md) | 文档写给谁、放在哪个区域与哪一层、组件的文档、写法、拆分、语言（D67）、与代码一起维护、检查 |
 | [04-diagrams-and-tables.md](04-diagrams-and-tables.md) | 按问题选图与表；意图类与事实类；每层放什么；格式；状态迁移表、决策表与时序图的写法；怎样不过时、怎样变成测试；排查时给 AI 的运行时视图 |
