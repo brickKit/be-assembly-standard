@@ -346,7 +346,7 @@
 | 最后管理员保护 | `LAST_ADMIN_PROTECTED` | 409 | 否 | — |
 | 管理员可用性无法证明 | `ADMIN_AVAILABILITY_UNPROVABLE` | 202 | 是 | 处理中，请求不保存，调用者稍后重试：会减少可用管理员的变更，或放宽的请求者资格，依赖的来源暂时无法证明（安全 08）；对象持有授权管理资格的只减少访问的操作，请求者资格无法证明且没有确认（安全 03） |
 | 安全处置限制 | `HELD_BY_SECURITY_DISPOSITION` | 403 | 否 | 只出现在解释中：求值时与同一自然人被安全处置暂停的范围相交的段不生效；对外按无权表达（安全 08） |
-| 部署待恢复 | `RECOVERY_IN_PROGRESS` | 503 | 是 | 除管理员恢复外的管理变更（安全 08 的待恢复） |
+| 部署待恢复 | `RECOVERY_IN_PROGRESS` | 503 | 是 | 管理结构的放宽（管理员恢复除外；安全 08 的待恢复）；收紧照常 |
 | 成员切换中 | `MEMBER_SWITCH_IN_PROGRESS` | 503 | 是 | 授权或身份成员切换窗口内的放宽类管理变更（[安全 10](10-providers-and-member-switching.md)、[安全 11](11-identity-member-switching.md)）；身份切换中新成员接管之后，旧地址上的收紧代理失败（安全 11） |
 | 能力不支持 | `CAPABILITY_UNSUPPORTED` | 501 | 否 | 装配时应已阻止；运行时发现则保护受影响的路径 |
 | 结果未知 | `RESULT_UNKNOWN` | 504 | 查询后再定 | 用变更键或动作键查询，不换键重试 |
