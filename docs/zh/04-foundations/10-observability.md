@@ -1,10 +1,10 @@
 # 观测
 
-本页说明日志、指标与追踪用什么、为什么、什么时候换后端、怎样换。两档方案（D43）、输出契约、业务健康指标与必需告警只在[协议 17 的观测](../06-protocols/17-runtime-and-resources.md#观测)；业务审计与运行日志分开，规则在[协议 03](../06-protocols/03-audit-durability.md)；日志字段、指标名与脱敏规则的格式在组件协议中规定。
+本页说明日志、指标与追踪用什么、为什么、什么时候换后端、怎样换。两档方案（D43）、输出契约、业务健康指标与必需告警只在[协议 17 的观测](../06-protocols/17-runtime-and-resources.md#观测)；业务审计与运行日志分开，规则在[协议 03](../06-protocols/03-audit-durability.md)；日志字段、指标名与脱敏规则的格式在重建 `be-protocol` 时写入组件协议。
 
 ## 选择
 
-- **OpenTelemetry** 做追踪，指标经 OpenTelemetry 的指标接口接到同一个 Prometheus 注册表；每一跳都用 W3C Trace Context 与 Baggage 传播。Baggage 只作追踪，不成为用户或授权的属性（安全 02）。
+- **OpenTelemetry** 做追踪，指标经 OpenTelemetry 的指标接口接到该成员自己的 Prometheus 注册表；每一跳都用 W3C Trace Context 与 Baggage 传播。Baggage 只作追踪，不成为用户或授权的属性（安全 02）。
 - **指标用 Prometheus 拉取**，不开采集器也能看；每条序列带 `component` 标签；外壳暴露一个汇总的指标端点（协议 17 的外壳义务）。
 - **日志是标准输出上的 JSON 行**，别无其他；采集器从容器运行时取日志。写日志从不卡在网络上。
 - **每个成员有自己的遥测身份**：外壳里的服务名是成员的组件 ID，绝不是外壳的名字。

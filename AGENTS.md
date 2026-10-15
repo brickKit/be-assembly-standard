@@ -91,16 +91,16 @@
 | 在健康检查里查数据库、消息系统、授权或其他组件 | 下游一次抖动让所有上游被判不健康并重启；外壳里所有成员一起重启 | 健康检查只报告进程存活（[协议 17](docs/zh/06-protocols/17-runtime-and-resources.md)） |
 | 基础镜像用 `scratch` 或 distroless | 组件日志说就绪，平台永远报不健康 | 健康检查经 `/bin/sh` 与 `wget` 执行（[组件实现约定](docs/zh/01-conventions/06-component-implementation.md#健康检查与镜像)） |
 | 注册没有操作定义的路由、resolver 或任务 | 这个接口完全没有授权检查，而且毫无症状 | 操作定义是路由注册的一部分，检查会发现（[安全 06](docs/zh/06-protocols/security/06-security-contracts-and-capabilities.md)） |
-| 在服务用户请求的路径上用组件的服务身份 | 响应静默多出用户不该看到的行 | 服务身份只用于后台工作与事件处理（[安全 02](docs/zh/06-protocols/security/02-trusted-identity-and-attributes.md)） |
-| 资源定义缺维度，或把空部门路径当作树的根 | 新建的无部门用户看到全部部门的行；缺维度被当作“全部” | 维度必须显式出现，没有部门实例化为空集（[安全 07](docs/zh/06-protocols/security/07-finite-expressions-containment-and-queries.md)） |
+| 把系统面的结果原样放进用户响应，或用服务身份代替用户取受范围约束的数据 | 响应静默多出用户不该看到的行或字段 | 按身份补全不是授权的例外：替用户读取走用户面并转发原凭据，系统结果先按用户的读取契约与字段许可裁剪（[调用其他组件](docs/zh/01-conventions/06-component-implementation.md#调用其他组件)、[安全 02](docs/zh/06-protocols/security/02-trusted-identity-and-attributes.md)） |
+| 资源定义缺维度，或把空部门路径当作树的根 | 新建的无部门用户看到全部部门的行；缺维度被当作“全部” | 维度必须显式声明（[安全 09a](docs/zh/06-protocols/security/09a-encoding-and-records.md)）；没有部门的主体不贡献任何部门条件（[安全 07](docs/zh/06-protocols/security/07-finite-expressions-containment-and-queries.md)） |
 | 改名或复用已发布的权限键、端口、schema | 被授予旧键的角色静默失去它；依赖方与外壳全部断开；schema 改名是一次数据迁移 | 注册表身份列只追加，退役是状态（[协议 19 的注册表](docs/zh/06-protocols/19-config-secrets-registries-release.md#注册表)） |
 | 前端只检查 `features` 不检查 `permissions` | 菜单看得见，点进去整页被拒 | `features` 是部署启用了什么，`permissions` 是这个用户能做什么（[协议 20](docs/zh/06-protocols/20-frontend.md)） |
-| 把本项目的键写进 `component.yaml` | `brickkit lint` 与 `add` 拒绝整个清单（`MANIFEST_INVALID`、`unknown field`） | `component.yaml` 没有扩展字段，项目的键在 `assembly.yaml` |
-| 先普通 `SELECT` 再写入来认领队列行或幂等键 | 两个副本把每条发件行发两次；两个并发请求都执行 | 原子认领：`FOR UPDATE SKIP LOCKED`、`INSERT … ON CONFLICT DO NOTHING`（[事务与消息](docs/zh/04-foundations/03-transactions-and-messaging.md#本地事务)） |
+| 把本项目的键写进 `component.yaml` | `brickkit lint` 与 `add` 拒绝整个清单（`MANIFEST_INVALID`、`unknown field`） | `component.yaml` 没有扩展字段，项目的键在 `assembly.yaml`（[AI 导航的标准布局](docs/zh/01-conventions/05-ai-navigation.md#组件仓库的标准布局与代码地图)） |
+| 先普通 `SELECT` 再写入来认领队列行或幂等键 | 两个副本把每条发件行发两次；两个并发请求都执行 | 原子认领：`FOR UPDATE SKIP LOCKED`、`INSERT … ON CONFLICT DO NOTHING`（[协议 01 的认领与接管](docs/zh/06-protocols/01-background-work.md)、[事务与消息](docs/zh/04-foundations/03-transactions-and-messaging.md#本地事务)） |
 | 金额用浮点；列表用偏移量分页 | 金额在语言之间丢精度；深分页变慢并跳行 | 十进制字符串与游标（[协议 14](docs/zh/06-protocols/14-data-foundations.md)） |
 | 为了让测试通过而改测试：注释掉、加跳过、放宽断言 | 全绿而什么都没守住 | 改实现；测试真错了，单独一次提交说明为什么（[一轮红绿与铁律](docs/zh/01-conventions/02-testing-and-validation.md#一轮红绿与铁律)） |
 | 改 Fork 出来的组件的 ID | 所有依赖方的地址变量随之消失 | Fork 保留组件 ID，版本照常推进（[开发流程与发布](docs/zh/01-conventions/10-development-workflow.md#发布)） |
-| 外壳注册的成员与清单、依赖锁不一致 | 要承载的成员没注册：外壳启动即退出、全部成员不可用；依赖锁不符：镜像跑的代码与项目以为的不同，不报错 | 三者由工具一起生成（[协议 17 的外壳义务](docs/zh/06-protocols/17-runtime-and-resources.md#外壳义务)） |
+| 外壳的成员清单、编译进来的成员与依赖锁不一致，或偏离客户的交付基线 | 要承载的成员没编译进来或版本不同：外壳启动即退出，全部成员不可用；清单与依赖锁一起偏离客户基线：镜像跑的版本与项目以为的不同，启动不报错 | 三者由工具从客户基线一起生成（[部署与运行的外壳的风险](docs/zh/04-foundations/01-deployment-and-runtime.md#外壳的风险)、[协议 17 的外壳义务](docs/zh/06-protocols/17-runtime-and-resources.md#外壳义务)） |
 | 以为 `deploy.local.yaml` 会与 `deploy.yaml` 合并 | 本地模式开着时改 `deploy.yaml` 不起作用，组件集合不同时 `up` 拒绝 | 它整体取代 `deploy.yaml`；先 `brickkit local off`，或改完 `brickkit local refresh`（[真机运行](docs/zh/01-conventions/10-development-workflow.md#真机运行)） |
 | 在共享变量里手写授权或身份的版本化服务名 | 下一次发布后全部受保护路由答 503 或 403，健康检查照常绿 | 写成 `$endpoint:` 引用，BrickKit 算出当前地址（[协议 19 的配置](docs/zh/06-protocols/19-config-secrets-registries-release.md#配置)） |
 | 主版本 2 及以上的 Go 组件只打 BrickKit 的标签，或模块路径不带主版本 | 外壳的 Go 构建取不到成员：`unknown revision`，或“module path must match major version” | Go 需要 `v` 标签与路径中的主版本（[工程规范的版本与升级](docs/zh/01-conventions/01-engineering.md#版本与升级)） |
