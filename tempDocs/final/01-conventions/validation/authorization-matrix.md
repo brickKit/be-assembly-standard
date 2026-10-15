@@ -35,7 +35,7 @@ PA13–PA18 的管理、任职与模板升级，结合[管理与任职 AM01–AM
 
 PA29 与 PA34 的成员能力与切换部分，结合[成员能力与切换 PV01–PV31](../../06-protocols/security/10-providers-and-member-switching.md#独立预期)实例化。
 
-PA13–PA18、PA21、PA32 与 PA37–PA39 的管理、任职、扮演、恢复与确认部分，结合[状态与变更协议 CP01–CP84](../../06-protocols/security/08-state-and-change-protocol.md#独立预期)实例化。
+PA13–PA18、PA21、PA32 与 PA37–PA39 的管理、任职、扮演、恢复与确认部分，结合[状态与变更协议 CP01–CP95](../../06-protocols/security/08-state-and-change-protocol.md#独立预期)实例化。
 
 PA04–PA11、PA13–PA15 与 PA35 的范围、字段与授出部分，结合[有限表达 FX01–FX24](../../06-protocols/security/07-finite-expressions-containment-and-queries.md#独立预期)实例化；其参考模型只在 SQLite 上核对算法与编译模板，不计作 SDK 或 PA 场景通过。
 
