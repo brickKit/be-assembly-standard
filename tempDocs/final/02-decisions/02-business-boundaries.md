@@ -55,7 +55,7 @@
 - **理由**：估值与物理变动的输入与生命周期不同；后到的发票与费用可以调整成本而不产生新的数量变动。
 - **不采用**：成本放在库存内部，经策略接口替换算法——协调少，但不能单独部署成本能力。
 - **约束**：同一口径只有一个成本权威；成本组件不写库存数量；价格未定时明确暂估，不伪称最终成本；不用占位金额冒充成本。
-- **落在**：[`erp/costing`](../07-components/erp-finance.md)；[协议 05 的存货成本](../06-protocols/05-billing-settlement-and-costing.md#存货成本)。
+- **落在**：[`erp/costing`](../07-components/erp-finance.md)；[协议 05b 存货成本](../06-protocols/05b-inventory-costing.md)。
 
 ## D47 收付款独立于应收应付核销与总账
 

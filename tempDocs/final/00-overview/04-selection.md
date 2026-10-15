@@ -99,11 +99,11 @@ flowchart TB
 
 | 组合 | 必需组件 | 可选 | 缺件行为与检查 |
 | --- | --- | --- | --- |
-| 精简进销存 | `infra/iam-casdoor`、`infra/authz`、`infra/audit`、`mdm/partner`、`mdm/product`、`mdm/org`、`mdm/currency`、`erp/sales`、`erp/purchase`、`erp/inventory`、`erp/costing`、`erp/billing`、`erp/finance`、`erp/payment`、`frontend/pc` | `erp/credit`、`erp/tax`、`erp/planning`、`infra/print`、`infra/notification`、`mdm/employee`、`infra/workflow` | 收付款可以只用线下登记；缺信用时订单确认不做信用占用，销售声明“无信用控制”且客户在装配时确认；同时含库存与财务，所以成本组件必需（协议 05）：存货与销货成本只来自成本事实；缺税计算时出账只能由有权限的人逐张录入税额并标为人工税额，不能当作“不适用税”；缺员工时审批只按账号与角色分配，岗位类分配不可用，职责分离按账号比较；缺统一待办时人工审批在各组件页面中处理 |
+| 精简进销存 | `infra/iam-casdoor`、`infra/authz`、`infra/audit`、`mdm/partner`、`mdm/product`、`mdm/org`、`mdm/currency`、`erp/sales`、`erp/purchase`、`erp/inventory`、`erp/costing`、`erp/billing`、`erp/finance`、`erp/payment`、`frontend/pc` | `erp/credit`、`erp/tax`、`erp/planning`、`infra/print`、`infra/notification`、`mdm/employee`、`infra/workflow` | 收付款可以只用线下登记；缺信用时订单确认不做信用占用，销售声明“无信用控制”且客户在装配时确认；同时含库存与财务，所以成本组件必需（协议 05b）：存货与销货成本只来自成本事实；缺税计算时出账只能由有权限的人逐张录入税额并标为人工税额，不能当作“不适用税”；缺员工时审批只按账号与角色分配，岗位类分配不可用，职责分离按账号比较；缺统一待办时人工审批在各组件页面中处理 |
 | 服务销售 | `infra/iam-casdoor`、`infra/authz`、`infra/audit`、`mdm/partner`、`mdm/product`、`mdm/org`、`mdm/currency`、`erp/sales`、`erp/billing`、`erp/finance`、`erp/payment`、`frontend/pc` | `erp/credit`、`erp/tax`、`crm/opportunity`、`erp/contract` | 不装库存；订阅与长期合同的周期出账需要合同组件（D70）；服务订单不请求库存预占（D44） |
 | CRM 与销售协作 | 服务销售的全部，加 `mdm/employee`、`crm/customer`、`crm/opportunity`、`crm/activity` | `crm/lead`、`crm/campaign`、`crm/case` | `crm/customer` 需要员工（负责人）；商机请求报价，报价与订单的事件带商机参考回到商机；CRM 与 ERP 只经事件协作 |
 | 多法人集团 | 精简进销存的全部，加 `mdm/employee` | 各国薪资、`integration/einvoice-<地区>`、`erp/intercompany`、`erp/consolidation` | 每法人单账簿（D51）；每个法人对应一个关联方伙伴，内部交易照常走销售与采购，对开与对账由公司间组件、合并报表由合并组件承担（D72）；伙伴角色按法人开通；授权范围含法人维度；同一范围只有一个权威实现（D16） |
-| 制造 | 精简进销存的全部，加 `erp/manufacturing` | `erp/quality`、`erp/planning`、`erp/maintenance`、`erp/warehouse` | 领料与完工入库只经库存写入；工单成本、在制品与差异由成本组件计算后进入财务（协议 05）；缺质量时没有检验关卡 |
+| 制造 | 精简进销存的全部，加 `erp/manufacturing` | `erp/quality`、`erp/planning`、`erp/maintenance`、`erp/warehouse` | 领料与完工入库只经库存写入；工单成本、在制品与差异由成本组件计算后进入财务（协议 05b）；缺质量时没有检验关卡 |
 | 人事与项目 | `infra/iam-casdoor`、`infra/authz`、`infra/audit`、`mdm/org`、`mdm/employee`、`mdm/currency`、`infra/attachment`、`hrm/attendance`、`hrm/leave`、`hrm/expense`、`prj/project`、`prj/timesheet`、`frontend/pc` | `mdm/partner`、各国薪资、`erp/payment`、`erp/finance` | 客户项目引用客户（伙伴），只有内部项目时不装伙伴；报销需要附件；缺收付款或缺财务时，报销与薪资只能线下支付（付款认领需要财务）；选了收付款时，员工以伙伴的员工往来角色收款（D69），伙伴成为必需；项目只作成本的分析归集，成本由各来源过账，缺财务时不入账 |
 
 表中的身份成员以 Casdoor 为代表；身份是一类组件（`infra/iam-*`），组合中换成另一个身份成员同样成立。
@@ -114,7 +114,7 @@ flowchart TB
 
 | 规则 | 条件 | 必须含（其中之一即可时注明） | 依据 |
 | --- | --- | --- | --- |
-| 有库存与财务就要有成本 | 含 `erp/inventory` 与 `erp/finance` | `erp/costing` | [协议 05 的成本组件未安装](../06-protocols/05-billing-settlement-and-costing.md#成本组件未安装)，A74 |
+| 有库存与财务就要有成本 | 含 `erp/inventory` 与 `erp/finance` | `erp/costing` | [协议 05b 的成本组件未安装](../06-protocols/05b-inventory-costing.md#成本组件未安装)，A74 |
 | 出账要有来源 | 含 `erp/billing` | 其中之一：`erp/sales`、`erp/contract`、`prj/project` | 出账卡（检查 34 的 ONE-OF） |
 | 款到发货要有财务、收付款与出账 | 部署启用“款到发货”订单策略 | `erp/finance`、`erp/payment`、`erp/billing` | [协议 05 的预收与款到发货](../06-protocols/05-billing-settlement-and-costing.md#预收与款到发货) |
 | 付款受未清项约束要有财务 | 部署要求付款针对未清项（默认） | `erp/finance`；不装财务时付款只能线下登记 | 收付款卡 |

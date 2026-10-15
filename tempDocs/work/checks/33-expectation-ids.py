@@ -7,7 +7,10 @@ documents (not the work records) and verifies:
   ONE_OWNER   each ID prefix is defined in exactly one document
   UNIQUE      no ID is defined twice
   CONTIGUOUS  within a prefix the numbers run 01..n without gaps
-  CARRIED     every ID of a draft listed in superseded-drafts.txt still exists in final/
+  CARRIED     every ID of a draft listed in superseded-drafts.txt still exists in final/, directly
+              or under the new ID recorded in moved-ids.txt
+  MOVED       every ID in moved-ids.txt is gone from its old prefix and exists under the new ID in
+              the named document; a moved ID still counts for CONTIGUOUS in its old prefix
 
 Drafts listed in superseded-drafts.txt have been rewritten into final/; they are skipped
 so that the final copy is the only owner of their IDs.
@@ -23,6 +26,7 @@ import sys
 ROOT = os.path.join(os.path.dirname(__file__), "..", "..")
 SCOPES = ["security/*.md", "protocols/*.md", "validation/*.md", "07-validation.md", "final/**/*.md"]
 SUPERSEDED = os.path.join(os.path.dirname(__file__), "superseded-drafts.txt")
+MOVED = os.path.join(os.path.dirname(__file__), "moved-ids.txt")
 ROW = re.compile(r"^\| ([A-Z]{2})(\d{2}) \|", re.M)
 
 
@@ -31,7 +35,19 @@ def superseded():
     return {l.split()[0] for l in lines if l.strip() and not l.startswith("#") and not l.startswith("final/")}
 
 
+def moved():
+    if not os.path.exists(MOVED):
+        return {}
+    out = {}
+    for l in open(MOVED, encoding="utf-8").read().splitlines():
+        if l.strip() and not l.startswith("#"):
+            old, new, doc = l.split()
+            out[old] = (new, doc)
+    return out
+
+
 def main():
+    moves = moved()
     owners = {}
     seen = {}
     failures = []
@@ -56,13 +72,20 @@ def main():
                 if key in seen:
                     failures.append(f"UNIQUE: {key} in {seen[key]} and {rel}")
                 seen[key] = rel
+    for old, (new, doc) in sorted(moves.items()):
+        if old in seen:
+            failures.append(f"MOVED: {old} still defined in {seen[old]}")
+        if seen.get(new) != doc:
+            failures.append(f"MOVED: {old} -> {new} not found in {doc}")
     for key, rel in sorted(draft_ids.items()):
+        if key in moves:
+            key = moves[key][0]
         if key not in seen or not seen[key].startswith("final/"):
             failures.append(f"CARRIED: {key} of {rel} not found in final/")
     for prefix, files in sorted(owners.items()):
         if len(files) > 1:
             failures.append(f"ONE_OWNER: {prefix} defined in {sorted(files)}")
-        nums = sorted(int(k[2:]) for k in seen if k.startswith(prefix))
+        nums = sorted(int(k[2:]) for k in list(seen) + list(moves) if k.startswith(prefix))
         if nums != list(range(1, len(nums) + 1)):
             failures.append(f"CONTIGUOUS: {prefix} numbers {nums[0]}..{nums[-1]} with gaps or not starting at 01")
     print(f"{'prefix':<7} {'count':>5}  document")
@@ -74,7 +97,7 @@ def main():
         print(f)
     if failures:
         sys.exit(1)
-    print("ONE_OWNER, UNIQUE, CONTIGUOUS, CARRIED: ok")
+    print("ONE_OWNER, UNIQUE, CONTIGUOUS, CARRIED, MOVED: ok")
 
 
 if __name__ == "__main__":
