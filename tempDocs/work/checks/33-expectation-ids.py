@@ -28,7 +28,7 @@ ROW = re.compile(r"^\| ([A-Z]{2})(\d{2}) \|", re.M)
 
 def superseded():
     lines = open(SUPERSEDED, encoding="utf-8").read().splitlines()
-    return {l.strip() for l in lines if l.strip() and not l.startswith("#")}
+    return {l.split()[0] for l in lines if l.strip() and not l.startswith("#") and not l.startswith("final/")}
 
 
 def main():

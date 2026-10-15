@@ -19,6 +19,13 @@ Checks:
   F04        the two counterexamples of the old cold-format digest (unescaped separator,
              null marker) are distinguished
   FINGERPRINT plain concatenation of path + query + body collides; a canonical array does not
+
+Bad variants (each must make at least one check fail, showing the checks are not vacuous):
+  unsorted_sets    sets keep their input order (de-duplicated only)
+  raw_decimal      decimals keep their input spelling (100.00 vs 1E2)
+  keep_offset      instants keep their original UTC offset
+  no_type_prefix   the digest omits the "be.<type>.v<major>" prefix
+  unsorted_keys    object keys are serialised in insertion order
 """
 import hashlib
 import json
@@ -28,9 +35,13 @@ from datetime import datetime, timezone, timedelta
 from decimal import Decimal
 
 SEED = 20261013
+BAD = set()
+BAD_VARIANTS = ["unsorted_sets", "raw_decimal", "keep_offset", "no_type_prefix", "unsorted_keys"]
 
 
 def canon_decimal(x):
+    if "raw_decimal" in BAD:
+        return str(x)
     d = Decimal(str(x))
     if d == 0:
         return "0"
@@ -41,6 +52,8 @@ def canon_decimal(x):
 
 
 def canon_instant(dt):
+    if "keep_offset" in BAD:
+        return dt.isoformat()
     return dt.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.%fZ")
 
 
@@ -60,10 +73,12 @@ def canonical_bytes(value):
         elif isinstance(v, list):
             for x in v: check(x)
     check(value)
-    return json.dumps(value, sort_keys=True, separators=(",", ":"), ensure_ascii=False).encode("utf-8")
+    return json.dumps(value, sort_keys="unsorted_keys" not in BAD, separators=(",", ":"), ensure_ascii=False).encode("utf-8")
 
 
 def digest(rtype, major, value):
+    if "no_type_prefix" in BAD:
+        return hashlib.sha256(canonical_bytes(value)).hexdigest()
     return hashlib.sha256(f"be.{rtype}.v{major}\n".encode() + canonical_bytes(value)).hexdigest()
 
 
@@ -74,7 +89,8 @@ def norm_segment(seg):
         if atom == "ALL":
             out["atoms"][dim] = {"kind": "all"}
         elif atom[0] == "in":
-            out["atoms"][dim] = {"kind": "in", "values": sorted(set(atom[1]))}
+            vals = list(dict.fromkeys(atom[1])) if "unsorted_sets" in BAD else sorted(set(atom[1]))
+            out["atoms"][dim] = {"kind": "in", "values": vals}
         elif atom[0] == "interval":
             _, cur, lo, lc, hi, hc = atom
             a = {"kind": "interval", "currency": cur}
@@ -83,7 +99,8 @@ def norm_segment(seg):
             if hi is not None:
                 a["hi"] = canon_decimal(hi); a["hi_closed"] = hc
             out["atoms"][dim] = a
-    out["read_fields"] = sorted(set(seg["read_fields"]))
+    rf = seg["read_fields"]
+    out["read_fields"] = list(dict.fromkeys(rf)) if "unsorted_sets" in BAD else sorted(set(rf))
     out["valid_from"] = canon_instant(seg["valid_from"])
     if seg.get("valid_until") is not None:
         out["valid_until"] = canon_instant(seg["valid_until"])
@@ -110,7 +127,7 @@ def rand_value(rng, depth=0):
     return {k: rand_value(rng, depth + 1) for k in keys}
 
 
-def main():
+def run_checks():
     rng = random.Random(SEED)
     fails = []
 
@@ -162,14 +179,35 @@ def main():
     if not (fp_collides and fp_fixed):
         fails.append("FINGERPRINT")
 
+    return fails, n, len(seen)
+
+
+def main():
+    fails, n, distinct = run_checks()
     print(f"SAME: {'FAIL' if 'SAME' in fails else 'ok'} (field order, set order, decimal 100.00 vs 1E2, +08:00 vs Z)")
-    print(f"DISTINCT: {'FAIL' if any(isinstance(f, tuple) for f in fails) else 'ok'} ({n} random values, {len(seen)} distinct encodings)")
+    print(f"DISTINCT: {'FAIL' if any(isinstance(f, tuple) for f in fails) else 'ok'} ({n} random values, {distinct} distinct encodings)")
     print(f"TYPED: {'FAIL' if 'TYPED' in fails else 'ok'}")
     print(f"F04: old rule collides on both pairs; canonical encoding distinguishes them: {'ok' if 'F04' not in fails else 'FAIL'}")
     print(f"FINGERPRINT: '/a'+'b'+'{{}}' == '/ab'+''+'{{}}' under concatenation; canonical array differs: {'ok' if 'FINGERPRINT' not in fails else 'FAIL'}")
     if fails:
         print("FAIL", fails[:3], file=sys.stderr)
         sys.exit(1)
+    caught = []
+    for bad in BAD_VARIANTS:
+        BAD.clear(); BAD.add(bad)
+        try:
+            bad_fails = run_checks()[0]
+        except AssertionError as e:
+            bad_fails = [f"assertion: {e}"]
+        names = sorted({f if isinstance(f, str) else f[0] for f in bad_fails})
+        print(f"bad variant {bad}: {'detected by ' + ', '.join(names) if bad_fails else 'NOT DETECTED'}")
+        if bad_fails:
+            caught.append(bad)
+    BAD.clear()
+    if len(caught) != len(BAD_VARIANTS):
+        print("FAIL: some bad variants were not detected", file=sys.stderr)
+        sys.exit(1)
+    print(f"all {len(BAD_VARIANTS)} bad variants detected")
 
 
 if __name__ == "__main__":

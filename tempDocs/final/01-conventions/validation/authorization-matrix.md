@@ -31,13 +31,13 @@ PA13–PA18 的管理、任职与模板升级，结合[管理与任职 AM01–AM
 
 共享、代办与只读扮演的场景结合[共享与委托 SD01–SD22](../../06-protocols/security/05-sharing-delegation-and-impersonation.md)，特别检查来源类型、创建时与当前的完整上限、任务责任、有限链、隐蔽副作用与通知落点。
 
-实例化所有场景时对照[共同结构与能力 SC01–SC24](../../../security/06-security-contracts-and-capabilities.md)：区分身份、事实、求值、接受与业务回执，核对实际资源、动作与出口的完整能力路径及新旧版本；接口表或可解析的 schema 不代替 SDK 与真实依赖的证据。
+实例化所有场景时对照[共同结构与能力 SC01–SC24](../../06-protocols/security/06-security-contracts-and-capabilities.md)：区分身份、事实、求值、接受与业务回执，核对实际资源、动作与出口的完整能力路径及新旧版本；接口表或可解析的 schema 不代替 SDK 与真实依赖的证据。
 
-PA29 与 PA34 的成员能力与切换部分，结合[成员能力与切换 PV01–PV31](../../../security/10-providers-and-member-switching.md#独立预期)实例化。
+PA29 与 PA34 的成员能力与切换部分，结合[成员能力与切换 PV01–PV31](../../06-protocols/security/10-providers-and-member-switching.md#独立预期)实例化。
 
-PA13–PA18、PA21 与 PA32 的管理、任职、扮演与恢复部分，结合[状态与变更协议 CP01–CP24](../../../security/08-state-and-change-protocol.md#独立预期)实例化。
+PA13–PA18、PA21 与 PA32 的管理、任职、扮演与恢复部分，结合[状态与变更协议 CP01–CP24](../../06-protocols/security/08-state-and-change-protocol.md#独立预期)实例化。
 
-PA04–PA11、PA13–PA15 与 PA35 的范围、字段与授出部分，结合[有限表达 FX01–FX24](../../../security/07-finite-expressions-containment-and-queries.md#独立预期)实例化；其参考模型只在 SQLite 上核对算法与编译模板，不计作 SDK 或 PA 场景通过。
+PA04–PA11、PA13–PA15 与 PA35 的范围、字段与授出部分，结合[有限表达 FX01–FX24](../../06-protocols/security/07-finite-expressions-containment-and-queries.md#独立预期)实例化；其参考模型只在 SQLite 上核对算法与编译模板，不计作 SDK 或 PA 场景通过。
 
 ## 身份、入口与完整授予
 

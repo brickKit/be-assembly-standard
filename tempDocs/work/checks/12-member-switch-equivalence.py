@@ -15,6 +15,8 @@ same on both members.
                - ignores validity windows
   LOCATED    a detected difference names the subject, type and operation, so the switch report
              can list exactly what the new member cannot represent
+  COUNT_ONLY a comparison of segment counts only (instead of digests) detects none of the
+             lossy translations: the digest comparison is necessary (PV20)
 
 This is a model of the comparison, not of OpenFGA, SpiceDB, OPA, Cerbos, Cedar or Casbin.
 """
@@ -55,6 +57,12 @@ def store(rng):
 def digest(segments):
     norm = sorted(json.dumps(x, sort_keys=True, separators=(",", ":")) for x in segments)
     return hashlib.sha256(("be.effective.v1\n" + "\n".join(norm)).encode()).hexdigest()
+
+
+def counts(member, records):
+    """subject -> op -> number of effective segments: the inadequate count-only comparison."""
+    return {(s, op): len(member([g for (subj, g) in records if subj == s and g["op"] == op]))
+            for s in SUBJECTS for op in OPS}
 
 
 def effective(member, records):
@@ -133,11 +141,17 @@ def main():
                     if ga == gb:
                         located_ok = False
         detected[name] = hits
+    count_hits = {name: sum(1 for st in stores if counts(standard, st) != counts(m, st))
+                  for name, m in lossy.items()}
     print(f"LOSSLESS: {'ok' if 'LOSSLESS' not in fails else 'FAIL'} (graph-style member equals the standard member on {STORES} random stores)")
     for name, hits in detected.items():
         print(f"LOSSY {name}: detected on {hits} of {STORES} stores")
     print(f"LOCATED: {'ok' if located_ok else 'FAIL'}")
-    if fails or not all(detected.values()) or not located_ok:
+    for name, hits in count_hits.items():
+        print(f"COUNT_ONLY {name}: detected on {hits} of {STORES} stores")
+    count_blind = not any(count_hits.values())
+    print(f"COUNT_ONLY: {'ok (count comparison detects none of the lossy translations)' if count_blind else 'FAIL'}")
+    if fails or not all(detected.values()) or not located_ok or not count_blind:
         sys.exit(1)
 
 
