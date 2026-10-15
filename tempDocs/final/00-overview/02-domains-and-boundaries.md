@@ -63,8 +63,18 @@ flowchart TB
     B -->|应收| F
     B -->|已出账| CR
     B -->|算税| T
+    S -->|算税| T
     PAY -->|收付款事实| F
     F -->|应收结清与重开| CR
+    PAY -->|付款认领| F
+    CO -.->|代理库存参与关账| F
+    subgraph OTHER[人事、资产与项目]
+      EX[hrm/expense]; PR[hrm/payroll-*]; AS[erp/asset]; PJ[prj/project]
+    end
+    EX -->|会计事实| F
+    PR -->|会计事实| F
+    AS -->|会计事实| F
+    PJ -->|出账来源| B
     TRADE --> MDM
     FIN --> MDM
 ```

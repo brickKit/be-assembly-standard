@@ -59,6 +59,7 @@
 | `erp/payment` | 收付款业务与银行／渠道对账 | 当前重建 | [财务与结算](guides/finance-and-settlement.md) |
 | `erp/consolidation` | 集团结构、抵销、外币报表折算与合并报表（D72） | 远期 | [财务与结算](guides/finance-and-settlement.md) |
 | `erp/tax` | 税计算 | 远期 | [财务与结算](guides/finance-and-settlement.md) |
+| `erp/budget` | 预算编制与控制，占用沿用预占分支 | 远期 | [财务与结算](guides/finance-and-settlement.md) |
 
 ## 生产与资产
 
@@ -129,10 +130,11 @@
 | `frontend/advanced` | 行业或高级交互入口 | 远期 | [前端](guides/frontend.md) |
 | 客户与供应商门户（ID 未分配） | 外部人员登录、只看自己公司的数据；需要新的身份与授权模型（D73） | 评估 | — |
 | 门店收银（ID 未分配） | 断网收款、收银班次与现金；与 D24 的在线确认提交冲突，单独设计（D73） | 评估 | — |
+| 现场服务（ID 未分配） | 服务派工、上门、备件消耗；与服务工单（`crm/case`）、库存协作，单独设计 | 评估 | — |
 
 ## 新增与退役的身份
 
-新增的身份在正式迁移时登记端口与 schema（协议 19）：`mdm/partner`、`mdm/employee`、`mdm/currency`、`erp/contract`、`erp/planning`、`erp/intercompany`、`erp/consolidation`、`erp/warehouse`、`erp/credit`、`erp/costing`、`erp/billing`、`erp/payment`、`erp/tax`、`integration/einvoice-<地区>`、`integration/bank-<格式>`、`integration/carrier-<承运商>`、`integration/shop-<平台>`、`integration/print-agent`、`infra/authz-static`、`infra/authz-openfga`、`ana/search`、`frontend/pc`、`frontend/mobile`、`frontend/terminal`。可选流程引擎的适配组件、通用 OIDC／目录适配在选定产品后登记。
+新增的身份在正式迁移时登记端口与 schema（协议 19）：`mdm/partner`、`mdm/employee`、`mdm/currency`、`erp/contract`、`erp/planning`、`erp/intercompany`、`erp/consolidation`、`erp/warehouse`、`erp/credit`、`erp/costing`、`erp/billing`、`erp/payment`、`erp/tax`、`erp/budget`、`integration/einvoice-<地区>`、`integration/bank-<格式>`、`integration/carrier-<承运商>`、`integration/shop-<平台>`、`integration/print-agent`、`infra/authz-static`、`infra/authz-openfga`、`ana/search`、`frontend/pc`、`frontend/mobile`、`frontend/terminal`。可选流程引擎的适配组件、通用 OIDC／目录适配在选定产品后登记。
 
 | 退役的身份 | 去向 |
 | --- | --- |
