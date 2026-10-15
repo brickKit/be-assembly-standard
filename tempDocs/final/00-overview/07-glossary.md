@@ -71,6 +71,13 @@
 | 期初 | 上线切点之前的结果，以专门的业务类型进入，不伪造成新交易 | `opening` | 各业务组件 | [协议 16](../06-protocols/16-go-live-and-import.md) |
 | 出账额度与认领 | 来源（订单、合同、项目）裁决每次可出账的额度，出账向来源认领 | `billable`、`claim` | 来源组件、`erp/billing` | [协议 05](../06-protocols/05-billing-settlement-and-costing.md) |
 | 增量事实 | 跨组件不可遗漏的事实，带产生方的序号与纪元，按事实身份去重 | `fact`、`fact_sequence` | 产生方 | 协议 05 |
+| 会计事实契约 | 财务定义的共享契约：各来源按它发布会计事实，财务按过账规则键与科目映射生成凭证，不逐个认识来源 | `accounting_fact`、`posting_rule_key` | `erp/finance`（契约）；各来源 | [协议 05](../06-protocols/05-billing-settlement-and-costing.md) |
+| 关账参与方 | 实现封存、解封、返回覆盖点、按序号补取四个命令的会计事实来源；成本组件代理库存与制造参加 | `close_participant` | 各来源 | [协议 06](../06-protocols/06-period-close.md) |
+| 付款认领 | 付款申请在审批前向财务的未清项认领额度，发出前确认，核销时正式化；保证已申请加已付款不超过未清金额 | `payment_claim`；`claimed`、`confirmed`、`paid`、`released` | `erp/finance`、`erp/payment` | 协议 05 |
+| 预收、预付 | 预收：带订单参考、尚未分配的客户资金，款到发货据此放行；预付与员工借款：财务的借方未清项，票据匹配或报销批准时抵扣 | `prepayment`、`advance` | `erp/finance` | 协议 05 |
+| 可贷记台账 | 退货单行上已出账、可开红字的额度；出账组件按认领模式认领后开出贷项 | `creditable`、`credit_claimed`、`credited` | `erp/sales` | 协议 05 |
+| 收货计价依据、待定价 | 采购按入库流水发布的单价与口径，是暂估成本的依据；超时未到时成本组件按政策取单价并标“待定价”，到达后调整 | `receipt_valuation_basis`；`pending_price` | `erp/purchase`；`erp/costing` | 协议 05 |
+| 货主 | 库存维度之一：库存归谁所有（自有、寄售、存放在供应商处），与存放位置分开 | `stock_owner` | `erp/inventory` | [领域与边界](02-domains-and-boundaries.md) |
 | 核销 | 收付款与未清项的分配，在财务的本地事务内完成 | `settlement` | `erp/finance` | 协议 05 |
 | 期间与关账批次 | 会计期间的状态与关账的协调；迟到单据顺延 | `period`；`open`、`closing`、`closed`、`reopened`、`pre_go_live` | `erp/finance` | [协议 06](../06-protocols/06-period-close.md) |
 | 历史引用与资格引用 | 前者只记录当时的快照；后者要求被引用对象当前合格 | `historical_ref`、`eligibility_ref` | 引用方 | [协议 07](../06-protocols/07-references.md) |

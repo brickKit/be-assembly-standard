@@ -104,7 +104,7 @@ flowchart TB
 | CRM 与销售协作 | 服务销售的全部，加 `mdm/employee`、`crm/customer`、`crm/opportunity`、`crm/activity` | `crm/lead`、`crm/campaign`、`crm/case` | `crm/customer` 需要员工（负责人）；商机请求报价，报价与订单的事件带商机参考回到商机；CRM 与 ERP 只经事件协作 |
 | 多法人集团 | 精简进销存的全部，加 `mdm/employee` | 各国薪资、`integration/einvoice-<地区>`、`erp/intercompany`、`erp/consolidation` | 每法人单账簿（D51）；每个法人对应一个关联方伙伴，内部交易照常走销售与采购，对开与对账由公司间组件、合并报表由合并组件承担（D72）；伙伴角色按法人开通；授权范围含法人维度；同一范围只有一个权威实现（D16） |
 | 制造 | 精简进销存的全部，加 `erp/manufacturing` | `erp/quality`、`erp/planning`、`erp/maintenance`、`erp/warehouse` | 领料与完工入库只经库存写入；工单成本、在制品与差异由成本组件计算后进入财务（协议 05）；缺质量时没有检验关卡 |
-| 人事与项目 | `infra/iam-casdoor`、`infra/authz`、`infra/audit`、`mdm/org`、`mdm/employee`、`mdm/currency`、`infra/attachment`、`hrm/attendance`、`hrm/leave`、`hrm/expense`、`prj/project`、`prj/timesheet`、`frontend/pc` | `mdm/partner`、各国薪资、`erp/payment`、`erp/finance` | 客户项目引用客户（伙伴），只有内部项目时不装伙伴；报销需要附件；缺收付款时报销线下支付；缺财务时工时与报销成本只在项目中归集，不入账 |
+| 人事与项目 | `infra/iam-casdoor`、`infra/authz`、`infra/audit`、`mdm/org`、`mdm/employee`、`mdm/currency`、`infra/attachment`、`hrm/attendance`、`hrm/leave`、`hrm/expense`、`prj/project`、`prj/timesheet`、`frontend/pc` | `mdm/partner`、各国薪资、`erp/payment`、`erp/finance` | 客户项目引用客户（伙伴），只有内部项目时不装伙伴；报销需要附件；缺收付款或缺财务时，报销与薪资只能线下支付（付款认领需要财务）；选了收付款时，员工以伙伴的员工往来角色收款（D69），伙伴成为必需；项目只作成本的分析归集，成本由各来源过账，缺财务时不入账 |
 
 表中的身份成员以 Casdoor 为代表；身份是一类组件（`infra/iam-*`），组合中换成另一个身份成员同样成立。
 
