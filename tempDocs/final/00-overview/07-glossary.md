@@ -72,11 +72,11 @@
 | 出账额度与认领 | 来源（订单、合同、项目）裁决每次可出账的额度，出账按认领模式向来源认领 | `billable`、`claim` | 来源组件、`erp/billing` | [协议 05](../06-protocols/05-billing-settlement-and-costing.md) |
 | 增量事实 | 跨组件不可遗漏的事实，带产生方的序号与纪元，按事实身份去重 | `fact`、`fact_sequence` | 产生方 | 协议 05 |
 | 会计事实契约 | 财务定义的共享契约：各来源按它发布会计事实，财务按过账规则键与科目映射生成凭证，不逐个认识来源 | `accounting_fact`、`posting_rule_key` | `erp/finance`（契约）；各来源 | [协议 05](../06-protocols/05-billing-settlement-and-costing.md) |
-| 关账参与方 | 按参与方接口参加关账的会计事实来源：收到“请求封存”后在本地事务中封存并以增量事实回报覆盖点，提供按序号的补取；成本组件代理库存与制造参加 | `close_participant`；`unsealed`、`sealed` | 各来源 | [协议 06](../06-protocols/06-period-close.md) |
+| 关账参与方 | 按参与方接口参加关账的会计事实来源：收到“请求封存”后在本地事务中封存并以增量事实回报覆盖点，提供按序号的补取；成本组件代理库存与制造参加 | `close_participant`；`unsealed`、`sealed`、`reopened` | 各来源 | [协议 06](../06-protocols/06-period-close.md) |
 | 认领模式 | 一方拥有额度、另一方分次使用时的协调：先认领、再确认（在不可撤回的动作之前）、最后正式化，待确认的到期（`expired`）；出账、贷记、付款、预收放行四处共用 | `claim`；`pending`、`confirmed`、`expired`、`released`、`formalized` | 额度的属主 | [协议 05](../06-protocols/05-billing-settlement-and-costing.md) |
 | 可用余额 | 未清项的未清余额减去认领中的金额；核销、冲销、调整、抵扣与新认领只能用它；订单的预收另受订单放行台账约束 | `amount − settled − pay_claimed` | `erp/finance` | 协议 05 |
 | 付款认领 | 付款申请在审批前向财务的未清项认领额度，发出前确认，核销时按实付正式化；认领中的部分不能被核销、冲销或另作他用 | `payment_claim`；`pending`、`confirmed`、`formalized`、`released` | `erp/finance`、`erp/payment` | 协议 05 |
-| 预收、预付 | 预收：带订单参考、尚未分配的客户资金，款到发货的交货向财务认领它才放行；预付与员工借款：财务的借方未清项，票据匹配或报销批准时抵扣 | `prepayment`、`advance` | `erp/finance` | 协议 05 |
+| 预收、预付 | 预收：带订单参考、尚未分配的客户资金；款到发货的交货向订单的放行台账（收款覆盖额、认领中、已放行）认领才放行。预付与员工借款分两阶段：先是只能被付款核销的申请，付款后形成已付余额，已付余额在票据匹配或报销批准时抵扣 | `prepayment`、`advance` | `erp/finance` | 协议 05 |
 | 可贷记台账 | 退货单行上已出账、可开红字的额度；出账组件按认领模式认领后开出贷项 | `creditable`、`credit_claimed`、`credited` | `erp/sales` | 协议 05 |
 | 收货计价依据、待定价 | 采购按收货行发布的单价与口径，是暂估成本的依据；超时未到时成本组件按政策取单价并标“待定价”；单价来源按政策价、计价依据、票据价的优先级替换 | `receipt_valuation_basis`；`pending_price` | `erp/purchase`；`erp/costing` | [协议 05b](../06-protocols/05b-inventory-costing.md) |
 | 货主 | 库存维度之一：库存归谁所有（自有、寄售、存放在供应商处），与存放位置分开 | `stock_owner` | `erp/inventory` | [领域与边界](02-domains-and-boundaries.md) |
