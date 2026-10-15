@@ -15,10 +15,22 @@ Checks:
                also in deployments with scanning disabled
   REVOKE_BOUND after a revocation at time t, no download happens later than t + link TTL
 
+Grant sub-model (D68: the attachment component never calls the parent's owner). Two owner
+components each own parent records; a user asks an owner for access, the owner checks its own
+permission and asks the attachment component for a grant over the system plane; the attachment
+component checks that the calling service owns the parent's resource type and mints an opaque grant
+bound to user, attachment, operation and expiry. Users replay grants, use them on other
+attachments, forge them, and a foreign component asks for grants on parents it does not own.
+
+  GRANT_SCOPE  every access the attachment component serves was decided by the parent's real
+               owner for that user, that attachment and that operation, and is before the expiry
+
 Bad variants (each must be caught): scan and serve the staging key; replace the file of an
 attachment in place under the same key and keep the earlier scan result; read the staging
 object for the checks and copy it to the final key afterwards;
-orphan cleanup decides by object age instead of checking metadata references; purge ignores holds; download links without an expiry.
+orphan cleanup decides by object age instead of checking metadata references; purge ignores holds; download links without an expiry;
+grant not bound to the attachment; grant expiry not checked; grant issued to any calling component
+without checking that it owns the parent's resource type.
 """
 import random
 import sys
@@ -124,6 +136,52 @@ def run(rng, variant, fails):
             fails.append("NO_DANGLING"); return
 
 
+GRANT_TTL = 2
+
+
+def grant_run(rng, variant, fails):
+    owner_of_type = {"order": "sales", "invoice": "billing"}
+    parents = {"P1": "order", "P2": "invoice"}
+    attachments = {"A1": "P1", "A2": "P1", "A3": "P2"}
+    allowed = {("u1", "P1"), ("u2", "P2")}           # owner-side permission decisions
+    grants = {}                                      # token -> (user, attachment, op, expires)
+    decided = set()                                  # (user, attachment, op) decided by the real owner
+    now = 0
+    for step in range(40):
+        now += 1
+        a = rng.choice(["ask", "ask", "foreign", "use", "use", "use", "forge"])
+        if a == "ask":
+            user, att, op = rng.choice(["u1", "u2"]), rng.choice(list(attachments)), rng.choice(["read", "write"])
+            parent = attachments[att]
+            if (user, parent) not in allowed:
+                continue                             # the owner refuses; no grant is requested
+            tok = f"t{step}"
+            grants[tok] = (user, att, op, now + GRANT_TTL)
+            decided.add((user, att, op))
+        elif a == "foreign":
+            # a component asks for a grant on a parent whose resource type it does not own
+            user, att = rng.choice(["u1", "u2"]), rng.choice(list(attachments))
+            caller = rng.choice(["sales", "billing"])
+            if caller == owner_of_type[parents[attachments[att]]]:
+                continue                             # the real owner goes through "ask"
+            if variant != "any_caller":
+                continue                             # the attachment component refuses the caller
+            grants[f"f{step}"] = (user, att, "read", now + GRANT_TTL)
+        elif a == "forge":
+            grants.setdefault("forged", None)
+        elif a == "use" and grants:
+            tok = rng.choice(list(grants))
+            g = grants[tok]
+            if g is None:
+                continue                             # an unknown token is not found
+            user, att, op, exp = g
+            target = att if variant != "unbound" else rng.choice(list(attachments))
+            if variant != "no_expiry_check" and now > exp:
+                continue
+            if (user, target, op) not in decided or now > exp:
+                fails.append("GRANT_SCOPE"); return
+
+
 def main():
     variants = ["good", "staging_served", "digest_unbound", "cleanup_by_age", "purge_ignores_hold", "no_expiry", "read_then_copy"]
     res = {}
@@ -138,7 +196,19 @@ def main():
     for v in variants[1:]:
         print(f"bad variant {v}: {'caught ' + str(res[v]) if res[v] else 'NOT CAUGHT'}")
         caught &= bool(res[v])
-    if res["good"] or not caught:
+    gvariants = ["good", "unbound", "no_expiry_check", "any_caller"]
+    gres = {}
+    for v in gvariants:
+        rng = random.Random(SEED)
+        fails = []
+        for _ in range(RUNS):
+            grant_run(rng, v, fails)
+        gres[v] = sorted(set(fails))
+    print(f"grants good: {'ok' if not gres['good'] else 'FAIL ' + str(gres['good'])} (GRANT_SCOPE over {RUNS} runs)")
+    for v in gvariants[1:]:
+        print(f"grants bad variant {v}: {'caught ' + str(gres[v]) if gres[v] else 'NOT CAUGHT'}")
+        caught &= bool(gres[v])
+    if res["good"] or gres["good"] or not caught:
         sys.exit(1)
 
 
