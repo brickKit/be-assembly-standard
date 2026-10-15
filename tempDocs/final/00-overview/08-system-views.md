@@ -101,4 +101,4 @@ flowchart TB
 | 证据的两段写与整套恢复 | [协议 15](../06-protocols/15-backup-and-recovery.md#证据的写入) |
 | 浏览器请求与令牌陈旧 | [协议 20](../06-protocols/20-frontend.md#登录与会话) |
 | 安全记录的生效点与影响闭包 | [安全 08](../06-protocols/security/08-state-and-change-protocol.md) |
-| 授权成员与身份成员的切换 | 安全 [10](../06-protocols/security/10-providers-and-member-switching.md#切换的时序)、[11](../06-protocols/security/11-identity-member-switching.md) |
+| 授权成员与身份成员的切换 | 安全 [10](../06-protocols/security/10-providers-and-member-switching.md#切换的时序)、[11](../06-protocols/security/11-identity-member-switching.md#时序图) |

@@ -138,7 +138,7 @@
 | 部署处于待恢复，变更是管理变更且不属于管理员恢复 | 已驳回 | `RECOVERY_IN_PROGRESS` |
 | 请求者的资格可证明，且不合格（含不能收紧不归自己管辖的授权域） | 已驳回 | `PERMISSION_DENIED` |
 | 放宽，请求者的资格无法证明 | 处理中 | `ADMIN_AVAILABILITY_UNPROVABLE` |
-| 收紧，请求者的资格无法证明 | 按安全 03 的只减少访问的操作：可以单人办理的继续；需要第二名管理员确认而确认未附上的为待确认；对象持有授权管理资格、无法取得资格可证明的确认的为处理中 | `CONFIRMATION_REQUIRED` 或 `ADMIN_AVAILABILITY_UNPROVABLE` |
+| 收紧，请求者的资格无法证明 | 按安全 03 的只减少访问的操作：可以单人办理的继续；需要第二人确认而确认未附上的为待确认；对象持有授权管理资格、既没有资格可证明的确认也没有部署所有者确认的为处理中（请求不保存，调用者重试） | `CONFIRMATION_REQUIRED` 或 `ADMIN_AVAILABILITY_UNPROVABLE` |
 | 放宽，所需的确认不齐，或确认已过期 | 待确认（需要重新确认，不按旧确认生效） | `CONFIRMATION_REQUIRED` |
 | 目标记录或来源的修订已变 | 已驳回（批量计划中的项转待复核） | `CHANGE_REVISION_STALE` |
 | 放宽，包含证明不成立，或要以 `superseded` 结束的旧记录不被新记录包含 | 已驳回 | `CONTAINMENT_NOT_PROVEN` |
