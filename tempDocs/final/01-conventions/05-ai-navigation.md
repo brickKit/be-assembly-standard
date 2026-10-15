@@ -108,7 +108,7 @@ flowchart TD
 ```text
 <仓库>/
 ├── component.yaml          BrickKit 读取：身份、版本、依赖、配置、端口
-├── assembly.yaml           本项目的工具读取：权限、数据范围、菜单、领域等
+├── assembly.yaml           本项目的工具读取：权限、数据范围、领域（菜单由前端的页面模块声明，协议 20）等
 ├── contracts/              契约：protobuf、OpenAPI、事件定义
 ├── gen/                    从契约生成的代码，不手改
 ├── backend/
