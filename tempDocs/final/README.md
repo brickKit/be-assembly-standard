@@ -6,10 +6,10 @@
 
 | 目录 | 内容 | 状态 |
 | --- | --- | --- |
-| [00-overview/](00-overview/README.md) | 产品、组件全景、货架、选择关系与客户组合、变更与停用、选型说明、路线 | 第 1 批已整理；路线为第 2 批 |
-| [01-conventions/](01-conventions/README.md) | 工程规范、测试与验证（含验收矩阵）、文档规则、图与表的规范、AI 导航与信息定位 | 第 2 批已整理 |
+| [00-overview/](00-overview/README.md) | 产品、领域与边界、组件全景与货架、选择关系与客户组合、变更与停用、路线、选型说明 | 已整理 |
+| [01-conventions/](01-conventions/README.md) | 工程规范、测试与验证（含验收矩阵）、文档规则、图与表的规范、AI 导航与信息定位 | 已整理 |
 | `02-decisions/` | 决定记录 | 第 8 批 |
-| [04-foundations/](04-foundations/README.md) | 底层选择：部署与运行、数据与生命周期、事务与消息 | 第 2 批已整理 |
-| `05-operations/` | 运维手册 | 第 7 批 |
-| `06-protocols/` | 安全 01–10（[security/](06-protocols/security/README.md)）与协议 01–21 | 安全总页与安全 01–05 已整理（第 3 批）；协议 14 已整理（第 2 批）；其余第 4–7 批 |
-| [07-components/](07-components/README.md) | 组件边界卡 | 第 1b 批已整理 |
+| [04-foundations/](04-foundations/README.md) | 底层选择：部署与运行、数据与生命周期、事务与消息、前端技术栈 | 已整理 |
+| [05-operations/](05-operations/README.md) | 运维手册：备份与恢复、升级与维护窗口、告警与处置、客户上线 | 已整理 |
+| [06-protocols/](06-protocols/README.md) | 安全 01–11（[security/](06-protocols/security/README.md)）与协议 01–21 | 已整理 |
+| [07-components/](07-components/README.md) | 组件边界卡 | 已整理；组件分配的多轮复查进行中 |
