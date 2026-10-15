@@ -24,7 +24,7 @@ flowchart LR
 | Go 外壳（`be/go-core`、`be/go-infra`、`be/go-backoffice`） | 把同语言的成员编译进一个二进制 | 三个外壳按编入的成员承担不同组合，不能无条件互换 |
 | Python 外壳（`be/py-render`） | 同上，Python 成员 | 不替代 Go 外壳或外部身份产品的进程 |
 | TypeScript 外壳 | 尚无路线 | 需要时按协议 17、18 设计 |
-| 运行形态 | 本机进程、Docker、Podman、Kubernetes，以及本机进程与 Docker 或 Podman 混合 | 部署目标的选择；业务组件的版本与契约保持可核对；支持范围按真机或集群证据。本机进程（BrickKit 的 `mode: local`）在这台机器上从源码运行，由启动它的那次 `up` 在前台看护，不重启、不开机启动；要一直运行的部署用容器，不用容器的长期运行不在 BrickKit 的范围内 |
+| 运行形态 | 本机进程、Docker、Podman、Kubernetes，以及本机进程与 Docker 或 Podman 混合 | 部署目标的选择；业务组件的版本与契约保持可核对；支持范围按真机或集群证据。本机进程（BrickKit 的 `mode: local`）在这台机器上从源码运行，由启动它的那次 `up` 在前台看护，不重启、不开机启动；要一直运行的部署用容器，不用容器的长期运行不在 BrickKit 的范围内。用 `local` 部署是图省事（一次启动、一次关闭，不装容器环境），算一种另类的部署模式，不推荐 |
 
 ```mermaid
 flowchart TB
