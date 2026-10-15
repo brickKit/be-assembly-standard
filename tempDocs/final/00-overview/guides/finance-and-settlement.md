@@ -35,7 +35,7 @@ flowchart LR
     C --> F[erp/finance<br/>总账与过账]
 ```
 
-成本与物理变动各有生命周期：到货后发票或运费补齐，可能改变成本而没有新的数量变动。成本记录关联来源、依据与调整历史，不靠改写数量流水表达；暂估与最终结果如实区分。同一范围与口径只有一个成本权威；不同的会计目的显式声明口径。库存按“产品 + 法人”分配计价序号，成本组件按序计算；关账时成本组件先读取库存与制造的当前序号并处理完，再封存（协议 05、06）。延迟可以有界，结果不能悄悄遗漏；已过账与已关账的事实按更正协议处理。同时含库存与财务的组合必须含成本组件；只要粗略核算的小客户可以选成本组件的定期盘存策略（期末按盘点倒算销货成本），不由财务降级处理；不返回虚构的成本。
+成本与物理变动各有生命周期：到货后发票或运费补齐，可能改变成本而没有新的数量变动。成本记录关联来源、依据与调整历史，不靠改写数量流水表达；暂估与最终结果如实区分。同一范围与口径只有一个成本权威；不同的会计目的显式声明口径。库存按“产品 + 法人”分配计价序号，成本组件按序计算；关账时成本组件先以标记行读取库存与制造的高点并处理完，再封存（协议 05、06）。延迟可以有界，结果不能悄悄遗漏；已过账与已关账的事实按更正协议处理。同时含库存与财务的组合必须含成本组件；只要粗略核算的小客户可以选成本组件的定期盘存策略（期末按盘点倒算销货成本），不由财务降级处理；不返回虚构的成本。
 
 **依据**：Odoo 19 的库存应用按物理移动维护实时估值，财务应用有自己的估值更新与结账（[官方说明](https://www.odoo.com/documentation/19.0/applications/finance/accounting/get_started/inventory_valuation.html)）；Microsoft Business Central 把数量记入 Item Ledger Entries、价值记入 Value Entries，价值再过入总账（[库存过账](https://learn.microsoft.com/en-us/dynamics365/business-central/design-details-inventory-posting)、[总账对账](https://learn.microsoft.com/en-us/dynamics365/business-central/design-details-reconciliation-with-the-general-ledger)）；Dynamics 365 SCM 的成本管理覆盖库存核算、制造核算与总账集成（[官方说明](https://learn.microsoft.com/en-us/dynamics365/supply-chain/cost-management/cost-management-home-page)）。它们支持“数量、价值、总账分别表达并保持关联”，不证明这些账表是独立部署的服务；本项目选择独立组件，依据是功能生命周期与独立选配、替换的目标。同一组件内用明确策略也是合理的另一设计，它少一些协调，牺牲成本能力的独立部署。
 

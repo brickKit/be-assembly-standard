@@ -12,6 +12,8 @@ appear in its "必需依赖" row (plus 身份 -> the identity family, 授权 -> 
   BASELINE  every combination contains the deployment-level components every formal
             deployment needs: exactly one identity member (any infra/iam-*), authorization, audit
             (protocol 03)
+  RULES     the selection page's admission table: a combination meeting a component condition lists
+            the required components (or one of them)
   ONE-OF    a card's "可选依赖与缺件" row may name a group that "装配准入要求至少有一个" (BrickKit
             has no either-or dependency; assembly admission checks it, security 09): every
             combination listing that component lists at least one member of the group
@@ -130,7 +132,7 @@ def closure(deps, roots):
 
 def combos():
     text = open(COMBOS, encoding="utf-8").read()
-    sec = text.split("## 客户组合与闭包", 1)[1].split("\n## ", 1)[0]
+    sec = text.split("## 客户组合与闭包", 1)[1].split("\n## ", 1)[0].split("\n### ", 1)[0]
     rows = {}
     for line in sec.splitlines():
         if not line.startswith("| ") or line.startswith("| 组合") or line.startswith("| ---"):
@@ -145,9 +147,41 @@ def combos():
     return rows
 
 
+def rules():
+    """Component rules of the selection page's admission table: (name, condition set, required set, one-of)."""
+    text = open(COMBOS, encoding="utf-8").read()
+    if "### 组合准入规则" not in text:
+        return []
+    sec = text.split("### 组合准入规则", 1)[1].split("\n## ", 1)[0]
+    out = []
+    for line in sec.splitlines():
+        if not line.startswith("| ") or line.startswith("| 规则") or line.startswith("| ---"):
+            continue
+        cells = [c.strip() for c in line.strip("|").split("|")]
+        cond = set(ID.findall(cells[1]))
+        if not cond or not cells[1].startswith("含"):
+            continue   # configuration rules are checked at assembly time
+        need = set(ID.findall(cells[2]))
+        out.append((cells[0], cond, need, cells[2].startswith("其中之一")))
+    return out
+
+
+def rule_fails(name, listed, rs):
+    out = []
+    for rname, cond, need, one in rs:
+        if cond <= listed:
+            ok = bool(need & listed) if one else need <= listed
+            if not ok:
+                out.append(f"RULES: {name} breaks '{rname}': needs {'one of ' if one else ''}{sorted(need)}")
+    return out
+
+
 def main():
     deps, oneof = cards()
     fails = []
+    rs = rules()
+    if rs and not rule_fails("probe", {"erp/inventory", "erp/finance"}, rs):
+        fails.append("SELF-TEST: inventory and finance without costing was not reported")
     if not one_of_fails(oneof, "probe", {"erp/billing"}):
         fails.append("SELF-TEST: erp/billing without a source was not reported")
     probe = {n: set(ds) for n, ds in deps.items()}
@@ -172,12 +206,13 @@ def main():
         if len(ids) != 1:
             fails.append(f"BASELINE: {name} needs exactly one identity member (infra/iam-*), has {ids}")
         fails += one_of_fails(oneof, name, listed)
+        fails += rule_fails(name, listed, rs)
     print(f"{len(deps)} components with cards; {sum(len(v) for v in deps.values())} required edges; {len(combos())} combinations")
     for f in fails:
         print(f)
     if fails:
         sys.exit(1)
-    print("ACYCLIC, KNOWN, CLOSURE, BASELINE, ONE-OF: ok")
+    print("ACYCLIC, KNOWN, CLOSURE, BASELINE, ONE-OF, RULES: ok")
 
 
 if __name__ == "__main__":
