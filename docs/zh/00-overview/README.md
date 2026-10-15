@@ -29,7 +29,7 @@
 | [03-catalog.md](03-catalog.md) | 全部组件的身份、能力与范围；新增与退役的身份；当前重建范围 |
 | [04-selection.md](04-selection.md) | 五种选择方式、能力分图、选择点一览、客户组合与闭包、客户故事 |
 | [05-change-and-retirement.md](05-change-and-retirement.md) | 替换的四种路径、从候选到生效、失败恢复、组件的停用与退出 |
-| [06-roadmap.md](06-roadmap.md) | 三条范围线、开发的五步、设计稿切换成正式文档、问题反馈、项目完成后的整体总结 |
+| [06-roadmap.md](06-roadmap.md) | 三条范围线、开发的五步、设计与正式文档、问题反馈、项目完成后的整体总结 |
 | [07-glossary.md](07-glossary.md) | 跨组件的术语：业务叫法、定义、代码标识符、所属组件与所在文档 |
 | [08-system-views.md](08-system-views.md) | 系统上下文、一套部署里的容器、上下文地图、关键流程的时序图在哪里 |
 | [guides/](guides/README.md) | 各选择点的方案比较 |

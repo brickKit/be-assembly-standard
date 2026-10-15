@@ -69,9 +69,21 @@ registry-check:  ## 校验端口册与 schema 册自洽
 docs-boundary:  ## 正式文档不得链接 dev/ 或 archive/
 	@python3 infra/scripts/docs-boundary.py
 
-docs-mirror:  ## 项目文档 docs/en/ 与 docs/zh/ 逐文件对应：路径相同、二级标题数相同、第一行互链
+docs-mirror:  ## Mirror check across language trees; enabled only once a second language exists (D67: Chinese only for now)
 	@python3 infra/scripts/docs-mirror.py
-.PHONY: registry-check docs-boundary docs-mirror
+
+docs-links:  ## Local links and anchors in AGENTS.md, README.md and docs/; current documents never link archive/ or dev/
+	@python3 tools/be-acceptance/doc-checks/links.py .
+
+docs-ids:  ## Expectation IDs: one owner per prefix, unique, contiguous (check 33)
+	@python3 tools/be-acceptance/doc-checks/33-expectation-ids.py .
+
+docs-closure:  ## Required dependencies acyclic and customer combinations closed (check 34)
+	@python3 tools/be-acceptance/doc-checks/34-dependency-closure.py .
+
+design-models:  ## Run every reference model in be-acceptance (about 15 minutes)
+	@$(MAKE) -C tools/be-acceptance models
+.PHONY: registry-check docs-boundary docs-mirror docs-links docs-ids docs-closure design-models
 
 ##@ 校验
 lint:  ## brickKit 自身的三层 + 文档检查（严格模式）
@@ -140,19 +152,11 @@ teardown-down:  ## 停掉拆回验证的容器
 .PHONY: teardown-up teardown-down
 
 ##@ 门禁
-gates: docs-boundary docs-mirror  ## 跑全部验收门禁：正式文档边界 + 中英文档树镜像 + 组件互不 import + SystemClient 误用 + 裸路由/裸 resolver + 事件契约破坏性变更 + 数据权限边界测试缺失 + 依赖版本号漂移（外壳 go.mod 钉与镜像 tag）+ configSchema 键名（大写下划线、不撞保留名；1.x 组件只警告）+ OpenAPI 契约相对上一个发布 tag 只增 + brickkit up --dry-run（brickKit 自带的依赖/钉/成员漂移检查）
-	@cd tools/be-acceptance && go build -o build/be-acceptance ./cmd/be-acceptance
-	@tools/be-acceptance/build/be-acceptance gate import-scan --root .
-	@tools/be-acceptance/build/be-acceptance gate system-client-scan --root .
-	@tools/be-acceptance/build/be-acceptance gate bare-route-scan --root .
-	@tools/be-acceptance/build/be-acceptance gate events-breaking-scan --root .
-	@tools/be-acceptance/build/be-acceptance gate data-scope-test-scan --root .
-	@tools/be-acceptance/build/be-acceptance gate dependency-version-scan --root .
-# service-hostname-scan 已退役（裁定 bk1，brickKit v1.3.1）：config/vars.yaml 的 authz/iam 地址改成 $endpoint: 引用，
-# 由 brickKit 按 brickkit.yaml 的版本算出，不再有手写的版本化服务名可查（这个门禁只会空跑通过）。
-	@tools/be-acceptance/build/be-acceptance gate config-key-scan --root .
-	@tools/be-acceptance/build/be-acceptance gate openapi-additive-scan --root .
-	@echo "▸ brickkit up --dry-run（brickKit 自带的漂移检查：依赖/版本钉/外壳成员；不启动任何容器）"
+# The Go gates of the 0.x be-acceptance (import, SystemClient, bare-route, event and OpenAPI
+# breaking changes, data-scope tests, dependency versions, config keys) moved to its legacy/v0
+# branch with the old code (D59); conformance suites and gates return with the rebuilt tools.
+gates: docs-boundary docs-mirror docs-links docs-ids docs-closure  ## Document gates (boundary, mirror, links, IDs, closure) + brickkit up --dry-run
+	@echo "▸ brickkit up --dry-run"
 	@bash $(S)/lib/require-brickkit.sh
 	@brickkit up --dry-run
 .PHONY: gates
@@ -161,18 +165,15 @@ version-check:  ## 扫全部 submodule（组件、外壳、工具仓库）：HEA
 	@bash infra/scripts/version-check.sh
 .PHONY: version-check
 
-bump-version:  ## 自动传播一次版本升级（算出全部下游要跟着同步的组件+改好所有文件），不写盘先看计划：make bump-version PLAN=<计划文件>；确认后加 APPLY=1 真的落地。计划文件格式与完整流程见 .claude/skills/version-bump-ship/SKILL.md 与 docs/en/01-conventions/01-development-workflow.md
-	@test -n "$(PLAN)" || { echo "用法：make bump-version PLAN=<计划文件> [APPLY=1]"; exit 1; }
-	@cd tools/be-acceptance && go build -o build/be-acceptance ./cmd/be-acceptance
-	@tools/be-acceptance/build/be-acceptance bump-version --root . --plan "$(PLAN)" $(if $(APPLY),--apply,)
-.PHONY: bump-version
+# bump-version (version propagation across dependants and shells) lived in the 0.x be-acceptance;
+# it returns with the rebuilt tools. Until then follow docs/zh/01-conventions/10-development-workflow.md.
 
 test-cross:  ## 组件局部测试：只跑 ID 一个组件，强依赖 gRPC 指向真实在跑的依赖容器（要求强依赖树在跑）。make test-cross ID=crm/opportunity [ARGS="-run TestX -v"]
 	@test -n "$(ID)" || { echo "用法：make test-cross ID=<scope>/<name> [ARGS=\"go test 额外参数\"]"; exit 2; }
 	@bash $(S)/test-cross.sh "$(ID)" $(ARGS)
 .PHONY: test-cross
 
-##@ 本地开发数据（只给本地用，不用于生产/CI；每个组件自己拥有种子数据，见 docs/en/03-seed-data.md）
+##@ 本地开发数据（只给本地用，不用于生产/CI；每个组件自己拥有种子数据，见 docs/zh/03-seed-data.md）
 # ⚠️ 这里曾经是 infra/seed-data/ 的编排脚本（seed.sh/clean.sh）。等到每个
 # 组件都有了自己的 make seed（且互不需要装配层帮它们传 id/sub——各自反查
 # 依赖组件的 command_idempotency 表），编排层就只剩"按顺序调用谁"这一件
@@ -207,16 +208,5 @@ seed-data-clean:  ## 清空 seed-data 能清的部分（见下方哪些组件没
 	@echo "✓ 其余组件的种子数据已清空"
 .PHONY: seed-data-clean
 
-##@ 验收
-# ⚠️ 会真的临时停掉 postgres、跑一次 brickkit down/up——先确认没有别人在用。
-tier0:  ## 档 0 六项验收，每加一个组件都要重跑
-	@$(MAKE) -C tools/be-acceptance tier0
-.PHONY: tier0
-
-tier1:  ## 【占位】档 1 平台断言：v1 下整体重写，06f 之前不做任何事
-	@echo "tier1 在 brickKit v1 下整体重写，推迟到 06f（platform/ 旧断言已随 be-acceptance 删除）；当前为占位，直接通过"
-.PHONY: tier1
-
-tier2:  ## 档 2 合并态专属断言，需要真实可达的 TEST_PG_DSN/TEST_NATS_URL
-	@$(MAKE) -C tools/be-acceptance tier2
-.PHONY: tier2
+# tier0/tier1/tier2 acceptance lived in the 0.x be-acceptance (legacy/v0); acceptance returns
+# with the rebuilt components and conformance suites (protocols 18, 21).
