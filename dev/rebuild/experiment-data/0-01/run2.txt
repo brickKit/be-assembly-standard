@@ -1,0 +1,23 @@
+# run 2 (2026-10-16): proxy and checksum database records, real module path github.com/brickKit/... (escaped brick!kit)
+$ curl https://proxy.golang.org/github.com/brick!kit/be-sdk-go/@v/list
+v0.1.0 v0.1.1 v0.1.2 v0.1.3 v0.1.4 v0.1.5 v0.1.6 v0.1.7 v0.1.8 v0.1.9 v0.2.0 v0.2.1 v0.2.2 v0.2.3 v0.2.4 v0.2.5 v0.2.6 v0.2.7 v0.3.0 v0.3.1 v0.3.2 v0.4.0 v0.5.0 
+$ curl https://sum.golang.org/lookup/github.com/brick!kit/be-sdk-go@v0.1.0
+62372451
+github.com/brickKit/be-sdk-go v0.1.0 h1:3WdZ3pxqLw9JxJ3C/e8QaafNwSXzrQFAd4L48cDbOsA=
+github.com/brickKit/be-sdk-go v0.1.0/go.mod h1:nBARaWRTfNEUqBUyiFanXBAiCMln5FqFteo6ZHZaH9Y=
+$ curl https://proxy.golang.org/github.com/brick!kit/erp-sales/@v/v1.0.0.info
+{"Version":"v1.0.0","Time":"2026-09-07T20:28:36Z","Origin":{"VCS":"git","URL":"https://github.com/brickKit/erp-sales","Hash":"08884336d75f4b8df17da351f4aa2cba7028f92b","Ref":"refs/tags/v1.0.0"}}
+# proxy-only versions with the correct path
+be-sdk-go: []
+be-acceptance: []
+be-ops: []
+be-protocol: []
+erp-sales: []
+erp-inventory: []
+mdm-product: []
+mdm-customer: []
+infra-authz: []
+infra-iam-casdoor: []
+
+# note: run 1 queried !brick!kit, which decodes to github.com/BrickKit/... (capital B); that path is cached too, e.g.
+{"Version":"v0.1.0","Time":"2026-09-06T15:19:38Z","Origin":{"VCS":"git","URL":"https://github.com/BrickKit/be-sdk-go","Hash":"b86aa7693c24a8ea1f3e48c7c8815983ba94ef78","Ref":"refs/tags/v0.1.0"}}
