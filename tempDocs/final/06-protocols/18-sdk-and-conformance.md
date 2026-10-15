@@ -37,7 +37,7 @@
 | 接口与错误 | 用户接口、系统调用、请求 ID 与追踪、时限、幂等键、游标、错误类别与原因 | [协议 10 的开放接口](10-external-integration.md#开放接口)、[协议 14 的列表](14-data-foundations.md#列表游标排序与筛选)、[安全 09a 的求值结果与错误](security/09a-encoding-and-records.md#求值结果与错误) |
 | 身份 | 凭据验证、主体与服务身份、调用面 | [安全 02](security/02-trusted-identity-and-attributes.md) |
 | 授权 | 完整授予、视图与核验（比较顺序、有效期、计时源）、查询编译、字段掩码、能力声明 | [安全 01](security/01-authorization-evaluation.md)、[03](security/03-authorization-acceptance-and-revocation.md)、[07](security/07-finite-expressions-containment-and-queries.md)、[09a](security/09a-encoding-and-records.md)、[09b](security/09b-capabilities-and-profiles.md) |
-| 组件之间的调用 | 时限、重试预算、熔断、出站并发；基础组件不同步调用业务组件（D68） | 协议 17 |
+| 组件之间的调用 | 时限、重试预算、熔断、出站并发；基础组件不同步调用业务组件（D68） | [协议 17 的组件之间的调用](17-runtime-and-resources.md#组件之间的调用) |
 | 数据库与数据形态 | 角色、`SET LOCAL`、超时、身份、单号、时间、金额、迁移 | [协议 14](14-data-foundations.md) |
 | 事件与水位来源 | 发件表、信封（实现实例、纪元、投影语义、受影响的主体）、收件表与连续位置、发件表保留；水位来源的义务：锁内提交后编号、回声与补取（含“只要回声”）、连续位置上的行核对、纪元与实现实例的声明；消费者的接收规则、对齐与来源更换 | [协议 02](02-projections.md)、[协议 15 的发件表保留](15-backup-and-recovery.md#发件表的保留与消费者进度) |
 | 后台工作 | 工作项、租约与代次、认领纪元、定时槽位、作用类别、`outcome_unknown` 与暂停原因、`operation_id` | [协议 01](01-background-work.md) |
@@ -51,7 +51,7 @@
 | 导入入口 | 批次、校验、来源身份登记、激活 | [协议 16](16-go-live-and-import.md) |
 | 恢复义务 | 证据存储的写入（两段写）、恢复代次；库内计数与纪元（`current_db_epoch()`、纪元历史与分叉点、实现实例、持有者用自己取得的纪元比较、回退绊线）；本地提交持久的启动检查；同步确认原语（等待中断按结果未知，重试先完成一次同步确认）与等待中断时的外部告警 | [协议 15](15-backup-and-recovery.md)、[协议 14 的库内计数与纪元](14-data-foundations.md#库内计数与纪元) |
 | 观测 | 日志字段、指标、业务健康指标与必需告警、脱敏 | [协议 17 的观测](17-runtime-and-resources.md#观测) |
-| 外壳义务 | 同一外壳同一语言与 SDK 版本、成员预算、不初始化进程级全局 | 协议 17 |
+| 外壳义务 | 同一外壳同一语言与 SDK 版本、成员预算、不初始化进程级全局 | [协议 17 的外壳义务](17-runtime-and-resources.md#外壳义务) |
 | 自描述 | 组件 ID、版本、协议版本、能力声明 | [安全 09b 的能力声明](security/09b-capabilities-and-profiles.md#能力声明) |
 
 **版本**：协议按语义版本发布；同一主版本内只追加规则与字段，收紧必须规则或改变含义发新主版本。组件声明它实现的协议版本与能力（安全 09b）。
