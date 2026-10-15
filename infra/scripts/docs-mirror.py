@@ -4,7 +4,8 @@
 (a) 两棵树下的相对路径集合完全相同；
 (b) 每对 .md 文件的 `## ` 二级标题数相同（代码块里的不算）；
 (c) 每个 .md 文件第一行有一个链接指向另一种语言的对应文件，且能解析到它。
-有问题时逐行打印 `<path>: <problem>`，退出码 1。两棵树都不存在时什么也不查。
+有问题时逐行打印 `<path>: <problem>`，退出码 1。镜像按语言启用：只有一种语言的树（开发完成前只写中文，D67）
+或两棵都不存在时，不要求镜像，什么也不查。
 组件文档不归这里管：它们按 brickKit 的 `.zh.md` 后缀规则，由 brickkit lint 检查。
 """
 from __future__ import annotations
@@ -64,7 +65,7 @@ def links_counterpart(p: pathlib.Path, counterpart: pathlib.Path) -> bool:
 def check(root: pathlib.Path) -> list[str]:
     docs = root / "docs"
     files = {lang: tree(docs / lang) for lang in LANGS}
-    if not files["en"] and not files["zh"]:
+    if not files["en"] or not files["zh"]:
         return []
     problems = []
     for lang, other in (("en", "zh"), ("zh", "en")):

@@ -1,126 +1,74 @@
-[English](../../en/04-foundations/README.md) · [中文](README.md)
-
 # 底层选择
 
-组件下面的每一块为什么是现在这样：数据库、标识、时间与金额、事务、事件、调用、后台任务、身份、授权、可观测性、配置、外壳。每个关键选择一篇。每篇说明我们选了什么、让它可以替换的契约是什么、还有哪些实现、什么情况下会换、换的时候具体动哪些东西。读者是要改 SDK、外壳、`infra/`、`tools/be-ops` 或 `tools/be-acceptance` 的人，以及提议替换其中某一块的人。
+本目录说明每个底层方面选了什么、为什么、在什么条件下改选，以及跨方面必须同时守住的约束。机制的完整规则在协议与安全文档中，本目录只给推荐组合、取舍与指向。
 
-## 阅读顺序
+| 文档 | 回答什么 |
+| --- | --- |
+| [部署、运行与资源](01-deployment-and-runtime.md) | 逻辑组件与物理部署、SDK 与外壳、规模阶梯、扩展信号、外壳风险、真机矩阵、升级与维护窗口、网络前提 |
+| [数据与生命周期](02-data-and-lifecycle.md) | 数据归属、重复主数据的合并、发生时归属、数据库的选择与分离、冷热分层、归档单元、跨层查询、灾难恢复、对象存储 |
+| [事务与消息](03-transactions-and-messaging.md) | “完成”的含义、本地事务规则、订单预占的协调、通信与恢复、事件分类与去重寿命、消息运输的选择、故障期间的保护、出账核销与关账 |
+| [前端技术栈](04-frontend-stack.md) | 框架与组件库、组件隔离、导航与菜单的来源、用户偏好、设计令牌、主题与视觉、移动端各形态的登录、写法约定 |
+| [数据库引擎与连接](05-database-engine.md) | PostgreSQL 方言族与其他引擎的比较、引擎分级、何时与怎样更换、连接池代理 |
+| [消息运输与事件信封](06-message-transport.md) | 至少一次与发件表、JetStream 与 PostgreSQL 队列及其他产品的比较、CloudEvents 信封、切换与共同验收 |
+| [组件协议与语言](07-component-protocol-and-languages.md) | 任何语言一份协议、两道准入、基础设施的端口与适配器、每种语言锁定的技术栈 |
+| [组件间调用与错误](08-calls-and-errors.md) | gRPC 系统面与 REST 用户面、一个错误对象与 reason 目录、截止时间、重试与熔断的取舍 |
+| [边缘入口](09-edge.md) | 边缘负责与不负责什么、永不路由什么、产品比较、路由由声明派生 |
+| [观测](10-observability.md) | OpenTelemetry、Prometheus 与标准输出日志、每成员的遥测身份、更换后端 |
+| [数据基础（协议 14）](../06-protocols/14-data-foundations.md) | 数据库的使用、身份与唯一性、库内计数与纪元、单号、时间与期间、金额与单位、游标、结构迁移 |
 
-| 你在做什么 | 读什么 |
-|---|---|
-| 写或改一个组件 | [约定](../01-conventions/README.md)。约定说明每一块怎么用；只有约定链到某篇底层文档，或者你想知道为什么时，才打开它 |
-| 改官方 SDK、外壳、`infra/` 里的基础资源、`be-ops` 或 `be-acceptance` | 先读本 README，再读你要改的那一块的文档，再读它列出的决策 |
-| 提议"把 X 换掉"、"加一个缓存 / 队列 / 引擎"、"支持数据库 Y" | 先看下面的[端口表](#端口)，再看那个端口的文档：它的**什么时候换**和**怎么换**两节会告诉你，这个请求是改一个配置值、加一个适配器、加一个槽位族成员，还是不在范围内 |
-| 用 Go、Python、TypeScript 以外的语言写组件 | 先读 [02-languages-and-component-protocol.md](02-languages-and-component-protocol.md)，再读约定 |
+## 原则
 
-决策优先于底层文档：两者不一致时，在决策被修改之前以决策为准（[决策索引](../02-decisions/README.md)）。
+独立组件、部署时合并、唯一事实权威、身份与授权分离、能力匹配、按客户维护精确的组合，适合本项目的长期目标。保留这些原则不要求保留旧代码、旧组件划分或旧 SDK 的求值算法（D59）。
 
-## 本目录与其他目录的分工
+选择的依据是：业务正确性、独立选配与替换的价值、团队与 AI 的维护负担、整套部署的成本、可演进性。旧方案的作者或模型代际不作为证据；新方案同样需要反例与验证。
 
-同一个主题出现在三个地方，各自回答不同的问题，没有一处重复。
+## 推荐组合与改选条件
 
-| 目录 | 写什么 | 不写什么 |
-|---|---|---|
-| [`02-decisions/`](../02-decisions/README.md) | 一句话结论、两三句理由、挡下什么、何时重新讨论；并链到底层文档里有完整分析的那一节 | 方案对比、端口契约、测试清单 |
-| `04-foundations/`（本目录） | 我们的选择、端口契约、备选方案、为什么选它、为什么不选其他、什么时候换、怎么换、一致性测试；**相关决策**一节链到它所支撑的决策 | "挡下什么"清单（改为链到决策）、怎么调用某个 API 的编码规则（改为链到约定） |
-| [`01-conventions/`](../01-conventions/README.md) | 怎么用：用哪个 API、怎么写、要避开的错误 | 为什么这样选（改为链到这里） |
+| 方面 | 推荐 | 有意义的其他方案与改选条件 | 规则所在 |
+| --- | --- | --- | --- |
+| 组件边界 | 按独立的业务变化与数据权威划分；强不变量留在本地一致性边界内 | 两块总是一起变化、需要共同提交、又没有独立选配价值时合并；已经由用户决定独立的（成本、信用、出账、收付款等），先证明协调可行 | [领域与边界](../00-overview/02-domains-and-boundaries.md)、[边界卡](../07-components/README.md) |
+| 在线数据库 | PostgreSQL；小型部署共用实例，每个组件独立 schema 与访问角色 | 需要故障或安全隔离、某组件成为热点时，独立数据库或实例；跨方言按客户要求做专项，不做适合所有数据库的薄弱抽象 | [协议 14](../06-protocols/14-data-foundations.md)、[数据与生命周期](02-data-and-lifecycle.md) |
+| 权限 | 完整授予加有限、可验证的条件与查询表达；默认有界本地授权，可选严格路径（D57） | 复杂关系比较 OpenFGA 等，复杂策略比较策略引擎；选型要证明列表、字段、管理与新鲜度，不能只比较 Check | 安全 01–10、[授权选型](../00-overview/guides/authorization.md) |
+| 冷热数据 | 热数据与仍常查的历史留在关系型路径；封存的历史用 Parquet 加版本清单 | 在线恢复或争用超出预算时加独立的历史库；多引擎并发维护、频繁改写文件时评估 Iceberg；重分析另选分析引擎 | 协议 11、[数据与生命周期](02-data-and-lifecycle.md#冷热分层) |
+| 本地事务 | 短事务、数据库约束、条件更新、固定锁序；复杂的集合不变量用明确的串行化点或局部 SERIALIZABLE | 不用全局提高隔离级别代替规则设计，也不禁止有依据的局部 SERIALIZABLE | [事务与消息](03-transactions-and-messaging.md#本地事务)、协议 14 |
+| 跨组件事务 | 业务属主持久协调；库存与信用用可查询的预占协议；可补偿的流程写明中间状态 | 真正必须同时提交、不能容忍中间状态时重划边界；复杂长流程再选执行引擎；不靠外壳提供共同事务 | 协议 04–06 |
+| 缓存 | 不设缓存服务器（不用 Redis 或 Memcached）；缓存只在一个成员的进程里，经 SDK 创建，有容量上限、有效期、并发回源只回源一次与由事件触发的失效；要在副本之间共享或扛过重启的（快照、幂等、锁、会话、限流计数、第三方令牌、汇总），都是组件自己 schema 里的表 | 同时成立才重新讨论（决定 0201）：有实测的负载，数据库加进程内内存确实撑不住，涉及不止一个组件；或多副本下某项读在副本缓存间最多一个有效期的不一致不可接受。共享缓存的代价是一个有状态服务、每次读一次网络往返与分布式失效，外壳中每个键还要加成员前缀 | 协议 17 的多副本、安全 03（授权视图的有效期） |
+| 消息 | 业务提交与发件表同事务；可靠运输加本地收件表或业务唯一性，加重建与对账 | JetStream 为默认，PostgreSQL 队列为第二适配器；按各自能力、故障范围与成本验收，不另建通用消息组件 | 协议 02、05、15，[事务与消息](03-transactions-and-messaging.md#消息运输的选择) |
+| 部署 | 单跑、外壳、混合都保留；低负载、兼容的成员优先考虑外壳（D40） | 需要独立扩容、频繁发版、重处理或安全隔离时拆出；Docker 与 Podman 的默认按整套实测决定 | 协议 17、[部署与运行](01-deployment-and-runtime.md) |
+| 高可用 | 底层预留，起步是单实例、单数据库；真正上高可用时，全部写入同步提交（两个备库任一确认） | 两个备库都不可用时降级为异步并告警，此时的切换按整套恢复处理 | D66、协议 15 |
+| 前端 | Vue 3 + TypeScript；PC 用 Ant Design Vue 与 vxe-table，移动端用 Uni-app 与 wot-design-uni；第三方组件只在 ui-kit；CSS 变量令牌 | 关键组件只在别的框架上成熟、或团队转向时改选；表格引擎在 `<BeTable>` 背后替换 | [前端技术栈](04-frontend-stack.md)、协议 20 |
+| 交付 | 有限的稳定维护线、每客户精确的交付基线、允许维护窗口、团队维护客户 Fork（D55、D58、D25） | 连续升级、共享 SaaS、跨地域主动写入、任意旧版永久支持都另有成本与专项设计 | 协议 19、[工程规范](../01-conventions/01-engineering.md#客户交付版本的维护) |
 
-## 十一个小节
+这些是有前提的推荐，不是给每个客户同一套基础设施。小客户不必预装历史库、湖仓、分析集群或工作流服务器；大客户也不因为规模大就把每个组件单独部署。
 
-除本 README 之外，每篇底层文档都恰好有下面这些 `##` 小节，顺序固定，中英两版相同。形状固定，AI 能直接跳到需要的部分，`make docs-mirror` 也能校验两版是否成对。
+## 不随恢复回退的存储
 
-| 序号 | 英文标题 | 中文标题 | 写什么 |
-|---|---|---|---|
-| 1 | Scope | 范围 | 这篇文档回答什么问题，哪些内容留给哪篇别的文档 |
-| 2 | Choice | 选择 | 我们用什么，几行说清楚；后面跟一行**状态**：已在用、已定（随 3.0.0 组件统一升级落地）、以后再做 |
-| 3 | Port contract | 端口契约 | 线协议、数据库或协议层面的契约：配置键、URL scheme、表结构、请求头、消息字段、状态码、错误 reason。绝不写成某一门语言的 API：组件可以用任何语言写 |
-| 4 | Alternatives | 备选方案 | 主流方案，如实写出长处与短处 |
-| 5 | Why this choice | 为什么选它 | 决定了这个选择的理由 |
-| 6 | Why not the others | 为什么不选其他 | 每个备选方案具体缺了什么、会坏什么 |
-| 7 | When to switch | 什么时候换 | 能观察到的、足以支持更换的触发条件 |
-| 8 | How to switch | 怎么换 | 换的时候具体动哪些东西：一个配置值、一个版本钉、一个适配器、一个槽位族成员。绝不是"重写逻辑" |
-| 9 | Conformance tests | 一致性测试 | 每个实现都必须通过的测试套件，以及要先写红的测试 |
-| 10 | Decision records | 相关决策 | 本文支撑的决策（带链接），以及计划新增或修订的决策（纯文本，文件存在之前不加链接） |
-| 11 | Known limits | 已知限制 | 这个选择做不到的事，直说；只有一个适配器的端口也在这里写明 |
+整套恢复把业务库带回 T，但有几样东西必须在 T 之后仍然记得（[协议 15](../06-protocols/15-backup-and-recovery.md)）。它们只在这里定义：
 
-## 状态用语
+| 存储 | 是什么、存什么 | 必需的性质 | 最小部署怎样实现 |
+| --- | --- | --- | --- |
+| 证据存储 | 审计组件的库（`infra/audit` 兼任）：收紧的意图与结论、放宽、对外命令的发出记录与终态、单号签发等（协议 15 的证据表） | 整套恢复时不回退；只追加 | 起步与业务库同一 PostgreSQL 实例（D66 的单实例）：PostgreSQL 的时间点恢复以整个实例为单位，所以整套恢复先把实例恢复到一个临时实例，再逐库复制回业务库，审计库不动；也可以放在单独的实例 |
+| 运行档案 | 部署之外、机器可读的只追加记录：部署恢复代次与授权恢复代次的权威计数、信任材料（CA 链与服务凭据的签发与吊销）、部署身份与实现实例身份、高可用的“降级开始”、恢复与切换中人工打勾的步骤记录 | 不在部署的备份与恢复范围内；只追加、不可改写；每条带写入时间与写入者的签名；恢复工具与签发者可读写，写入可同步确认 | 部署之外的对象存储桶，开启对象锁（不可改写），独立的访问凭据；或客户已有的同类服务 |
+| 部署外的告警渠道 | 证据存储不可达时，属主签名的完整记录发往这里；同时通知值班的人 | 接收时间由渠道给出；记录原样保存，保留不短于完整备份的保留（起始 30 天）；机器可读 | 通知部分用邮件或 IM 的 webhook；同一份记录写进运行档案所在的对象锁存储，供恢复工具读取 |
 
-| 用语 | 含义 |
-|---|---|
-| **已在用** | 已发布的组件和 SDK 今天就是这样运行的 |
-| **已定** | 设计已经定下；代码随 3.0.0 组件统一升级及与之配套的 SDK 版本落地 |
-| **以后再做** | 已经命名，设计到足以让契约留好位置；等它的**什么时候换**一节里的触发条件出现时再建 |
+三者都不依赖审计组件之外的业务组件，也不依赖被恢复的库；运行档案与告警渠道的写入凭据由部署信任域签发，但吊销与轮换以运行档案本身为准（协议 15 的信任材料），不形成循环依赖。
 
-## 文件
+## 跨方面的约束
 
-| 文件 | 回答什么 | 文档 |
-|---|---|---|
-| `README.md` | 本索引、端口表、小节形状 | 已写 |
-| [01-ports-and-adapters.md](01-ports-and-adapters.md) | 什么算端口；适配器怎么选；一致性套件怎么组织；SDK 与协议的版本怎么演进；只有一个适配器的端口怎么如实标注 | 已写 |
-| [02-languages-and-component-protocol.md](02-languages-and-component-protocol.md) | 每个组件自由选语言；语言中立的组件协议及其黑盒一致性套件；官方 SDK；一个外壳只合并同一种语言的成员 | 已写 |
-| [03-database.md](03-database.md) | PostgreSQL 方言族、版本承诺、兼容发行版、schema 与角色隔离、按成员的连接池、连接池代理的规则、角色超时、高可用与备份的入口 | 已写 |
-| [04-identifiers-and-numbering.md](04-identifiers-and-numbering.md) | UUIDv7 主键、引用存文本、从 id 派生的分区键、游标、单据编号（含无缺号的凭证号） | 已写 |
-| [05-time-and-calendars.md](05-time-and-calendars.md) | 瞬时与业务日期、法人的业务时区、UTC 会话、事件里的业务日期、会计期间与会计年度 | 已写 |
-| [06-money-quantity-units.md](06-money-quantity-units.md) | 金额、单价、汇率的列规格，币种成对，ISO 4217，舍入与分摊，跨语言向量，计量单位 | 已写 |
-| [07-tenancy.md](07-tenancy.md) | 租户 = 部署、法人维度、`tenant_id` 与 `aud`、吵闹的邻居 | 已写 |
-| [08-schema-evolution.md](08-schema-evolution.md) | 迁移工具与护栏、expand/contract、并存版本、回填、只前滚 | 已写 |
-| [09-data-lifecycle.md](09-data-lifecycle.md) | 热、温、冷与销毁，法律保全，冷存储与冷查询适配器，分区窗口 | 已写 |
-| [10-local-transactions.md](10-local-transactions.md) | 隔离级别、超时、重试、加锁顺序、advisory 锁、事务里不走网络 | 已写 |
-| [11-consistency-across-components.md](11-consistency-across-components.md) | outbox 与 inbox、saga、对账器、挂起 | 已写 |
-| [12-event-bus.md](12-event-bus.md) | 队列选型与 broker 端口：默认 JetStream，另有 PostgreSQL 队列适配器 | 已写 |
-| [13-event-contracts.md](13-event-contracts.md) | 信封（CloudEvents）、命名、聚合流、schema 演进 | 已写 |
-| [14-system-rpc.md](14-system-rpc.md) | 组件之间的 gRPC 系统面 | 已写 |
-| [15-user-api-and-errors.md](15-user-api-and-errors.md) | REST 用户面与错误模型（AIP-193 映射、reason 登记表） | 已写 |
-| [16-deadlines-and-retries.md](16-deadlines-and-retries.md) | 时间预算、重试预算、舱壁 | 已写 |
-| [17-caching.md](17-caching.md) | 缓存，以及为什么没有 Redis | 已写 |
-| [18-edge.md](18-edge.md) | 边缘与网关 | 已写 |
-| [19-background-jobs.md](19-background-jobs.md) | 后台任务端口与调度 | 已写 |
-| [20-authorization-provider.md](20-authorization-provider.md) | 授权 provider 契约、资源契约、槽位族及其一致性套件 | 已写 |
-| [21-identity-provider.md](21-identity-provider.md) | IAM 槽位、token 形状、JWKS、平台自有的 `sub`、目录事件、Keycloak 成员 | 已写 |
-| [22-object-storage.md](22-object-storage.md) | S3 端口、每组件一个 bucket、blob 客户端、附件、预签名 URL、冷存储 | 已写 |
-| [23-observability.md](23-observability.md) | 传播、按成员的 resource、指标、日志字段、审计日志与应用日志 | 已写 |
-| [24-config-and-secrets.md](24-config-and-secrets.md) | 环境变量配置面、brickKit 的几种值形式（含 `$endpoint:`）、以文件交付的密钥与轮换 | 已写 |
-| [25-search.md](25-search.md) | 组件内的 `q` 帮手、全局搜索槽位族 | 已写 |
-| [26-i18n-data.md](26-i18n-data.md) | 可翻译的主数据、标准代码、服务端语言 | 已写 |
-| [27-shells.md](27-shells.md) | 合并安全：逐项核对表与四条外壳不变量 | 已写 |
+- **信任边界**：一个客户一套私有部署，法人是内部业务维度。即使共用宿主或复用客户的资源，部署的受众、凭据、对象空间与备份仍要隔离；预留的令牌字段不证明支持共享 SaaS。外壳是共同的进程信任域，事务内的角色切换防止串扰，但不是安全隔离；高保护对象按所需的信任边界选择独立进程与凭据。
+- **已接受的平台限制**：数据库结构迁移所用的属主角色凭据在服务容器中可见（迁移与服务由同一镜像执行），不为此向 BrickKit 提出专门的密钥需求；运行时代码不使用属主角色（协议 14）。
+- **授权与业务约束分开**：普通授权与业务强约束（本人自审、期间锁等）分开执行；精简部署与替换都不降低必需的保证。
+- **边界的代价**：独立的成本、信用、出账与资金边界有选配价值，但比合在一个本地事务里更贵。多个步骤允许“处理中”，最终事实不可丢失；不能为了维持边界，把不能补偿的业务规则降成“以后对账”。出现无法成立的不变量时，重新审视边界。
+- **SDK 的分工**：协议定义共同的外部语义，SDK 实现共同机制，组件实现业务资格与状态。SDK 不成为通用的 ERP 规则引擎，也不把供应商专属的策略翻译散到每个业务仓库。三种语言保留共同向量与差分验收，不要求内部代码结构相同（协议 18）。
+- **兼容不等于追加**：契约新增字段、枚举或事件不自动意味着兼容；含义变化按破坏性变化处理，旧版本的退出依据客户基线。数据库里当前没有旧会话，只是一个观察信号，不能证明离线作业、旧客户端与稍后启动的旧版本都已退出（协议 14、19）。
+- **预算合并计算**：前台、消息、作业、导出、冷读与外壳成员共用数据库、CPU、内存时，要有并发上限、队列上限与保留的服务能力。成员上限相加不能保证公平；连接名额也不是 CPU 或磁盘的隔离（协议 17）。
+- **出口与支撑能力**：搜索、移动聚合、报表、打印、附件、通知各自保持权限与事实边界；用户的聚合请求有扇出与批量预算；打印不取全权业务数据，模板、文件处理与回调输入受控；通知内容按接收者与渠道允许的范围形成；扫描或回调成功不自行放行业务（协议 10、12、13）。
+- **故障模型**：写明“本地提交成功”的故障模型、刷盘与复制条件、容许的数据损失。单机、多副本、同步与异步复制、备份分别承担不同的故障；多个容器共用同一宿主或磁盘不构成独立的故障域。支持版本、修复、凭据轮换、持久审计、告警与恢复演练进入客户组合（协议 15、17、19）。
 
-## 端口
+## 哪些已定，哪些由实现确认
 
-端口是基础设施边界上带一致性套件的契约，判据见 [01-ports-and-adapters.md](01-ports-and-adapters.md#选择)。套件放在 `tools/be-acceptance/conformance/<套件>/`。"单适配器端口"的意思是：它的价值在于一套统一的语义加一个套件，不在于能换。
+- **已定的原则**：唯一事实权威；组件与进程分离；业务写入与发件表、审计意图同事务；完整授予；必需能力缺失时拒绝；未知结果不伪称失败；当前授权覆盖全部数据出口；先验证再删除；正式数据升级时保留。
+- **由协议给出的规则**：授权的时间保证、有限表达与管理上限、代表业务的协调状态机、归档目录与路由、重放与去重寿命、关账屏障、一致性恢复、库内计数与纪元（安全 01–10、协议 01–21）。
+- **必须由实现确认**：SQL、SDK 与成员的等价；真实并发与崩溃恢复；各存储与运输适配器的能力；外壳的停止与争用；升级与恢复；容量与延迟。之后新的业务或客户约束仍可能推动修订；理论审查不承诺架构永远不需要改变。
 
-| 端口 | 组件看到的东西（线协议层面） | 默认 | 其他实现 | 套件 | 状态 | 文档 |
-|---|---|---|---|---|---|---|
-| 组件协议 | 经环境变量拿配置、`/healthz`、验 token、事件信封、outbox 与 inbox 表、幂等、数据范围、日志与指标字段 | be-sdk-go、be-sdk-python、be-sdk-ts（官方实现） | 任何语言里通过套件的实现 | `component`（黑盒，对运行中的容器测） | 已定 | [02](02-languages-and-component-protocol.md) |
-| 数据库引擎 | PostgreSQL 线协议加一份能力清单；`PG_*` 键 | PostgreSQL ≥ 14（外壳用 NOINHERIT 授权时要 16） | 托管 PostgreSQL；横向扩展用 Citus 12+；人大金仓、瀚高待实测 | `db` | PostgreSQL 已在用；套件已定 | [03](03-database.md) |
-| Store 与本地事务 | 每个事务在事务内设定角色、`search_path` 与超时；遇到序列化失败和死锁自动重试 | SDK 的 PostgreSQL 方言层 | 无：跟着引擎走 | `store` | 已定 | [10](10-local-transactions.md) |
-| 事件总线 | outbox 表、事件信封、总线地址的 scheme | NATS JetStream | PostgreSQL 队列（阶段 06 内建）；Kafka（以后再做） | `bus` | 已定（今天在用的是 NATS 核心） | [12](12-event-bus.md)、[13](13-event-contracts.md) |
-| 后台任务 | 任务声明；组件自己 schema 里的租约表与时间槽表 | 原生 PostgreSQL 表 | 无，单适配器端口（River、DBOS 只作参考，不作适配器） | `jobs` | 已定 | [19](19-background-jobs.md) |
-| 系统 RPC | 组件之间的 gRPC、身份 metadata、截止时间、带 reason 的 `google.rpc.Status` | 各官方 SDK 里的 gRPC，连接复用 | connect-go 服务端（与 gRPC 线协议兼容） | `rpc` | gRPC 已在用；连接复用与截止时间已定 | [14](14-system-rpc.md)、[16](16-deadlines-and-retries.md) |
-| 用户 API | REST、每条路由一个权限键、带 reason 的 RFC 9457 problem details | 各语言锁定的 HTTP 栈 | 无，单适配器端口 | `userapi` | 已定 | [15](15-user-api-and-errors.md) |
-| 缓存 | 线上没有任何东西：只在进程内 | 进程内 LRU 加 TTL | 无：没有缓存服务器 | `cache` | 已定 | [17](17-caching.md) |
-| 边缘 | `assembly.yaml` 里的 `edge_routes`，由 be-ops 变成部署条目的字段：Docker 和 Podman 上是 Traefik 标签，Kubernetes 上是 `paths` | Traefik（3.6 或更新版本），Docker provider 接在项目网络上 | 任何能合并同一主机多份 Ingress 的控制器（nginx-ingress、HAProxy）；Gateway API（以后） | `edge`（黄金部署字段加端到端） | 已定 | [18](18-edge.md) |
-| 可观测性 | OTLP、W3C `traceparent`、`service.name` = 成员的组件 ID | OTLP 发给 OpenTelemetry Collector | 任何 OTLP 后端，在 collector 里换 | `telemetry` | 导出已在用；传播已定 | [23](23-observability.md) |
-| 对象存储 | `S3_URL` 上的 S3 API，每个组件一个 bucket、一份凭据 | RustFS | MinIO、AWS S3、阿里云 OSS | `blob` | 地址已在用；客户端已定 | [22](22-object-storage.md) |
-| 冷存储 | 冻结数据在对象存储里的格式与清单 | `s3-parquet` | `none`（显式降级）；Iceberg（以后再做） | `lifecycle` | 已定 | [09](09-data-lifecycle.md) |
-| 冷查询 | 把冻结的行读回来 | `none`（答一个声明过的"该范围已冷"错误） | `scan`（已定）；Trino（以后再做） | `lifecycle` | 已定 | [09](09-data-lifecycle.md) |
-| 密钥来源 | 密钥值怎么读取、怎么重读，从而轮换不用重启 | brickKit 挂载的文件（`mount: file`、`_FILE` 键），变更后重读 | OpenBao（以后再做） | `secret` | 环境变量已在用；文件已定（brickKit 1.3） | [24](24-config-and-secrets.md) |
-| 授权 provider（槽位族） | provider 契约、`AUTHZ_URL` 下的 bundle、`AUTHZ_GRPC_URL` 上的 rpc、每个组件都提供的资源契约端点 | `infra/authz` | `infra/authz-static`、`infra/authz-openfga`（都在阶段 06 内建）；Cedar 或 OPA（以后再做） | `authz` | `infra/authz` 已在用；族已定 | [20](20-authorization-provider.md) |
-| 身份提供方（槽位族） | OIDC discovery、按 RFC 8693 形状的 token 交换、`IAM_URL` 之下的 JWKS、平台自有的 `sub`、目录事件 | `infra/iam-casdoor` | `infra/iam-keycloak`（第二个）；通用 OIDC + SCIM 成员（第三个） | `iam` | Casdoor 成员已在用；族已定 | [21](21-identity-provider.md) |
-| 全局搜索（槽位族） | 由事件喂入、按调用者的访问权限过滤的投影 | 暂无 | `infra/search-*` 成员 | `search` | 以后再做 | [25](25-search.md) |
-
-共享语义不是端口，没有套件：每个官方 SDK 读同一份 JSON 向量，必须算出相同的结果。全协议通用的向量放在 `brickKit/be-protocol` 仓库的 `vectors/` 里（[02](02-languages-and-component-protocol.md#be-protocol-的仓库结构)），旁边是协议正文、它的 schema 和平台表的参考 DDL。槽位族的向量放在族契约仓库里，以那里为准：授权决策在 `contract-infra-authz`（`contracts/infra/authz`）的 `vectors/decision/`，锁定它的 `EVALUATION.md`；token 在 `contract-infra-iam`（`contracts/infra/iam`）的 `vectors/tokens/`；be-protocol 按标签引用它们，从不复制。套件和 SDK 的单元测试都从固定的标签读取每一套。
-
-| 向量 | 校验什么 | 文档 |
-|---|---|---|
-| `money` | 解析、格式化、舍入、分摊、税额行 | [06](06-money-quantity-units.md) |
-| `calendar` | 瞬时加时区得出业务日期 | [05](05-time-and-calendars.md) |
-| `numbering` | 编号格式与编号序列的范围 | [04](04-identifiers-and-numbering.md) |
-| `errors` | problem 错误体、码的映射、日志级别、SQLSTATE 映射 | [15](15-user-api-and-errors.md) |
-| `envelope` | 事件信封的头、名字、id、聚合游标 | [13](13-event-contracts.md) |
-| `idempotency` | 幂等键的判定与请求指纹 | [11](11-consistency-across-components.md) |
-| `config` | 配置键、取值形式、端点 | [24](24-config-and-secrets.md) |
-| `redaction` | 日志里密钥与个人数据的脱敏 | [23](23-observability.md) |
-| `search`（提议中，尚未编写） | `q` 的归一化：大小写折叠、全半角、拼音、首字母、转义、排序 | [25](25-search.md) |
-| i18n 回退（提议中） | 在 `name_i18n` 上走的语言回退链 | [26](26-i18n-data.md) |
-| `decision`（在 `contract-infra-authz`） | 由 bundle、token 和记录的事实得出授权决策 | [20](20-authorization-provider.md) |
-| `tokens`（在 `contract-infra-iam`） | access token 与 subject token 的验证 | [21](21-identity-provider.md) |
+具体反例见[数据、事务与恢复的验收反例](../01-conventions/validation/data-and-consistency-matrix.md)，选配变化的必测情形见[测试与验证](../01-conventions/02-testing-and-validation.md#组合变更的必测情形)。顺序不变：先做代表部署实验，再重建当前范围、跑完整部署矩阵（D41、D59，见[路线](../00-overview/06-roadmap.md)）。

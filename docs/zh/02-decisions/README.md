@@ -1,73 +1,86 @@
-[English](../../en/02-decisions/README.md) · [中文](README.md)
+# 决定记录
 
-# 决策
+本目录说明项目为什么是现在的样子、哪些方向不要再提：维护者的前提（U）、逐题裁定的决定（D），以及项目原有决定（0101–0509）在终局设计中的去向。决定优先于规范：规范与决定冲突时，以决定为准，并把冲突提出来。
 
-约束本项目后续改动的决策。每个文件写明结论、简短理由、会被它挡下的需求，以及在什么情况下值得重新讨论；最后一行链到 foundations 里给出完整分析的那一节（[04-foundations](../04-foundations/README.md)）。需求与其中某条冲突时，既不悄悄拒绝，也不悄悄照做：引用那条决策，交给人来决定。
+每条决定写明：决定了什么、为什么、没有采用什么、现在落在哪里；被取代的保留原文要点并写明取代者。本目录只写结论与理由，不写讨论经过。
 
-## 编号
+## 文件
 
-- 每个文件夹有自己的编号段，所以同一文件夹里的编号始终连续：`01-architecture/` 0101–0199，`02-permissions/` 0201–0299，`03-contracts-and-data/` 0301–0399，`04-frontend/` 0401–0499，`05-runtime/` 0501–0599。新增的文件夹 `NN-…` 用 `NN01`–`NN99`。
-- 新决策取所在文件夹编号段里下一个空闲编号。
-- 编号一经分配不复用，因为其他文档按编号引用。
-- 被推翻的决策保留原文件，在顶部加一行 `Superseded by NNNN`，新决策反向链接到它。
-- 阶段 06 结束之前，阶段 06 里写下或改过的决策直接原地改写、保留编号：下游还没有任何东西依赖它；重写时可以把文件改名以对应新标题（0105），并在同一次改动里更新所有指向它的链接。阶段 06 结束之后适用上一条。
+| 文件 | 决定 |
+| --- | --- |
+| [主数据与组织](01-master-data-and-organization.md) | D01、D04、D05、D06、D15、D20、D21、D22、D69 |
+| [业务组件边界](02-business-boundaries.md) | D02、D03、D16、D27、D44–D53、D68、D70–D73 |
+| [权限与身份](03-permissions-and-identity.md) | D07–D10、D29–D31、D35–D37、D57、D61、D62、D64 |
+| [审批与流程](04-approval-and-workflow.md) | D11、D18、D19、D23、D33、D38、D39、D60 |
+| [事务、数据、审计与恢复](05-transactions-data-and-recovery.md) | D12–D14、D26、D28、D65（已被取代）、D66 |
+| [前端与终端](06-frontend.md) | D17、D24、D34 |
+| [部署、交付与维护](07-deployment-and-delivery.md) | D25、D32、D40–D43、D54、D55、D58、D63、D75 |
+| [文档与设计推进方式](08-documentation-and-process.md) | D56、D59、D67、D74 |
+| [AI 做出的设计选择](09-ai-choices.md) | A 编号：AI 按授权做出的选择与维护者的复核结论 |
+| [原有决定](10-earlier-decisions.md) | 0101–0509：终局设计之前的决定，按原编号承接、修订或取代 |
 
-## 文件夹
+编号是裁定的先后顺序，不连续出现在同一文件中。D01–D63 来自 2026-10-12 至 10-13 的逐题问答与复查；D64 起来自后续复查与整理。D64 是 AI 按维护者的授权做出的决定；其余都是维护者裁定。设计中 AI 按授权做出的选择（A 编号）经维护者复核后列在 [09-ai-choices.md](09-ai-choices.md)。
 
-| 文件夹 | 放什么 |
-|---|---|
-| `01-architecture/` | 系统怎么切分、怎么组装：组件边界、schema、锁定的技术栈、槽位族、语言与组件协议、哪些不是组件、共享地址、外壳 |
-| `02-permissions/` | 谁能做什么、能看到哪些行：不用 Redis、本地判定、只承载身份的 token、纯并集、数据范围及其分配、不用行级安全、系统面、authz 槽位族、委托、字段权限、看不见的记录答 404 |
-| `03-contracts-and-data/` | 什么跨越边界、什么写进数据库：金额与分页、契约只做加法、迁移里不放测试账号、批量上限、3.0.0 重建、主键、业务日期、租户 |
-| `04-frontend/` | 前端技术栈、ui-kit、导航、用户偏好、设计令牌 |
-| `05-runtime/` | 运行中的组件怎么表现：事务、隔离与重试、截止时间、错误、事件信封与送达、幂等、后台工作、边缘做什么 |
+## 维护者的前提
 
-新决策放进它所回答的问题对应的文件夹；都不合适时，在 `docs/en/02-decisions/` 和 `docs/zh/02-decisions/` 里同时新增一个带编号的文件夹。
+| 编号 | 前提 |
+| --- | --- |
+| U01 | 以 BrickKit 的理念与真实命令构建；理念允许随真实项目修改或删除，并向 BrickKit 反馈 |
+| U02 | ERP 为主、加入 CRM；长期是完整的货架，按客户需求装配，全景不缩成当前实现 |
+| U03 | DDD 是可审查的方法；组件化、定制与快速迭代是最终目标；“一个组件一个领域”不是绝对要求 |
+| U04 | 权限最优先，要能选择方案；初期全部组件由项目维护 |
+| U05 | 允许配置与代码适配，要求 AI 能方便拼装 |
+| U06 | 部署、外壳与整体性能需要真实验证；冷热数据纳入设计 |
+| U07 | 事务与消息要审清楚，兼顾响应与业务完整性，分别定义“用户返回”与“业务完成” |
+| U08 | 设计稿与开发区用中文；全部确定后归档旧文档、构建新文档。“双语”的部分已由 D67 改为开发完成前只写中文 |
+| U09 | 所有结构与组件都可以重构、合并、删除 |
+| U10 | 项目文档承担向客户的自我介绍：全景逐层进入能力分图、组件与选配、替换关系，再说明取舍、场景、规模与部署；标明单选、多选、并存与协作；计划、评估与已实现、已验证分别标明 |
+| U11 | 按通用 ERP 定位，默认以小公司规模开发；业务覆盖、负载、资源、历史与监控分别选择，从一开始安排扩展路线，允许广业务、低预算的外壳组合；不再询问统一规模 |
+| U12 | 需求与维护由项目团队统一承担，AI 执行；客户选择是否升级，团队配合 |
+| U13 | 真实发现问题才向 BrickKit 与知识库反馈；项目完成后以实际成果与证据整理整体总结 |
 
-## 索引
+## 原有决定的去向
 
-| 编号 | 决策 | 挡下什么 | 文件夹 |
-|---|---|---|---|
-| [0101](01-architecture/0101-no-imports-between-components.md) | 组件之间禁止 import，只共享官方 SDK、生成契约包和族契约包 | 因为同在一个外壳就直接调用对方的函数；公共 model 包 | `01-architecture/` |
-| [0102](01-architecture/0102-one-schema-per-component.md) | 一个 PostgreSQL 方言族数据库，每个组件一个 schema 和角色，库身份只来自 `PG_USER` / `PG_SCHEMA` | 每个组件一个数据库；跨 schema JOIN；从 schema 推导角色；碰 `besdk_*` 表 | `01-architecture/` |
-| [0103](01-architecture/0103-locked-stack-per-language.md) | 每种语言内部一套锁定的技术栈（Go、Python、TypeScript）；新语言在第二个组件之前锁栈 | Echo、GORM、Express、Prisma、alembic；组件自选框架 | `01-architecture/` |
-| [0104](01-architecture/0104-variants-become-slot-families.md) | 槽位族需要多种合理实现，**并且**该位置没有依赖边；否则是一种默认实现加客户 Fork | 成本核算 / 拣货槽位族（"让客户选先进先出还是移动加权平均成本" → 默认实现 + Fork）；按客户堆 `if costingMethod == ...`；"把算法做成可配置" | `01-architecture/` |
-| [0105](01-architecture/0105-any-language-one-protocol.md) | 任何语言，一份协议：一致性报告全绿即可进项目；进外壳需要该语言的 SDK 和启动器 | 一个进程里混用语言；没有一致性报告的组件；对 JVM 内存开销只字不提 | `01-architecture/` |
-| [0106](01-architecture/0106-infrastructure-is-not-a-component.md) | 事件总线、对象存储、网关、可观测性、IdP 服务器不是组件；总线经按 URL scheme 选用的 SDK 适配器更换 | `infra/nats` 或网关组件；没有适配器就改一个设置把 NATS 换成 Kafka | `01-architecture/` |
-| [0107](01-architecture/0107-authz-and-iam-addresses-are-shared-vars.md) | 族地址（`AUTHZ_URL`、`AUTHZ_GRPC_URL`、`IAM_URL`、`IAM_GRPC_URL`）是 `config/vars.yaml` 里的 `$endpoint:` 引用，与 `IAM_ISSUER`、`TENANT_ID` 并列；任何组件都不依赖族成员 | 对 `infra/authz` 或 IAM 成员建依赖边；手写成员地址；gRPC 端口 = HTTP 端口 + 1000；`AUTHZ_BUNDLE_URL` | `01-architecture/` |
-| [0108](01-architecture/0108-one-repository-per-shell.md) | 一个外壳、一个仓库（以子模块挂在 `shell/<scope>/<name>/`，在那里发布，tag 是裸 `<版本>`）、一个镜像、一份成员清单、一门语言和一个 SDK 版本 | 把外壳代码提交在本仓库；在本仓库发布外壳；外壳里写逻辑；只升成员不升外壳 | `01-architecture/` |
-| [0109](01-architecture/0109-language-neutral-component-protocol.md) | 规则写在语言中立的组件协议（`be-protocol`）里，由黑盒套件检查；SDK 是它的参考实现 | 只有 SDK 知道的规则；没有全绿报告就发版；按语言变体的协议 | `01-architecture/` |
-| [0201](02-permissions/0201-no-redis.md) | 不用 Redis，不设缓存服务器；缓存只在进程内、经 SDK | 加缓存服务器、Redis 存会话、分布式锁、Redis 限流；缓存判定结果 | `02-permissions/` |
-| [0202](02-permissions/0202-local-permission-bundle.md) | 权限在本地判定：对照 bundle 和投影 | 组件里建权限表；每个请求都问 authz；把 authz 放进 `/healthz` | `02-permissions/` |
-| [0203](02-permissions/0203-jwt-carries-identity-only.md) | token 只承载身份，`sub` 归平台所有 | 把权限或 scope 塞进 JWT claims；用 IdP 的 subject 当用户 id；没有 `typ`、`iss`、`aud` 的 token | `02-permissions/` |
-| [0204](02-permissions/0204-permissions-are-a-pure-union.md) | 权限是纯并集，没有 Deny；只有委托链取交集 | "除了某人以外所有人"；拒绝规则；规则优先级 | `02-permissions/` |
-| [0205](02-permissions/0205-data-scopes-ship-with-the-version.md) | 数据范围的规则随版本发布；`data_scopes` 必填 | 运行时编辑行规则；查完再过滤；省略 `data_scopes` | `02-permissions/` |
-| [0206](02-permissions/0206-no-row-level-security.md) | 不用行级安全；共享引擎只有一个，在 authz，由 SDK 投影 | `CREATE POLICY`；组件里自建共享表；组织树副本 | `02-permissions/` |
-| [0207](02-permissions/0207-scope-assignments-live-in-authz.md) | 档位、维度取值、共享和委托是 authz 里的运行时分配 | 组件里的访问表；用 `.admin` 键扩大范围 | `02-permissions/` |
-| [0208](02-permissions/0208-grpc-is-the-system-plane.md) | gRPC 是组件之间的系统面，人用 REST | 经 gRPC 传按用户范围过滤的数据；在用户请求路径上用系统身份 | `02-permissions/` |
-| [0209](02-permissions/0209-authz-is-a-slot-family.md) | 授权是一个槽位族：契约 `infra.authz.v2`、能力协商、一致性套件 | 依赖某个成员；靠假设的能力；悄悄降级 | `02-permissions/` |
-| [0210](02-permissions/0210-delegation-and-impersonation.md) | 委托与只读扮演不超过被代表的人；代理人只留位子 | 代理人权限超过委托人；能写入的扮演；现在就开发代理人 | `02-permissions/` |
-| [0211](02-permissions/0211-field-level-permissions.md) | 字段级权限是 `type: field` 的键，在源头掩码 | 在前端或 BFF 掩码；按掩码字段排序 | `02-permissions/` |
-| [0212](02-permissions/0212-invisible-records-answer-404.md) | 调用者看不见的记录答 404，读和命令都一样 | 对范围外的记录答 `403`；能区分"隐藏"和"不存在"的错误 | `02-permissions/` |
-| [0301](03-contracts-and-data/0301-money-as-strings-lists-by-cursor.md) | 金额是与币种成对的十进制字符串；列表按游标分页 | `double` 金额；不带币种的金额；`List` 里的 `offset` / 页码 | `03-contracts-and-data/` |
-| [0302](03-contracts-and-data/0302-contracts-are-additive-only.md) | 契约只做加法；破坏性变更是与旧版并存的新大版本（REST：`/v2/` 前缀加 `Deprecation` / `Sunset`） | 改名、改类型、删除字段、RPC、subject 或 reason | `03-contracts-and-data/` |
-| [0303](03-contracts-and-data/0303-no-test-accounts-in-migrations.md) | 测试账号不写进迁移；首个管理员来自 `BOOTSTRAP_ADMIN_LOGIN`，首次登录时绑定到平台 `sub` | 默认管理员账号；迁移里放演示数据；种子直接写首个管理员 | `03-contracts-and-data/` |
-| [0304](03-contracts-and-data/0304-batch-get-takes-at-most-500-ids.md) | `BatchGet` 最多 500 个 ID，写在契约里 | 无上限的批量；跨网络的 N+1 | `03-contracts-and-data/` |
-| [0305](03-contracts-and-data/0305-one-shot-baseline-rebuild-for-3-0-0.md) | 3.0.0 重建可以替换已发布的迁移，仅此一次，不做兼容层 | 再次援引这次破例；"只保留一个版本"的垫片 | `03-contracts-and-data/` |
-| [0306](03-contracts-and-data/0306-uuidv7-own-keys.md) | 自有主键用 UUIDv7；单据号由 SDK 分配，凭证号按期无缺号 | `BIGSERIAL` 主键；由 id 拼出的单据号 | `03-contracts-and-data/` |
-| [0307](03-contracts-and-data/0307-business-dates-and-legal-entity-calendar.md) | 业务日期是法人时区下的 `DATE`；会计年度起始月按法人设定 | SQL 里的 `CURRENT_DATE`；取自处理时刻的日期 | `03-contracts-and-data/` |
-| [0308](03-contracts-and-data/0308-tenant-is-the-deployment.md) | 租户就是部署；公司是部署内的法人 | `tenant_id` 列；多客户 SaaS；缺少法人的单据 | `03-contracts-and-data/` |
-| [0401](04-frontend/0401-frontend-stack.md) | Vue 3；PC 用 AntDV + vxe-table；移动端用 wot-design-uni；只共享设计令牌 | React；Element Plus / Naive UI；两端共用一套组件库 | `04-frontend/` |
-| [0402](04-frontend/0402-third-party-ui-only-in-ui-kit.md) | 第三方 UI 组件只能出现在 ui-kit 中 | 页面里直接 import AntDV / vxe；为了好看混搭组件库 | `04-frontend/` |
-| [0403](04-frontend/0403-two-tier-navigation.md) | PC 端采用控制台式两层导航，带应用内标签页 | 多级树形菜单；把 admin 模板当依赖；从空白 `<div>` 搭页面 | `04-frontend/` |
-| [0404](04-frontend/0404-four-user-preferences.md) | 用户偏好只有四项 | 布局模式切换；每个用户自选主题色 | `04-frontend/` |
-| [0405](04-frontend/0405-design-tokens-are-css-variables.md) | 设计令牌是运行时 CSS 变量 | 令牌写成 TS 常量；硬编码颜色和间距 | `04-frontend/` |
-| [0501](05-runtime/0501-no-network-inside-a-transaction.md) | 事务里不发网络调用；出口只有一行 outbox 和一行任务队列 | `BEGIN` 与 `COMMIT` 之间的调用；提交后尽力而为；嵌套事务 | `05-runtime/` |
-| [0502](05-runtime/0502-isolation-and-retry.md) | 默认 READ COMMITTED，配明确的阶梯；只重试 `40001` / `40P01` | 调高全局级别；按请求顺序加锁；会话级设置或锁 | `05-runtime/` |
-| [0503](05-runtime/0503-deadlines-and-retry-budgets.md) | 每个请求都有只减不增的截止时间；重试由契约决定、受预算约束 | 没有截止时间的调用；重试非幂等方法；嵌套重试循环；熔断器 | `05-runtime/` |
-| [0504](05-runtime/0504-error-model-and-reason-catalogue.md) | 一种错误对象（带 AIP-193 成员的 problem details），由目录里的 reason 标识 | `error` 字符串字段；泄露内部错误；目录外的 reason | `05-runtime/` |
-| [0505](05-runtime/0505-cloudevents-envelope-and-aggregate-cursor.md) | 信封是二进制模式的 CloudEvents；按聚合流各记一个游标 | `X-` 头；按 subject 建键的游标；依赖 broker 的顺序 | `05-runtime/` |
-| [0506](05-runtime/0506-at-least-once-delivery-and-streams.md) | 经 outbox 至少送达一次；每个 subject 第一段一个流 | 绕过 outbox 发布；假设恰好一次；按组件建流 | `05-runtime/` |
-| [0507](05-runtime/0507-idempotency-keys-namespaced-by-caller.md) | 幂等键按调用方划分命名空间，绑定到命令、目标和指纹 | 共用的键空间；换了请求体的重放；授权之前就查键 | `05-runtime/` |
-| [0508](05-runtime/0508-background-work-only-through-jobs.md) | 后台工作只经 SDK 的 Jobs；只有在移出外壳经测量仍不够之后，才可从外部触发"跑一次就退出"入口 | 模块代码里的 ticker 和循环；外部调度器 | `05-runtime/` |
-| [0509](05-runtime/0509-edge-only-routes.md) | 边缘只做路由，认证和授权留在服务里；路由生成进部署条目（`paths`、Traefik `labels`） | 手写路由；裸 `PathPrefix`；只在网关验 token（ForwardAuth、JWT 插件）；在边缘做授权、数据范围或按业务内容路由；路由 gRPC 或 `/healthz`、`/metrics`、`/_be/info` | `05-runtime/` |
+项目在终局设计之前已有一组决定（0101–0509）。按 D59，旧代码不约束设计，但这些决定中与终局设计一致的方向照常有效。它们按原编号写在 [原有决定](10-earlier-decisions.md) 中：承接的写成现在的规则，修订的写修订后的规则，被取代的保留要点并写明取代者。
+
+| 原决定 | 去向 |
+| --- | --- |
+| [0101 组件之间禁止导入代码](10-earlier-decisions.md#0101-组件之间禁止导入代码) | 承接 |
+| [0102 每个组件一个 schema](10-earlier-decisions.md#0102-每个组件一个-schema修订数据库可以共用也可以分开) | 修订：数据库可以共用，也可以分开 |
+| [0103 每种语言一套锁定的技术栈](10-earlier-decisions.md#0103-每种语言一套锁定的技术栈) | 承接 |
+| [0104 槽位族需要多种合理实现且没有依赖边](10-earlier-decisions.md#0104-槽位族需要多种合理实现且没有依赖边修订d27) | 修订：D27 |
+| [0105 任何语言，一份协议](10-earlier-decisions.md#0105-任何语言一份协议与-0109-合并) | 承接，与 0109 合并 |
+| [0106 基础设施不是组件](10-earlier-decisions.md#0106-基础设施不是组件) | 承接；运输适配器按运输链选择 |
+| [0107 授权与身份成员的地址是共享变量中的引用](10-earlier-decisions.md#0107-授权与身份成员的地址是共享变量中的引用不是依赖边) | 修订：不再有租户键；身份来源地址单独 |
+| [0108 一个外壳一个仓库、一个镜像、一份成员清单](10-earlier-decisions.md#0108-一个外壳一个仓库一个镜像一份成员清单修订成员清单由客户基线生成) | 修订：成员清单由客户基线生成 |
+| [0109 规则写在语言中立的组件协议里](10-earlier-decisions.md#0109-规则写在语言中立的组件协议里由黑盒套件检查) | 承接 |
+| [0201 不用 Redis，不设缓存服务器](10-earlier-decisions.md#0201-不用-redis不设缓存服务器) | 承接；授权视图按 D57 |
+| [0202 权限在本地判定](10-earlier-decisions.md#0202-权限在本地判定修订d57-有界本地授权) | 修订：D57 有界本地授权 |
+| [0203 令牌只承载身份，主体归平台所有](10-earlier-decisions.md#0203-令牌只承载身份主体归平台所有修订令牌内容) | 修订：令牌内容与有效期 |
+| [0204 权限是纯并集，没有 Deny](10-earlier-decisions.md#0204-权限是纯并集管理员不能加-deny修订按完整授予判定) | 修订：按完整授予逐份判定 |
+| [0205 数据范围的规则随版本发布](10-earlier-decisions.md#0205-数据范围的规则随版本发布) | 承接（资源定义） |
+| [0206 不用行级安全；共享引擎只在授权组件](10-earlier-decisions.md#0206-不用行级安全共享引擎只在授权组件) | 承接 |
+| [0207 授予放在授权组件](10-earlier-decisions.md#0207-授予放在授权组件修订完整授予与有限表达) | 修订：完整授予与有限表达 |
+| [0208 两个调用面](10-earlier-decisions.md#0208-两个调用面组件之间用-grpc人用-http修订系统面的信任) | 修订：系统面的服务凭据 |
+| [0209 授权是可替换的成员](10-earlier-decisions.md#0209-授权是可替换的成员) | 承接；能力在装配时核对 |
+| [0210 委托与扮演不超过被代表的人](10-earlier-decisions.md#0210-委托与扮演不超过被代表的人代理人只留位子) | 承接 |
+| [0211 字段级权限在源头执行](10-earlier-decisions.md#0211-字段级权限在源头执行) | 承接 |
+| [0212 看不见的记录答 404](10-earlier-decisions.md#0212-看不见的记录答-404读取与命令一致) | 承接；状态不允许改为业务 reason |
+| [0301 金额是十进制字符串；列表按游标](10-earlier-decisions.md#0301-金额是与币种成对的十进制字符串列表按游标分页) | 承接 |
+| [0302 契约只做加法](10-earlier-decisions.md#0302-契约只做加法从新版本发布之后约束) | 承接，从新版本发布之后约束 |
+| [0303 测试账号不写进迁移](10-earlier-decisions.md#0303-测试账号不写进迁移) | 承接；首个管理员改为安装认领 |
+| [0304 按身份批量读取最多 500 个](10-earlier-decisions.md#0304-按身份批量读取每次最多-500-个上限是契约的一部分) | 承接 |
+| [0305 3.0.0 一次性重建基线](10-earlier-decisions.md#0305-300-一次性重建基线已被-d59-取代) | 取代：D59 |
+| [0306 自有主键用 UUIDv7；单号由 SDK 分配](10-earlier-decisions.md#0306-自有主键用-uuidv7单号由-sdk-分配) | 承接；分区键改为显式列 |
+| [0307 业务日期按法人日历](10-earlier-decisions.md#0307-业务日期按法人日历) | 承接；法人时区无隐含默认 |
+| [0308 一个客户一套部署；公司是法人](10-earlier-decisions.md#0308-一个客户一套部署公司是部署内的法人不再使用租户) | 承接；不再使用“租户” |
+| [0401–0405 前端技术栈、ui-kit、两层导航、四项偏好、CSS 变量令牌](10-earlier-decisions.md#前端) | 承接；菜单来源改为页面模块 |
+| [0501 事务里不发网络调用](10-earlier-decisions.md#0501-事务里不发网络调用) | 承接 |
+| [0502 默认 READ COMMITTED，配一架阶梯](10-earlier-decisions.md#0502-默认-read-committed配一架明确的阶梯只重试序列化失败与死锁) | 承接 |
+| [0503 截止时间只减不增；重试由契约决定](10-earlier-decisions.md#0503-截止时间只减不增重试由契约决定受预算约束修订采用熔断) | 修订：采用熔断（A103） |
+| [0504 一种错误对象，由目录中的 reason 标识](10-earlier-decisions.md#0504-一种错误对象由目录中的-reason-标识) | 承接 |
+| [0505 CloudEvents 信封](10-earlier-decisions.md#0505-信封是二进制模式的-cloudevents修订投影的接收规则) | 修订：投影的接收规则 |
+| [0506 事件至少送达一次](10-earlier-decisions.md#0506-事件至少送达一次修订流的划分与新消费者的初始化) | 修订：流的划分与新消费者的初始化 |
+| [0507 幂等键按调用方划分并绑定命令](10-earlier-decisions.md#0507-幂等键按调用方划分命名空间并绑定到命令) | 承接；保留按恢复窗口 |
+| [0508 后台工作只经 SDK 的工作项](10-earlier-decisions.md#0508-后台工作只经-sdk-的工作项) | 承接 |
+| [0509 边缘只做流量处理，认证与授权留在服务里](10-earlier-decisions.md#0509-边缘只做流量处理认证与授权留在服务里修订d61) | 修订：D61 |

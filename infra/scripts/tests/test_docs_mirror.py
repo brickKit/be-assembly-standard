@@ -40,6 +40,14 @@ def test_no_docs_tree_passes(tmp_path):
     assert r.returncode == 0, r.stdout + r.stderr
 
 
+def test_single_language_tree_passes(tmp_path):
+    # Until development is complete only Chinese is written (D67); no mirror is required.
+    write(tmp_path, "docs/zh/README.md", "# 文档\n\n## 目录\n")
+    write(tmp_path, "docs/zh/01-conventions/README.md", "# 规范\n")
+    r = run(tmp_path)
+    assert r.returncode == 0, r.stdout + r.stderr
+
+
 def test_file_only_in_en_fails(tmp_path):
     pair(tmp_path, "README.md")
     write(tmp_path, "docs/en/03-seed-data.md", "[English](03-seed-data.md) · [中文](../zh/03-seed-data.md)\n")
