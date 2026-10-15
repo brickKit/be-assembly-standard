@@ -14,6 +14,18 @@ Checks, on randomly generated cases, the properties the candidate relies on:
   FLATTEN    counterexample: per-dimension flattening (current authz/2 rule branch) widens access
   PERDIM     counterexample: per-dimension "grant only what you own" check accepts a cross pair
 
+Bad variants (each must make at least one check fail):
+  exact_covers_subtree     an EXACT ceiling covers a SUBTREE candidate on the same path
+  subtree_meet_shallow     intersecting two nested subtrees keeps the shallower one
+  ignore_currency          interval containment ignores the currency
+  lower_bound_closedness   containment treats equal lower bounds as covered whatever the closedness
+  upper_bound_closedness   the same for upper bounds
+  meet_closedness          intersecting intervals with an equal endpoint keeps the closed end
+  sql_raw_prefix           SUBTREE compiles to a raw string prefix (LIKE 'p%')
+  mask_ignores_hits        a field is unmasked on every row when any segment reads it
+  sort_proof_ignores_scope a field is sortable when some segment reads it, ignoring scope
+  empty_dept_matches_tree  a record without a department matches any tree atom
+
 This is a model of the algorithms, not of be-sdk-*, PostgreSQL or any provider.
 """
 import itertools
@@ -23,6 +35,10 @@ import sys
 from decimal import Decimal
 
 ALL = "ALL"
+BAD = set()
+BAD_VARIANTS = ["exact_covers_subtree", "subtree_meet_shallow", "ignore_currency", "lower_bound_closedness",
+                "upper_bound_closedness", "meet_closedness", "sql_raw_prefix", "mask_ignores_hits",
+                "sort_proof_ignores_scope", "empty_dept_matches_tree"]
 SEED = 20261013
 CASES = 4000
 
@@ -60,7 +76,7 @@ def m_tree(a, p):
     if a == ALL:
         return True
     if p is None:
-        return False  # no department never means the whole tree
+        return "empty_dept_matches_tree" in BAD  # no department never means the whole tree
     return any(p == q if mode == "exact" else under(p, q) for q, mode in a)
 
 
@@ -97,7 +113,7 @@ def c_tree(c, k):
         for q, kmode in k:
             if kmode == "subtree" and under(p, q):
                 ok = True  # a subtree covers any node or subtree below it
-            elif kmode == "exact" and mode == "exact" and p == q:
+            elif kmode == "exact" and (mode == "exact" or "exact_covers_subtree" in BAD) and p == q:
                 ok = True  # an exact node never covers a subtree: the tree can grow
         if not ok:
             return False
@@ -110,6 +126,8 @@ def lo_ge(a_lo, a_c, b_lo, b_c):
         return True
     if a_lo is None:
         return False
+    if "lower_bound_closedness" in BAD and a_lo == b_lo:
+        return True
     return a_lo > b_lo or (a_lo == b_lo and (b_c or not a_c))
 
 
@@ -118,6 +136,8 @@ def hi_le(a_hi, a_c, b_hi, b_c):
         return True
     if a_hi is None:
         return False
+    if "upper_bound_closedness" in BAD and a_hi == b_hi:
+        return True
     return a_hi < b_hi or (a_hi == b_hi and (b_c or not a_c))
 
 
@@ -126,7 +146,7 @@ def c_interval(c, k):
         return True
     if c == ALL:
         return False
-    if c[4] != k[4]:
+    if c[4] != k[4] and "ignore_currency" not in BAD:
         return False
     return lo_ge(c[0], c[1], k[0], k[1]) and hi_le(c[2], c[3], k[2], k[3])
 
@@ -148,10 +168,11 @@ def i_tree(a, b):
     for p, pm in a:
         for q, qm in b:
             if pm == "subtree" and qm == "subtree":
+                shallow = "subtree_meet_shallow" in BAD
                 if under(p, q):
-                    out.add((p, "subtree"))
+                    out.add((q if shallow else p, "subtree"))
                 elif under(q, p):
-                    out.add((q, "subtree"))
+                    out.add((p if shallow else q, "subtree"))
             elif pm == "exact" and qm == "exact":
                 if p == q:
                     out.add((p, "exact"))
@@ -171,6 +192,11 @@ def i_interval(a, b):
         return (Decimal(1), True, Decimal(0), True, a[4])  # empty interval
     lo, lc = (a[0], a[1]) if lo_ge(a[0], a[1], b[0], b[1]) else (b[0], b[1])
     hi, hc = (a[2], a[3]) if hi_le(a[2], a[3], b[2], b[3]) else (b[2], b[3])
+    if "meet_closedness" in BAD:
+        if a[0] is not None and a[0] == b[0]:
+            lc = a[1] or b[1]
+        if a[2] is not None and a[2] == b[2]:
+            hc = a[3] or b[3]
     return (lo, lc, hi, hc, a[4])
 
 
@@ -323,6 +349,9 @@ def atom_sql(d, a, args):
             args.append(q)
             if mode == "exact":
                 parts.append("dept = ?")
+            elif "sql_raw_prefix" in BAD:
+                args.append(like_escape(q) + "%")
+                parts.append("(dept = ? OR dept LIKE ? ESCAPE '\\')")
             else:
                 args.append(like_escape(q) + "/%")
                 parts.append("(dept = ? OR dept LIKE ? ESCAPE '\\')")
@@ -351,7 +380,10 @@ def plan(segs):
     masks = []
     for f in RESTRICTED:
         idx = [i for i, s in enumerate(segs) if f in s.read]
-        masks.append(" OR ".join(f"b{i}" for i in idx) or "0")
+        if "mask_ignores_hits" in BAD:
+            masks.append("1" if idx else "0")
+        else:
+            masks.append(" OR ".join(f"b{i}" for i in idx) or "0")
     where = " OR ".join(seg_sql(s, where_args) for s in segs) or "0"
     return bits, masks, where, sel_args, where_args
 
@@ -381,7 +413,7 @@ def mem_eval(rows, segs):
 
 # ---- checks ------------------------------------------------------------------------------------
 
-def main():
+def run():
     rng = random.Random(SEED)
     records = [rnd_record(rng, i) for i in range(1, 400)]
     fails = []
@@ -415,7 +447,10 @@ def main():
     for _ in range(CASES // 4):  # FIELDS
         segs = [rnd_seg(rng) for _ in range(rng.randint(1, 4))]
         for f in RESTRICTED:
-            proven = all(any(contains(v, t, check_fields=False)[0] and f in t.read for t in segs) for v in segs)
+            if "sort_proof_ignores_scope" in BAD:
+                proven = any(f in t.read for t in segs)
+            else:
+                proven = all(any(contains(v, t, check_fields=False)[0] and f in t.read for t in segs) for v in segs)
             if proven:
                 stats["fields_ok"] += 1
                 for r in records:
@@ -464,6 +499,11 @@ def main():
         any(CONTAIN[DIMS[d][0]](cand.atoms[d], o.atoms[d]) for o in owned) for d in DIMS)
     segment_rejects = not any(contains(cand, o)[0] for o in owned) and split_cover(cand, owned, "warehouse") is None
 
+    return fails, stats, records, flatten_ok, leak, per_dim_accepts and segment_rejects
+
+
+def main():
+    fails, stats, records, flatten_ok, leak, perdim_ok = run()
     print(f"CONTAIN: {stats['contained']} proven containments, every matched record also matched the ceiling")
     print(f"INTERSECT: {CASES} pairs, atom-wise intersection equals the conjunction on {len(records)} records")
     print(f"SPLIT: {stats['split']} one-dimension split covers, each covered record lies in a single ceiling")
@@ -473,12 +513,24 @@ def main():
     print(f"FLATTEN: per-dimension flattening admits {leak['legal']}/{leak['warehouse']}, outside both grants" if flatten_ok
           else "FLATTEN: counterexample not reproduced")
     print(f"PERDIM: per-dimension subset check accepts L1/W2/<=100; segment containment rejects it"
-          if per_dim_accepts and segment_rejects else "PERDIM: counterexample not reproduced")
+          if perdim_ok else "PERDIM: counterexample not reproduced")
 
-    if fails or not flatten_ok or not (per_dim_accepts and segment_rejects):
+    if fails or not flatten_ok or not perdim_ok:
         for f in fails[:5]:
             print("FAIL", f, file=sys.stderr)
         sys.exit(1)
+    caught = 0
+    for bad in BAD_VARIANTS:
+        BAD.clear(); BAD.add(bad)
+        bad_fails = run()[0]
+        kinds = sorted({f[0] for f in bad_fails})
+        print(f"bad variant {bad}: {'detected by ' + ', '.join(kinds) if bad_fails else 'NOT DETECTED'}")
+        caught += bool(bad_fails)
+    BAD.clear()
+    if caught != len(BAD_VARIANTS):
+        print("FAIL: some bad variants were not detected", file=sys.stderr)
+        sys.exit(1)
+    print(f"all {len(BAD_VARIANTS)} bad variants detected")
 
 
 if __name__ == "__main__":

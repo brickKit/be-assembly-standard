@@ -139,6 +139,7 @@ def run(rng, variant, fails):
                 check_confirmed(o, inv, cred, fails)
         if inv.used() > inv.capacity or cred.used() > cred.capacity:
             fails.append("NO_OVERSELL")
+        idempotent(inv, cred, fails)                      # checked every tick, while holds are live
     # settle: finish pending cancels without loss
     for o in orders:
         if o["cancel_requested"] and o["state"] != "cancelled":
@@ -164,7 +165,11 @@ def run(rng, variant, fails):
     if o["state"] == "cancelled":
         if p.reserve(bid, amt, now) == "held":
             fails.append("CANCEL_WINS")
-    # IDEMPOTENT
+    idempotent(inv, cred, fails)
+
+
+def idempotent(inv, cred, fails):
+    """IDEMPOTENT: one branch identity never holds or commits twice."""
     for p in (inv, cred):
         seen = {}
         for key, b in p.branches.items():
@@ -173,6 +178,7 @@ def run(rng, variant, fails):
                 seen[base] = seen.get(base, 0) + 1
         if any(c > 1 for c in seen.values()):
             fails.append("IDEMPOTENT")
+            return
 
 
 def check_confirmed(o, inv, cred, fails, strict=True):
