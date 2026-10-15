@@ -11,6 +11,7 @@
 | [be-protocol-carry.md](be-protocol-carry.md) | 线协议细节的承接清单，重建 `be-protocol` 时逐条重审写入 |
 | [rebuild-plan.md](rebuild-plan.md) | 仓库复用、`legacy/` 分支、改名与新建的清单与顺序；每一步动仓库前先列动作请用户确认（改名除外） |
 | [implementation-checks.md](implementation-checks.md) | 冻结时列出、交给实现阶段核对的项 |
+| [experiment-plan.md](experiment-plan.md) | 代表部署实验（D41）的实施计划（待用户审） |
 
 ## 现在在哪里
 
@@ -30,7 +31,7 @@
 - **对照**：按[测试与验证的代表部署对照实验](../../docs/zh/01-conventions/02-testing-and-validation.md#代表部署对照实验)：单跑、外壳、混合 × Docker、Podman；两个额外对照组（连接池代理、只用 PostgreSQL）；整套 4 GiB 与 6 GiB 两个内存预算；收敛顺序与要比较的证据照该节。
 - **计划要写清**：代表组件与业务链、SDK 先做到什么程度、每一步的改动与耗时预算、要动哪些仓库（按 [rebuild-plan.md](rebuild-plan.md) 的复用与 `legacy/` 分支规则）、产出的报告格式。
 
-用户在压缩上下文后会补充资料；补来的资料先读，再起草计划。
+2026-10-16 已起草：[experiment-plan.md](experiment-plan.md)，待用户审。
 
 ## 任务结束时：知识库反馈
 
