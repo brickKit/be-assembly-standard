@@ -1,76 +1,68 @@
 ---
 name: brickkit-plan-change
-description: Use when the user brings a new requirement, a feature or a change in a BrickKit project and you need to decide which component owns it, whether it is sound, and how to plan and make it across components. Covers finding the owner from the component table in AGENTS.md and each component's BRICKKIT.md, checking a requirement against boundaries, project conventions, recorded decisions, dependency direction and contract compatibility, the order to change components in, and what "done" means. Applies when the user says "add a feature", "new requirement", "where should this go", "plan this change", or asks whether something is a good idea.
+description: 在 BrickKit 项目里来了新需求、新功能或一处改动，需要判断它归哪个组件、合不合理、怎么跨组件计划和动手时使用。覆盖从 AGENTS.md 的组件表与各组件的 BRICKKIT.md 找到负责的组件，对照边界、项目约定、已记录的决策、依赖方向和契约兼容性检查需求，按什么顺序改各个组件，以及怎样才算做完。当用户说「加个功能」「新需求」「这个该放哪」「先出个计划」，或者问某个改法好不好时，这个技能适用。
 ---
 
-# Judging and planning a change
+# 判断需求、制定计划
 
-## When to use this skill
+## 什么时候用这个技能
 
-- A new requirement or feature arrives and it isn't yet clear which component it belongs to
-- A change touches more than one component
-- You're asked whether a change is sound, or to write a plan before coding
+- 来了新需求或新功能，还不清楚它归哪个组件
+- 一处改动牵涉不止一个组件
+- 被问到某个改法合不合理，或者要先出计划再写代码
 
-## 1. Find the owner
+## 1. 找到负责的组件
 
-1. The component table at the end of the project's `AGENTS.md`: its "What it does" column narrows the candidates.
-2. Each candidate's `BRICKKIT.md`, section `Purpose`: what it **owns** and what it **does not own** — and every
-   "does not own" names who does. Follow that pointer rather than guessing. The docs are under
-   `.brickkit/manifests/<scope>/<name>/<version>/` (or in the component's source directory when a local source holds
-   that version).
-3. Read only the components the requirement touches; never load every component's docs.
+1. 项目 `AGENTS.md` 末尾的组件表："干什么"一列先把候选缩小。
+2. 每个候选的 `BRICKKIT.md` 里 `组件定位` 一节：它**负责**什么、**不负责**什么——每条"不负责"都写明了归谁。顺着这条指引走，
+   别猜。文档在 `.brickkit/manifests/<scope>/<name>/<版本>/` 下（本地源里正好是这个版本时，在组件的源码目录里）。
+3. 只读需求碰到的那几个组件，不要把所有组件的文档都读进来。
 
-## 2. Check it against what is written
+## 2. 对照写下来的东西检查
 
-| Check | Where it's written | When it fails |
+| 检查 | 写在哪 | 不通过的情形 |
 | --- | --- | --- |
-| The owner's boundary | Its `BRICKKIT.md` Purpose | It needs the component to own something listed under "does not own": that's a boundary change — the person decides |
-| Project conventions | `Conventions` in the project's `AGENTS.md`, and the detailed rules it links | It breaks a convention: the person decides |
-| Recorded decisions | Where the project's `AGENTS.md` says decisions are kept (its `Where to look` table; `docs/decisions/` when it doesn't say), the component's `Design decisions` and `docs/` | It reverses a decision: quote it, the person decides |
-| Dependency direction | `brickkit deps <id>` / `brickkit graph` | A new dependency would make a cycle, or point against the direction the design allows |
-| Contract compatibility | The contract files under `artifacts` | Adding is a minor version; removing or changing meaning is a major version, and every consumer has to move |
-| Who an event reaches | The list of events at the end of `brickkit deps` (from `events` in each `component.yaml`) | Changing or removing an event moves every component subscribed to it — they are not in the dependency tree, only in this list |
+| 负责组件的边界 | 它的 `BRICKKIT.md` 组件定位 | 需求要它负责"不负责"里的事：这是改边界，交给人决定 |
+| 项目约定 | 项目 `AGENTS.md` 的 `项目约定`，以及它链到的细则 | 违反了约定：交给人决定 |
+| 已记录的决策 | 项目 `AGENTS.md` 说决策放在哪（它的 `查找路由` 表；没写就是 `docs/decisions/`）、组件的 `设计取舍` 与 `docs/` | 推翻了某个决策：把原文引出来，交给人决定 |
+| 依赖方向 | `brickkit deps <id>` / `brickkit graph` | 新依赖会成环，或者与设计允许的方向相反 |
+| 契约兼容性 | `artifacts` 下的契约文件 | 新增是次版本；删除或改含义是主版本，所有调用方都要跟着改 |
+| 事件的影响面 | `brickkit deps` 最后的事件清单（来自各组件 `component.yaml` 的 `events`） | 改或删了一个事件，订阅它的组件都要跟着改——它们不在依赖树里，只在这张清单里 |
 
-## 3. Decide the outcome
+## 3. 定结论
 
-- **Fits one component** — go ahead.
-- **Needs a provider's contract first** — change the provider first, then the consumer.
-- **Needs a new component** — no owner, and none should stretch to own it: `brickkit new <scope>/<name>`.
-- **Conflicts** — stop, and put the conflict to the person, quoting the file and section that says so.
+- **一个组件就能承接**——直接做。
+- **要先改被依赖方的契约**——先改被依赖方，再改调用方。
+- **需要新组件**——没有负责的组件，也不该硬塞给谁：`brickkit new <scope>/<name>`。
+- **有冲突**——停下来，把冲突交给人，引出说明它的那个文件和小节。
 
-## 4. Plan and change
+## 4. 计划与动手
 
-- **Order:** providers before consumers — the `📋 Start order (topological sort)` list that `brickkit up --dry-run`
-  prints, dependencies first. (`brickkit deps` prints the other way round: each tree starts at a consumer, with
-  its providers nested under it, so there the deepest entries come first.)
-- **Per component, one commit:** the contract, the code, and its `BRICKKIT.md` / `AGENTS.md` together. Then raise
-  `metadata.version` (patch for implementation only, minor for additions, major for breaking changes), release, and
-  `brickkit upgrade <id>@<version>` in the project.
-- **Before changing a component's code:** read its `AGENTS.md` — the code map tells you where to start, `Pitfalls`
-  and `Before changing code` what not to break.
-- **Test inside the project with a focus run:** `brickkit up` in the component's directory runs it from its source
-  plus what it needs.
+- **顺序：** 被依赖的先改，调用方后改——就是 `brickkit up --dry-run` 打印的 `📋 启动顺序（拓扑排序）` 那张列表，
+  依赖在前。（`brickkit deps` 的顺序正好反过来：每棵树从调用方开始，被依赖的嵌在它下面，那里要从最深的一层先改。）
+- **每个组件一次提交：** 契约、代码、它的 `BRICKKIT.md` / `AGENTS.md` 一起改。然后改 `metadata.version`（只改实现升补丁版本，
+  新增升次版本，破坏性改动升主版本），发版，在项目里 `brickkit upgrade <id>@<版本>`。
+- **改某个组件的代码之前：** 先读它的 `AGENTS.md`——代码地图告诉你从哪开始，`易错点` 与 `改代码前自查` 告诉你别弄坏什么。
+- **在项目里用焦点运行测：** 在组件目录里 `brickkit up`，从源码跑它和它需要的东西。
 
-## What the change touches in the project
+## 改动会碰到项目里的哪些文件
 
-- A new component, or a new version of one: `brickkit add` / `brickkit upgrade` write `brickkit.yaml` (the lock
-  file), `deploy.yaml` and `config/` together — never hand-edit one layer and forget another.
-- A new config key a component needs: the component declares it in `configSchema`; the project fills it in
-  `config/<scope>-<name>.yaml` (shared values in `config/vars.yaml`).
-- How it runs (ports, mode, replicas): `deploy.yaml` for the team; `deploy.local.yaml` only for your own machine
-  (local mode on), never committed.
+- 新组件，或某个组件的新版本：`brickkit add` / `brickkit upgrade` 会把 `brickkit.yaml`（锁文件）、`deploy.yaml` 与 `config/`
+  一起改——别手改一层、忘了另一层。
+- 组件要一个新配置项：组件在 `configSchema` 里声明，项目在 `config/<scope>-<name>.yaml` 里填（共用的值放 `config/vars.yaml`）。
+- 怎么运行（端口、mode、副本数）：团队的写 `deploy.yaml`；只是你自己机器上的写 `deploy.local.yaml`（本地模式开着时），它不进 Git。
 
-## 5. Done means
+## 5. 怎样才算做完
 
-- The tests the component's `AGENTS.md` names pass.
-- `brickkit lint` shows no documentation warnings for what you changed (`DOC_OUT_OF_STEP` in particular: a new
-  dependency, required key or contract file the docs don't mention yet). The next AI reads what you left.
+- 组件 `AGENTS.md` 里写的测试都通过。
+- `brickkit lint` 对你改过的东西没有文档警告（尤其是 `DOC_OUT_OF_STEP`：新加的依赖、必填键或契约文件，文档还没提）。
+  下一个 AI 读的就是你留下的。
 
-## Where to dig deeper
+## 去哪查更细的
 
-- Writing the component's documents: the `brickkit-component` skill
-- Adding, upgrading and running components: the `brickkit-assemble` skill
-- The documentation of this BrickKit version, offline: `brickkit docs` lists the pages — judging a requirement in full: `brickkit docs 08-ai-guide/03-judging-a-requirement`
-- Flags: `brickkit <command> --help`
+- 写组件的文档：`brickkit-component` 技能
+- 增删、升级、运行组件：`brickkit-assemble` 技能
+- 这个版本的 BrickKit 文档，离线可读：`brickkit docs` 列出全部页——判断需求的完整做法：`brickkit docs 08-ai-guide/03-judging-a-requirement`
+- 参数：`brickkit <命令> --help`
 
-<!-- brickkit:skill version=v1.3.1 sum=sha256:2aae9035612340f5e8daebb15af56a5ca501efb8c4d9b29db70c68c425be0ddf -->
+<!-- brickkit:skill version=v1.4.1 sum=sha256:91ca80b5b8616eb96d8cec540387232ada694a32b615c63346dfe84739480236 -->

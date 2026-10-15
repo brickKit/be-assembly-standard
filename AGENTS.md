@@ -1,142 +1,130 @@
-[English](AGENTS.md) · [中文](AGENTS.zh.md)
-
 # be-assembly-standard
 
-The AI guide to this project: what it is, the rules every component here follows, where to look. The component table at the end is maintained by brickkit.
+给 AI 的项目导读：这是什么项目、每个组件都遵守的规则、做什么去看哪里。文件末尾的组件表由 BrickKit 维护。
 
-> **Document language is not conversation language.** The formal documents are written in English so that an AI reads them efficiently. The maintainer of this project communicates only in Chinese, so every reply to them is in Chinese, whatever language the file, the code or the last tool output is in. Decide the reply language before writing the first word; checking it after writing has proved unreliable.
+> **与维护者交流一律用中文**，不论正在读的文件、代码或上一次工具输出是什么语言。落笔前先定回复的语言；写完再检查已被证明不可靠。代码（标识符、注释、日志、错误信息）与提交信息用英文（D74）。
 
-## Overview
+## 项目概述
 
-- **What this is.** BrickEnterprise: an arsenal of ERP/CRM components plus the standard assembly template that puts them together with brickKit. It is also where brickKit's features are proved on real machines; a platform bug found here is reproduced and reported to brickKit, never worked around inside a component.
-- **Nine domains**, and a component ID is `<domain>/<name>` (repository `<domain>-<name>`): `infra`, `integration`, `mdm` (master data), `crm`, `erp`, `hrm`, `prj`, `ana`, `frontend`.
-- **Three hubs** hold the rest together. `mdm/*` is read by everyone and calls no one. `erp/inventory` is the only writer of physical stock movements. `erp/finance` is mostly commanded and listens to events. CRM and ERP have no synchronous edge between them, only events; inventory and finance have no edge at all, the same upstream (such as `erp/sales`) triggers both side by side.
-- **Where things live.**
-  - `components/<scope>/<name>/`: one Git submodule per component; `.gitmodules` records the exact commit of each.
-  - `shell/<scope>/<name>/`: the shells (`be/go-core`, `be/go-infra`, `be/go-backoffice`, `be/py-render`); each is its own repository, checked out as a Git submodule like a component, so that other assembly projects reuse it ([0108](docs/en/02-decisions/01-architecture/0108-one-repository-per-shell.md)).
-  - `tools/`: `be-sdk-go`, `be-sdk-python`, `be-sdk-ts` (the runtime every component builds on), `be-ops` (assembly-time generation: database setup script, permission and data-scope registries), `be-acceptance` (the gates behind `make gates`).
-  - `registry/` (ports, schemas, permission keys, data scopes), `config/` (component values, `vars.yaml` for shared ones), `infra/` (the base resources `make up` starts), `docs/en/` (conventions, decisions, seed data, foundations: why each piece of infrastructure is what it is and how to swap it; [index](docs/en/README.md)), mirrored file for file in Chinese by `docs/zh/`.
-- **Two principles that never bend.**
-  1. **Every component is a complete brickKit component and runs on its own.** Every call to another component goes over real gRPC or HTTP, every port in `extraPorts` really listens, and `brickkit up --focus <id>` starts it with nothing but what it depends on. "They end up in the same shell, so call the function directly" breaks this, and the component can never be deployed on its own again.
-  2. **Merging happens only at deployment.** A shell turns N processes into one and does nothing else.
+- **这是什么**：BrickEnterprise，ERP 为主、加入 CRM 的组件货架，加上用 BrickKit 把它们装配起来的标准装配项目。它也是 BrickKit 功能在真实机器上的验证场：在这里发现的平台问题，写出复现报给 BrickKit，绝不在组件里绕过去。
+- **现在处于哪个阶段**：终局设计已冻结（2026-10-15），正式文档是 `docs/zh/`。现有的组件代码（2.x）只作参考，按新设计从零重建（D59）；重建的范围、顺序与仓库处理见 `dev/rebuild/`。先做代表部署实验（D41），再重建当前范围。
+- **组件 ID** 是 `<领域>/<名字>`（仓库 `<领域>-<名字>`）；领域、边界与依赖方向见[领域与边界](docs/zh/00-overview/02-domains-and-boundaries.md)，全部组件见[组件全景](docs/zh/00-overview/03-catalog.md)与[边界卡](docs/zh/07-components/README.md)。
+- **东西放在哪里**：
+  - `components/<scope>/<name>/`：每个组件一个 Git 子模块；`shell/<scope>/<name>/`：外壳，同样是子模块；`.gitmodules` 记下每个的确切提交。
+  - `tools/`：`be-sdk-go`、`be-sdk-python`、`be-sdk-ts`（组件运行时）、`be-ops`（装配时生成）、`be-acceptance`（参考模型与文档检查）。
+  - `registry/`（端口、schema、权限键等）、`config/`（组件配置，`vars.yaml` 放共享值）、`infra/`（`make up` 启动的基础资源）、`docs/zh/`（正式文档，[索引](docs/zh/README.md)）、`dev/`（进行中的工作）、`archive/`（归档，现行内容不引用）。
+- **两条不变的原则**（[产品](docs/zh/00-overview/01-product.md#两条不变的原则)）：
+  1. **每个组件都是完整的 BrickKit 组件，能单独运行**：对其他组件的每次调用都走真实的网络调用，只带上它依赖的组件就能启动。“反正最后在同一个外壳里，直接调函数好了”违反这一条，组件就再也不能单独部署。
+  2. **合并只发生在部署时**：外壳把几个进程合成一个，除此之外什么也不做。
 
-## Conventions
+## 项目约定
 
-One line each; the file linked is the rule in full. A request that breaks one is put to the person, quoting the file.
+每条一行，链接的文件是完整规则。请求与某条约定冲突时，引用该文件向维护者提出。
 
-- **Configuration**: keys are upper-snake environment variable names; shared connection keys are `PG_*`, `NATS_URL`, `S3_URL`, `OTEL_BASE_URL`, `AUTHZ_BUNDLE_URL`, `IAM_JWKS_URL`; nothing ends in `_ENDPOINT` ([04-configuration.md](docs/en/01-conventions/04-configuration.md)).
-- **Where values live**: a value shared by several components is written once in `config/vars.yaml` and referenced as `$var:NAME`; a component's own values go in `config/<scope>-<name>.yaml`; secrets are only ever `${NAME}` ([04-configuration.md](docs/en/01-conventions/04-configuration.md#where-values-live)).
-- **Workflow**: seven steps, contracts before business-rule tests before code, documents before code ([01-development-workflow.md](docs/en/01-conventions/01-development-workflow.md)); answer the questions in [Before writing code](docs/en/01-conventions/01-development-workflow.md#before-writing-code) every time.
-- **Backend**: one locked stack per language, one module entry, everything through `rt`, merge-safe by construction ([02-backend.md](docs/en/01-conventions/02-backend.md)).
-- **Frontend**: Vue 3, AntDV + vxe-table on PC, wot-design-uni on mobile, tokens as CSS variables, third-party UI only inside the ui-kits ([03-frontend.md](docs/en/01-conventions/03-frontend.md)).
-- **Testing**: layers L1–L4 and FE-1–FE-4; never change a test to make it pass ([06-testing.md](docs/en/01-conventions/06-testing.md)).
-- **Data**: seed data for people, test data for tests, two physical databases (`brickkit_db`, `brickkit_test_db`); a dependency that lacks a capability is fixed at the source ([05-data.md](docs/en/01-conventions/05-data.md)).
-- **Registries**: ports, schemas, roles and permission keys are copied from `registry/`, never invented; `ports.tsv`, `schemas.tsv` and `permissions.tsv` are append-only: a row is never edited, removed or recycled ([07-registries.md](docs/en/01-conventions/07-registries.md#append-only)).
-- **Submodule map**: `.gitmodules` and the submodule pointers say which repository and which exact commit each component and shell is built from; they change only through `git submodule` commands, and a pointer is committed together with the `brickkit upgrade` that needs it ([01-development-workflow.md](docs/en/01-conventions/01-development-workflow.md#releasing)).
-- **Two manifests per component**: `component.yaml` holds only what brickKit reads; this project's own keys (`permissions`, `data_scopes`, `menus`, and other project metadata such as `domain` or `tier`) go in the sibling `assembly.yaml`, read by be-ops ([02-backend.md](docs/en/01-conventions/02-backend.md#repository-layout)). Which shell hosts a component is chosen in the deploy file ([0108](docs/en/02-decisions/01-architecture/0108-one-repository-per-shell.md)).
-- **Versions**: every change gets a bump, versions are exact, components are on `2.x` and shells on `1.x`; a Go component carries two tags on one commit (`2.0.0` for brickKit, `v2.0.0` for Go) and its module path ends in `/v2`; a shell is released from its own repository with only the bare tag (`1.0.0`); propagate with `make bump-version` ([01-development-workflow.md](docs/en/01-conventions/01-development-workflow.md#versions)).
-- **Commits and releases**: English messages written to a file and committed with `git commit -F`, annotated tags, release in the order `bump-version` prints ([01-development-workflow.md](docs/en/01-conventions/01-development-workflow.md#releasing)).
-- **Business logic**: design it yourself first, read a reference only where stuck, never copy ([10-reference-implementations.md](docs/en/01-conventions/10-reference-implementations.md)).
-- **AI-sized code**: patterns only where they help an AI read the code; limits on function, file and session size ([09-ai-development.md](docs/en/01-conventions/09-ai-development.md)).
-- **Documents**: English canonical, same `##` sections in both languages; project documents are two mirrored trees `docs/en/` and `docs/zh/` (`make docs-mirror`), root and component documents keep brickKit's `.zh.md` suffix; formal documents never link into `dev/` or `archive/` (`make docs-boundary`) ([08-documentation.md](docs/en/01-conventions/08-documentation.md)).
-- **Decisions**: [docs/en/02-decisions/](docs/en/02-decisions/README.md) says why the project is shaped this way and what not to propose; a decision wins over a convention.
-- **Containers are off by default**: base resources from `make up` may stay up; component containers go down with `brickkit down` after verification ([01-development-workflow.md](docs/en/01-conventions/01-development-workflow.md#running-it-for-real)).
+- **决定优先**：[决定记录](docs/zh/02-decisions/README.md)说明项目为什么是现在这样、哪些方向不要再提；决定优先于规范，规范优先于单个组件的约定。
+- **开发流程**：七步循环，契约先于业务规则测试，业务规则测试先于实现，文档先于代码（[开发流程与发布](docs/zh/01-conventions/10-development-workflow.md)）。
+- **组件代码**：一个模块入口，一切经 SDK 的运行时，合并安全（[组件实现约定](docs/zh/01-conventions/06-component-implementation.md)）；每种语言一套锁定的技术栈（[组件协议与语言](docs/zh/04-foundations/07-component-protocol-and-languages.md)）。
+- **测试**：L1–L4 按范围分层、FE-1–FE-4；绝不为了让测试通过而改测试（[测试与验证](docs/zh/01-conventions/02-testing-and-validation.md#实现测试的分层与节奏)）。
+- **数据**：种子数据给人、测试数据给测试，两个物理库；依赖方缺能力时去源头补；凭据绝不进入部署（[种子与测试数据](docs/zh/01-conventions/07-seed-and-test-data.md)）。
+- **配置与注册表**：配置键是大写下划线，组件只经 SDK 读取；共享值写一次、用引用；密钥只写引用；端口、schema、权限键从注册表抄，身份列只追加（[协议 19](docs/zh/06-protocols/19-config-secrets-registries-release.md)）。
+- **权限**：每个操作在资源定义中登记，完整授予逐份判定，看不见答 404（[授权选型](docs/zh/00-overview/guides/authorization.md)、[安全协议](docs/zh/06-protocols/security/README.md)）。
+- **跨组件**：经契约调用；业务写入与发件表同事务；事务内不发网络调用（[事务与消息](docs/zh/04-foundations/03-transactions-and-messaging.md)、[协议目录](docs/zh/06-protocols/README.md)）。
+- **版本**：每次改动都升版本，版本精确；重建后组件从 `3.0.0`、外壳从 `2.0.0`、工具从 `v1.0.0` 起（[开发流程与发布的版本](docs/zh/01-conventions/10-development-workflow.md#版本)）。
+- **提交与发布**：英文提交信息先写进文件再 `git commit -F`，带注释的标签，按依赖顺序发布（[开发流程与发布](docs/zh/01-conventions/10-development-workflow.md#提交)）。
+- **子模块地图**：`.gitmodules` 与子模块指针只经 `git submodule` 命令改变，指针与需要它的 `brickkit upgrade` 一起提交。
+- **参考实现**：先自己设计，卡住才看参考，绝不照抄（[参考实现](docs/zh/01-conventions/08-reference-implementations.md)）。
+- **AI 友好的代码**：模式只用在帮助 AI 读懂的地方；函数、文件与会话有大小上限（[AI 编码习惯](docs/zh/01-conventions/09-ai-coding.md)、[AI 导航](docs/zh/01-conventions/05-ai-navigation.md)）。
+- **文档**：开发完成前只写中文（D67），同一规则只写在一处；正式文档不链接 `dev/` 与 `archive/`（`make gates`）（[文档规则](docs/zh/01-conventions/03-documentation.md)）。
+- **容器默认关着**：`make up` 的基础资源可以常开；组件容器验证完就 `brickkit down`。
 
-## Where to look
+## 查找路由
 
-| What you are doing (words you'd search for) | Read first |
-|---|---|
-| a new requirement, a feature, "where should this go", "is this a good idea", a change across components | the `brickkit-plan-change` skill ([SKILL.md](.claude/skills/brickkit-plan-change/SKILL.md)), then [docs/en/02-decisions/](docs/en/02-decisions/README.md); a planned component may already have its ID, ports and schema reserved in `registry/` |
-| starting work on a component; what order to do things in; how much to do in one session | [01-development-workflow.md](docs/en/01-conventions/01-development-workflow.md#the-seven-step-loop), [09-ai-development.md](docs/en/01-conventions/09-ai-development.md#how-much-in-one-session) |
-| writing a new component; editing `component.yaml`; the repository layout | the `brickkit-component` skill ([SKILL.md](.claude/skills/brickkit-component/SKILL.md)), [02-backend.md](docs/en/01-conventions/02-backend.md#repository-layout) |
-| which port, schema, database role or permission key to use | [07-registries.md](docs/en/01-conventions/07-registries.md) |
-| naming a config key; reading a config value; connecting to PostgreSQL, NATS or object storage; a database password | [04-configuration.md](docs/en/01-conventions/04-configuration.md), [04-configuration.md](docs/en/01-conventions/04-configuration.md#database-roles), [02-backend.md](docs/en/01-conventions/02-backend.md#the-runtime-is-the-only-way-in) |
-| which framework or library; writing `main`; the module entry | [02-backend.md](docs/en/01-conventions/02-backend.md#stack), [02-backend.md](docs/en/01-conventions/02-backend.md#module-entry), [0103](docs/en/02-decisions/01-architecture/0103-locked-stack-per-language.md) |
-| adding an endpoint; who can call it; a permission key | [02-backend.md](docs/en/01-conventions/02-backend.md#permissions) |
-| making a table show only some rows to some people ("sales sees only their own orders", "a warehouse keeper sees one warehouse") | [02-backend.md](docs/en/01-conventions/02-backend.md#data-scopes), [0205](docs/en/02-decisions/02-permissions/0205-data-scopes-ship-with-the-version.md), [0206](docs/en/02-decisions/02-permissions/0206-no-row-level-security.md) |
-| calling another component; showing data another component owns | [02-backend.md](docs/en/01-conventions/02-backend.md#calling-other-components) |
-| adding a table, a migration or a partition | [02-backend.md](docs/en/01-conventions/02-backend.md#database) |
-| publishing or consuming an event; a write across components; a timeout or a compensation | [02-backend.md](docs/en/01-conventions/02-backend.md#events-and-cross-component-writes) |
-| changing a contract: renaming a field, removing an rpc or an event | [02-backend.md](docs/en/01-conventions/02-backend.md#contracts), [0302](docs/en/02-decisions/03-contracts-and-data/0302-contracts-are-additive-only.md) |
-| amounts, prices, money fields; paging a list | [0301](docs/en/02-decisions/03-contracts-and-data/0301-money-as-strings-lists-by-cursor.md) |
-| adding a cache; Redis; making the permission check faster | [0201](docs/en/02-decisions/02-permissions/0201-no-redis.md), [0202](docs/en/02-decisions/02-permissions/0202-local-permission-bundle.md) |
-| a shell exits at start: a member "not registered" / not compiled into this shell; a shell member mismatch | the shell-registry row of [Pitfalls](#pitfalls) below; for errors `brickkit` itself prints, the `brickkit-troubleshoot` skill |
-| putting several components in one process; a shell; which members a shell hosts | [0108](docs/en/02-decisions/01-architecture/0108-one-repository-per-shell.md), the `brickkit-component` skill (shells), [01-development-workflow.md](docs/en/01-conventions/01-development-workflow.md#running-it-for-real) (teardown check) |
-| which test to write, in which layer; a test is red and I'm stuck | [06-testing.md](docs/en/01-conventions/06-testing.md), [When stuck](docs/en/01-conventions/06-testing.md#when-stuck) |
-| running tests against real dependencies | [06-testing.md](docs/en/01-conventions/06-testing.md#cross-component-tests), [06-testing.md](docs/en/01-conventions/06-testing.md#running-tests) |
-| demo data; test accounts; how to log in | [docs/en/03-seed-data.md](docs/en/03-seed-data.md) |
-| designing seed or test data; a dependency doesn't have the data I need | [05-data.md](docs/en/01-conventions/05-data.md) |
-| a frontend page, the component library, theme, menus, buttons only some users see | [03-frontend.md](docs/en/01-conventions/03-frontend.md) |
-| how should this business logic work; which open-source ERP to read | [10-reference-implementations.md](docs/en/01-conventions/10-reference-implementations.md) |
-| several reasonable ways to do one feature; "let the customer choose" | [10-reference-implementations.md](docs/en/01-conventions/10-reference-implementations.md#slot-family-signal), [0104](docs/en/02-decisions/01-architecture/0104-variants-become-slot-families.md) |
-| whether to use a design pattern; a file or function getting long | [09-ai-development.md](docs/en/01-conventions/09-ai-development.md#when-to-use-a-design-pattern) |
-| writing, splitting or translating a document; a component's documents | [08-documentation.md](docs/en/01-conventions/08-documentation.md) |
-| bumping a version; releasing; tagging; "ship it" | the `version-bump-ship` skill ([SKILL.md](.claude/skills/version-bump-ship/SKILL.md)), [01-development-workflow.md](docs/en/01-conventions/01-development-workflow.md#versions) |
-| how to install or deploy; who creates the database; secrets; Kubernetes; another environment | the `brickkit-deploy` skill ([SKILL.md](.claude/skills/brickkit-deploy/SKILL.md)); each component's `components/<scope>/<name>/BRICKKIT.md`, section "Before you deploy"; [07-registries.md](docs/en/01-conventions/07-registries.md#schemas-and-roles) (`make db-init`) |
-| debugging one component in an IDE; running only one component | [01-development-workflow.md](docs/en/01-conventions/01-development-workflow.md#running-it-for-real), the `brickkit-deploy` skill |
-| adding, removing or upgrading a component in the project; why a component isn't starting | the `brickkit-assemble` skill ([SKILL.md](.claude/skills/brickkit-assemble/SKILL.md)) |
-| a `brickkit` command printed an error or an `error_code` | the `brickkit-troubleshoot` skill ([SKILL.md](.claude/skills/brickkit-troubleshoot/SKILL.md)); flags: `brickkit <command> --help` |
-| a change that may conflict with a recorded decision; "why not React / Java / RLS / a Deny rule / a config center…" | [docs/en/02-decisions/](docs/en/02-decisions/README.md) (read it before proposing; a decision wins over a convention) |
-| why this database / queue / transaction model / id / money format; replacing a piece of infrastructure; which implementations exist and how to swap | [docs/en/04-foundations/README.md](docs/en/04-foundations/README.md) (the port table, then that piece's document) |
-| the full text of any one-line convention above; going live, backups, rotating secrets, production failures (operations documents, not written yet: they will live in `docs/en/05-operations/`) | conventions: [docs/en/01-conventions/](docs/en/01-conventions/); decisions: [docs/en/02-decisions/](docs/en/02-decisions/README.md); operations: `docs/en/05-operations/` once it exists, until then the `brickkit-deploy` skill |
-| what one component does; changing one component | the component table below, then `components/<scope>/<name>/BRICKKIT.md` (what it owns) and its `AGENTS.md` (how to change it) |
+| 你要做的事（你会用的词） | 先读 |
+| --- | --- |
+| 新需求、新功能、“放在哪里”、“这样好不好”、跨组件的改动 | `brickkit-plan-change` 技能（[SKILL.md](.claude/skills/brickkit-plan-change/SKILL.md)），然后[领域与边界](docs/zh/00-overview/02-domains-and-boundaries.md)、[边界卡](docs/zh/07-components/README.md)与[决定记录](docs/zh/02-decisions/README.md) |
+| 开始做一个组件；先做什么后做什么；一次会话做多少 | [开发流程与发布](docs/zh/01-conventions/10-development-workflow.md)、[AI 导航的每次会话读多少](docs/zh/01-conventions/05-ai-navigation.md#每次会话读多少) |
+| 写新组件；改 `component.yaml`；仓库布局 | `brickkit-component` 技能（[SKILL.md](.claude/skills/brickkit-component/SKILL.md)），[组件实现约定](docs/zh/01-conventions/06-component-implementation.md#仓库布局与入口) |
+| 用哪个端口、schema、数据库角色、权限键 | [协议 19 的注册表](docs/zh/06-protocols/19-config-secrets-registries-release.md#注册表) |
+| 给配置键起名；读配置；连数据库、消息系统或对象存储；数据库密码 | [协议 19 的配置](docs/zh/06-protocols/19-config-secrets-registries-release.md#配置)、[协议 14 的数据库](docs/zh/06-protocols/14-data-foundations.md#数据库)、[组件实现约定的运行时](docs/zh/01-conventions/06-component-implementation.md#运行时是唯一入口) |
+| 用哪个框架或库；写入口 | [组件协议与语言的锁定的技术栈](docs/zh/04-foundations/07-component-protocol-and-languages.md#锁定的技术栈) |
+| 加一个接口；谁能调用；权限键；资源定义 | [安全 06](docs/zh/06-protocols/security/06-security-contracts-and-capabilities.md)、[安全 09a](docs/zh/06-protocols/security/09a-encoding-and-records.md) |
+| 某个表只让一部分人看到一部分行（“销售只看自己的单”“库管只看一个仓库”） | [安全 07](docs/zh/06-protocols/security/07-finite-expressions-containment-and-queries.md)、[授权选型](docs/zh/00-overview/guides/authorization.md) |
+| 调用别的组件；显示别的组件拥有的数据 | [组件实现约定的调用其他组件](docs/zh/01-conventions/06-component-implementation.md#调用其他组件)、[组件间调用与错误](docs/zh/04-foundations/08-calls-and-errors.md) |
+| 加表、迁移、分区；身份、单号、日期、金额 | [协议 14](docs/zh/06-protocols/14-data-foundations.md) |
+| 发布或消费事件；跨组件写入；超时与补偿；预占 | [事务与消息](docs/zh/04-foundations/03-transactions-and-messaging.md)、[协议 02](docs/zh/06-protocols/02-projections.md)、[协议 04](docs/zh/06-protocols/04-order-reservation.md) |
+| 后台任务、定时任务、对账 | [协议 01](docs/zh/06-protocols/01-background-work.md) |
+| 改契约：改字段名、删接口或事件 | [协议 19 的版本与产物](docs/zh/06-protocols/19-config-secrets-registries-release.md#版本与产物)、[原有决定 0302](docs/zh/02-decisions/10-earlier-decisions.md#0302-契约只做加法从新版本发布之后约束) |
+| 加缓存；Redis；让权限检查更快 | [底层选择的缓存一行](docs/zh/04-foundations/README.md#推荐组合与改选条件)、[安全 03](docs/zh/06-protocols/security/03-authorization-acceptance-and-revocation.md) |
+| 几个组件放进一个进程；外壳；外壳承载哪些成员；外壳启动时报成员未注册 | [协议 17 的外壳义务](docs/zh/06-protocols/17-runtime-and-resources.md#外壳义务)、[部署与运行](docs/zh/04-foundations/01-deployment-and-runtime.md)、`brickkit-component` 技能（外壳） |
+| 写哪种测试、放哪一层；测试红了卡住 | [测试与验证](docs/zh/01-conventions/02-testing-and-validation.md#实现测试的分层与节奏)、[卡住时](docs/zh/01-conventions/02-testing-and-validation.md#卡住时) |
+| 演示数据；测试账号；怎样登录；依赖方没有我要的数据 | [种子与测试数据](docs/zh/01-conventions/07-seed-and-test-data.md)、[种子数据清单](docs/zh/03-seed-data.md) |
+| 前端页面、组件库、主题、菜单、只有部分用户看得到的按钮 | [前端技术栈](docs/zh/04-foundations/04-frontend-stack.md)、[协议 20](docs/zh/06-protocols/20-frontend.md) |
+| 这段业务逻辑该怎样；看哪个开源 ERP；几种做法都合理 | [参考实现](docs/zh/01-conventions/08-reference-implementations.md)、[选择方式](docs/zh/00-overview/04-selection.md) |
+| 要不要用设计模式；文件或函数太长 | [AI 编码习惯](docs/zh/01-conventions/09-ai-coding.md) |
+| 写、拆或翻译文档；组件的文档；画图与表 | [文档规则](docs/zh/01-conventions/03-documentation.md)、[图与表](docs/zh/01-conventions/04-diagrams-and-tables.md) |
+| 升版本；发布；打标签；“发版” | [开发流程与发布的版本与发布](docs/zh/01-conventions/10-development-workflow.md#版本)、`brickkit-component` 技能（`brickkit release`）；版本传播工具随重建的工具重新提供 |
+| 怎样安装或部署；谁建数据库；密钥；Kubernetes；另一个环境 | `brickkit-deploy` 技能（[SKILL.md](.claude/skills/brickkit-deploy/SKILL.md)）、[部署与运行](docs/zh/04-foundations/01-deployment-and-runtime.md)、各组件 `BRICKKIT.md` 的“部署前准备” |
+| 上线、备份与恢复、升级与维护窗口、告警 | [运维手册](docs/zh/05-operations/README.md) |
+| 只跑一个组件；在编辑器里调试 | [开发流程与发布的真机运行](docs/zh/01-conventions/10-development-workflow.md#真机运行)、`brickkit-deploy` 技能 |
+| 往项目里加、删、升级组件；某个组件起不来 | `brickkit-assemble` 技能（[SKILL.md](.claude/skills/brickkit-assemble/SKILL.md)） |
+| `brickkit` 命令报错或给出 `error_code` | `brickkit-troubleshoot` 技能（[SKILL.md](.claude/skills/brickkit-troubleshoot/SKILL.md)）；参数：`brickkit <命令> --help` |
+| 可能与已有决定冲突的改动；“为什么不用 React／Java／行级安全／Deny／配置中心……” | [决定记录](docs/zh/02-decisions/README.md)（先读再提议；决定优先于规范） |
+| 为什么选这个数据库、消息系统、事务模型、身份格式、金额格式；替换某个底层产品 | [底层选择](docs/zh/04-foundations/README.md) |
+| 重建计划；仓库复用与 `legacy/` 分支；当前进度 | `dev/rebuild/`（开发区） |
+| 某个组件做什么；改一个组件 | 下面的组件表，然后该组件的 `BRICKKIT.md`（它拥有什么）与 `AGENTS.md`（怎样改它）；新设计中的边界见[边界卡](docs/zh/07-components/README.md) |
 
-Not here? The component table below, then the component's `AGENTS.md`.
+这里没有时：先看[正式文档的索引](docs/zh/README.md)，再看组件表与组件自己的 `AGENTS.md`。
 
-## Pitfalls
+## 易错点
 
-The mistakes that hold for every component. Most of them look correct, pass the tests, and show no symptom until much later.
+对每个组件都成立的错误。多数看起来对、测试也能过，很久之后才出症状。规则的完整写法在链接的文档中。
 
-| Never | Symptom | Why |
-|---|---|---|
-| `SET ROLE` / `SET search_path` without `LOCAL` | The next borrower of the pooled connection runs its queries in your schema: no error, no crash, another component's data read and written | Without `LOCAL` the setting outlives the transaction. Use `besdk.WithTx` ([02-backend.md](docs/en/01-conventions/02-backend.md#database)) |
-| Read `os.Getenv` / `os.environ` in module code | Standalone everything is green; merged into a shell, members overwrite each other's `PG_SCHEMA` and every other key, and a module silently uses another's schema | One process has one environment. Configuration comes only from `rt.Config` ([02-backend.md](docs/en/01-conventions/02-backend.md#merge-safety)) |
-| Initialise anything process-wide in a module: `otel.SetTracerProvider`, `logging.basicConfig`, signal handlers, the default Prometheus registry, `gin.SetMode` | Merged: the last initialiser wins, every trace lands under one service name, one module's debug mode leaks stack traces for all; the default registry panics on the second module | Use `rt.Logger`, `rt.Tracer`, `rt.Meter`, `rt.Registry` ([02-backend.md](docs/en/01-conventions/02-backend.md#merge-safety)) |
-| `log.Fatal` / `os.Exit` / `sys.exit`, or `gin.New()` / `sql.Open()` / `Listen` in a module | One module's recoverable error takes the whole shell down; `gin.New()` silently loses the SDK's middleware: request IDs, tracing, RED metrics, the access log, panic recovery and error mapping | Return an error; `besdk.NewGinEngine(rt)`, `rt.DB`; the caller listens ([02-backend.md](docs/en/01-conventions/02-backend.md#merge-safety)) |
-| Import another component's code, share a models package, or copy its generated contract code | Nothing breaks until the day a component must run alone and can't; copied generated code panics at start once caller and callee share a shell | Only `be-sdk-*` and the imported `gen/<domain>/<name>` package cross a boundary ([0101](docs/en/02-decisions/01-architecture/0101-no-imports-between-components.md)) |
-| Dial an injected `*_ENDPOINT` value as it is | It always starts with `http://`, gRPC ports included; the dial fails with an error about name resolution. With port name `""` a gRPC call reaches the HTTP port: TCP connects, then a protocol error | Use `rt.Config.Endpoint(dep, "grpc")` ([02-backend.md](docs/en/01-conventions/02-backend.md#the-runtime-is-the-only-way-in)) |
-| Treat an absent optional dependency as an empty value, or index the environment for it | The variable doesn't exist at all; indexing crashes at start | `Endpoint` returns `ok == false`; the module degrades ([02-backend.md](docs/en/01-conventions/02-backend.md#the-runtime-is-the-only-way-in)) |
-| Name a config key `*_ENDPOINT`, `COMPONENT_ID`, `COMPONENT_VERSION`, `PORT` or `BRICKKIT_SERVED_MEMBERS*` | The platform's value wins with only a warning; `up` is green and the component never gets your value | Those names belong to the platform ([04-configuration.md](docs/en/01-conventions/04-configuration.md#key-names)) |
-| Check the database, NATS, authz or another component in `/healthz` | One downstream hiccup marks every upstream unhealthy and restarts it; in a shell every member restarts at once | `/healthz` reports only that this process is alive ([02-backend.md](docs/en/01-conventions/02-backend.md#health-check-and-image)) |
-| Base the image on `scratch` or distroless | The component logs "ready" and the platform reports it unhealthy forever | The health check runs through `/bin/sh` and `wget` ([02-backend.md](docs/en/01-conventions/02-backend.md#health-check-and-image)) |
-| Register a business route with bare `r.GET` / `@app.get`, or an unwrapped resolver | The endpoint has no permission check at all, with zero symptom | The permission key is part of the route registration; `make gates` scans for it ([02-backend.md](docs/en/01-conventions/02-backend.md#permissions)) |
-| Use `besdk.SystemClient` on a path that serves a user request | The response silently contains more rows than the user may see | It carries the component's identity and bypasses data scopes; only `Start()` and event handlers ([02-backend.md](docs/en/01-conventions/02-backend.md#calling-other-components)) |
-| Omit `data_scopes` from `assembly.yaml` | be-ops rejects the component | Deliberate: a security setting may not default to off. No scoping is written `data_scopes: none` ([0205](docs/en/02-decisions/02-permissions/0205-data-scopes-ship-with-the-version.md)) |
-| Combine `owner` OR `org` with one operand left at "match all" | The whole condition matches everything; every user sees every row | Both operands must come from the caller's real scope ([02-backend.md](docs/en/01-conventions/02-backend.md#data-scopes)) |
-| Treat an empty `dept_path` as the root of the department tree | A newly created user with no department sees every department's rows in every `org`-scoped list | `dept_path` is empty only when no department is assigned; the SDKs give the `org` dimension a sentinel that never matches (be-sdk-go / be-sdk-python / be-sdk-ts v0.5.0). The whole tree is the root department, or `/` ([02-backend.md](docs/en/01-conventions/02-backend.md#data-scopes)) |
-| Rename or reuse a released permission key | Every role granted it silently loses it; after an upgrade users suddenly can't use a button | Keys are persistent identifiers; retire one with the `deprecated` column ([07-registries.md](docs/en/01-conventions/07-registries.md#append-only)) |
-| Check only `features` in the frontend, not `permissions` | The menu item is visible and opens a full-page 403 | `features` says what is installed, `permissions` what this user may do ([03-frontend.md](docs/en/01-conventions/03-frontend.md#features-permissions-and-menus)) |
-| Write this project's keys (`permissions`, `data_scopes`, `menus`, and other project metadata such as `domain` or `tier`) into `component.yaml` | `brickkit lint` and `brickkit add` reject the whole manifest: `MANIFEST_INVALID`, `unknown field`; the component can't be added or started | `component.yaml` has no extension fields; those keys belong in `assembly.yaml` ([02-backend.md](docs/en/01-conventions/02-backend.md#repository-layout)) |
-| Move a registered port, rename a schema, or allocate a `1xxxx` port | Every dependent and every shell hosting the component breaks; a schema rename is a data migration; a `1xxxx` port collides with brickKit's host mapping for `mode: debug` / `local` | [07-registries.md](docs/en/01-conventions/07-registries.md#ports) |
-| Claim a queue row or an idempotency key with a plain `SELECT` and then a write | Two replicas publish every outbox row twice; two concurrent requests both execute | Claim atomically: `FOR UPDATE SKIP LOCKED`, `INSERT … ON CONFLICT DO NOTHING` ([02-backend.md](docs/en/01-conventions/02-backend.md#database)) |
-| Pass money as a float, or page a `List` with `offset` | Amounts lose precision between languages; deep pages get slow and skip rows | Decimal strings and cursors ([0301](docs/en/02-decisions/03-contracts-and-data/0301-money-as-strings-lists-by-cursor.md)) |
-| Change a test to make it pass: comment it out, `t.Skip`, loosen the assertion | Everything is green and guards nothing | Fix the implementation; a wrong test is changed in its own commit, saying why ([06-testing.md](docs/en/01-conventions/06-testing.md#red-green-and-the-iron-rule)) |
-| Change a forked component's `metadata.id` | With a new ID every dependent's `<ID>_ENDPOINT` variable disappears | A fork keeps its `metadata.id` but versions normally: every change bumps `metadata.version`, and dependents move their pins with `brickkit upgrade` / `make bump-version`; only its repository and directory names may differ ([01-development-workflow.md](docs/en/01-conventions/01-development-workflow.md#releasing)) |
-| Let the members a shell's `main` registers (its registry) differ from `shell.members` in its `component.yaml`, or a Go shell's `go.mod` from either | A member to host that isn't registered: the shell exits at start and every member in it is down. A member version `go.mod` doesn't require: the image runs other code than the project believes, with no error | The JSON says what to host, the binary decides what exists; `make bump-version` rewrites `shell.members` and `go.mod` together ([0108](docs/en/02-decisions/01-architecture/0108-one-repository-per-shell.md)) |
-| Expect `deploy.local.yaml` to merge with `deploy.yaml` | With local mode on, edits to `deploy.yaml` have no effect; the team's later changes never reach your copy, and `up` refuses once the component set differs | It replaces `deploy.yaml` wholesale. `brickkit up --focus` turns local mode on and `--all` leaves it on. `brickkit local status` shows the switch; `brickkit local off` before editing `deploy.yaml`, or `brickkit local refresh` after, which lists your old changes to re-apply ([01-development-workflow.md](docs/en/01-conventions/01-development-workflow.md#running-it-for-real)) |
-| Hand-write a versioned service name for authz or iam in `config/vars.yaml` (`http://infra-authz-2-0-1:8223/…`) or address them by a shell's service name | After the next release every protected route in every component answers `503` or `403` while `/healthz` stays green | Write `$endpoint:infra/authz/…` / `$endpoint:infra/iam-casdoor/…`; brickKit fills in the current address in every topology and `brickkit upgrade` needs no config change ([04-configuration.md](docs/en/01-conventions/04-configuration.md#dependency-addresses)) |
-| Release a Go component `2.x` with only the brickKit tag, or with a module path without `/v2` | The shell's Go build can't fetch the member: `unknown revision v2.0.0`, or "module path must match major version" | Go needs the `v` tag and the major version in the path; brickKit's tag has no `v` ([01-development-workflow.md](docs/en/01-conventions/01-development-workflow.md#versions)) |
-| Change code without bumping `metadata.version`, or change a released version in place | `brickkit build` skips the existing image and the container keeps running the old code, all green | The image tag is the version ([01-development-workflow.md](docs/en/01-conventions/01-development-workflow.md#versions)) |
-| `brickkit remove --force` a component with uncommitted or unpushed work | `--force` deletes the source directory and the work with it. Without it, `remove` stops before writing anything; a component registered as a Git submodule stops with `SUBMODULE_GUARD` | Commit and push the component, deregister the submodule (`git submodule deinit -f <path>`, `git rm <path>`), then run `brickkit remove` again ([01-development-workflow.md](docs/en/01-conventions/01-development-workflow.md#releasing)) |
+| 绝不 | 症状 | 为什么 |
+| --- | --- | --- |
+| 不带 `LOCAL` 的 `SET ROLE`、`SET search_path`；或按角色设置超时 | 下一个借到池中连接的人把查询打到你的 schema 上，不报错不崩溃；角色级的超时在 `SET ROLE` 后不生效 | 设置要在事务内并随事务结束（[协议 14 的数据库](docs/zh/06-protocols/14-data-foundations.md#数据库)） |
+| 模块代码读进程环境 | 单跑全绿；合进外壳后成员互相覆盖 schema 名与其他键，模块静默读写了别人的 schema | 一个进程只有一份环境；配置只经运行时（[合并安全](docs/zh/01-conventions/06-component-implementation.md#合并安全)） |
+| 在模块里初始化进程级的东西（全局追踪提供者、日志全局配置、信号处理、默认指标注册表、框架全局模式） | 合并后最后一个初始化的赢：全部追踪落在一个服务名下，一个模块的调试模式让所有模块泄露堆栈；默认注册表在第二个模块注册时崩溃 | 用运行时提供的（[合并安全](docs/zh/01-conventions/06-component-implementation.md#合并安全)） |
+| 模块里退出进程，或绕过 SDK 自建 HTTP 引擎、连接池、监听 | 一个模块的可恢复错误拖垮整个外壳；自建引擎静默丢掉请求身份、追踪、指标、访问日志、崩溃恢复、错误映射与授权 | 返回错误；一切经 SDK（[合并安全](docs/zh/01-conventions/06-component-implementation.md#合并安全)） |
+| 导入另一个组件的代码、共享模型包、复制别人的生成契约代码 | 平时什么都不坏，直到要单独部署时拆不动；复制的生成代码在调用方与被调方进同一个外壳时启动即崩溃 | 能跨边界的只有 SDK、被调方发布的契约包与族契约包（[原有决定 0101](docs/zh/02-decisions/10-earlier-decisions.md#0101-组件之间禁止导入代码)） |
+| 把缺席的可选依赖当作空值 | 变量根本不存在，按下标取值在启动时崩溃 | 地址访问器返回“不存在”，模块按边界卡降级（[运行时是唯一入口](docs/zh/01-conventions/06-component-implementation.md#运行时是唯一入口)） |
+| 配置键以 `_ENDPOINT` 结尾，或用平台保留名 | 平台的值优先，只打一条警告；启动全绿，组件永远拿不到你的值 | 这些名字属于平台（[协议 19 的配置](docs/zh/06-protocols/19-config-secrets-registries-release.md#配置)） |
+| 在健康检查里查数据库、消息系统、授权或其他组件 | 下游一次抖动让所有上游被判不健康并重启；外壳里所有成员一起重启 | 健康检查只报告进程存活（[协议 17](docs/zh/06-protocols/17-runtime-and-resources.md)） |
+| 基础镜像用 `scratch` 或 distroless | 组件日志说就绪，平台永远报不健康 | 健康检查经 `/bin/sh` 与 `wget` 执行（[组件实现约定](docs/zh/01-conventions/06-component-implementation.md#健康检查与镜像)） |
+| 注册没有操作定义的路由、resolver 或任务 | 这个接口完全没有授权检查，而且毫无症状 | 操作定义是路由注册的一部分，检查会发现（[安全 06](docs/zh/06-protocols/security/06-security-contracts-and-capabilities.md)） |
+| 在服务用户请求的路径上用组件的服务身份 | 响应静默多出用户不该看到的行 | 服务身份只用于后台工作与事件处理（[安全 02](docs/zh/06-protocols/security/02-trusted-identity-and-attributes.md)） |
+| 资源定义缺维度，或把空部门路径当作树的根 | 新建的无部门用户看到全部部门的行；缺维度被当作“全部” | 维度必须显式出现，没有部门实例化为空集（[安全 07](docs/zh/06-protocols/security/07-finite-expressions-containment-and-queries.md)） |
+| 改名或复用已发布的权限键、端口、schema | 被授予旧键的角色静默失去它；依赖方与外壳全部断开；schema 改名是一次数据迁移 | 注册表身份列只追加，退役是状态（[协议 19 的注册表](docs/zh/06-protocols/19-config-secrets-registries-release.md#注册表)） |
+| 前端只检查 `features` 不检查 `permissions` | 菜单看得见，点进去整页被拒 | `features` 是部署启用了什么，`permissions` 是这个用户能做什么（[协议 20](docs/zh/06-protocols/20-frontend.md)） |
+| 把本项目的键写进 `component.yaml` | `brickkit lint` 与 `add` 拒绝整个清单（`MANIFEST_INVALID`、`unknown field`） | `component.yaml` 没有扩展字段，项目的键在 `assembly.yaml` |
+| 先普通 `SELECT` 再写入来认领队列行或幂等键 | 两个副本把每条发件行发两次；两个并发请求都执行 | 原子认领：`FOR UPDATE SKIP LOCKED`、`INSERT … ON CONFLICT DO NOTHING`（[事务与消息](docs/zh/04-foundations/03-transactions-and-messaging.md#本地事务)） |
+| 金额用浮点；列表用偏移量分页 | 金额在语言之间丢精度；深分页变慢并跳行 | 十进制字符串与游标（[协议 14](docs/zh/06-protocols/14-data-foundations.md)） |
+| 为了让测试通过而改测试：注释掉、加跳过、放宽断言 | 全绿而什么都没守住 | 改实现；测试真错了，单独一次提交说明为什么（[一轮红绿与铁律](docs/zh/01-conventions/02-testing-and-validation.md#一轮红绿与铁律)） |
+| 改 Fork 出来的组件的 ID | 所有依赖方的地址变量随之消失 | Fork 保留组件 ID，版本照常推进（[开发流程与发布](docs/zh/01-conventions/10-development-workflow.md#发布)） |
+| 外壳注册的成员与清单、依赖锁不一致 | 要承载的成员没注册：外壳启动即退出、全部成员不可用；依赖锁不符：镜像跑的代码与项目以为的不同，不报错 | 三者由工具一起生成（[协议 17 的外壳义务](docs/zh/06-protocols/17-runtime-and-resources.md#外壳义务)） |
+| 以为 `deploy.local.yaml` 会与 `deploy.yaml` 合并 | 本地模式开着时改 `deploy.yaml` 不起作用，组件集合不同时 `up` 拒绝 | 它整体取代 `deploy.yaml`；先 `brickkit local off`，或改完 `brickkit local refresh`（[真机运行](docs/zh/01-conventions/10-development-workflow.md#真机运行)） |
+| 在共享变量里手写授权或身份的版本化服务名 | 下一次发布后全部受保护路由答 503 或 403，健康检查照常绿 | 写成 `$endpoint:` 引用，BrickKit 算出当前地址（[协议 19 的配置](docs/zh/06-protocols/19-config-secrets-registries-release.md#配置)） |
+| 主版本 2 及以上的 Go 组件只打 BrickKit 的标签，或模块路径不带主版本 | 外壳的 Go 构建取不到成员：`unknown revision`，或“module path must match major version” | Go 需要 `v` 标签与路径中的主版本（[工程规范的版本与升级](docs/zh/01-conventions/01-engineering.md#版本与升级)） |
+| 改了代码不升版本，或原地修改已发布的版本 | 构建跳过已有镜像，容器继续跑旧代码，全绿 | 镜像标签就是版本（[开发流程与发布的版本](docs/zh/01-conventions/10-development-workflow.md#版本)） |
+| 对有未提交或未推送改动的组件 `brickkit remove --force` | 强制选项连同这些改动删掉源码 | 先提交推送、注销子模块，再移除（[开发流程与发布](docs/zh/01-conventions/10-development-workflow.md#发布)） |
 
-<!-- brickkit:managed:begin lang=en -->
-<!-- maintained by brickkit (init, add, remove, upgrade, skills update): edits between these markers are overwritten -->
+<!-- brickkit:managed:begin lang=zh -->
+<!-- 由 brickkit 维护（init、add、remove、upgrade、skills update）：这对标记之间的改动会被覆盖 -->
 
 ## BrickKit
 
-This project is assembled with [BrickKit](https://github.com/brickKit/brickKit): each component describes itself in its own `component.yaml`; the `brickkit` CLI resolves the graph, generates the deployment files and exits. There is no registry, config server or gateway to look for.
+这个项目用 [BrickKit](https://github.com/brickKit/brickKit) 组装：每个组件在自己的 `component.yaml` 里描述自己；`brickkit` 命令行解出依赖图、生成部署文件后就退出。没有注册中心、配置中心、网关，不用去找。
 
-- `brickkit.yaml` lists the components at exact versions (it is the lock file); `deploy.yaml` says how they run (`deploy.local.yaml` replaces it on your machine while local mode is on); `config/<scope>-<name>.yaml` holds each component's environment variables, `config/vars.yaml` the shared values.
-- `brickkit add` / `remove` / `upgrade` keep the three layers in step: never hand-edit one and forget another.
-- Config keys are the environment variable names the component's `configSchema` declares; secrets are `${VAR}` or `file://.secrets/…`, never plaintext.
-- A health check checks only its own process. To work on one component, run `brickkit up` in its directory; `brickkit up --all` runs everything again.
-- Task skills are in `.claude/skills/brickkit-*`; for flags ask `brickkit <command> --help`; BrickKit's own documentation, for the version installed, is `brickkit docs` (it lists the pages; `brickkit docs 04-shell` prints one).
+- `brickkit.yaml` 列出组件和它们的精确版本（它就是锁文件）；`deploy.yaml` 写怎么运行（本地模式开着时，你机器上用 `deploy.local.yaml` 整份替换它）；`config/<scope>-<name>.yaml` 是每个组件的环境变量，`config/vars.yaml` 是共用的值。
+- `brickkit add` / `remove` / `upgrade` 会让三层文件一起改：别手改一层、忘了另一层。
+- 配置项的键就是组件 `configSchema` 声明的环境变量名；密钥写成 `${VAR}` 或 `file://.secrets/…`，不写明文。
+- 健康检查只查自己这个进程。只想改一个组件时，在它的目录里 `brickkit up`；`brickkit up --all` 回到全部运行。
+- 按任务分的技能在 `.claude/skills/brickkit-*`；参数问 `brickkit <命令> --help`；BrickKit 自己的文档（与装着的版本一致）用 `brickkit docs` 看（列出全部页；`brickkit docs 04-shell` 打印一页）。
 
-## Components
+## 组件
 
-A component's documentation is `BRICKKIT.md` (translations `BRICKKIT.<lang>.md`) in its source directory when a local source holds this version, otherwise in `.brickkit/manifests/<id>/<version>/`; its contracts are in `.brickkit/artifacts/<service name>/` (the ID and the version joined by `-`, with every `/` and `.` as `-`: `erp/backend` 1.0.0 → `erp-backend-1-0-0`). To change a component, read its own `AGENTS.md`.
+组件的文档是 `BRICKKIT.md`（译本 `BRICKKIT.<语言>.md`）：本地源里正好是这个版本时在源码目录里，否则在 `.brickkit/manifests/<id>/<version>/`；契约在 `.brickkit/artifacts/<服务名>/`（ID 和版本用 `-` 连起来，其中的 `/` 和 `.` 也都换成 `-`：`erp/backend` 1.0.0 → `erp-backend-1-0-0`）。要改某个组件，读它自己的 `AGENTS.md`。
 
-| Component | Version | What it does | Docs | Home |
+| 组件 | 版本 | 干什么 | 文档 | 主页 |
 |---|---|---|---|---|
 | mdm/customer | 2.0.1 | Customer names, tax IDs, credit limits, status, contacts and billing details. | BRICKKIT.md +zh | https://github.com/brickKit/mdm-customer |
 | infra/authz | 2.0.1 | Permission key catalogue, roles as plain unions, the policy bundle served at /authz/bundle, and login-time claims. | BRICKKIT.md +zh | https://github.com/brickKit/infra-authz |

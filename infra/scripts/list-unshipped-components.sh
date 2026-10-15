@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # 列出"HEAD 已经领先最新 tag"的组件仓库，连同这段时间的 commit 摘要——
-# 给 version-bump-ship 技能（.claude/skills/version-bump-ship/）当第一步
+# Formerly step 0 of the version-bump-ship skill (archived with the 0.x release tooling).
 # 用：判断"这次真的动过、该发布"的组件都有哪些，不用凭记忆或者一个个
 # 手动 git status。
 #

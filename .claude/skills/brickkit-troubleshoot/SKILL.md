@@ -1,155 +1,236 @@
 ---
 name: brickkit-troubleshoot
-description: Use when a BrickKit command reports an error, a component won't start, address injection isn't taking effect, dependency resolution fails, or you need to look up a problem by its error_code. Covers symptom → cause → fix for deploy files out of step with brickkit.yaml, a stale deploy.local.yaml, empty required config, upgrade config conflicts, undefined $var and ${VAR} references, a commit blocked by the pre-commit check, missing or stale images, local repo version mismatches, shell member mismatches, compose start cycles, release refusals, and which "bugs" are deliberate design. Applies when the user pastes what a BrickKit command printed, or asks "why won't it start / connect / release".
+description: brickkit 命令报错、组件起不来、地址注入不生效、依赖解析失败、或需要按错误码定位问题时使用。含部署文件与 brickkit.yaml 对不上（DEPLOY_INCONSISTENT）、deploy.local.yaml 过期要 local refresh、config/ 必填项为空、upgrade 留下的重复 key、$var 与 ${VAR} 引用未定义、提交被 pre-commit 检查拦下、IMAGE_MISSING / IMAGE_STALE、本地仓库版本不等于默认版本、外壳成员版本对不上、compose 启动环与 skipWaitFor、release 被拒，以及哪些「看起来像 bug」其实是刻意设计。当用户贴出 brickkit 的报错输出、或说「为什么起不来 / 连不上 / 找不到」时，这个技能适用。
 ---
 
-# Troubleshooting
+# 排障
 
-## When to use this skill
+## 什么时候用这个技能
 
-- The user pastes a `brickkit` error
-- A component won't start, or started but can't reach a dependency
-- An environment variable wasn't injected, or a config value has no effect
-- `brickkit release` refuses
-- A Pod is stuck CrashLoopBackOff, but the container's own logs look fine
+- 用户贴出一段 `brickkit` 的报错
+- 组件起不来，或者起来了但连不上依赖
+- 环境变量没注入、配置不生效
+- `up` 之后跑起来的组件跟预期不一样
+- Pod 一直 CrashLoopBackOff，但容器日志看着正常
 
-## Check this first: some "failures" are deliberate design
+## 先看报错里的 error_code
 
-**1. A missing optional dependency's variable doesn't exist at all** — not an empty string.
-`os.environ["X"]` crashing is intended; the fix is `os.environ.get()` in the component, never an
-injected empty value.
+每个让命令失败的错误，在 `❌` 那一段之后的 stderr 上都有一行 JSON 日志，带稳定的 `error_code`——stderr 被捕获时
+（你跑命令、脚本、CI 都是）一定有；人在终端里直接敲、又没设 `--log-level` / `BRICKKIT_LOG_LEVEL` 时不打这一行，
+用户贴来的报错里没有它，就自己把那条命令跑一遍（你的 stderr 是被捕获的，那一行会在），或者先照 `❌` 那一段的说明来。
+按码定位比按文案快；写脚本判断成败也认它和退出码，别 grep 人读的文字。只有
+`NETWORK_UNREACHABLE` 值得原样重试——那是根本没连上远端（断网、主机名解析不了）；Git 远端连上了却拒绝，
+报的是 `AUTH_FAILED`，原样重试没用。报错下面的「提示」行通常已经给了具体命令，先照着做。
+下面先详细讲最常见的几种，其余错误码在后面的速查表里。
 
-**2. CrashLoopBackOff with healthy-looking logs** is almost always the startup grace period: 60
-seconds by default. Raise `healthCheck.startPeriodSeconds` in `component.yaml` above the real cold
-start. And a health check that pings a database is itself the bug — `/healthz` checks only the process.
+## 症状 → 原因 → 处理
 
-**3. The component says it's ready, the platform says unhealthy.** On Docker / Podman the health check
-runs `wget` or `curl` inside the container; an image with neither can never pass it. Add one to the
-image. (Kubernetes probes are `httpGet` and don't need either.)
+**1. `DEPLOY_INCONSISTENT`：部署文件与 `brickkit.yaml` 对不上。**
 
-**4. A `mode: debug` component fails with `relation does not exist`.** It gets no migration container
-(`MIGRATION_SKIPPED`); run its migration once by hand.
+每个组件版本在部署文件里必须恰好一个条目（外壳下的成员也算），报错列出缺的和多的。通常是有人
+手改了 `brickkit.yaml` 或部署文件。处理：按列出的补上或删掉条目；以后增删走 `add` / `remove` /
+`upgrade`，它们会把三份文件一起改齐。
 
-**5. No registry, config center, gateway or long-running service** exists. Not finding one isn't a
-missing install; don't suggest adding it.
+**2. 本地模式下报 `deploy.local.yaml` 已过期。**
 
-**6. A component "mysteriously" started.** Start/stop follows the layer above: it runs while anything
-running needs it, required or optional. Each `up` line states the reason (`starting (X needs it)`).
+还是 `DEPLOY_INCONSISTENT`，但原因是你开着本地模式，团队改了 `brickkit.yaml`（比如 `git pull`
+进来一个新组件），而你的 `deploy.local.yaml` 没跟上。处理：`brickkit local refresh`——旧文件存成
+`deploy.local.yaml.bak`，并列出你的每一处本地改动让你手工搬回去；或者手改文件；或者 `local off`。
+`brickkit local status` 能先确认是不是这种情况。
 
-**7. `deploy.yaml` rejects `mode: debug`.** By design: it belongs in `deploy.local.yaml`
-(`brickkit local on`, then edit that file).
+**3. 改了 `deploy.yaml` 却没有任何效果。**
 
-**8. You edited `deploy.yaml` and nothing changed.** Local mode is probably on — the commands that run
-or check the deployment (`up`, `down`, `status`, `sync`, `lint`, `build`) then read `deploy.local.yaml`
-instead. `graph` and `deps` always read `deploy.yaml`. `brickkit local status` shows the switch; `-f`
-ignores both the switch and the local file.
+本地模式开着：跑部署、查部署的命令（`up`、`down`、`status`、`sync`、`lint`、`build`）读的是
+`deploy.local.yaml`，完全不看 `deploy.yaml`；只有 `graph` 和 `deps` 永远读 `deploy.yaml`。
+`brickkit local status` 确认；要么改本地文件，要么这次加 `--no-local`。
 
-**9. `up` refuses because a config file has a duplicate key.** Intended after `upgrade --yes`: keep
-one line, delete the other and the comment. Don't run a YAML formatter over it — it silently drops
-one key and hides the conflict.
+**4. 必填的组件配置没有值（`CONFIG_INVALID`）。**
 
-**10. A `$var:` reference is "not a string" or is ignored.** It must be written without a space:
-`DB_HOST: $var:DB_HOST`. With a space (`$var: DB_HOST`) YAML reads it as a map. Values in
-`config/vars.yaml` can't themselves be `$var:` references.
+`add` 在 `config/<scope>-<name>.yaml` 里给必填键写了 `KEY: ""`，那是要你填的空位。报错点名了组件和
+键；去读 `.brickkit/manifests/<scope>/<name>/<版本>/BRICKKIT.md` 的配置指南看该填什么。
 
-## Symptom → cause → fix
+**5. 升级后 `up` 拒绝启动：检测到未解决的配置冲突（`CONFIG_CONFLICT`）。**
 
-| You see | Cause | Fix |
+`upgrade --yes`（或没有终端时）把冲突写成了**两行重复键**加一段注释——故意的，让冲突没法被忽略。
+用纯文本编辑器保留一行、删掉另一行和注释。**别用 yq 或编辑器的「格式化文档」**：它们会悄悄丢掉
+一行，冲突就假装解决了。编辑器把文件标成非法 YAML 是正常的。
+
+**6. `$var:` 引用了哪里都没有定义的公共变量（`CONFIG_INVALID`）。**
+
+`$var:NAME` 只从部署文件的 `vars:` 和 `config/vars.yaml` 取，没有别的兜底。在其中一处定义它。注意
+`-f deploy.prod.yaml` 时读的是那份文件的 `vars:`；写成 `$var: NAME`（冒号后带空格）是另一回事，YAML
+会把它读成映射。
+
+**7. `${VAR}` 没有定义，或者写错了格式（`CONFIG_INVALID`）。**
+
+「错误：config/ 或部署文件里引用的环境变量没有定义」：`${VAR}` 在进程环境和 `.env` 里都找不到。生成部署文件
+时就查，每种部署目标都查——否则 compose 会悄悄换成空字符串，组件拿着坏值跑起来却没有任何报错。处理：写进
+`.env` 或 export；或者给默认值 `${VAR:-dev}`，可以为空的值写 `${VAR:-}`。「… 不是合法的 ${} 引用」：
+`${DB_HOST`、`${DB-HOST}` 这种写法，加载文件时就报；写成 `${NAME}` 或 `${NAME:-默认值}`。
+
+**8. 配置项「写了没生效」。**
+
+- 键拼错或不在组件的 `configSchema` 里：CLI 警告「不会生效」并猜你想写哪个。键就是环境变量名，
+  原样注入，没有大小写转换
+- 撞上保留名（`COMPONENT_ID`、`COMPONENT_VERSION`、`BRICKKIT_SERVED_MEMBERS`、
+  `BRICKKIT_SERVED_MEMBERS_CONFIG`、`PORT`、`*_ENDPOINT`）：警告并跳过，平台注入的值优先
+- 改的是别的版本的文件：兼容版本读 `config/<scope>-<name>@<版本>.yaml`，默认版本读不带版本的那份
+
+**9. `IMAGE_MISSING` / `IMAGE_STALE` / `IMAGE_UNVERIFIED`。**
+
+`up` 从不构建。`IMAGE_MISSING`：本地源的组件（或只有 `deployment.build` 的）还没构建 →
+`brickkit build <id>`。`IMAGE_STALE`：本机构建的外壳镜像里编进的成员版本与它的 `component.yaml`
+不一致 → `brickkit build <外壳> --force`。`IMAGE_UNVERIFIED` 只是警告：外壳镜像没有 `brickkit build`
+留下的标签，无法核对成员版本。改了代码没升版本号时，镜像 tag 没变，也要 `--force` 重建。
+
+**10. 从本地仓库运行的组件：仓库里的版本 ≠ 项目的默认版本。**
+
+`mode: local` / `mode: debug` 或裸进程外壳里的成员，是从本地仓库跑的；仓库里 `metadata.version`
+必须等于 `brickkit.yaml` 的默认版本。处理：真要跑仓库里的版本就 `brickkit upgrade <id>@<仓库版本>`；
+否则在仓库里检出对应的 tag。兼容版本（带 `requiredBy` 的）不能从本地仓库跑。
+
+**11. 外壳承载的成员版本与外壳编进的版本对不上。**
+
+三条出路：升级外壳到一个编进了这个版本的外壳版本；把那个成员条目挪出外壳，独立跑；两个版本都要——
+给外壳编进的版本加一行 `requiredBy: [<外壳>]`，把 `id@那个版本` 嵌进外壳，另一个版本留在顶层。
+
+**12. 把成员放进外壳后报启动环（`DEPENDENCY_CYCLE`）。**
+
+组件之间没有互相依赖，但外壳容器作为整体启动，继承了每个成员的依赖，compose 下就成了 `depends_on`
+环。报错列出了边。出路：把环上外面的那个组件也挪进外壳；把一个成员挪出来；或在条目上写
+`skipWaitFor: [<ID>]`——只去掉启动等待，组件自己必须重试直到依赖起来。`target: k8s` 下（Pod 启动时
+本来就不互相等）或这次以裸进程跑的组件上（没有 `depends_on`），`skipWaitFor` 不起作用，`up` 会警告；这份文件也拿去
+docker / podman 用就留着，否则删掉。
+
+不涉及外壳的普通解析也报 `DEPENDENCY_CYCLE`：那是一个全由强依赖组成的环，谁都要等对方先起来。把环上至少一条
+依赖改成弱依赖（`optional: true`）——弱依赖不约束启动顺序。
+
+**13. `DEPENDENCY_MISSING`：强依赖的版本没在 `brickkit.yaml` 里声明。**
+
+`brickkit.yaml` 是锁文件，解析只用它声明过的版本。照提示 `brickkit add <id>@<版本>`（依赖需要另一个版本
+时 add 会自动写成 `requiredBy` 兼容版本）。
+
+**14. `add` 拒绝：项目里已经有这个组件。**
+
+直接 `add` 一个已在项目里的组件的另一个版本。换默认版本用 `brickkit upgrade <id>@<版本>`；依赖链上需要另一个
+版本时 `add` 会自己写 `requiredBy` 行，不用你来。
+
+**15. `target: k8s` 下 `mode` 被拒（`CONFIG_INVALID`）。**
+
+`mode: local` / `mode: debug` 要在你的机器上起进程，集群里的 Pod 到不了那里。用 docker / podman，比如在
+`deploy.local.yaml` 里把 `target:` 换掉。
+
+**16. `RELEASE_BLOCKED` / `RELEASE_PUSH_FAILED` / `RELEASE_CHECK_FAILED`。**
+
+被拒是发布前检查没过，什么都没写：组件目录有未提交的改动、当前分支没有上游或有未推送的提交、tag 已存在
+（该升 `metadata.version` 了）；或者"发布前检查跑完之后有未提交的改动"——`release.checks` 里的某条命令改写了
+已跟踪的文件或留下了新文件：把它改动的提交、推送后重来，或者让检查只报告不改、产物写进 `.gitignore`。
+推送失败时本地 tag 已经删掉，解决远端原因后原样重试。`RELEASE_CHECK_FAILED`
+是组件自己 `release.checks` 里的某条命令非零退出或没能运行：读错误上方它自己的输出、改好；"没能运行"是 argv 写错了
+（每项一个参数、不经 shell）或者脚本没有执行权限。
+
+**17. 提交被拦下：「组件源码提交在归档目录里，但 … 说它该启动」（`CONFIG_CONFLICT`）。**
+
+这是 `brickkit init --hooks` 装的 pre-commit 检查：部署文件说某个组件要启动，可这次提交里它的源码在
+`components/.archived/` 下。处理：`brickkit restore` 把 `mode` 恢复到上次提交的样子；或者把目录的移动一起
+提交。想不提交先查一遍，跑 `brickkit restore --check`。
+
+**18. 焦点运行、嵌套副本、submodule。**
+
+- 「焦点 … 不是这个项目的组件」（`COMPONENT_NOT_FOUND`）：`deploy.local.yaml` 的 `focus:` 写的组件不在
+  `brickkit.yaml` 里（拼错了，或被删了）。照「是不是想写」改；`brickkit up --focus <id>` 换一个，`brickkit up --all` 去掉焦点。
+- 「焦点 … 的条目写着 mode: disable」（`COMPONENT_DISABLED`）：同时说了「跑它」和「永远别跑它」。去掉 `mode: disable`，或换一个焦点。
+- `focus` 字段上的「校验失败」（`CONFIG_INVALID`）：`focus:` 写进了 `deploy.yaml`（它是个人的事）、配了 `target: k8s`
+  （集群够不着你的机器），或者不是组件 ID。只写在 `deploy.local.yaml` 里、只用于 docker / podman。
+- 「--focus 与 --all 互相矛盾」「--focus 与 --all 改的是 deploy.local.yaml，而 -f 与 --no-local 都不读它」（`INVALID_ARGUMENT`）：二选一；
+  要用焦点就去掉 `-f` / `--no-local`。
+- 以为会启动的组件打印 `不启动（焦点之外）`：设了焦点，起点只有焦点和钉住的组件。`brickkit up --all`，或者在
+  `deploy.local.yaml` 里给它写 `mode: enabled`。
+- 「组件源码嵌在另一个组件的目录里」（`CONFIG_CONFLICT`）：同一个组件有了两份，`up`、`lint`、`sync` 都拒绝。自己挪走或删掉
+  嵌套的那份——先问人；报错会说它在别处有没有副本。
+- 「这个工作台在项目 … 里面；--repo 会在这里再克隆一份」（`CONFIG_CONFLICT`）：到外层项目里 `add --repo`，或在那里用焦点运行。
+- `build` 的警告「… 的源码里有 git submodule，这里它们是空目录」（`SUBMODULES_SKIPPED`）：BrickKit 从不拉取 submodule。让组件发布镜像；或者在克隆下来的
+  仓库里自己 `git submodule update --init`。
+
+## 其余错误码速查
+
+| 错误码 | 情形 | 处理 |
 | --- | --- | --- |
-| `DEPLOY_INCONSISTENT`: the deploy file doesn't match the components in `brickkit.yaml` | A component line was added/removed by hand, or a `requiredBy` version has no `id@version` entry | Add/remove the listed entries — or redo the change with `brickkit add` / `remove`, which keep all three layers in step |
-| `DEPLOY_INCONSISTENT`: `deploy.local.yaml` is out of date | Local mode is on and the team changed `brickkit.yaml` | `brickkit local refresh` (re-apply the listed old changes by hand), or edit the file, or `brickkit local off` |
-| "a required component config item has no value" (`CONFIG_INVALID`) | `add` wrote `KEY: ""` for a required key without default | Fill it in `config/<scope>-<name>.yaml` — often as `${VAR}` or `$var:NAME` |
-| "unresolved configuration conflicts" (`CONFIG_CONFLICT`) | `upgrade` with `--yes` / no TTY met a key you changed whose default also changed | Keep one of the two lines in the config file, delete the other and the comment |
-| "references shared variables that are defined nowhere" (`CONFIG_INVALID`) | A `$var:NAME` has no value in `config/vars.yaml` nor in the deploy file's `vars:` | Define it; there is no implicit fallback |
-| "environment variables referenced in config/ or the deploy file are not defined" (`CONFIG_INVALID`) | A `${VAR}` is set neither in the process environment nor in `.env`. Checked when the files are generated, on every target — compose would otherwise put in an empty string without an error | Add it to `.env` or export it; or write a default, `${VAR:-dev}` (`${VAR:-}` for a value that may be empty) |
-| "… is not a valid ${} reference" (`CONFIG_INVALID`) | A malformed reference such as `${DB_HOST` or `${DB-HOST}`, caught when the files are loaded | Write `${NAME}` or `${NAME:-default}` |
-| A config key "won't take effect" warning | The key isn't in the component's `configSchema` (typo, or dropped by an upgrade) | Use the suggested key; keys are the exact env var names |
-| "Config conflict: the config item of component … was ignored" (warning) | A `configSchema` key collides with a name the platform injects (`COMPONENT_ID`, `COMPONENT_VERSION`, `PORT`, `BRICKKIT_SERVED_MEMBERS`, `BRICKKIT_SERVED_MEMBERS_CONFIG`, any `*_ENDPOINT`); the platform's value wins | The component's author renames the key in `configSchema` |
-| A value you wrote has no effect, and nothing warns | You edited another version's file: the default version reads `config/<scope>-<name>.yaml`, a `requiredBy` version reads `config/<scope>-<name>@<version>.yaml` | Edit the file of the version that runs |
-| `DEPENDENCY_MISSING` naming a version not declared | `brickkit.yaml` is a lock file; that version isn't in it | `brickkit add` the component at that version |
-| `add` refuses: the project already has this component | A direct `add` of another version | `brickkit upgrade <id>@<version>` |
-| `IMAGE_MISSING` | The image needs a local build; `up` never builds | `brickkit build <id>` |
-| Code changes don't show up after `brickkit build` | An image of that version already exists and is skipped | `brickkit build <id> --force` (or bump the version) |
-| `IMAGE_STALE` | A locally built shell image contains other member versions than its `component.yaml` | `brickkit build <shell> --force` |
-| `IMAGE_UNVERIFIED` (warning) | A shell image without the member-version label (not built by `brickkit build`) | Fine if you trust it; rebuild with `brickkit build` to make it checkable |
-| "Code that runs from a local repository does not match this run" (`CONFIG_INVALID`) | A `mode: local` / `debug` component (or bare-process shell member) has a repo `metadata.version` ≠ the default version, or a `requiredBy` version was given `mode: local` / `debug` (only the default runs from the repo) | `brickkit upgrade <id>@<repo version>`, or check out the tag matching the default version |
-| Shell member versions differ from the ones the shell compiles in (`CONFIG_INVALID`) | The deploy file nests a member version the shell's `component.yaml` doesn't declare | Upgrade the shell to one that compiles that version; or move the member entry out of the shell; or keep both — add a `brickkit.yaml` line for the compiled version with `requiredBy: [<shell>]`, nest `id@thatversion` under the shell, leave the other top-level |
-| `DEPENDENCY_CYCLE`: the shell waits for a component that waits for the shell | Hosting members merged their dependencies into one container, forming a Compose `depends_on` loop | Move the outside component into the shell too; or move a member out; or `skipWaitFor: [<id>]` on the entry (only drops the start wait — the component must retry) |
-| A warning that `skipWaitFor` has no effect | `skipWaitFor` on `target: k8s` (Pods don't wait for each other at start), or on a component that runs as a bare process this time (it has no `depends_on`) | Nothing to fix if the file is also used on docker / podman; otherwise delete it |
-| `DEPENDENCY_CYCLE` in plain resolution | A cycle made only of required dependencies | Make at least one edge optional |
-| `COMPONENT_DISABLED` | A pinned component (`enabled` / `local` / `debug`) needs a required dependency that is `disable` | Remove one of the two conflicting intents |
-| "the focus … is not a component of this project" (`COMPONENT_NOT_FOUND`) | `focus:` in `deploy.local.yaml` names a component that isn't in `brickkit.yaml` (a typo, or it was removed) | Follow the "did you mean"; `brickkit up --focus <id>` picks another, `brickkit up --all` drops the focus |
-| "the focus … is written mode: disable" (`COMPONENT_DISABLED`) | The focused entry says `mode: disable` — "run it" and "never run it" at once | Remove `mode: disable`, or focus on another component |
-| "failed validation" on the `focus` field (`CONFIG_INVALID`) | `focus:` written in `deploy.yaml` (it's personal), with `target: k8s` (a cluster can't reach your machine), or not a component ID | Keep it in `deploy.local.yaml` on docker / podman; `brickkit up --focus` never writes an invalid one |
-| "--focus and --all contradict each other" / "--focus and --all change deploy.local.yaml, which -f and --no-local skip" (`INVALID_ARGUMENT`) | Two intents on one command line | Pick one; drop `-f` / `--no-local` to use a focus |
-| `not starting (outside the focus)` on components you expected | A focus is set: only the focus, pinned components and what they need start | `brickkit up --all`, or `mode: enabled` on that component in `deploy.local.yaml` |
-| "component source is nested inside another component's directory" (`CONFIG_CONFLICT`) | A component's source sits inside another component's directory — two copies of one component; `up`, `lint` and `sync` refuse | Move or delete the nested copy yourself — ask the person first; the error says whether it exists anywhere else |
-| "this workbench sits inside project …; --repo would clone a second copy here" (`CONFIG_CONFLICT`) | `add --repo` in a workbench that is itself a component of an enclosing project | Run `add --repo` in the enclosing project, or use a focus run there |
-| `SUBMODULES_SKIPPED` (warning from `build`): "the source of … has git submodules, and they are empty directories here" | BrickKit never fetches git submodules | Have the component publish an image; or `git submodule update --init` in the cloned repository |
-| `mode` rejected on `target: k8s` | `local` / `debug` need a process on your machine | Use docker / podman, e.g. `target:` in `deploy.local.yaml` |
-| `RELEASE_BLOCKED` | Uncommitted changes, no upstream, unpushed commits, or the tag already exists / is on another commit; or "the release checks left uncommitted changes" — a check under `release.checks` rewrote a tracked file or left a new one behind | Commit, push, bump `metadata.version`, then `brickkit release` again. For the last one: commit what the check changed and push, or make the check only report and put its leftovers in `.gitignore` |
-| `RELEASE_PUSH_FAILED` | The push was rejected or unreachable; the local tag was removed | Fix access/network and rerun unchanged |
-| `RELEASE_CHECK_FAILED` | A command under the component's `release.checks` exited non-zero, or couldn't run; nothing was tagged or uploaded | Read its output right above the error and fix that; "couldn't run" means a wrong argv (each item one argument, no shell) or a script without the execute bit |
-| `MIGRATION_FAILED` | The migration command failed (or a typo'd argument the entrypoint didn't reject) | Read the migration container's log, fix, rerun |
-| `PORT_CONFLICT` | Duplicate `localPort` / `exposePort`, or the host port is taken | Change the port — in `deploy.local.yaml` if it's only your machine |
-| `ENGINE_MISSING` | docker / podman / kubectl not on `PATH` or not running — or only Podman is installed while the deploy file says `target: docker` | Install/start it, or set `target: podman` |
-| `PROJECT_MISSING` | Not in a project, or `deploy.yaml` missing — or local mode is on but `deploy.local.yaml` was deleted | `brickkit init` completes a project without touching existing files; `brickkit local on` writes the local file again |
-| `LINT_FAILED` | `brickkit lint` found problems, each printed with its own code in brackets (`⚠️ [DOC_PLACEHOLDER] …`), file and field | Look each code up in this table, fix and rerun; warnings fail only with `--strict` |
-| `DOC_FILE_MISSING` / `DOC_SECTION_MISSING` (lint warnings) | A required doc (`BRICKKIT.md`, `AGENTS.md`, `CLAUDE.md`, `README.md`) or one of its fixed sections is missing | Add it; `brickkit new` shows the full set, `brickkit skills update` creates a missing `AGENTS.md` / `CLAUDE.md` |
-| `DOC_PATH_MISSING` / `DOC_LINK_BROKEN` | A Code map path in `AGENTS.md`, or a relative link, points at nothing — the code moved, the doc didn't | Fix the path or link in the doc |
-| `DOC_LINK_NOT_PORTABLE` | `BRICKKIT.md` has a relative link (dead in other projects' caches), or any other component doc — `AGENTS.md`, `README.md`, `docs/` — links out of the component (`../…`) | Name files as inline code in `BRICKKIT.md`; keep component docs self-contained |
-| `DOC_OUT_OF_STEP` | `component.yaml` has a dependency, required key, artifact file or shell member the doc doesn't mention where it belongs | Mention it in that section (a dependency by ID, no version) |
-| `DOC_PLACEHOLDER` | A `TODO`-style placeholder is still in a doc's text | Fill it in |
-| `DOC_TRANSLATION_DRIFT` | A translation lacks its primary, has a different number of `##` sections (the brickkit-maintained block at the end of `AGENTS.md` isn't counted), a page is missing from one of the `docs/<lang>/` trees, a language version doesn't link every other, or the suffix isn't a language code | Bring the translation back in step with the primary |
-| `AGENTS_BLOCK_MISSING` / `CLAUDE_IMPORT_MISSING` | `AGENTS.md` has no usable block maintained by brickkit, or `CLAUDE.md` lacks `@AGENTS.md` | `brickkit skills update` adds them (no other command edits these files) |
-| `PROJECT_MAP_OBSOLETE` | The old project map `BRICKKIT.md` is still at the project root | Move your own notes into `AGENTS.md`, then delete it by hand |
-| A row of the component table in `AGENTS.md` flips between commits; `skills status` calls the block outdated | A released version was edited in place in a local source (`BRICKKIT.md`, a translation or `metadata.description`), while another machine takes it from the tag. An unreleased bumped version doesn't do this | Put the change in the next version: bump `metadata.version`, `brickkit release`, `brickkit upgrade` in the project |
-| `AUTH_REQUIRED` / `TOKEN_EXPIRED` | Market login needed or expired | `brickkit login` |
-| `IMAGE_UNAUTHORIZED` | The image registry refused the pull, or has no such image | `docker login <registry>`, check the image reference — or build it here with `brickkit build` |
-| `AUTH_FAILED` | The market refused the user name or password — or a Git remote was reached but refused the fetch: the credentials were refused, or the repository doesn't exist (hosts answer both the same way) | Check the credentials; for Git, read git's own words in the error. Retrying unchanged won't help |
-| "Commit blocked: component source is committed under the archive directory …" (`CONFIG_CONFLICT`) | The pre-commit check installed by `brickkit init --hooks`: a component that should start has its source under `components/.archived/` in the commit | `brickkit restore` (puts `mode` back), or commit the directory move together with the change; `brickkit restore --check` runs the same check by hand |
-| `COMPONENT_NOT_FOUND` | No install source has this id or version; a Git repository has no tag for the version | Check the id and `sources:`; ask the author to `brickkit release` that version |
-| `COMPONENT_BLOCKED` | The market took this component version down | Use another version |
-| `MANIFEST_INVALID` | A `component.yaml` is invalid; the error names the field | Its author fixes it (`brickkit lint` in the component's repository) |
-| `SIGNATURE_INVALID` | `requireSignature` is on and a market component isn't signed | Ask the publisher for a signed version |
-| `CLONE_FAILED` | `add --repo` couldn't clone: git failed, a directory of that name exists under `components/`, or the source is archived | Read git's words; move the directory away; `brickkit sync` brings archived source back |
-| `SUBMODULE_GUARD` | `sync` or `remove` would move or delete a directory registered as a git submodule of the project | Deregister the submodule first |
-| `ENGINE_FAILED` | `docker compose` / `podman compose` / `kubectl` failed, components came up unhealthy, or a `mode: local` process crashed | The engine's own output is in the error; then the component's logs |
-| `MIGRATION_SKIPPED` (warning) | A `mode: local` / `debug` component runs no migration container | Run its migration once by hand |
-| `PROJECT_EXISTS` | `brickkit init <name>` into a directory that exists and isn't empty (or is a file) | Another name — or go in and run `brickkit init` without a name, which only adds what's missing |
-| `INVALID_ARGUMENT` | The command line is wrong (exit code 2): unknown command or flag, a component id or version in the wrong form | `brickkit <command> --help` |
-| `INTERNAL` | Reading or writing a local file failed (disk full, no permission) — or, titled "Internal error", a CLI bug | Check disk space and permissions; report a bug with the whole output |
+| `PROJECT_MISSING` | 不在项目里，或者缺 `deploy.yaml`；或者本地模式开着，`deploy.local.yaml` 却被删了 | `brickkit init`（不带名字）只补缺的文件，不动已有的；`brickkit local on` 重新生成本地文件 |
+| `PROJECT_EXISTS` | `brickkit init <名字>` 的目录已存在且不空（或是个文件） | 换个名字；或者进去跑不带名字的 `brickkit init` |
+| `INVALID_ARGUMENT` | 命令行写错（退出码 2）：未知命令或参数，组件 ID、版本格式不对 | `brickkit <命令> --help` |
+| `COMPONENT_NOT_FOUND` | 安装源里没有这个组件或这个版本；Git 仓库没有这个版本的 tag | 核对 ID 和 `sources:`；请作者 `brickkit release` 这个版本 |
+| `COMPONENT_BLOCKED` | 市场把这个组件版本下架了 | 换一个版本 |
+| `COMPONENT_DISABLED` | 钉住要跑的组件（`enabled` / `local` / `debug`）有个强依赖写了 `disable` | 两个意图矛盾，去掉其中一个 |
+| `MANIFEST_INVALID` | 某个 `component.yaml` 不合法，报错点名字段 | 由组件作者修（在组件仓库里 `brickkit lint`） |
+| `PORT_CONFLICT` | `localPort` / `exposePort` 重复，或宿主机端口被占 | 换端口；只是你机器上的事就改在 `deploy.local.yaml` |
+| `MIGRATION_FAILED` | 迁移命令失败（或入口没拒绝写错的参数） | 看迁移容器的日志，修好重跑 |
+| `MIGRATION_SKIPPED`（警告） | `mode: local` / `debug` 的组件没有迁移容器 | 手动跑一次它的迁移 |
+| `ENGINE_MISSING` | `docker` / `podman` / `kubectl` 不在 `PATH` 上或没在运行；或者只装了 Podman，部署文件却写着 `target: docker` | 装上、启动；或改成 `target: podman` |
+| `ENGINE_FAILED` | `docker compose` / `podman compose` / `kubectl` 执行失败，组件起来了但不健康，或 `mode: local` 的进程崩了 | 报错里带着引擎自己的输出；再看组件日志 |
+| `AUTH_REQUIRED` / `TOKEN_EXPIRED` | 市场要登录，或登录过期 | `brickkit login` |
+| `AUTH_FAILED` | 市场拒绝了用户名或密码；或 Git 远端连上了但拒绝拉取——凭据被拒，或仓库根本不存在（托管平台对两者回答得一样） | 核对凭据；Git 的情形读报错里 git 自己的原话 |
+| `IMAGE_UNAUTHORIZED` | 镜像仓库拒绝拉取，或者仓库里没有这个镜像 | `docker login <仓库>`，核对镜像地址；或者用 `brickkit build` 在本机构建 |
+| `SIGNATURE_INVALID` | 开了 `requireSignature`，市场上的组件没签名 | 请发布者给一个签过名的版本 |
+| `CLONE_FAILED` | `add --repo` 克隆失败：git 报错，`components/` 下已有同名目录，或源码在归档里 | 读 git 的原话；挪开那个目录；归档里的用 `brickkit sync` 拿回来 |
+| `SUBMODULE_GUARD` | `sync` / `remove` 要移动或删除的目录是项目仓库登记过的 git submodule | 先在项目仓库里注销这个 submodule |
+| `LINT_FAILED` | `brickkit lint` 查出问题，每条开头用方括号带着自己的错误码（`⚠️ [DOC_PLACEHOLDER] …`），并带文件和字段 | 按每条的错误码在本表里查，修好重跑；警告只在 `--strict` 下算失败 |
+| `DOC_FILE_MISSING` / `DOC_SECTION_MISSING`（lint 警告） | 缺了必需的文档（`BRICKKIT.md`、`AGENTS.md`、`CLAUDE.md`、`README.md`）或其中一个固定小节 | 补上；`brickkit new` 能看到全套样子，`brickkit skills update` 会建出缺的 `AGENTS.md` / `CLAUDE.md` |
+| `DOC_PATH_MISSING` / `DOC_LINK_BROKEN` | `AGENTS.md` 代码地图里的路径、或某条相对链接指向的东西不在——代码挪了、文档没跟上 | 改文档里的路径或链接 |
+| `DOC_LINK_NOT_PORTABLE` | `BRICKKIT.md` 里有相对链接（在别的项目缓存里是死的），或组件的其他文档——`AGENTS.md`、`README.md`、`docs/`——链出了组件目录（`../…`） | `BRICKKIT.md` 里用行内代码写文件名；组件文档自成一体 |
+| `DOC_OUT_OF_STEP` | `component.yaml` 里的依赖、必填配置项、契约文件或外壳成员，文档该提的那一节没提 | 在那一节写上（依赖写 ID，不写版本） |
+| `DOC_PLACEHOLDER` | 文档正文里还留着 `TODO` 一类的占位 | 填完 |
+| `DOC_TRANSLATION_DRIFT` | 译本没有原文、二级小节数不同（`AGENTS.md` 的维护段不算）、某一页在某棵 `docs/<语言>/` 树里缺了、某个语言版本没链接其余每一份，或后缀不是语言代码 | 把译本改回与原文一致 |
+| `AGENTS_BLOCK_MISSING` / `CLAUDE_IMPORT_MISSING` | `AGENTS.md` 里没有可用的 brickkit 维护段，或 `CLAUDE.md` 里没有 `@AGENTS.md` | `brickkit skills update` 会补上（别的命令不改这两个文件） |
+| `PROJECT_MAP_OBSOLETE` | 项目根还留着旧版的项目地图 `BRICKKIT.md` | 把自己写的内容挪进 `AGENTS.md`，再手动删掉它 |
+| `AGENTS.md` 组件表的某一行在提交之间来回变，`skills status` 说维护段过期 | 已经发布的版本在本地源里被原地改了（`BRICKKIT.md`、译本或 `metadata.description`），另一台机器从 tag 取它。升了版本还没发布的不会这样 | 改动放进下一个版本：升 `metadata.version`、`brickkit release`，再在项目里 `brickkit upgrade` |
+| `INTERNAL` | 读写本地文件失败（磁盘满、没权限）；标题是「内部错误」的则是 CLI 的 bug | 查磁盘空间和权限；bug 请带完整输出报告 |
 
-Every command-ending error prints a JSON line on stderr with a stable `error_code` right after the
-`❌` block — always when stderr is captured (your own runs, scripts, CI); a person typing at a terminal without
-`--log-level` / `BRICKKIT_LOG_LEVEL` doesn't get it, so when a pasted error has no JSON line, run the command yourself (your
-stderr is captured, so the line is there), or go by what the `❌` block says. Scripts decide on that code and the exit code, never on the human text. Only `NETWORK_UNREACHABLE` is worth retrying unchanged — the remote was never reached
-(offline, a host name that doesn't resolve). A Git remote that answered and refused is `AUTH_FAILED`.
+## 不变的老问题：它们是刻意设计
 
-## Where to check, and in what order
+**弱依赖缺失时变量完全不存在，不是空字符串。** `os.environ["X"]` 抛 `KeyError` 崩掉是故意的；改组件代码用
+`os.environ.get()` 并写降级逻辑，**不是**让平台注入空值。
 
-**A component won't start:**
+**CrashLoopBackOff 而容器日志一路正常。** 几乎总是冷启动超过了默认 60 秒的宽限期；在 `component.yaml`
+的 `healthCheck` 里调大 `startPeriodSeconds`，写大没有代价。
 
-1. `brickkit status` — was it judged as starting at all? (It reads the same deploy file as `up`.)
-2. The reason on its `up` output line (top-level / mode / X needs it)
-3. `brickkit lint` — offline check of all three layers together
-4. The component's own log: `docker compose -p brickkit-<project> logs <service>` — without `-p`,
-   compose looks at a different project and shows nothing
-5. Startup longer than 60 seconds (point 2 above)
-6. Its environment: is each dependency running? A missing optional one injects no `*_ENDPOINT`
+**健康检查查了数据库或依赖。** 一个下游抖动会让所有上游一起被判不健康并重启。健康检查只查本进程。
 
-**Can't reach a dependency**: the address is `http://<versioned-service-name>:<port>` everywhere;
-the service name is the id with `/` and `.` → `-` plus the exact version (`erp/api` + `1.0.0` →
-`erp-api-1-0-0`), the variable name carries no version (`ERP_API_ENDPOINT`). A member hosted in a
-shell is reached at the shell's address. **To see the generated files** without starting anything:
-`brickkit up --dry-run`. **To see the graph**: `brickkit graph` or `brickkit deps`.
+**组件自己说 ready，平台说 unhealthy。** Docker / Podman 上的健康检查在容器里跑 `wget` 或 `curl`，
+镜像里两个都没有就永远过不了，往镜像里加一个。（Kubernetes 的探针是 `httpGet`，不需要它们。）
 
-## Where to dig deeper
+**某个组件「莫名其妙」跟着起来了。** 启停跟着上层走，强弱依赖一视同仁。读 CLI 每行后面的理由：
+`启动（顶层）` / `启动（mode: enabled）` / `启动（X 需要）`。
 
-- The documentation of this BrickKit version, offline: `brickkit docs` lists the pages — troubleshooting `brickkit docs 10-troubleshooting`, every error code `brickkit docs 06-architecture/09-error-codes`
-- Flags: `brickkit <command> --help`
-- A component's own notes (configuration, known pitfalls): `.brickkit/manifests/<scope>/<name>/<version>/BRICKKIT.md`
-- The full specification and the reasoning behind each design choice:
-  <https://github.com/brickKit/brickKit> and its root `AGENTS.md`
+**`mode: debug` 写进 `deploy.yaml` 被拒。** 它只能写在 `deploy.local.yaml`：`brickkit local on`，再到那里写。
+`target: k8s` 下 `mode: debug` / `mode: local` 都被拒，集群到不了你的机器。
 
-<!-- brickkit:skill version=v1.4.1 sum=sha256:ceaf69173651ec6832f463325a4c3002651dc98ed9eaad55808791652da66dfb -->
+**`mode: debug` 的组件报 `relation does not exist`。** 它不生成迁移容器，手动跑一次迁移。
+
+**没有注册中心、配置中心、网关。** 找不到不是装漏了，别建议加上。
+
+## 排查顺序
+
+**组件起不来**，越靠前越常见：
+
+1. `brickkit status` —— 它有没有被判定为启动？不启动的也会列出来
+2. CLI 输出里那一行的**理由**
+3. 组件日志：`docker compose -p brickkit-<项目名> logs <版本化服务名>`——少了 `-p`，compose 看的是别的项目
+4. 启动是不是超过了 60 秒宽限期
+5. 环境变量：依赖真在跑吗？弱依赖没在跑时不注入 `*_ENDPOINT`；配置值来自哪份 `config/` 文件
+6. `brickkit lint`：离线查三层文件的一致性、必填值、未知键、重复键；`--strict` 再查 `${VAR}` 与 `file://` 能否取到
+
+**连不上依赖**：地址是 `http://<版本化服务名>:<端口>`，服务名是组件 ID 的 `/`、`.` 换成 `-` 再加精确版本
+（`people/basic` + `1.0.0` → `people-basic-1-0-0`）；变量名不带版本（`PEOPLE_BASIC_ENDPOINT`）。依赖在外壳里
+时地址指向外壳。
+
+**只想看生成结果不启动**：`brickkit up --dry-run`。**看依赖怎么连的**：`brickkit deps` 或 `brickkit graph`。
+
+## 去哪查更细的
+
+- 这个版本的 BrickKit 文档，离线可读：`brickkit docs` 列出全部页——排障 `brickkit docs 10-troubleshooting`、全部错误码 `brickkit docs 06-architecture/09-error-codes`
+- 参数：`brickkit <命令> --help`
+- 组件自己的说明（配置怎么填、依赖为什么要）：`.brickkit/manifests/<scope>/<name>/<版本>/BRICKKIT.md`
+- 「为什么这样设计」的完整论证与全部错误码：<https://github.com/brickKit/brickKit> 根目录 `AGENTS.zh.md`
+
+<!-- brickkit:skill version=v1.4.1 sum=sha256:23c4a763de58905cfb13c7b0adb38232f037b44d85ee1b8be3a75009b53d8d60 -->

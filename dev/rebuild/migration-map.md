@@ -20,8 +20,8 @@
 | `02-decisions/0101–0509` | `02-decisions/10-earlier-decisions.md`；去向表已更正 | 已写 |
 | `03-seed-data.md` | 新的 `03-seed-data.md`（随重建组件补写）；规则进 07 | 已写 |
 | `04-foundations/01–27` 与 README | 比较与改选条件进底层选择 05–10 与已有文档；规则进协议；线协议细节进 [`be-protocol` 承接清单](be-protocol-carry.md) | 已写 |
-| 根 `AGENTS.md`、`AGENTS.zh.md`、`README*.md`、`docs/*/README.md` | 第 6 步中文重写；易错点按报告 1.14 节逐行处理 | 待写 |
-| `.claude/skills/version-bump-ship` | 第 6 步改写链接与规则（报告 1.17 节） | 待写 |
+| 根 `AGENTS.md`、`AGENTS.zh.md`、`README*.md`、`docs/*/README.md` | 中文重写；易错点按新规范改写；旧文归档到 `archive/docs-v2/root/` | 已写 |
+| `.claude/skills/version-bump-ship` | 依赖已退役的 `make bump-version`，归档到 `archive/docs-v2/skills/`；规则在开发流程与发布，重建工具后按新流程重写技能 | 已归档 |
 
 ## 已处理的缺口与冲突
 
