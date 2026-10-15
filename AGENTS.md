@@ -30,7 +30,7 @@
 - **配置与注册表**：配置键是大写下划线，组件只经 SDK 读取；共享值写一次、用引用；密钥只写引用；端口、schema、权限键从注册表抄，身份列只追加（[协议 19](docs/zh/06-protocols/19-config-secrets-registries-release.md)）。
 - **权限**：每个操作在资源定义中登记，完整授予逐份判定，看不见答 404（[授权选型](docs/zh/00-overview/guides/authorization.md)、[安全协议](docs/zh/06-protocols/security/README.md)）。
 - **跨组件**：经契约调用；业务写入与发件表同事务；事务内不发网络调用（[事务与消息](docs/zh/04-foundations/03-transactions-and-messaging.md)、[协议目录](docs/zh/06-protocols/README.md)）。
-- **版本**：每次改动都升版本，版本精确；重建的版本从头算：开发期 `0.x`，第一个正式版本 `1.0.0`（[开发流程与发布的版本](docs/zh/01-conventions/10-development-workflow.md#版本)）。
+- **版本**：每次改动都升版本，版本精确；全部从 `3.0.0` 起，`X` 大版本、`Y` 阶段性变化（新功能、从开发进入正式）、`Z` 修复；用过的版本号绝不重复使用（[开发流程与发布的版本](docs/zh/01-conventions/10-development-workflow.md#版本)）。
 - **提交与发布**：英文提交信息先写进文件再 `git commit -F`，带注释的标签，按依赖顺序发布（[开发流程与发布](docs/zh/01-conventions/10-development-workflow.md#提交)）。
 - **子模块地图**：`.gitmodules` 与子模块指针只经 `git submodule` 命令改变，指针与需要它的 `brickkit upgrade` 一起提交。
 - **参考实现**：先自己设计，卡住才看参考，绝不照抄（[参考实现](docs/zh/01-conventions/08-reference-implementations.md)）。
@@ -107,7 +107,7 @@
 | 以为 `deploy.local.yaml` 会与 `deploy.yaml` 合并 | 本地模式开着时改 `deploy.yaml` 不起作用，组件集合不同时 `up` 拒绝 | 它整体取代 `deploy.yaml`；先 `brickkit local off`，或改完 `brickkit local refresh`（[真机运行](docs/zh/01-conventions/10-development-workflow.md#真机运行)） |
 | 在共享变量里手写授权或身份的版本化服务名 | 下一次发布后全部受保护路由答 503 或 403，健康检查照常绿 | 写成 `$endpoint:` 引用，BrickKit 算出当前地址（[协议 19 的配置](docs/zh/06-protocols/19-config-secrets-registries-release.md#配置)） |
 | Go 组件只打 BrickKit 的裸标签；主版本 2 及以上时模块路径不带主版本 | 外壳的 Go 构建取不到成员：`unknown revision`，或“module path must match major version” | Go 需要 `v` 标签，主版本 2 起还要路径中的主版本（[工程规范的版本与升级](docs/zh/01-conventions/01-engineering.md#版本与升级)） |
-| Go 构建不设 `GOPRIVATE=github.com/brickKit/*` | 取到同号的旧代码，或 `checksum mismatch`、`SECURITY ERROR` | 旧版本号已重新使用，Go 的公共代理与校验和库仍记着旧的（[工程规范的版本与升级](docs/zh/01-conventions/01-engineering.md#版本与升级)） |
+| 删掉标签后用同一个版本号发新代码 | Go 构建取到同号的旧代码或 `SECURITY ERROR`；BrickKit 的缓存静默给出旧的组件清单 | Go 的公共代理与校验和库、BrickKit 的缓存都按“版本不可变”工作（[工程规范的版本与升级](docs/zh/01-conventions/01-engineering.md#版本与升级)） |
 | 改了代码不升版本，或原地修改已发布的版本 | 构建跳过已有镜像，容器继续跑旧代码，全绿 | 镜像标签就是版本（[开发流程与发布的版本](docs/zh/01-conventions/10-development-workflow.md#版本)） |
 | 对有未提交或未推送改动的组件 `brickkit remove --force` | 强制选项连同这些改动删掉源码 | 先提交推送、注销子模块，再移除（[开发流程与发布](docs/zh/01-conventions/10-development-workflow.md#发布)） |
 
