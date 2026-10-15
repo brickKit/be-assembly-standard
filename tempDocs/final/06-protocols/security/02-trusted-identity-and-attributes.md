@@ -160,7 +160,7 @@
 
 ## 依据与独立判断
 
-知识库的认证集成、服务身份、架构主体，以及它的 D8、D10 提供中立参考；本项目保留独立组件与真实网络，把本地证书路线作为低部署成本的基础实现，不强制采用知识库的具体身份产品或默认的浏览器会话数值。浏览器会话、移动端的安全存储与登录防护见[协议 20](../../../protocols/20-frontend.md#登录与会话)：会话由身份适配组件在服务端持有，边缘按会话缓存它签发的短期令牌并注入请求（D61），不新增独立的 BFF 组件。
+知识库的认证集成、服务身份、架构主体，以及它的 D8、D10 提供中立参考；本项目保留独立组件与真实网络，把本地证书路线作为低部署成本的基础实现，不强制采用知识库的具体身份产品或默认的浏览器会话数值。浏览器会话、移动端的安全存储与登录防护见[协议 20](../20-frontend.md#登录与会话)：会话由身份适配组件在服务端持有，边缘按会话缓存它签发的短期令牌并注入请求（D61），不新增独立的 BFF 组件。
 
 JWT 的算法、issuer 与受众，以及不同用途的互斥验证，参考 [RFC 8725 §3](https://www.rfc-editor.org/rfc/rfc8725.html#section-3)。令牌交换与实际行事方的表达参考 [RFC 8693](https://www.rfc-editor.org/rfc/rfc8693.html)，本项目的多级资格与上限是额外的应用语义。工作负载与信任域的概念参考 [SPIFFE 官方说明](https://spiffe.io/docs/latest/spiffe-about/spiffe-concepts/)，共同进程不据此宣称身份隔离。[Kubernetes service account 文档](https://kubernetes.io/docs/concepts/security/service-accounts/)用于核对平台凭据与受众的路线；[NATS 授权文档](https://docs.nats.io/learn/security/authorization)支持按发布与订阅的主题限制权限，消息头与业务证据的校验仍由本项目的协议承担。
 
