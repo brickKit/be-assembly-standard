@@ -93,7 +93,7 @@
 
 ## 定义：资源、维度、操作与字段
 
-定义由业务组件随版本提交，通过 `DefinitionRef` 引用。**提交的核对**：授权组件只接受服务身份（安全 02）等于 `DefinitionRef.owner_component` 的提交，并且对**全部定义种类**（资源、操作、字段、维度、角色模板、附件类别）核对：所指的资源类型在注册表中登记的属主就是提交者，操作所用的权限键在注册表中的属主也是提交者；同一个键只接受一个属主的提交。资源类型、权限键与附件类别的键在注册表中登记属主（[协议 19 的注册表](../19-config-secrets-registries-release.md#注册表)），一个资源类型只有一个属主，提交的属主与登记不符时拒绝并记录安全事件。其他组件（例如附件组件核对“申请者是父资源类型的属主”，[协议 12](../12-attachments-and-object-storage.md#访问凭证)）以授权组件保存的、经过这一核对的定义为依据。
+定义由业务组件随版本提交，通过 `DefinitionRef` 引用。**提交的核对**：授权组件只接受服务身份（安全 02）等于 `DefinitionRef.owner_component` 的提交，并且对**全部定义种类**（资源、操作、字段、维度、角色模板、附件类别）核对：所指的资源类型在注册表中登记的属主就是提交者，操作所用的权限键在注册表中的属主也是提交者；同一个键只接受一个属主的提交。**角色模板按组件拆分**：每个组件只提交引用自己资源类型与权限键的模板片段；跨组件的标准角色（例如“销售主管”）由授权组件按片段的角色名合成，每个片段各自经属主核对，不由某一个组件提交整套。资源类型、权限键与附件类别的键在注册表中登记属主（[协议 19 的注册表](../19-config-secrets-registries-release.md#注册表)），一个资源类型只有一个属主，提交的属主与登记不符时拒绝并记录安全事件。其他组件（例如附件组件核对“申请者是父资源类型的属主”，[协议 12](../12-attachments-and-object-storage.md#访问凭证)）以授权组件保存的、经过这一核对的定义为依据。
 
 **资源定义 `be.security.resource_definition`**
 
@@ -140,7 +140,7 @@
 | `resource_type` | `Key` | 是 | — |
 | `purpose` | `Enum` | 是 | `read`、`special_read`、`export`、`action`、`create`、`manage` |
 | `risk_class` | `Enum` | 是 | `low`、`high`；高风险使用 `W_high`（安全 03）；未声明的操作不得默认为 `low` |
-| `tightening_only` | `Bool` | 否 | 缺省 `false`；为真表示这个操作只会减少访问（停用、冻结、撤销会话、撤销、放弃），来源水位超期时可以按最后已应用的事实判断请求者资格（安全 03 的有限度规则）；有任何放宽效果的操作不得声明 |
+| `tightening_only` | `Bool` | 否 | 缺省 `false`；为真表示这个操作只会减少访问（停用、冻结、撤销会话、撤销、放弃），来源水位超期时可以按最后已应用的事实判断请求者资格（安全 03 的有限度规则）；只有 `purpose = manage` 且 `side_effects` 只含 `security_change` 的操作可以声明，并且操作在属主的处理中只能结束、暂停或收窄记录（属主的一致性测试检查）；不满足的声明在提交时拒绝 |
 | `minimum_path` | `Enum` | 是 | `default`、`strict_acceptance`、`strict_barrier`；部署只能选不弱于它的路径 |
 | `side_effects` | `Set<Enum>` | 是 | `business_write`、`external_command`、`job_or_subscription`、`file_capability`、`security_change`、`notification`；只读操作写 `[]` |
 | `output_read_operation` | `Key` | 否 | 动作返回单据正文时用于字段裁剪的读取操作；缺省表示不返回正文 |
@@ -388,7 +388,8 @@ EN 预期全部在本页；其中 EN16、EN17 检验的是[安全 09b](09b-capab
 | EN21 | 组件甲提交一份资源定义，`owner_component` 写成组件乙，或资源类型在注册表中属于组件乙 | 拒绝并记录安全事件 |
 | EN22 | 附件类别引用的字段不在资源定义的 `fields` 中 | 拒绝 |
 | EN23 | 组件甲为组件乙登记的资源类型提交操作定义，或使用组件乙的权限键 | 拒绝并记录安全事件 |
-| EN24 | 一个有放宽效果的操作声明 `tightening_only` | 拒绝 |
+| EN24 | 一个 `purpose` 不是 `manage`、或 `side_effects` 含 `security_change` 以外的种类的操作声明 `tightening_only` | 提交时拒绝 |
+| EN25 | 销售组件提交一个引用财务资源类型的角色模板 | 拒绝：模板片段只能引用提交者自己的资源类型与权限键；跨组件的标准角色由授权组件按片段合成 |
 
 ## 依据与独立判断
 

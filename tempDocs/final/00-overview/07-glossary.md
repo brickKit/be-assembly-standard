@@ -85,7 +85,7 @@
 | 历史引用与资格引用 | 前者只记录当时的快照；后者要求被引用对象当前合格 | `historical_ref`、`eligibility_ref` | 引用方 | [协议 07](../06-protocols/07-references.md) |
 | 扩展字段 | 客户在可扩展的实体上增加的字段，以字段 ID 为键 | `ext`、`x_<名字>` | 实体的属主 | [协议 08](../06-protocols/08-extension-fields.md) |
 | 审批实例与审批依据 | 一次审批与它所针对的单据修订、依据摘要；放行由业务组件核对 | `approval_instance`、`basis_digest` | 流程管理方 | [协议 09](../06-protocols/09-approval-and-workflow.md) |
-| 共享任务契约 | 流程管理方发布任务投影、统一待办订阅的契约；任务类型登记所属组件 | `task`、`task_type` | 流程管理方发布，`infra/workflow` 汇总 | 协议 09 |
+| 共享任务契约 | 流程管理方发布任务投影、统一待办订阅的契约；每种任务类型登记允许的流程管理方，由部署选定一个 | `task`、`task_type` | 流程管理方发布，`infra/workflow` 汇总 | 协议 09 |
 | 一次性动作令牌 | IM 卡片按钮用的令牌，绑定任务、处理人、版本与渠道 | `action_token` | 任务所属组件 | [协议 10](../06-protocols/10-external-integration.md) |
 | 对外命令 | 对外部系统的一次有副作用的调用，有业务参考号与状态 | `external_command`；`prepared`、`sending`、`unknown`、`accepted`、`manual` | 适配器 | 协议 10 |
 
