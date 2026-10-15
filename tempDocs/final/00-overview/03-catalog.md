@@ -52,7 +52,7 @@
 
 | 组件 ID | 能力 | 范围 | 选型说明 |
 | --- | --- | --- | --- |
-| `erp/finance` | 总账、应收应付（含预收、预付）、付款认领、核销、外币重估、会计期间；应付内部的供应商票据匹配 | 当前重建 | [财务与结算](guides/finance-and-settlement.md) |
+| `erp/finance` | 总账、应收应付（含预收、预付、员工借款）、付款认领、核销、外币重估与期末暂估、维度目录与递延、会计期间；应付内部的供应商票据匹配 | 当前重建 | [财务与结算](guides/finance-and-settlement.md) |
 | `erp/credit` | 信用政策、额度与信用占用 | 当前重建 | [财务与结算](guides/finance-and-settlement.md) |
 | `erp/costing` | 存货计价与成本子账；暂估、到岸成本、工单成本与差异、退货冲回 | 当前重建 | [财务与结算](guides/finance-and-settlement.md) |
 | `erp/billing` | 客户账单与商业发票 | 当前重建 | [财务与结算](guides/finance-and-settlement.md) |
@@ -99,7 +99,7 @@
 | 组件 ID | 能力 | 范围 | 选型说明 |
 | --- | --- | --- | --- |
 | `prj/project` | 项目计划、估算、成本的分析归集；按里程碑或按工时与费用出账 | 远期 | [业务与渠道](guides/business-and-channels.md) |
-| `prj/timesheet` | 工时、审批与项目归集 | 远期 | [业务与渠道](guides/business-and-channels.md) |
+| `prj/timesheet` | 工时与审批（归集在项目） | 远期 | [业务与渠道](guides/business-and-channels.md) |
 | `ana/bi` | 数据集、指标与内置报表 | 远期（是否进入当前重建，随第 8 项计划确认） | [报表与分析](guides/analytics-and-reporting.md) |
 | `ana/search` | 全局搜索索引与查询 | 远期 | [报表与分析](guides/analytics-and-reporting.md) |
 | `ana/ai` | 业务 AI 能力 | 留位 | — |
