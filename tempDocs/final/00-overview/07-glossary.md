@@ -72,7 +72,7 @@
 | 出账额度与认领 | 来源（订单、合同、项目）裁决每次可出账的额度，出账按认领模式向来源认领 | `billable`、`claim` | 来源组件、`erp/billing` | [协议 05](../06-protocols/05-billing-settlement-and-costing.md) |
 | 增量事实 | 跨组件不可遗漏的事实，带产生方的序号与纪元，按事实身份去重 | `fact`、`fact_sequence` | 产生方 | 协议 05 |
 | 会计事实契约 | 财务定义的共享契约：各来源按它发布会计事实，财务按过账规则键与科目映射生成凭证，不逐个认识来源 | `accounting_fact`、`posting_rule_key` | `erp/finance`（契约）；各来源 | [协议 05](../06-protocols/05-billing-settlement-and-costing.md) |
-| 关账参与方 | 实现封存、解封、返回覆盖点、按序号补取四个命令的会计事实来源；成本组件代理库存与制造参加 | `close_participant` | 各来源 | [协议 06](../06-protocols/06-period-close.md) |
+| 关账参与方 | 按参与方接口参加关账的会计事实来源：收到“请求封存”后在本地事务中封存并以增量事实回报覆盖点，提供按序号的补取；成本组件代理库存与制造参加 | `close_participant`；`unsealed`、`sealed` | 各来源 | [协议 06](../06-protocols/06-period-close.md) |
 | 认领模式 | 一方拥有额度、另一方分次使用时的协调：先认领、再确认、最后正式化，未确认的到期释放；出账、贷记、付款、预收放行四处共用 | `claim`；`claimed`、`confirmed`、`expired`、`released`、`formalized` | 额度的属主 | [协议 05](../06-protocols/05-billing-settlement-and-costing.md) |
 | 可用余额 | 未清项的未清余额减去认领中的金额；核销、冲销、调整、抵扣与新认领只能用它 | `amount − settled − pay_claimed` | `erp/finance` | 协议 05 |
 | 付款认领 | 付款申请在审批前向财务的未清项认领额度，发出前确认，核销时按实付正式化；认领中的部分不能被核销、冲销或另作他用 | `payment_claim`；`claimed`、`confirmed`、`paid`、`released` | `erp/finance`、`erp/payment` | 协议 05 |
