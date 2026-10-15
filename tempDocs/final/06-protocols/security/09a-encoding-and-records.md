@@ -336,6 +336,8 @@
 | 包含证明不成立 | `CONTAINMENT_NOT_PROVEN` | 403 | 否 | 附失败的维度与原因（超出、无法证明、超预算） |
 | 需要确认 | `CONFIRMATION_REQUIRED` | 202 | — | 变更进入待确认 |
 | 最后管理员保护 | `LAST_ADMIN_PROTECTED` | 409 | 否 | — |
+| 管理员可用性无法证明 | `ADMIN_AVAILABILITY_UNPROVABLE` | 202 | 是 | 变更处理中：会减少可用管理员的变更，或放宽的请求者资格，依赖的来源暂时无法证明（安全 08） |
+| 安全处置覆盖 | `HELD_BY_SECURITY_DISPOSITION` | 409 | 否 | 新访问与同一自然人被安全处置暂停的范围相交（安全 08） |
 | 部署待恢复 | `RECOVERY_IN_PROGRESS` | 503 | 是 | 除恢复外的管理变更 |
 | 成员切换中 | `MEMBER_SWITCH_IN_PROGRESS` | 503 | 是 | 授权成员切换窗口内的放宽类管理变更（[安全 10](10-providers-and-member-switching.md)） |
 | 能力不支持 | `CAPABILITY_UNSUPPORTED` | 501 | 否 | 装配时应已阻止；运行时发现则保护受影响的路径 |

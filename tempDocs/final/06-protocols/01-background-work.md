@@ -54,7 +54,7 @@
 | `attempts`、`max_attempts` | 已尝试的次数与上限 |
 | `run_at` | 最早可执行的时刻（退避用） |
 | `effect_class` | 副作用种类，见下节；由作业声明，不在运行时推断 |
-| `operation_id` | 对外调用使用的幂等键，在开始一次运行的事务中写入：queue 在排入时（工作项身份加作业名）；cron 在物化时间槽时（取不复用的身份）；singleton 在提交上一段进度的同一事务中为下一段生成。认领、接管与重新排队都沿用，对方据此去重；只有新的一次运行（singleton 的新一段）才生成新的 |
+| `operation_id` | 对外调用使用的幂等键，在开始一次运行的事务中写入：queue 在排入时（工作项身份加作业名）；cron 在物化时间槽时（取不复用的身份）；singleton 的第一段在作业首次物化时生成，之后在提交上一段进度的同一事务中为下一段生成。认领、接管与重新排队都沿用，对方据此去重；只有新的一次运行（singleton 的新一段）才生成新的。一次运行内有多个外部调用时，每个调用用派生的子键（`operation_id` 加调用序号），否则对方会把后面的调用当作重复吞掉。对方按键缓存失败应答时（例如缓存 4xx），`dead` 或 `business_hold` 的重新排队可以另取新键，并记录新旧键的关联；`outcome_unknown` 的重新排队不换键 |
 | `outcome_unknown` | 非幂等的外部调用：发出前置为真，确认结果后清除 |
 | `pause_reason` | `outcome_unknown`（结果未知）、`backlog_exceeded`（补跑超出上限）、`business_hold`（业务要求核对）；决定重新排队的守卫 |
 | `args`、`result`、`last_error` | 参数与结果；错误信息不含秘密 |
@@ -66,6 +66,8 @@
 | 当前状态 | 事件 | 守卫条件 | 结果状态 | 动作 | 发出的事件 | 所需权限 |
 | --- | --- | --- | --- | --- | --- | --- |
 | （无） | 排入或物化 | — | `pending` | queue 与业务事务同事务排入；cron 由调度器按物化水位物化 | — | 业务或调度器 |
+| （无） | 补跑物化超出 `max_backlog` 的槽 | 补跑策略 `all` | `paused`（`backlog_exceeded`） | 告警 | 工作项暂停的摘要 | 调度器 |
+| `pending`、`retry_wait` | 业务要求停下核对 | 作业声明了业务暂停的条件，或有运维权限的人发起 | `paused`（`business_hold`） | 写审计 | 工作项暂停的摘要 | 作业或运维权限 |
 | `pending` | 认领 | — | `running` | `epoch` 加一、`attempts` 加一，写 `holder`、`lease_until = now() + ttl`、`claim_db_epoch` | — | 工作者 |
 | `retry_wait` | 认领 | `run_at <= now()` | `running` | 同上 | — | 工作者 |
 | `running` | 认领（接管） | `lease_until <= now()` | `running` | 同上；沿用原身份 | — | 工作者 |
@@ -74,8 +76,10 @@
 | `running` | 认领后检查（任何来源状态的认领，包括接管与从 `retry_wait` 认领） | `non_idempotent_external` 且 `outcome_unknown` 为真 | `paused`（`outcome_unknown`） | 告警；不重发 | 工作项暂停的摘要 | 工作者 |
 | `running` | 发出非幂等外部调用之前 | 核对通过 | `running` | 本地事务把 `outcome_unknown` 置真；事务确认后才发出 | — | 持有者 |
 | `running` | 完成 | 核对通过；`local` 与 `emit_only` 的业务写入或发件同事务；外部种类已得到对方确认 | `done` | 一个本地事务：标记完成；非幂等调用同时清除 `outcome_unknown` | `emit_only` 写入的发件 | 持有者 |
+| `running` | 等待结果（作业声明的业务等待，例如依赖的来源暂时无法证明、生效点返回“处理中”） | 未超过作业声明的等待上限 | `retry_wait` | 撤回本次认领的尝试计数（`attempts` 减一），`run_at` 按退避设定；超过等待上限按不可重试的错误处理 | — | 持有者 |
 | `running` | 可重试的错误 | `attempts < max_attempts`；`non_idempotent_external` 另要求处理器确认调用“未生效”（例如连接在发出前被拒绝，或对方明确答复未受理） | `retry_wait` | `run_at` 按退避表设定；非幂等调用同一事务清除 `outcome_unknown` | — | 持有者 |
 | `running` | `non_idempotent_external` 的错误，不能确认未生效（超时、对方 5xx、应答丢失） | — | `paused`（`outcome_unknown`） | 告警；不重试 | 工作项暂停的摘要 | 持有者 |
+| `running` | `non_idempotent_external` 已置 `outcome_unknown` 后，对方明确答复未受理且重试也一样（不可重试） | — | `dead` | 同一事务清除 `outcome_unknown`，再按下一行处理 | 同下 | 持有者 |
 | `running` | 可重试的错误用完次数，或不可重试的错误 | `outcome_unknown` 为假 | `dead` | 一个本地事务：调用死信处理（只写本地数据与发件表）；告警 | 工作项进入死信的摘要；死信处理写入的发件 | 持有者 |
 | `dead` | 重新排队 | `outcome_unknown` 为假 | `pending` | `attempts` 归零、`run_at = now()`；写审计 | — | 运维权限 |
 | `dead` | 重新排队 | `outcome_unknown` 为真（防御：正常迁移不会出现） | 不变 | 拒绝；按 `paused`（`outcome_unknown`）处置 | — | 运维权限 |
@@ -83,6 +87,8 @@
 | `paused` | 重新排队 | 原因 `outcome_unknown`：没有登记核实结果 | 不变 | 拒绝 | — | 运维权限 |
 | `paused` | 重新排队 | 原因 `backlog_exceeded` 或 `business_hold`：操作者确认这个槽或这项工作应当执行 | `pending` | `attempts` 归零、`run_at = now()`；写审计 | — | 运维权限 |
 | `dead`、`paused` | 标记已解决 | 附原因 | `resolved` | 写审计 | — | 运维权限 |
+
+重新排队与标记已解决都清除 `pause_reason`。
 
 “核对通过”指提交的条件中 `epoch` 与 `claim_db_epoch` 都与自己认领时得到的值相同，且 `claim_db_epoch` 等于当前的库纪元。核对失败的提交影响零行，被拒绝。
 
@@ -270,6 +276,8 @@ singleton 以作业名为身份持有租约运行。长任务分段提交进度�
 | JB26 | 单例作业的工作者 A 以 k1 调用对方后崩溃，B 接管 | B 沿用 k1，按 k1 查询对方；对方已有效果则标记这一段完成，不以新键重发 |
 | JB27 | `all` 补跑超出上限而暂停的槽 | 重新排队只要求操作者确认该槽应当执行，不要求“外部结果核实为未生效” |
 | JB28 | 计划内的无损主库切换时有在途的非幂等工作项 | 旧持有者的提交被拒绝；接管者看到 `outcome_unknown` 转 `paused`，运维核实；幂等与本地作业重做不重复 |
+| JB29 | 员工来源暂时无法证明，待生效授予的作业得到“处理中” | 按等待结果放回 `retry_wait`，不计尝试次数；超过等待上限才转人工 |
+| JB30 | 一次运行先后调用对方两个接口 | 两次调用用不同的子键，第二次不被当作重复 |
 
 ## 依据与独立判断
 
