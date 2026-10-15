@@ -121,6 +121,7 @@
 | `IN {…}` | `col = ANY($n)`；空集为 `FALSE` | 列在本组件的表上 |
 | `EXACT p` | `dept = $n` | 同上 |
 | `SUBTREE p` | `dept = $n OR dept LIKE $m ESCAPE`，`$m` 为转义后的 `p/%` | 按路径段的边界；方言可以改用 ltree 或闭包表，语义不变 |
+| `EXACT p`、`SUBTREE p`（行上只存组织单元 ID 时） | `dept_id = ANY(SELECT id FROM 组织投影 WHERE path = $n OR path LIKE $m ESCAPE)` | 本组件或数据集存储保存了组织树的受控投影，且投影的来源水位满足新鲜度（[协议 02](../02-projections.md)、[协议 13 的授权列](../13-search-reports-and-datasets.md#授权列)）；否则不可下推 |
 | `SELF`（已实例化） | `owner = $n` | 同上 |
 | 区间 | `amount IS NOT NULL AND currency = $c AND amount >= $lo AND amount < $hi`（按开闭取符号） | 金额与币种列都在本表 |
 | `RELATED` | `EXISTS (SELECT … FROM 关系投影 …)` | 本组件保存了关系的受控投影，且投影带完整性水位（[协议 02](../02-projections.md)）；否则不可下推 |

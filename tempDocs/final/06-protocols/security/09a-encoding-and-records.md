@@ -93,7 +93,7 @@
 
 ## 定义：资源、维度、操作与字段
 
-定义由业务组件随版本提交，通过 `DefinitionRef` 引用。**提交的核对**：授权组件只接受服务身份（安全 02）等于 `DefinitionRef.owner_component` 的提交；资源类型与附件类别的键在注册表中登记属主（[协议 19 的注册表](../19-config-secrets-registries-release.md#注册表)），一个资源类型只有一个属主，提交的属主与登记不符时拒绝并记录安全事件。其他组件（例如附件组件核对“申请者是父资源类型的属主”，[协议 12](../12-attachments-and-object-storage.md#访问凭证)）以授权组件保存的、经过这一核对的定义为依据。
+定义由业务组件随版本提交，通过 `DefinitionRef` 引用。**提交的核对**：授权组件只接受服务身份（安全 02）等于 `DefinitionRef.owner_component` 的提交，并且对**全部定义种类**（资源、操作、字段、维度、角色模板、附件类别）核对：所指的资源类型在注册表中登记的属主就是提交者，操作所用的权限键在注册表中的属主也是提交者；同一个键只接受一个属主的提交。资源类型、权限键与附件类别的键在注册表中登记属主（[协议 19 的注册表](../19-config-secrets-registries-release.md#注册表)），一个资源类型只有一个属主，提交的属主与登记不符时拒绝并记录安全事件。其他组件（例如附件组件核对“申请者是父资源类型的属主”，[协议 12](../12-attachments-and-object-storage.md#访问凭证)）以授权组件保存的、经过这一核对的定义为依据。
 
 **资源定义 `be.security.resource_definition`**
 
@@ -140,6 +140,7 @@
 | `resource_type` | `Key` | 是 | — |
 | `purpose` | `Enum` | 是 | `read`、`special_read`、`export`、`action`、`create`、`manage` |
 | `risk_class` | `Enum` | 是 | `low`、`high`；高风险使用 `W_high`（安全 03）；未声明的操作不得默认为 `low` |
+| `tightening_only` | `Bool` | 否 | 缺省 `false`；为真表示这个操作只会减少访问（停用、冻结、撤销会话、撤销、放弃），来源水位超期时可以按最后已应用的事实判断请求者资格（安全 03 的有限度规则）；有任何放宽效果的操作不得声明 |
 | `minimum_path` | `Enum` | 是 | `default`、`strict_acceptance`、`strict_barrier`；部署只能选不弱于它的路径 |
 | `side_effects` | `Set<Enum>` | 是 | `business_write`、`external_command`、`job_or_subscription`、`file_capability`、`security_change`、`notification`；只读操作写 `[]` |
 | `output_read_operation` | `Key` | 否 | 动作返回单据正文时用于字段裁剪的读取操作；缺省表示不返回正文 |
@@ -292,7 +293,7 @@
 | `nonce` | `Text` | 是 | 必须等于请求中的 `nonce`；不等则丢弃，不续期 |
 | `computed_at` | `Instant` | 是 | 只供审计；组件不用它计算有效期 |
 | `shards` | `List<{shard: Key, status: Enum(unchanged, changed, closed), view: be.security.view（条件）}>` | 是 | `changed` 时附新视图；`closed` 表示该分片暂时不能续发（安全 03） |
-| `recovery_generation` | `RevisionRef` | 是 | 与组件持有的不同时，组件丢弃全部旧视图 |
+| `recovery_generation` | `RevisionRef` | 是 | 比组件持有的大时，组件丢弃全部旧视图并采用新视图；比持有的小时判为回退（[安全 03](03-authorization-acceptance-and-revocation.md#授权视图与核验)） |
 
 组件按安全 03 计算有效期：从**发出这次请求**时的单调时钟读数起算。`nonce` 让组件能确认回答是针对本次请求计算的；缓存或重放的旧回答 `nonce` 不符，被丢弃（安全 03 模型中的“重放”坏变体）。回答通过已认证的服务通道传输（安全 02）。
 
@@ -300,7 +301,7 @@
 
 | 类别 | `domain` 的形式 | 比较 |
 | --- | --- | --- |
-| 恢复代次 | `authz.recovery` | 只判断相等；不同即旧视图与旧许可全部作废 |
+| 恢复代次 | `authz.recovery` | 按整数比较；权威计数在独立证据存储，单调；更大即旧视图与旧许可全部作废，更小判为回退 |
 | 安全修订 | `authz.security.<依赖域>` | 同域内按协议 14 比较：`epoch` 相同按十进制整数，不同用分叉点判断是否被包含 |
 | 属主提交守卫代次 | `<组件>.guard.<范围>` | 同域内按十进制整数比较；只在严格路径 B 档使用 |
 | 内容修订 | `<组件>.<资源类型>` | 同域内按十进制整数比较 |
@@ -338,7 +339,7 @@
 | 需要确认 | `CONFIRMATION_REQUIRED` | 202 | — | 变更进入待确认 |
 | 最后管理员保护 | `LAST_ADMIN_PROTECTED` | 409 | 否 | — |
 | 管理员可用性无法证明 | `ADMIN_AVAILABILITY_UNPROVABLE` | 202 | 是 | 变更处理中：会减少可用管理员的变更，或放宽的请求者资格，依赖的来源暂时无法证明（安全 08） |
-| 安全处置覆盖 | `HELD_BY_SECURITY_DISPOSITION` | 409 | 否 | 新访问与同一自然人被安全处置暂停的范围相交（安全 08） |
+| 安全处置限制 | `HELD_BY_SECURITY_DISPOSITION` | 403 | 否 | 只出现在解释中：求值时与同一自然人被安全处置暂停的范围相交的段不生效；对外按无权表达（安全 08） |
 | 部署待恢复 | `RECOVERY_IN_PROGRESS` | 503 | 是 | 除恢复外的管理变更 |
 | 成员切换中 | `MEMBER_SWITCH_IN_PROGRESS` | 503 | 是 | 授权成员切换窗口内的放宽类管理变更（[安全 10](10-providers-and-member-switching.md)） |
 | 能力不支持 | `CAPABILITY_UNSUPPORTED` | 501 | 否 | 装配时应已阻止；运行时发现则保护受影响的路径 |
@@ -377,7 +378,7 @@ EN 预期全部在本页；其中 EN16、EN17 检验的是[安全 09b](09b-capab
 | EN11 | `subject_org` 出现在没有绑定任职的授予中 | 拒绝 |
 | EN12 | 两个修订域的值按整数比较 | 不允许；只在同域内比较 |
 | EN13 | 核验回答的 `nonce` 与请求不符 | 丢弃，不续期 |
-| EN14 | 核验回答的恢复代次与组件持有的不同 | 丢弃全部旧视图 |
+| EN14 | 核验回答的恢复代次比组件持有的大；或比持有的小 | 更大：丢弃全部旧视图，采用新视图；更小：判为回退，停用视图并告警 |
 | EN15 | 视图分片的 `applicability` 不含某资源类型 | 不用该分片判定该类型 |
 | EN16 | 操作 profile 把 `high` 改成 `low`，或路径弱于 `minimum_path` | 装配拒绝 |
 | EN17 | 能力声明中某能力的证据为 `declared`，生产部署启用依赖它的功能 | 装配拒绝 |
@@ -386,6 +387,8 @@ EN 预期全部在本页；其中 EN16、EN17 检验的是[安全 09b](09b-capab
 | EN20 | 错误回答中出现无权查看的金额或负责人 | 不允许；只给 reason 与可显示的信息 |
 | EN21 | 组件甲提交一份资源定义，`owner_component` 写成组件乙，或资源类型在注册表中属于组件乙 | 拒绝并记录安全事件 |
 | EN22 | 附件类别引用的字段不在资源定义的 `fields` 中 | 拒绝 |
+| EN23 | 组件甲为组件乙登记的资源类型提交操作定义，或使用组件乙的权限键 | 拒绝并记录安全事件 |
+| EN24 | 一个有放宽效果的操作声明 `tightening_only` | 拒绝 |
 
 ## 依据与独立判断
 
