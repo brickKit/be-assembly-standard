@@ -1,0 +1,47 @@
+# 0-03 run 1 (2026-10-16), BrickKit CLI v1.4.1
+$ git ls-remote --tags origin
+37369a76cd087f881b09e6ddce978f83439021e5	refs/tags/probes/go/v0.1.0
+37369a76cd087f881b09e6ddce978f83439021e5	refs/tags/test-probe-go/0.1.0
+37369a76cd087f881b09e6ddce978f83439021e5	refs/tags/test-probe-py/0.1.0
+
+$ (consumer) cat brickkit.yaml | sed -n /components:/,\$p
+components:
+  - id: test/probe-go
+    version: 0.1.0
+    source:
+      type: git
+      repo: file://<scratch>/remotes/be-acceptance.git
+      path: probes/go
+  - id: test/probe-py
+    version: 0.1.0
+    source:
+      type: git
+      repo: file://<scratch>/remotes/be-acceptance.git
+      path: probes/py
+
+$ (consumer) cat deploy.yaml (hand-written entries)
+target: docker          # docker | podman | k8s
+components:
+  - id: test/probe-go
+  - id: test/probe-py
+
+$ brickkit up --dry-run
+🚀 Starting project consumer (target: docker)
+📋 Component state calculation:
+   ✅ test/probe-go@0.1.0  starting (top-level)
+   ✅ test/probe-py@0.1.0  starting (top-level)
+
+📋 Start order (topological sort):
+   1. test-probe-go-0-1-0  no dependencies
+   2. test-probe-py-0-1-0  no dependencies
+
+Can start on their own: test-probe-go-0-1-0, test-probe-py-0-1-0 (no dependencies)
+
+$ user-level bare caches
+<scratch>/cache/brickkit/repos/local<scratch>/remotes/be-acceptance.git
+
+# c2: brickkit.yaml entry with source written by hand, then:
+$ brickkit add test/probe-go@0.1.0 --yes
+❌ Error: deploy.yaml does not match the components in brickkit.yaml
+   File: deploy.yaml
+   No entry for: test/probe-go
