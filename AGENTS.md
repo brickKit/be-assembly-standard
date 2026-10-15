@@ -8,6 +8,7 @@
 
 - **这是什么**：BrickEnterprise，ERP 为主、加入 CRM 的组件货架，加上用 BrickKit 把它们装配起来的标准装配项目。它也是 BrickKit 功能在真实机器上的验证场：在这里发现的平台问题，写出复现报给 BrickKit，绝不在组件里绕过去。
 - **现在处于哪个阶段**：终局设计已冻结（2026-10-15），正式文档是 `docs/zh/`。现有的组件代码（2.x）只作参考，按新设计从零重建（D59）；重建的范围、顺序与仓库处理见 `dev/rebuild/`。先做代表部署实验（D41），再重建当前范围。
+- **两份组件清单别混淆**：文件末尾由 BrickKit 维护的组件表，列的是现在装配着的旧设计（2.x）组件与版本；新设计的组件、范围与边界以[组件全景](docs/zh/00-overview/03-catalog.md)与[边界卡](docs/zh/07-components/README.md)为准。设计改动按新设计回答，不按旧组件表。
 - **组件 ID** 是 `<领域>/<名字>`（仓库 `<领域>-<名字>`）；领域、边界与依赖方向见[领域与边界](docs/zh/00-overview/02-domains-and-boundaries.md)，全部组件见[组件全景](docs/zh/00-overview/03-catalog.md)与[边界卡](docs/zh/07-components/README.md)。
 - **东西放在哪里**：
   - `components/<scope>/<name>/`：每个组件一个 Git 子模块；`shell/<scope>/<name>/`：外壳，同样是子模块；`.gitmodules` 记下每个的确切提交。
@@ -51,6 +52,7 @@
 | 某个表只让一部分人看到一部分行（“销售只看自己的单”“库管只看一个仓库”） | [安全 07](docs/zh/06-protocols/security/07-finite-expressions-containment-and-queries.md)、[授权选型](docs/zh/00-overview/guides/authorization.md) |
 | 调用别的组件；显示别的组件拥有的数据 | [组件实现约定的调用其他组件](docs/zh/01-conventions/06-component-implementation.md#调用其他组件)、[组件间调用与错误](docs/zh/04-foundations/08-calls-and-errors.md) |
 | 加表、迁移、分区；身份、单号、日期、金额 | [协议 14](docs/zh/06-protocols/14-data-foundations.md) |
+| 列表的分页、排序、筛选与关键字搜索；跨组件的全局搜索与报表 | [协议 14 的列表](docs/zh/06-protocols/14-data-foundations.md#列表游标排序与筛选)、[安全 07](docs/zh/06-protocols/security/07-finite-expressions-containment-and-queries.md)、[协议 13](docs/zh/06-protocols/13-search-reports-and-datasets.md) |
 | 发布或消费事件；跨组件写入；超时与补偿；预占 | [事务与消息](docs/zh/04-foundations/03-transactions-and-messaging.md)、[协议 02](docs/zh/06-protocols/02-projections.md)、[协议 04](docs/zh/06-protocols/04-order-reservation.md) |
 | 后台任务、定时任务、对账 | [协议 01](docs/zh/06-protocols/01-background-work.md) |
 | 改契约：改字段名、删接口或事件 | [协议 19 的版本与产物](docs/zh/06-protocols/19-config-secrets-registries-release.md#版本与产物)、[原有决定 0302](docs/zh/02-decisions/10-earlier-decisions.md#0302-契约只做加法从新版本发布之后约束) |
