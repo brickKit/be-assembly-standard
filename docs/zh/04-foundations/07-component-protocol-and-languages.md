@@ -27,7 +27,7 @@
 
 | 层 | Go | Python | TypeScript |
 | --- | --- | --- | --- |
-| HTTP | Gin | FastAPI 跑在 uvicorn 上，单进程、单事件循环 | Fastify；移动聚合的 GraphQL 用 graphql-yoga，挂在 Fastify 上 |
+| HTTP | Gin；移动聚合的 GraphQL 用 gqlgen（从 schema 生成），挂在 Gin 上 | FastAPI 跑在 uvicorn 上，单进程、单事件循环 | Fastify |
 | gRPC | `grpc-go` | `grpc.aio` | `@grpc/grpc-js` + ts-proto |
 | 数据库 | `database/sql` + `pgx`，`sqlc`，手写 SQL | `asyncpg`，手写 SQL | `pg`（node-postgres），手写 SQL |
 | 迁移 | `golang-migrate`，纯 SQL 文件 | `yoyo-migrations`，纯 SQL 文件 | `node-pg-migrate`，纯 SQL 文件 |

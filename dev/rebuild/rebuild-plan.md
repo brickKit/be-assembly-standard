@@ -30,7 +30,8 @@
 | `frontend-standard` | `frontend/standard` → `frontend/pc` | 改名为 `frontend-pc` 后复用 | D17；旧代码挪到 `legacy/v2`；`frontend-mobile` 新建 |
 | `crm-opportunity` | `crm/opportunity` | 沿用，新主版本重建 | — |
 | `be-go-core`、`be-go-infra`、`be-go-backoffice`、`be-py-render`（`shell/be/*`） | 外壳 | 沿用 | 成员组合在代表部署实验后确定（D40）；先保留仓库，实验时再定是否增减外壳 |
-| `be-sdk-go`、`be-sdk-python`、`be-sdk-ts` | SDK | 沿用，新主版本重建 | 协议 18 的共同契约与语义向量 |
+| `be-sdk-go`、`be-sdk-python` | SDK | 沿用，新主版本重建 | 协议 18 的共同契约与语义向量 |
+| `be-sdk-ts` | SDK | 当前范围不做，仓库原样不动 | A108：当前范围没有 TypeScript 组件；有组件需要时再按 A107 从头开始 |
 | `be-protocol` | 组件协议 | 沿用，按协议 18 的章节重写 | 规则（必须、应当、内部）与语义向量 |
 | `be-acceptance` | 验收与套件 | 沿用 | 迁入验收矩阵（PA、DT、ST）、一致性套件、参考模型与文档检查脚本 |
 | `be-ops` | 装配时生成 | 沿用，评估后重写 | 权限与数据范围的注册改为资源定义（安全 09a）；菜单汇总退役（协议 20） |
