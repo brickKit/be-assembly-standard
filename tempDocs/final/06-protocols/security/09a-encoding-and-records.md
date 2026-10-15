@@ -222,6 +222,7 @@
 | `domain` | `Id` | 是 | 治理域 |
 | `disposer` | `PrincipalRef` | 条件 | `origin = admin` 时必填；`admin_recovery` 时为部署所有者 |
 | `confirmations` | `List<Id>` | 否 | 处置或解除其他授权管理员时的确认 |
+| `signal_ref` | `Text` | 条件 | `origin = identity_side` 时必填：（账号，身份侧的冻结身份）；与 `origin` 一起唯一，同一冻结再次应用不建第二条 |
 | `released_by` | `PrincipalRef` | 条件 | `state = released` 时必填 |
 
 **部署的授权状态 `be.security.deployment_admin_state`**：`state: Enum(operational, recovery_pending, admin_recovery)`（是）；`unavailable_holdings: List<{holding: Id, cause: Enum(security_disposition, source_fact, expired, uncomputable, confirmation_backfill)}>`（`recovery_pending` 时必填）；`entered_from: Enum(operational, recovery_pending)`（`admin_recovery` 时必填，中止时回到它）；`since: Instant`（是）。
@@ -255,7 +256,7 @@
 
 | 字段 | 类型 | 必填 | 约束 |
 | --- | --- | --- | --- |
-| `change_key` | `Text` | 是 | 请求者命名空间内唯一；与 `requested_by` 一起构成幂等身份，绑定已生效、已驳回与保存了记录的结果（安全 08）；作业触发的生效使用授权组件命名空间中的派生键 `<记录身份>:<目标修订>:<触发种类>` |
+| `change_key` | `Text` | 是 | 请求者命名空间内唯一；与 `requested_by` 一起构成幂等身份，只绑定已生效、不可重试的已驳回（下文错误表“占用变更键”为是）与保存了记录的结果（安全 08）；作业触发的生效使用授权组件命名空间中的派生键 `<记录身份>:<目标修订>:<触发种类>` |
 | `requested_by` | `PrincipalRef` | 是 | — |
 | `acting_as` | `Id` | 条件 | 以管理资格操作时必填：所用的管理持有资格 |
 | `direction` | `Enum` | 是 | `tighten`、`widen`、`neutral`、`restore_security_hold`、`restore_uncomputable`（安全 08 的变更种类）；同时含收紧与放宽的变更必须拆成两个请求 |
@@ -268,7 +269,7 @@
 | `source_revisions` | `List<RevisionRef>` | 否 | 预览时读取的来源修订；生效点逐项核对 |
 | `reason` | `Text` | 否 | 受保护操作必填（由 profile 声明） |
 
-**确认 `be.security.confirmation`**：`change_key`（否；针对已提交的放宽请求时填写）、`candidate_digest`（条件；放宽时必填）、`target: Id` 与 `expected_revision: RevisionRef`（条件；收紧时必填）、`target_state: Key` 与 `target_state_version: RevisionRef`（条件；重新启用或解冻账号时必填）、`confirmer: PrincipalRef`（是）、`confirmer_basis: Enum(holding, deployment_owner)`（是）、`confirmed_at: Instant`（是）、`expires_at: Instant`（是；有 `effective_from` 时不早于它）、`consumed_by_change: Id`（否；得到“已生效”的那次生效点写入）。生效点核对：确认人与申请人不是同一个自然人（安全 08）、对象与内容（或版本）一致、未过期、未被使用。
+**确认 `be.security.confirmation`**：`change_key`（否；针对已提交的放宽请求时填写）、`candidate_digest`（条件；放宽时必填）、`target: Id` 与 `expected_revision: RevisionRef`（条件；收紧时必填）、`target_state: Key` 与 `target_state_version: RevisionRef`（条件；重新启用或解冻账号时必填）、`confirmer: PrincipalRef`（是）、`confirmer_basis: Enum(holding, deployment_owner)`（是）、`confirmed_at: Instant`（是）、`expires_at: Instant`（是；有 `effective_from` 时不早于它）、`consumed_by_change: Id`（否；得到“已生效”的那次生效点写入）。生效点核对：确认人与申请人不是同一个自然人（安全 08）、对象与内容（或版本）一致、未过期、未被使用；`confirmer_basis = holding` 时还核对确认人此刻的资格可证明、合格且未处于安全处置，`deployment_owner` 时只核对凭据与使用记录。解除处置的确认绑定处置身份与处置修订，`consumed_by_change` 在整个解除完成时写入。
 
 **变更结果 `be.security.change_result`**
 
@@ -277,7 +278,7 @@
 | `change_key` | `Text` | 是 | — |
 | `outcome` | `Enum` | 是 | `applied`、`rejected`、`processing`、`awaiting_confirmation`、`scheduled`、`held_kept` |
 | `reason` | `Key` | 条件 | `rejected` 时必填，取自下文的错误表 |
-| `record` | `Id` | 条件 | `applied`、`scheduled` 时必填 |
+| `record` | `Id` | 条件 | `applied`、`scheduled`，以及保存了记录的 `awaiting_confirmation`（放宽）时必填 |
 | `new_revision` | `RevisionRef` | 条件 | `applied` 时必填 |
 | `security_revisions` | `List<RevisionRef>` | 条件 | `applied` 时必填：被推进的安全修订 |
 
@@ -338,30 +339,30 @@
 
 **单对象决定 `Decision`**（组件内部的结构，不跨网络传给用户）：`outcome: Enum(allowed, denied, unprovable)`；`matched_segments: Set<Digest>`；`readable_fields: Set<Key>`；`cutoff_remaining_ms: DurationMs`；`explain: Id`（否）。
 
-**内部分类与对外表达**：下表的 reason 在新的错误目录中登记（一个错误对象，原因取自目录）。
+**内部分类与对外表达**：下表的 reason 在新的错误目录中登记（一个错误对象，原因取自目录）。“占用变更键”只对安全记录的变更：为“是”的结果绑定变更键，同键同内容重新提交返回同一结果；为“否”的不绑定，客户端用同一个键重试即可（安全 08 的生效点）。
 
-| 内部分类 | reason | HTTP | 可重试 | 说明 |
-| --- | --- | --- | --- | --- |
-| 不可见 | `NOT_FOUND` | 404 | 否 | 读取与命令一致；不泄露对象是否存在 |
-| 可见但没有此操作的资格 | `PERMISSION_DENIED` | 403 | 否 | — |
-| 业务控制拒绝 | 各业务的 reason | 409 或 422 | 视业务 | 与授权拒绝分开 |
-| 无法证明 | `AUTHORIZATION_UNPROVABLE` | 503 | 是 | 来源不可得、超期、修订不相容；不能写成“没有数据” |
-| 视图过期 | `AUTHORIZATION_VIEW_EXPIRED` | 503 | 是 | 默认路径超过 `W` |
-| 令牌陈旧 | `TOKEN_STALE` | 401 | 边缘换取新令牌后重试一次 | 只用于身份侧的事实（会话代次已推进、账号的安全状态版本已变），只由入口组件在准入阶段、任何副作用之前返回（[协议 20](../20-frontend.md#登录与会话)） |
-| 查询不可完成 | `QUERY_NOT_COMPLETABLE` | 422 | 否 | 有段不可下推、候选集超预算、冷层没有覆盖（安全 07） |
-| 受限字段不可用于此查询 | `FIELD_NOT_QUERYABLE` | 422 | 否 | 安全 07 的排序与筛选证明不成立 |
-| 查询计划已变化 | `QUERY_PLAN_CHANGED` | 409 | 否（重新查询） | 游标的计划摘要不一致 |
-| 变更冲突 | `CHANGE_KEY_CONFLICT` | 409 | 否 | 同一变更键、不同的内容 |
-| 修订已变 | `CHANGE_REVISION_STALE` | 409 | 否（重新预览） | 生效点发现目标或来源的修订已变 |
-| 包含证明不成立 | `CONTAINMENT_NOT_PROVEN` | 403 | 否 | 附失败的维度与原因（超出、无法证明、超预算） |
-| 需要确认 | `CONFIRMATION_REQUIRED` | 202 | — | 变更进入待确认 |
-| 最后管理员保护 | `LAST_ADMIN_PROTECTED` | 409 | 否 | — |
-| 管理员可用性无法证明 | `ADMIN_AVAILABILITY_UNPROVABLE` | 202 | 是 | 处理中，请求不保存，调用者稍后重试：会减少可用管理员的变更，或放宽的请求者资格，依赖的来源暂时无法证明（安全 08）；对象持有授权管理资格的只减少访问的操作，请求者资格无法证明且没有确认（安全 03） |
-| 安全处置限制 | `HELD_BY_SECURITY_DISPOSITION` | 403 | 否 | 只出现在解释中：求值时与同一自然人被安全处置暂停的范围相交的段不生效；对外按无权表达（安全 08） |
-| 部署待恢复 | `RECOVERY_IN_PROGRESS` | 503 | 是 | 管理结构的放宽（管理员恢复除外；安全 08 的待恢复）；收紧照常；已有的记录不变，可以稍后重新提交 |
-| 成员切换中 | `MEMBER_SWITCH_IN_PROGRESS` | 503 | 是 | 授权成员切换窗口内的全部放宽（`widen` 与 `restore_*`，已有的记录不变），身份成员切换窗口内的放宽类账号变更（[安全 10](10-providers-and-member-switching.md)、[安全 11](11-identity-member-switching.md)）；身份切换中新成员接管之后，旧地址上的收紧代理失败（安全 11） |
-| 能力不支持 | `CAPABILITY_UNSUPPORTED` | 501 | 否 | 装配时应已阻止；运行时发现则保护受影响的路径 |
-| 结果未知 | `RESULT_UNKNOWN` | 504 | 查询后再定 | 用变更键或动作键查询，不换键重试 |
+| 内部分类 | reason | HTTP | 可重试 | 占用变更键 | 说明 |
+| --- | --- | --- | --- | --- | --- |
+| 不可见 | `NOT_FOUND` | 404 | 否 | — | 读取与命令一致；不泄露对象是否存在 |
+| 可见但没有此操作的资格 | `PERMISSION_DENIED` | 403 | 否 | 是 | — |
+| 业务控制拒绝 | 各业务的 reason | 409 或 422 | 视业务 | — | 与授权拒绝分开 |
+| 无法证明 | `AUTHORIZATION_UNPROVABLE` | 503 | 是 | 否 | 来源不可得、超期、修订不相容；不能写成“没有数据” |
+| 视图过期 | `AUTHORIZATION_VIEW_EXPIRED` | 503 | 是 | — | 默认路径超过 `W` |
+| 令牌陈旧 | `TOKEN_STALE` | 401 | 边缘换取新令牌后重试一次 | — | 只用于身份侧的事实（会话代次已推进、账号的安全状态版本已变），只由入口组件在准入阶段、任何副作用之前返回（[协议 20](../20-frontend.md#登录与会话)） |
+| 查询不可完成 | `QUERY_NOT_COMPLETABLE` | 422 | 否 | — | 有段不可下推、候选集超预算、冷层没有覆盖（安全 07） |
+| 受限字段不可用于此查询 | `FIELD_NOT_QUERYABLE` | 422 | 否 | — | 安全 07 的排序与筛选证明不成立 |
+| 查询计划已变化 | `QUERY_PLAN_CHANGED` | 409 | 否（重新查询） | — | 游标的计划摘要不一致 |
+| 变更冲突 | `CHANGE_KEY_CONFLICT` | 409 | 否 | 否（不覆盖原绑定） | 同一变更键、不同的内容 |
+| 修订已变 | `CHANGE_REVISION_STALE` | 409 | 否（重新预览） | 是 | 生效点发现目标或来源的修订已变 |
+| 包含证明不成立 | `CONTAINMENT_NOT_PROVEN` | 403 | 否 | 是 | 附失败的维度与原因（超出、无法证明、超预算） |
+| 需要确认 | `CONFIRMATION_REQUIRED` | 202 | — | 放宽：是（保存记录）；收紧：否 | 变更进入待确认 |
+| 最后管理员保护 | `LAST_ADMIN_PROTECTED` | 409 | 否 | 是 | — |
+| 管理员可用性无法证明 | `ADMIN_AVAILABILITY_UNPROVABLE` | 202 | 是 | 否 | 处理中，请求不保存，调用者稍后重试：会减少可用管理员的变更，或放宽的请求者资格，依赖的来源暂时无法证明（安全 08）；对象持有授权管理资格的只减少访问的操作，请求者资格无法证明且没有确认（安全 03） |
+| 安全处置限制 | `HELD_BY_SECURITY_DISPOSITION` | 403 | 否 | — | 只出现在解释中：求值时与同一自然人被安全处置暂停的范围相交的段不生效；对外按无权表达（安全 08） |
+| 部署待恢复 | `RECOVERY_IN_PROGRESS` | 503 | 是 | 否 | 管理结构的放宽（管理员恢复除外；安全 08 的待恢复）；收紧照常；已有的记录不变，可以稍后重新提交 |
+| 成员切换中 | `MEMBER_SWITCH_IN_PROGRESS` | 503 | 是 | 否 | 授权成员切换窗口内的全部放宽（`widen` 与 `restore_*`，已有的记录不变），身份成员切换窗口内的放宽类账号变更（[安全 10](10-providers-and-member-switching.md)、[安全 11](11-identity-member-switching.md)）；身份切换中新成员接管之后，旧地址上的收紧代理失败（安全 11） |
+| 能力不支持 | `CAPABILITY_UNSUPPORTED` | 501 | 否 | — | 装配时应已阻止；运行时发现则保护受影响的路径 |
+| 结果未知 | `RESULT_UNKNOWN` | 504 | 查询后再定 | — | 用变更键或动作键查询，不换键重试 |
 
 对无权的调用者，错误内容不包含金额、负责人、角色内容或证明细节（安全 06）。
 
