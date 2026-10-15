@@ -14,7 +14,7 @@
 | `contract_versions` | `Map<Key,Text>` | 是 | 所实现的共同安全契约与语义的版本 |
 | `schema_versions` | `Map<Key,Text>` | 是 | 安全 09a 各记录类型所支持的 schema 版本 |
 | `capabilities` | `Map<Key,{version: Text, limits: Map<Key,Int>}>` | 是 | 能力名到版本与上限（例如最大段数、最大链深、候选集规模、查询预算）；能力名取自下文的能力目录 |
-| `supported` | `{resources: Set<Key>, operations: Set<Key>, source_kinds: Set<Enum>, entries: Set<Enum>, outputs: Set<Enum>}` | 是 | 支持的资源类型、操作、来源类型（安全 09a 的 `sources[].kind`）、调用入口模式（安全 02）与出口种类（读取、导出、下载、流式） |
+| `supported` | `{resources: Set<Key>, operations: Set<Key>, source_kinds: Set<Enum>, entries: Set<Enum>, outputs: Set<Enum>}` | 是 | 支持的资源类型、操作、业务授权来源类型（`role_grant`、`direct_grant`、`institutional_share`、`relation`、`delegation`、`impersonation`、`break_glass`，安全 05）、调用入口模式（安全 02）与出口种类（读取、导出、下载、流式） |
 | `atoms` | `Map<Enum,{evaluate: Bool, complete_query: Bool, containment: Bool}>` | 是 | 每种原子能否单对象求值、能否给出完整查询、能否参与包含证明（[安全 07 的提供方能力表](07-finite-expressions-containment-and-queries.md#提供方要声明的能力)） |
 | `guarantees` | `Set<Enum>` | 是 | 所提供的完整性与时间保证：`bounded_local`、`strict_acceptance`、`strict_barrier`、`output_barrier` |
 | `required_adapters` | `Set<Key>` | 否 | 依赖的属主适配、SDK 能力与平台能力（例如“业务属主提交守卫”“站内通知”“独立认证路径”） |

@@ -4,7 +4,8 @@
 Every relative link to a .md file must point at an existing file, and its #anchor (if any)
 must match a heading of that file (heading → anchor: strip punctuation, spaces to '-',
 lower-case). Links inside fenced code blocks are ignored. Exit status 1 when any link is
-broken. Known false positive: URL-encoded paths such as %20.
+broken. Review reports under work/rewrite-reports are skipped. Known false positive:
+URL-encoded paths such as %20.
 """
 import os
 import re
@@ -31,7 +32,9 @@ def heads(p):
 
 
 def main():
-    files = [os.path.join(d, f) for d, _, fs in os.walk(ROOT) for f in fs if f.endswith(".md")]
+    skip = os.path.join(ROOT, "work", "rewrite-reports")  # one-off review reports, not maintained
+    files = [os.path.join(d, f) for d, _, fs in os.walk(ROOT) for f in fs
+             if f.endswith(".md") and not d.startswith(skip)]
     errs = n = 0
     for p in sorted(files):
         text = FENCE.sub("", open(p, encoding="utf-8").read())

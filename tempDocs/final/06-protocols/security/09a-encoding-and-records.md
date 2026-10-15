@@ -61,6 +61,7 @@
 | | `id` | `Id` | 是 | 不同类型的相同 ID 不是同一对象 |
 | `RevisionRef` | `domain` | `Key` | 是 | 修订域，例如 `authz.security.legal_entity`；只在同一域内比较 |
 | | `value` | `Text` | 是 | 不透明；比较规则由域声明（多数为十进制整数文本） |
+| | `epoch` | `Text` | 否 | 库内分配、别处比较的计数所带的纪元（[协议 14 的库内计数与纪元](../14-data-foundations.md#库内计数与纪元)）；有它的域，比较按协议 14：同一纪元按整数，不同纪元用分叉点判断旧值是否仍被包含 |
 | `DefinitionRef` | `owner_component` | `Key` | 是 | — |
 | | `kind` | `Enum` | 是 | `resource`、`operation`、`field`、`dimension`、`role_template` |
 | | `key` | `Key` | 是 | — |
@@ -287,7 +288,7 @@
 | 类别 | `domain` 的形式 | 比较 |
 | --- | --- | --- |
 | 恢复代次 | `authz.recovery` | 只判断相等；不同即旧视图与旧许可全部作废 |
-| 安全修订 | `authz.security.<依赖域>` | 同域内按（纪元，十进制整数）比较 |
+| 安全修订 | `authz.security.<依赖域>` | 同域内按协议 14 比较：`epoch` 相同按十进制整数，不同用分叉点判断是否被包含 |
 | 属主提交守卫代次 | `<组件>.guard.<范围>` | 同域内按十进制整数比较；只在严格路径 B 档使用 |
 | 内容修订 | `<组件>.<资源类型>` | 同域内按十进制整数比较 |
 

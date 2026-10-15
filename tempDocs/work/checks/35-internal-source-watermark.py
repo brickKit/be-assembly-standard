@@ -49,6 +49,7 @@ SEED = 20261013
 RUNS = 3000
 D_SRC = 60          # D_src_high (D64)
 W = 5               # view validity
+BOUND = None       # None: the real bound s0 + D_SRC + W; a number: the non-vacuity check below
 REDELIVER = 120     # longer than D_SRC: a redelivery delay alone must not be able to hide a leave
 GAP_TIMEOUT = 120   # the bad relay publishes skipped rows only after this
 SETTLE = 25         # start-up and epoch-change allowance for AVAILABLE (longer than a pull)
@@ -285,7 +286,7 @@ def run(rng, variant, fails, stats, fixed=None):
             if comp_clock < sent_local + W and active and (end is None or t < end):
                 if long_stall:
                     stats["during_stall"] += 1
-                if t > s0 + D_SRC + W:
+                if t > s0 + (D_SRC + W if BOUND is None else BOUND):
                     fails.append("BOUND_SRC"); return
                 if scheduled_end is not None and t >= scheduled_end:
                     fails.append("BOUND_END"); return
@@ -320,7 +321,18 @@ def main():
         f, st = res[v]
         print(f"bad variant {v}: {'caught ' + str(f) if f else 'NOT CAUGHT'}")
         caught &= bool(f)
-    if g or not caught:
+    # non-vacuity: the correct protocol checked against a bound tightened to s0 + D_SRC/2 must fail,
+    # otherwise BOUND_SRC could not detect anything
+    global BOUND
+    BOUND = D_SRC // 2
+    rng = random.Random(SEED)
+    tight = []
+    for _ in range(RUNS):
+        run(rng, "good", tight, {"during_stall": 0})
+    BOUND = None
+    print(f"non-vacuity: with the bound tightened to s0 + D_SRC/2 the correct protocol fails BOUND_SRC "
+          f"in {tight.count('BOUND_SRC')} of {RUNS} runs")
+    if g or not caught or not tight:
         sys.exit(1)
 
 
