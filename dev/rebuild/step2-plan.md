@@ -14,11 +14,11 @@
 | 项 | 取舍 | 理由 |
 | --- | --- | --- |
 | 模块路径 | `github.com/brickKit/be-sdk-go/v3`、`github.com/brickKit/be-protocol/v3`；Go 1.26 | A110 从 3.0.0 起；Go 主版本 2 起路径带主版本 |
-| 协议仓库的布局 | `spec/`（中文规范，按协议 18 的章节编号）、`vectors/`（JSON 向量与 `SHA256SUMS`）、`schemas/`（JSON Schema：错误体、信封）、`ddl/`（参考 DDL：发件表、收件表、工作项、幂等记录）；仓库同时是一个 Go 模块，用 `embed` 交出向量，SDK 的 L1 测试按精确版本引用 | 规则正文只在一处（A99）；向量随协议版本发布（协议 18） |
+| 协议仓库的布局 | `spec/`（中文规范，按协议 18 的章节编号）、`vectors/`（JSON 向量与 `SHA256SUMS`，由 `scripts/` 生成）、`schemas/`（JSON Schema）、`migrations/`（SDK 自己的表与函数，三种语言执行同一份）、`migrations-bus/`（PostgreSQL 队列的表）、`data/`（拼音表）、`capabilities.json`（能力清单）；仓库同时是一个 Go 模块，用 `embed` 交出这些，SDK 的 L1 测试按精确版本引用。原定的参考 DDL 目录由 `migrations/` 取代 | 规则正文只在一处（A99）；向量随协议版本发布（协议 18） |
 | 规范语言 | 中文（D67，开发完成前只写中文）；代码、标识符、提交信息英文（D74） | — |
 | 版本 | 开发中用预发布 `3.0.0-alpha.N`；实验结束、进入正式时 `3.0.0` | A110；预发布不占用正式号 |
 | 需要真实数据库与消息系统的测试 | 放在构建标签 `integration` 下，`make test-integration` 对 `make up` 的 `be-postgres`、`be-nats` 运行，库名 `be_sdk_test`；缺环境时失败而不是跳过 | “绝不加跳过”；协议 18：未运行不是通过 |
-| 包的划分 | 一个领域一个包：`runtime`、`config`、`launcher`（单跑）、`shell`（外壳启动器）、`httpx`（Gin 与中间件链）、`rpc`（grpc-go 的服务端与客户端）、`calls`（截止时间、重试预算、熔断、出站并发）、`errs`（原因目录与映射）、`db`（池、事务入口、启动检查、迁移入口）、`ids`（UUIDv7 与单号）、`events`（信封）、`outbox`、`bus/jetstream`、`bus/pgqueue`、`inbox`、`work`、`identity`、`authz`、`audit`、`list`、`projection`、`claimcheck`、`obs`、`decimal` | 每个包能单独读懂；文件与函数的大小上限按 AI 编码习惯 |
+| 包的划分 | 一个领域一个包：`component`、`runtime`、`launcher`（单跑）、`shell`（外壳启动器）、`config`、`errs`、`obs`、`clock`、`mergesafety`、`httpx`（Gin 与中间件链）、`grpcx`（grpc-go 的服务端）、`calls`（截止时间、重试预算、熔断、出站并发与两种客户端）、`reqctx`、`idem`（命令的幂等键）、`db`（池、事务入口、启动检查、迁移、单号、分区）、`ids`、`money`、`bizdate`、`events`（发件表、信封、消费者与收件表、大消息凭证）与 `events/jetstream`、`events/pgqueue`、`events/bus`、`work`、`identity`、`authz`、`guard`、`canon`、`audit`、`list`、`search`、`projection`。起草时设想的 `outbox`、`inbox`、`claimcheck`、`bus/*`、`rpc`、`decimal` 合进了上面的包 | 每个包能单独读懂；文件与函数的大小上限按 AI 编码习惯 |
 
 ## 任务
 
@@ -63,3 +63,10 @@
   - **定下的设计**：游标是规范 JSON 的 base64url，带筛选摘要与计划摘要；计划摘要覆盖规范化的段（含字段）与资源定义的摘要；搜索列版本 1 = 折叠、全拼、首字母三段以 U+001F 连接，`q` 只匹配一段内的子串，拼音表由 `be-protocol` 提供，三种语言因此对多音字一致；对齐代次写在 `be_projection_source`，每次写入在同一事务以共享锁核对代次；“对齐期间写入”的行用 `aligned_gen` 标记（等于正在进行的对齐代次）。
   - **实测发现**：①显式页大小 0 原本被当作缺省，改为 `ParseLimit` 答 `REQUEST_INVALID`；②计划摘要最初只看段的身份，只改字段时旧游标仍能继续，改为覆盖段的字段；③第 9 章原写快照“直接覆盖”，没写协议 02 的“对齐期间写入”例外：快照比流上的删除更旧时会把墓碑覆盖回去，已补进 P9.12 并有专门的测试（去掉这一条件测试即红）；④测试辅助函数在事务回调里用 `require` 失败会挂住事务，改为回调外断言。
   - **留到后续**：水位来源的回声、起点 P0、补取与连续位置（随用水位的消费者，即授权与身份的投影接入时）；对齐状态中的 `stalled`、`blocked` 与影子投影；搜索列的回填作业与 `pg_trgm` 索引的选择。
+- 2026-10-17 T2.10 进行中（发版前的部分完成）：对照实验计划“SDK”表的 Go 一列与链上的需要，补齐了几处缺口，再建功能矩阵。
+  - **补齐的能力**：①按月分区（实验计划“分区只做按月的创建”）：第 5 章 P5.21–P5.24、迁移 0006 的受限函数（属主身份、`search_path` 固定、事务级咨询锁、只建分区），执行权由建库脚本授予运行角色，SDK 每小时预建；`be-protocol` `f64d5af`，`be-sdk-go` `2e0743d`。②命令的幂等键（链上 RS08 与种子数据都靠它）：第 4 章 P4.21–P4.25、迁移 0007、向量 `idempotency`，`idem` 包在两个调用面上认领、重放、冲突与过期清理，8 个并发同键只执行一次；`8fef3f9`、`c5bed0a`。③金额与业务日期（出账、信用额度、法人时区的“今天”）：P5.25–P5.29、向量 `money` 与 `business-date`（协议 14 的 DF12、DF16），`money` 与 `bizdate` 包；`8f95cde`、`c057b17`。④保留与清理：发件表、工作项、幂等记录的清理函数原本没人调用，表会一直增长；改为 SDK 自带的每小时作业，JetStream 流设 `MaxAge`，PostgreSQL 队列按保留清理（P6.12、P6.27、P7.19）；`20b9d9c`、`db885d5`。
+  - **功能矩阵**：`be-protocol` 的 `capabilities.json` 把全部 174 条规则各归入一项能力（另有 8 项只留形状的能力），检查拒绝没有归属或归属两处的规则（`19824c7`）；`be-sdk-go` 的 `features.json` 标出 28 项 SDK 能力全部 `verified`、8 项形状 `not_implemented`（另有 1 项归组件、1 项归装配检查），并逐条列出待验证的规则与原因，`TestFeatureMatrix` 核对它与协议的清单一一对应、证据都是真实存在的测试（`7877576`）。
+  - **实测发现**：①PostgreSQL 队列原先的清理留着任何订阅还没读的消息，一个不再回来的订阅者会让队列永远增长，与“消费者离线超过保留期靠补发与对账恢复”的设计相反，改为只按保留期清理；②CK-WK-10、CK-EV-05 原本没有任何测试，补上；③SDK 加载时区依赖镜像里的时区数据库，Alpine 镜像默认没有，`LoadLocation` 会失败，改为 SDK 自带 `time/tzdata`；④改测试文件时一次脚本替换误删了已有的 CK-BUS-08 测试，`git diff` 发现后从提交恢复再追加。
+  - **重读与重构**：`be-sdk-go` 的 README 在本步逐任务追加，用法段落按加入的先后排列，改为按主题组织并加上 SDK 自带作业的表（`a0c3b52`）；本页的“协议仓库的布局”“包的划分”两行按实际更新。本页的进度记录按任务一条、结构一致，不重写。
+  - **留到后续**（功能矩阵的 `pending` 有同样的清单）：容器 1 号进程与外壳镜像在第 4 步验证；作业指标（P7.20）、运维动作写审计（P7.14）、`every` 作业的专门测试；未发布积压的告警；搜索列索引的扩展选择（P9.9）；以及 T2.8、T2.9 留下的各项。
+
