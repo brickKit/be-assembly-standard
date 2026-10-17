@@ -13,6 +13,7 @@
 | [implementation-checks.md](implementation-checks.md) | 冻结时列出、交给实现阶段核对的项 |
 | [experiment-plan.md](experiment-plan.md) | 代表部署实验（D41）的实施计划（待用户审） |
 | [step1-repo-actions.md](step1-repo-actions.md) | 实验第 1 步的仓库动作清单与执行结果（2026-10-17 已执行） |
+| [step2-plan.md](step2-plan.md) | 实验第 2 步（`be-protocol` 子集与 Go SDK）的任务、取舍与进度 |
 
 ## 现在在哪里
 
@@ -53,7 +54,7 @@
 | 0-12 | 连接池代理的事务模式与 `SET LOCAL`（以及 pgx 的预编译语句） | 完成（2026-10-17）；设计依赖的事务内设置都成立；pgx 默认模式要求 PgBouncer 开 `max_prepared_statements`（记进交实现核对的项） |
 | 0-13 | 负载与数据的试跑规模 | 推迟到有业务组件之后（第 8 步前） |
 
-**第 0 步与第 1 步已完成**（2026-10-17）：0-01 到 0-12 完成，0-13 按计划推迟；第 1 步的仓库动作已执行（[step1-repo-actions.md](step1-repo-actions.md)）。**下一步是第 2 步**：`be-protocol` 的实验子集与 Go SDK（含两个消息适配器与外壳启动器）。
+**第 0 步与第 1 步已完成**（2026-10-17）：0-01 到 0-12 完成，0-13 按计划推迟；第 1 步的仓库动作已执行（[step1-repo-actions.md](step1-repo-actions.md)）。**正在做第 2 步**：`be-protocol` 的实验子集与 Go SDK，任务与进度在 [step2-plan.md](step2-plan.md)。
 
 2026-10-17 起连续推进（用户授权）：每项做完写记录、更新本文件、提交，直接做下一项；只在需要用户决定、需要 BrickKit 配合、对外难撤回的动作（第 1 步的仓库动作先列清单请用户确认；首次推送或发布标签）时停下。
 
