@@ -1,13 +1,5 @@
 #!/usr/bin/env bash
-# 端口册与 schema 册的自洽校验。判据已经搬进 be-ops（tools/be-ops/internal/
-# registry），本脚本退休为薄壳——阶段一 Task 8。
+# Consistency check of registry/ports.tsv and registry/schemas.tsv. The old check in be-ops counted the 62 components of
+# the old catalogue; the rules that still hold live in registry_check.py (be-ops is not touched, experiment step 1).
 set -uo pipefail
-ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
-BEOPS_BIN="$ROOT/tools/be-ops/build/be-ops"
-
-if [[ ! -x "$BEOPS_BIN" ]]; then
-  echo "▸ 编译 be-ops（首次运行或源码有更新）" >&2
-  (cd "$ROOT/tools/be-ops" && go build -o build/be-ops ./cmd/be-ops)
-fi
-
-exec "$BEOPS_BIN" registry check --root "$ROOT"
+exec python3 "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/registry_check.py"

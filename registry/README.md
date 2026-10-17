@@ -2,7 +2,7 @@
 
 # Registries
 
-The project-wide tables a component copies from before writing its `component.yaml` or `assembly.yaml`. A port, a schema, a role or a permission key is never invented: it comes from here, or a new row is appended here first. The full rules are in [docs/en/01-conventions/07-registries.md](../docs/en/01-conventions/07-registries.md); this page only says what each file is.
+The project-wide tables a component copies from before writing its `component.yaml` or `assembly.yaml`. A port, a schema, a role or a permission key is never invented: it comes from here, or a new row is appended here first. The full rules are in [protocol 19's registries](../docs/zh/06-protocols/19-config-secrets-registries-release.md#注册表) (Chinese only until development is done, D67); this page only says what each file is.
 
 ## Files
 
@@ -18,5 +18,6 @@ The project-wide tables a component copies from before writing its `component.ya
 - **Append-only** (`ports.tsv`, `schemas.tsv`, `permissions.tsv`): a moved port breaks every dependent and every shell that hosts the component; a renamed schema is a data migration; a renamed permission key silently strips it from every role that had it. A key is retired by filling `deprecated`, and its name is never reused.
 - **`_infra-` rows** are out-of-band containers (PostgreSQL, NATS, Traefik, Casdoor, object storage, observability), not components. They share the host port space with the components, so they are registered too; mutually exclusive pairs (RustFS / MinIO, Traefik / Nginx) may share a port.
 - **`_shell-` rows** are the shells' own ports, the `/healthz` in each shell's `component.yaml` (`deployment.port`). Shell IDs are `be/<name>`. A member hosted by a shell keeps its own service name and its own ports.
-- Port groups, the `1xxxx` range brickKit reserves and the `2xxxx` range for out-of-band host ports: [07-registries.md](../docs/en/01-conventions/07-registries.md#ports).
+- Ports are allocated by group (the section comments in `ports.tsv`); the `1xxxx` range is BrickKit's (10000 + container port, mapped for processes on this machine), out-of-band host ports use `2xxxx`. The shell column is a deployment choice, settled after the experiment (D40).
+- A retired component keeps its row with `retired <date>: <reason>` in the note; its name, ports and schema are never handed out again. `schemas.tsv`'s `role` is the runtime role; the owner role is always `<schema>_owner` (protocol 14).
 - After any change, `make registry-check`.
