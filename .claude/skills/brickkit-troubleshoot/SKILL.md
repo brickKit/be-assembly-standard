@@ -160,6 +160,7 @@ docker / podman 用就留着，否则删掉。
 | `PROJECT_EXISTS` | `brickkit init <名字>` 的目录已存在且不空（或是个文件） | 换个名字；或者进去跑不带名字的 `brickkit init` |
 | `INVALID_ARGUMENT` | 命令行写错（退出码 2）：未知命令或参数，组件 ID、版本格式不对 | `brickkit <命令> --help` |
 | `COMPONENT_NOT_FOUND` | 安装源里没有这个组件或这个版本；Git 仓库没有这个版本的 tag | 核对 ID 和 `sources:`；请作者 `brickkit release` 这个版本 |
+| `VERSION_CHANGED` | 一个已发布版本的 Git tag 被挪到了别的提交（删掉后又打了一次）；作为警告时，是这次 fetch 刚发现它被挪过 | 请作者发新版本并升级；确实要把重发的内容当作这个版本，删掉报错里点名的两个目录 |
 | `COMPONENT_BLOCKED` | 市场把这个组件版本下架了 | 换一个版本 |
 | `COMPONENT_DISABLED` | 钉住要跑的组件（`enabled` / `local` / `debug`）有个强依赖写了 `disable` | 两个意图矛盾，去掉其中一个 |
 | `MANIFEST_INVALID` | 某个 `component.yaml` 不合法，报错点名字段 | 由组件作者修（在组件仓库里 `brickkit lint`） |
@@ -233,4 +234,4 @@ docker / podman 用就留着，否则删掉。
 - 组件自己的说明（配置怎么填、依赖为什么要）：`.brickkit/manifests/<scope>/<name>/<版本>/BRICKKIT.md`
 - 「为什么这样设计」的完整论证与全部错误码：<https://github.com/brickKit/brickKit> 根目录 `AGENTS.zh.md`
 
-<!-- brickkit:skill version=v1.4.1 sum=sha256:23c4a763de58905cfb13c7b0adb38232f037b44d85ee1b8be3a75009b53d8d60 -->
+<!-- brickkit:skill version=v1.5.0 sum=sha256:ca8da4f5611bd14d9b2830c3b2c6370ca9462abb3be860228d5b78ff8a5f1059 -->

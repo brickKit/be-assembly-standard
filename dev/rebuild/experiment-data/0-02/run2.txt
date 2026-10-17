@@ -1,0 +1,149 @@
+# 0-02 run 2 (2026-10-17), BrickKit CLI v1.5.0, git source baseUrl file://<scratch>/remotes/, XDG_CACHE_HOME=<scratch>/cache; script: same steps as run 1 plus the A2-before-fetch, A2b and A3 cases
+== first release 0.1.0 (FIRST) ==
+$ brickkit release
+✅ Released demo/hello@0.1.0: tag 0.1.0 pushed
+[exit 0]
+$ git ls-remote --tags origin
+912a06d3e662483a5dd0777dd64e0a37b9572bf2	refs/tags/0.1.0
+[exit 0]
+== p1 consumer: add demo/hello@0.1.0 ==
+$ brickkit add demo/hello@0.1.0 --yes
+➕ Adding demo/hello@0.1.0
+   ✅ demo/hello@0.1.0
+📝 Written: brickkit.yaml, deploy.yaml
+[exit 0]
+     description: FIRST content of 0.1.0
+BRICKKIT.md
+component.yaml
+docs.list
+signature.json
+== user-level bare cache ==
+<scratch>/cache/brickkit/repos/local/tmp
+<scratch>/cache/brickkit/repos/local/tmp
+BARE=<bare cache>
+$ git -C <bare cache> rev-parse 0.1.0
+912a06d3e662483a5dd0777dd64e0a37b9572bf2
+[exit 0]
+== republish 0.1.0 with SECOND content ==
+$ git tag -d 0.1.0
+Deleted tag '0.1.0' (was 912a06d)
+[exit 0]
+$ git push -q origin :refs/tags/0.1.0
+[exit 0]
+$ brickkit release
+✅ Released demo/hello@0.1.0: tag 0.1.0 pushed
+[exit 0]
+$ git ls-remote --tags origin
+86592a26b2ec451c936a9fcc2e42f22edfd2589e	refs/tags/0.1.0
+[exit 0]
+== A2 same project, no network: brickkit sync (bare cache still old) ==
+$ brickkit sync
+📂 The workspace needs no tidying
+   There is no component source under components to archive or activate
+[exit 0]
+$ brickkit up --dry-run
+🚀 Starting project p1 (target: docker)
+📋 Component state calculation:
+   ✅ demo/hello@0.1.0  starting (top-level)
+
+📋 Start order (topological sort):
+   1. demo-hello-0-1-0  no dependencies
+
+Can start on their own: demo-hello-0-1-0 (no dependencies)
+📄 Generated: .brickkit/generated/compose.yaml
+
+💡 --dry-run only generates the files and starts no component
+   View it: cat .brickkit/generated/compose.yaml
+[exit 0]
+     description: FIRST content of 0.1.0
+== A1 same project: brickkit fetch demo/hello@0.1.0 ==
+$ brickkit fetch demo/hello@0.1.0
+⚠️ Version tag 0.1.0 was moved to another commit; the repository's copy follows the remote
+   Repository: file://<scratch>/remotes/demo-hello
+   The tag was at: 912a06d3e662
+   The tag is now at: 86592a26b2ec
+   Suggestion: A released version never changes: whoever moved the tag should release a new version number instead, and the projects using it upgrade to that
+❌ Error: demo/hello@0.1.0 is no longer what this project cached: its version tag was moved after the release
+   Repository: file://<scratch>/remotes/demo-hello
+   Tag looked for: 0.1.0
+   Cached from commit: 912a06d3e662
+   The tag is now at: 86592a26b2ec
+   Suggestions:
+   1. A released version never changes: whoever moved the tag should release a new version number instead, and the projects using it upgrade to that
+   2. To take the republished content as this version anyway, delete .brickkit/manifests/demo/hello/0.1.0 and .brickkit/artifacts/demo-hello-0-1-0, then run the command again
+{"time":"…","level":"ERROR","message":"Command failed","command":"brickkit fetch","elapsed_ms":61,"error_code":"VERSION_CHANGED","error":"VERSION_CHANGED: Error: demo/hello@0.1.0 is no longer what this project cached: its version tag was moved after the release; Repository=file://<scratch>/remotes/demo-hello; Tag looked for=0.1.0; Cached from commit=912a06d3e662; The tag is now at=86592a26b2ec","exit_code":1}
+[exit 1]
+$ git -C <bare cache> rev-parse 0.1.0
+86592a26b2ec451c936a9fcc2e42f22edfd2589e
+[exit 0]
+     description: FIRST content of 0.1.0
+== A2b same project after the bare cache caught up: sync / up --dry-run ==
+$ brickkit sync
+❌ Error: demo/hello@0.1.0 is no longer what this project cached: its version tag was moved after the release
+   Repository: file://<scratch>/remotes/demo-hello
+   Tag looked for: 0.1.0
+   Cached from commit: 912a06d3e662
+   The tag is now at: 86592a26b2ec
+   Suggestions:
+   1. A released version never changes: whoever moved the tag should release a new version number instead, and the projects using it upgrade to that
+   2. To take the republished content as this version anyway, delete .brickkit/manifests/demo/hello/0.1.0 and .brickkit/artifacts/demo-hello-0-1-0, then run the command again
+{"time":"…","level":"ERROR","message":"Command failed","command":"brickkit sync","elapsed_ms":5,"error_code":"VERSION_CHANGED","error":"VERSION_CHANGED: Error: demo/hello@0.1.0 is no longer what this project cached: its version tag was moved after the release; Repository=file://<scratch>/remotes/demo-hello; Tag looked for=0.1.0; Cached from commit=912a06d3e662; The tag is now at=86592a26b2ec","exit_code":1}
+[exit 1]
+$ brickkit up --dry-run
+🚀 Starting project p1 (target: docker)
+❌ Error: demo/hello@0.1.0 is no longer what this project cached: its version tag was moved after the release
+   Repository: file://<scratch>/remotes/demo-hello
+   Tag looked for: 0.1.0
+   Cached from commit: 912a06d3e662
+   The tag is now at: 86592a26b2ec
+   Suggestions:
+   1. A released version never changes: whoever moved the tag should release a new version number instead, and the projects using it upgrade to that
+   2. To take the republished content as this version anyway, delete .brickkit/manifests/demo/hello/0.1.0 and .brickkit/artifacts/demo-hello-0-1-0, then run the command again
+{"time":"…","level":"ERROR","message":"Command failed","command":"brickkit up","elapsed_ms":5,"error_code":"VERSION_CHANGED","error":"VERSION_CHANGED: Error: demo/hello@0.1.0 is no longer what this project cached: its version tag was moved after the release; Repository=file://<scratch>/remotes/demo-hello; Tag looked for=0.1.0; Cached from commit=912a06d3e662; The tag is now at=86592a26b2ec","exit_code":1}
+[exit 1]
+== A3 follow the error's advice: delete the two directories, fetch again ==
+$ brickkit fetch demo/hello@0.1.0
+ℹ️ demo/hello@0.1.0 declares no artifacts, so there is nothing to download
+   Artifacts are declared by the component author under artifacts in component.yaml
+[exit 0]
+     description: SECOND content of 0.1.0
+$ brickkit up --dry-run
+🚀 Starting project p1 (target: docker)
+📋 Component state calculation:
+   ✅ demo/hello@0.1.0  starting (top-level)
+
+📋 Start order (topological sort):
+   1. demo-hello-0-1-0  no dependencies
+
+Can start on their own: demo-hello-0-1-0 (no dependencies)
+📄 Generated: .brickkit/generated/compose.yaml
+
+💡 --dry-run only generates the files and starts no component
+   View it: cat .brickkit/generated/compose.yaml
+[exit 0]
+== B fresh project p2, same user cache (reset bare cache tag to old first) ==
+Updated tag '0.1.0' (was 86592a2)
+$ git -C <bare cache> rev-parse 0.1.0
+912a06d3e662483a5dd0777dd64e0a37b9572bf2
+[exit 0]
+$ brickkit add demo/hello@0.1.0 --yes
+⚠️ Version tag 0.1.0 was moved to another commit; the repository's copy follows the remote
+   Repository: file://<scratch>/remotes/demo-hello
+   The tag was at: 912a06d3e662
+   The tag is now at: 86592a26b2ec
+   Suggestion: A released version never changes: whoever moved the tag should release a new version number instead, and the projects using it upgrade to that
+➕ Adding demo/hello@0.1.0
+   ✅ demo/hello@0.1.0
+📝 Written: brickkit.yaml, deploy.yaml
+[exit 0]
+     description: SECOND content of 0.1.0
+$ git -C <bare cache> rev-parse 0.1.0
+86592a26b2ec451c936a9fcc2e42f22edfd2589e
+[exit 0]
+== C fresh project p3, fresh user cache ==
+$ brickkit add demo/hello@0.1.0 --yes
+➕ Adding demo/hello@0.1.0
+   ✅ demo/hello@0.1.0
+📝 Written: brickkit.yaml, deploy.yaml
+[exit 0]
+     description: SECOND content of 0.1.0

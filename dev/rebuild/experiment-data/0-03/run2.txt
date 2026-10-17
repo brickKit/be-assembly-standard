@@ -1,0 +1,179 @@
+# 0-03 run 2 (2026-10-17), BrickKit CLI v1.5.0, git install source with repo: (FRR-003); probe-py depends on probe-go; script r003.sh
+
+== monorepo with probes/go and probes/py; probe-py depends on probe-go ==
+$ cat probes/py/component.yaml
+dependencies:
+  components:
+    - test/probe-go@0.1.0
+
+$ brickkit release
+✅ Released test/probe-go@0.1.0: tag test-probe-go/0.1.0 pushed
+[exit 0]
+$ brickkit release
+✅ Released test/probe-py@0.1.0: tag test-probe-py/0.1.0 pushed
+[exit 0]
+$ git tag probes/go/v0.1.0
+[exit 0]
+$ git push -q origin probes/go/v0.1.0
+[exit 0]
+$ git ls-remote --tags origin
+886703b4f6ec7d1eb1591b2a02d18eb65d149597	refs/tags/probes/go/v0.1.0
+886703b4f6ec7d1eb1591b2a02d18eb65d149597	refs/tags/test-probe-go/0.1.0
+886703b4f6ec7d1eb1591b2a02d18eb65d149597	refs/tags/test-probe-py/0.1.0
+[exit 0]
+
+== consumer c1: repo source, add only test/probe-py (probe-go must come in as its dependency) ==
+$ cat brickkit.yaml
+sources:
+  - name: local-dev
+    type: local
+    path: ./components      # brickkit init already created this directory
+  - name: local-shells
+    type: local
+    path: ./shell           # shells (kind: shell) are project code: brickkit new --shell writes here
+  - name: acceptance
+    type: git
+    repo: file://<scratch>/remotes/be-acceptance.git
+  # More sources: uncomment and fill in the address
+  # - name: company-git
+  #   type: git
+  #   baseUrl: https://git.example.com/components/
+  # - name: market
+  #   type: market
+  #   url: https://market.example.com/api/v1
+
+components: []
+$ brickkit add test/probe-py@0.1.0 --yes
+➕ Adding test/probe-py@0.1.0
+   ✅ test/probe-go@0.1.0
+   ✅ test/probe-py@0.1.0
+📝 Written: brickkit.yaml, deploy.yaml
+[exit 0]
+$ cat brickkit.yaml
+components:
+  - id: test/probe-go
+    version: 0.1.0
+  - id: test/probe-py
+    version: 0.1.0
+$ cat deploy.yaml
+# deploy.yaml — how this project is deployed: the target, and which components run and how.
+# The team file: commit it. Your personal copy is deploy.local.yaml (brickkit local on).
+target: docker # docker | podman | k8s
+
+components:
+  - id: test/probe-go
+  - id: test/probe-py
+$ ls config
+vars.yaml
+[exit 0]
+$ brickkit lint --all
+✅ brickkit.yaml
+✅ deploy.yaml
+✅ cross-file: brickkit.yaml ↔ deploy.yaml ↔ config/
+⚠️ [DOC_PLACEHOLDER] a placeholder (TODO) is still in the text
+   File: AGENTS.md
+   Line: 7
+⚠️ [DOC_PLACEHOLDER] a placeholder (TODO) is still in the text
+   File: AGENTS.md
+   Line: 11
+⚠️ [DOC_PLACEHOLDER] a placeholder (TODO) is still in the text
+   File: AGENTS.md
+   Line: 15
+⚠️ [DOC_PLACEHOLDER] a placeholder (TODO) is still in the text
+   File: AGENTS.md
+   Line: 19
+
+📋 Checked 4 files: 0 with errors, 4 warnings
+[exit 0]
+$ brickkit up --dry-run
+🚀 Starting project c1 (target: docker)
+📋 Component state calculation:
+   ✅ test/probe-go@0.1.0  starting (test/probe-py needs it)
+   ✅ test/probe-py@0.1.0  starting (top-level)
+
+📋 Start order (topological sort):
+   1. test-probe-go-0-1-0  no dependencies
+   2. test-probe-py-0-1-0  ← depends on 1
+
+Can start on their own: test-probe-go-0-1-0 (no dependencies)
+Longest dependency chain (2 levels): test-probe-go-0-1-0 → test-probe-py-0-1-0
+
+Dependency graph:
+   test/probe-py@0.1.0 → test/probe-go@0.1.0
+📄 Generated: .brickkit/generated/compose.yaml
+
+💡 --dry-run only generates the files and starts no component
+   View it: cat .brickkit/generated/compose.yaml
+[exit 0]
+$ brickkit deps
+test/probe-py@0.1.0
+└── test/probe-go@0.1.0
+[exit 0]
+
+== consumer c2: repo source, add test/probe-go directly ==
+$ brickkit add test/probe-go@0.1.0 --yes
+➕ Adding test/probe-go@0.1.0
+   ✅ test/probe-go@0.1.0
+📝 Written: brickkit.yaml, deploy.yaml
+[exit 0]
+$ cat brickkit.yaml
+components:
+  - id: test/probe-go
+    version: 0.1.0
+$ brickkit lint --all
+✅ brickkit.yaml
+✅ deploy.yaml
+✅ cross-file: brickkit.yaml ↔ deploy.yaml ↔ config/
+⚠️ [DOC_PLACEHOLDER] a placeholder (TODO) is still in the text
+   File: AGENTS.md
+   Line: 7
+⚠️ [DOC_PLACEHOLDER] a placeholder (TODO) is still in the text
+   File: AGENTS.md
+   Line: 11
+⚠️ [DOC_PLACEHOLDER] a placeholder (TODO) is still in the text
+   File: AGENTS.md
+   Line: 15
+⚠️ [DOC_PLACEHOLDER] a placeholder (TODO) is still in the text
+   File: AGENTS.md
+   Line: 19
+
+📋 Checked 4 files: 0 with errors, 4 warnings
+[exit 0]
+$ brickkit up --dry-run
+🚀 Starting project c2 (target: docker)
+📋 Component state calculation:
+   ✅ test/probe-go@0.1.0  starting (top-level)
+
+📋 Start order (topological sort):
+   1. test-probe-go-0-1-0  no dependencies
+
+Can start on their own: test-probe-go-0-1-0 (no dependencies)
+📄 Generated: .brickkit/generated/compose.yaml
+
+💡 --dry-run only generates the files and starts no component
+   View it: cat .brickkit/generated/compose.yaml
+[exit 0]
+
+== user-level bare caches ==
+<bare cache>/be-acceptance.git
+
+== error case: a tag that holds no component with that id ==
+$ brickkit add test/probe-x@0.1.0 --yes
+❌ Error: the component.yaml of test/probe-x is unusable
+   Install source: acceptance (git)
+   Reason: tag test-probe-x/0.1.0 has no component.yaml whose metadata.id is test/probe-x
+   Component files in the tag: probes/go (test/probe-go), probes/py (test/probe-py)
+   Component: test/probe-x@0.1.0
+   Suggestion: In a repository source each version is the tag <scope>-<name>/<version> on a commit that holds the component in a subdirectory (brickkit release run in that subdirectory tags it this way); the component is found there by its metadata.id
+{"time":"…","level":"ERROR","message":"Command failed","command":"brickkit add","elapsed_ms":27,"error_code":"MANIFEST_INVALID","error":"MANIFEST_INVALID: Error: the component.yaml of test/probe-x is unusable; Install source=acceptance (git); Reason=tag test-probe-x/0.1.0 has no component.yaml whose metadata.id is test/probe-x; Component files in the tag=probes/go (test/probe-go), probes/py (test/probe-py); Component=test/probe-x@0.1.0","exit_code":1}
+[exit 1]
+
+== error case: one tag with the same id twice ==
+$ brickkit upgrade test/probe-go@0.2.0 --yes
+❌ Error: the component.yaml of test/probe-go is unusable
+   Install source: acceptance (git)
+   Reason: tag test-probe-go/0.2.0 has more than one component.yaml whose metadata.id is test/probe-go: probes/go, probes/go2
+   Component: test/probe-go@0.2.0
+   Suggestion: Keep one copy of each component in the repository: which directory a component is in is found by its metadata.id, so a second copy makes it ambiguous
+{"time":"…","level":"ERROR","message":"Command failed","command":"brickkit upgrade","elapsed_ms":40,"error_code":"MANIFEST_INVALID","error":"MANIFEST_INVALID: Error: the component.yaml of test/probe-go is unusable; Install source=acceptance (git); Reason=tag test-probe-go/0.2.0 has more than one component.yaml whose metadata.id is test/probe-go: probes/go, probes/go2; Component=test/probe-go@0.2.0","exit_code":1}
+[exit 1]

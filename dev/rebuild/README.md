@@ -31,15 +31,15 @@
 | 实验矩阵 | 6 形态 × 3 拓扑打底，五套测试（A 矩阵、B 对照、C 故障、D 多版本、E 多实例多库）；正确性先于性能；工时不限，一项项测、测完一项记一项 | experiment-plan.md |
 | `mode: local` | BrickKit 回复不做长期运行的本机部署；本机进程三行只量资源与通信，标“不推荐”（图省事的另类模式） | FRR-001 已关闭（v1.4.2 复测通过） |
 | 记录方式 | 档案（给 AI，详细、先结论、表格优先）+ 报告（给用户，含“用什么测的”与额外发现的表）+ 原始数据 | experiment-plan.md 的“记录与报告” |
-| BrickKit CLI | 项目要求升到 v1.4.2 | `infra/scripts/lib/require-brickkit.sh` |
+| BrickKit CLI | 项目要求升到 v1.5.0（2026-10-17；项目技能同步更新） | `infra/scripts/lib/require-brickkit.sh` |
 
 **第 0 步的进度**：
 
 | 编号 | 项 | 状态 |
 | --- | --- | --- |
 | 0-01 | `GOPRIVATE` 绕过 Go 代理与校验和库 | 完成；因 A110 已不需要，留作历史 |
-| 0-02 | 同号重发与 BrickKit 两层缓存 | 完成；缓存会静默给出旧内容（FRR-002），因 A110 已不需要处理 |
-| 0-03 | 一个仓库放多个组件（探针） | 完成；`add` 加不进子目录组件，须手写三层（FRR-003） |
+| 0-02 | 同号重发与 BrickKit 两层缓存 | 完成；缓存会静默给出旧内容；v1.5.0 起报 `VERSION_CHANGED`（FRR-002 复测通过） |
+| 0-03 | 一个仓库放多个组件（探针） | 完成；v1.5.0 起安装源可写 `repo`，探针用 `brickkit add` 加入，不再手写三层（FRR-003 复测通过） |
 | 0-04 | Go 外壳承载成员（外壳自己的 `go.mod` 引入成员模块；BrickKit 只核对成员版本，不替外壳编译）；成员版本不一致时被拒 | **下一项**。先用最小的桩组件（几行的 Go HTTP 服务）在草稿目录做，模块取法用本地 `replace`；从 GitHub 按标签取的那一半，在第 4 步建外壳时验证 |
 | 0-05 | 全部组件与外壳 `mode: local`（`target: docker`，基础资源在 Docker） | 未开始 |
 | 0-06 | 本机进程与 Podman 混合 | 未开始 |
@@ -53,11 +53,11 @@
 
 第 0 步全部做完后停下汇报，再进第 1 步（仓库动作，先列清单请用户确认）。
 
-**未推送的提交**：会话结束时 `main` 比 `origin/main` 多 5 个提交（7aad7d4 到 2d5c525），用户没有要求推送。
+**未推送的提交**：`main` 比 `origin/main` 多若干提交（从 7aad7d4 起），用户没有要求推送；以 `git log origin/main..main` 为准。
 
 **已知、暂不处理**：`infra/scripts/tests/test_ship_dryrun.sh` 失败——旧的 `ship.sh` 还调用旧 `be-acceptance` 的命令，迁移后已不存在；发布工具随重建重新提供，届时一并处理。
 
-**给 BrickKit 的收件箱** `brickkit-feedback/rebuild.md`：FRR-001 已关闭；FRR-002（缓存与远端标签不一致时提示）、FRR-003（`add` 支持子目录组件）等回复。
+**给 BrickKit 的收件箱** `brickkit-feedback/rebuild.md`：FRR-001、FRR-002、FRR-003 全部关闭（2026-10-17 用 v1.5.0 复测）；没有未回复的条目。
 
 ## 任务结束时：知识库反馈
 

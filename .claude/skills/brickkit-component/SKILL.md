@@ -175,7 +175,7 @@ shell:
 
 版本号只取 `metadata.version`。`release` 先检查：能通过校验、组件目录干净、有上游且没有未推送的
 提交、tag 不存在；然后打 tag 并推送，推送失败就删掉本地 tag。tag 是 `1.2.0`（没有 `v`），
-monorepo 子目录里的组件是 `<scope>-<name>/1.2.0`。组件仓库里自己的 `brickkit.yaml`（本地联调
+monorepo 子目录里的组件是 `<scope>-<name>/1.2.0`（使用方把这个仓库声明成写 `repo` 的安装源）。组件仓库里自己的 `brickkit.yaml`（本地联调
 工作台）不影响发布什么——`release` 只读 `component.yaml`——但它的文件照样算进"组件目录干净"：
 把工作台（`brickkit.yaml`、`deploy.yaml`、`config/`、`.gitignore`）提交进去，否则 `release` 会拒绝。
 只在本地、从没推送过的 tag 不算发布：推上去或者删掉。发到市场是另一条命令 `brickkit publish`。
@@ -226,4 +226,4 @@ PEOPLE_BASIC_GRPC_ENDPOINT=http://people-basic-1-0-0:9090
 - 完整规范：<https://github.com/brickKit/brickKit> 根目录 `AGENTS.zh.md`
 - 别的组件的写法样例：你项目里 `.brickkit/manifests/` 下缓存的 `component.yaml` 与 `BRICKKIT.md`
 
-<!-- brickkit:skill version=v1.4.1 sum=sha256:93a80b92752ff5d4b3b890c2e7f2a1a226b05afee78d0e65b931509d03d57c21 -->
+<!-- brickkit:skill version=v1.5.0 sum=sha256:e6d328090781bd807fc558770b513f504f0555deafdda23e22e2fed1e5e6f2a4 -->
