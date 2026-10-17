@@ -46,8 +46,8 @@
 | 0-06 | 本机进程与 Podman 混合 | 完成（2026-10-17）；全部容器、外壳在容器、外壳在本机三种布局都通；无根 Podman 的 `host-gateway` 可用；正式跑 P、LP 行时基础资源只起 Podman 那套 |
 | 0-07 | minikube 跑 BrickKit 生成的 K8s 清单（含外壳）；`local`、`debug` 不能配 `k8s` | 完成（2026-10-17）；v1.7.2 起外壳成员的地址写成员自己的服务名，K8s 上调用链通（FRB-004 关闭）。镜像要 `minikube image load`；没有 kubectl，用转给 `minikube kubectl --` 的小脚本 |
 | 0-08 | 同一组件两个版本并存（BrickKit 多版本共存：`requiredBy`） | 完成（2026-10-17）；`add` 自动保留兼容版本，外壳只编进一个版本、另一个单独运行；迁移按版本串行；迁移顺序保护有效 |
-| 0-09 | 同一组件两个副本 | **下一项**；副本数（`replicas`）只对 K8s 有意义，Docker、Podman 下要看 BrickKit 怎样处理 |
-| 0-10 | 两个 PostgreSQL 实例 | 未开始 |
+| 0-09 | 同一组件两个副本 | 完成（2026-10-17）；K8s 上通过；Docker、Podman 下 `replicas` 被忽略，套件 E 的 E1–E4 改在 K8s 两格（FRR-006，低优先级）；SDK 要做到删副本时零失败 |
+| 0-10 | 两个 PostgreSQL 实例 | **下一项** |
 | 0-11 | Podman 有根与无根 | 未开始；有根需要 `sudo`，这台机器 `sudo -n` 要密码，到时请用户执行或授权 |
 | 0-12 | 连接池代理的事务模式与 `SET LOCAL`（以及 pgx 的预编译语句） | 未开始 |
 | 0-13 | 负载与数据的试跑规模 | 推迟到有业务组件之后（第 8 步前） |
@@ -58,7 +58,7 @@
 
 **已知、暂不处理**：`infra/scripts/tests/test_ship_dryrun.sh` 失败——旧的 `ship.sh` 还调用旧 `be-acceptance` 的命令，迁移后已不存在；发布工具随重建重新提供，届时一并处理。
 
-**给 BrickKit 的收件箱** `brickkit-feedback/rebuild.md`：FRR-001 到 FRR-005、FRB-001 到 FRB-004 全部关闭（最后一次复测 2026-10-17，v1.7.2）；没有未回复的条目。
+**给 BrickKit 的收件箱** `brickkit-feedback/rebuild.md`：FRR-001 到 FRR-005、FRB-001 到 FRB-004 全部关闭（最后一次复测 2026-10-17，v1.7.2）；FRR-006（Docker、Podman 下支持 `replicas`，低优先级，不挡路）等回复。
 
 ## 任务结束时：知识库反馈
 
