@@ -86,28 +86,45 @@
 
 ## 8. 原始数据
 
-`dev/rebuild/experiment-data/0-04/run1.txt`（含生成脚本 `r004-setup.sh`）；v1.6.0 复测见第 9 节与 `run2.txt`
+`dev/rebuild/experiment-data/0-04/run1.txt`（含生成脚本 `r004-setup.sh`）；之后的复测见第 9 节
 
-## 9. v1.6.0 复测（2026-10-17）
+## 9. v1.6.0、v1.6.1 复测（2026-10-17）
 
-BrickKit 对 FRR-004 的回复：`build` 仍拒绝用 0.2.0 的源码打 0.1.0 的镜像，报错加一行“本地仓库是哪个版本”，并给出两条出路（在仓库里检出项目固定的版本再构建；或 `upgrade` 到仓库的版本）；`git -C` 的路径按当前目录写。同一版本还改了一处行为：只写 `deployment.image` 的组件，来自本地源也一律拉取，不再按根目录的 `Dockerfile` 构建。
+### 9.1 结论
 
-用 CLI v1.6.0、同一个 `r004-setup.sh` 重建桩项目，把 alpha 的工作区改成 0.2.0（`component.yaml` 与 `Version`），项目仍固定 0.1.0：
+**通过**，FRR-004 与 FRB-001 关闭。
 
-| 步 | 结果 |
-| --- | --- |
-| C3b：项目根目录 `build demo/alpha@0.1.0` | 照旧拒绝（`COMPONENT_NOT_FOUND`）；多出 `Local repository: components/demo/alpha holds 0.2.0, not this version` 与两条建议：`git -C components/demo/alpha checkout 0.1.0` 构建后切回；`brickkit upgrade demo/alpha@0.2.0`（并说明别的组件还依赖的旧版本会留下、要有自己的镜像） |
-| 同一命令在 `config/` 里跑 | 路径改成 `../components/demo/alpha`，照着敲能用 |
-| alpha 做成 git 仓库（标签 `0.1.0`、`0.2.0`，工作区在 0.2.0）后重跑 | 报错与建议同上 |
-| 照建议 1：检出 `0.1.0`、`build`、切回 | 构建成功；切回后工作区回到 0.2.0 |
-| beta 只写 `deployment.image`，目录里留着 `Dockerfile` | `lint --all` 警告：“declares only deployment.image … the Dockerfile next to it is never used”，建议写 `build: {dockerfile: Dockerfile}` |
-| 点名 `build demo/beta@0.1.0` | 直接报“declares no deployment.build, so there is nothing to build”，不再交给 Docker |
-| beta 挪出外壳后 `up --dry-run` | compose 里 beta 只有 `image: demo-beta-imageonly:0.1.0`，没有构建段，即拉取 |
+| 项 | BrickKit 的改动 | 复测结果 |
+| --- | --- | --- |
+| C3b 的报错（FRR-004，v1.6.0） | `build` 仍拒绝用 0.2.0 的源码打 0.1.0 的镜像，但写出本地仓库里的版本，给出两条出路：在仓库里检出项目固定的版本再构建；或 `upgrade` 到仓库的版本。`git -C` 的路径按当前目录写 | 符合 |
+| 只写 `deployment.image` 的组件（通知，v1.6.0） | 来自本地源也一律拉取，不再按根目录的 `Dockerfile` 构建；`lint`、`build` 警告没用上的 `Dockerfile` | 符合；但 `up` 不警告，工作区改过的代码静默不生效（FRB-001） |
+| `up` 的警告（FRB-001，v1.6.1） | `up`（含 `--dry-run`）对要用镜像启动的组件做同一项检查，给出同一条警告，照常启动 | 符合 |
 
-接着验证这一变化有没有静默的一面（`run3.txt`）：beta 只写 `image`、旁边有 `Dockerfile`，引擎里已有这个标签的旧镜像，工作区改了 beta 的代码后直接 `up`。`up` 与 `status` 全绿、没有任何警告，`/api/chain` 回答的是旧代码；同一项目 `lint --all` 才给出那条警告。源码里这条警告只在 `lint` 与 `build` 调用，`up` 没有。已写给 BrickKit（FRB-001）。
+**对重建的影响**：新组件带代码、要在本机构建的，`component.yaml` 必须写 `deployment.build`（项目技能 `brickkit-component` 已写明）。旧的 `components/frontend/standard`（1.0.1）只写了 `image`；它不在 `brickkit.yaml` 里，属于将从零重建的 2.x 代码（D59），不改。
 
-两处小地方，不再反馈：alpha 不是 git 仓库时建议 1 照样写 `git -C … checkout`（这时用不上，另两条够用）；`lint` 的这条警告借用了 `MANIFEST_INVALID` 这个错误码。
+### 9.2 怎样测
 
-**结论**：通过，FRR-004 关闭。**对重建的影响**：新组件带代码、要在本机构建的，`component.yaml` 必须写 `deployment.build`（项目技能 `brickkit-component` 已随 v1.6.0 写明）。旧的 `components/frontend/standard`（1.0.1）只写了 `image`，按回复升级后会拉取而不是构建；它不在 `brickkit.yaml` 里、属于将从零重建的 2.x 代码（D59），不改。
+同一个 `r004-setup.sh` 重建桩项目。
 
-原始数据：`dev/rebuild/experiment-data/0-04/run2.txt`（含 `run2.sh`）、`run3.txt`（含 `run3.sh`）。
+- C3b：alpha 的工作区改成 0.2.0（`component.yaml` 与 `Version`），项目仍固定 0.1.0，分别在项目根目录与 `config/` 里 `build demo/alpha@0.1.0`；再把 alpha 做成 git 仓库（标签 `0.1.0`、`0.2.0`，工作区在 0.2.0）重做一遍。
+- 只写 `image`：beta 只写 `image`、目录里留着 `Dockerfile`；引擎里先放一份用发布时的代码构建的同标签镜像（代替 registry 里那份）；然后改工作区里 beta 的代码（版本不变），用 C1 的布局（alpha 在外壳里，beta 单独运行）直接 `up`，看 `/api/chain` 回答的是哪份代码。
+
+### 9.3 结果
+
+| 步 | CLI | 结果 |
+| --- | --- | --- |
+| C3b，项目根目录 | v1.6.0 | 照旧拒绝（`COMPONENT_NOT_FOUND`）；多出 `Local repository: components/demo/alpha holds 0.2.0, not this version` 与两条建议，`upgrade` 那条说明别的组件还依赖的旧版本会留下、要有自己的镜像 |
+| C3b，`config/` 里 | v1.6.0 | 路径改成 `../components/demo/alpha`，照着敲能用 |
+| C3b，alpha 是 git 仓库 | v1.6.0 | 报错与建议同上；照建议 1 检出 `0.1.0`、`build`、切回，构建成功，工作区回到 0.2.0 |
+| 只写 `image`：`lint --all` | v1.6.0 | 警告 “declares only deployment.image … the Dockerfile next to it is never used”，建议写 `build: {dockerfile: Dockerfile}` |
+| 只写 `image`：点名 `build demo/beta@0.1.0` | v1.6.0 | 报 “declares no deployment.build, so there is nothing to build”，不再交给 Docker |
+| 只写 `image`：beta 挪出外壳后 `up --dry-run` | v1.6.0 | compose 里 beta 只有 `image:`，没有构建段，即拉取 |
+| 只写 `image`：直接 `up` | v1.6.0 | **没有任何警告**，`up` 与 `status` 全绿；容器跑发布的镜像，`/api/chain` 回答的是旧代码。源码里这条警告只在 `lint` 与 `build` 调用 |
+| 只写 `image`：`up --dry-run`、`up` | v1.6.1 | 两次都在启动前给出同一条警告，照常启动（回答的仍是旧代码，这是声明的行为） |
+| beta 改写 `build: {dockerfile: Dockerfile}` | v1.6.1 | 警告消失；`up` 报 `IMAGE_MISSING`，要求先 `build demo/beta@0.1.0`；构建后 `up`，回答的是工作区的新代码 |
+
+两处小地方，不再反馈：alpha 不是 git 仓库时建议 1 照样写 `git -C … checkout`（这时用不上，另两条够用）；`lint` 的这条警告借用了 `MANIFEST_INVALID` 这个错误码。回复说的“外壳承载、要跑迁移的成员也查”没有测：桩成员没有迁移。
+
+### 9.4 原始数据
+
+`dev/rebuild/experiment-data/0-04/` 下：`run2.txt`（v1.6.0，C3b 与只写 `image` 的通知）、`run3.txt`（v1.6.0，`up` 静默运行旧镜像）、`run4.txt`（v1.6.1，FRB-001 复测）；各自附生成它的脚本。

@@ -419,7 +419,7 @@ Go 先做完整（D75），本实验用到的部分必须做完；Python 只做�
 ```markdown
 ### D·H2 Docker · 全部进外壳（两个 Go 外壳加 Python 外壳）
 
-- 环境：Linux 7.0.0，12 核，14 GiB；Docker 29.7.1；BrickKit v1.6.0
+- 环境：Linux 7.0.0，12 核，14 GiB；Docker 29.7.1；BrickKit v1.6.1
 - 版本：be-go-core 3.0.2、be-go-infra 3.0.2、be-py-render 3.0.1；成员 erp/sales 3.1.0 …（完整列表）
 - 命令：`make -C tools/be-acceptance cell SUITE=A CELL=D.H2 RUNS=3`
 
