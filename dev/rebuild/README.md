@@ -18,7 +18,7 @@
 ## 现在在哪里
 
 - 设计冻结、正式文档迁移已完成（[migration-plan.md](migration-plan.md)）；AI 选择 A99–A110 记在 `docs/zh/02-decisions/09-ai-choices.md`（A109 驻留期起始值待复核，其余已确认）。
-- **代表部署实验（D41）进行中**：计划 [experiment-plan.md](experiment-plan.md) 用户 2026-10-16 说“开始”，按计划执行；当前在**第 0 步**（机制验证，不动远端仓库）。档案在 [experiment-records/](experiment-records/README.md)，原始输出在 `experiment-data/`。
+- **代表部署实验（D41）进行中**：计划 [experiment-plan.md](experiment-plan.md) 用户 2026-10-16 说“开始”，按计划执行；第 0–2 步已完成，当前在**第 3 步**（见下文交接）。档案在 [experiment-records/](experiment-records/README.md)，原始输出在 `experiment-data/`。
 - 实验之后先做底层（权限、登录、冷热数据、事务、消息），再按 [rebuild-plan.md](rebuild-plan.md) 重建业务组件。
 
 ## 2026-10-16 会话结束时的交接
@@ -54,7 +54,7 @@
 | 0-12 | 连接池代理的事务模式与 `SET LOCAL`（以及 pgx 的预编译语句） | 完成（2026-10-17）；设计依赖的事务内设置都成立；pgx 默认模式要求 PgBouncer 开 `max_prepared_statements`（记进交实现核对的项） |
 | 0-13 | 负载与数据的试跑规模 | 推迟到有业务组件之后（第 8 步前） |
 
-**第 0 步与第 1 步已完成**（2026-10-17）：0-01 到 0-12 完成，0-13 按计划推迟；第 1 步的仓库动作已执行（[step1-repo-actions.md](step1-repo-actions.md)）。**正在做第 2 步**：`be-protocol` 的实验子集与 Go SDK，任务与进度在 [step2-plan.md](step2-plan.md)。
+**第 0、1、2 步已完成**（2026-10-17）：0-01 到 0-12 完成，0-13 按计划推迟；第 1 步的仓库动作已执行（[step1-repo-actions.md](step1-repo-actions.md)）；第 2 步发布了 `be-protocol` 与 `be-sdk-go` 的 `v3.0.0-alpha.1`（第 1–9 章、语义向量、功能矩阵；任务、取舍、实测发现与留到后续的项在 [step2-plan.md](step2-plan.md)）。**下一步是第 3 步**：Python 的 SDK 子集与外壳启动器、两种语言的探针与一致性剖面（`be-sdk-python`、`be-acceptance`），先照第 2 步的做法起草 `step3-plan.md`。
 
 2026-10-17 起连续推进（用户授权）：每项做完写记录、更新本文件、提交，直接做下一项；只在需要用户决定、需要 BrickKit 配合、对外难撤回的动作（第 1 步的仓库动作先列清单请用户确认；首次推送或发布标签）时停下。
 
@@ -66,8 +66,10 @@
 
 ## 任务结束时：知识库反馈
 
-把知识库反馈作为一个 PR 提交（走 `kb-contribute`）。目前草稿有三项：
+把知识库反馈作为一个 PR 提交（走 `kb-contribute`）。目前草稿有五项：
 
 1. Linux 的 `CLOCK_MONOTONIC` 在系统休眠期间停走（`CLOCK_BOOTTIME` 才计入）；知识库选主相关文档按单调时钟计租约时没有提醒这一点。提交前先在 Linux 上验证。
 2. 跨平台 D2 一节没有把 uni-app 列为 Vue 团队的 App 选项。
+4. Go 程序在 Alpine、distroless 等镜像里 `time.LoadLocation` 失败（镜像不带时区数据库）；需要按 IANA 时区算日期或定时的库应当嵌入 `time/tzdata`。知识库的 Go 容器化与时区相关文档没有提这一点。提交前在 Alpine 镜像里复现。
+5. 用 PostgreSQL 表做消息队列时，清理若等“所有订阅都读过”，一个不再回来的订阅者会让表永远增长；消息系统只是运输缓冲，应按保留期清理，离线过久的订阅者靠发件表补发与对账恢复。知识库的消息队列与发件表文档可以补一句。
 3. 项目文档“用什么方式表达”缺一处总的选择：14.04.03 只在图与表之间选；编号步骤（14.04 的操作手册、07 技术写作的一行）、填好的样例（只在 API 文档 D4）、改前改后的对比（只在知识库自己的写作规则 meta/02-writing）散在各处。建议在 14.04.03 D1 前加一张“内容的形状 → 图、表、代码、步骤、样例、文字”的表，写明这些都是按情况选的选项，同样适用于项目文档；“能用图代替的不写代码”放到项目文档里偏绝对，几行代码更直接的地方（接口形状、机制本身）应当用代码。本项目的写法见 `docs/zh/01-conventions/04-diagrams-and-tables.md` 的“先选表达方式”。
