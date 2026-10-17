@@ -1,0 +1,1637 @@
+# 0-07 run 1 (2026-10-17), BrickKit CLI v1.7.1, minikube version: v1.38.1, server v1.35.1, driver docker
+
+######## part 0: base resources in the cluster; project; images
+$ kubectl apply -f <scratchpad>/bin/r007-base.yaml
+namespace/r007-base created
+deployment.apps/pg created
+service/pg created
+deployment.apps/nats created
+service/nats created
+[exit 0]
+$ kubectl -n r007-base rollout status deploy/pg deploy/nats --timeout=180s
+Waiting for deployment spec update to be observed...
+Waiting for deployment spec update to be observed...
+Waiting for deployment "pg" rollout to finish: 0 out of 1 new replicas have been updated...
+Waiting for deployment "pg" rollout to finish: 0 of 1 updated replicas are available...
+deployment "pg" successfully rolled out
+deployment "nats" successfully rolled out
+[exit 0]
+$ brickkit add --local --yes
+➕ Adding demo/alpha@0.1.0, demo/beta@0.1.0, demo/delta@0.1.0, demo/gamma@0.1.0, demo/pyr@0.1.0, demo/pyshell@0.1.0, demo/shell@0.1.0
+   ✅ demo/alpha@0.1.0 (in shell demo/shell)
+   ✅ demo/beta@0.1.0 (in shell demo/shell)
+   ✅ demo/pyr@0.1.0 (in shell demo/pyshell)
+   ✅ demo/delta@0.1.0
+   ✅ demo/gamma@0.1.0
+   ✅ demo/pyshell@0.1.0
+   ✅ demo/shell@0.1.0
+📝 Written: brickkit.yaml, deploy.yaml
+📝 Config skeletons: config/demo-alpha.yaml, config/demo-beta.yaml, config/demo-pyr.yaml, config/demo-delta.yaml, config/demo-gamma.yaml
+   ✏️ Fill in the required keys in config/demo-alpha.yaml: NATS_URL, PG_HOST, PG_PORT
+   ✏️ Fill in the required keys in config/demo-beta.yaml: NATS_URL, PG_HOST, PG_PORT
+   ✏️ Fill in the required keys in config/demo-pyr.yaml: NATS_URL, PG_HOST, PG_PORT
+   ✏️ Fill in the required keys in config/demo-delta.yaml: NATS_URL, PG_HOST, PG_PORT
+   ✏️ Fill in the required keys in config/demo-gamma.yaml: NATS_URL, PG_HOST, PG_PORT
+[exit 0]
+target: k8s
+
+k8s:
+  context: minikube
+  namespace: r007
+  createNamespace: true
+
+vars:
+  PG_HOST: pg.r007-base.svc.cluster.local
+  NATS_URL: nats://nats.r007-base.svc.cluster.local:4222
+
+components:
+  - id: demo/delta
+  - id: demo/gamma
+  - id: demo/pyshell
+    members:
+      - id: demo/pyr
+  - id: demo/shell
+    members:
+      - id: demo/alpha
+      - id: demo/beta
+$ brickkit build
+🔨 Building demo/alpha@0.1.0 → demo-alpha:0.1.0
+✅ Built demo/alpha@0.1.0 → demo-alpha:0.1.0
+🔨 Building demo/beta@0.1.0 → demo-beta:0.1.0
+✅ Built demo/beta@0.1.0 → demo-beta:0.1.0
+🔨 Building demo/pyr@0.1.0 → demo-pyr:0.1.0
+✅ Built demo/pyr@0.1.0 → demo-pyr:0.1.0
+🔨 Building demo/delta@0.1.0 → demo-delta:0.1.0
+✅ Built demo/delta@0.1.0 → demo-delta:0.1.0
+🔨 Building demo/gamma@0.1.0 → demo-gamma:0.1.0
+✅ Built demo/gamma@0.1.0 → demo-gamma:0.1.0
+🔨 Building demo/pyshell@0.1.0 → demo-pyshell:0.1.0
+✅ Built demo/pyshell@0.1.0 → demo-pyshell:0.1.0
+🔨 Building demo/shell@0.1.0 → demo-shell:0.1.0
+✅ Built demo/shell@0.1.0 → demo-shell:0.1.0
+ℹ️  The deploy target is k8s: these images were built on this machine and the cluster cannot pull them; push them to a registry the cluster can reach (for a local cluster: minikube image load / kind load docker-image)
+[exit 0]
+minikube image load demo-shell:0.1.0
+minikube image load demo-pyshell:0.1.0
+minikube image load demo-gamma:0.1.0
+minikube image load demo-pyr:0.1.0
+minikube image load demo-delta:0.1.0
+minikube image load demo-beta:0.1.0
+minikube image load demo-alpha:0.1.0
+$ minikube image ls --format table
+┌───────────────────────────────────────────────────┬────────────────┬───────────────┬────────┐
+│                       IMAGE                       │      TAG       │   IMAGE ID    │  SIZE  │
+├───────────────────────────────────────────────────┼────────────────┼───────────────┼────────┤
+│ docker.io/brickenterprise/infra-print             │ 1.0.7          │ 65fadd8e246d4 │ 450MB  │
+│ docker.io/brickenterprise/mdm-product             │ 1.0.10         │ 50ba5ee7b33c0 │ 50.4MB │
+│ docker.io/brickenterprise/mdm-customer            │ 1.0.9          │ 4dd9986b22402 │ 50.4MB │
+│ registry.k8s.io/kube-controller-manager           │ v1.35.1        │ 8d7002962c484 │ 75.8MB │
+│ docker.io/brickenterprise/mdm-customer            │ 1.0.8          │ bb537da215536 │ 50.4MB │
+│ docker.io/library/demo-pyshell                    │ 0.1.0          │ 30338355a93a9 │ 51.9MB │
+│ docker.io/library/demo-gamma                      │ 0.1.0          │ 2331d44cb4e2d │ 17.9MB │
+│ docker.io/library/demo-pyr                        │ 0.1.0          │ 242e2f205bbf2 │ 51.9MB │
+│ docker.io/brickenterprise/be-shell-go             │ 0.5.6          │ 96f4aed33d242 │ 47.4MB │
+│ docker.io/brickenterprise/erp-finance             │ 1.0.13         │ f937ef8b31e51 │ 50.5MB │
+│ registry.k8s.io/etcd                              │ 3.6.6-0        │ 0a108f7189562 │ 62.5MB │
+│ docker.io/library/busybox                         │ 1.36           │ b116e15507444 │ 4.42MB │
+│ docker.io/library/demo-beta                       │ 0.1.0          │ a62988c4add33 │ 17.9MB │
+│ docker.io/brickenterprise/infra-bff-mobile        │ 1.0.21-k8stest │ 969b94332eab4 │ 315MB  │
+│ docker.io/brickenterprise/integration-im-dingtalk │ 1.0.5          │ cd4ff1640bda7 │ 50.3MB │
+│ docker.io/brickenterprise/infra-workflow          │ 1.0.4          │ d2d54648ff173 │ 50.4MB │
+│ docker.io/brickenterprise/frontend-standard       │ 1.0.0          │ 46736573e0d23 │ 61.5MB │
+│ docker.io/brickenterprise/frontend-standard       │ 1.0.1          │ 46736573e0d23 │ 61.5MB │
+│ docker.io/library/nats                            │ 2.10-alpine    │ 8b9f712ae2148 │ 25.5MB │
+│ gcr.io/k8s-minikube/storage-provisioner           │ v5             │ 6e38f40d628db │ 31.5MB │
+│ docker.io/library/demo-alpha                      │ 0.1.0          │ bf915247724e7 │ 17.1MB │
+│ docker.io/brickenterprise/infra-notification      │ 1.0.4          │ c5eca3bd8baa1 │ 50.4MB │
+│ registry.k8s.io/kube-scheduler                    │ v1.35.1        │ 5f2a969bc7a43 │ 51.7MB │
+│ quay.io/calico/cni                                │ v3.31.3        │ f2520fbaa2761 │ 164MB  │
+│ registry.k8s.io/pause                             │ 3.10.1         │ cd073f4c5f6a8 │ 736kB  │
+│ docker.io/brickenterprise/infra-bff-mobile        │ 1.0.19-k8stest │ d014676efa390 │ 281MB  │
+│ docker.io/brickenterprise/be-shell-go             │ 0.5.4          │ ea318d8cf4e8e │ 47.4MB │
+│ docker.io/brickenterprise/be-shell-python         │ 0.3.3          │ c6c5baa4734b7 │ 450MB  │
+│ docker.io/brickenterprise/erp-inventory           │ 1.0.17         │ cdfb7ba00ffb2 │ 50.5MB │
+│ docker.io/library/postgres                        │ 16-alpine      │ 75f5a96988cdf │ 294MB  │
+│ quay.io/calico/kube-controllers                   │ v3.31.3        │ 95bc8e4bc61e7 │ 125MB  │
+│ docker.io/library/demo-shell                      │ 0.1.0          │ ac49c961b41c9 │ 18MB   │
+│ docker.io/library/demo-delta                      │ 0.1.0          │ 5e43484741208 │ 51.9MB │
+│ docker.io/brickenterprise/infra-bff-mobile        │ 1.0.21         │ 1bb286add6431 │ 315MB  │
+│ docker.io/brickkit-demo/caller                    │ 1.0.0          │ 20f9fc8a91d00 │ 13.4MB │
+│ registry.k8s.io/kube-proxy                        │ v1.35.1        │ 6521110cdb017 │ 70.4MB │
+│ docker.io/brickenterprise/erp-sales               │ 1.0.24         │ e74b5c59341b2 │ 51MB   │
+│ docker.io/brickenterprise/infra-iam-casdoor       │ 1.0.9          │ 0fd8ec9182e8a │ 50.5MB │
+│ docker.io/brickenterprise/infra-bff-mobile        │ 1.0.19         │ e918df6d0a010 │ 281MB  │
+│ docker.io/brickenterprise/infra-authz             │ 1.0.7          │ 79fcb10841354 │ 50.3MB │
+│ docker.io/brickenterprise/erp-sales               │ 1.0.25         │ a5a0c03cc4121 │ 51MB   │
+│ docker.io/brickenterprise/mdm-customer            │ 1.0.7          │ badc3e007570d │ 50.4MB │
+│ registry.k8s.io/kube-apiserver                    │ v1.35.1        │ 6f9eeb0cff981 │ 89.8MB │
+│ docker.io/brickenterprise/crm-opportunity         │ 1.0.12         │ afd554f3bdc95 │ 50.7MB │
+│ quay.io/calico/node                               │ v3.31.3        │ f8495fa3f644a │ 410MB  │
+│ registry.k8s.io/coredns/coredns                   │ v1.13.1        │ aa5e3ebc0dfed │ 78.1MB │
+└───────────────────────────────────────────────────┴────────────────┴───────────────┴────────┘
+[exit 0]
+
+######## part 1: dry run and the manifests
+$ brickkit lint --all
+✅ brickkit.yaml
+✅ deploy.yaml
+✅ cross-file: brickkit.yaml ↔ deploy.yaml ↔ config/
+⚠️ [DOC_PLACEHOLDER] a placeholder (TODO) is still in the text
+   File: AGENTS.md
+   Line: 7
+⚠️ [DOC_PLACEHOLDER] a placeholder (TODO) is still in the text
+   File: AGENTS.md
+   Line: 11
+⚠️ [DOC_PLACEHOLDER] a placeholder (TODO) is still in the text
+   File: AGENTS.md
+   Line: 15
+⚠️ [DOC_PLACEHOLDER] a placeholder (TODO) is still in the text
+   File: AGENTS.md
+   Line: 19
+✅ components/demo/alpha/component.yaml
+✅ components/demo/beta/component.yaml
+✅ components/demo/delta/component.yaml
+✅ components/demo/gamma/component.yaml
+✅ components/demo/pyr/component.yaml
+✅ shell/demo/pyshell/component.yaml
+✅ shell/demo/shell/component.yaml
+⚠️ [DOC_FILE_MISSING] BRICKKIT.md is missing
+   File: components/demo/alpha/BRICKKIT.md
+⚠️ [DOC_FILE_MISSING] AGENTS.md is missing
+   File: components/demo/alpha/AGENTS.md
+⚠️ [DOC_FILE_MISSING] CLAUDE.md is missing
+   File: components/demo/alpha/CLAUDE.md
+⚠️ [DOC_FILE_MISSING] README.md is missing
+   File: components/demo/alpha/README.md
+⚠️ [DOC_FILE_MISSING] BRICKKIT.md is missing
+   File: components/demo/beta/BRICKKIT.md
+⚠️ [DOC_FILE_MISSING] AGENTS.md is missing
+   File: components/demo/beta/AGENTS.md
+⚠️ [DOC_FILE_MISSING] CLAUDE.md is missing
+   File: components/demo/beta/CLAUDE.md
+⚠️ [DOC_FILE_MISSING] README.md is missing
+   File: components/demo/beta/README.md
+⚠️ [DOC_FILE_MISSING] BRICKKIT.md is missing
+   File: components/demo/delta/BRICKKIT.md
+⚠️ [DOC_FILE_MISSING] AGENTS.md is missing
+   File: components/demo/delta/AGENTS.md
+⚠️ [DOC_FILE_MISSING] CLAUDE.md is missing
+   File: components/demo/delta/CLAUDE.md
+⚠️ [DOC_FILE_MISSING] README.md is missing
+   File: components/demo/delta/README.md
+⚠️ [DOC_FILE_MISSING] BRICKKIT.md is missing
+   File: components/demo/gamma/BRICKKIT.md
+⚠️ [DOC_FILE_MISSING] AGENTS.md is missing
+   File: components/demo/gamma/AGENTS.md
+⚠️ [DOC_FILE_MISSING] CLAUDE.md is missing
+   File: components/demo/gamma/CLAUDE.md
+⚠️ [DOC_FILE_MISSING] README.md is missing
+   File: components/demo/gamma/README.md
+⚠️ [DOC_FILE_MISSING] BRICKKIT.md is missing
+   File: components/demo/pyr/BRICKKIT.md
+⚠️ [DOC_FILE_MISSING] AGENTS.md is missing
+   File: components/demo/pyr/AGENTS.md
+⚠️ [DOC_FILE_MISSING] CLAUDE.md is missing
+   File: components/demo/pyr/CLAUDE.md
+⚠️ [DOC_FILE_MISSING] README.md is missing
+   File: components/demo/pyr/README.md
+⚠️ [DOC_FILE_MISSING] BRICKKIT.md is missing
+   File: shell/demo/pyshell/BRICKKIT.md
+⚠️ [DOC_FILE_MISSING] AGENTS.md is missing
+   File: shell/demo/pyshell/AGENTS.md
+⚠️ [DOC_FILE_MISSING] CLAUDE.md is missing
+   File: shell/demo/pyshell/CLAUDE.md
+⚠️ [DOC_FILE_MISSING] README.md is missing
+   File: shell/demo/pyshell/README.md
+⚠️ [DOC_FILE_MISSING] BRICKKIT.md is missing
+   File: shell/demo/shell/BRICKKIT.md
+⚠️ [DOC_FILE_MISSING] AGENTS.md is missing
+   File: shell/demo/shell/AGENTS.md
+⚠️ [DOC_FILE_MISSING] CLAUDE.md is missing
+   File: shell/demo/shell/CLAUDE.md
+⚠️ [DOC_FILE_MISSING] README.md is missing
+   File: shell/demo/shell/README.md
+
+📋 Checked 18 files: 0 with errors, 32 warnings
+[exit 0]
+$ brickkit up --dry-run
+🚀 Starting project proj (target: k8s)
+📋 Component state calculation:
+   ✅ demo/alpha@0.1.0    starting (demo/beta needs it)
+   ✅ demo/beta@0.1.0     starting (demo/gamma needs it)
+   ✅ demo/pyr@0.1.0      starting (demo/delta needs it)
+   ✅ demo/delta@0.1.0    starting (top-level)
+   ✅ demo/gamma@0.1.0    starting (top-level)
+   ✅ demo/pyshell@0.1.0  starting (top-level)
+   ✅ demo/shell@0.1.0    starting (top-level)
+
+📋 Start order (topological sort):
+   1. demo-pyshell-0-1-0  no dependencies  (hosts demo/pyr@0.1.0)
+   2. demo-shell-0-1-0    no dependencies  (hosts demo/alpha@0.1.0, demo/beta@0.1.0)
+   3. demo-delta-0-1-0    ← depends on 1, 2
+   4. demo-gamma-0-1-0    ← depends on 2
+
+Can start on their own: demo-pyshell-0-1-0, demo-shell-0-1-0 (no dependencies)
+Longest dependency chain (2 levels): demo-shell-0-1-0 → demo-delta-0-1-0
+   Components not on this chain start in parallel with it
+
+Dependency graph:
+   demo/delta@0.1.0 → demo/alpha@0.1.0
+                    → demo/pyr@0.1.0
+   demo/gamma@0.1.0 → demo/beta@0.1.0
+   demo/beta@0.1.0 → demo/alpha@0.1.0
+📄 Generated 15 manifests: .brickkit/generated/k8s/
+   Namespace: r007
+
+🔧 Database migrations that run before startup (on failure that component won't start):
+   demo/alpha@0.1.0  /server migrate
+   demo/gamma@0.1.0  /server migrate
+
+💡 --dry-run only generates manifests and deploys nothing
+   View them: ls -R .brickkit/generated/k8s
+[exit 0]
+$ ls .brickkit/generated/k8s/
+deployments
+migrations
+namespace.yaml
+secrets
+services
+[exit 0]
+=== .brickkit/generated/k8s/deployments
+grep: .brickkit/generated/k8s/deployments: Is a directory
+=== .brickkit/generated/k8s/migrations
+grep: .brickkit/generated/k8s/migrations: Is a directory
+=== .brickkit/generated/k8s/namespace.yaml
+10:kind: Namespace
+13:    brickkit.io/project: proj
+14:  name: r007
+=== .brickkit/generated/k8s/secrets
+grep: .brickkit/generated/k8s/secrets: Is a directory
+=== .brickkit/generated/k8s/services
+grep: .brickkit/generated/k8s/services: Is a directory
+
+######## part 2: up
+$ brickkit up
+🚀 Starting project proj (target: k8s)
+☸️  Target cluster: minikube
+📋 Component state calculation:
+   ✅ demo/alpha@0.1.0    starting (demo/beta needs it)
+   ✅ demo/beta@0.1.0     starting (demo/gamma needs it)
+   ✅ demo/pyr@0.1.0      starting (demo/delta needs it)
+   ✅ demo/delta@0.1.0    starting (top-level)
+   ✅ demo/gamma@0.1.0    starting (top-level)
+   ✅ demo/pyshell@0.1.0  starting (top-level)
+   ✅ demo/shell@0.1.0    starting (top-level)
+
+📋 Start order (topological sort):
+   1. demo-pyshell-0-1-0  no dependencies  (hosts demo/pyr@0.1.0)
+   2. demo-shell-0-1-0    no dependencies  (hosts demo/alpha@0.1.0, demo/beta@0.1.0)
+   3. demo-delta-0-1-0    ← depends on 1, 2
+   4. demo-gamma-0-1-0    ← depends on 2
+
+Can start on their own: demo-pyshell-0-1-0, demo-shell-0-1-0 (no dependencies)
+Longest dependency chain (2 levels): demo-shell-0-1-0 → demo-delta-0-1-0
+   Components not on this chain start in parallel with it
+
+Dependency graph:
+   demo/delta@0.1.0 → demo/alpha@0.1.0
+                    → demo/pyr@0.1.0
+   demo/gamma@0.1.0 → demo/beta@0.1.0
+   demo/beta@0.1.0 → demo/alpha@0.1.0
+📄 Generated 15 manifests: .brickkit/generated/k8s/
+   Namespace: r007
+
+🔧 Database migrations that run before startup (on failure that component won't start):
+   demo/alpha@0.1.0  /server migrate
+   demo/gamma@0.1.0  /server migrate
+
+☸️  Deploying to Kubernetes (namespace r007)...
+   Database migrations run first; the main service starts only after they finish
+   demo-gamma-0-1-0             running (healthy)
+   demo-delta-0-1-0             running (healthy)
+   demo-pyshell-0-1-0           running (healthy)
+   demo-shell-0-1-0             running (healthy)
+✅ All components started (4)
+
+💡 View the status: brickkit status
+   View the logs: kubectl logs deployment/<service-name> -n r007
+   View the Pods: kubectl get pods -n r007
+[exit 0]
+up took 16 s
+$ kubectl -n r007 get deploy,pods,svc,jobs -o wide
+NAME                                 READY   UP-TO-DATE   AVAILABLE   AGE   CONTAINERS     IMAGES               SELECTOR
+deployment.apps/demo-delta-0-1-0     1/1     1            1           11s   demo-delta     demo-delta:0.1.0     app=demo-delta-0-1-0
+deployment.apps/demo-gamma-0-1-0     1/1     1            1           11s   demo-gamma     demo-gamma:0.1.0     app=demo-gamma-0-1-0
+deployment.apps/demo-pyshell-0-1-0   1/1     1            1           11s   demo-pyshell   demo-pyshell:0.1.0   app=demo-pyshell-0-1-0
+deployment.apps/demo-shell-0-1-0     1/1     1            1           11s   demo-shell     demo-shell:0.1.0     app=demo-shell-0-1-0
+
+NAME                                     READY   STATUS      RESTARTS   AGE   IP               NODE       NOMINATED NODE   READINESS GATES
+pod/demo-alpha-0-1-0-migration-98kfs     0/1     Completed   0          15s   10.244.120.113   minikube   <none>           <none>
+pod/demo-delta-0-1-0-7544545dd-sxsnl     1/1     Running     0          11s   10.244.120.117   minikube   <none>           <none>
+pod/demo-gamma-0-1-0-58d5d6fb58-cbq8n    1/1     Running     0          11s   10.244.120.116   minikube   <none>           <none>
+pod/demo-gamma-0-1-0-migration-kxvfj     0/1     Completed   0          15s   10.244.120.110   minikube   <none>           <none>
+pod/demo-pyshell-0-1-0-94654f65b-5pzhr   1/1     Running     0          11s   10.244.120.115   minikube   <none>           <none>
+pod/demo-shell-0-1-0-59c4c4d95-k9btj     1/1     Running     0          11s   10.244.120.118   minikube   <none>           <none>
+
+NAME                         TYPE        CLUSTER-IP       EXTERNAL-IP   PORT(S)    AGE   SELECTOR
+service/demo-alpha-0-1-0     ClusterIP   10.108.244.158   <none>        8081/TCP   11s   app=demo-shell-0-1-0
+service/demo-beta-0-1-0      ClusterIP   10.96.246.140    <none>        8082/TCP   11s   app=demo-shell-0-1-0
+service/demo-delta-0-1-0     ClusterIP   10.109.138.93    <none>        8092/TCP   11s   app=demo-delta-0-1-0
+service/demo-gamma-0-1-0     ClusterIP   10.100.41.156    <none>        8083/TCP   11s   app=demo-gamma-0-1-0
+service/demo-pyr-0-1-0       ClusterIP   10.107.5.93      <none>        8091/TCP   11s   app=demo-pyshell-0-1-0
+service/demo-pyshell-0-1-0   ClusterIP   10.97.206.205    <none>        8090/TCP   11s   app=demo-pyshell-0-1-0
+service/demo-shell-0-1-0     ClusterIP   10.110.130.52    <none>        8080/TCP   11s   app=demo-shell-0-1-0
+
+NAME                                   STATUS     COMPLETIONS   DURATION   AGE   CONTAINERS             IMAGES             SELECTOR
+job.batch/demo-alpha-0-1-0-migration   Complete   1/1           4s         15s   demo-alpha-migration   demo-alpha:0.1.0   batch.kubernetes.io/controller-uid=810907bb-f473-45f1-8f95-d9f320bdbe2b
+job.batch/demo-gamma-0-1-0-migration   Complete   1/1           4s         15s   demo-gamma-migration   demo-gamma:0.1.0   batch.kubernetes.io/controller-uid=519fcd41-4129-4e4e-8f28-f311f4b8833e
+[exit 0]
+--- logs job.batch/demo-alpha-0-1-0-migration
+2026/10/17 14:22:08 demo/alpha migrate: nothing to do (PG_HOST=pg.r007-base.svc.cluster.local PG_PORT=5432)
+--- logs job.batch/demo-gamma-0-1-0-migration
+2026/10/17 14:22:08 demo/gamma migrate: nothing to do (PG_HOST=pg.r007-base.svc.cluster.local PG_PORT=5432)
+$ [in deploy/demo-gamma-0-1-0] wget -qO- -T 5 http://127.0.0.1:8083/api/chain
+wget: download timed out
+command terminated with exit code 1
+
+$ [in deploy/demo-delta-0-1-0] wget -qO- -T 5 http://127.0.0.1:8092/api/chain
+wget: download timed out
+command terminated with exit code 1
+
+$ [in deploy/demo-delta-0-1-0] wget -qO- -T 5 http://127.0.0.1:8092/api/infra
+{"pg": "pg.r007-base.svc.cluster.local:5432 ok", "nats": "nats.r007-base.svc.cluster.local:4222 ok"}
+$ [in deploy/demo-shell-0-1-0] wget -qO- -T 5 http://127.0.0.1:8081/api/infra
+{"nats":"nats.r007-base.svc.cluster.local:4222 ok","pg":"pg.r007-base.svc.cluster.local:5432 ok"}
+
+$ [in deploy/demo-gamma-0-1-0] printenv DEMO_BETA_ENDPOINT PG_HOST
+http://demo-shell-0-1-0:8082
+pg.r007-base.svc.cluster.local
+
+$ kubectl -n r007 get endpoints
+Warning: v1 Endpoints is deprecated in v1.33+; use discovery.k8s.io/v1 EndpointSlice
+NAME                 ENDPOINTS             AGE
+demo-alpha-0-1-0     10.244.120.118:8081   23s
+demo-beta-0-1-0      10.244.120.118:8082   23s
+demo-delta-0-1-0     10.244.120.117:8092   23s
+demo-gamma-0-1-0     10.244.120.116:8083   23s
+demo-pyr-0-1-0       10.244.120.115:8091   23s
+demo-pyshell-0-1-0   10.244.120.115:8090   23s
+demo-shell-0-1-0     10.244.120.118:8080   23s
+[exit 0]
+$ brickkit status
+📊 Project status: proj (target: k8s)
+
+☸️  Target cluster: minikube
+✅ Running (7 components)
+ ┌──────────────┬─────────┬─────────────────────────────────────────────────┬──────────┐
+ │ Component    │ Version │ Status                                          │ Port     │
+ ├──────────────┼─────────┼─────────────────────────────────────────────────┼──────────┤
+ │ demo/alpha   │ 0.1.0   │ running (healthy) (in shell demo/shell@0.1.0)   │          │
+ │ demo/beta    │ 0.1.0   │ running (healthy) (in shell demo/shell@0.1.0)   │          │
+ │ demo/gamma   │ 0.1.0   │ running (healthy)                               │ 8083/tcp │
+ │ demo/pyr     │ 0.1.0   │ running (healthy) (in shell demo/pyshell@0.1.0) │          │
+ │ demo/delta   │ 0.1.0   │ running (healthy)                               │ 8092/tcp │
+ │ demo/pyshell │ 0.1.0   │ running (healthy)                               │ 8090/tcp │
+ │ demo/shell   │ 0.1.0   │ running (healthy)                               │ 8080/tcp │
+ └──────────────┴─────────┴─────────────────────────────────────────────────┴──────────┘
+
+[exit 0]
+
+######## part 3: a second up with nothing changed, then beta moves out of the shell
+$ brickkit up
+🚀 Starting project proj (target: k8s)
+☸️  Target cluster: minikube
+📋 Component state calculation:
+   ✅ demo/alpha@0.1.0    starting (demo/beta needs it)
+   ✅ demo/beta@0.1.0     starting (demo/gamma needs it)
+   ✅ demo/pyr@0.1.0      starting (demo/delta needs it)
+   ✅ demo/delta@0.1.0    starting (top-level)
+   ✅ demo/gamma@0.1.0    starting (top-level)
+   ✅ demo/pyshell@0.1.0  starting (top-level)
+   ✅ demo/shell@0.1.0    starting (top-level)
+
+📋 Start order (topological sort):
+   1. demo-pyshell-0-1-0  no dependencies  (hosts demo/pyr@0.1.0)
+   2. demo-shell-0-1-0    no dependencies  (hosts demo/alpha@0.1.0, demo/beta@0.1.0)
+   3. demo-delta-0-1-0    ← depends on 1, 2
+   4. demo-gamma-0-1-0    ← depends on 2
+
+Can start on their own: demo-pyshell-0-1-0, demo-shell-0-1-0 (no dependencies)
+Longest dependency chain (2 levels): demo-shell-0-1-0 → demo-delta-0-1-0
+   Components not on this chain start in parallel with it
+
+Dependency graph:
+   demo/delta@0.1.0 → demo/alpha@0.1.0
+                    → demo/pyr@0.1.0
+   demo/gamma@0.1.0 → demo/beta@0.1.0
+   demo/beta@0.1.0 → demo/alpha@0.1.0
+📄 Generated 15 manifests: .brickkit/generated/k8s/
+   Namespace: r007
+
+🔧 Database migrations that run before startup (on failure that component won't start):
+   demo/alpha@0.1.0  /server migrate
+   demo/gamma@0.1.0  /server migrate
+
+☸️  Deploying to Kubernetes (namespace r007)...
+   Database migrations run first; the main service starts only after they finish
+   demo-gamma-0-1-0             running (healthy)
+   demo-delta-0-1-0             running (healthy)
+   demo-pyshell-0-1-0           running (healthy)
+   demo-shell-0-1-0             running (healthy)
+✅ All components started (4)
+
+💡 View the status: brickkit status
+   View the logs: kubectl logs deployment/<service-name> -n r007
+   View the Pods: kubectl get pods -n r007
+[exit 0]
+target: k8s
+
+k8s:
+  context: minikube
+  namespace: r007
+  createNamespace: true
+
+vars:
+  PG_HOST: pg.r007-base.svc.cluster.local
+  NATS_URL: nats://nats.r007-base.svc.cluster.local:4222
+
+components:
+  - id: demo/delta
+  - id: demo/gamma
+  - id: demo/pyshell
+    members:
+      - id: demo/pyr
+  - id: demo/shell
+    members:
+      - id: demo/alpha
+  - id: demo/beta
+$ brickkit up
+🚀 Starting project proj (target: k8s)
+☸️  Target cluster: minikube
+📋 Component state calculation:
+   ✅ demo/alpha@0.1.0    starting (demo/beta needs it)
+   ✅ demo/beta@0.1.0     starting (demo/gamma needs it)
+   ✅ demo/pyr@0.1.0      starting (demo/delta needs it)
+   ✅ demo/delta@0.1.0    starting (top-level)
+   ✅ demo/gamma@0.1.0    starting (top-level)
+   ✅ demo/pyshell@0.1.0  starting (top-level)
+   ✅ demo/shell@0.1.0    starting (top-level)
+
+📋 Start order (topological sort):
+   1. demo-pyshell-0-1-0  no dependencies  (hosts demo/pyr@0.1.0)
+   2. demo-shell-0-1-0    no dependencies  (hosts demo/alpha@0.1.0)
+   3. demo-beta-0-1-0     ← depends on 2
+   4. demo-delta-0-1-0    ← depends on 1, 2
+   5. demo-gamma-0-1-0    ← depends on 3
+
+Can start on their own: demo-pyshell-0-1-0, demo-shell-0-1-0 (no dependencies)
+Longest dependency chain (3 levels): demo-shell-0-1-0 → demo-beta-0-1-0 → demo-gamma-0-1-0
+   Components not on this chain start in parallel with it
+
+Dependency graph:
+   demo/delta@0.1.0 → demo/alpha@0.1.0
+                    → demo/pyr@0.1.0
+   demo/gamma@0.1.0 → demo/beta@0.1.0
+   demo/beta@0.1.0 → demo/alpha@0.1.0
+📄 Generated 16 manifests: .brickkit/generated/k8s/
+   Namespace: r007
+
+🔧 Database migrations that run before startup (on failure that component won't start):
+   demo/alpha@0.1.0  /server migrate
+   demo/gamma@0.1.0  /server migrate
+
+☸️  Deploying to Kubernetes (namespace r007)...
+   Database migrations run first; the main service starts only after they finish
+   demo-beta-0-1-0              running (healthy)
+   demo-gamma-0-1-0             running (healthy)
+   demo-delta-0-1-0             running (healthy)
+   demo-pyshell-0-1-0           running (healthy)
+   demo-shell-0-1-0             running (healthy)
+✅ All components started (5)
+
+💡 View the status: brickkit status
+   View the logs: kubectl logs deployment/<service-name> -n r007
+   View the Pods: kubectl get pods -n r007
+[exit 0]
+$ kubectl -n r007 get deploy,svc -o wide
+NAME                                 READY   UP-TO-DATE   AVAILABLE   AGE   CONTAINERS     IMAGES               SELECTOR
+deployment.apps/demo-beta-0-1-0      1/1     1            1           7s    demo-beta      demo-beta:0.1.0      app=demo-beta-0-1-0
+deployment.apps/demo-delta-0-1-0     1/1     1            1           43s   demo-delta     demo-delta:0.1.0     app=demo-delta-0-1-0
+deployment.apps/demo-gamma-0-1-0     1/1     1            1           43s   demo-gamma     demo-gamma:0.1.0     app=demo-gamma-0-1-0
+deployment.apps/demo-pyshell-0-1-0   1/1     1            1           43s   demo-pyshell   demo-pyshell:0.1.0   app=demo-pyshell-0-1-0
+deployment.apps/demo-shell-0-1-0     1/1     1            1           43s   demo-shell     demo-shell:0.1.0     app=demo-shell-0-1-0
+
+NAME                         TYPE        CLUSTER-IP       EXTERNAL-IP   PORT(S)    AGE   SELECTOR
+service/demo-alpha-0-1-0     ClusterIP   10.108.244.158   <none>        8081/TCP   43s   app=demo-shell-0-1-0
+service/demo-beta-0-1-0      ClusterIP   10.96.246.140    <none>        8082/TCP   43s   app=demo-beta-0-1-0
+service/demo-delta-0-1-0     ClusterIP   10.109.138.93    <none>        8092/TCP   43s   app=demo-delta-0-1-0
+service/demo-gamma-0-1-0     ClusterIP   10.100.41.156    <none>        8083/TCP   43s   app=demo-gamma-0-1-0
+service/demo-pyr-0-1-0       ClusterIP   10.107.5.93      <none>        8091/TCP   43s   app=demo-pyshell-0-1-0
+service/demo-pyshell-0-1-0   ClusterIP   10.97.206.205    <none>        8090/TCP   43s   app=demo-pyshell-0-1-0
+service/demo-shell-0-1-0     ClusterIP   10.110.130.52    <none>        8080/TCP   43s   app=demo-shell-0-1-0
+[exit 0]
+$ [in deploy/demo-gamma-0-1-0] wget -qO- -T 5 http://127.0.0.1:8083/api/chain
+wget: download timed out
+command terminated with exit code 1
+
+$ [in deploy/demo-shell-0-1-0] sh -c echo $BRICKKIT_SERVED_MEMBERS
+demo-alpha-0-1-0
+
+
+######## part 4: mode: local and mode: debug under target: k8s
+$ brickkit up --dry-run
+❌ Error: deploy.yaml failed validation
+   File: deploy.yaml
+   components[1].mode: "local" is only supported with target docker or podman (got k8s) — a cluster Pod cannot reach a process on the developer's own machine
+   Suggestion: Full field reference: brickkit docs 11-reference/03-deploy-yaml-schema (online: https://github.com/brickKit/brickKit/blob/v1.7.1/docs/en/11-reference/03-deploy-yaml-schema.md)
+{"time":"…","level":"ERROR","message":"Command failed","command":"brickkit up","elapsed_ms":2,"error_code":"CONFIG_INVALID","error":"CONFIG_INVALID: Error: deploy.yaml failed validation; File=<scratch>/proj/deploy.yaml; components[1].mode=\"local\" is only supported with target docker or podman (got k8s) — a cluster Pod cannot reach a process on the developer's own machine","exit_code":1}
+[exit 1]
+$ brickkit up --dry-run
+❌ Error: deploy.local.yaml failed validation
+   File: deploy.local.yaml
+   components[1].mode: "debug" is only supported with target docker or podman (got k8s) — a cluster Pod cannot reach a process on the developer's own machine
+   Suggestion: Full field reference: brickkit docs 11-reference/03-deploy-yaml-schema (online: https://github.com/brickKit/brickKit/blob/v1.7.1/docs/en/11-reference/03-deploy-yaml-schema.md)
+{"time":"…","level":"ERROR","message":"Command failed","command":"brickkit up","elapsed_ms":1,"error_code":"CONFIG_INVALID","error":"CONFIG_INVALID: Error: deploy.local.yaml failed validation; File=<scratch>/proj/deploy.local.yaml; components[1].mode=\"debug\" is only supported with target docker or podman (got k8s) — a cluster Pod cannot reach a process on the developer's own machine","exit_code":1}
+[exit 1]
+
+######## part 5: the kubectl context differs from k8s.context
+$ brickkit up
+🚀 Starting project proj (target: k8s)
+❌ Error: the cluster currently connected is not the one the configuration specifies
+   Required by the deploy file (k8s.context): some-other-cluster
+   Current context: minikube
+   Suggestions:
+   1. Switch to it: kubectl config use-context some-other-cluster
+   2. If minikube is where you mean to deploy: use a deploy file whose k8s.context names it (brickkit up -f <file>)
+   3. Don't continue until you are sure — deploying to the wrong cluster can't be undone
+{"time":"…","level":"ERROR","message":"Command failed","command":"brickkit up","elapsed_ms":123,"error_code":"CONFIG_INVALID","error":"CONFIG_INVALID: Error: the cluster currently connected is not the one the configuration specifies; Required by the deploy file (k8s.context)=some-other-cluster; Current context=minikube","exit_code":1}
+[exit 1]
+
+######## part 6: down
+$ brickkit down
+☸️  Target cluster: minikube
+🛑 Stopping project proj
+✅ All components stopped
+
+💡 Services your components connect to but BrickKit doesn't deploy (databases and so on) are not affected by brickkit down
+   Start again with: brickkit up
+[exit 0]
+$ kubectl get ns r007
+Error from server (NotFound): namespaces "r007" not found
+[exit 1]
+$ kubectl -n r007 get all
+No resources found in r007 namespace.
+[exit 0]
+$ kubectl delete -f <scratchpad>/bin/r007-base.yaml --wait=false
+namespace "r007-base" deleted
+deployment.apps "pg" deleted from r007-base namespace
+service "pg" deleted from r007-base namespace
+deployment.apps "nats" deleted from r007-base namespace
+service "nats" deleted from r007-base namespace
+[exit 0]
+
+######## run 1b: which address reaches a member hosted by a shell
+# 0-07 run 1b (2026-10-17), BrickKit CLI v1.7.1
+target: k8s
+
+k8s:
+  context: minikube
+  namespace: r007
+  createNamespace: true
+
+vars:
+  PG_HOST: pg.r007-base.svc.cluster.local
+  NATS_URL: nats://nats.r007-base.svc.cluster.local:4222
+
+components:
+  - id: demo/delta
+  - id: demo/gamma
+  - id: demo/pyshell
+    members:
+      - id: demo/pyr
+  - id: demo/shell
+    members:
+      - id: demo/alpha
+  - id: demo/beta
+$ brickkit up
+🚀 Starting project proj (target: k8s)
+☸️  Target cluster: minikube
+📋 Component state calculation:
+   ✅ demo/alpha@0.1.0    starting (demo/beta needs it)
+   ✅ demo/beta@0.1.0     starting (demo/gamma needs it)
+   ✅ demo/pyr@0.1.0      starting (demo/delta needs it)
+   ✅ demo/delta@0.1.0    starting (top-level)
+   ✅ demo/gamma@0.1.0    starting (top-level)
+   ✅ demo/pyshell@0.1.0  starting (top-level)
+   ✅ demo/shell@0.1.0    starting (top-level)
+
+📋 Start order (topological sort):
+   1. demo-pyshell-0-1-0  no dependencies  (hosts demo/pyr@0.1.0)
+   2. demo-shell-0-1-0    no dependencies  (hosts demo/alpha@0.1.0)
+   3. demo-beta-0-1-0     ← depends on 2
+   4. demo-delta-0-1-0    ← depends on 1, 2
+   5. demo-gamma-0-1-0    ← depends on 3
+
+Can start on their own: demo-pyshell-0-1-0, demo-shell-0-1-0 (no dependencies)
+Longest dependency chain (3 levels): demo-shell-0-1-0 → demo-beta-0-1-0 → demo-gamma-0-1-0
+   Components not on this chain start in parallel with it
+
+Dependency graph:
+   demo/delta@0.1.0 → demo/alpha@0.1.0
+                    → demo/pyr@0.1.0
+   demo/gamma@0.1.0 → demo/beta@0.1.0
+   demo/beta@0.1.0 → demo/alpha@0.1.0
+📄 Generated 16 manifests: .brickkit/generated/k8s/
+   Namespace: r007
+
+🔧 Database migrations that run before startup (on failure that component won't start):
+   demo/alpha@0.1.0  /server migrate
+   demo/gamma@0.1.0  /server migrate
+
+☸️  Deploying to Kubernetes (namespace r007)...
+   Database migrations run first; the main service starts only after they finish
+   demo-beta-0-1-0              running (healthy)
+   demo-gamma-0-1-0             running (healthy)
+   demo-delta-0-1-0             running (healthy)
+   demo-pyshell-0-1-0           running (healthy)
+   demo-shell-0-1-0             running (healthy)
+✅ All components started (5)
+
+💡 View the status: brickkit status
+   View the logs: kubectl logs deployment/<service-name> -n r007
+   View the Pods: kubectl get pods -n r007
+[exit 0]
+$ grep -n -A1 _ENDPOINT .brickkit/generated/k8s/deployments/demo-gamma-0-1-0.yaml .brickkit/generated/k8s/deployments/demo-delta-0-1-0.yaml
+.brickkit/generated/k8s/deployments/demo-gamma-0-1-0.yaml:42:            - name: DEMO_BETA_ENDPOINT
+.brickkit/generated/k8s/deployments/demo-gamma-0-1-0.yaml-43-              value: http://demo-beta-0-1-0:8082
+--
+.brickkit/generated/k8s/deployments/demo-delta-0-1-0.yaml:42:            - name: DEMO_ALPHA_ENDPOINT
+.brickkit/generated/k8s/deployments/demo-delta-0-1-0.yaml-43-              value: http://demo-shell-0-1-0:8081
+.brickkit/generated/k8s/deployments/demo-delta-0-1-0.yaml:44:            - name: DEMO_PYR_ENDPOINT
+.brickkit/generated/k8s/deployments/demo-delta-0-1-0.yaml-45-              value: http://demo-pyshell-0-1-0:8091
+[exit 0]
+beta's DEMO_ALPHA_ENDPOINT inside the shell's member config:
+   demo/alpha -
+$ kubectl -n r007 get svc demo-shell-0-1-0 demo-alpha-0-1-0 demo-beta-0-1-0 demo-pyshell-0-1-0 demo-pyr-0-1-0
+NAME                 TYPE        CLUSTER-IP       EXTERNAL-IP   PORT(S)    AGE
+demo-shell-0-1-0     ClusterIP   10.99.99.96      <none>        8080/TCP   7s
+demo-alpha-0-1-0     ClusterIP   10.105.152.236   <none>        8081/TCP   7s
+demo-beta-0-1-0      ClusterIP   10.104.253.137   <none>        8082/TCP   7s
+demo-pyshell-0-1-0   ClusterIP   10.98.39.170     <none>        8090/TCP   7s
+demo-pyr-0-1-0       ClusterIP   10.101.254.100   <none>        8091/TCP   7s
+[exit 0]
+== from the delta pod: the injected address (shell service + member port) vs the member's own service
+$ [in deploy/demo-delta-0-1-0] wget -qO- -T 5 http://demo-shell-0-1-0:8081/api/hello
+wget: download timed out
+command terminated with exit code 1
+
+$ [in deploy/demo-delta-0-1-0] wget -qO- -T 5 http://demo-alpha-0-1-0:8081/api/hello
+{"from":"demo/alpha","version":"0.1.0"}
+
+$ [in deploy/demo-delta-0-1-0] wget -qO- -T 5 http://demo-pyshell-0-1-0:8091/api/render
+wget: download timed out
+command terminated with exit code 1
+
+$ [in deploy/demo-delta-0-1-0] wget -qO- -T 5 http://demo-pyr-0-1-0:8091/api/render
+{"from": "demo/pyr", "version": "0.1.0"}
+== the chains
+$ [in deploy/demo-gamma-0-1-0] wget -qO- -T 5 http://127.0.0.1:8083/api/chain
+wget: download timed out
+command terminated with exit code 1
+
+$ [in deploy/demo-delta-0-1-0] wget -qO- -T 5 http://127.0.0.1:8092/api/chain
+wget: download timed out
+command terminated with exit code 1
+
+== inside the shell pod, beta calling alpha (same pod) through the injected address
+$ [in deploy/demo-shell-0-1-0] wget -qO- -T 5 http://127.0.0.1:8082/api/chain
+wget: can't connect to remote host (127.0.0.1): Connection refused
+command terminated with exit code 1
+
+$ brickkit down
+☸️  Target cluster: minikube
+🛑 Stopping project proj
+✅ All components stopped
+
+💡 Services your components connect to but BrickKit doesn't deploy (databases and so on) are not affected by brickkit down
+   Start again with: brickkit up
+[exit 0]
+
+######## generated manifests of the last up (beta outside the shell)
+=== .brickkit/generated/k8s/services/demo-shell-0-1-0.yaml
+
+apiVersion: v1
+kind: Service
+metadata:
+  annotations:
+    brickkit.io/component-id: demo/shell
+  labels:
+    app: demo-shell-0-1-0
+    brickkit.io/component: demo-shell
+    brickkit.io/component-version: 0.1.0
+    brickkit.io/project: proj
+  name: demo-shell-0-1-0
+  namespace: r007
+spec:
+  ports:
+    - name: http
+      port: 8080
+      targetPort: 8080
+  selector:
+    app: demo-shell-0-1-0
+  type: ClusterIP
+=== .brickkit/generated/k8s/services/demo-alpha-0-1-0.yaml
+
+apiVersion: v1
+kind: Service
+metadata:
+  annotations:
+    brickkit.io/component-id: demo/alpha
+  labels:
+    brickkit.io/component: demo-alpha
+    brickkit.io/component-version: 0.1.0
+    brickkit.io/project: proj
+  name: demo-alpha-0-1-0
+  namespace: r007
+spec:
+  ports:
+    - name: http
+      port: 8081
+      targetPort: 8081
+  selector:
+    app: demo-shell-0-1-0
+  type: ClusterIP
+=== .brickkit/generated/k8s/deployments/demo-delta-0-1-0.yaml
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  annotations:
+    brickkit.io/component-id: demo/delta
+  labels:
+    app: demo-delta-0-1-0
+    brickkit.io/component: demo-delta
+    brickkit.io/component-version: 0.1.0
+    brickkit.io/project: proj
+  name: demo-delta-0-1-0
+  namespace: r007
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: demo-delta-0-1-0
+  template:
+    metadata:
+      annotations:
+        brickkit.io/component-id: demo/delta
+      labels:
+        app: demo-delta-0-1-0
+        brickkit.io/component: demo-delta
+        brickkit.io/component-version: 0.1.0
+        brickkit.io/project: proj
+    spec:
+      containers:
+        - env:
+            - name: COMPONENT_ID
+              value: demo/delta
+            - name: COMPONENT_VERSION
+              value: 0.1.0
+            - name: DEMO_ALPHA_ENDPOINT
+              value: http://demo-shell-0-1-0:8081
+            - name: DEMO_PYR_ENDPOINT
+              value: http://demo-pyshell-0-1-0:8091
+            - name: GREETING
+              value: hello
+            - name: NATS_URL
+              value: nats://nats.r007-base.svc.cluster.local:4222
+            - name: PG_HOST
+              value: pg.r007-base.svc.cluster.local
+            - name: PG_PORT
+              value: "5432"
+          image: demo-delta:0.1.0
+          livenessProbe:
+            failureThreshold: 3
+            httpGet:
+              path: /healthz
+              port: 8092
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            timeoutSeconds: 3
+          name: demo-delta
+          ports:
+            - containerPort: 8092
+              name: http
+          readinessProbe:
+            failureThreshold: 3
+            httpGet:
+              path: /healthz
+              port: 8092
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            timeoutSeconds: 3
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+          startupProbe:
+            failureThreshold: 12
+            httpGet:
+              path: /healthz
+              port: 8092
+            periodSeconds: 5
+            timeoutSeconds: 3
+      serviceAccountName: default
+
+######## run007.sh
+#!/usr/bin/env bash
+# 0-07 run 1: BrickKit's Kubernetes manifests on minikube (single node), shells included; base resources in the cluster.
+set -uo pipefail
+S=$(dirname "$0")/..; S=$(cd "$S" && pwd)
+P=$S/r007/proj; export GOCACHE=$S/gocache; export PATH=$S/k8sbin:$PATH   # kubectl = minikube kubectl --
+run() { echo "\$ $*"; "$@" 2>&1 | sed -E 's/"time":"[^"]*"/"time":"…"/'; echo "[exit ${PIPESTATUS[0]}]"; }
+NS=r007
+kx() { local d=$1; shift; echo "\$ [in deploy/$d] $*"; kubectl -n $NS exec deploy/$d -- "$@" 2>&1; echo; }
+cd "$P"
+echo "# 0-07 run 1 ($(date +%F)), $(brickkit version | head -1), $(minikube version | head -1), server $(kubectl version 2>/dev/null | grep Server | awk '{print $3}'), driver $(minikube profile list -o json 2>/dev/null | python3 -c 'import json,sys; print([p["Config"]["Driver"] for p in json.load(sys.stdin)["valid"] if p["Name"]=="minikube"][0])')"
+
+echo; echo "######## part 0: base resources in the cluster; project; images"
+run kubectl apply -f $S/bin/r007-base.yaml
+run kubectl -n r007-base rollout status deploy/pg deploy/nats --timeout=180s
+run brickkit add --local --yes
+cat >> config/vars.yaml <<'YAML'
+# Same names as the project's config/vars.yaml; the k8s deploy file points them at the in-cluster base resources.
+PG_HOST: host.docker.internal
+PG_PORT: "5432"
+NATS_URL: nats://host.docker.internal:4222
+YAML
+for c in alpha beta delta gamma pyr; do sed -i 's/^NATS_URL: ""/NATS_URL: $var:NATS_URL/; s/^PG_HOST: ""/PG_HOST: $var:PG_HOST/; s/^PG_PORT: ""/PG_PORT: $var:PG_PORT/' config/demo-$c.yaml; done
+cat > deploy.yaml <<'YAML'
+target: k8s
+
+k8s:
+  context: minikube
+  namespace: r007
+  createNamespace: true
+
+vars:
+  PG_HOST: pg.r007-base.svc.cluster.local
+  NATS_URL: nats://nats.r007-base.svc.cluster.local:4222
+
+components:
+  - id: demo/delta
+  - id: demo/gamma
+  - id: demo/pyshell
+    members:
+      - id: demo/pyr
+  - id: demo/shell
+    members:
+      - id: demo/alpha
+      - id: demo/beta
+YAML
+cat deploy.yaml
+for i in $(docker images -q --filter reference="demo-*"); do docker rmi -f $i >/dev/null 2>&1; done   # build afresh
+run brickkit build
+for i in $(docker images --format '{{.Repository}}:{{.Tag}}' --filter reference='demo-*'); do echo "minikube image load $i"; minikube image load $i; done
+run minikube image ls --format table
+
+echo; echo "######## part 1: dry run and the manifests"
+run brickkit lint --all
+run brickkit up --dry-run
+run ls .brickkit/generated/k8s/
+for f in .brickkit/generated/k8s/*; do echo "=== $f"; grep -n -E "^kind:|^  name:|image:|imagePullPolicy|replicas|selector|app:|brickkit.io/|BRICKKIT_SERVED|_ENDPOINT|PG_HOST|command|args|restartPolicy|backoffLimit|readinessProbe|livenessProbe|startupProbe|port:|targetPort" "$f" | head -60; done
+
+echo; echo "######## part 2: up"
+T0=$(date +%s)
+run brickkit up
+echo "up took $(( $(date +%s) - T0 )) s"
+run kubectl -n $NS get deploy,pods,svc,jobs -o wide
+for j in $(kubectl -n $NS get jobs -o name); do echo "--- logs $j"; kubectl -n $NS logs $j 2>&1 | tail -3; done
+kx demo-gamma-0-1-0 wget -qO- -T 5 http://127.0.0.1:8083/api/chain
+kx demo-delta-0-1-0 wget -qO- -T 5 http://127.0.0.1:8092/api/chain
+kx demo-delta-0-1-0 wget -qO- -T 5 http://127.0.0.1:8092/api/infra
+kx demo-shell-0-1-0 wget -qO- -T 5 http://127.0.0.1:8081/api/infra
+kx demo-gamma-0-1-0 printenv DEMO_BETA_ENDPOINT PG_HOST
+run kubectl -n $NS get endpoints
+run brickkit status
+
+echo; echo "######## part 3: a second up with nothing changed, then beta moves out of the shell"
+run brickkit up
+python3 - <<'PY'
+p='deploy.yaml'; s=open(p).read()
+s=s.replace("      - id: demo/alpha\n      - id: demo/beta\n","      - id: demo/alpha\n  - id: demo/beta\n")
+open(p,'w').write(s)
+PY
+cat deploy.yaml
+run brickkit up
+run kubectl -n $NS get deploy,svc -o wide
+kx demo-gamma-0-1-0 wget -qO- -T 5 http://127.0.0.1:8083/api/chain
+kx demo-shell-0-1-0 sh -c 'echo $BRICKKIT_SERVED_MEMBERS'
+
+echo; echo "######## part 4: mode: local and mode: debug under target: k8s"
+cp deploy.yaml deploy.yaml.k8s
+sed -i 's#^  - id: demo/gamma$#  - id: demo/gamma\n    mode: local#' deploy.yaml
+run brickkit up --dry-run
+cp deploy.yaml.k8s deploy.yaml
+brickkit local on >/dev/null 2>&1; sed -i 's#^  - id: demo/gamma$#  - id: demo/gamma\n    mode: debug\n    localPort: 9083#' deploy.local.yaml
+run brickkit up --dry-run
+brickkit local off >/dev/null 2>&1
+
+echo; echo "######## part 5: the kubectl context differs from k8s.context"
+sed -i 's/^  context: minikube/  context: some-other-cluster/' deploy.yaml
+run brickkit up
+cp deploy.yaml.k8s deploy.yaml
+
+echo; echo "######## part 6: down"
+run brickkit down
+run kubectl get ns $NS
+run kubectl -n $NS get all
+run kubectl delete -f $S/bin/r007-base.yaml --wait=false
+
+######## run007b.sh
+#!/usr/bin/env bash
+# 0-07 run 1b: which address reaches a member hosted by a shell on Kubernetes.
+set -uo pipefail
+S=$(dirname "$0")/..; S=$(cd "$S" && pwd); P=$S/r007/proj; export PATH=$S/k8sbin:$PATH; NS=r007
+run() { echo "\$ $*"; "$@" 2>&1 | sed -E 's/"time":"[^"]*"/"time":"…"/'; echo "[exit ${PIPESTATUS[0]}]"; }
+kx() { local d=$1; shift; echo "\$ [in deploy/$d] $*"; kubectl -n $NS exec deploy/$d -- "$@" 2>&1; echo; }
+cd "$P"
+echo "# 0-07 run 1b ($(date +%F)), $(brickkit version | head -1)"
+kubectl apply -f $S/bin/r007-base.yaml >/dev/null; kubectl -n r007-base rollout status deploy/pg deploy/nats --timeout=180s >/dev/null
+cp deploy.yaml.k8s deploy.yaml; cat deploy.yaml
+run brickkit up
+run grep -n -A1 "_ENDPOINT" .brickkit/generated/k8s/deployments/demo-gamma-0-1-0.yaml .brickkit/generated/k8s/deployments/demo-delta-0-1-0.yaml
+echo "beta's DEMO_ALPHA_ENDPOINT inside the shell's member config:"; kubectl -n $NS get secret demo-shell-0-1-0-config-secret -o jsonpath='{.data.BRICKKIT_SERVED_MEMBERS_CONFIG}' | base64 -d | python3 -c 'import json,sys; [print("  ",m["componentId"], m["config"].get("DEMO_ALPHA_ENDPOINT","-")) for m in json.load(sys.stdin)]'
+run kubectl -n $NS get svc demo-shell-0-1-0 demo-alpha-0-1-0 demo-beta-0-1-0 demo-pyshell-0-1-0 demo-pyr-0-1-0
+echo "== from the delta pod: the injected address (shell service + member port) vs the member's own service"
+kx demo-delta-0-1-0 wget -qO- -T 5 http://demo-shell-0-1-0:8081/api/hello
+kx demo-delta-0-1-0 wget -qO- -T 5 http://demo-alpha-0-1-0:8081/api/hello
+kx demo-delta-0-1-0 wget -qO- -T 5 http://demo-pyshell-0-1-0:8091/api/render
+kx demo-delta-0-1-0 wget -qO- -T 5 http://demo-pyr-0-1-0:8091/api/render
+echo "== the chains"
+kx demo-gamma-0-1-0 wget -qO- -T 5 http://127.0.0.1:8083/api/chain
+kx demo-delta-0-1-0 wget -qO- -T 5 http://127.0.0.1:8092/api/chain
+echo "== inside the shell pod, beta calling alpha (same pod) through the injected address"
+kx demo-shell-0-1-0 wget -qO- -T 5 http://127.0.0.1:8082/api/chain
+run brickkit down
+kubectl delete -f $S/bin/r007-base.yaml --wait=false >/dev/null
+
+######## r007-base.yaml
+# Base resources inside the cluster for 0-07: PostgreSQL and NATS, one replica each, no persistence.
+apiVersion: v1
+kind: Namespace
+metadata: { name: r007-base }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata: { name: pg, namespace: r007-base }
+spec:
+  selector: { matchLabels: { app: pg } }
+  template:
+    metadata: { labels: { app: pg } }
+    spec:
+      containers:
+        - name: pg
+          image: postgres:16-alpine
+          env: [{ name: POSTGRES_PASSWORD, value: r007 }]
+          ports: [{ containerPort: 5432 }]
+---
+apiVersion: v1
+kind: Service
+metadata: { name: pg, namespace: r007-base }
+spec: { selector: { app: pg }, ports: [{ port: 5432 }] }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata: { name: nats, namespace: r007-base }
+spec:
+  selector: { matchLabels: { app: nats } }
+  template:
+    metadata: { labels: { app: nats } }
+    spec:
+      containers:
+        - name: nats
+          image: nats:2.10-alpine
+          ports: [{ containerPort: 4222 }]
+---
+apiVersion: v1
+kind: Service
+metadata: { name: nats, namespace: r007-base }
+spec: { selector: { app: nats }, ports: [{ port: 4222 }] }
+
+######## r007-setup.sh
+#!/usr/bin/env bash
+# 0-07 setup: the same project as 0-06 (r006-setup.sh); 0-06 added migrations: the Go members' cmd/server answers `migrate`,
+# alpha and gamma declare migration.command (image) and local.migrationCommand (source).
+# Go: shell demo/shell hosts demo/alpha (8081) and demo/beta (8082); demo/gamma (8083) runs alone and calls beta.
+# Python: shell demo/pyshell (8090) hosts demo/pyr (8091); demo/delta (8092) runs alone and calls alpha and pyr.
+# Every component reports whether it reaches PostgreSQL and NATS through the addresses it was given (/api/infra).
+set -euo pipefail
+S=<scratch>
+rm -rf "$S"; mkdir -p "$S"; cd "$S"
+mkdir proj && cd proj && brickkit init --yes >/dev/null
+
+INFRA_SCHEMA='configSchema:
+  type: object
+  required: [PG_HOST, PG_PORT, NATS_URL]
+  properties:
+    PG_HOST: { type: string }
+    PG_PORT: { type: string }
+    NATS_URL: { type: string }
+    GREETING: { type: string, default: hello }'
+
+GO_INFRA='
+// infra dials PostgreSQL and NATS at the addresses in the config table.
+func infra(cfg map[string]string) map[string]string {
+	out := map[string]string{}
+	dial := func(name, addr string) {
+		c, err := net.DialTimeout("tcp", addr, 2*time.Second)
+		if err != nil {
+			out[name] = addr + " FAIL " + err.Error()
+			return
+		}
+		c.Close()
+		out[name] = addr + " ok"
+	}
+	dial("pg", net.JoinHostPort(cfg["PG_HOST"], cfg["PG_PORT"]))
+	if u, err := url.Parse(cfg["NATS_URL"]); err == nil {
+		dial("nats", u.Host)
+	}
+	return out
+}'
+
+gomember() { # <name> <port> <deps-yaml> <handler-body>
+  local n=$1 port=$2 deps=$3 body=$4 d=components/demo/$1
+  mkdir -p "$d/cmd/server"
+  cat > "$d/component.yaml" <<EOF
+apiVersion: brickkit/v1
+kind: Component
+
+metadata:
+  id: demo/$n
+  name: $n
+  version: 0.1.0
+  description: Stub Go member $n for the local-process experiment
+$deps
+deployment:
+  type: container
+  build:
+    dockerfile: Dockerfile
+  port: $port
+
+healthCheck:
+  type: http
+  path: /healthz
+
+$INFRA_SCHEMA
+EOF
+  printf 'module example.test/%s\n\ngo 1.26\n' "$n" > "$d/go.mod"
+  cat > "$d/$n.go" <<EOF
+// Package $n is a stub member: one HTTP handler built from its own config table.
+package $n
+
+import (
+	"encoding/json"
+	"net"
+	"net/http"
+	"net/url"
+	"os"
+	"time"
+)
+
+// Version is the version of this module's code.
+const Version = "0.1.0"
+
+// Handler builds the member's HTTP handler from its config table, never from the process environment.
+func Handler(cfg map[string]string) http.Handler {
+	mux := http.NewServeMux()
+	mux.HandleFunc("/healthz", func(w http.ResponseWriter, _ *http.Request) { w.Write([]byte("ok")) })
+	mux.HandleFunc("/api/infra", func(w http.ResponseWriter, _ *http.Request) { writeJSON(w, infra(cfg)) })
+	mux.HandleFunc("/api/pid", func(w http.ResponseWriter, _ *http.Request) { writeJSON(w, map[string]int{"pid": os.Getpid()}) })
+$body
+	return mux
+}
+$GO_INFRA
+
+func writeJSON(w http.ResponseWriter, v any) { _ = json.NewEncoder(w).Encode(v) }
+EOF
+  cat > "$d/cmd/server/main.go" <<EOF
+// Command server runs $n on its own: the config table is filled from the environment.
+package main
+
+import (
+	"log"
+	"net/http"
+	"os"
+	"strings"
+
+	"example.test/$n"
+)
+
+func main() {
+	if len(os.Args) > 1 && os.Args[1] == "migrate" {
+		log.Printf("demo/$n migrate: nothing to do (PG_HOST=%s PG_PORT=%s)", os.Getenv("PG_HOST"), os.Getenv("PG_PORT"))
+		return
+	}
+	cfg := map[string]string{}
+	for _, kv := range os.Environ() {
+		k, v, _ := strings.Cut(kv, "=")
+		cfg[k] = v
+	}
+	port := cfg["PORT"]
+	if port == "" {
+		port = "$port"
+	}
+	log.Printf("demo/$n@%s standalone on :%s", $n.Version, port)
+	log.Fatal(http.ListenAndServe(":"+port, $n.Handler(cfg)))
+}
+EOF
+  cat > "$d/Dockerfile" <<'EOF'
+FROM golang:1.26-alpine AS build
+WORKDIR /src
+COPY . .
+RUN CGO_ENABLED=0 go build -o /out/server ./cmd/server
+FROM alpine:3
+COPY --from=build /out/server /server
+ENTRYPOINT ["/server"]
+EOF
+}
+
+gomember alpha 8081 "" '	mux.HandleFunc("/api/hello", func(w http.ResponseWriter, _ *http.Request) {
+		writeJSON(w, map[string]string{"from": "demo/alpha", "version": Version})
+	})'
+
+gomember beta 8082 "
+dependencies:
+  components:
+    - demo/alpha@0.1.0
+" '	mux.HandleFunc("/api/chain", func(w http.ResponseWriter, _ *http.Request) {
+		var a map[string]string
+		resp, err := http.Get(cfg["DEMO_ALPHA_ENDPOINT"] + "/api/hello")
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadGateway)
+			return
+		}
+		defer resp.Body.Close()
+		_ = json.NewDecoder(resp.Body).Decode(&a)
+		writeJSON(w, map[string]any{"from": "demo/beta", "alphaEndpoint": cfg["DEMO_ALPHA_ENDPOINT"], "alpha": a})
+	})'
+
+# gamma: a standalone Go component whose root is the main package (go run .), with a migration.
+d=components/demo/gamma; mkdir -p "$d"
+cat > "$d/component.yaml" <<EOF
+apiVersion: brickkit/v1
+kind: Component
+
+metadata:
+  id: demo/gamma
+  name: gamma
+  version: 0.1.0
+  description: Stub standalone Go component calling demo/beta
+
+dependencies:
+  components:
+    - demo/beta@0.1.0
+
+deployment:
+  type: container
+  build:
+    dockerfile: Dockerfile
+  port: 8083
+
+migration:
+  command: ["/server", "migrate"]
+
+healthCheck:
+  type: http
+  path: /healthz
+
+$INFRA_SCHEMA
+EOF
+printf 'module example.test/gamma\n\ngo 1.26\n' > "$d/go.mod"
+cat > "$d/main.go" <<EOF
+// Command gamma is a stub standalone component: it calls demo/beta and checks the base resources.
+package main
+
+import (
+	"encoding/json"
+	"log"
+	"net"
+	"net/http"
+	"net/url"
+	"os"
+	"strings"
+	"time"
+)
+
+func main() {
+	if len(os.Args) > 1 && os.Args[1] == "migrate" {
+		log.Printf("demo/gamma migrate: nothing to do (PG_HOST=%s PG_PORT=%s)", os.Getenv("PG_HOST"), os.Getenv("PG_PORT"))
+		return
+	}
+	cfg := map[string]string{}
+	for _, kv := range os.Environ() {
+		k, v, _ := strings.Cut(kv, "=")
+		cfg[k] = v
+	}
+	mux := http.NewServeMux()
+	mux.HandleFunc("/healthz", func(w http.ResponseWriter, _ *http.Request) { w.Write([]byte("ok")) })
+	mux.HandleFunc("/api/infra", func(w http.ResponseWriter, _ *http.Request) { writeJSON(w, infra(cfg)) })
+	mux.HandleFunc("/api/pid", func(w http.ResponseWriter, _ *http.Request) { writeJSON(w, map[string]int{"pid": os.Getpid()}) })
+	mux.HandleFunc("/api/chain", func(w http.ResponseWriter, _ *http.Request) {
+		var b map[string]any
+		resp, err := http.Get(cfg["DEMO_BETA_ENDPOINT"] + "/api/chain")
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadGateway)
+			return
+		}
+		defer resp.Body.Close()
+		_ = json.NewDecoder(resp.Body).Decode(&b)
+		writeJSON(w, map[string]any{"from": "demo/gamma", "betaEndpoint": cfg["DEMO_BETA_ENDPOINT"], "beta": b})
+	})
+	port := cfg["PORT"]
+	if port == "" {
+		port = "8083"
+	}
+	log.Printf("demo/gamma@0.1.0 on :%s", port)
+	log.Fatal(http.ListenAndServe(":"+port, mux))
+}
+$GO_INFRA
+
+func writeJSON(w http.ResponseWriter, v any) { _ = json.NewEncoder(w).Encode(v) }
+EOF
+cp components/demo/alpha/Dockerfile "$d/Dockerfile"; sed -i 's#./cmd/server#.#' "$d/Dockerfile"
+
+# The Go shell (as in 0-04): its own module imports both members through local replace.
+d=shell/demo/shell; mkdir -p "$d"
+cat > "$d/component.yaml" <<'EOF'
+apiVersion: brickkit/v1
+kind: Component
+
+metadata:
+  id: demo/shell
+  name: shell
+  version: 0.1.0
+  description: Go shell compiling demo/alpha and demo/beta into one process
+
+shell:
+  members:
+    - demo/alpha@0.1.0
+    - demo/beta@0.1.0
+
+deployment:
+  type: container
+  build:
+    dockerfile: Dockerfile
+  port: 8080
+
+healthCheck:
+  type: http
+  path: /healthz
+EOF
+cat > "$d/go.mod" <<'EOF'
+module example.test/shell
+
+go 1.26
+
+require (
+	example.test/alpha v0.1.0
+	example.test/beta v0.1.0
+)
+
+replace (
+	example.test/alpha => ../../../components/demo/alpha
+	example.test/beta => ../../../components/demo/beta
+)
+EOF
+cat > "$d/main.go" <<'EOF'
+// Command shell hosts the members it compiles in, as told by BRICKKIT_SERVED_MEMBERS_CONFIG.
+package main
+
+import (
+	"encoding/json"
+	"fmt"
+	"log"
+	"net/http"
+	"os"
+
+	"example.test/alpha"
+	"example.test/beta"
+)
+
+type member struct {
+	ComponentID string            `json:"componentId"`
+	Version     string            `json:"version"`
+	HTTPPort    int               `json:"httpPort"`
+	Config      map[string]string `json:"config"`
+}
+
+type module struct {
+	version string
+	handler func(map[string]string) http.Handler
+}
+
+var compiled = map[string]module{
+	"demo/alpha": {alpha.Version, alpha.Handler},
+	"demo/beta":  {beta.Version, beta.Handler},
+}
+
+func main() {
+	raw, ok := os.LookupEnv("BRICKKIT_SERVED_MEMBERS_CONFIG")
+	if !ok {
+		log.Fatal("BRICKKIT_SERVED_MEMBERS_CONFIG is not set")
+	}
+	var members []member
+	if err := json.Unmarshal([]byte(raw), &members); err != nil {
+		log.Fatalf("BRICKKIT_SERVED_MEMBERS_CONFIG: %v", err)
+	}
+	for _, m := range members {
+		mod, ok := compiled[m.ComponentID]
+		if !ok {
+			log.Fatalf("this shell has no module %s", m.ComponentID)
+		}
+		if mod.version != m.Version {
+			log.Fatalf("asked to host %s@%s, but the code compiled in is %s", m.ComponentID, m.Version, mod.version)
+		}
+		addr := fmt.Sprintf(":%d", m.HTTPPort)
+		go func(h http.Handler) { log.Fatal(http.ListenAndServe(addr, h)) }(mod.handler(m.Config))
+		log.Printf("serving %s@%s on %s", m.ComponentID, m.Version, addr)
+	}
+	port := os.Getenv("PORT")
+	if port == "" {
+		port = "8080"
+	}
+	http.HandleFunc("/healthz", func(w http.ResponseWriter, _ *http.Request) { w.Write([]byte("ok")) })
+	log.Printf("shell on :%s", port)
+	log.Fatal(http.ListenAndServe(":"+port, nil))
+}
+EOF
+cat > "$d/Dockerfile" <<'EOF'
+FROM golang:1.26-alpine AS build
+WORKDIR /src
+COPY . .
+RUN CGO_ENABLED=0 go build -mod=vendor -o /out/shell .
+FROM alpine:3
+COPY --from=build /out/shell /shell
+ENTRYPOINT ["/shell"]
+EOF
+
+PY_COMMON='
+def infra(cfg):
+    out = {}
+    def dial(name, host, port):
+        addr = f"{host}:{port}"
+        try:
+            socket.create_connection((host, int(port)), timeout=2).close()
+            out[name] = addr + " ok"
+        except OSError as e:
+            out[name] = f"{addr} FAIL {e}"
+    dial("pg", cfg.get("PG_HOST", ""), cfg.get("PG_PORT", "0"))
+    u = urllib.parse.urlparse(cfg.get("NATS_URL", ""))
+    dial("nats", u.hostname or "", u.port or 0)
+    return out
+
+
+def get_json(url):
+    with urllib.request.urlopen(url, timeout=5) as r:
+        return json.load(r)
+
+
+class Base(BaseHTTPRequestHandler):
+    def log_message(self, *args):
+        pass
+
+    def send_json(self, code, value):
+        body = json.dumps(value).encode()
+        self.send_response(code)
+        self.send_header("Content-Type", "application/json")
+        self.send_header("Content-Length", str(len(body)))
+        self.end_headers()
+        self.wfile.write(body)'
+
+# pyr: a Python member; the module builds a handler class from its config table, server.py runs it alone.
+d=components/demo/pyr; mkdir -p "$d"
+cat > "$d/component.yaml" <<EOF
+apiVersion: brickkit/v1
+kind: Component
+
+metadata:
+  id: demo/pyr
+  name: pyr
+  version: 0.1.0
+  description: Stub Python member for the local-process experiment
+
+deployment:
+  type: container
+  build:
+    dockerfile: Dockerfile
+  port: 8091
+
+local:
+  runCommand: ["python3", "server.py"]
+
+healthCheck:
+  type: http
+  path: /healthz
+
+$INFRA_SCHEMA
+EOF
+cat > "$d/pyr.py" <<EOF
+"""Stub Python member: one handler class built from its own config table."""
+import json
+import os
+import socket
+import urllib.parse
+import urllib.request
+from http.server import BaseHTTPRequestHandler
+
+VERSION = "0.1.0"
+$PY_COMMON
+
+
+def handler(cfg):
+    class Handler(Base):
+        def do_GET(self):
+            if self.path == "/healthz":
+                return self.send_json(200, "ok")
+            if self.path == "/api/render":
+                return self.send_json(200, {"from": "demo/pyr", "version": VERSION})
+            if self.path == "/api/infra":
+                return self.send_json(200, infra(cfg))
+            if self.path == "/api/pid":
+                return self.send_json(200, {"pid": os.getpid()})
+            self.send_json(404, {"error": self.path})
+
+    return Handler
+EOF
+cat > "$d/server.py" <<'EOF'
+"""Runs demo/pyr on its own: the config table is filled from the environment."""
+import os
+from http.server import ThreadingHTTPServer
+
+import pyr
+
+port = int(os.environ.get("PORT", "8091"))
+print(f"demo/pyr@{pyr.VERSION} standalone on :{port}", flush=True)
+ThreadingHTTPServer(("0.0.0.0", port), pyr.handler(dict(os.environ))).serve_forever()
+EOF
+
+printf 'FROM python:3.13-alpine\nWORKDIR /app\nCOPY . .\nCMD ["python3", "server.py"]\n' > "$d/Dockerfile"
+
+# The Python shell: imports the member module from its directory (stands in for installing the package).
+d=shell/demo/pyshell; mkdir -p "$d"
+cat > "$d/component.yaml" <<'EOF'
+apiVersion: brickkit/v1
+kind: Component
+
+metadata:
+  id: demo/pyshell
+  name: pyshell
+  version: 0.1.0
+  description: Python shell hosting demo/pyr
+
+shell:
+  members:
+    - demo/pyr@0.1.0
+
+deployment:
+  type: container
+  build:
+    dockerfile: Dockerfile
+  port: 8090
+
+local:
+  runCommand: ["python3", "shell.py"]
+
+healthCheck:
+  type: http
+  path: /healthz
+EOF
+cat > "$d/shell.py" <<'EOF'
+"""Python shell: hosts the members named in BRICKKIT_SERVED_MEMBERS_CONFIG."""
+import json
+import os
+import sys
+import threading
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+
+# From source the member's own directory; in the image its vendored copy (as the Go shell vendors its members).
+HERE = os.path.dirname(os.path.abspath(__file__))
+SOURCE = os.path.join(HERE, "../../../components/demo/pyr")
+sys.path.insert(0, SOURCE if os.path.isdir(SOURCE) else os.path.join(HERE, "vendor"))
+import pyr  # noqa: E402
+
+COMPILED = {"demo/pyr": pyr}
+
+raw = os.environ.get("BRICKKIT_SERVED_MEMBERS_CONFIG")
+if raw is None:
+    sys.exit("BRICKKIT_SERVED_MEMBERS_CONFIG is not set")
+for m in json.loads(raw):
+    mod = COMPILED.get(m["componentId"])
+    if mod is None:
+        sys.exit(f"this shell has no module {m['componentId']}")
+    if mod.VERSION != m["version"]:
+        sys.exit(f"asked to host {m['componentId']}@{m['version']}, but the code is {mod.VERSION}")
+    srv = ThreadingHTTPServer(("0.0.0.0", m["httpPort"]), mod.handler(m.get("config", {})))
+    threading.Thread(target=srv.serve_forever, daemon=True).start()
+    print(f"serving {m['componentId']}@{m['version']} on :{m['httpPort']}", flush=True)
+
+
+class Health(BaseHTTPRequestHandler):
+    def log_message(self, *args):
+        pass
+
+    def do_GET(self):
+        self.send_response(200 if self.path == "/healthz" else 404)
+        self.end_headers()
+
+
+port = int(os.environ.get("PORT", "8090"))
+print(f"pyshell on :{port}", flush=True)
+ThreadingHTTPServer(("0.0.0.0", port), Health).serve_forever()
+EOF
+printf 'FROM python:3.13-alpine\nWORKDIR /app\nCOPY . .\nCMD ["python3", "shell.py"]\n' > "$d/Dockerfile"
+
+# delta: a standalone Python component calling alpha (in the Go shell) and pyr (in the Python shell).
+d=components/demo/delta; mkdir -p "$d"
+cat > "$d/component.yaml" <<EOF
+apiVersion: brickkit/v1
+kind: Component
+
+metadata:
+  id: demo/delta
+  name: delta
+  version: 0.1.0
+  description: Stub standalone Python component calling demo/alpha and demo/pyr
+
+dependencies:
+  components:
+    - demo/alpha@0.1.0
+    - demo/pyr@0.1.0
+
+deployment:
+  type: container
+  build:
+    dockerfile: Dockerfile
+  port: 8092
+
+local:
+  runCommand: ["python3", "delta.py"]
+
+healthCheck:
+  type: http
+  path: /healthz
+
+$INFRA_SCHEMA
+EOF
+cat > "$d/delta.py" <<EOF
+"""Stub standalone Python component: calls demo/alpha and demo/pyr, checks the base resources."""
+import json
+import os
+import socket
+import urllib.parse
+import urllib.request
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+$PY_COMMON
+
+cfg = dict(os.environ)
+
+
+class Handler(Base):
+    def do_GET(self):
+        if self.path == "/healthz":
+            return self.send_json(200, "ok")
+        if self.path == "/api/infra":
+            return self.send_json(200, infra(cfg))
+        if self.path == "/api/pid":
+            return self.send_json(200, {"pid": os.getpid()})
+        if self.path == "/api/chain":
+            a, p = cfg.get("DEMO_ALPHA_ENDPOINT", ""), cfg.get("DEMO_PYR_ENDPOINT", "")
+            try:
+                return self.send_json(200, {"from": "demo/delta", "alphaEndpoint": a, "pyrEndpoint": p,
+                                            "alpha": get_json(a + "/api/hello"), "pyr": get_json(p + "/api/render")})
+            except OSError as e:
+                return self.send_json(502, {"error": str(e)})
+        self.send_json(404, {"error": self.path})
+
+
+port = int(os.environ.get("PORT", "8092"))
+print(f"demo/delta@0.1.0 on :{port}", flush=True)
+ThreadingHTTPServer(("0.0.0.0", port), Handler).serve_forever()
+EOF
+printf 'FROM python:3.13-alpine\nWORKDIR /app\nCOPY . .\nCMD ["python3", "delta.py"]\n' > "$d/Dockerfile"
+
+python3 - <<'PY'
+for path, local in [("components/demo/alpha/component.yaml", '["go", "run", "./cmd/server", "migrate"]'),
+                    ("components/demo/gamma/component.yaml", '["go", "run", ".", "migrate"]')]:
+    s = open(path).read()
+    if "migration:" not in s:
+        s = s.replace("healthCheck:", 'migration:\n  command: ["/server", "migrate"]\n\nhealthCheck:', 1)
+    s = s.replace("healthCheck:", f"local:\n  migrationCommand: {local}\n\nhealthCheck:", 1)
+    open(path, "w").write(s)
+PY
+mkdir -p shell/demo/pyshell/vendor && cp components/demo/pyr/pyr.py shell/demo/pyshell/vendor/
+(cd shell/demo/shell && go mod vendor)
+for x in components/demo/alpha components/demo/beta components/demo/gamma; do (cd "$x" && go vet ./...); done
+(cd shell/demo/shell && go vet -mod=vendor .)
+python3 -m py_compile components/demo/pyr/*.py components/demo/delta/delta.py shell/demo/pyshell/shell.py
+echo setup ok

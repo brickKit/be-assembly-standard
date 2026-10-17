@@ -44,7 +44,7 @@
 | 0-04 | Go 外壳承载成员（外壳自己的 `go.mod` 引入成员模块；BrickKit 只核对成员版本，不替外壳编译）；成员版本不一致时被拒 | 完成（2026-10-17）；“编进的代码与声明不符”只有启动器能拦，第 2 步的启动器按 Go 构建信息核对；按标签取成员留到第 4 步；v1.6.0、v1.6.1 复测通过（FRR-004、FRB-001） |
 | 0-05 | 全部组件与外壳 `mode: local`（`target: docker`，基础资源在 Docker） | 完成（2026-10-17）；Go、Python 的单跑与外壳都能跑，看护行为与文档一致；v1.7.1 起单跑的本机进程与本机外壳的成员都用 `local.migrationCommand` 从源码迁移；`go run` 常驻，内存分开报；计划的“负载与测量”已补三条 |
 | 0-06 | 本机进程与 Podman 混合 | 完成（2026-10-17）；全部容器、外壳在容器、外壳在本机三种布局都通；无根 Podman 的 `host-gateway` 可用；正式跑 P、LP 行时基础资源只起 Podman 那套 |
-| 0-07 | minikube 跑 BrickKit 生成的 K8s 清单（含外壳）；`local`、`debug` 不能配 `k8s` | **下一项**；本机有 minikube，没有 kubectl（用 `minikube kubectl --`）；可复用 0-06 的桩项目（`experiment-data/0-06/run1.txt`） |
+| 0-07 | minikube 跑 BrickKit 生成的 K8s 清单（含外壳）；`local`、`debug` 不能配 `k8s` | 部分通过（2026-10-17）；部署本身正常，但调用外壳成员的地址在 K8s 上不可达（FRB-004，严重）；**等 BrickKit 修复后重做调用链**（`experiment-data/0-07/run1.txt` 的 run 1b）。镜像要 `minikube image load`；没有 kubectl，用转给 `minikube kubectl --` 的小脚本 |
 | 0-08 | 同一组件两个版本并存（BrickKit 多版本共存：`requiredBy`） | 未开始 |
 | 0-09 | 同一组件两个副本 | 未开始 |
 | 0-10 | 两个 PostgreSQL 实例 | 未开始 |
@@ -58,7 +58,7 @@
 
 **已知、暂不处理**：`infra/scripts/tests/test_ship_dryrun.sh` 失败——旧的 `ship.sh` 还调用旧 `be-acceptance` 的命令，迁移后已不存在；发布工具随重建重新提供，届时一并处理。
 
-**给 BrickKit 的收件箱** `brickkit-feedback/rebuild.md`：FRR-001 到 FRR-005、FRB-001 到 FRB-003 全部关闭（最后一次复测 2026-10-17，v1.7.1）；没有未回复的条目。
+**给 BrickKit 的收件箱** `brickkit-feedback/rebuild.md`：FRR-001 到 FRR-005、FRB-001 到 FRB-003 全部关闭（最后一次复测 2026-10-17，v1.7.1）；**FRB-004（严重）等回复**：K8s 上调用外壳成员的地址不可达，挡住 K 行带外壳的格子。
 
 ## 任务结束时：知识库反馈
 
