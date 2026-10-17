@@ -45,8 +45,8 @@
 | 0-05 | 全部组件与外壳 `mode: local`（`target: docker`，基础资源在 Docker） | 完成（2026-10-17）；Go、Python 的单跑与外壳都能跑，看护行为与文档一致；v1.7.1 起单跑的本机进程与本机外壳的成员都用 `local.migrationCommand` 从源码迁移；`go run` 常驻，内存分开报；计划的“负载与测量”已补三条 |
 | 0-06 | 本机进程与 Podman 混合 | 完成（2026-10-17）；全部容器、外壳在容器、外壳在本机三种布局都通；无根 Podman 的 `host-gateway` 可用；正式跑 P、LP 行时基础资源只起 Podman 那套 |
 | 0-07 | minikube 跑 BrickKit 生成的 K8s 清单（含外壳）；`local`、`debug` 不能配 `k8s` | 完成（2026-10-17）；v1.7.2 起外壳成员的地址写成员自己的服务名，K8s 上调用链通（FRB-004 关闭）。镜像要 `minikube image load`；没有 kubectl，用转给 `minikube kubectl --` 的小脚本 |
-| 0-08 | 同一组件两个版本并存（BrickKit 多版本共存：`requiredBy`） | **下一项**；顺带测 FRB-003 回复里的迁移顺序保护（从源码的迁移与同组件更高版本的容器迁移） |
-| 0-09 | 同一组件两个副本 | 未开始 |
+| 0-08 | 同一组件两个版本并存（BrickKit 多版本共存：`requiredBy`） | 完成（2026-10-17）；`add` 自动保留兼容版本，外壳只编进一个版本、另一个单独运行；迁移按版本串行；迁移顺序保护有效 |
+| 0-09 | 同一组件两个副本 | **下一项**；副本数（`replicas`）只对 K8s 有意义，Docker、Podman 下要看 BrickKit 怎样处理 |
 | 0-10 | 两个 PostgreSQL 实例 | 未开始 |
 | 0-11 | Podman 有根与无根 | 未开始；有根需要 `sudo`，这台机器 `sudo -n` 要密码，到时请用户执行或授权 |
 | 0-12 | 连接池代理的事务模式与 `SET LOCAL`（以及 pgx 的预编译语句） | 未开始 |

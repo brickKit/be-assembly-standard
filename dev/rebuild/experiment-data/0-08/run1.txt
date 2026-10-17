@@ -1,0 +1,718 @@
+# note: an earlier attempt of part 3 failed on two script bugs, fixed before this run: the recreated remote moved the tags under BrickKit's user-level cache (VERSION_CHANGED, correctly) and a regex broke deploy.yaml's indentation.
+# 0-08 run 1 (2026-10-17), BrickKit CLI v1.7.2, Docker version 29.7.1
+
+######## part 1: add; alpha 0.2.0 on its own, alpha 0.1.0 in the shell for beta
+$ brickkit add --local --yes
+🔗 NATS_URL in config/demo-alpha@0.1.0.yaml references the variable of the same name in config/vars.yaml (--yes)
+🔗 PG_HOST in config/demo-alpha@0.1.0.yaml references the variable of the same name in config/vars.yaml (--yes)
+🔗 PG_PORT in config/demo-alpha@0.1.0.yaml references the variable of the same name in config/vars.yaml (--yes)
+🔗 NATS_URL in config/demo-beta.yaml references the variable of the same name in config/vars.yaml (--yes)
+🔗 PG_HOST in config/demo-beta.yaml references the variable of the same name in config/vars.yaml (--yes)
+🔗 PG_PORT in config/demo-beta.yaml references the variable of the same name in config/vars.yaml (--yes)
+🔗 NATS_URL in config/demo-alpha.yaml references the variable of the same name in config/vars.yaml (--yes)
+🔗 PG_HOST in config/demo-alpha.yaml references the variable of the same name in config/vars.yaml (--yes)
+🔗 PG_PORT in config/demo-alpha.yaml references the variable of the same name in config/vars.yaml (--yes)
+🔗 NATS_URL in config/demo-gamma.yaml references the variable of the same name in config/vars.yaml (--yes)
+🔗 PG_HOST in config/demo-gamma.yaml references the variable of the same name in config/vars.yaml (--yes)
+🔗 PG_PORT in config/demo-gamma.yaml references the variable of the same name in config/vars.yaml (--yes)
+➕ Adding demo/beta@0.1.0, demo/gamma@0.1.0, demo/shell@0.1.0
+   ✅ demo/alpha@0.1.0 (requiredBy: demo/beta, demo/shell, in shell demo/shell)
+   ✅ demo/beta@0.1.0 (in shell demo/shell)
+   ✅ demo/alpha@0.2.0
+   ✅ demo/gamma@0.1.0
+   ✅ demo/shell@0.1.0
+📝 Written: brickkit.yaml, deploy.yaml
+📝 Config skeletons: config/demo-alpha@0.1.0.yaml, config/demo-beta.yaml, config/demo-alpha.yaml, config/demo-gamma.yaml
+ℹ️  Shell demo/shell contains demo/alpha@0.1.0, so demo/alpha@0.2.0 is not in the shell and runs on its own
+[exit 0]
+$ sed -n /^components:/,$p brickkit.yaml
+components:
+  - id: demo/alpha
+    version: 0.2.0
+  - id: demo/alpha
+    version: 0.1.0
+    requiredBy: [demo/beta, demo/shell]
+  - id: demo/beta
+    version: 0.1.0
+  - id: demo/gamma
+    version: 0.1.0
+  - id: demo/shell
+    version: 0.1.0
+    kind: shell
+[exit 0]
+$ grep -v ^# deploy.yaml
+target: docker # docker | podman | k8s
+
+components:
+  - id: demo/alpha
+  - id: demo/gamma
+  - id: demo/shell
+    members:
+      - id: demo/alpha@0.1.0
+      - id: demo/beta
+[exit 0]
+$ brickkit build
+🔨 Building demo/alpha@0.2.0 → demo-alpha:0.2.0
+✅ Built demo/alpha@0.2.0 → demo-alpha:0.2.0
+🔨 Building demo/alpha@0.1.0 → demo-alpha:0.1.0
+✅ Built demo/alpha@0.1.0 → demo-alpha:0.1.0
+🔨 Building demo/beta@0.1.0 → demo-beta:0.1.0
+✅ Built demo/beta@0.1.0 → demo-beta:0.1.0
+🔨 Building demo/gamma@0.1.0 → demo-gamma:0.1.0
+✅ Built demo/gamma@0.1.0 → demo-gamma:0.1.0
+🔨 Building demo/shell@0.1.0 → demo-shell:0.1.0
+✅ Built demo/shell@0.1.0 → demo-shell:0.1.0
+[exit 0]
+$ docker images --format {{.Repository}}:{{.Tag}} {{.Size}} --filter reference=demo-*
+demo-shell:0.1.0 27.8MB
+demo-gamma:0.1.0 27.7MB
+demo-alpha:0.2.0 26.4MB
+demo-beta:0.1.0 27.7MB
+demo-alpha:0.1.0 26.4MB
+[exit 0]
+$ docker image inspect -f {{index .Config.Labels "io.brickkit.shell.members"}} demo-shell:0.1.0
+demo/alpha@0.1.0,demo/beta@0.1.0
+[exit 0]
+$ brickkit up
+🚀 Starting project proj (target: docker)
+📋 Component state calculation:
+   ✅ demo/alpha@0.2.0  starting (demo/gamma needs it)
+   ✅ demo/alpha@0.1.0  starting (demo/beta needs it)
+   ✅ demo/beta@0.1.0   starting (demo/gamma needs it)
+   ✅ demo/gamma@0.1.0  starting (top-level)
+   ✅ demo/shell@0.1.0  starting (top-level)
+
+📋 Start order (topological sort):
+   1. demo-alpha-0-2-0  no dependencies
+   2. demo-shell-0-1-0  no dependencies  (hosts demo/alpha@0.1.0, demo/beta@0.1.0)
+   3. demo-gamma-0-1-0  ← depends on 1, 2
+
+Can start on their own: demo-alpha-0-2-0, demo-shell-0-1-0 (no dependencies)
+Longest dependency chain (2 levels): demo-alpha-0-2-0 → demo-gamma-0-1-0
+   Components not on this chain start in parallel with it
+
+Dependency graph:
+   demo/gamma@0.1.0 → demo/alpha@0.2.0
+                    → demo/beta@0.1.0
+   demo/beta@0.1.0 → demo/alpha@0.1.0
+📄 Generated: .brickkit/generated/compose.yaml
+
+🔧 Database migrations that run before startup (on failure that component won't start):
+   demo/alpha@0.1.0  /server migrate
+   demo/alpha@0.2.0  /server migrate
+   demo/gamma@0.1.0  /server migrate
+
+🐳 Starting (docker)...
+   demo-alpha-0-2-0             running (healthy)
+   demo-gamma-0-1-0             running (healthy)
+   demo-shell-0-1-0             running (healthy)
+✅ All components started (3)
+
+💡 View the status: brickkit status
+   View the logs: docker compose -p brickkit-proj logs -f
+[exit 0]
+$ grep -n DEMO_ALPHA_ENDPOINT\|DEMO_BETA_ENDPOINT .brickkit/generated/compose.yaml
+100:      - DEMO_ALPHA_ENDPOINT=http://demo-alpha-0-2-0:8081
+101:      - DEMO_BETA_ENDPOINT=http://demo-beta-0-1-0:8082
+128:      - DEMO_ALPHA_ENDPOINT=http://demo-alpha-0-2-0:8081
+129:      - DEMO_BETA_ENDPOINT=http://demo-beta-0-1-0:8082
+[exit 0]
+$ grep -n -B2 -A8 migration: .brickkit/generated/compose.yaml
+13-    name: brickkit-proj-net
+14-services:
+15:  demo-alpha-0-1-0-migration:
+16-    command:
+17-      - migrate
+18-    entrypoint:
+19-      - /server
+20-    environment:
+21-      - COMPONENT_ID=demo/alpha
+22-      - COMPONENT_VERSION=0.1.0
+23-      - GREETING=hello
+--
+33-  demo-alpha-0-2-0:
+34-    depends_on:
+35:      demo-alpha-0-2-0-migration:
+36-        condition: service_completed_successfully
+37-    deploy:
+38-      resources:
+39-        reservations:
+40-          cpus: "0.10"
+41-          memory: 128M
+42-    environment:
+43-      - COMPONENT_ID=demo/alpha
+--
+61-      - brickkit-net
+62-    restart: unless-stopped
+63:  demo-alpha-0-2-0-migration:
+64-    command:
+65-      - migrate
+66-    depends_on:
+67:      demo-alpha-0-1-0-migration:
+68-        condition: service_completed_successfully
+69-    entrypoint:
+70-      - /server
+71-    environment:
+72-      - COMPONENT_ID=demo/alpha
+73-      - COMPONENT_VERSION=0.2.0
+74-      - GREETING=hello
+75-      - NATS_URL=nats://host.docker.internal:4222
+--
+86-      demo-alpha-0-2-0:
+87-        condition: service_healthy
+88:      demo-gamma-0-1-0-migration:
+89-        condition: service_completed_successfully
+90-      demo-shell-0-1-0:
+91-        condition: service_healthy
+92-    deploy:
+93-      resources:
+94-        reservations:
+95-          cpus: "0.10"
+96-          memory: 128M
+--
+118-      - brickkit-net
+119-    restart: unless-stopped
+120:  demo-gamma-0-1-0-migration:
+121-    command:
+122-      - migrate
+123-    entrypoint:
+124-      - /server
+125-    environment:
+126-      - COMPONENT_ID=demo/gamma
+127-      - COMPONENT_VERSION=0.1.0
+128-      - DEMO_ALPHA_ENDPOINT=http://demo-alpha-0-2-0:8081
+--
+140-  demo-shell-0-1-0:
+141-    depends_on:
+142:      demo-alpha-0-1-0-migration:
+143-        condition: service_completed_successfully
+144-    deploy:
+145-      resources:
+146-        reservations:
+147-          cpus: "0.10"
+148-          memory: 128M
+149-    env_file:
+150-      - path: .brickkit/generated/env/demo-shell-0-1-0.env
+[exit 0]
+--- brickkit-proj-demo-gamma-0-1-0-1 started 2026-10-17T15:01:29.801043959Z finished 0001-01-01T00:00:00Z
+2026/10/17 15:01:29 demo/gamma@0.1.0 on :8083
+--- brickkit-proj-demo-alpha-0-2-0-1 started 2026-10-17T15:01:24.125531234Z finished 0001-01-01T00:00:00Z
+2026/10/17 15:01:24 demo/alpha@0.2.0 standalone on :8081
+--- brickkit-proj-demo-shell-0-1-0-1 started 2026-10-17T15:01:23.434739668Z finished 0001-01-01T00:00:00Z
+2026/10/17 15:01:23 shell on :8080
+--- brickkit-proj-demo-alpha-0-2-0-migration-1 started 2026-10-17T15:01:23.435498769Z finished 2026-10-17T15:01:23.616561082Z
+2026/10/17 15:01:23 demo/alpha migrate: nothing to do (PG_HOST=host.docker.internal PG_PORT=5432)
+--- brickkit-proj-demo-gamma-0-1-0-migration-1 started 2026-10-17T15:01:22.733974552Z finished 2026-10-17T15:01:22.908947453Z
+2026/10/17 15:01:22 demo/gamma migrate: nothing to do (PG_HOST=host.docker.internal PG_PORT=5432)
+--- brickkit-proj-demo-alpha-0-1-0-migration-1 started 2026-10-17T15:01:22.734754773Z finished 2026-10-17T15:01:22.920136177Z
+2026/10/17 15:01:22 demo/alpha migrate: nothing to do (PG_HOST=host.docker.internal PG_PORT=5432)
+$ [in demo-gamma-0-1-0] wget -qO- -T 5 http://127.0.0.1:8083/api/chain
+{"alpha":{"from":"demo/alpha","version":"0.2.0"},"alphaEndpoint":"http://demo-alpha-0-2-0:8081","beta":{"alpha":{"from":"demo/alpha","version":"0.1.0"},"alphaEndpoint":"http://demo-alpha-0-1-0:8081","from":"demo/beta"},"betaEndpoint":"http://demo-beta-0-1-0:8082","from":"demo/gamma"}
+
+$ [in demo-shell-0-1-0] wget -qO- -T 5 http://127.0.0.1:8082/api/chain
+{"alpha":{"from":"demo/alpha","version":"0.1.0"},"alphaEndpoint":"http://demo-alpha-0-1-0:8081","from":"demo/beta"}
+
+$ [in demo-alpha-0-2-0] wget -qO- -T 5 http://127.0.0.1:8081/api/hello
+{"from":"demo/alpha","version":"0.2.0"}
+
+$ brickkit status
+📊 Project status: proj (target: docker)
+
+✅ Running (5 components)
+ ┌────────────┬─────────┬───────────────────────────────────────────────┬──────┐
+ │ Component  │ Version │ Status                                        │ Port │
+ ├────────────┼─────────┼───────────────────────────────────────────────┼──────┤
+ │ demo/alpha │ 0.1.0   │ running (healthy) (in shell demo/shell@0.1.0) │      │
+ │ demo/alpha │ 0.2.0   │ running (healthy)                             │      │
+ │ demo/beta  │ 0.1.0   │ running (healthy) (in shell demo/shell@0.1.0) │      │
+ │ demo/gamma │ 0.1.0   │ running (healthy)                             │      │
+ │ demo/shell │ 0.1.0   │ running (healthy)                             │      │
+ └────────────┴─────────┴───────────────────────────────────────────────┴──────┘
+
+[exit 0]
+$ brickkit down
+🛑 Stopping project proj
+✅ All components stopped
+
+💡 Data volumes were not deleted; database data is still there
+   For a full cleanup, run by hand: docker volume rm <volume-name>
+   Start again with: brickkit up
+[exit 0]
+
+######## part 2: alpha 0.1.0 leaves the shell; both versions on their own
+$ grep -v ^# deploy.yaml
+target: docker # docker | podman | k8s
+
+components:
+  - id: demo/alpha
+  - id: demo/gamma
+  - id: demo/shell
+    members:
+      - id: demo/beta
+  - id: demo/alpha@0.1.0
+[exit 0]
+$ brickkit up
+🚀 Starting project proj (target: docker)
+📋 Component state calculation:
+   ✅ demo/alpha@0.2.0  starting (demo/gamma needs it)
+   ✅ demo/alpha@0.1.0  starting (demo/beta needs it)
+   ✅ demo/beta@0.1.0   starting (demo/gamma needs it)
+   ✅ demo/gamma@0.1.0  starting (top-level)
+   ✅ demo/shell@0.1.0  starting (top-level)
+
+📋 Start order (topological sort):
+   1. demo-alpha-0-1-0  no dependencies
+   2. demo-alpha-0-2-0  no dependencies
+   3. demo-shell-0-1-0  ← depends on 1  (hosts demo/beta@0.1.0)
+   4. demo-gamma-0-1-0  ← depends on 2, 3
+
+Can start on their own: demo-alpha-0-1-0, demo-alpha-0-2-0 (no dependencies)
+Longest dependency chain (3 levels): demo-alpha-0-1-0 → demo-shell-0-1-0 → demo-gamma-0-1-0
+   Components not on this chain start in parallel with it
+
+Dependency graph:
+   demo/gamma@0.1.0 → demo/alpha@0.2.0
+                    → demo/beta@0.1.0
+   demo/beta@0.1.0 → demo/alpha@0.1.0
+📄 Generated: .brickkit/generated/compose.yaml
+
+🔧 Database migrations that run before startup (on failure that component won't start):
+   demo/alpha@0.1.0  /server migrate
+   demo/alpha@0.2.0  /server migrate
+   demo/gamma@0.1.0  /server migrate
+
+🐳 Starting (docker)...
+   demo-alpha-0-1-0             running (healthy)
+   demo-alpha-0-2-0             running (healthy)
+   demo-gamma-0-1-0             running (healthy)
+   demo-shell-0-1-0             running (healthy)
+✅ All components started (4)
+
+💡 View the status: brickkit status
+   View the logs: docker compose -p brickkit-proj logs -f
+[exit 0]
+$ [in demo-gamma-0-1-0] wget -qO- -T 5 http://127.0.0.1:8083/api/chain
+{"alpha":{"from":"demo/alpha","version":"0.2.0"},"alphaEndpoint":"http://demo-alpha-0-2-0:8081","beta":{"alpha":{"from":"demo/alpha","version":"0.1.0"},"alphaEndpoint":"http://demo-alpha-0-1-0:8081","from":"demo/beta"},"betaEndpoint":"http://demo-beta-0-1-0:8082","from":"demo/gamma"}
+
+$ docker ps --filter name=brickkit-proj --format {{.Names}} {{.Image}} {{.Status}}
+brickkit-proj-demo-gamma-0-1-0-1 demo-gamma:0.1.0 Up 5 seconds (healthy)
+brickkit-proj-demo-alpha-0-2-0-1 demo-alpha:0.2.0 Up 16 seconds (healthy)
+brickkit-proj-demo-shell-0-1-0-1 demo-shell:0.1.0 Up 11 seconds (healthy)
+brickkit-proj-demo-alpha-0-1-0-1 demo-alpha:0.1.0 Up 17 seconds (healthy)
+[exit 0]
+$ brickkit down
+🛑 Stopping project proj
+✅ All components stopped
+
+💡 Data volumes were not deleted; database data is still there
+   For a full cleanup, run by hand: docker volume rm <volume-name>
+   Start again with: brickkit up
+[exit 0]
+
+######## part 3: the migration-order guard — alpha 0.1.0 becomes the default and migrates from source, 0.2.0 migrates in a container
+$ grep -n version: components/demo/alpha/component.yaml
+7:  version: 0.1.0
+[exit 0]
+$ brickkit upgrade demo/alpha@0.1.0 --yes
+   ⬇️  demo/alpha: 0.2.0 → 0.1.0 (downgrade)
+   ℹ️  demo/alpha is a downgrade: 0.2.0 → 0.1.0
+   🔗 demo/alpha@0.2.0 is now required by: demo/gamma
+📝 Written: brickkit.yaml, deploy.yaml
+[exit 0]
+$ sed -n /^components:/,$p brickkit.yaml
+components:
+  - id: demo/alpha
+    version: 0.1.0
+  - id: demo/alpha
+    version: 0.2.0
+    requiredBy: [demo/gamma]
+  - id: demo/beta
+    version: 0.1.0
+  - id: demo/gamma
+    version: 0.1.0
+  - id: demo/shell
+    version: 0.1.0
+    kind: shell
+[exit 0]
+$ grep -v ^# deploy.yaml
+target: docker # docker | podman | k8s
+
+components:
+  - id: demo/alpha@0.2.0
+  - id: demo/gamma
+  - id: demo/shell
+    members:
+      - id: demo/alpha
+      - id: demo/beta
+[exit 0]
+
+== 3a: alpha 0.1.0 (default) as mode: local, leaving the shell; 0.2.0 in a container
+$ grep -v ^# deploy.yaml
+target: docker # docker | podman | k8s
+
+components:
+  - id: demo/alpha@0.2.0
+  - id: demo/gamma
+  - id: demo/shell
+    members:
+      - id: demo/alpha
+        mode: local
+      - id: demo/beta
+[exit 0]
+$ brickkit up --dry-run
+🚀 Starting project proj (target: docker)
+📋 Component state calculation:
+   ✅ demo/alpha@0.1.0  starting (mode: local)
+   ✅ demo/alpha@0.2.0  starting (demo/gamma needs it)
+   ✅ demo/beta@0.1.0   starting (demo/gamma needs it)
+   ✅ demo/gamma@0.1.0  starting (top-level)
+   ✅ demo/shell@0.1.0  starting (top-level)
+
+📋 Start order (topological sort):
+   1. demo-alpha-0-1-0  no dependencies
+   2. demo-alpha-0-2-0  no dependencies
+   3. demo-shell-0-1-0  ← depends on 1  (hosts demo/beta@0.1.0)
+   4. demo-gamma-0-1-0  ← depends on 2, 3
+
+Can start on their own: demo-alpha-0-1-0, demo-alpha-0-2-0 (no dependencies)
+Longest dependency chain (3 levels): demo-alpha-0-1-0 → demo-shell-0-1-0 → demo-gamma-0-1-0
+   Components not on this chain start in parallel with it
+
+Dependency graph:
+   demo/gamma@0.1.0 → demo/alpha@0.2.0
+                    → demo/beta@0.1.0
+   demo/beta@0.1.0 → demo/alpha@0.1.0
+❌ Error: the migration of demo/alpha@0.1.0 runs from source, after the containers, but the newer demo/alpha@0.2.0 migrates in a container first
+   Reason: A component's migrations must run from the oldest version to the newest; a migration from source can only run after the engine has run the containers
+   Suggestions:
+   1. Don't run demo/alpha@0.2.0 this time: mode: disable on its entry
+   2. Or run demo/alpha@0.1.0 from its image this time: without mode: local (for a shell member, with the shell in a container)
+{"time":"…","level":"ERROR","message":"Command failed","command":"brickkit up","elapsed_ms":11,"error_code":"CONFIG_INVALID","error":"CONFIG_INVALID: Error: the migration of demo/alpha@0.1.0 runs from source, after the containers, but the newer demo/alpha@0.2.0 migrates in a container first; Reason=A component's migrations must run from the oldest version to the newest; a migration from source can only run after the engine has run the containers","exit_code":1}
+[exit 1]
+$ timeout 120 brickkit up
+🚀 Starting project proj (target: docker)
+📋 Component state calculation:
+   ✅ demo/alpha@0.1.0  starting (mode: local)
+   ✅ demo/alpha@0.2.0  starting (demo/gamma needs it)
+   ✅ demo/beta@0.1.0   starting (demo/gamma needs it)
+   ✅ demo/gamma@0.1.0  starting (top-level)
+   ✅ demo/shell@0.1.0  starting (top-level)
+
+📋 Start order (topological sort):
+   1. demo-alpha-0-1-0  no dependencies
+   2. demo-alpha-0-2-0  no dependencies
+   3. demo-shell-0-1-0  ← depends on 1  (hosts demo/beta@0.1.0)
+   4. demo-gamma-0-1-0  ← depends on 2, 3
+
+Can start on their own: demo-alpha-0-1-0, demo-alpha-0-2-0 (no dependencies)
+Longest dependency chain (3 levels): demo-alpha-0-1-0 → demo-shell-0-1-0 → demo-gamma-0-1-0
+   Components not on this chain start in parallel with it
+
+Dependency graph:
+   demo/gamma@0.1.0 → demo/alpha@0.2.0
+                    → demo/beta@0.1.0
+   demo/beta@0.1.0 → demo/alpha@0.1.0
+❌ Error: the migration of demo/alpha@0.1.0 runs from source, after the containers, but the newer demo/alpha@0.2.0 migrates in a container first
+   Reason: A component's migrations must run from the oldest version to the newest; a migration from source can only run after the engine has run the containers
+   Suggestions:
+   1. Don't run demo/alpha@0.2.0 this time: mode: disable on its entry
+   2. Or run demo/alpha@0.1.0 from its image this time: without mode: local (for a shell member, with the shell in a container)
+{"time":"…","level":"ERROR","message":"Command failed","command":"brickkit up","elapsed_ms":10,"error_code":"CONFIG_INVALID","error":"CONFIG_INVALID: Error: the migration of demo/alpha@0.1.0 runs from source, after the containers, but the newer demo/alpha@0.2.0 migrates in a container first; Reason=A component's migrations must run from the oldest version to the newest; a migration from source can only run after the engine has run the containers","exit_code":1}
+[exit 1]
+$ brickkit down
+🛑 Stopping project proj
+📋 This project has no containers running right now (the engine has none at all)
+   Start it with brickkit up
+[exit 0]
+
+== 3b: the Go shell as mode: local (alpha 0.1.0 compiled in from source), 0.2.0 in a container
+$ grep -v ^# deploy.yaml
+target: docker # docker | podman | k8s
+
+components:
+  - id: demo/alpha@0.2.0
+  - id: demo/gamma
+  - id: demo/shell
+    mode: local
+    members:
+      - id: demo/alpha
+      - id: demo/beta
+[exit 0]
+$ brickkit up --dry-run
+🚀 Starting project proj (target: docker)
+📋 Component state calculation:
+   ✅ demo/alpha@0.1.0  starting (demo/beta needs it)
+   ✅ demo/alpha@0.2.0  starting (demo/gamma needs it)
+   ✅ demo/beta@0.1.0   starting (demo/gamma needs it)
+   ✅ demo/gamma@0.1.0  starting (top-level)
+   ✅ demo/shell@0.1.0  starting (top-level)
+
+📋 Start order (topological sort):
+   1. demo-alpha-0-2-0  no dependencies
+   2. demo-shell-0-1-0  no dependencies  (hosts demo/alpha@0.1.0, demo/beta@0.1.0)
+   3. demo-gamma-0-1-0  ← depends on 1, 2
+
+Can start on their own: demo-alpha-0-2-0, demo-shell-0-1-0 (no dependencies)
+Longest dependency chain (2 levels): demo-alpha-0-2-0 → demo-gamma-0-1-0
+   Components not on this chain start in parallel with it
+
+Dependency graph:
+   demo/gamma@0.1.0 → demo/alpha@0.2.0
+                    → demo/beta@0.1.0
+   demo/beta@0.1.0 → demo/alpha@0.1.0
+❌ Error: the migration of demo/alpha@0.1.0 runs from source, after the containers, but the newer demo/alpha@0.2.0 migrates in a container first
+   Reason: A component's migrations must run from the oldest version to the newest; a migration from source can only run after the engine has run the containers
+   Suggestions:
+   1. Don't run demo/alpha@0.2.0 this time: mode: disable on its entry
+   2. Or run demo/alpha@0.1.0 from its image this time: without mode: local (for a shell member, with the shell in a container)
+{"time":"…","level":"ERROR","message":"Command failed","command":"brickkit up","elapsed_ms":11,"error_code":"CONFIG_INVALID","error":"CONFIG_INVALID: Error: the migration of demo/alpha@0.1.0 runs from source, after the containers, but the newer demo/alpha@0.2.0 migrates in a container first; Reason=A component's migrations must run from the oldest version to the newest; a migration from source can only run after the engine has run the containers","exit_code":1}
+[exit 1]
+$ timeout 120 brickkit up
+🚀 Starting project proj (target: docker)
+📋 Component state calculation:
+   ✅ demo/alpha@0.1.0  starting (demo/beta needs it)
+   ✅ demo/alpha@0.2.0  starting (demo/gamma needs it)
+   ✅ demo/beta@0.1.0   starting (demo/gamma needs it)
+   ✅ demo/gamma@0.1.0  starting (top-level)
+   ✅ demo/shell@0.1.0  starting (top-level)
+
+📋 Start order (topological sort):
+   1. demo-alpha-0-2-0  no dependencies
+   2. demo-shell-0-1-0  no dependencies  (hosts demo/alpha@0.1.0, demo/beta@0.1.0)
+   3. demo-gamma-0-1-0  ← depends on 1, 2
+
+Can start on their own: demo-alpha-0-2-0, demo-shell-0-1-0 (no dependencies)
+Longest dependency chain (2 levels): demo-alpha-0-2-0 → demo-gamma-0-1-0
+   Components not on this chain start in parallel with it
+
+Dependency graph:
+   demo/gamma@0.1.0 → demo/alpha@0.2.0
+                    → demo/beta@0.1.0
+   demo/beta@0.1.0 → demo/alpha@0.1.0
+❌ Error: the migration of demo/alpha@0.1.0 runs from source, after the containers, but the newer demo/alpha@0.2.0 migrates in a container first
+   Reason: A component's migrations must run from the oldest version to the newest; a migration from source can only run after the engine has run the containers
+   Suggestions:
+   1. Don't run demo/alpha@0.2.0 this time: mode: disable on its entry
+   2. Or run demo/alpha@0.1.0 from its image this time: without mode: local (for a shell member, with the shell in a container)
+{"time":"…","level":"ERROR","message":"Command failed","command":"brickkit up","elapsed_ms":12,"error_code":"CONFIG_INVALID","error":"CONFIG_INVALID: Error: the migration of demo/alpha@0.1.0 runs from source, after the containers, but the newer demo/alpha@0.2.0 migrates in a container first; Reason=A component's migrations must run from the oldest version to the newest; a migration from source can only run after the engine has run the containers","exit_code":1}
+[exit 1]
+$ brickkit down
+🛑 Stopping project proj
+📋 This project has no containers running right now (the engine has none at all)
+   Start it with brickkit up
+[exit 0]
+
+== 3c: control — alpha 0.1.0 default in a container too (both migrations in containers)
+$ brickkit build demo/alpha@0.1.0
+⏭️  demo/alpha@0.1.0: image demo-alpha:0.1.0 already exists, skipped (--force rebuilds)
+[exit 0]
+$ brickkit up
+🚀 Starting project proj (target: docker)
+📋 Component state calculation:
+   ✅ demo/alpha@0.1.0  starting (demo/beta needs it)
+   ✅ demo/alpha@0.2.0  starting (demo/gamma needs it)
+   ✅ demo/beta@0.1.0   starting (demo/gamma needs it)
+   ✅ demo/gamma@0.1.0  starting (top-level)
+   ✅ demo/shell@0.1.0  starting (top-level)
+
+📋 Start order (topological sort):
+   1. demo-alpha-0-2-0  no dependencies
+   2. demo-shell-0-1-0  no dependencies  (hosts demo/alpha@0.1.0, demo/beta@0.1.0)
+   3. demo-gamma-0-1-0  ← depends on 1, 2
+
+Can start on their own: demo-alpha-0-2-0, demo-shell-0-1-0 (no dependencies)
+Longest dependency chain (2 levels): demo-alpha-0-2-0 → demo-gamma-0-1-0
+   Components not on this chain start in parallel with it
+
+Dependency graph:
+   demo/gamma@0.1.0 → demo/alpha@0.2.0
+                    → demo/beta@0.1.0
+   demo/beta@0.1.0 → demo/alpha@0.1.0
+📄 Generated: .brickkit/generated/compose.yaml
+
+🔧 Database migrations that run before startup (on failure that component won't start):
+   demo/alpha@0.1.0  /server migrate
+   demo/alpha@0.2.0  /server migrate
+   demo/gamma@0.1.0  /server migrate
+
+🐳 Starting (docker)...
+   demo-alpha-0-2-0             running (healthy)
+   demo-gamma-0-1-0             running (healthy)
+   demo-shell-0-1-0             running (healthy)
+✅ All components started (3)
+
+💡 View the status: brickkit status
+   View the logs: docker compose -p brickkit-proj logs -f
+[exit 0]
+--- brickkit-proj-demo-gamma-0-1-0-1 started 2026-10-17T15:02:05.332089947Z
+--- brickkit-proj-demo-alpha-0-2-0-1 started 2026-10-17T15:01:59.639585744Z
+--- brickkit-proj-demo-alpha-0-2-0-migration-1 started 2026-10-17T15:01:58.952059923Z
+--- brickkit-proj-demo-shell-0-1-0-1 started 2026-10-17T15:01:58.951362618Z
+--- brickkit-proj-demo-gamma-0-1-0-migration-1 started 2026-10-17T15:01:58.264975388Z
+--- brickkit-proj-demo-alpha-0-1-0-migration-1 started 2026-10-17T15:01:58.264254312Z
+$ grep -n -A3 depends_on .brickkit/generated/compose.yaml
+34:    depends_on:
+35-      demo-alpha-0-2-0-migration:
+36-        condition: service_completed_successfully
+37-    deploy:
+--
+66:    depends_on:
+67-      demo-alpha-0-1-0-migration:
+68-        condition: service_completed_successfully
+69-    entrypoint:
+--
+85:    depends_on:
+86-      demo-alpha-0-2-0:
+87-        condition: service_healthy
+88-      demo-gamma-0-1-0-migration:
+--
+141:    depends_on:
+142-      demo-alpha-0-1-0-migration:
+143-        condition: service_completed_successfully
+144-    deploy:
+[exit 0]
+$ brickkit down
+🛑 Stopping project proj
+✅ All components stopped
+
+💡 Data volumes were not deleted; database data is still there
+   For a full cleanup, run by hand: docker volume rm <volume-name>
+   Start again with: brickkit up
+[exit 0]
+
+######## run008.sh
+#!/usr/bin/env bash
+# 0-08 run 1: two versions of demo/alpha side by side (Docker); then the migration-order guard.
+set -uo pipefail
+S=$(dirname "$0")/..; S=$(cd "$S" && pwd); P=$S/r008/proj; export GOCACHE=$S/gocache
+run() { echo "\$ $*"; "$@" 2>&1 | sed -E 's/"time":"[^"]*"/"time":"…"/'; echo "[exit ${PIPESTATUS[0]}]"; }
+dx() { local c=$1; shift; echo "\$ [in $c] $*"; docker exec "brickkit-proj-$c-1" "$@" 2>&1; echo; }
+echo "# 0-08 run 1 ($(date +%F)), $(brickkit version | head -1), $(docker --version | cut -d, -f1)"
+bash $S/bin/r008-setup.sh >/dev/null 2>&1 || { echo setup failed; exit 1; }
+for i in $(docker images -q --filter reference="demo-*"); do docker rmi -f $i >/dev/null 2>&1; done
+cd "$P"
+
+echo; echo "######## part 1: add; alpha 0.2.0 on its own, alpha 0.1.0 in the shell for beta"
+run brickkit add --local --yes
+run sed -n '/^components:/,$p' brickkit.yaml
+run grep -v "^#" deploy.yaml
+run brickkit build
+run docker images --format '{{.Repository}}:{{.Tag}} {{.Size}}' --filter reference='demo-*'
+run docker image inspect -f '{{index .Config.Labels "io.brickkit.shell.members"}}' demo-shell:0.1.0
+run brickkit up
+run grep -n "DEMO_ALPHA_ENDPOINT\|DEMO_BETA_ENDPOINT" .brickkit/generated/compose.yaml
+run grep -n -B2 -A8 "migration:" .brickkit/generated/compose.yaml
+for c in $(docker ps -a --filter name=brickkit-proj --filter name=migration --format '{{.Names}}'); do echo "--- $c started $(docker inspect -f '{{.State.StartedAt}} finished {{.State.FinishedAt}}' $c)"; docker logs $c 2>&1 | tail -1; done
+dx demo-gamma-0-1-0 wget -qO- -T 5 http://127.0.0.1:8083/api/chain
+dx demo-shell-0-1-0 wget -qO- -T 5 http://127.0.0.1:8082/api/chain
+dx demo-alpha-0-2-0 wget -qO- -T 5 http://127.0.0.1:8081/api/hello
+run brickkit status
+run brickkit down
+
+echo; echo "######## part 2: alpha 0.1.0 leaves the shell; both versions on their own"
+python3 - <<'PY'
+p = "deploy.yaml"; s = open(p).read()
+s = s.replace("    members:\n      - id: demo/alpha@0.1.0\n      - id: demo/beta\n", "    members:\n      - id: demo/beta\n  - id: demo/alpha@0.1.0\n")
+open(p, "w").write(s)
+PY
+run grep -v "^#" deploy.yaml
+run brickkit up
+dx demo-gamma-0-1-0 wget -qO- -T 5 http://127.0.0.1:8083/api/chain
+run docker ps --filter name=brickkit-proj --format '{{.Names}} {{.Image}} {{.Status}}'
+run brickkit down
+git checkout -- deploy.yaml 2>/dev/null || python3 - <<'PY'
+p = "deploy.yaml"; s = open(p).read()
+s = s.replace("    members:\n      - id: demo/beta\n  - id: demo/alpha@0.1.0\n", "    members:\n      - id: demo/alpha@0.1.0\n      - id: demo/beta\n")
+open(p, "w").write(s)
+PY
+
+echo; echo "######## part 3: the migration-order guard — alpha 0.1.0 becomes the default and migrates from source, 0.2.0 migrates in a container"
+git -c advice.detachedHead=false clone -q --branch 0.1.0 $S/r008/remotes/demo-alpha components/demo/alpha
+run grep -n "version:" components/demo/alpha/component.yaml
+run brickkit upgrade demo/alpha@0.1.0 --yes
+run sed -n '/^components:/,$p' brickkit.yaml
+run grep -v "^#" deploy.yaml
+
+echo; echo "== 3a: alpha 0.1.0 (default) as mode: local, leaving the shell; 0.2.0 in a container"
+cp deploy.yaml deploy.yaml.before-3
+python3 - <<'PY'
+p = "deploy.yaml"; s = open(p).read()
+s = s.replace("      - id: demo/alpha\n", "      - id: demo/alpha\n        mode: local\n", 1)
+open(p, "w").write(s)
+PY
+run grep -v "^#" deploy.yaml
+run brickkit up --dry-run
+run timeout 120 brickkit up
+run brickkit down
+
+echo; echo "== 3b: the Go shell as mode: local (alpha 0.1.0 compiled in from source), 0.2.0 in a container"
+cp deploy.yaml.before-3 deploy.yaml
+sed -i 's#^  - id: demo/shell$#  - id: demo/shell\n    mode: local#' deploy.yaml
+run grep -v "^#" deploy.yaml
+run brickkit up --dry-run
+run timeout 120 brickkit up
+run brickkit down
+
+echo; echo "== 3c: control — alpha 0.1.0 default in a container too (both migrations in containers)"
+cp deploy.yaml.before-3 deploy.yaml
+run brickkit build demo/alpha@0.1.0
+run brickkit up
+for c in $(docker ps -a --filter name=brickkit-proj --filter name=migration --format '{{.Names}}'); do echo "--- $c started $(docker inspect -f '{{.State.StartedAt}}' $c)"; done
+run grep -n -A3 "depends_on" .brickkit/generated/compose.yaml
+run brickkit down
+
+######## r008-setup.sh
+#!/usr/bin/env bash
+# 0-08 setup: two versions of demo/alpha side by side.
+# alpha lives in its own git repository (a bare "remote" remotes/demo-alpha, tags 0.1.0 and 0.2.0), reached through a
+# git install source with baseUrl (a component at a repository's root has tags without a namespace, so not `repo`);
+# beta depends on alpha@0.1.0, gamma on alpha@0.2.0 (and on beta). The Go shell hosts alpha@0.1.0 and beta.
+set -euo pipefail
+S=<scratchpad>
+bash "$S/bin/r008-base.sh" >/dev/null           # the 0-06 project, regenerated under r008/
+# the remote is recreated with new commits each time: drop BrickKit's user-level cache of it (else VERSION_CHANGED, correctly)
+rm -rf "$HOME/.cache/brickkit/repos/local$S/r008/remotes"
+cd "$S/r008"
+git() { command git -c user.name=r008 -c user.email=r008@example.test -c init.defaultBranch=main "$@"; }
+
+# alpha's repository: 0.1.0, then 0.2.0 (version in component.yaml and in the code)
+mkdir -p remotes src && git init -q --bare remotes/demo-alpha
+cp -r proj/components/demo/alpha src/alpha && cd src/alpha
+git init -q && git add -A && git commit -qm "alpha 0.1.0" && git tag 0.1.0
+sed -i 's/^  version: 0.1.0/  version: 0.2.0/' component.yaml; sed -i 's/const Version = "0.1.0"/const Version = "0.2.0"/' alpha.go
+git commit -qam "alpha 0.2.0" && git tag 0.2.0
+git remote add origin "$S/r008/remotes/demo-alpha" && git push -q origin main --tags
+cd "$S/r008"; git clone -q --branch 0.1.0 remotes/demo-alpha src/alpha-0.1.0 2>/dev/null
+
+cd proj
+rm -rf components/demo/alpha components/demo/delta components/demo/pyr shell/demo/pyshell config
+mkdir -p config && printf '# config/vars.yaml — the base resources started by make up\nPG_HOST: host.docker.internal\nPG_PORT: "5432"\nNATS_URL: nats://host.docker.internal:4222\n' > config/vars.yaml
+# gamma: depends on alpha@0.2.0 and beta@0.1.0; /api/chain calls both
+python3 - <<'PY'
+p = "components/demo/gamma/component.yaml"; s = open(p).read()
+s = s.replace("    - demo/beta@0.1.0\n", "    - demo/alpha@0.2.0\n    - demo/beta@0.1.0\n", 1); open(p, "w").write(s)
+p = "components/demo/gamma/main.go"; s = open(p).read()
+s = s.replace('''		writeJSON(w, map[string]any{"from": "demo/gamma", "betaEndpoint": cfg["DEMO_BETA_ENDPOINT"], "beta": b})''',
+'''		var a map[string]any
+		if r, err := http.Get(cfg["DEMO_ALPHA_ENDPOINT"] + "/api/hello"); err == nil {
+			_ = json.NewDecoder(r.Body).Decode(&a)
+			r.Body.Close()
+		}
+		writeJSON(w, map[string]any{"from": "demo/gamma", "betaEndpoint": cfg["DEMO_BETA_ENDPOINT"], "beta": b,
+			"alphaEndpoint": cfg["DEMO_ALPHA_ENDPOINT"], "alpha": a})''', 1)
+open(p, "w").write(s)
+PY
+# the shell compiles in alpha 0.1.0 from its tag's checkout
+sed -i "s#example.test/alpha => ../../../components/demo/alpha#example.test/alpha => $S/r008/src/alpha-0.1.0#" shell/demo/shell/go.mod
+(cd shell/demo/shell && rm -rf vendor && go mod vendor && go vet -mod=vendor .)
+(cd components/demo/gamma && go vet ./...)
+# alpha comes from the git install source
+python3 - "$S/r008/remotes/" <<'PY'
+import sys; p = "brickkit.yaml"; s = open(p).read()
+src = f"  - name: alpha-repo\n    type: git\n    baseUrl: file://{sys.argv[1]}\n"
+s = s.replace("sources:\n", "sources:\n" + src, 1) if "sources:\n" in s else s + "\nsources:\n" + src
+open(p, "w").write(s)
+PY
+echo setup ok
+
+######## r008-base.sh: r006-setup.sh with the path changed (see 0-06/run1.txt)

@@ -13,3 +13,4 @@
 | 0-05 | 全部组件与外壳 `mode: local`（`target: docker`，基础资源在 Docker） | 第 0 步 | 2026-10-17 | 通过；看护行为与文档一致；`local` 不跑迁移且提示给出镜像路径（FRR-005），端口被占时先误报“listening”（FRB-002）；Go 的 `go run` 常驻；v1.7.0、v1.7.1 复测：端口先查、本机进程与本机外壳的成员都从源码迁移（FRB-002、FRR-005、FRB-003） | [0-05-all-local.md](0-05-all-local.md) |
 | 0-06 | 本机进程与 Podman 混合（无根，`target: podman`） | 第 0 步 | 2026-10-17 | 通过；三种布局都通，无根 Podman 的 `host-gateway`（pasta，169.254.1.2）可用；没有 BrickKit 的问题 | [0-06-local-podman.md](0-06-local-podman.md) |
 | 0-07 | minikube 跑 BrickKit 生成的 K8s 清单（含外壳） | 第 0 步 | 2026-10-17 | 通过（v1.7.2）；部署、迁移 Job、拆回、拒绝 `local`/`debug` 与错 context 都正常；v1.7.1 时调用外壳成员的地址在 K8s 上不可达（FRB-004），v1.7.2 改为写成员名后复测通过 | [0-07-minikube.md](0-07-minikube.md) |
+| 0-08 | 同一组件两个版本并存（`requiredBy`） | 第 0 步 | 2026-10-17 | 通过；`add` 自动保留兼容版本、外壳编进的版本之外的版本单独运行；迁移按版本串行；迁移顺序保护有效 | [0-08-two-versions.md](0-08-two-versions.md) |
