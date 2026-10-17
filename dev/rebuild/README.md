@@ -57,7 +57,7 @@
 
 **已知、暂不处理**：`infra/scripts/tests/test_ship_dryrun.sh` 失败——旧的 `ship.sh` 还调用旧 `be-acceptance` 的命令，迁移后已不存在；发布工具随重建重新提供，届时一并处理。
 
-**给 BrickKit 的收件箱** `brickkit-feedback/rebuild.md`：FRR-001 到 FRR-004 全部关闭（FRR-004 于 2026-10-17 用 v1.6.0 复测）；没有未回复的条目。
+**给 BrickKit 的收件箱** `brickkit-feedback/rebuild.md`：FRR-001 到 FRR-004 全部关闭（FRR-004 于 2026-10-17 用 v1.6.0 复测）；FRB-001（本地源里只写 `image` 的组件，`up` 静默运行发布出去的镜像，不像 `lint` 那样警告）等回复。
 
 ## 任务结束时：知识库反馈
 

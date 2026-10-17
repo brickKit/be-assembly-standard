@@ -1,0 +1,205 @@
+# FRR-005 repro (2026-10-17), BrickKit CLI v1.6.0, Docker version 29.7.1
+$ brickkit add --local --yes
+➕ Adding demo/alpha@0.1.0, demo/beta@0.1.0, demo/shell@0.1.0
+   ✅ demo/alpha@0.1.0 (in shell demo/shell)
+   ✅ demo/beta@0.1.0 (in shell demo/shell)
+   ✅ demo/shell@0.1.0
+📝 Written: brickkit.yaml, deploy.yaml
+📝 Config skeletons: config/demo-alpha.yaml, config/demo-beta.yaml
+[exit 0]
+
+== 1. beta writes only image: (the published 0.1.0); stand in for the registry copy with a local image built from the released code ==
+$ sed -n /^deployment:/,/^healthCheck:/p components/demo/beta/component.yaml
+deployment:
+  type: container
+  image: demo-beta-published:0.1.0
+  port: 8082
+
+healthCheck:
+[exit 0]
+$ docker build -q -t demo-beta-published:0.1.0 components/demo/beta
+sha256:054e89be8bd96b67471921fad81a790fde76a197a62b1767795d58203424d58b
+[exit 0]
+
+== 2. the developer changes beta's code in the working copy (version unchanged, as during development) ==
+$ grep -n EDITED components/demo/beta/beta.go
+25:		writeJSON(w, map[string]any{"from": "demo/beta (EDITED IN WORKING COPY)", "version": Version, "greeting": cfg["GREETING"],
+[exit 0]
+$ brickkit build demo/shell@0.1.0 --force
+🔨 Building demo/shell@0.1.0 → demo-shell:0.1.0
+✅ Built demo/shell@0.1.0 → demo-shell:0.1.0
+[exit 0]
+
+== 3. up (no lint, no build for beta) ==
+$ brickkit up --dry-run
+🚀 Starting project proj (target: docker)
+📋 Component state calculation:
+   ✅ demo/alpha@0.1.0  starting (demo/beta needs it)
+   ✅ demo/beta@0.1.0   starting (top-level)
+   ✅ demo/shell@0.1.0  starting (top-level)
+
+📋 Start order (topological sort):
+   1. demo-shell-0-1-0  no dependencies  (hosts demo/alpha@0.1.0)
+   2. demo-beta-0-1-0   ← depends on 1
+
+Can start on their own: demo-shell-0-1-0 (no dependencies)
+Longest dependency chain (2 levels): demo-shell-0-1-0 → demo-beta-0-1-0
+
+Dependency graph:
+   demo/beta@0.1.0 → demo/alpha@0.1.0
+📄 Generated: .brickkit/generated/compose.yaml
+
+💡 --dry-run only generates the files and starts no component
+   View it: cat .brickkit/generated/compose.yaml
+[exit 0]
+$ brickkit up
+🚀 Starting project proj (target: docker)
+📋 Component state calculation:
+   ✅ demo/alpha@0.1.0  starting (demo/beta needs it)
+   ✅ demo/beta@0.1.0   starting (top-level)
+   ✅ demo/shell@0.1.0  starting (top-level)
+
+📋 Start order (topological sort):
+   1. demo-shell-0-1-0  no dependencies  (hosts demo/alpha@0.1.0)
+   2. demo-beta-0-1-0   ← depends on 1
+
+Can start on their own: demo-shell-0-1-0 (no dependencies)
+Longest dependency chain (2 levels): demo-shell-0-1-0 → demo-beta-0-1-0
+
+Dependency graph:
+   demo/beta@0.1.0 → demo/alpha@0.1.0
+📄 Generated: .brickkit/generated/compose.yaml
+
+🔍 Checking image pull permissions... ✅ All passed
+
+🐳 Starting (docker)...
+   demo-beta-0-1-0              running (healthy)
+   demo-shell-0-1-0             running (healthy)
+✅ All components started (2)
+
+💡 View the status: brickkit status
+   View the logs: docker compose -p brickkit-proj logs -f
+[exit 0]
+
+== 4. which code answers ==
+$ docker compose -p brickkit-proj exec -T demo-beta-0-1-0 wget -qO- http://localhost:8082/api/chain
+{"alpha":{"from":"demo/alpha","greeting":"hello from alpha","version":"0.1.0"},"alphaEndpoint":"http://demo-shell-0-1-0:8081","from":"demo/beta","greeting":"hello from beta","version":"0.1.0"}
+[exit 0]
+$ docker compose -p brickkit-proj images demo-beta-0-1-0
+CONTAINER                         REPOSITORY            TAG                 PLATFORM            IMAGE ID            SIZE                CREATED
+brickkit-proj-demo-beta-0-1-0-1   demo-beta-published   0.1.0               linux/amd64         054e89be8bd9        9.13MB              2 hours ago
+[exit 0]
+$ docker image inspect -f {{.Id}} created {{.Created}} demo-beta-published:0.1.0
+sha256:054e89be8bd96b67471921fad81a790fde76a197a62b1767795d58203424d58b created 2026-10-17T11:35:53.366500558+02:00
+[exit 0]
+
+== 5. the same project after lint: the warning was there all along ==
+$ brickkit lint --all
+✅ brickkit.yaml
+✅ deploy.yaml
+✅ cross-file: brickkit.yaml ↔ deploy.yaml ↔ config/
+⚠️ [DOC_PLACEHOLDER] a placeholder (TODO) is still in the text
+   File: AGENTS.md
+   Line: 7
+⚠️ [DOC_PLACEHOLDER] a placeholder (TODO) is still in the text
+   File: AGENTS.md
+   Line: 11
+⚠️ [DOC_PLACEHOLDER] a placeholder (TODO) is still in the text
+   File: AGENTS.md
+   Line: 15
+⚠️ [DOC_PLACEHOLDER] a placeholder (TODO) is still in the text
+   File: AGENTS.md
+   Line: 19
+✅ components/demo/alpha/component.yaml
+⚠️ [MANIFEST_INVALID] demo/beta declares only deployment.image: its image is always pulled, from a local source too, and the Dockerfile next to it is never used
+   File: components/demo/beta/Dockerfile
+   deployment.image: demo-beta-published:0.1.0
+   Suggestion: To build the image from this source, declare deployment.build (for a Dockerfile at the root: build: {dockerfile: Dockerfile})
+✅ shell/demo/shell/component.yaml
+⚠️ [DOC_FILE_MISSING] BRICKKIT.md is missing
+   File: components/demo/alpha/BRICKKIT.md
+⚠️ [DOC_FILE_MISSING] AGENTS.md is missing
+   File: components/demo/alpha/AGENTS.md
+⚠️ [DOC_FILE_MISSING] CLAUDE.md is missing
+   File: components/demo/alpha/CLAUDE.md
+⚠️ [DOC_FILE_MISSING] README.md is missing
+   File: components/demo/alpha/README.md
+⚠️ [DOC_FILE_MISSING] BRICKKIT.md is missing
+   File: components/demo/beta/BRICKKIT.md
+⚠️ [DOC_FILE_MISSING] AGENTS.md is missing
+   File: components/demo/beta/AGENTS.md
+⚠️ [DOC_FILE_MISSING] CLAUDE.md is missing
+   File: components/demo/beta/CLAUDE.md
+⚠️ [DOC_FILE_MISSING] README.md is missing
+   File: components/demo/beta/README.md
+⚠️ [DOC_FILE_MISSING] BRICKKIT.md is missing
+   File: shell/demo/shell/BRICKKIT.md
+⚠️ [DOC_FILE_MISSING] AGENTS.md is missing
+   File: shell/demo/shell/AGENTS.md
+⚠️ [DOC_FILE_MISSING] CLAUDE.md is missing
+   File: shell/demo/shell/CLAUDE.md
+⚠️ [DOC_FILE_MISSING] README.md is missing
+   File: shell/demo/shell/README.md
+
+📋 Checked 10 files: 0 with errors, 17 warnings
+[exit 0]
+$ brickkit status
+📊 Project status: proj (target: docker)
+
+✅ Running (3 components)
+ ┌────────────┬─────────┬───────────────────────────────────────────────┬──────┐
+ │ Component  │ Version │ Status                                        │ Port │
+ ├────────────┼─────────┼───────────────────────────────────────────────┼──────┤
+ │ demo/alpha │ 0.1.0   │ running (healthy) (in shell demo/shell@0.1.0) │      │
+ │ demo/beta  │ 0.1.0   │ running (healthy)                             │      │
+ │ demo/shell │ 0.1.0   │ running (healthy)                             │      │
+ └────────────┴─────────┴───────────────────────────────────────────────┴──────┘
+
+[exit 0]
+$ brickkit down
+🛑 Stopping project proj
+✅ All components stopped
+
+💡 Data volumes were not deleted; database data is still there
+   For a full cleanup, run by hand: docker volume rm <volume-name>
+   Start again with: brickkit up
+[exit 0]
+
+######## run3.sh
+#!/usr/bin/env bash
+# FRR-005 repro: an image-only local component whose Dockerfile and code changed; up runs the old published image without a word.
+set -uo pipefail
+S=$(dirname "$0")/..; S=$(cd "$S" && pwd)
+run() { echo "\$ $*"; "$@" 2>&1 | sed -E 's/"time":"[^"]*"/"time":"…"/'; echo "[exit ${PIPESTATUS[0]}]"; }
+echo "# FRR-005 repro ($(date +%F)), $(brickkit version | head -1), $(docker --version | cut -d, -f1)"
+bash "$S/bin/r004-setup.sh" >/dev/null 2>&1 || { echo setup failed; exit 1; }
+cd "$S/r004/proj"
+run brickkit add --local --yes
+cat > deploy.yaml <<'YAML'
+target: docker
+
+components:
+  - id: demo/shell
+    members:
+      - id: demo/alpha
+  - id: demo/beta
+YAML
+echo; echo "== 1. beta writes only image: (the published 0.1.0); stand in for the registry copy with a local image built from the released code =="
+sed -i '/^  build:/,/^    dockerfile:/d; s/^  type: container/  type: container\n  image: demo-beta-published:0.1.0/' components/demo/beta/component.yaml
+run sed -n '/^deployment:/,/^healthCheck:/p' components/demo/beta/component.yaml
+run docker build -q -t demo-beta-published:0.1.0 components/demo/beta
+echo; echo "== 2. the developer changes beta's code in the working copy (version unchanged, as during development) =="
+sed -i 's/"from": "demo\/beta"/"from": "demo\/beta (EDITED IN WORKING COPY)"/' components/demo/beta/beta.go
+run grep -n "EDITED" components/demo/beta/beta.go
+run brickkit build demo/shell@0.1.0 --force
+echo; echo "== 3. up (no lint, no build for beta) =="
+run brickkit up --dry-run
+run brickkit up
+echo; echo "== 4. which code answers =="
+run docker compose -p brickkit-proj exec -T demo-beta-0-1-0 wget -qO- http://localhost:8082/api/chain
+run docker compose -p brickkit-proj images demo-beta-0-1-0
+run docker image inspect -f "{{.Id}} created {{.Created}}" demo-beta-published:0.1.0
+echo; echo "== 5. the same project after lint: the warning was there all along =="
+run brickkit lint --all
+run brickkit status
+run brickkit down

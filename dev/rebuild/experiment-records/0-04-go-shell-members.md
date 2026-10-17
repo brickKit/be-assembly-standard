@@ -104,8 +104,10 @@ BrickKit 对 FRR-004 的回复：`build` 仍拒绝用 0.2.0 的源码打 0.1.0 �
 | 点名 `build demo/beta@0.1.0` | 直接报“declares no deployment.build, so there is nothing to build”，不再交给 Docker |
 | beta 挪出外壳后 `up --dry-run` | compose 里 beta 只有 `image: demo-beta-imageonly:0.1.0`，没有构建段，即拉取 |
 
+接着验证这一变化有没有静默的一面（`run3.txt`）：beta 只写 `image`、旁边有 `Dockerfile`，引擎里已有这个标签的旧镜像，工作区改了 beta 的代码后直接 `up`。`up` 与 `status` 全绿、没有任何警告，`/api/chain` 回答的是旧代码；同一项目 `lint --all` 才给出那条警告。源码里这条警告只在 `lint` 与 `build` 调用，`up` 没有。已写给 BrickKit（FRB-001）。
+
 两处小地方，不再反馈：alpha 不是 git 仓库时建议 1 照样写 `git -C … checkout`（这时用不上，另两条够用）；`lint` 的这条警告借用了 `MANIFEST_INVALID` 这个错误码。
 
 **结论**：通过，FRR-004 关闭。**对重建的影响**：新组件带代码、要在本机构建的，`component.yaml` 必须写 `deployment.build`（项目技能 `brickkit-component` 已随 v1.6.0 写明）。旧的 `components/frontend/standard`（1.0.1）只写了 `image`，按回复升级后会拉取而不是构建；它不在 `brickkit.yaml` 里、属于将从零重建的 2.x 代码（D59），不改。
 
-原始数据：`dev/rebuild/experiment-data/0-04/run2.txt`（含 `run2.sh`）。
+原始数据：`dev/rebuild/experiment-data/0-04/run2.txt`（含 `run2.sh`）、`run3.txt`（含 `run3.sh`）。
