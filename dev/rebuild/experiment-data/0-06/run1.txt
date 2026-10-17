@@ -1,0 +1,1228 @@
+# note: two earlier attempts failed on stub bugs, fixed in r006-setup.sh before this run: demo/pyr had no Dockerfile (brickkit build stopped at it, after alpha and beta); the Python shell image lacked the member module (now vendored like the Go shell).
+# 0-06 run 1 (2026-10-17), BrickKit CLI v1.7.1, podman version 5.7.0, rootless=true, network netavark, pasta 0.0~git20260120.386b5f5-1
+# setup: r006-setup.sh (below)
+
+######## part 0: base resources in Podman; add; config
+$ podman run -d --name r006-pg -e POSTGRES_PASSWORD=r006 -p 25432:5432 docker.io/library/postgres:16-alpine
+0473e8a5db31aef9b07ad81a7c39708c1f23210e74cadf9eac3060ee29138805
+[exit 0]
+$ podman run -d --name r006-nats -p 24222:4222 docker.io/library/nats:2.10-alpine
+ee847052308b0ccae2dd22bd82c3f7900deffdbe4bf670daf778b0036ed39c42
+[exit 0]
+$ brickkit add --local --yes
+➕ Adding demo/alpha@0.1.0, demo/beta@0.1.0, demo/delta@0.1.0, demo/gamma@0.1.0, demo/pyr@0.1.0, demo/pyshell@0.1.0, demo/shell@0.1.0
+   ✅ demo/alpha@0.1.0 (in shell demo/shell)
+   ✅ demo/beta@0.1.0 (in shell demo/shell)
+   ✅ demo/pyr@0.1.0 (in shell demo/pyshell)
+   ✅ demo/delta@0.1.0
+   ✅ demo/gamma@0.1.0
+   ✅ demo/pyshell@0.1.0
+   ✅ demo/shell@0.1.0
+📝 Written: brickkit.yaml, deploy.yaml
+📝 Config skeletons: config/demo-alpha.yaml, config/demo-beta.yaml, config/demo-pyr.yaml, config/demo-delta.yaml, config/demo-gamma.yaml
+   ✏️ Fill in the required keys in config/demo-alpha.yaml: NATS_URL, PG_HOST, PG_PORT
+   ✏️ Fill in the required keys in config/demo-beta.yaml: NATS_URL, PG_HOST, PG_PORT
+   ✏️ Fill in the required keys in config/demo-pyr.yaml: NATS_URL, PG_HOST, PG_PORT
+   ✏️ Fill in the required keys in config/demo-delta.yaml: NATS_URL, PG_HOST, PG_PORT
+   ✏️ Fill in the required keys in config/demo-gamma.yaml: NATS_URL, PG_HOST, PG_PORT
+[exit 0]
+
+######## part 1: everything in Podman containers (the P row)
+target: podman
+
+vars:
+  PG_PORT: "25432"
+  NATS_URL: nats://host.docker.internal:24222
+
+components:
+  - id: demo/delta
+  - id: demo/gamma
+  - id: demo/pyshell
+    members:
+      - id: demo/pyr
+  - id: demo/shell
+    members:
+      - id: demo/alpha
+      - id: demo/beta
+$ brickkit lint --all
+✅ brickkit.yaml
+✅ deploy.yaml
+✅ cross-file: brickkit.yaml ↔ deploy.yaml ↔ config/
+⚠️ [DOC_PLACEHOLDER] a placeholder (TODO) is still in the text
+   File: AGENTS.md
+   Line: 7
+⚠️ [DOC_PLACEHOLDER] a placeholder (TODO) is still in the text
+   File: AGENTS.md
+   Line: 11
+⚠️ [DOC_PLACEHOLDER] a placeholder (TODO) is still in the text
+   File: AGENTS.md
+   Line: 15
+⚠️ [DOC_PLACEHOLDER] a placeholder (TODO) is still in the text
+   File: AGENTS.md
+   Line: 19
+✅ components/demo/alpha/component.yaml
+✅ components/demo/beta/component.yaml
+✅ components/demo/delta/component.yaml
+✅ components/demo/gamma/component.yaml
+✅ components/demo/pyr/component.yaml
+✅ shell/demo/pyshell/component.yaml
+✅ shell/demo/shell/component.yaml
+⚠️ [DOC_FILE_MISSING] BRICKKIT.md is missing
+   File: components/demo/alpha/BRICKKIT.md
+⚠️ [DOC_FILE_MISSING] AGENTS.md is missing
+   File: components/demo/alpha/AGENTS.md
+⚠️ [DOC_FILE_MISSING] CLAUDE.md is missing
+   File: components/demo/alpha/CLAUDE.md
+⚠️ [DOC_FILE_MISSING] README.md is missing
+   File: components/demo/alpha/README.md
+⚠️ [DOC_FILE_MISSING] BRICKKIT.md is missing
+   File: components/demo/beta/BRICKKIT.md
+⚠️ [DOC_FILE_MISSING] AGENTS.md is missing
+   File: components/demo/beta/AGENTS.md
+⚠️ [DOC_FILE_MISSING] CLAUDE.md is missing
+   File: components/demo/beta/CLAUDE.md
+⚠️ [DOC_FILE_MISSING] README.md is missing
+   File: components/demo/beta/README.md
+⚠️ [DOC_FILE_MISSING] BRICKKIT.md is missing
+   File: components/demo/delta/BRICKKIT.md
+⚠️ [DOC_FILE_MISSING] AGENTS.md is missing
+   File: components/demo/delta/AGENTS.md
+⚠️ [DOC_FILE_MISSING] CLAUDE.md is missing
+   File: components/demo/delta/CLAUDE.md
+⚠️ [DOC_FILE_MISSING] README.md is missing
+   File: components/demo/delta/README.md
+⚠️ [DOC_FILE_MISSING] BRICKKIT.md is missing
+   File: components/demo/gamma/BRICKKIT.md
+⚠️ [DOC_FILE_MISSING] AGENTS.md is missing
+   File: components/demo/gamma/AGENTS.md
+⚠️ [DOC_FILE_MISSING] CLAUDE.md is missing
+   File: components/demo/gamma/CLAUDE.md
+⚠️ [DOC_FILE_MISSING] README.md is missing
+   File: components/demo/gamma/README.md
+⚠️ [DOC_FILE_MISSING] BRICKKIT.md is missing
+   File: components/demo/pyr/BRICKKIT.md
+⚠️ [DOC_FILE_MISSING] AGENTS.md is missing
+   File: components/demo/pyr/AGENTS.md
+⚠️ [DOC_FILE_MISSING] CLAUDE.md is missing
+   File: components/demo/pyr/CLAUDE.md
+⚠️ [DOC_FILE_MISSING] README.md is missing
+   File: components/demo/pyr/README.md
+⚠️ [DOC_FILE_MISSING] BRICKKIT.md is missing
+   File: shell/demo/pyshell/BRICKKIT.md
+⚠️ [DOC_FILE_MISSING] AGENTS.md is missing
+   File: shell/demo/pyshell/AGENTS.md
+⚠️ [DOC_FILE_MISSING] CLAUDE.md is missing
+   File: shell/demo/pyshell/CLAUDE.md
+⚠️ [DOC_FILE_MISSING] README.md is missing
+   File: shell/demo/pyshell/README.md
+⚠️ [DOC_FILE_MISSING] BRICKKIT.md is missing
+   File: shell/demo/shell/BRICKKIT.md
+⚠️ [DOC_FILE_MISSING] AGENTS.md is missing
+   File: shell/demo/shell/AGENTS.md
+⚠️ [DOC_FILE_MISSING] CLAUDE.md is missing
+   File: shell/demo/shell/CLAUDE.md
+⚠️ [DOC_FILE_MISSING] README.md is missing
+   File: shell/demo/shell/README.md
+
+📋 Checked 18 files: 0 with errors, 32 warnings
+[exit 0]
+$ brickkit build
+🔨 Building demo/alpha@0.1.0 → demo-alpha:0.1.0
+✅ Built demo/alpha@0.1.0 → demo-alpha:0.1.0
+🔨 Building demo/beta@0.1.0 → demo-beta:0.1.0
+✅ Built demo/beta@0.1.0 → demo-beta:0.1.0
+🔨 Building demo/pyr@0.1.0 → demo-pyr:0.1.0
+✅ Built demo/pyr@0.1.0 → demo-pyr:0.1.0
+🔨 Building demo/delta@0.1.0 → demo-delta:0.1.0
+✅ Built demo/delta@0.1.0 → demo-delta:0.1.0
+🔨 Building demo/gamma@0.1.0 → demo-gamma:0.1.0
+✅ Built demo/gamma@0.1.0 → demo-gamma:0.1.0
+🔨 Building demo/pyshell@0.1.0 → demo-pyshell:0.1.0
+✅ Built demo/pyshell@0.1.0 → demo-pyshell:0.1.0
+🔨 Building demo/shell@0.1.0 → demo-shell:0.1.0
+✅ Built demo/shell@0.1.0 → demo-shell:0.1.0
+[exit 0]
+$ podman images --format {{.Repository}}:{{.Tag}} {{.Size}} --filter reference=localhost/demo-*
+localhost/demo-shell:0.1.0 18.2 MB
+localhost/demo-gamma:0.1.0 18.2 MB
+localhost/demo-pyshell:0.1.0 54.2 MB
+localhost/demo-beta:0.1.0 18.2 MB
+localhost/demo-pyr:0.1.0 54.2 MB
+localhost/demo-delta:0.1.0 54.2 MB
+localhost/demo-alpha:0.1.0 17.3 MB
+[exit 0]
+up exited with 0
+🚀 Starting project proj (target: podman)
+📋 Component state calculation:
+   ✅ demo/alpha@0.1.0    starting (demo/beta needs it)
+   ✅ demo/beta@0.1.0     starting (demo/gamma needs it)
+   ✅ demo/pyr@0.1.0      starting (demo/delta needs it)
+   ✅ demo/delta@0.1.0    starting (top-level)
+   ✅ demo/gamma@0.1.0    starting (top-level)
+   ✅ demo/pyshell@0.1.0  starting (top-level)
+   ✅ demo/shell@0.1.0    starting (top-level)
+
+📋 Start order (topological sort):
+   1. demo-pyshell-0-1-0  no dependencies  (hosts demo/pyr@0.1.0)
+   2. demo-shell-0-1-0    no dependencies  (hosts demo/alpha@0.1.0, demo/beta@0.1.0)
+   3. demo-delta-0-1-0    ← depends on 1, 2
+   4. demo-gamma-0-1-0    ← depends on 2
+
+Can start on their own: demo-pyshell-0-1-0, demo-shell-0-1-0 (no dependencies)
+Longest dependency chain (2 levels): demo-shell-0-1-0 → demo-delta-0-1-0
+   Components not on this chain start in parallel with it
+
+Dependency graph:
+   demo/delta@0.1.0 → demo/alpha@0.1.0
+                    → demo/pyr@0.1.0
+   demo/gamma@0.1.0 → demo/beta@0.1.0
+   demo/beta@0.1.0 → demo/alpha@0.1.0
+📄 Generated: .brickkit/generated/compose.yaml
+
+🔧 Database migrations that run before startup (on failure that component won't start):
+   demo/alpha@0.1.0  /server migrate
+   demo/gamma@0.1.0  /server migrate
+
+🐳 Starting (podman)...
+   demo-gamma-0-1-0             running (healthy)
+   demo-delta-0-1-0             running (healthy)
+   demo-pyshell-0-1-0           running (healthy)
+   demo-shell-0-1-0             running (healthy)
+✅ All components started (4)
+
+💡 View the status: brickkit status
+   View the logs: podman compose -p brickkit-proj logs -f
+$ podman ps --filter name=brickkit-proj --format {{.Names}} | {{.Status}} | {{.Ports}}
+brickkit-proj-demo-pyshell-0-1-0-1 | Up 22 seconds (healthy) | 
+brickkit-proj-demo-shell-0-1-0-1 | Up 21 seconds (healthy) | 
+brickkit-proj-demo-gamma-0-1-0-1 | Up 21 seconds (healthy) | 
+brickkit-proj-demo-delta-0-1-0-1 | Up 11 seconds (healthy) | 
+[exit 0]
+$ [in demo-gamma-0-1-0] wget -qO- -T 5 http://127.0.0.1:8083/api/chain
+{"beta":{"alpha":{"from":"demo/alpha","version":"0.1.0"},"alphaEndpoint":"http://demo-shell-0-1-0:8081","from":"demo/beta"},"betaEndpoint":"http://demo-shell-0-1-0:8082","from":"demo/gamma"}
+
+$ [in demo-delta-0-1-0] wget -qO- -T 5 http://127.0.0.1:8092/api/chain
+{"from": "demo/delta", "alphaEndpoint": "http://demo-shell-0-1-0:8081", "pyrEndpoint": "http://demo-pyshell-0-1-0:8091", "alpha": {"from": "demo/alpha", "version": "0.1.0"}, "pyr": {"from": "demo/pyr", "version": "0.1.0"}}
+$ [in demo-delta-0-1-0] wget -qO- -T 5 http://127.0.0.1:8092/api/infra
+{"pg": "host.docker.internal:25432 ok", "nats": "host.docker.internal:24222 ok"}
+$ [in demo-shell-0-1-0] wget -qO- -T 5 http://127.0.0.1:8081/api/infra
+{"nats":"host.docker.internal:24222 ok","pg":"host.docker.internal:25432 ok"}
+
+$ podman ps -a --filter name=migration --format {{.Names}} | {{.Status}}
+brickkit-proj-demo-alpha-0-1-0-migration-1 | Exited (0) 23 seconds ago
+brickkit-proj-demo-gamma-0-1-0-migration-1 | Exited (0) 23 seconds ago
+[exit 0]
+--- logs brickkit-proj-demo-alpha-0-1-0-migration-1
+2026/10/17 14:16:03 demo/alpha migrate: nothing to do (PG_HOST=host.docker.internal PG_PORT=25432)
+--- logs brickkit-proj-demo-gamma-0-1-0-migration-1
+2026/10/17 14:16:03 demo/gamma migrate: nothing to do (PG_HOST=host.docker.internal PG_PORT=25432)
+$ brickkit status
+📊 Project status: proj (target: podman)
+
+✅ Running (7 components)
+ ┌──────────────┬─────────┬─────────────────────────────────────────────────┬──────┐
+ │ Component    │ Version │ Status                                          │ Port │
+ ├──────────────┼─────────┼─────────────────────────────────────────────────┼──────┤
+ │ demo/alpha   │ 0.1.0   │ running (healthy) (in shell demo/shell@0.1.0)   │      │
+ │ demo/beta    │ 0.1.0   │ running (healthy) (in shell demo/shell@0.1.0)   │      │
+ │ demo/gamma   │ 0.1.0   │ running (healthy)                               │      │
+ │ demo/pyr     │ 0.1.0   │ running (healthy) (in shell demo/pyshell@0.1.0) │      │
+ │ demo/delta   │ 0.1.0   │ running (healthy)                               │      │
+ │ demo/pyshell │ 0.1.0   │ running (healthy)                               │      │
+ │ demo/shell   │ 0.1.0   │ running (healthy)                               │      │
+ └──────────────┴─────────┴─────────────────────────────────────────────────┴──────┘
+
+[exit 0]
+$ brickkit down
+🛑 Stopping project proj
+✅ All components stopped
+
+💡 Data volumes were not deleted; database data is still there
+   For a full cleanup, run by hand: podman volume rm <volume-name>
+   Start again with: brickkit up
+[exit 0]
+$ podman ps -a --filter name=brickkit-proj --format {{.Names}} {{.Status}}
+[exit 0]
+
+######## part 2: shells in Podman, gamma and delta as local processes
+target: podman
+
+vars:
+  PG_PORT: "25432"
+  NATS_URL: nats://host.docker.internal:24222
+
+components:
+  - id: demo/delta
+    mode: local
+  - id: demo/gamma
+    mode: local
+  - id: demo/pyshell
+    members:
+      - id: demo/pyr
+  - id: demo/shell
+    members:
+      - id: demo/alpha
+      - id: demo/beta
+$ brickkit up --dry-run
+🚀 Starting project proj (target: podman)
+📋 Component state calculation:
+   ✅ demo/alpha@0.1.0    starting (demo/beta needs it)
+   ✅ demo/beta@0.1.0     starting (demo/gamma needs it)
+   ✅ demo/pyr@0.1.0      starting (demo/delta needs it)
+   ✅ demo/delta@0.1.0    starting (top-level)
+   ✅ demo/gamma@0.1.0    starting (top-level)
+   ✅ demo/pyshell@0.1.0  starting (top-level)
+   ✅ demo/shell@0.1.0    starting (top-level)
+
+📋 Start order (topological sort):
+   1. demo-pyshell-0-1-0  no dependencies  (hosts demo/pyr@0.1.0)
+   2. demo-shell-0-1-0    no dependencies  (hosts demo/alpha@0.1.0, demo/beta@0.1.0)
+   3. demo-delta-0-1-0    ← depends on 1, 2
+   4. demo-gamma-0-1-0    ← depends on 2
+
+Can start on their own: demo-pyshell-0-1-0, demo-shell-0-1-0 (no dependencies)
+Longest dependency chain (2 levels): demo-shell-0-1-0 → demo-delta-0-1-0
+   Components not on this chain start in parallel with it
+
+Dependency graph:
+   demo/delta@0.1.0 → demo/alpha@0.1.0
+                    → demo/pyr@0.1.0
+   demo/gamma@0.1.0 → demo/beta@0.1.0
+   demo/beta@0.1.0 → demo/alpha@0.1.0
+📄 Generated: .brickkit/generated/compose.yaml
+
+🔧 Database migrations that run before startup (on failure that component won't start):
+   demo/alpha@0.1.0  /server migrate
+   demo/gamma@0.1.0  go run . migrate
+
+The following mode: local component(s) would start:
+   demo/gamma@0.1.0  go run .
+   demo/delta@0.1.0  python3 delta.py
+
+💡 --dry-run only generates the files and starts no component
+   View it: cat .brickkit/generated/compose.yaml
+[exit 0]
+ready after 12.89 s: 8083 8092
+🚀 Starting project proj (target: podman)
+🔧 Database migrations that run before startup (on failure that component won't start):
+🐳 Starting (podman)...
+   demo-pyshell-0-1-0           running (healthy)
+   demo-shell-0-1-0             running (healthy)
+Starting 2 local component(s) — press Ctrl+C to stop
+demo-gamma-0-1-0-migration  running the migration from source: go run . migrate
+demo-gamma-0-1-0-migration | 2026/10/17 16:16:59 demo/gamma migrate: nothing to do (PG_HOST=localhost PG_PORT=25432)
+demo-gamma-0-1-0-migration  migration finished
+demo-gamma-0-1-0  listening on port 8083
+demo-delta-0-1-0  listening on port 8092
+$ grep -n -B1 -A1 180[0-9][0-9]\|1809[0-9] .brickkit/generated/compose.yaml
+60-    ports:
+61:      - 18091:8091
+62-    restart: unless-stopped
+--
+94-    ports:
+95:      - 18081:8081
+96:      - 18082:8082
+97-    restart: unless-stopped
+[exit 0]
+$ grep -v ^# .brickkit/generated/local-debug.demo-gamma-0-1-0.env
+
+COMPONENT_ID=demo/gamma
+COMPONENT_VERSION=0.1.0
+DEMO_BETA_ENDPOINT=http://localhost:18082
+GREETING=hello
+NATS_URL=nats://localhost:24222
+PG_HOST=localhost
+PG_PORT=25432
+[exit 0]
+$ GET :8083/api/chain
+{"beta":{"alpha":{"from":"demo/alpha","version":"0.1.0"},"alphaEndpoint":"http://demo-shell-0-1-0:8081","from":"demo/beta"},"betaEndpoint":"http://localhost:18082","from":"demo/gamma"}
+
+$ GET :8092/api/chain
+{"from": "demo/delta", "alphaEndpoint": "http://localhost:18081", "pyrEndpoint": "http://localhost:18091", "alpha": {"from": "demo/alpha", "version": "0.1.0"}, "pyr": {"from": "demo/pyr", "version": "0.1.0"}}
+$ GET :8083/api/infra
+{"nats":"localhost:24222 ok","pg":"localhost:25432 ok"}
+
+$ GET :8092/api/infra
+{"pg": "localhost:25432 ok", "nats": "localhost:24222 ok"}
+$ [in demo-shell-0-1-0] wget -qO- -T 5 http://127.0.0.1:8082/api/infra
+{"nats":"host.docker.internal:24222 ok","pg":"host.docker.internal:25432 ok"}
+
+up exited with 0
+$ podman ps --filter name=brickkit-proj --format {{.Names}} {{.Status}}
+brickkit-proj-demo-pyshell-0-1-0-1 Up 12 seconds (healthy)
+brickkit-proj-demo-shell-0-1-0-1 Up 12 seconds (healthy)
+[exit 0]
+$ brickkit down
+🛑 Stopping project proj
+✅ All components stopped
+
+💡 Data volumes were not deleted; database data is still there
+   For a full cleanup, run by hand: podman volume rm <volume-name>
+   Start again with: brickkit up
+[exit 0]
+
+######## part 3: shells as local processes, gamma and delta in Podman
+target: podman
+
+vars:
+  PG_PORT: "25432"
+  NATS_URL: nats://host.docker.internal:24222
+
+components:
+  - id: demo/delta
+  - id: demo/gamma
+  - id: demo/pyshell
+    mode: local
+    members:
+      - id: demo/pyr
+  - id: demo/shell
+    mode: local
+    members:
+      - id: demo/alpha
+      - id: demo/beta
+$ brickkit up --dry-run
+🚀 Starting project proj (target: podman)
+📋 Component state calculation:
+   ✅ demo/alpha@0.1.0    starting (demo/beta needs it)
+   ✅ demo/beta@0.1.0     starting (demo/gamma needs it)
+   ✅ demo/pyr@0.1.0      starting (demo/delta needs it)
+   ✅ demo/delta@0.1.0    starting (top-level)
+   ✅ demo/gamma@0.1.0    starting (top-level)
+   ✅ demo/pyshell@0.1.0  starting (top-level)
+   ✅ demo/shell@0.1.0    starting (top-level)
+
+📋 Start order (topological sort):
+   1. demo-pyshell-0-1-0  no dependencies  (hosts demo/pyr@0.1.0)
+   2. demo-shell-0-1-0    no dependencies  (hosts demo/alpha@0.1.0, demo/beta@0.1.0)
+   3. demo-delta-0-1-0    ← depends on 1, 2
+   4. demo-gamma-0-1-0    ← depends on 2
+
+Can start on their own: demo-pyshell-0-1-0, demo-shell-0-1-0 (no dependencies)
+Longest dependency chain (2 levels): demo-shell-0-1-0 → demo-delta-0-1-0
+   Components not on this chain start in parallel with it
+
+Dependency graph:
+   demo/delta@0.1.0 → demo/alpha@0.1.0
+                    → demo/pyr@0.1.0
+   demo/gamma@0.1.0 → demo/beta@0.1.0
+   demo/beta@0.1.0 → demo/alpha@0.1.0
+📄 Generated: .brickkit/generated/compose.yaml
+
+🔧 Database migrations that run before startup (on failure that component won't start):
+   demo/gamma@0.1.0  /server migrate
+   demo/alpha@0.1.0  go run ./cmd/server migrate
+
+The following mode: local component(s) would start:
+   demo/pyshell@0.1.0  python3 shell.py
+   demo/shell@0.1.0  go run .
+
+💡 --dry-run only generates the files and starts no component
+   View it: cat .brickkit/generated/compose.yaml
+[exit 0]
+ready after 11.63 s: 8080 8081 8082 8090 8091
+🚀 Starting project proj (target: podman)
+🔧 Database migrations that run before startup (on failure that component won't start):
+🐳 Starting (podman)...
+   demo-gamma-0-1-0             running (healthy)
+   demo-delta-0-1-0             running (healthy)
+Starting 2 local component(s) — press Ctrl+C to stop
+demo-pyshell-0-1-0  listening on port 8090
+demo-alpha-0-1-0-migration  running the migration from source: go run ./cmd/server migrate
+demo-alpha-0-1-0-migration | 2026/10/17 16:17:22 demo/alpha migrate: nothing to do (PG_HOST=localhost PG_PORT=25432)
+demo-alpha-0-1-0-migration  migration finished
+demo-shell-0-1-0  listening on port 8080
+$ grep -n -A4 extra_hosts .brickkit/generated/compose.yaml
+30:    extra_hosts:
+31-      - demo-pyshell-0-1-0:host-gateway
+32-      - demo-shell-0-1-0:host-gateway
+33-      - host.docker.internal:host-gateway
+34-    healthcheck:
+--
+63:    extra_hosts:
+64-      - demo-shell-0-1-0:host-gateway
+65-      - host.docker.internal:host-gateway
+66-    healthcheck:
+67-      interval: 10s
+--
+91:    extra_hosts:
+92-      - demo-shell-0-1-0:host-gateway
+93-      - host.docker.internal:host-gateway
+94-    image: demo-gamma:0.1.0
+95-    networks:
+[exit 0]
+$ [in demo-gamma-0-1-0] printenv DEMO_BETA_ENDPOINT PG_HOST PG_PORT
+http://demo-shell-0-1-0:8082
+host.docker.internal
+25432
+
+$ [in demo-gamma-0-1-0] cat /etc/hosts
+169.254.1.2	demo-shell-0-1-0
+169.254.1.2	host.docker.internal
+127.0.0.1	localhost
+::1	localhost
+169.254.1.2	host.containers.internal
+10.89.0.4	17d39504e7ea brickkit-proj-demo-gamma-0-1-0-1
+
+$ [in demo-gamma-0-1-0] wget -qO- -T 5 http://127.0.0.1:8083/api/chain
+{"beta":{"alpha":{"from":"demo/alpha","version":"0.1.0"},"alphaEndpoint":"http://localhost:8081","from":"demo/beta"},"betaEndpoint":"http://demo-shell-0-1-0:8082","from":"demo/gamma"}
+
+$ [in demo-delta-0-1-0] wget -qO- -T 5 http://127.0.0.1:8092/api/chain
+{"from": "demo/delta", "alphaEndpoint": "http://demo-shell-0-1-0:8081", "pyrEndpoint": "http://demo-pyshell-0-1-0:8091", "alpha": {"from": "demo/alpha", "version": "0.1.0"}, "pyr": {"from": "demo/pyr", "version": "0.1.0"}}
+$ [in demo-delta-0-1-0] wget -qO- -T 5 http://127.0.0.1:8092/api/infra
+{"pg": "host.docker.internal:25432 ok", "nats": "host.docker.internal:24222 ok"}
+$ GET :8081/api/infra
+{"nats":"localhost:24222 ok","pg":"localhost:25432 ok"}
+
+
+######## part 4: in the same run, the local Go shell crashes
+shell pid 2024332
+up exited with 1
+   demo-shell-0-1-0  exit code 1  1s
+      2026/10/17 16:17:22 serving demo/alpha@0.1.0 on :8081
+      2026/10/17 16:17:22 serving demo/beta@0.1.0 on :8082
+      2026/10/17 16:17:22 shell on :8080
+      signal: killed
+❌ 1 local component(s) crashed
+   Suggestion: Each crash above shows the exit reason and the process's last lines; --crash-lines N shows more of them
+{"time":"2026-10-17T16:17:23.934761404+02:00","level":"ERROR","message":"Command failed","command":"brickkit up","elapsed_ms":12576,"error_code":"ENGINE_FAILED","error":"ENGINE_FAILED: 1 local component(s) crashed","exit_code":1}
+$ podman ps --filter name=brickkit-proj --format {{.Names}} {{.Status}}
+brickkit-proj-demo-delta-0-1-0-1 Up 13 seconds (healthy)
+brickkit-proj-demo-gamma-0-1-0-1 Up 12 seconds (healthy)
+[exit 0]
+$ [in demo-gamma-0-1-0] wget -qO- -T 5 http://127.0.0.1:8083/api/chain
+wget: server returned error: HTTP/1.1 502 Bad Gateway
+
+$ brickkit status
+📊 Project status: proj (target: podman)
+
+✅ Running (2 components)
+ ┌────────────┬─────────┬───────────────────┬──────┐
+ │ Component  │ Version │ Status            │ Port │
+ ├────────────┼─────────┼───────────────────┼──────┤
+ │ demo/gamma │ 0.1.0   │ running (healthy) │      │
+ │ demo/delta │ 0.1.0   │ running (healthy) │      │
+ └────────────┴─────────┴───────────────────┴──────┘
+
+[exit 0]
+$ brickkit down
+🛑 Stopping project proj
+✅ All components stopped
+
+💡 Data volumes were not deleted; database data is still there
+   For a full cleanup, run by hand: podman volume rm <volume-name>
+   Start again with: brickkit up
+[exit 0]
+$ podman ps -a --filter name=brickkit-proj --format {{.Names}} {{.Status}}
+[exit 0]
+
+######## run006.sh
+#!/usr/bin/env bash
+# 0-06 run 1: local processes mixed with rootless Podman (target: podman); base resources in Podman.
+set -uo pipefail
+S=$(dirname "$0")/..; S=$(cd "$S" && pwd)
+P=$S/r006/proj; export GOCACHE=$S/gocache
+run() { echo "\$ $*"; "$@" 2>&1 | sed -E 's/"time":"[^"]*"/"time":"…"/'; echo "[exit ${PIPESTATUS[0]}]"; }
+start_up() { setsid brickkit up > "$1" 2>&1 & UP=$!; T0=$(date +%s.%N); }
+wait_ready() { local p ok; for _ in $(seq 1 1500); do ok=1; for p in "$@"; do wget -qO- -T 1 "http://localhost:$p/healthz" >/dev/null 2>&1 || { ok=0; break; }; done
+  [ $ok = 1 ] && { echo "ready after $(echo "$(date +%s.%N) - $T0" | bc | cut -c1-5) s: $*"; return 0; }; kill -0 $UP 2>/dev/null || { echo "up exited before ready"; return 1; }; sleep 0.2; done; echo "not ready"; return 1; }
+wait_exit() { for _ in $(seq 1 300); do kill -0 $UP 2>/dev/null || break; sleep 0.2; done; kill -0 $UP 2>/dev/null && echo "up still running" || { wait $UP; echo "up exited with $?"; }; }
+pexec() { local c=$1; shift; echo "\$ [in $c] $*"; podman exec "brickkit-proj-$c-1" "$@" 2>&1; echo; }
+pget() { pexec "$1" wget -qO- -T 5 "http://127.0.0.1:$2$3"; }
+get() { echo "\$ GET :$1$2"; wget -qO- -T 5 "http://localhost:$1$2"; echo; }
+deploy() { # <local components...>: write deploy.yaml with these as mode: local, the rest in containers
+  local l=" $* "; m() { [[ $l == *" $1 "* ]] && echo "    mode: local"; }
+  { echo "target: podman"; echo; echo "vars:"; echo '  PG_PORT: "25432"'; echo "  NATS_URL: nats://host.docker.internal:24222"; echo; echo "components:"
+    echo "  - id: demo/delta"; m delta; echo "  - id: demo/gamma"; m gamma
+    echo "  - id: demo/pyshell"; m pyshell; echo "    members:"; echo "      - id: demo/pyr"
+    echo "  - id: demo/shell"; m shell; echo "    members:"; echo "      - id: demo/alpha"; echo "      - id: demo/beta"; } > deploy.yaml
+  cat deploy.yaml
+}
+cd "$P"
+echo "# 0-06 run 1 ($(date +%F)), $(brickkit version | head -1), $(podman --version), rootless=$(podman info --format '{{.Host.Security.Rootless}}'), network $(podman info --format '{{.Host.NetworkBackend}}'), pasta $(pasta --version 2>/dev/null | head -1 | awk '{print $NF}')"
+echo "# setup: r006-setup.sh (below)"
+
+echo; echo "######## part 0: base resources in Podman; add; config"
+podman rm -f r006-pg r006-nats >/dev/null 2>&1
+run podman run -d --name r006-pg -e POSTGRES_PASSWORD=r006 -p 25432:5432 docker.io/library/postgres:16-alpine
+run podman run -d --name r006-nats -p 24222:4222 docker.io/library/nats:2.10-alpine
+for i in $(podman images -q --filter reference="localhost/demo-*"); do podman rmi -f $i >/dev/null; done   # build afresh
+run brickkit add --local --yes
+cat >> config/vars.yaml <<'YAML'
+# Same names as the project's config/vars.yaml; deploy.yaml's vars point at the Podman base resources.
+PG_HOST: host.docker.internal
+PG_PORT: "5432"
+NATS_URL: nats://host.docker.internal:4222
+YAML
+for c in alpha beta delta gamma pyr; do sed -i 's/^NATS_URL: ""/NATS_URL: $var:NATS_URL/; s/^PG_HOST: ""/PG_HOST: $var:PG_HOST/; s/^PG_PORT: ""/PG_PORT: $var:PG_PORT/' config/demo-$c.yaml; done
+
+echo; echo "######## part 1: everything in Podman containers (the P row)"
+deploy
+run brickkit lint --all
+run brickkit build
+run podman images --format '{{.Repository}}:{{.Tag}} {{.Size}}' --filter reference='localhost/demo-*'
+start_up $S/up6-1.log; wait_exit; cat $S/up6-1.log
+run podman ps --filter name=brickkit-proj --format '{{.Names}} | {{.Status}} | {{.Ports}}'
+pget demo-gamma-0-1-0 8083 /api/chain
+pget demo-delta-0-1-0 8092 /api/chain
+pget demo-delta-0-1-0 8092 /api/infra
+pget demo-shell-0-1-0 8081 /api/infra
+run podman ps -a --filter name=migration --format '{{.Names}} | {{.Status}}'
+for c in $(podman ps -a --filter name=migration --format '{{.Names}}'); do echo "--- logs $c"; podman logs $c 2>&1 | tail -3; done
+run brickkit status
+run brickkit down
+run podman ps -a --filter name=brickkit-proj --format '{{.Names}} {{.Status}}'
+
+echo; echo "######## part 2: shells in Podman, gamma and delta as local processes"
+deploy gamma delta
+run brickkit up --dry-run
+start_up $S/up6-2.log; wait_ready 8083 8092
+sed -n '/Starting\|migration\|listening\|running\|healthy\|Error/p' $S/up6-2.log
+run grep -n -B1 -A1 "180[0-9][0-9]\|1809[0-9]" .brickkit/generated/compose.yaml
+run grep -v "^#" .brickkit/generated/local-debug.demo-gamma-0-1-0.env
+get 8083 /api/chain; get 8092 /api/chain; get 8083 /api/infra; get 8092 /api/infra
+pget demo-shell-0-1-0 8082 /api/infra
+kill -INT $UP; wait_exit
+run podman ps --filter name=brickkit-proj --format '{{.Names}} {{.Status}}'
+run brickkit down
+
+echo; echo "######## part 3: shells as local processes, gamma and delta in Podman"
+deploy shell pyshell
+run brickkit up --dry-run
+start_up $S/up6-3.log; wait_ready 8080 8081 8082 8090 8091
+for _ in $(seq 1 100); do podman ps --filter name=brickkit-proj-demo-delta --format '{{.Status}}' | grep -q healthy && podman ps --filter name=brickkit-proj-demo-gamma --format '{{.Status}}' | grep -q healthy && break; sleep 0.5; done
+sed -n '/Starting\|migration\|listening\|running\|healthy\|Error/p' $S/up6-3.log
+run grep -n -A4 "extra_hosts" .brickkit/generated/compose.yaml
+pexec demo-gamma-0-1-0 printenv DEMO_BETA_ENDPOINT PG_HOST PG_PORT
+pexec demo-gamma-0-1-0 cat /etc/hosts
+pget demo-gamma-0-1-0 8083 /api/chain
+pget demo-delta-0-1-0 8092 /api/chain
+pget demo-delta-0-1-0 8092 /api/infra
+get 8081 /api/infra
+
+echo; echo "######## part 4: in the same run, the local Go shell crashes"
+SH=$(wget -qO- http://localhost:8081/api/pid | python3 -c 'import json,sys; print(json.load(sys.stdin)["pid"])'); echo "shell pid $SH"; kill -9 $SH; wait_exit
+tail -8 $S/up6-3.log
+run podman ps --filter name=brickkit-proj --format '{{.Names}} {{.Status}}'
+pget demo-gamma-0-1-0 8083 /api/chain
+run brickkit status
+run brickkit down
+run podman ps -a --filter name=brickkit-proj --format '{{.Names}} {{.Status}}'
+podman rm -f r006-pg r006-nats >/dev/null
+
+######## r006-setup.sh
+#!/usr/bin/env bash
+# 0-06 setup: the 0-05 project (r005-setup.sh), plus migrations: the Go members' cmd/server answers `migrate`,
+# alpha and gamma declare migration.command (image) and local.migrationCommand (source).
+# Go: shell demo/shell hosts demo/alpha (8081) and demo/beta (8082); demo/gamma (8083) runs alone and calls beta.
+# Python: shell demo/pyshell (8090) hosts demo/pyr (8091); demo/delta (8092) runs alone and calls alpha and pyr.
+# Every component reports whether it reaches PostgreSQL and NATS through the addresses it was given (/api/infra).
+set -euo pipefail
+S=<scratch>
+rm -rf "$S"; mkdir -p "$S"; cd "$S"
+mkdir proj && cd proj && brickkit init --yes >/dev/null
+
+INFRA_SCHEMA='configSchema:
+  type: object
+  required: [PG_HOST, PG_PORT, NATS_URL]
+  properties:
+    PG_HOST: { type: string }
+    PG_PORT: { type: string }
+    NATS_URL: { type: string }
+    GREETING: { type: string, default: hello }'
+
+GO_INFRA='
+// infra dials PostgreSQL and NATS at the addresses in the config table.
+func infra(cfg map[string]string) map[string]string {
+	out := map[string]string{}
+	dial := func(name, addr string) {
+		c, err := net.DialTimeout("tcp", addr, 2*time.Second)
+		if err != nil {
+			out[name] = addr + " FAIL " + err.Error()
+			return
+		}
+		c.Close()
+		out[name] = addr + " ok"
+	}
+	dial("pg", net.JoinHostPort(cfg["PG_HOST"], cfg["PG_PORT"]))
+	if u, err := url.Parse(cfg["NATS_URL"]); err == nil {
+		dial("nats", u.Host)
+	}
+	return out
+}'
+
+gomember() { # <name> <port> <deps-yaml> <handler-body>
+  local n=$1 port=$2 deps=$3 body=$4 d=components/demo/$1
+  mkdir -p "$d/cmd/server"
+  cat > "$d/component.yaml" <<EOF
+apiVersion: brickkit/v1
+kind: Component
+
+metadata:
+  id: demo/$n
+  name: $n
+  version: 0.1.0
+  description: Stub Go member $n for the local-process experiment
+$deps
+deployment:
+  type: container
+  build:
+    dockerfile: Dockerfile
+  port: $port
+
+healthCheck:
+  type: http
+  path: /healthz
+
+$INFRA_SCHEMA
+EOF
+  printf 'module example.test/%s\n\ngo 1.26\n' "$n" > "$d/go.mod"
+  cat > "$d/$n.go" <<EOF
+// Package $n is a stub member: one HTTP handler built from its own config table.
+package $n
+
+import (
+	"encoding/json"
+	"net"
+	"net/http"
+	"net/url"
+	"os"
+	"time"
+)
+
+// Version is the version of this module's code.
+const Version = "0.1.0"
+
+// Handler builds the member's HTTP handler from its config table, never from the process environment.
+func Handler(cfg map[string]string) http.Handler {
+	mux := http.NewServeMux()
+	mux.HandleFunc("/healthz", func(w http.ResponseWriter, _ *http.Request) { w.Write([]byte("ok")) })
+	mux.HandleFunc("/api/infra", func(w http.ResponseWriter, _ *http.Request) { writeJSON(w, infra(cfg)) })
+	mux.HandleFunc("/api/pid", func(w http.ResponseWriter, _ *http.Request) { writeJSON(w, map[string]int{"pid": os.Getpid()}) })
+$body
+	return mux
+}
+$GO_INFRA
+
+func writeJSON(w http.ResponseWriter, v any) { _ = json.NewEncoder(w).Encode(v) }
+EOF
+  cat > "$d/cmd/server/main.go" <<EOF
+// Command server runs $n on its own: the config table is filled from the environment.
+package main
+
+import (
+	"log"
+	"net/http"
+	"os"
+	"strings"
+
+	"example.test/$n"
+)
+
+func main() {
+	if len(os.Args) > 1 && os.Args[1] == "migrate" {
+		log.Printf("demo/$n migrate: nothing to do (PG_HOST=%s PG_PORT=%s)", os.Getenv("PG_HOST"), os.Getenv("PG_PORT"))
+		return
+	}
+	cfg := map[string]string{}
+	for _, kv := range os.Environ() {
+		k, v, _ := strings.Cut(kv, "=")
+		cfg[k] = v
+	}
+	port := cfg["PORT"]
+	if port == "" {
+		port = "$port"
+	}
+	log.Printf("demo/$n@%s standalone on :%s", $n.Version, port)
+	log.Fatal(http.ListenAndServe(":"+port, $n.Handler(cfg)))
+}
+EOF
+  cat > "$d/Dockerfile" <<'EOF'
+FROM golang:1.26-alpine AS build
+WORKDIR /src
+COPY . .
+RUN CGO_ENABLED=0 go build -o /out/server ./cmd/server
+FROM alpine:3
+COPY --from=build /out/server /server
+ENTRYPOINT ["/server"]
+EOF
+}
+
+gomember alpha 8081 "" '	mux.HandleFunc("/api/hello", func(w http.ResponseWriter, _ *http.Request) {
+		writeJSON(w, map[string]string{"from": "demo/alpha", "version": Version})
+	})'
+
+gomember beta 8082 "
+dependencies:
+  components:
+    - demo/alpha@0.1.0
+" '	mux.HandleFunc("/api/chain", func(w http.ResponseWriter, _ *http.Request) {
+		var a map[string]string
+		resp, err := http.Get(cfg["DEMO_ALPHA_ENDPOINT"] + "/api/hello")
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadGateway)
+			return
+		}
+		defer resp.Body.Close()
+		_ = json.NewDecoder(resp.Body).Decode(&a)
+		writeJSON(w, map[string]any{"from": "demo/beta", "alphaEndpoint": cfg["DEMO_ALPHA_ENDPOINT"], "alpha": a})
+	})'
+
+# gamma: a standalone Go component whose root is the main package (go run .), with a migration.
+d=components/demo/gamma; mkdir -p "$d"
+cat > "$d/component.yaml" <<EOF
+apiVersion: brickkit/v1
+kind: Component
+
+metadata:
+  id: demo/gamma
+  name: gamma
+  version: 0.1.0
+  description: Stub standalone Go component calling demo/beta
+
+dependencies:
+  components:
+    - demo/beta@0.1.0
+
+deployment:
+  type: container
+  build:
+    dockerfile: Dockerfile
+  port: 8083
+
+migration:
+  command: ["/server", "migrate"]
+
+healthCheck:
+  type: http
+  path: /healthz
+
+$INFRA_SCHEMA
+EOF
+printf 'module example.test/gamma\n\ngo 1.26\n' > "$d/go.mod"
+cat > "$d/main.go" <<EOF
+// Command gamma is a stub standalone component: it calls demo/beta and checks the base resources.
+package main
+
+import (
+	"encoding/json"
+	"log"
+	"net"
+	"net/http"
+	"net/url"
+	"os"
+	"strings"
+	"time"
+)
+
+func main() {
+	if len(os.Args) > 1 && os.Args[1] == "migrate" {
+		log.Printf("demo/gamma migrate: nothing to do (PG_HOST=%s PG_PORT=%s)", os.Getenv("PG_HOST"), os.Getenv("PG_PORT"))
+		return
+	}
+	cfg := map[string]string{}
+	for _, kv := range os.Environ() {
+		k, v, _ := strings.Cut(kv, "=")
+		cfg[k] = v
+	}
+	mux := http.NewServeMux()
+	mux.HandleFunc("/healthz", func(w http.ResponseWriter, _ *http.Request) { w.Write([]byte("ok")) })
+	mux.HandleFunc("/api/infra", func(w http.ResponseWriter, _ *http.Request) { writeJSON(w, infra(cfg)) })
+	mux.HandleFunc("/api/pid", func(w http.ResponseWriter, _ *http.Request) { writeJSON(w, map[string]int{"pid": os.Getpid()}) })
+	mux.HandleFunc("/api/chain", func(w http.ResponseWriter, _ *http.Request) {
+		var b map[string]any
+		resp, err := http.Get(cfg["DEMO_BETA_ENDPOINT"] + "/api/chain")
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadGateway)
+			return
+		}
+		defer resp.Body.Close()
+		_ = json.NewDecoder(resp.Body).Decode(&b)
+		writeJSON(w, map[string]any{"from": "demo/gamma", "betaEndpoint": cfg["DEMO_BETA_ENDPOINT"], "beta": b})
+	})
+	port := cfg["PORT"]
+	if port == "" {
+		port = "8083"
+	}
+	log.Printf("demo/gamma@0.1.0 on :%s", port)
+	log.Fatal(http.ListenAndServe(":"+port, mux))
+}
+$GO_INFRA
+
+func writeJSON(w http.ResponseWriter, v any) { _ = json.NewEncoder(w).Encode(v) }
+EOF
+cp components/demo/alpha/Dockerfile "$d/Dockerfile"; sed -i 's#./cmd/server#.#' "$d/Dockerfile"
+
+# The Go shell (as in 0-04): its own module imports both members through local replace.
+d=shell/demo/shell; mkdir -p "$d"
+cat > "$d/component.yaml" <<'EOF'
+apiVersion: brickkit/v1
+kind: Component
+
+metadata:
+  id: demo/shell
+  name: shell
+  version: 0.1.0
+  description: Go shell compiling demo/alpha and demo/beta into one process
+
+shell:
+  members:
+    - demo/alpha@0.1.0
+    - demo/beta@0.1.0
+
+deployment:
+  type: container
+  build:
+    dockerfile: Dockerfile
+  port: 8080
+
+healthCheck:
+  type: http
+  path: /healthz
+EOF
+cat > "$d/go.mod" <<'EOF'
+module example.test/shell
+
+go 1.26
+
+require (
+	example.test/alpha v0.1.0
+	example.test/beta v0.1.0
+)
+
+replace (
+	example.test/alpha => ../../../components/demo/alpha
+	example.test/beta => ../../../components/demo/beta
+)
+EOF
+cat > "$d/main.go" <<'EOF'
+// Command shell hosts the members it compiles in, as told by BRICKKIT_SERVED_MEMBERS_CONFIG.
+package main
+
+import (
+	"encoding/json"
+	"fmt"
+	"log"
+	"net/http"
+	"os"
+
+	"example.test/alpha"
+	"example.test/beta"
+)
+
+type member struct {
+	ComponentID string            `json:"componentId"`
+	Version     string            `json:"version"`
+	HTTPPort    int               `json:"httpPort"`
+	Config      map[string]string `json:"config"`
+}
+
+type module struct {
+	version string
+	handler func(map[string]string) http.Handler
+}
+
+var compiled = map[string]module{
+	"demo/alpha": {alpha.Version, alpha.Handler},
+	"demo/beta":  {beta.Version, beta.Handler},
+}
+
+func main() {
+	raw, ok := os.LookupEnv("BRICKKIT_SERVED_MEMBERS_CONFIG")
+	if !ok {
+		log.Fatal("BRICKKIT_SERVED_MEMBERS_CONFIG is not set")
+	}
+	var members []member
+	if err := json.Unmarshal([]byte(raw), &members); err != nil {
+		log.Fatalf("BRICKKIT_SERVED_MEMBERS_CONFIG: %v", err)
+	}
+	for _, m := range members {
+		mod, ok := compiled[m.ComponentID]
+		if !ok {
+			log.Fatalf("this shell has no module %s", m.ComponentID)
+		}
+		if mod.version != m.Version {
+			log.Fatalf("asked to host %s@%s, but the code compiled in is %s", m.ComponentID, m.Version, mod.version)
+		}
+		addr := fmt.Sprintf(":%d", m.HTTPPort)
+		go func(h http.Handler) { log.Fatal(http.ListenAndServe(addr, h)) }(mod.handler(m.Config))
+		log.Printf("serving %s@%s on %s", m.ComponentID, m.Version, addr)
+	}
+	port := os.Getenv("PORT")
+	if port == "" {
+		port = "8080"
+	}
+	http.HandleFunc("/healthz", func(w http.ResponseWriter, _ *http.Request) { w.Write([]byte("ok")) })
+	log.Printf("shell on :%s", port)
+	log.Fatal(http.ListenAndServe(":"+port, nil))
+}
+EOF
+cat > "$d/Dockerfile" <<'EOF'
+FROM golang:1.26-alpine AS build
+WORKDIR /src
+COPY . .
+RUN CGO_ENABLED=0 go build -mod=vendor -o /out/shell .
+FROM alpine:3
+COPY --from=build /out/shell /shell
+ENTRYPOINT ["/shell"]
+EOF
+
+PY_COMMON='
+def infra(cfg):
+    out = {}
+    def dial(name, host, port):
+        addr = f"{host}:{port}"
+        try:
+            socket.create_connection((host, int(port)), timeout=2).close()
+            out[name] = addr + " ok"
+        except OSError as e:
+            out[name] = f"{addr} FAIL {e}"
+    dial("pg", cfg.get("PG_HOST", ""), cfg.get("PG_PORT", "0"))
+    u = urllib.parse.urlparse(cfg.get("NATS_URL", ""))
+    dial("nats", u.hostname or "", u.port or 0)
+    return out
+
+
+def get_json(url):
+    with urllib.request.urlopen(url, timeout=5) as r:
+        return json.load(r)
+
+
+class Base(BaseHTTPRequestHandler):
+    def log_message(self, *args):
+        pass
+
+    def send_json(self, code, value):
+        body = json.dumps(value).encode()
+        self.send_response(code)
+        self.send_header("Content-Type", "application/json")
+        self.send_header("Content-Length", str(len(body)))
+        self.end_headers()
+        self.wfile.write(body)'
+
+# pyr: a Python member; the module builds a handler class from its config table, server.py runs it alone.
+d=components/demo/pyr; mkdir -p "$d"
+cat > "$d/component.yaml" <<EOF
+apiVersion: brickkit/v1
+kind: Component
+
+metadata:
+  id: demo/pyr
+  name: pyr
+  version: 0.1.0
+  description: Stub Python member for the local-process experiment
+
+deployment:
+  type: container
+  build:
+    dockerfile: Dockerfile
+  port: 8091
+
+local:
+  runCommand: ["python3", "server.py"]
+
+healthCheck:
+  type: http
+  path: /healthz
+
+$INFRA_SCHEMA
+EOF
+cat > "$d/pyr.py" <<EOF
+"""Stub Python member: one handler class built from its own config table."""
+import json
+import os
+import socket
+import urllib.parse
+import urllib.request
+from http.server import BaseHTTPRequestHandler
+
+VERSION = "0.1.0"
+$PY_COMMON
+
+
+def handler(cfg):
+    class Handler(Base):
+        def do_GET(self):
+            if self.path == "/healthz":
+                return self.send_json(200, "ok")
+            if self.path == "/api/render":
+                return self.send_json(200, {"from": "demo/pyr", "version": VERSION})
+            if self.path == "/api/infra":
+                return self.send_json(200, infra(cfg))
+            if self.path == "/api/pid":
+                return self.send_json(200, {"pid": os.getpid()})
+            self.send_json(404, {"error": self.path})
+
+    return Handler
+EOF
+cat > "$d/server.py" <<'EOF'
+"""Runs demo/pyr on its own: the config table is filled from the environment."""
+import os
+from http.server import ThreadingHTTPServer
+
+import pyr
+
+port = int(os.environ.get("PORT", "8091"))
+print(f"demo/pyr@{pyr.VERSION} standalone on :{port}", flush=True)
+ThreadingHTTPServer(("0.0.0.0", port), pyr.handler(dict(os.environ))).serve_forever()
+EOF
+
+printf 'FROM python:3.13-alpine\nWORKDIR /app\nCOPY . .\nCMD ["python3", "server.py"]\n' > "$d/Dockerfile"
+
+# The Python shell: imports the member module from its directory (stands in for installing the package).
+d=shell/demo/pyshell; mkdir -p "$d"
+cat > "$d/component.yaml" <<'EOF'
+apiVersion: brickkit/v1
+kind: Component
+
+metadata:
+  id: demo/pyshell
+  name: pyshell
+  version: 0.1.0
+  description: Python shell hosting demo/pyr
+
+shell:
+  members:
+    - demo/pyr@0.1.0
+
+deployment:
+  type: container
+  build:
+    dockerfile: Dockerfile
+  port: 8090
+
+local:
+  runCommand: ["python3", "shell.py"]
+
+healthCheck:
+  type: http
+  path: /healthz
+EOF
+cat > "$d/shell.py" <<'EOF'
+"""Python shell: hosts the members named in BRICKKIT_SERVED_MEMBERS_CONFIG."""
+import json
+import os
+import sys
+import threading
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+
+# From source the member's own directory; in the image its vendored copy (as the Go shell vendors its members).
+HERE = os.path.dirname(os.path.abspath(__file__))
+SOURCE = os.path.join(HERE, "../../../components/demo/pyr")
+sys.path.insert(0, SOURCE if os.path.isdir(SOURCE) else os.path.join(HERE, "vendor"))
+import pyr  # noqa: E402
+
+COMPILED = {"demo/pyr": pyr}
+
+raw = os.environ.get("BRICKKIT_SERVED_MEMBERS_CONFIG")
+if raw is None:
+    sys.exit("BRICKKIT_SERVED_MEMBERS_CONFIG is not set")
+for m in json.loads(raw):
+    mod = COMPILED.get(m["componentId"])
+    if mod is None:
+        sys.exit(f"this shell has no module {m['componentId']}")
+    if mod.VERSION != m["version"]:
+        sys.exit(f"asked to host {m['componentId']}@{m['version']}, but the code is {mod.VERSION}")
+    srv = ThreadingHTTPServer(("0.0.0.0", m["httpPort"]), mod.handler(m.get("config", {})))
+    threading.Thread(target=srv.serve_forever, daemon=True).start()
+    print(f"serving {m['componentId']}@{m['version']} on :{m['httpPort']}", flush=True)
+
+
+class Health(BaseHTTPRequestHandler):
+    def log_message(self, *args):
+        pass
+
+    def do_GET(self):
+        self.send_response(200 if self.path == "/healthz" else 404)
+        self.end_headers()
+
+
+port = int(os.environ.get("PORT", "8090"))
+print(f"pyshell on :{port}", flush=True)
+ThreadingHTTPServer(("0.0.0.0", port), Health).serve_forever()
+EOF
+printf 'FROM python:3.13-alpine\nWORKDIR /app\nCOPY . .\nCMD ["python3", "shell.py"]\n' > "$d/Dockerfile"
+
+# delta: a standalone Python component calling alpha (in the Go shell) and pyr (in the Python shell).
+d=components/demo/delta; mkdir -p "$d"
+cat > "$d/component.yaml" <<EOF
+apiVersion: brickkit/v1
+kind: Component
+
+metadata:
+  id: demo/delta
+  name: delta
+  version: 0.1.0
+  description: Stub standalone Python component calling demo/alpha and demo/pyr
+
+dependencies:
+  components:
+    - demo/alpha@0.1.0
+    - demo/pyr@0.1.0
+
+deployment:
+  type: container
+  build:
+    dockerfile: Dockerfile
+  port: 8092
+
+local:
+  runCommand: ["python3", "delta.py"]
+
+healthCheck:
+  type: http
+  path: /healthz
+
+$INFRA_SCHEMA
+EOF
+cat > "$d/delta.py" <<EOF
+"""Stub standalone Python component: calls demo/alpha and demo/pyr, checks the base resources."""
+import json
+import os
+import socket
+import urllib.parse
+import urllib.request
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+$PY_COMMON
+
+cfg = dict(os.environ)
+
+
+class Handler(Base):
+    def do_GET(self):
+        if self.path == "/healthz":
+            return self.send_json(200, "ok")
+        if self.path == "/api/infra":
+            return self.send_json(200, infra(cfg))
+        if self.path == "/api/pid":
+            return self.send_json(200, {"pid": os.getpid()})
+        if self.path == "/api/chain":
+            a, p = cfg.get("DEMO_ALPHA_ENDPOINT", ""), cfg.get("DEMO_PYR_ENDPOINT", "")
+            try:
+                return self.send_json(200, {"from": "demo/delta", "alphaEndpoint": a, "pyrEndpoint": p,
+                                            "alpha": get_json(a + "/api/hello"), "pyr": get_json(p + "/api/render")})
+            except OSError as e:
+                return self.send_json(502, {"error": str(e)})
+        self.send_json(404, {"error": self.path})
+
+
+port = int(os.environ.get("PORT", "8092"))
+print(f"demo/delta@0.1.0 on :{port}", flush=True)
+ThreadingHTTPServer(("0.0.0.0", port), Handler).serve_forever()
+EOF
+printf 'FROM python:3.13-alpine\nWORKDIR /app\nCOPY . .\nCMD ["python3", "delta.py"]\n' > "$d/Dockerfile"
+
+python3 - <<'PY'
+for path, local in [("components/demo/alpha/component.yaml", '["go", "run", "./cmd/server", "migrate"]'),
+                    ("components/demo/gamma/component.yaml", '["go", "run", ".", "migrate"]')]:
+    s = open(path).read()
+    if "migration:" not in s:
+        s = s.replace("healthCheck:", 'migration:\n  command: ["/server", "migrate"]\n\nhealthCheck:', 1)
+    s = s.replace("healthCheck:", f"local:\n  migrationCommand: {local}\n\nhealthCheck:", 1)
+    open(path, "w").write(s)
+PY
+mkdir -p shell/demo/pyshell/vendor && cp components/demo/pyr/pyr.py shell/demo/pyshell/vendor/
+(cd shell/demo/shell && go mod vendor)
+for x in components/demo/alpha components/demo/beta components/demo/gamma; do (cd "$x" && go vet ./...); done
+(cd shell/demo/shell && go vet -mod=vendor .)
+python3 -m py_compile components/demo/pyr/*.py components/demo/delta/delta.py shell/demo/pyshell/shell.py
+echo setup ok
