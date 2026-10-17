@@ -257,7 +257,7 @@ Go 先做完整（D75），本实验用到的部分必须做完；Python 只做�
 
 ## 套件 E：多实例与多数据库
 
-只用少量组件：身份适配、授权、审计、主数据四个、销售、库存、信用（出账、打印不参加），在 D·S、D·H、K·S、K·X 四格上跑。不测多台机器与数据库主备切换。**多副本的 E1–E4 只在 K·S、K·X 两格跑**：BrickKit 的 `replicas` 只对 Kubernetes 有效，Docker、Podman 下警告后忽略（0-09 实测）；E1–E4 断言的是并发正确性（认领、幂等、加锁、接管），与容器引擎无关，K8s 两格已经覆盖。BrickKit 将来支持 Docker、Podman 的副本时补跑 D 两格（FRR-006）。E5–E7 照旧在四格上跑。
+只用少量组件：身份适配、授权、审计、主数据四个、销售、库存、信用（出账、打印不参加），在 D·S、D·H、K·S、K·X 四格上跑。不测多台机器与数据库主备切换。多副本用 `replicas`，v1.8.0 起 Docker、Podman 下也生效（FRR-006，0-09 复测）；compose 下副本一起重建、没有滚动升级，所以 E3 的“杀掉一个副本”用停掉容器来做，不用升级来做；多副本的组件不能映射宿主机端口。
 
 | 格 | 做什么 | 必须断言 |
 | --- | --- | --- |
@@ -424,7 +424,7 @@ Go 先做完整（D75），本实验用到的部分必须做完；Python 只做�
 ```markdown
 ### D·H2 Docker · 全部进外壳（两个 Go 外壳加 Python 外壳）
 
-- 环境：Linux 7.0.0，12 核，14 GiB；Docker 29.7.1；BrickKit v1.7.2
+- 环境：Linux 7.0.0，12 核，14 GiB；Docker 29.7.1；BrickKit v1.8.0
 - 版本：be-go-core 3.0.2、be-go-infra 3.0.2、be-py-render 3.0.1；成员 erp/sales 3.1.0 …（完整列表）
 - 命令：`make -C tools/be-acceptance cell SUITE=A CELL=D.H2 RUNS=3`
 

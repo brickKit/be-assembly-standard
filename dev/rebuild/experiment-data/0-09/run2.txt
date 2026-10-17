@@ -1,0 +1,425 @@
+# 0-09 run 2 (2026-10-17), BrickKit CLI v1.8.0, Docker version 29.7.1
+
+######## part 0: rebuild this project's images (the local demo-* tags were deleted or reused by 0-08)
+target: docker
+
+components:
+  - id: demo/delta
+  - id: demo/gamma
+  - id: demo/pyshell
+    members:
+      - id: demo/pyr
+  - id: demo/shell
+    members:
+      - id: demo/alpha
+      - id: demo/beta
+$ brickkit build --force
+🔨 Building demo/alpha@0.1.0 → demo-alpha:0.1.0
+✅ Built demo/alpha@0.1.0 → demo-alpha:0.1.0
+🔨 Building demo/beta@0.1.0 → demo-beta:0.1.0
+✅ Built demo/beta@0.1.0 → demo-beta:0.1.0
+🔨 Building demo/pyr@0.1.0 → demo-pyr:0.1.0
+✅ Built demo/pyr@0.1.0 → demo-pyr:0.1.0
+🔨 Building demo/delta@0.1.0 → demo-delta:0.1.0
+✅ Built demo/delta@0.1.0 → demo-delta:0.1.0
+🔨 Building demo/gamma@0.1.0 → demo-gamma:0.1.0
+✅ Built demo/gamma@0.1.0 → demo-gamma:0.1.0
+🔨 Building demo/pyshell@0.1.0 → demo-pyshell:0.1.0
+✅ Built demo/pyshell@0.1.0 → demo-pyshell:0.1.0
+🔨 Building demo/shell@0.1.0 → demo-shell:0.1.0
+✅ Built demo/shell@0.1.0 → demo-shell:0.1.0
+[exit 0]
+
+######## part 1: delta and the Go shell with replicas: 2 on Docker
+target: docker
+
+components:
+  - id: demo/delta
+    replicas: 2
+  - id: demo/gamma
+  - id: demo/pyshell
+    members:
+      - id: demo/pyr
+  - id: demo/shell
+    replicas: 2
+    members:
+      - id: demo/alpha
+      - id: demo/beta
+$ brickkit lint --all
+✅ brickkit.yaml
+✅ deploy.yaml
+✅ cross-file: brickkit.yaml ↔ deploy.yaml ↔ config/
+⚠️ [DOC_PLACEHOLDER] a placeholder (TODO) is still in the text
+   File: AGENTS.md
+   Line: 7
+⚠️ [DOC_PLACEHOLDER] a placeholder (TODO) is still in the text
+   File: AGENTS.md
+   Line: 11
+⚠️ [DOC_PLACEHOLDER] a placeholder (TODO) is still in the text
+   File: AGENTS.md
+   Line: 15
+⚠️ [DOC_PLACEHOLDER] a placeholder (TODO) is still in the text
+   File: AGENTS.md
+   Line: 19
+✅ components/demo/alpha/component.yaml
+✅ components/demo/beta/component.yaml
+✅ components/demo/delta/component.yaml
+✅ components/demo/gamma/component.yaml
+✅ components/demo/pyr/component.yaml
+✅ shell/demo/pyshell/component.yaml
+✅ shell/demo/shell/component.yaml
+⚠️ [DOC_FILE_MISSING] BRICKKIT.md is missing
+   File: components/demo/alpha/BRICKKIT.md
+⚠️ [DOC_FILE_MISSING] AGENTS.md is missing
+   File: components/demo/alpha/AGENTS.md
+⚠️ [DOC_FILE_MISSING] CLAUDE.md is missing
+   File: components/demo/alpha/CLAUDE.md
+⚠️ [DOC_FILE_MISSING] README.md is missing
+   File: components/demo/alpha/README.md
+⚠️ [DOC_FILE_MISSING] BRICKKIT.md is missing
+   File: components/demo/beta/BRICKKIT.md
+⚠️ [DOC_FILE_MISSING] AGENTS.md is missing
+   File: components/demo/beta/AGENTS.md
+⚠️ [DOC_FILE_MISSING] CLAUDE.md is missing
+   File: components/demo/beta/CLAUDE.md
+⚠️ [DOC_FILE_MISSING] README.md is missing
+   File: components/demo/beta/README.md
+⚠️ [DOC_FILE_MISSING] BRICKKIT.md is missing
+   File: components/demo/delta/BRICKKIT.md
+⚠️ [DOC_FILE_MISSING] AGENTS.md is missing
+   File: components/demo/delta/AGENTS.md
+⚠️ [DOC_FILE_MISSING] CLAUDE.md is missing
+   File: components/demo/delta/CLAUDE.md
+⚠️ [DOC_FILE_MISSING] README.md is missing
+   File: components/demo/delta/README.md
+⚠️ [DOC_FILE_MISSING] BRICKKIT.md is missing
+   File: components/demo/gamma/BRICKKIT.md
+⚠️ [DOC_FILE_MISSING] AGENTS.md is missing
+   File: components/demo/gamma/AGENTS.md
+⚠️ [DOC_FILE_MISSING] CLAUDE.md is missing
+   File: components/demo/gamma/CLAUDE.md
+⚠️ [DOC_FILE_MISSING] README.md is missing
+   File: components/demo/gamma/README.md
+⚠️ [DOC_FILE_MISSING] BRICKKIT.md is missing
+   File: components/demo/pyr/BRICKKIT.md
+⚠️ [DOC_FILE_MISSING] AGENTS.md is missing
+   File: components/demo/pyr/AGENTS.md
+⚠️ [DOC_FILE_MISSING] CLAUDE.md is missing
+   File: components/demo/pyr/CLAUDE.md
+⚠️ [DOC_FILE_MISSING] README.md is missing
+   File: components/demo/pyr/README.md
+⚠️ [DOC_FILE_MISSING] BRICKKIT.md is missing
+   File: shell/demo/pyshell/BRICKKIT.md
+⚠️ [DOC_FILE_MISSING] AGENTS.md is missing
+   File: shell/demo/pyshell/AGENTS.md
+⚠️ [DOC_FILE_MISSING] CLAUDE.md is missing
+   File: shell/demo/pyshell/CLAUDE.md
+⚠️ [DOC_FILE_MISSING] README.md is missing
+   File: shell/demo/pyshell/README.md
+⚠️ [DOC_FILE_MISSING] BRICKKIT.md is missing
+   File: shell/demo/shell/BRICKKIT.md
+⚠️ [DOC_FILE_MISSING] AGENTS.md is missing
+   File: shell/demo/shell/AGENTS.md
+⚠️ [DOC_FILE_MISSING] CLAUDE.md is missing
+   File: shell/demo/shell/CLAUDE.md
+⚠️ [DOC_FILE_MISSING] README.md is missing
+   File: shell/demo/shell/README.md
+
+📋 Checked 18 files: 0 with errors, 32 warnings
+[exit 0]
+$ brickkit up
+🚀 Starting project proj (target: docker)
+📋 Component state calculation:
+   ✅ demo/alpha@0.1.0    starting (demo/beta needs it)
+   ✅ demo/beta@0.1.0     starting (demo/gamma needs it)
+   ✅ demo/pyr@0.1.0      starting (demo/delta needs it)
+   ✅ demo/delta@0.1.0    starting (top-level)
+   ✅ demo/gamma@0.1.0    starting (top-level)
+   ✅ demo/pyshell@0.1.0  starting (top-level)
+   ✅ demo/shell@0.1.0    starting (top-level)
+
+📋 Start order (topological sort):
+   1. demo-pyshell-0-1-0  no dependencies  (hosts demo/pyr@0.1.0)
+   2. demo-shell-0-1-0    no dependencies  (hosts demo/alpha@0.1.0, demo/beta@0.1.0)
+   3. demo-delta-0-1-0    ← depends on 1, 2
+   4. demo-gamma-0-1-0    ← depends on 2
+
+Can start on their own: demo-pyshell-0-1-0, demo-shell-0-1-0 (no dependencies)
+Longest dependency chain (2 levels): demo-shell-0-1-0 → demo-delta-0-1-0
+   Components not on this chain start in parallel with it
+
+Dependency graph:
+   demo/delta@0.1.0 → demo/alpha@0.1.0
+                    → demo/pyr@0.1.0
+   demo/gamma@0.1.0 → demo/beta@0.1.0
+   demo/beta@0.1.0 → demo/alpha@0.1.0
+📄 Generated: .brickkit/generated/compose.yaml
+
+🔧 Database migrations that run before startup (on failure that component won't start):
+   demo/alpha@0.1.0  /server migrate
+   demo/gamma@0.1.0  /server migrate
+
+🐳 Starting (docker)...
+   demo-gamma-0-1-0             running (healthy)
+   demo-delta-0-1-0             running (healthy), 2/2 replicas ready
+   demo-pyshell-0-1-0           running (healthy)
+   demo-shell-0-1-0             running (healthy), 2/2 replicas ready
+✅ All components started (4)
+
+💡 View the status: brickkit status
+   View the logs: docker compose -p brickkit-proj logs -f
+[exit 0]
+$ grep -n -B2 -A3 replicas .brickkit/generated/compose.yaml
+38-        condition: service_healthy
+39-    deploy:
+40:      replicas: 2
+41-      resources:
+42-        reservations:
+43-          cpus: "0.10"
+--
+152-        condition: service_completed_successfully
+153-    deploy:
+154:      replicas: 2
+155-      resources:
+156-        reservations:
+157-          cpus: "0.10"
+[exit 0]
+$ docker ps --filter name=brickkit-proj --format {{.Names}} {{.Status}}
+brickkit-proj-demo-delta-0-1-0-1 Up 5 seconds (healthy)
+brickkit-proj-demo-delta-0-1-0-2 Up 5 seconds (healthy)
+brickkit-proj-demo-gamma-0-1-0-1 Up 5 seconds (healthy)
+brickkit-proj-demo-shell-0-1-0-2 Up 11 seconds (healthy)
+brickkit-proj-demo-shell-0-1-0-1 Up 11 seconds (healthy)
+brickkit-proj-demo-pyshell-0-1-0-1 Up 12 seconds (healthy)
+[exit 0]
+$ [in brickkit-proj-demo-gamma-0-1-0-1] nslookup demo-delta-0-1-0
+Server:		127.0.0.11
+Address:	127.0.0.11:53
+
+Non-authoritative answer:
+
+Non-authoritative answer:
+Name:	demo-delta-0-1-0
+Address: 172.24.0.7
+Name:	demo-delta-0-1-0
+Address: 172.24.0.5
+
+
+$ [in brickkit-proj-demo-gamma-0-1-0-1] nslookup demo-alpha-0-1-0
+Server:		127.0.0.11
+Address:	127.0.0.11:53
+
+Non-authoritative answer:
+
+Non-authoritative answer:
+Name:	demo-alpha-0-1-0
+Address: 172.24.0.4
+Name:	demo-alpha-0-1-0
+Address: 172.24.0.2
+
+
+$ [in brickkit-proj-demo-gamma-0-1-0-1] wget -qO- -T 5 http://127.0.0.1:8083/api/chain
+{"beta":{"alpha":{"from":"demo/alpha","version":"0.1.0"},"alphaEndpoint":"http://demo-alpha-0-1-0:8081","from":"demo/beta"},"betaEndpoint":"http://demo-beta-0-1-0:8082","from":"demo/gamma"}
+
+$ brickkit status
+📊 Project status: proj (target: docker)
+
+✅ Running (7 components)
+ ┌──────────────┬─────────┬───────────────────────────────────────────────────────────────────┬──────┐
+ │ Component    │ Version │ Status                                                            │ Port │
+ ├──────────────┼─────────┼───────────────────────────────────────────────────────────────────┼──────┤
+ │ demo/alpha   │ 0.1.0   │ running (healthy), 2/2 replicas ready (in shell demo/shell@0.1.0) │      │
+ │ demo/beta    │ 0.1.0   │ running (healthy), 2/2 replicas ready (in shell demo/shell@0.1.0) │      │
+ │ demo/gamma   │ 0.1.0   │ running (healthy)                                                 │      │
+ │ demo/pyr     │ 0.1.0   │ running (healthy) (in shell demo/pyshell@0.1.0)                   │      │
+ │ demo/delta   │ 0.1.0   │ running (healthy), 2/2 replicas ready                             │      │
+ │ demo/pyshell │ 0.1.0   │ running (healthy)                                                 │      │
+ │ demo/shell   │ 0.1.0   │ running (healthy), 2/2 replicas ready                             │      │
+ └──────────────┴─────────┴───────────────────────────────────────────────────────────────────┴──────┘
+
+[exit 0]
+
+######## part 2: stop one replica of each while gamma keeps calling (12 s)
+stopped replica 1 of delta and of the shell
+http://demo-alpha-0-1-0:8081/api/hello: ok=56 failed=0
+http://demo-delta-0-1-0:8092/api/pid: ok=56 failed=0
+$ brickkit status
+📊 Project status: proj (target: docker)
+
+✅ Running (3 components)
+ ┌──────────────┬─────────┬─────────────────────────────────────────────────┬──────┐
+ │ Component    │ Version │ Status                                          │ Port │
+ ├──────────────┼─────────┼─────────────────────────────────────────────────┼──────┤
+ │ demo/gamma   │ 0.1.0   │ running (healthy)                               │      │
+ │ demo/pyr     │ 0.1.0   │ running (healthy) (in shell demo/pyshell@0.1.0) │      │
+ │ demo/pyshell │ 0.1.0   │ running (healthy)                               │      │
+ └──────────────┴─────────┴─────────────────────────────────────────────────┴──────┘
+
+❌ Not running (4 components)
+ ┌────────────┬─────────┬──────────────────────────────────────────────────────────────────────┐
+ │ Component  │ Version │ Status                                                               │
+ ├────────────┼─────────┼──────────────────────────────────────────────────────────────────────┤
+ │ demo/alpha │ 0.1.0   │ exited (exit code 2), 1/2 replicas ready (in shell demo/shell@0.1.0) │
+ │ demo/beta  │ 0.1.0   │ exited (exit code 2), 1/2 replicas ready (in shell demo/shell@0.1.0) │
+ │ demo/delta │ 0.1.0   │ exited (exit code 137), 1/2 replicas ready                           │
+ │ demo/shell │ 0.1.0   │ exited (exit code 2), 1/2 replicas ready                             │
+ └────────────┴─────────┴──────────────────────────────────────────────────────────────────────┘
+   View the logs to find out why: docker compose -p brickkit-proj logs <service-name>
+
+[exit 0]
+$ brickkit down
+🛑 Stopping project proj
+✅ All components stopped
+
+💡 Data volumes were not deleted; database data is still there
+   For a full cleanup, run by hand: docker volume rm <volume-name>
+   Start again with: brickkit up
+[exit 0]
+
+######## part 3: replicas with expose, and with a mode: local caller
+target: docker
+
+components:
+  - id: demo/delta
+    replicas: 2
+    expose: true
+  - id: demo/gamma
+  - id: demo/pyshell
+    members:
+      - id: demo/pyr
+  - id: demo/shell
+    members:
+      - id: demo/alpha
+      - id: demo/beta
+$ brickkit up --dry-run
+🚀 Starting project proj (target: docker)
+📋 Component state calculation:
+   ✅ demo/alpha@0.1.0    starting (demo/beta needs it)
+   ✅ demo/beta@0.1.0     starting (demo/gamma needs it)
+   ✅ demo/pyr@0.1.0      starting (demo/delta needs it)
+   ✅ demo/delta@0.1.0    starting (top-level)
+   ✅ demo/gamma@0.1.0    starting (top-level)
+   ✅ demo/pyshell@0.1.0  starting (top-level)
+   ✅ demo/shell@0.1.0    starting (top-level)
+
+📋 Start order (topological sort):
+   1. demo-pyshell-0-1-0  no dependencies  (hosts demo/pyr@0.1.0)
+   2. demo-shell-0-1-0    no dependencies  (hosts demo/alpha@0.1.0, demo/beta@0.1.0)
+   3. demo-delta-0-1-0    ← depends on 1, 2
+   4. demo-gamma-0-1-0    ← depends on 2
+
+Can start on their own: demo-pyshell-0-1-0, demo-shell-0-1-0 (no dependencies)
+Longest dependency chain (2 levels): demo-shell-0-1-0 → demo-delta-0-1-0
+   Components not on this chain start in parallel with it
+
+Dependency graph:
+   demo/delta@0.1.0 → demo/alpha@0.1.0
+                    → demo/pyr@0.1.0
+   demo/gamma@0.1.0 → demo/beta@0.1.0
+   demo/beta@0.1.0 → demo/alpha@0.1.0
+❌ Error: demo/delta@0.1.0 has 2 replicas, yet needs host ports — a host port maps to one container only
+   Host ports: 8092:8092
+   Suggestion: It is exposed (expose): set replicas: 1, or drop expose (components reach each other inside the container network without it)
+{"time":"…","level":"ERROR","message":"Command failed","command":"brickkit up","elapsed_ms":9,"error_code":"PORT_CONFLICT","error":"PORT_CONFLICT: Error: demo/delta@0.1.0 has 2 replicas, yet needs host ports — a host port maps to one container only; Host ports=8092:8092","exit_code":1}
+[exit 1]
+target: docker
+
+components:
+  - id: demo/delta
+  - id: demo/gamma
+    mode: local
+  - id: demo/pyshell
+    members:
+      - id: demo/pyr
+  - id: demo/shell
+    replicas: 2
+    members:
+      - id: demo/alpha
+      - id: demo/beta
+$ brickkit up --dry-run
+🚀 Starting project proj (target: docker)
+📋 Component state calculation:
+   ✅ demo/alpha@0.1.0    starting (demo/beta needs it)
+   ✅ demo/beta@0.1.0     starting (demo/gamma needs it)
+   ✅ demo/pyr@0.1.0      starting (demo/delta needs it)
+   ✅ demo/delta@0.1.0    starting (top-level)
+   ✅ demo/gamma@0.1.0    starting (top-level)
+   ✅ demo/pyshell@0.1.0  starting (top-level)
+   ✅ demo/shell@0.1.0    starting (top-level)
+
+📋 Start order (topological sort):
+   1. demo-pyshell-0-1-0  no dependencies  (hosts demo/pyr@0.1.0)
+   2. demo-shell-0-1-0    no dependencies  (hosts demo/alpha@0.1.0, demo/beta@0.1.0)
+   3. demo-delta-0-1-0    ← depends on 1, 2
+   4. demo-gamma-0-1-0    ← depends on 2
+
+Can start on their own: demo-pyshell-0-1-0, demo-shell-0-1-0 (no dependencies)
+Longest dependency chain (2 levels): demo-shell-0-1-0 → demo-delta-0-1-0
+   Components not on this chain start in parallel with it
+
+Dependency graph:
+   demo/delta@0.1.0 → demo/alpha@0.1.0
+                    → demo/pyr@0.1.0
+   demo/gamma@0.1.0 → demo/beta@0.1.0
+   demo/beta@0.1.0 → demo/alpha@0.1.0
+❌ Error: demo/shell@0.1.0 has 2 replicas, yet needs host ports — a host port maps to one container only
+   Host ports: 18082:8082
+   Suggestion: A process on this machine (mode: local / debug) reaches it through a host port: set replicas: 1 for it in the deploy file this run reads (deploy.local.yaml in local mode), or run that caller in a container too
+{"time":"…","level":"ERROR","message":"Command failed","command":"brickkit up","elapsed_ms":9,"error_code":"PORT_CONFLICT","error":"PORT_CONFLICT: Error: demo/shell@0.1.0 has 2 replicas, yet needs host ports — a host port maps to one container only; Host ports=18082:8082","exit_code":1}
+[exit 1]
+target: docker
+
+components:
+  - id: demo/delta
+  - id: demo/gamma
+  - id: demo/pyshell
+    members:
+      - id: demo/pyr
+  - id: demo/shell
+    members:
+      - id: demo/alpha
+      - id: demo/beta
+
+######## run009-2.sh
+#!/usr/bin/env bash
+# 0-09 run 2 (v1.8.0): FRR-006 retest — replicas on Docker. Uses the 0-07 project (images in the local Docker).
+set -uo pipefail
+S=$(dirname "$0")/..; S=$(cd "$S" && pwd); P=$S/r007/proj; export GOCACHE=$S/gocache
+run() { echo "\$ $*"; "$@" 2>&1 | sed -E 's/"time":"[^"]*"/"time":"…"/'; echo "[exit ${PIPESTATUS[0]}]"; }
+dx() { local c=$1; shift; echo "\$ [in $c] $*"; docker exec "$c" "$@" 2>&1; echo; }
+G=brickkit-proj-demo-gamma-0-1-0-1
+probe() { docker exec $G sh -c "ok=0; bad=0; end=\$((\$(date +%s)+$2)); while [ \$(date +%s) -lt \$end ]; do if wget -qO- -T 2 $1 >/dev/null 2>&1; then ok=\$((ok+1)); else bad=\$((bad+1)); fi; sleep 0.2; done; echo \"$1: ok=\$ok failed=\$bad\""; }
+write() { # <extra lines for delta> <extra lines for gamma> <extra lines for the shell>
+  printf 'target: docker\n\ncomponents:\n  - id: demo/delta\n%b  - id: demo/gamma\n%b  - id: demo/pyshell\n    members:\n      - id: demo/pyr\n  - id: demo/shell\n%b    members:\n      - id: demo/alpha\n      - id: demo/beta\n' "$1" "$2" "$3" > deploy.yaml; cat deploy.yaml; }
+cd "$P"; rm -f deploy.local.yaml
+echo "# 0-09 run 2 ($(date +%F)), $(brickkit version | head -1), $(docker --version | cut -d, -f1)"
+
+echo; echo "######## part 0: rebuild this project's images (the local demo-* tags were deleted or reused by 0-08)"
+write "" "" ""
+run brickkit build --force
+
+echo; echo "######## part 1: delta and the Go shell with replicas: 2 on Docker"
+write "    replicas: 2\n" "" "    replicas: 2\n"
+run brickkit lint --all
+run brickkit up
+run grep -n -B2 -A3 "replicas" .brickkit/generated/compose.yaml
+run docker ps --filter name=brickkit-proj --format '{{.Names}} {{.Status}}'
+dx $G nslookup demo-delta-0-1-0
+dx $G nslookup demo-alpha-0-1-0
+dx $G wget -qO- -T 5 http://127.0.0.1:8083/api/chain
+run brickkit status
+
+echo; echo "######## part 2: stop one replica of each while gamma keeps calling (12 s)"
+( sleep 3; docker stop -t 2 brickkit-proj-demo-delta-0-1-0-1 brickkit-proj-demo-shell-0-1-0-1 >/dev/null; echo "stopped replica 1 of delta and of the shell" ) &
+probe http://demo-delta-0-1-0:8092/api/pid 12 &
+probe http://demo-alpha-0-1-0:8081/api/hello 12
+wait
+run brickkit status
+run brickkit down
+
+echo; echo "######## part 3: replicas with expose, and with a mode: local caller"
+write "    replicas: 2\n    expose: true\n" "" ""
+run brickkit up --dry-run
+write "" "    mode: local\n" "    replicas: 2\n"
+run brickkit up --dry-run
+write "" "" ""

@@ -33,7 +33,7 @@
 | `mode: local` | BrickKit 回复不做长期运行的本机部署；本机进程三行只量资源与通信，标“不推荐”（图省事的另类模式） | FRR-001 已关闭（v1.4.2 复测通过） |
 | `local` 之后的用法 | 全部部署形态测完后本项目基本不再用 `local`，用 Docker 或 Podman（按结果定）；给 BrickKit 的部署形态反馈预定在第 14 步一次发出，中途不发（用户 2026-10-17） | experiment-plan.md 的“给 BrickKit 的部署形态反馈（预定）” |
 | 记录方式 | 档案（给 AI，详细、先结论、表格优先）+ 报告（给用户，含“用什么测的”与额外发现的表）+ 原始数据 | experiment-plan.md 的“记录与报告” |
-| BrickKit CLI | 项目要求升到 v1.7.2（2026-10-17；项目技能同步更新）。v1.6.0 起只写 `deployment.image` 的组件来自本地源也拉取，要在本机构建的组件必须写 `deployment.build` | `infra/scripts/lib/require-brickkit.sh` |
+| BrickKit CLI | 项目要求升到 v1.8.0（2026-10-17；项目技能同步更新）。v1.6.0 起只写 `deployment.image` 的组件来自本地源也拉取，要在本机构建的组件必须写 `deployment.build` | `infra/scripts/lib/require-brickkit.sh` |
 
 **第 0 步的进度**：
 
@@ -47,7 +47,7 @@
 | 0-06 | 本机进程与 Podman 混合 | 完成（2026-10-17）；全部容器、外壳在容器、外壳在本机三种布局都通；无根 Podman 的 `host-gateway` 可用；正式跑 P、LP 行时基础资源只起 Podman 那套 |
 | 0-07 | minikube 跑 BrickKit 生成的 K8s 清单（含外壳）；`local`、`debug` 不能配 `k8s` | 完成（2026-10-17）；v1.7.2 起外壳成员的地址写成员自己的服务名，K8s 上调用链通（FRB-004 关闭）。镜像要 `minikube image load`；没有 kubectl，用转给 `minikube kubectl --` 的小脚本 |
 | 0-08 | 同一组件两个版本并存（BrickKit 多版本共存：`requiredBy`） | 完成（2026-10-17）；`add` 自动保留兼容版本，外壳只编进一个版本、另一个单独运行；迁移按版本串行；迁移顺序保护有效 |
-| 0-09 | 同一组件两个副本 | 完成（2026-10-17）；K8s 上通过；Docker、Podman 下 `replicas` 被忽略，套件 E 的 E1–E4 改在 K8s 两格（FRR-006，低优先级）；SDK 要做到删副本时零失败 |
+| 0-09 | 同一组件两个副本 | 完成（2026-10-17）；K8s 上通过；v1.8.0 起 Docker、Podman 也支持副本（FRR-006 关闭），套件 E 恢复四格；Go、Python SDK 都要做到删副本时零失败 |
 | 0-10 | 两个 PostgreSQL 实例 | 完成（2026-10-17）；分实例完全靠配置覆盖；三种形态下连接与迁移都去对的实例；特殊字符的密码三条注入路径一致 |
 | 0-11 | Podman 有根与无根 | 完成（2026-10-17，用户执行有根脚本）；有根下 BrickKit 正常，但与同机 Docker 冲突、容器之间不通（静默）；B6 要在没有 Docker 的条件下跑；每格先跑冒烟测试 |
 | 0-12 | 连接池代理的事务模式与 `SET LOCAL`（以及 pgx 的预编译语句） | 完成（2026-10-17）；设计依赖的事务内设置都成立；pgx 默认模式要求 PgBouncer 开 `max_prepared_statements`（记进交实现核对的项） |
@@ -59,7 +59,7 @@
 
 **已知、暂不处理**：`infra/scripts/tests/test_ship_dryrun.sh` 失败——旧的 `ship.sh` 还调用旧 `be-acceptance` 的命令，迁移后已不存在；发布工具随重建重新提供，届时一并处理。
 
-**给 BrickKit 的收件箱** `brickkit-feedback/rebuild.md`：FRR-001 到 FRR-005、FRB-001 到 FRB-004 全部关闭（最后一次复测 2026-10-17，v1.7.2）；FRR-006（Docker、Podman 下支持 `replicas`，低优先级）、FRB-005（同机有 Docker 时有根 Podman 的容器之间静默不通，文档只覆盖无根）等回复，都不挡路。
+**给 BrickKit 的收件箱** `brickkit-feedback/rebuild.md`：FRR-001 到 FRR-005、FRB-001 到 FRB-004 全部关闭（最后一次复测 2026-10-17，v1.7.2）；FRR-006 已关闭（v1.8.0）；FRB-005（同机有 Docker 时有根 Podman 的容器之间静默不通）已回复，有根部分的复测等用户以 root 执行。
 
 ## 任务结束时：知识库反馈
 
