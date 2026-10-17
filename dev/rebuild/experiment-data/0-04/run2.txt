@@ -1,0 +1,240 @@
+# 0-04 run 2 (2026-10-17), BrickKit CLI v1.6.0, Docker version 29.7.1
+# setup: r004-setup.sh from run1.txt (unchanged)
+
+######## part 1: add, then drift alpha's working copy to 0.2.0 (component.yaml and Version)
+$ brickkit add --local --yes
+➕ Adding demo/alpha@0.1.0, demo/beta@0.1.0, demo/shell@0.1.0
+   ✅ demo/alpha@0.1.0 (in shell demo/shell)
+   ✅ demo/beta@0.1.0 (in shell demo/shell)
+   ✅ demo/shell@0.1.0
+📝 Written: brickkit.yaml, deploy.yaml
+📝 Config skeletons: config/demo-alpha.yaml, config/demo-beta.yaml
+[exit 0]
+$ grep -n version: components/demo/alpha/component.yaml
+7:  version: 0.2.0
+[exit 0]
+
+== C3b (no git) build alpha 0.1.0 from the project root ==
+$ brickkit build demo/alpha@0.1.0 --force
+🔨 Building demo/alpha@0.1.0 → demo-alpha:0.1.0
+❌ Error: component not found
+   Component: demo/alpha@0.1.0
+   Reason: The component was not found in any install source
+   Install sources tried: local-dev (local), local-shells (local)
+   Local repository: components/demo/alpha holds 0.2.0, not this version
+   Suggestions:
+   1. To build demo/alpha@0.1.0 from the repository: git -C components/demo/alpha checkout 0.1.0, build, then switch back
+   2. To move the project to the repository's version: brickkit upgrade demo/alpha@0.2.0 (a version other components still depend on stays, and needs its own image)
+   3. Building it needs its source: a git component is exported from its version tag; a market component only ships an image, so use its published image or put the source in a local install source
+{"time":"…","level":"ERROR","message":"Command failed","command":"brickkit build","elapsed_ms":8,"error_code":"COMPONENT_NOT_FOUND","error":"COMPONENT_NOT_FOUND: Error: component not found; Component=demo/alpha@0.1.0; Reason=The component was not found in any install source; Install sources tried=local-dev (local), local-shells (local); Local repository=<scratch>/proj/components/demo/alpha holds 0.2.0, not this version","exit_code":1}
+[exit 1]
+
+== C3b (no git) same command from config/ ==
+$ brickkit build demo/alpha@0.1.0 --force
+📁 Project: .. (proj)
+🔨 Building demo/alpha@0.1.0 → demo-alpha:0.1.0
+❌ Error: component not found
+   Component: demo/alpha@0.1.0
+   Reason: The component was not found in any install source
+   Install sources tried: local-dev (local), local-shells (local)
+   Local repository: ../components/demo/alpha holds 0.2.0, not this version
+   Suggestions:
+   1. To build demo/alpha@0.1.0 from the repository: git -C ../components/demo/alpha checkout 0.1.0, build, then switch back
+   2. To move the project to the repository's version: brickkit upgrade demo/alpha@0.2.0 (a version other components still depend on stays, and needs its own image)
+   3. Building it needs its source: a git component is exported from its version tag; a market component only ships an image, so use its published image or put the source in a local install source
+{"time":"…","level":"ERROR","message":"Command failed","command":"brickkit build","elapsed_ms":9,"error_code":"COMPONENT_NOT_FOUND","error":"COMPONENT_NOT_FOUND: Error: component not found; Component=demo/alpha@0.1.0; Reason=The component was not found in any install source; Install sources tried=local-dev (local), local-shells (local); Local repository=<scratch>/proj/components/demo/alpha holds 0.2.0, not this version","exit_code":1}
+[exit 1]
+
+== C3b (alpha is a git repo with tag 0.1.0, working copy at 0.2.0) from the project root ==
+579c33b (HEAD -> master, tag: 0.2.0) v0.2.0
+57a62db (tag: 0.1.0) v0.1.0
+$ brickkit build demo/alpha@0.1.0 --force
+🔨 Building demo/alpha@0.1.0 → demo-alpha:0.1.0
+❌ Error: component not found
+   Component: demo/alpha@0.1.0
+   Reason: The component was not found in any install source
+   Install sources tried: local-dev (local), local-shells (local)
+   Local repository: components/demo/alpha holds 0.2.0, not this version
+   Suggestions:
+   1. To build demo/alpha@0.1.0 from the repository: git -C components/demo/alpha checkout 0.1.0, build, then switch back
+   2. To move the project to the repository's version: brickkit upgrade demo/alpha@0.2.0 (a version other components still depend on stays, and needs its own image)
+   3. Building it needs its source: a git component is exported from its version tag; a market component only ships an image, so use its published image or put the source in a local install source
+{"time":"…","level":"ERROR","message":"Command failed","command":"brickkit build","elapsed_ms":6,"error_code":"COMPONENT_NOT_FOUND","error":"COMPONENT_NOT_FOUND: Error: component not found; Component=demo/alpha@0.1.0; Reason=The component was not found in any install source; Install sources tried=local-dev (local), local-shells (local); Local repository=<scratch>/proj/components/demo/alpha holds 0.2.0, not this version","exit_code":1}
+[exit 1]
+
+== C3b (git) same command from config/ ==
+$ brickkit build demo/alpha@0.1.0 --force
+📁 Project: .. (proj)
+🔨 Building demo/alpha@0.1.0 → demo-alpha:0.1.0
+❌ Error: component not found
+   Component: demo/alpha@0.1.0
+   Reason: The component was not found in any install source
+   Install sources tried: local-dev (local), local-shells (local)
+   Local repository: ../components/demo/alpha holds 0.2.0, not this version
+   Suggestions:
+   1. To build demo/alpha@0.1.0 from the repository: git -C ../components/demo/alpha checkout 0.1.0, build, then switch back
+   2. To move the project to the repository's version: brickkit upgrade demo/alpha@0.2.0 (a version other components still depend on stays, and needs its own image)
+   3. Building it needs its source: a git component is exported from its version tag; a market component only ships an image, so use its published image or put the source in a local install source
+{"time":"…","level":"ERROR","message":"Command failed","command":"brickkit build","elapsed_ms":8,"error_code":"COMPONENT_NOT_FOUND","error":"COMPONENT_NOT_FOUND: Error: component not found; Component=demo/alpha@0.1.0; Reason=The component was not found in any install source; Install sources tried=local-dev (local), local-shells (local); Local repository=<scratch>/proj/components/demo/alpha holds 0.2.0, not this version","exit_code":1}
+[exit 1]
+
+== C3b follow suggestion 1: checkout 0.1.0, build, switch back ==
+$ git -C components/demo/alpha checkout -q 0.1.0
+[exit 0]
+$ brickkit build demo/alpha@0.1.0 --force
+🔨 Building demo/alpha@0.1.0 → demo-alpha:0.1.0
+✅ Built demo/alpha@0.1.0 → demo-alpha:0.1.0
+[exit 0]
+$ git -C components/demo/alpha checkout -q -
+[exit 0]
+$ grep -n version: components/demo/alpha/component.yaml
+7:  version: 0.2.0
+[exit 0]
+
+######## part 2: v1.6.0 notice: a local component that writes only deployment.image
+$ sed -n /^deployment:/,/^healthCheck:/p components/demo/beta/component.yaml
+deployment:
+  type: container
+  image: demo-beta-imageonly:0.1.0
+  port: 8082
+
+healthCheck:
+[exit 0]
+$ brickkit lint --all
+✅ brickkit.yaml
+✅ deploy.yaml
+✅ cross-file: brickkit.yaml ↔ deploy.yaml ↔ config/
+⚠️ [DOC_PLACEHOLDER] a placeholder (TODO) is still in the text
+   File: AGENTS.md
+   Line: 7
+⚠️ [DOC_PLACEHOLDER] a placeholder (TODO) is still in the text
+   File: AGENTS.md
+   Line: 11
+⚠️ [DOC_PLACEHOLDER] a placeholder (TODO) is still in the text
+   File: AGENTS.md
+   Line: 15
+⚠️ [DOC_PLACEHOLDER] a placeholder (TODO) is still in the text
+   File: AGENTS.md
+   Line: 19
+✅ components/demo/alpha/component.yaml
+⚠️ [MANIFEST_INVALID] demo/beta declares only deployment.image: its image is always pulled, from a local source too, and the Dockerfile next to it is never used
+   File: components/demo/beta/Dockerfile
+   deployment.image: demo-beta-imageonly:0.1.0
+   Suggestion: To build the image from this source, declare deployment.build (for a Dockerfile at the root: build: {dockerfile: Dockerfile})
+✅ shell/demo/shell/component.yaml
+⚠️ [DOC_FILE_MISSING] BRICKKIT.md is missing
+   File: components/demo/alpha/BRICKKIT.md
+⚠️ [DOC_FILE_MISSING] AGENTS.md is missing
+   File: components/demo/alpha/AGENTS.md
+⚠️ [DOC_FILE_MISSING] CLAUDE.md is missing
+   File: components/demo/alpha/CLAUDE.md
+⚠️ [DOC_FILE_MISSING] README.md is missing
+   File: components/demo/alpha/README.md
+⚠️ [DOC_FILE_MISSING] BRICKKIT.md is missing
+   File: components/demo/beta/BRICKKIT.md
+⚠️ [DOC_FILE_MISSING] AGENTS.md is missing
+   File: components/demo/beta/AGENTS.md
+⚠️ [DOC_FILE_MISSING] CLAUDE.md is missing
+   File: components/demo/beta/CLAUDE.md
+⚠️ [DOC_FILE_MISSING] README.md is missing
+   File: components/demo/beta/README.md
+⚠️ [DOC_FILE_MISSING] BRICKKIT.md is missing
+   File: shell/demo/shell/BRICKKIT.md
+⚠️ [DOC_FILE_MISSING] AGENTS.md is missing
+   File: shell/demo/shell/AGENTS.md
+⚠️ [DOC_FILE_MISSING] CLAUDE.md is missing
+   File: shell/demo/shell/CLAUDE.md
+⚠️ [DOC_FILE_MISSING] README.md is missing
+   File: shell/demo/shell/README.md
+ℹ️ demo/alpha: the source in components/demo/alpha is version 0.2.0, but the project pins 0.1.0 and keeps running that one — brickkit upgrade demo/alpha@0.2.0 moves the project to the source's version
+
+📋 Checked 10 files: 0 with errors, 17 warnings
+[exit 0]
+$ brickkit build demo/beta@0.1.0
+❌ Error: demo/beta@0.1.0 declares no deployment.build, so there is nothing to build: its image demo-beta-imageonly:0.1.0 is pulled
+   Suggestions:
+   1. up pulls it; if the pull fails, log in to its registry (docker login, or k8s.imagePullSecrets on Kubernetes) and check the image exists
+   2. To build the image from this source, declare deployment.build (for a Dockerfile at the root: build: {dockerfile: Dockerfile})
+{"time":"…","level":"ERROR","message":"Command failed","command":"brickkit build","elapsed_ms":4,"error_code":"INVALID_ARGUMENT","error":"INVALID_ARGUMENT: Error: demo/beta@0.1.0 declares no deployment.build, so there is nothing to build: its image demo-beta-imageonly:0.1.0 is pulled","exit_code":1}
+[exit 1]
+
+== beta moved out of the shell: up --dry-run (image-only: pulled, not built) ==
+$ brickkit up --dry-run
+🚀 Starting project proj (target: docker)
+📋 Component state calculation:
+   ✅ demo/alpha@0.1.0  starting (demo/beta needs it)
+   ✅ demo/beta@0.1.0   starting (top-level)
+   ✅ demo/shell@0.1.0  starting (top-level)
+
+📋 Start order (topological sort):
+   1. demo-shell-0-1-0  no dependencies  (hosts demo/alpha@0.1.0)
+   2. demo-beta-0-1-0   ← depends on 1
+
+Can start on their own: demo-shell-0-1-0 (no dependencies)
+Longest dependency chain (2 levels): demo-shell-0-1-0 → demo-beta-0-1-0
+
+Dependency graph:
+   demo/beta@0.1.0 → demo/alpha@0.1.0
+📄 Generated: .brickkit/generated/compose.yaml
+
+💡 --dry-run only generates the files and starts no component
+   View it: cat .brickkit/generated/compose.yaml
+[exit 0]
+$ grep -n -A4 demo-beta-0-1-0: .brickkit/generated/compose.yaml
+15:  demo-beta-0-1-0:
+16-    depends_on:
+17-      demo-shell-0-1-0:
+18-        condition: service_healthy
+19-    deploy:
+[exit 0]
+
+######## run2.sh
+#!/usr/bin/env bash
+# 0-04 run 2: FRR-004 retest (C3b) and the v1.6.0 image-only notice, on the 0-04 stub project.
+set -uo pipefail
+S=$(dirname "$0")/..; S=$(cd "$S" && pwd)
+run() { echo "\$ $*"; "$@" 2>&1 | sed -E 's/"time":"[^"]*"/"time":"…"/'; echo "[exit ${PIPESTATUS[0]}]"; }
+echo "# 0-04 run 2 ($(date +%F)), $(brickkit version | head -1), $(docker --version | cut -d, -f1)"
+echo "# setup: r004-setup.sh from run1.txt (unchanged)"
+bash "$S/bin/r004-setup.sh" >/dev/null 2>&1 || { echo setup failed; exit 1; }
+cd "$S/r004/proj"
+echo; echo "######## part 1: add, then drift alpha's working copy to 0.2.0 (component.yaml and Version)"
+run brickkit add --local --yes
+sed -i 's/^  version: 0.1.0/  version: 0.2.0/' components/demo/alpha/component.yaml
+sed -i 's/const Version = "0.1.0"/const Version = "0.2.0"/' components/demo/alpha/alpha.go
+run grep -n "version:" components/demo/alpha/component.yaml
+echo; echo "== C3b (no git) build alpha 0.1.0 from the project root =="
+run brickkit build demo/alpha@0.1.0 --force
+echo; echo "== C3b (no git) same command from config/ =="
+(cd config && run brickkit build demo/alpha@0.1.0 --force)
+echo; echo "== C3b (alpha is a git repo with tag 0.1.0, working copy at 0.2.0) from the project root =="
+(cd components/demo/alpha && git init -q && git -c user.name=t -c user.email=t@t add -A \
+  && sed -i 's/^  version: 0.2.0/  version: 0.1.0/; ' component.yaml && sed -i 's/"0.2.0"/"0.1.0"/' alpha.go \
+  && git add -A && git -c user.name=t -c user.email=t@t commit -qm v0.1.0 && git tag 0.1.0 \
+  && sed -i 's/^  version: 0.1.0/  version: 0.2.0/' component.yaml && sed -i 's/"0.1.0"/"0.2.0"/' alpha.go \
+  && git -c user.name=t -c user.email=t@t commit -qam v0.2.0 && git tag 0.2.0 && git log --oneline --decorate)
+run brickkit build demo/alpha@0.1.0 --force
+echo; echo "== C3b (git) same command from config/ =="
+(cd config && run brickkit build demo/alpha@0.1.0 --force)
+echo; echo "== C3b follow suggestion 1: checkout 0.1.0, build, switch back =="
+run git -C components/demo/alpha checkout -q 0.1.0
+run brickkit build demo/alpha@0.1.0 --force
+run git -C components/demo/alpha checkout -q -
+run grep -n "version:" components/demo/alpha/component.yaml
+echo; echo "######## part 2: v1.6.0 notice: a local component that writes only deployment.image"
+sed -i '/^  build:/,/^    dockerfile:/d; s/^  type: container/  type: container\n  image: demo-beta-imageonly:0.1.0/' components/demo/beta/component.yaml
+run sed -n '/^deployment:/,/^healthCheck:/p' components/demo/beta/component.yaml
+run brickkit lint --all
+run brickkit build demo/beta@0.1.0
+echo; echo "== beta moved out of the shell: up --dry-run (image-only: pulled, not built) =="
+cat > deploy.yaml <<'YAML'
+target: docker
+
+components:
+  - id: demo/shell
+    members:
+      - id: demo/alpha
+  - id: demo/beta
+YAML
+run brickkit up --dry-run
+run grep -n -A4 "demo-beta-0-1-0:" .brickkit/generated/compose.yaml

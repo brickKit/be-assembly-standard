@@ -92,7 +92,7 @@ description: 在 BrickKit 项目里增删组件、升级组件版本、调整启
 该启动的移回来，判据与 `up` 完全一致。把 `components/` 提交进 Git 的项目，用 `brickkit restore`
 把 `deploy.yaml` 里的 `mode` 恢复到上次提交的样子，源码布局跟着回去。
 
-**12. `up` 从不构建镜像。** 本地源的组件要先 `brickkit build`，见 `brickkit-deploy` 技能。
+**12. `up` 从不构建镜像。** 本地源里写了 `deployment.build` 的组件要先 `brickkit build`，见 `brickkit-deploy` 技能。
 
 **13. 只改一个组件时，用焦点运行，别起整套。**
 
@@ -141,4 +141,4 @@ description: 在 BrickKit 项目里增删组件、升级组件版本、调整启
 - 来了新需求、要跨组件改动：`brickkit-plan-change` 技能
 - 完整规范与「为什么这样设计」：<https://github.com/brickKit/brickKit> 根目录 `AGENTS.zh.md`
 
-<!-- brickkit:skill version=v1.4.1 sum=sha256:7efe8213655388355b30409f112eb181ea8baca8c56717916713d15aa7f3e749 -->
+<!-- brickkit:skill version=v1.6.0 sum=sha256:d316e36f21528d8fc803d7af8cd60a2a80d45c8f497af86b82a83d763e712c00 -->

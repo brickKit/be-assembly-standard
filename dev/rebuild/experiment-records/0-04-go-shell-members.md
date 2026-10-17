@@ -70,7 +70,7 @@
 - **Go 的构建信息能当启动器的依据**。`go version -m` 显示外壳二进制记下的是 `go.mod` 里的版本：`dep example.test/alpha v0.1.0`，用了 `replace` 的另起一行 `=> ../../../components/demo/alpha (devel)`。启动器用 `runtime/debug.ReadBuildInfo()` 就能拿到每个成员模块编进来的版本，不需要手写 `Version` 常量。但 `replace` 指向本地目录时，构建信息里仍是 `go.mod` 写的版本号，而代码可能已经变了（C5 正是这种情况）。所以发布的外壳镜像里不应该有 `replace`。
 - **启动器拒绝时，外壳在 Docker 上反复重启**，`up --wait` 只说 unhealthy，原因要看外壳日志（`docker compose -p <项目> logs <服务名>`，`status` 也这样提示）。所以启动器的报错要一行说清、点名成员与两边的版本。
 - **`up --dry-run` 不查镜像标签**，C4 只在真正 `up` 时拦下。
-- **C3b 的报错不够直接**：本地源里组件是 0.2.0，`build demo/alpha@0.1.0` 报“没有在任何安装源里找到”，建议里讲的是 git 与市场组件，没提本地源里有别的版本。同一情况下 `lint` 的提示是清楚的。已写给 BrickKit（FRR-004，低优先级）。
+- **C3b 的报错不够直接**：本地源里组件是 0.2.0，`build demo/alpha@0.1.0` 报“没有在任何安装源里找到”，建议里讲的是 git 与市场组件，没提本地源里有别的版本。同一情况下 `lint` 的提示是清楚的。已写给 BrickKit（FRR-004，低优先级）；v1.6.0 已改，见第 9 节。
 - 写成员时“一个模块一个配置表、`main` 从环境填、外壳从 JSON 填”的形状，单跑与外壳两种形态都不用改代码（文档 `04-shell/02-json-injection` 的建议），这里验证可行。
 
 ## 7. 影响
@@ -86,4 +86,26 @@
 
 ## 8. 原始数据
 
-`dev/rebuild/experiment-data/0-04/run1.txt`（含生成脚本 `r004-setup.sh`）
+`dev/rebuild/experiment-data/0-04/run1.txt`（含生成脚本 `r004-setup.sh`）；v1.6.0 复测见第 9 节与 `run2.txt`
+
+## 9. v1.6.0 复测（2026-10-17）
+
+BrickKit 对 FRR-004 的回复：`build` 仍拒绝用 0.2.0 的源码打 0.1.0 的镜像，报错加一行“本地仓库是哪个版本”，并给出两条出路（在仓库里检出项目固定的版本再构建；或 `upgrade` 到仓库的版本）；`git -C` 的路径按当前目录写。同一版本还改了一处行为：只写 `deployment.image` 的组件，来自本地源也一律拉取，不再按根目录的 `Dockerfile` 构建。
+
+用 CLI v1.6.0、同一个 `r004-setup.sh` 重建桩项目，把 alpha 的工作区改成 0.2.0（`component.yaml` 与 `Version`），项目仍固定 0.1.0：
+
+| 步 | 结果 |
+| --- | --- |
+| C3b：项目根目录 `build demo/alpha@0.1.0` | 照旧拒绝（`COMPONENT_NOT_FOUND`）；多出 `Local repository: components/demo/alpha holds 0.2.0, not this version` 与两条建议：`git -C components/demo/alpha checkout 0.1.0` 构建后切回；`brickkit upgrade demo/alpha@0.2.0`（并说明别的组件还依赖的旧版本会留下、要有自己的镜像） |
+| 同一命令在 `config/` 里跑 | 路径改成 `../components/demo/alpha`，照着敲能用 |
+| alpha 做成 git 仓库（标签 `0.1.0`、`0.2.0`，工作区在 0.2.0）后重跑 | 报错与建议同上 |
+| 照建议 1：检出 `0.1.0`、`build`、切回 | 构建成功；切回后工作区回到 0.2.0 |
+| beta 只写 `deployment.image`，目录里留着 `Dockerfile` | `lint --all` 警告：“declares only deployment.image … the Dockerfile next to it is never used”，建议写 `build: {dockerfile: Dockerfile}` |
+| 点名 `build demo/beta@0.1.0` | 直接报“declares no deployment.build, so there is nothing to build”，不再交给 Docker |
+| beta 挪出外壳后 `up --dry-run` | compose 里 beta 只有 `image: demo-beta-imageonly:0.1.0`，没有构建段，即拉取 |
+
+两处小地方，不再反馈：alpha 不是 git 仓库时建议 1 照样写 `git -C … checkout`（这时用不上，另两条够用）；`lint` 的这条警告借用了 `MANIFEST_INVALID` 这个错误码。
+
+**结论**：通过，FRR-004 关闭。**对重建的影响**：新组件带代码、要在本机构建的，`component.yaml` 必须写 `deployment.build`（项目技能 `brickkit-component` 已随 v1.6.0 写明）。旧的 `components/frontend/standard`（1.0.1）只写了 `image`，按回复升级后会拉取而不是构建；它不在 `brickkit.yaml` 里、属于将从零重建的 2.x 代码（D59），不改。
+
+原始数据：`dev/rebuild/experiment-data/0-04/run2.txt`（含 `run2.sh`）。
