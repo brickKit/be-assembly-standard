@@ -29,7 +29,7 @@
 | --- | --- | --- | --- | --- |
 | T3.1 | 仓库与骨架：主分支（第 1 步已重启）上建包结构、`pyproject.toml` 与 `uv.lock`、取协议的脚本与检查、`make test`（单元与向量）与 `make test-integration`（`be-postgres`、`be-nats`、`be-rustfs`） | `be-sdk-python` | 向量读取通过 `SHA256SUMS` 核对；`make protocol-check` 通过 | 完成 |
 | T3.2 | 运行时与单跑：组件定义与模块接口、配置（声明的键、严格解析、`_FILE` 密钥与重读）、错误对象与原因目录（problem+json、gRPC 状态）、观测基本档（标准 `logging` 的 JSON 格式、每成员一个指标注册表、OpenTelemetry）、FastAPI 跑在 uvicorn 上（单进程、单事件循环）、单跑启动器（`serve`/`migrate`、退出码、健康与就绪、自描述、计时源检查、体面停止）、合并安全检查（AST 扫描：读进程环境、进程级初始化、退出进程、绕过 SDK） | `be-sdk-python` | 向量 `errors`、`config-parse` 通过；合并安全检查对 SDK 自身通过、对故意加入的违规报出 | 完成 |
-| T3.3 | 外壳启动器：按 `BRICKKIT_SERVED_MEMBERS_CONFIG` 构造成员；按安装的分发元数据核对成员版本，拒绝可编辑安装或路径安装（对应 Go 的 `replace`）；每个成员独立的端口与运行时；进程级键一致；同一数据库目标的成员共用一个池；拒绝条件一起报出；并行停止 | `be-sdk-python` | 与 Go 外壳同样的拒绝情形与“单跑与外壳行为一致”的测试 | 待做 |
+| T3.3 | 外壳启动器：按 `BRICKKIT_SERVED_MEMBERS_CONFIG` 构造成员；按安装的分发元数据核对成员版本，拒绝可编辑安装或路径安装（对应 Go 的 `replace`）；每个成员独立的端口与运行时；进程级键一致；同一数据库目标的成员共用一个池；拒绝条件一起报出；并行停止 | `be-sdk-python` | 与 Go 外壳同样的拒绝情形与“单跑与外壳行为一致”的测试 | 完成（共享池随 T3.4） |
 | T3.4 | 数据库：`asyncpg` 池（按成员的预算，外壳中用外壳登录角色）、事务入口（`SET LOCAL ROLE`、`search_path`、超时；`40001`/`40P01` 重试；错误映射；不许嵌套）、外壳中按成员区分语句缓存（P5.4）、启动检查、迁移入口（按上面的决定）、UUIDv7、单号序列 | `be-sdk-python` | 向量 `db-errors`、`migration-lint` 通过；0-12 的泄漏情形不出现；**同一个 schema 先由 Go SDK 迁移、再由 Python SDK 迁移时“已是最新”**，反过来也一样 | 待做 |
 | T3.5 | 组件间调用：`grpc.aio` 的服务端与客户端拦截器、HTTP 客户端；出站时限、重试决定与预算、熔断、并发上限、结果分类与向上报告、转述不重试；请求 ID、追踪、幂等键的转发；事务内不发调用 | `be-sdk-python` | 向量 `outbound-timeout`、`retry-decision`、`retry-budget`、`circuit-breaker`、`call-outcomes` 通过；Go→Python→Go 的调用链“只有一层重试” | 待做 |
 | T3.6 | 事件：发件表（同一组表）、锁内编号与纪元、转发、CloudEvents 信封、JetStream（`nats-py`）与 PostgreSQL 队列适配器、消费者（收件表去重、死信、跳数）、大消息的凭证检查（`aioboto3`）；运输检查套件移植 | `be-sdk-python` | 向量 `partition`、`envelope` 通过；运输套件在两个适配器上通过；Go 产生、Python 消费与反方向，在两种运输上都只生效一次 | 待做 |
@@ -45,4 +45,5 @@
 - 2026-10-17 T3.2 完成：`be-sdk-python` `0996347`（`config`、`errs`）、`63df33c`（`obs`、`http`、`reqctx`、`clock`、`component`、`runtime`）、`6ccd685`（`host`、`launcher`、`mergesafety`）。向量 `config-parse`、`errors` 通过；HTTP 链（请求 ID、追踪、截止时间、准入、请求体上限、错误映射、崩溃恢复、访问日志与指标）、平台端点、单跑启动器（配置错误一次报全、模块装配失败不崩溃、就绪、体面停止中进行中的请求做完）都移植了 Go 的测试；另用真实进程验证 SIGTERM 的体面停止。合并安全检查用 AST 解析并解开别名，对 SDK 自身按允许清单通过。
   - **定下的设计**：每个成员的日志器是直接构造、不注册到 `logging` 全局管理器的 `logging.Logger`，从不传给根日志器；uvicorn 换掉它自己的信号处理（信号归启动器或外壳），套接字在启动前绑定，端口占用在就绪前就失败；处理函数拿到 `Context`，与 Go 同名同义，路径参数用 FastAPI 的 `<built-in function id>` 写法。
   - **实测发现**：请求范围的值（截止时间）最初用 `ContextVar.set` 只缩短不重置，同一任务上下文里的下一个请求继承了上一个的截止时间；测试抓到后改为每个请求设值并在结束时复位，不依赖服务器怎样调度任务。合并安全测试里有一处期望写错（别名的使用报在导入处），按测试错误改正。
+- 2026-10-17 T3.3 完成：`be-sdk-python` `b0bdfbf`（`shell`）。按 `BRICKKIT_SERVED_MEMBERS_CONFIG` 承载成员，各自的端口与运行时，外壳自己的端口给出全部成员的就绪、带成员的自描述与按 `component` 标签区分的指标；拒绝情形与 Go 相同并一次报全：没装进来的成员、定义或已安装分发的元数据版本不同（语义化版本与 PEP 440 按含义比较，`3.0.0-alpha.1` 等于 `3.0.0a1`）、从本地路径安装（PEP 610 的 `direct_url`，对应 Go 的 `replace`，只有 `SHELL_ALLOW_REPLACE` 时放行并警告）、成员配置不合法、进程级键不一致；外壳不执行迁移。同一数据库目标共用一个池随 T3.4 加入。
 
