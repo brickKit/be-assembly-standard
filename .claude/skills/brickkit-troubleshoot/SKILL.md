@@ -225,7 +225,7 @@ docker / podman 用就留着，否则删掉。
 
 **连不上依赖**：地址是 `http://<版本化服务名>:<端口>`，服务名是组件 ID 的 `/`、`.` 换成 `-` 再加精确版本
 （`people/basic` + `1.0.0` → `people-basic-1-0-0`）；变量名不带版本（`PEOPLE_BASIC_ENDPOINT`）。依赖在外壳里
-时地址指向外壳。
+时地址不变，它的名字解析到外壳（K8s 上经成员的 Service）。
 
 **只想看生成结果不启动**：`brickkit up --dry-run`。**看依赖怎么连的**：`brickkit deps` 或 `brickkit graph`。
 
@@ -236,4 +236,4 @@ docker / podman 用就留着，否则删掉。
 - 组件自己的说明（配置怎么填、依赖为什么要）：`.brickkit/manifests/<scope>/<name>/<版本>/BRICKKIT.md`
 - 「为什么这样设计」的完整论证与全部错误码：<https://github.com/brickKit/brickKit> 根目录 `AGENTS.zh.md`
 
-<!-- brickkit:skill version=v1.7.1 sum=sha256:4fff025734772a0077e99e7cfebe663e64818559287d95debc1b72620d9dfcf5 -->
+<!-- brickkit:skill version=v1.7.2 sum=sha256:4f40b09b946e633d7ab6b809e4d0c74173cbf59f6f29c25c5eab624fb0225232 -->

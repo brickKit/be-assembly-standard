@@ -2,9 +2,9 @@
 
 ## 1. 结论
 
-**部分通过，被一个 BrickKit 的问题挡住**。部署本身全部正常：清单生成、迁移 Job、Deployment 与探针、每个成员一个选中外壳 Pod 的 Service、成员挪出外壳、`status`、`down`；`mode: local` 与 `mode: debug` 配 `k8s` 被拒；`kubectl` 的 context 与 `k8s.context` 不符时被拒。
+**通过（v1.7.2）**。部署本身一开始就全部正常：清单生成、迁移 Job、Deployment 与探针、每个成员一个选中外壳 Pod 的 Service、成员挪出外壳、`status`、`down`；`mode: local` 与 `mode: debug` 配 `k8s` 被拒；`kubectl` 的 context 与 `k8s.context` 不符时被拒。
 
-**但调用外壳成员的地址在 Kubernetes 上不可达**（FRB-004，严重）：BrickKit 给调用方注入的是“外壳的服务名 + 成员端口”（如 `http://demo-shell-0-1-0:8081`），外壳的 Service 只开放外壳自己的端口（8080），发往 8081 的请求超时；成员自己的 Service（`demo-alpha-0-1-0:8081`）是通的，地址却不指向它。所有 Pod 都 healthy、`up` 与 `status` 全绿，调用全部超时。K 行凡是有外壳的格子都跑不了，需要 BrickKit 修。
+第一次（v1.7.1）**调用外壳成员的地址在 Kubernetes 上不可达**（FRB-004，严重）：BrickKit 给调用方注入的是“外壳的服务名 + 成员端口”（如 `http://demo-shell-0-1-0:8081`），外壳的 Service 只开放外壳自己的端口（8080），请求超时，而所有 Pod 都 healthy、`up` 与 `status` 全绿。BrickKit 在 v1.7.2 改为地址写成员自己的服务名（K8s 上有成员的 Service，Docker 与 Podman 上外壳挂着成员的网络别名），复测通过（第 9 节）：两条调用链、外壳里成员之间、`$endpoint:` 引用都通，成员挪出外壳前后调用方的地址不变。
 
 ## 2. 测了什么、为什么
 
@@ -51,10 +51,25 @@
 
 ## 7. 影响
 
-- **K 行的带外壳的格子（K·H、K·X）与套件 B7、C、E 中 K8s 上有外壳的部分，要等 FRB-004 修复**。K·S（全部单跑）不受影响。
-- 暂时的绕法（不采用，只记下）：在 `config/` 里把依赖地址写成成员自己的 Service 名的字面量，会覆盖平台算出的地址，但随版本号变化要手改，正是易错点表里“手写版本化服务名”那一类。
-- 不需要改设计；等 BrickKit 的修复，修复后重做 run 1b 与两条调用链。
+- K 行与 K8s 上带外壳的格子不再受阻（v1.7.2）。本地集群的镜像由实验脚本在 `build` 后 `minikube image load`。
+- 地址写成员自己的服务名之后，成员进出外壳不改调用方的地址：拆回与合并（套件 C 的 R5）不会因为地址变化重建调用方。
+- 不需要改设计。项目 `config/vars.yaml` 里描述旧规则（“被外壳托管时指向外壳”）的注释已改。
 
 ## 8. 原始数据
 
-`dev/rebuild/experiment-data/0-07/run1.txt`（含 `run007.sh`、`run007b.sh`、`r007-base.yaml`、生成脚本 `r007-setup.sh`，以及最后一次生成的三份关键清单）
+`dev/rebuild/experiment-data/0-07/run1.txt`（v1.7.1；含 `run007.sh`、`run007b.sh`、`r007-base.yaml`、生成脚本 `r007-setup.sh`，以及最后一次生成的三份关键清单）；`run2.txt`（v1.7.2 复测，含 `run007-2.sh`）
+
+## 9. v1.7.2 复测（2026-10-17）
+
+BrickKit 的修复：被外壳承载的成员，`*_ENDPOINT` 与 `$endpoint:` 的主机名用成员自己的服务名，和它单独运行时一样；名字由外壳容器的网络别名（Docker、Podman）或成员的 Service（K8s）落到外壳；外壳是本机进程时，调用它的容器的 `extra_hosts` 映射成员的名字。新增一条测试，核对生成物里每个 `http://主机:端口` 都有同名、开着那个端口的 Service。
+
+复测前给 delta 加了一个配置项 `ALPHA_HELLO_URL: $endpoint:demo/alpha/api/hello`。
+
+| 步 | 结果 |
+| --- | --- |
+| K8s，beta 在外壳里 | 注入 `DEMO_ALPHA_ENDPOINT=http://demo-alpha-0-1-0:8081`、`DEMO_PYR_ENDPOINT=http://demo-pyr-0-1-0:8091`、`ALPHA_HELLO_URL=http://demo-alpha-0-1-0:8081/api/hello`；外壳 Secret 里 beta 的 `DEMO_ALPHA_ENDPOINT` 同样是 `demo-alpha-0-1-0:8081`。gamma → beta → alpha、delta → alpha 与 pyr、外壳里 beta → alpha、`$endpoint:` 的地址都通 |
+| K8s，beta 挪出外壳 | gamma → beta（自己的 Pod）→ alpha（外壳）通；delta 的 `DEMO_ALPHA_ENDPOINT` 拆前拆后都是 `http://demo-alpha-0-1-0:8081` |
+| Docker，全部在容器 | 地址同样写成员名，两条链与 `$endpoint:` 都通 |
+| Docker，Go 外壳是本机进程，其余在容器 | 容器的 `extra_hosts` 是 `demo-alpha-0-1-0:host-gateway`、`demo-beta-0-1-0:host-gateway`（以前是外壳名）；delta、gamma 的调用链与 `$endpoint:` 都通 |
+
+**结论**：通过，FRB-004 关闭。

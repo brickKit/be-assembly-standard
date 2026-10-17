@@ -122,7 +122,7 @@ shell:
   ```json
   [{"componentId": "erp/api", "version": "1.2.0", "httpPort": 8080,
     "extraPorts": [{"name": "grpc", "port": 9090}],
-    "config": {"DB_HOST": "db.internal", "ERP_AUTH_ENDPOINT": "http://erp-shell-1-0-0:8081"}}]
+    "config": {"DB_HOST": "db.internal", "ERP_AUTH_ENDPOINT": "http://erp-auth-1-0-0:8081"}}]
   ```
 
 **编进去 ≠ 这次承载。** `shell.members` 说的是镜像里有什么，至少列一个成员——`members: []` 在 `lint` 和 `add` 时报
@@ -205,8 +205,8 @@ PEOPLE_BASIC_ENDPOINT=http://people-basic-1-0-0:8080
 PEOPLE_BASIC_GRPC_ENDPOINT=http://people-basic-1-0-0:9090
 ```
 
-版本化服务名是组件 ID 和精确版本用 `-` 连起来，其中的 `/`、`.` 也换成 `-`。地址格式在 Docker 与 K8s 下完全一样，组件代码零修改。依赖在外壳里跑时，地址指向外壳，端口仍是
-依赖自己声明的端口——调用方不知道也不需要知道。另外固定注入 `COMPONENT_ID`、`COMPONENT_VERSION`。
+版本化服务名是组件 ID 和精确版本用 `-` 连起来，其中的 `/`、`.` 也换成 `-`。地址格式在 Docker 与 K8s 下完全一样，组件代码零修改。依赖在外壳里跑时，地址仍是它自己的服务名和
+它自己声明的端口，这个名字解析到外壳——调用方不知道也不需要知道。另外固定注入 `COMPONENT_ID`、`COMPONENT_VERSION`。
 
 **`deployment.type` 固定是 `container`**，前端组件也一样（nginx 容器，`port: 80`）。
 `deployment.port` 必填，健康检查和 `_ENDPOINT` 都用它。
@@ -228,4 +228,4 @@ PEOPLE_BASIC_GRPC_ENDPOINT=http://people-basic-1-0-0:9090
 - 完整规范：<https://github.com/brickKit/brickKit> 根目录 `AGENTS.zh.md`
 - 别的组件的写法样例：你项目里 `.brickkit/manifests/` 下缓存的 `component.yaml` 与 `BRICKKIT.md`
 
-<!-- brickkit:skill version=v1.7.1 sum=sha256:3a8294e4a073b4665272c8a5d0cd84405131e6bab561acb009679f9250f154e3 -->
+<!-- brickkit:skill version=v1.7.2 sum=sha256:2079c065ce003e6fe8f1ff27272d267fbff1224732996fa9701c64c27f9bd612 -->

@@ -1,0 +1,402 @@
+# 0-07 run 2 (2026-10-17), BrickKit CLI v1.7.2, minikube version: v1.38.1
+
+######## part 0: delta gains ALPHA_HELLO_URL = $endpoint:demo/alpha/api/hello
+$ grep -n ALPHA_HELLO_URL components/demo/delta/component.yaml config/demo-delta.yaml
+components/demo/delta/component.yaml:36:    ALPHA_HELLO_URL: { type: string }
+config/demo-delta.yaml:13:ALPHA_HELLO_URL: $endpoint:demo/alpha/api/hello
+[exit 0]
+minikube: Running Running
+base resources ready
+
+######## part 1 (k8s): beta in the shell
+target: k8s
+
+k8s:
+  context: minikube
+  namespace: r007
+  createNamespace: true
+
+vars:
+  PG_HOST: pg.r007-base.svc.cluster.local
+  NATS_URL: nats://nats.r007-base.svc.cluster.local:4222
+
+components:
+  - id: demo/delta
+  - id: demo/gamma
+  - id: demo/pyshell
+    members:
+      - id: demo/pyr
+  - id: demo/shell
+    members:
+      - id: demo/alpha
+      - id: demo/beta
+$ brickkit up
+🚀 Starting project proj (target: k8s)
+☸️  Target cluster: minikube
+📋 Component state calculation:
+   ✅ demo/alpha@0.1.0    starting (demo/beta needs it)
+   ✅ demo/beta@0.1.0     starting (demo/gamma needs it)
+   ✅ demo/pyr@0.1.0      starting (demo/delta needs it)
+   ✅ demo/delta@0.1.0    starting (top-level)
+   ✅ demo/gamma@0.1.0    starting (top-level)
+   ✅ demo/pyshell@0.1.0  starting (top-level)
+   ✅ demo/shell@0.1.0    starting (top-level)
+
+📋 Start order (topological sort):
+   1. demo-pyshell-0-1-0  no dependencies  (hosts demo/pyr@0.1.0)
+   2. demo-shell-0-1-0    no dependencies  (hosts demo/alpha@0.1.0, demo/beta@0.1.0)
+   3. demo-delta-0-1-0    ← depends on 1, 2
+   4. demo-gamma-0-1-0    ← depends on 2
+
+Can start on their own: demo-pyshell-0-1-0, demo-shell-0-1-0 (no dependencies)
+Longest dependency chain (2 levels): demo-shell-0-1-0 → demo-delta-0-1-0
+   Components not on this chain start in parallel with it
+
+Dependency graph:
+   demo/delta@0.1.0 → demo/alpha@0.1.0
+                    → demo/pyr@0.1.0
+   demo/gamma@0.1.0 → demo/beta@0.1.0
+   demo/beta@0.1.0 → demo/alpha@0.1.0
+📄 Generated 15 manifests: .brickkit/generated/k8s/
+   Namespace: r007
+
+🔧 Database migrations that run before startup (on failure that component won't start):
+   demo/alpha@0.1.0  /server migrate
+   demo/gamma@0.1.0  /server migrate
+
+☸️  Deploying to Kubernetes (namespace r007)...
+   Database migrations run first; the main service starts only after they finish
+   demo-gamma-0-1-0             running (healthy)
+   demo-delta-0-1-0             running (healthy)
+   demo-pyshell-0-1-0           running (healthy)
+   demo-shell-0-1-0             running (healthy)
+✅ All components started (4)
+
+💡 View the status: brickkit status
+   View the logs: kubectl logs deployment/<service-name> -n r007
+   View the Pods: kubectl get pods -n r007
+[exit 0]
+$ grep -n -A1 _ENDPOINT\|ALPHA_HELLO_URL .brickkit/generated/k8s/deployments/demo-gamma-0-1-0.yaml .brickkit/generated/k8s/deployments/demo-delta-0-1-0.yaml
+.brickkit/generated/k8s/deployments/demo-gamma-0-1-0.yaml:42:            - name: DEMO_BETA_ENDPOINT
+.brickkit/generated/k8s/deployments/demo-gamma-0-1-0.yaml-43-              value: http://demo-beta-0-1-0:8082
+--
+.brickkit/generated/k8s/deployments/demo-delta-0-1-0.yaml:38:            - name: ALPHA_HELLO_URL
+.brickkit/generated/k8s/deployments/demo-delta-0-1-0.yaml-39-              value: http://demo-alpha-0-1-0:8081/api/hello
+--
+.brickkit/generated/k8s/deployments/demo-delta-0-1-0.yaml:44:            - name: DEMO_ALPHA_ENDPOINT
+.brickkit/generated/k8s/deployments/demo-delta-0-1-0.yaml-45-              value: http://demo-alpha-0-1-0:8081
+.brickkit/generated/k8s/deployments/demo-delta-0-1-0.yaml:46:            - name: DEMO_PYR_ENDPOINT
+.brickkit/generated/k8s/deployments/demo-delta-0-1-0.yaml-47-              value: http://demo-pyr-0-1-0:8091
+[exit 0]
+member config in the shell's Secret:
+   demo/alpha DEMO_ALPHA_ENDPOINT=-
+   demo/beta DEMO_ALPHA_ENDPOINT=http://demo-alpha-0-1-0:8081
+$ [in deploy/demo-gamma-0-1-0] wget -qO- -T 5 http://127.0.0.1:8083/api/chain
+{"beta":{"alpha":{"from":"demo/alpha","version":"0.1.0"},"alphaEndpoint":"http://demo-alpha-0-1-0:8081","from":"demo/beta"},"betaEndpoint":"http://demo-beta-0-1-0:8082","from":"demo/gamma"}
+
+$ [in deploy/demo-delta-0-1-0] wget -qO- -T 5 http://127.0.0.1:8092/api/chain
+{"from": "demo/delta", "alphaEndpoint": "http://demo-alpha-0-1-0:8081", "pyrEndpoint": "http://demo-pyr-0-1-0:8091", "alpha": {"from": "demo/alpha", "version": "0.1.0"}, "pyr": {"from": "demo/pyr", "version": "0.1.0"}}
+$ [in deploy/demo-shell-0-1-0] wget -qO- -T 5 http://127.0.0.1:8082/api/chain
+{"alpha":{"from":"demo/alpha","version":"0.1.0"},"alphaEndpoint":"http://demo-alpha-0-1-0:8081","from":"demo/beta"}
+
+$ [in deploy/demo-delta-0-1-0] sh -c echo "ALPHA_HELLO_URL=$ALPHA_HELLO_URL"; wget -qO- -T 5 "$ALPHA_HELLO_URL"
+ALPHA_HELLO_URL=http://demo-alpha-0-1-0:8081/api/hello
+{"from":"demo/alpha","version":"0.1.0"}
+
+
+######## part 2 (k8s): beta moves out of the shell
+    members:
+      - id: demo/alpha
+  - id: demo/beta
+$ brickkit up
+🚀 Starting project proj (target: k8s)
+☸️  Target cluster: minikube
+📋 Component state calculation:
+   ✅ demo/alpha@0.1.0    starting (demo/beta needs it)
+   ✅ demo/beta@0.1.0     starting (demo/gamma needs it)
+   ✅ demo/pyr@0.1.0      starting (demo/delta needs it)
+   ✅ demo/delta@0.1.0    starting (top-level)
+   ✅ demo/gamma@0.1.0    starting (top-level)
+   ✅ demo/pyshell@0.1.0  starting (top-level)
+   ✅ demo/shell@0.1.0    starting (top-level)
+
+📋 Start order (topological sort):
+   1. demo-pyshell-0-1-0  no dependencies  (hosts demo/pyr@0.1.0)
+   2. demo-shell-0-1-0    no dependencies  (hosts demo/alpha@0.1.0)
+   3. demo-beta-0-1-0     ← depends on 2
+   4. demo-delta-0-1-0    ← depends on 1, 2
+   5. demo-gamma-0-1-0    ← depends on 3
+
+Can start on their own: demo-pyshell-0-1-0, demo-shell-0-1-0 (no dependencies)
+Longest dependency chain (3 levels): demo-shell-0-1-0 → demo-beta-0-1-0 → demo-gamma-0-1-0
+   Components not on this chain start in parallel with it
+
+Dependency graph:
+   demo/delta@0.1.0 → demo/alpha@0.1.0
+                    → demo/pyr@0.1.0
+   demo/gamma@0.1.0 → demo/beta@0.1.0
+   demo/beta@0.1.0 → demo/alpha@0.1.0
+📄 Generated 16 manifests: .brickkit/generated/k8s/
+   Namespace: r007
+
+🔧 Database migrations that run before startup (on failure that component won't start):
+   demo/alpha@0.1.0  /server migrate
+   demo/gamma@0.1.0  /server migrate
+
+☸️  Deploying to Kubernetes (namespace r007)...
+   Database migrations run first; the main service starts only after they finish
+   demo-beta-0-1-0              running (healthy)
+   demo-gamma-0-1-0             running (healthy)
+   demo-delta-0-1-0             running (healthy)
+   demo-pyshell-0-1-0           running (healthy)
+   demo-shell-0-1-0             running (healthy)
+✅ All components started (5)
+
+💡 View the status: brickkit status
+   View the logs: kubectl logs deployment/<service-name> -n r007
+   View the Pods: kubectl get pods -n r007
+[exit 0]
+$ [in deploy/demo-gamma-0-1-0] wget -qO- -T 5 http://127.0.0.1:8083/api/chain
+{"beta":{"alpha":{"from":"demo/alpha","version":"0.1.0"},"alphaEndpoint":"http://demo-alpha-0-1-0:8081","from":"demo/beta"},"betaEndpoint":"http://demo-beta-0-1-0:8082","from":"demo/gamma"}
+
+$ [in deploy/demo-beta-0-1-0] wget -qO- -T 5 http://127.0.0.1:8082/api/chain
+{"alpha":{"from":"demo/alpha","version":"0.1.0"},"alphaEndpoint":"http://demo-alpha-0-1-0:8081","from":"demo/beta"}
+
+delta's DEMO_ALPHA_ENDPOINT before: http://demo-alpha-0-1-0:8081, after: http://demo-alpha-0-1-0:8081
+$ kubectl -n r007 get pods
+NAME                                 READY   STATUS      RESTARTS   AGE
+demo-alpha-0-1-0-migration-7ghdp     0/1     Completed   0          12s
+demo-beta-0-1-0-59d4d944fc-h5gb9     1/1     Running     0          8s
+demo-delta-0-1-0-74fcd4c685-vlk7x    1/1     Running     0          22s
+demo-gamma-0-1-0-cfb7d5664-mg4jb     1/1     Running     0          22s
+demo-gamma-0-1-0-migration-85ld5     0/1     Completed   0          12s
+demo-pyshell-0-1-0-94654f65b-qll4w   1/1     Running     0          22s
+demo-shell-0-1-0-6ddf4f4675-ps7ps    1/1     Running     0          8s
+[exit 0]
+$ brickkit down
+☸️  Target cluster: minikube
+🛑 Stopping project proj
+✅ All components stopped
+
+💡 Services your components connect to but BrickKit doesn't deploy (databases and so on) are not affected by brickkit down
+   Start again with: brickkit up
+[exit 0]
+minikube stopped
+
+######## part 3 (docker): all in containers, beta in the shell; base resources are make up's be-postgres and be-nats
+$ brickkit up
+🚀 Starting project proj (target: docker)
+📋 Component state calculation:
+   ✅ demo/alpha@0.1.0    starting (demo/beta needs it)
+   ✅ demo/beta@0.1.0     starting (demo/gamma needs it)
+   ✅ demo/pyr@0.1.0      starting (demo/delta needs it)
+   ✅ demo/delta@0.1.0    starting (top-level)
+   ✅ demo/gamma@0.1.0    starting (top-level)
+   ✅ demo/pyshell@0.1.0  starting (top-level)
+   ✅ demo/shell@0.1.0    starting (top-level)
+
+📋 Start order (topological sort):
+   1. demo-pyshell-0-1-0  no dependencies  (hosts demo/pyr@0.1.0)
+   2. demo-shell-0-1-0    no dependencies  (hosts demo/alpha@0.1.0, demo/beta@0.1.0)
+   3. demo-delta-0-1-0    ← depends on 1, 2
+   4. demo-gamma-0-1-0    ← depends on 2
+
+Can start on their own: demo-pyshell-0-1-0, demo-shell-0-1-0 (no dependencies)
+Longest dependency chain (2 levels): demo-shell-0-1-0 → demo-delta-0-1-0
+   Components not on this chain start in parallel with it
+
+Dependency graph:
+   demo/delta@0.1.0 → demo/alpha@0.1.0
+                    → demo/pyr@0.1.0
+   demo/gamma@0.1.0 → demo/beta@0.1.0
+   demo/beta@0.1.0 → demo/alpha@0.1.0
+📄 Generated: .brickkit/generated/compose.yaml
+
+🔧 Database migrations that run before startup (on failure that component won't start):
+   demo/alpha@0.1.0  /server migrate
+   demo/gamma@0.1.0  /server migrate
+
+🐳 Starting (docker)...
+   demo-gamma-0-1-0             running (healthy)
+   demo-delta-0-1-0             running (healthy)
+   demo-pyshell-0-1-0           running (healthy)
+   demo-shell-0-1-0             running (healthy)
+✅ All components started (4)
+
+💡 View the status: brickkit status
+   View the logs: docker compose -p brickkit-proj logs -f
+[exit 0]
+$ grep -n _ENDPOINT\|ALPHA_HELLO_URL .brickkit/generated/compose.yaml
+45:      - ALPHA_HELLO_URL=http://demo-alpha-0-1-0:8081/api/hello
+48:      - DEMO_ALPHA_ENDPOINT=http://demo-alpha-0-1-0:8081
+49:      - DEMO_PYR_ENDPOINT=http://demo-pyr-0-1-0:8091
+82:      - DEMO_BETA_ENDPOINT=http://demo-beta-0-1-0:8082
+109:      - DEMO_BETA_ENDPOINT=http://demo-beta-0-1-0:8082
+[exit 0]
+$ [in demo-gamma-0-1-0] wget -qO- -T 5 http://127.0.0.1:8083/api/chain
+{"beta":{"alpha":{"from":"demo/alpha","version":"0.1.0"},"alphaEndpoint":"http://demo-alpha-0-1-0:8081","from":"demo/beta"},"betaEndpoint":"http://demo-beta-0-1-0:8082","from":"demo/gamma"}
+
+$ [in demo-delta-0-1-0] wget -qO- -T 5 http://127.0.0.1:8092/api/chain
+{"from": "demo/delta", "alphaEndpoint": "http://demo-alpha-0-1-0:8081", "pyrEndpoint": "http://demo-pyr-0-1-0:8091", "alpha": {"from": "demo/alpha", "version": "0.1.0"}, "pyr": {"from": "demo/pyr", "version": "0.1.0"}}
+$ [in demo-delta-0-1-0] sh -c wget -qO- -T 5 "$ALPHA_HELLO_URL"
+{"from":"demo/alpha","version":"0.1.0"}
+
+$ brickkit down
+🛑 Stopping project proj
+✅ All components stopped
+
+💡 Data volumes were not deleted; database data is still there
+   For a full cleanup, run by hand: docker volume rm <volume-name>
+   Start again with: brickkit up
+[exit 0]
+
+######## part 4 (docker): the Go shell as a local process, gamma and delta in containers
+$ grep -n -A5 extra_hosts .brickkit/generated/compose.yaml
+34:    extra_hosts:
+35-      - demo-alpha-0-1-0:host-gateway
+36-      - host.docker.internal:host-gateway
+37-    healthcheck:
+38-      interval: 10s
+39-      retries: 3
+--
+66:    extra_hosts:
+67-      - demo-beta-0-1-0:host-gateway
+68-      - host.docker.internal:host-gateway
+69-    healthcheck:
+70-      interval: 10s
+71-      retries: 3
+--
+94:    extra_hosts:
+95-      - demo-beta-0-1-0:host-gateway
+96-      - host.docker.internal:host-gateway
+97-    image: demo-gamma:0.1.0
+98-    networks:
+99-      - brickkit-net
+--
+113:    extra_hosts:
+114-      - host.docker.internal:host-gateway
+115-    healthcheck:
+116-      interval: 10s
+117-      retries: 3
+118-      start_period: 60s
+[exit 0]
+$ [in demo-delta-0-1-0] printenv DEMO_ALPHA_ENDPOINT ALPHA_HELLO_URL
+http://demo-alpha-0-1-0:8081
+http://demo-alpha-0-1-0:8081/api/hello
+
+$ [in demo-delta-0-1-0] wget -qO- -T 5 http://127.0.0.1:8092/api/chain
+{"from": "demo/delta", "alphaEndpoint": "http://demo-alpha-0-1-0:8081", "pyrEndpoint": "http://demo-pyr-0-1-0:8091", "alpha": {"from": "demo/alpha", "version": "0.1.0"}, "pyr": {"from": "demo/pyr", "version": "0.1.0"}}
+$ [in demo-gamma-0-1-0] wget -qO- -T 5 http://127.0.0.1:8083/api/chain
+{"beta":{"alpha":{"from":"demo/alpha","version":"0.1.0"},"alphaEndpoint":"http://localhost:8081","from":"demo/beta"},"betaEndpoint":"http://demo-beta-0-1-0:8082","from":"demo/gamma"}
+
+$ [in demo-delta-0-1-0] sh -c wget -qO- -T 5 "$ALPHA_HELLO_URL"
+{"from":"demo/alpha","version":"0.1.0"}
+
+up exited with 0
+$ brickkit down
+🛑 Stopping project proj
+✅ All components stopped
+
+💡 Data volumes were not deleted; database data is still there
+   For a full cleanup, run by hand: docker volume rm <volume-name>
+   Start again with: brickkit up
+[exit 0]
+
+######## run007-2.sh
+#!/usr/bin/env bash
+# 0-07 run 2 (v1.7.2): FRB-004 retest — a shell member's address names the member; on minikube, then on Docker.
+set -uo pipefail
+S=$(dirname "$0")/..; S=$(cd "$S" && pwd); P=$S/r007/proj; export GOCACHE=$S/gocache; export PATH=$S/k8sbin:$PATH; NS=r007
+run() { echo "\$ $*"; "$@" 2>&1 | sed -E 's/"time":"[^"]*"/"time":"…"/'; echo "[exit ${PIPESTATUS[0]}]"; }
+kx() { local d=$1; shift; echo "\$ [in deploy/$d] $*"; kubectl -n $NS exec deploy/$d -- "$@" 2>&1; echo; }
+dx() { local c=$1; shift; echo "\$ [in $c] $*"; docker exec "brickkit-proj-$c-1" "$@" 2>&1; echo; }
+members_cfg() { kubectl -n $NS get secret demo-shell-0-1-0-config-secret -o jsonpath='{.data.BRICKKIT_SERVED_MEMBERS_CONFIG}' | base64 -d | python3 -c 'import json,sys; [print("  ",m["componentId"], "DEMO_ALPHA_ENDPOINT=" + m["config"].get("DEMO_ALPHA_ENDPOINT","-")) for m in json.load(sys.stdin)]'; }
+k8s_deploy() { # <beta-in-shell: yes|no>
+  { cat <<'YAML'
+target: k8s
+
+k8s:
+  context: minikube
+  namespace: r007
+  createNamespace: true
+
+vars:
+  PG_HOST: pg.r007-base.svc.cluster.local
+  NATS_URL: nats://nats.r007-base.svc.cluster.local:4222
+
+components:
+  - id: demo/delta
+  - id: demo/gamma
+  - id: demo/pyshell
+    members:
+      - id: demo/pyr
+  - id: demo/shell
+    members:
+      - id: demo/alpha
+YAML
+  [ "$1" = yes ] && echo "      - id: demo/beta" || echo "  - id: demo/beta"; } > deploy.yaml; }
+cd "$P"
+echo "# 0-07 run 2 ($(date +%F)), $(brickkit version | head -1), $(minikube version | head -1)"
+
+echo; echo "######## part 0: delta gains ALPHA_HELLO_URL = \$endpoint:demo/alpha/api/hello"
+grep -q ALPHA_HELLO_URL components/demo/delta/component.yaml || sed -i 's/^    GREETING: { type: string, default: hello }/    GREETING: { type: string, default: hello }\n    ALPHA_HELLO_URL: { type: string }/' components/demo/delta/component.yaml
+grep -q ALPHA_HELLO_URL config/demo-delta.yaml || echo 'ALPHA_HELLO_URL: $endpoint:demo/alpha/api/hello' >> config/demo-delta.yaml
+run grep -n ALPHA_HELLO_URL components/demo/delta/component.yaml config/demo-delta.yaml
+minikube start -p minikube >/dev/null 2>&1; echo "minikube: $(minikube status -f '{{.Host}} {{.APIServer}}')"
+kubectl apply -f $S/bin/r007-base.yaml >/dev/null; kubectl -n r007-base rollout status deploy/pg deploy/nats --timeout=180s >/dev/null && echo "base resources ready"
+
+echo; echo "######## part 1 (k8s): beta in the shell"
+k8s_deploy yes; cat deploy.yaml
+run brickkit up
+run grep -n -A1 "_ENDPOINT\|ALPHA_HELLO_URL" .brickkit/generated/k8s/deployments/demo-gamma-0-1-0.yaml .brickkit/generated/k8s/deployments/demo-delta-0-1-0.yaml
+echo "member config in the shell's Secret:"; members_cfg
+kx demo-gamma-0-1-0 wget -qO- -T 5 http://127.0.0.1:8083/api/chain
+kx demo-delta-0-1-0 wget -qO- -T 5 http://127.0.0.1:8092/api/chain
+kx demo-shell-0-1-0 wget -qO- -T 5 http://127.0.0.1:8082/api/chain
+kx demo-delta-0-1-0 sh -c 'echo "ALPHA_HELLO_URL=$ALPHA_HELLO_URL"; wget -qO- -T 5 "$ALPHA_HELLO_URL"'
+A1=$(kubectl -n $NS exec deploy/demo-delta-0-1-0 -- printenv DEMO_ALPHA_ENDPOINT 2>/dev/null)
+
+echo; echo "######## part 2 (k8s): beta moves out of the shell"
+k8s_deploy no; tail -3 deploy.yaml
+run brickkit up
+kx demo-gamma-0-1-0 wget -qO- -T 5 http://127.0.0.1:8083/api/chain
+kx demo-beta-0-1-0 wget -qO- -T 5 http://127.0.0.1:8082/api/chain
+A2=$(kubectl -n $NS exec deploy/demo-delta-0-1-0 -- printenv DEMO_ALPHA_ENDPOINT 2>/dev/null)
+echo "delta's DEMO_ALPHA_ENDPOINT before: $A1, after: $A2"
+run kubectl -n $NS get pods
+run brickkit down
+kubectl delete -f $S/bin/r007-base.yaml --wait=false >/dev/null; minikube stop >/dev/null 2>&1; echo "minikube stopped"
+
+echo; echo "######## part 3 (docker): all in containers, beta in the shell; base resources are make up's be-postgres and be-nats"
+cat > deploy.yaml <<'YAML'
+target: docker
+
+components:
+  - id: demo/delta
+  - id: demo/gamma
+  - id: demo/pyshell
+    members:
+      - id: demo/pyr
+  - id: demo/shell
+    members:
+      - id: demo/alpha
+      - id: demo/beta
+YAML
+run brickkit up
+run grep -n "_ENDPOINT\|ALPHA_HELLO_URL" .brickkit/generated/compose.yaml
+dx demo-gamma-0-1-0 wget -qO- -T 5 http://127.0.0.1:8083/api/chain
+dx demo-delta-0-1-0 wget -qO- -T 5 http://127.0.0.1:8092/api/chain
+dx demo-delta-0-1-0 sh -c 'wget -qO- -T 5 "$ALPHA_HELLO_URL"'
+run brickkit down
+
+echo; echo "######## part 4 (docker): the Go shell as a local process, gamma and delta in containers"
+sed -i 's#^  - id: demo/shell$#  - id: demo/shell\n    mode: local#' deploy.yaml
+setsid brickkit up > $S/up7-2.log 2>&1 & UP=$!
+for _ in $(seq 1 300); do wget -qO- -T 1 http://localhost:8081/healthz >/dev/null 2>&1 && docker ps --format '{{.Status}}' --filter name=brickkit-proj-demo-delta | grep -q healthy && break; sleep 0.3; done
+run grep -n -A5 "extra_hosts" .brickkit/generated/compose.yaml
+dx demo-delta-0-1-0 printenv DEMO_ALPHA_ENDPOINT ALPHA_HELLO_URL
+dx demo-delta-0-1-0 wget -qO- -T 5 http://127.0.0.1:8092/api/chain
+dx demo-gamma-0-1-0 wget -qO- -T 5 http://127.0.0.1:8083/api/chain
+dx demo-delta-0-1-0 sh -c 'wget -qO- -T 5 "$ALPHA_HELLO_URL"'
+kill -INT $UP; wait $UP; echo "up exited with $?"
+run brickkit down
