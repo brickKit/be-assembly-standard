@@ -134,7 +134,7 @@ shell:
 只能用 `SET LOCAL`；由外壳只做一次——信号处理、日志输出端、框架的全局开关
 （`brickkit docs 04-shell/05-shell-development`，"一个进程、几个成员"一节）。
 
-每个成员仍然要有自己的镜像：它的迁移用成员自己的镜像跑。
+每个成员仍然要有自己的镜像：它的迁移用成员自己的镜像跑——外壳在本机运行、从成员本地仓库编进代码时除外，那时成员从源码迁移（`local.migrationCommand`）。
 
 **10. 组件带五份文档，各写给一类读者——跟代码一起改。**
 
@@ -228,4 +228,4 @@ PEOPLE_BASIC_GRPC_ENDPOINT=http://people-basic-1-0-0:9090
 - 完整规范：<https://github.com/brickKit/brickKit> 根目录 `AGENTS.zh.md`
 - 别的组件的写法样例：你项目里 `.brickkit/manifests/` 下缓存的 `component.yaml` 与 `BRICKKIT.md`
 
-<!-- brickkit:skill version=v1.7.0 sum=sha256:e262f6fc557034f9588daaf04d887508b27ead3b736622563e23515df8964a2f -->
+<!-- brickkit:skill version=v1.7.1 sum=sha256:3a8294e4a073b4665272c8a5d0cd84405131e6bab561acb009679f9250f154e3 -->

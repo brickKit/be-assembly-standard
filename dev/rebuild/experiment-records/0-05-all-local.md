@@ -6,7 +6,7 @@
 
 | 要绕开的 | 影响 | 本项目的做法 |
 | --- | --- | --- |
-| `mode: local` 不跑迁移；提示里的命令是镜像里的路径（`/server migrate`），宿主机上不存在 | L、LD、LP 行每个有表的组件都要先手动迁移 | v1.7.0 起单跑的本机进程写 `local.migrationCommand`，`up` 先迁移再启动（FRR-005，第 9 节）；**本机外壳承载的成员仍用自己的镜像跑迁移**（FRB-003），这部分由脚本从源码迁移 |
+| `mode: local` 不跑迁移；提示里的命令是镜像里的路径（`/server migrate`），宿主机上不存在 | L、LD、LP 行每个有表的组件都要先手动迁移 | v1.7.0 起单跑的本机进程、v1.7.1 起本机外壳承载的成员，都写 `local.migrationCommand`，`up` 先从源码迁移再启动（FRR-005、FRB-003，第 9 节） |
 | Go 默认用 `go run`，编译出的程序是它的子进程，`go run` 本身常驻 | 每个 Go 进程多约 25–28 MiB 常驻内存（程序本身约 9 MiB）；冷启动含编译 | L 行的内存把组件进程与工具链包装分开报；冷启动分冷、热编译缓存两种报（见第 7 节） |
 
 ## 2. 测了什么、为什么
@@ -85,21 +85,39 @@
 
 `dev/rebuild/experiment-data/0-05/run1.txt`（含 `run005.sh`、`run005b.sh` 与生成脚本 `r005-setup.sh`）
 
-## 9. v1.7.0 复测（2026-10-17）
+## 9. v1.7.0、v1.7.1 复测（2026-10-17）
 
-BrickKit 的回复：FRB-002 改为启动任何本机进程之前先检查它们要绑的全部端口（含外壳替成员监听的端口），被占就报 `PORT_CONFLICT`、一个都不启动；FRR-005 新增 `local.migrationCommand`，`mode: local` 时 `up` 在启动进程之前用同样的环境变量从源码跑迁移，失败报 `MIGRATION_FAILED`、进程不启动；没写时提示不再把镜像里的命令当作本机命令。
+### 9.1 结论
 
-| 步 | 结果 |
-| --- | --- |
-| 8083（gamma）、8082（beta，由 Go 外壳监听）被别的程序占着，`up` | 报 `PORT_CONFLICT`，两个端口一次列全（点名 `demo-gamma-0-1-0`、`demo-beta-0-1-0`），一个本机进程都没启动；不再出现“listening”。`--dry-run` 不报（回复写明） |
-| gamma 写 `localPort: 8183`，8083 仍被占 | 正常启动，gamma 在 8183，链路通 |
-| gamma 写 `local.migrationCommand`（先打印环境再 `go run . migrate`） | `--dry-run` 把它列在“启动前会执行的数据库迁移”；`up` 先输出 `demo-gamma-0-1-0-migration` 前缀的迁移输出与“migration finished”，再启动进程。迁移拿到的环境与进程相同：`PG_HOST=localhost`、`PORT=8083`、`COMPONENT_ID=demo/gamma` |
-| 迁移以 3 退出 | `MIGRATION_FAILED`，gamma 不启动，会话结束，没有端口在监听 |
-| 去掉这个字段 | 提示改为“`migration.command` 在镜像里运行，不能照原样在这台机器上运行”，并指向 `local.migrationCommand` |
-| **本机 Go 外壳承载的 alpha 声明了 `migration` 与 `local.migrationCommand`** | `local.migrationCommand` 没有用到：`--dry-run` 列出 `demo/alpha@0.1.0  /server migrate`，`up` 用 alpha 的镜像起迁移容器。这台机器上的 `demo-alpha:0.1.0` 是 0-04 那个项目 4 小时前构建的，代码是别的项目的，照样被拿来跑（桩程序不认 `migrate`，迁移容器一直不退出，手动停掉）；把镜像挪开后 `up` 报 `IMAGE_MISSING`，要求先构建 alpha 的镜像 |
+**通过**，FRB-002、FRR-005、FRB-003 关闭。迁移的规则统一成“代码在哪里跑，迁移就在哪里跑”。
 
-**结论**：FRB-002、FRR-005 通过，关闭。新发现 FRB-003（一般）：本机外壳承载的成员，迁移仍走成员镜像，不用 `local.migrationCommand`。后果是“全部本机进程”这一行仍要构建成员镜像，而且镜像旧了（同名同版本、别的代码）时静默跑旧代码的迁移。BrickKit 源码里 `local.migrationCommand` 只在本机进程自己身上读取（`internal/cli/up_local.go`、`internal/compose/local.go`）。已写给 BrickKit。
+| 项 | BrickKit 的改动 | 复测结果 |
+| --- | --- | --- |
+| 端口被别的程序占着（FRB-002，v1.7.0） | 启动任何本机进程之前检查它们要绑的全部端口（含外壳替成员监听的端口），被占报 `PORT_CONFLICT`、一个都不启动；`--dry-run` 不查 | 符合 |
+| 本机进程从源码迁移（FRR-005，v1.7.0） | 新增 `local.migrationCommand`；`mode: local` 时 `up` 用与进程相同的环境变量先迁移再启动，失败报 `MIGRATION_FAILED`；没写时提示不再给出镜像里的命令 | 符合；但本机外壳承载的成员仍用成员镜像迁移（FRB-003） |
+| 本机外壳的成员从源码迁移（FRB-003，v1.7.1） | 外壳以本机进程运行、成员有本地仓库时，成员按自己的 `local.migrationCommand` 在成员目录里迁移，不再需要也不再使用成员镜像；没写就只提醒，不退回镜像。另加：从源码的迁移与同组件更高版本的容器迁移会跑反时报 `CONFIG_INVALID`；带代码、有迁移、没写 `local.migrationCommand` 时 `lint` 警告 | 符合（顺序保护没测） |
 
-**对计划的影响**：单跑的本机进程改用 `local.migrationCommand`；本机外壳的成员在 FRB-003 有结论前，由脚本在 `up` 之前从源码跑迁移（计划“负载与测量”的第一条已改）。
+**对计划的影响**：本机进程的几行全部改用 `local.migrationCommand`，不再由脚本在 `up` 之前迁移（计划“负载与测量”已改）。第 2、3 步的组件模板与外壳成员都写上这个字段。
 
-原始数据：`dev/rebuild/experiment-data/0-05/run2.txt`（含 `run005-2.sh`、`run005-2b.sh`）。
+### 9.2 结果
+
+| 步 | CLI | 结果 |
+| --- | --- | --- |
+| 8083（gamma）、8082（beta，由 Go 外壳监听）被别的程序占着，`up` | v1.7.0 | `PORT_CONFLICT`，两个端口一次列全（点名 `demo-gamma-0-1-0`、`demo-beta-0-1-0`），一个本机进程都没启动；不再出现“listening” |
+| gamma 写 `localPort: 8183`，8083 仍被占 | v1.7.0 | 正常启动，gamma 在 8183，链路通 |
+| gamma 写 `local.migrationCommand`（先打印环境再 `go run . migrate`） | v1.7.0 | `--dry-run` 列在“启动前会执行的数据库迁移”；`up` 先输出 `demo-gamma-0-1-0-migration` 前缀的迁移输出与“migration finished”，再启动进程；迁移的环境与进程相同（`PG_HOST=localhost`、`PORT=8083`、`COMPONENT_ID=demo/gamma`） |
+| gamma 的迁移以 3 退出 | v1.7.0 | `MIGRATION_FAILED`，gamma 不启动，会话结束，没有端口在监听 |
+| gamma 去掉这个字段 | v1.7.0 | 提示改为“`migration.command` 在镜像里运行，不能照原样在这台机器上运行”，指向 `local.migrationCommand` |
+| 本机 Go 外壳承载的 alpha 写 `migration` 与 `local.migrationCommand` | v1.7.0 | 没用到 `local.migrationCommand`：`--dry-run` 列出 `/server migrate`，`up` 用 alpha 的镜像起迁移容器。这台机器上的 `demo-alpha:0.1.0` 是 0-04 那个项目 4 小时前构建的、代码不同，照样被拿来跑（桩程序不认 `migrate`，迁移容器一直不退出，手动停掉）；镜像挪开后报 `IMAGE_MISSING`。当时源码里 `local.migrationCommand` 只对本机进程自己读取（`internal/cli/up_local.go`、`internal/compose/local.go`）（FRB-003） |
+| 同上，alpha 的镜像挪开 | v1.7.1 | `--dry-run` 列出 alpha 的源码命令；`up` 不报 `IMAGE_MISSING`、不起任何容器；先 `demo-alpha-0-1-0-migration` 的输出与“migration finished”，再启动外壳。迁移在 `components/demo/alpha` 里运行，环境是 alpha 自己的配置（`COMPONENT_ID=demo/alpha`、`PG_HOST=localhost` 等），不带 `BRICKKIT_SERVED_MEMBERS_CONFIG`；`up` 为 alpha、beta、pyr 各写了一份 `local-debug.<成员服务名>.env` |
+| alpha 的迁移以 3 退出 | v1.7.1 | `MIGRATION_FAILED`，外壳不启动，会话结束，没有端口在监听 |
+| alpha 去掉 `local.migrationCommand` | v1.7.1 | 不迁移、不起镜像；提醒点名 `Shell: demo/shell@0.1.0`，说明“迁移从源码跑，从不用镜像”；`lint --all` 对 alpha 与 gamma 各警告缺这个字段 |
+
+### 9.3 观察
+
+- **本机进程之间不按依赖等待**。v1.7.1 下 gamma、delta、Python 外壳先启动并监听，之后 alpha 的迁移才跑、Go 外壳才启动；gamma 依赖外壳里的 beta。成员的迁移只挡住它的外壳，不挡依赖外壳的本机进程。这与第 6 节“组件在依赖不在时重试”的规则一致，不反馈。
+- 三处小地方，不再反馈：成员缺字段的提醒，第二条建议仍写“before starting the process”（对成员来说是在外壳启动之前）；`lint` 的这条警告借用 `MANIFEST_INVALID` 错误码；迁移顺序保护（从源码的迁移与同组件更高版本的容器迁移）没有测，要构造两个版本并存，留到 0-08。
+
+### 9.4 原始数据
+
+`dev/rebuild/experiment-data/0-05/` 下：`run2.txt`（v1.7.0；第 3 部分卡住、手动停掉，run 2b 把镜像挪开重做）、`run3.txt`（v1.7.1）；各自附生成它的脚本。

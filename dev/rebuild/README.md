@@ -31,7 +31,7 @@
 | 实验矩阵 | 6 形态 × 3 拓扑打底，五套测试（A 矩阵、B 对照、C 故障、D 多版本、E 多实例多库）；正确性先于性能；工时不限，一项项测、测完一项记一项 | experiment-plan.md |
 | `mode: local` | BrickKit 回复不做长期运行的本机部署；本机进程三行只量资源与通信，标“不推荐”（图省事的另类模式） | FRR-001 已关闭（v1.4.2 复测通过） |
 | 记录方式 | 档案（给 AI，详细、先结论、表格优先）+ 报告（给用户，含“用什么测的”与额外发现的表）+ 原始数据 | experiment-plan.md 的“记录与报告” |
-| BrickKit CLI | 项目要求升到 v1.7.0（2026-10-17；项目技能同步更新）。v1.6.0 起只写 `deployment.image` 的组件来自本地源也拉取，要在本机构建的组件必须写 `deployment.build` | `infra/scripts/lib/require-brickkit.sh` |
+| BrickKit CLI | 项目要求升到 v1.7.1（2026-10-17；项目技能同步更新）。v1.6.0 起只写 `deployment.image` 的组件来自本地源也拉取，要在本机构建的组件必须写 `deployment.build` | `infra/scripts/lib/require-brickkit.sh` |
 
 **第 0 步的进度**：
 
@@ -41,7 +41,7 @@
 | 0-02 | 同号重发与 BrickKit 两层缓存 | 完成；缓存会静默给出旧内容；v1.5.0 起报 `VERSION_CHANGED`（FRR-002 复测通过） |
 | 0-03 | 一个仓库放多个组件（探针） | 完成；v1.5.0 起安装源可写 `repo`，探针用 `brickkit add` 加入，不再手写三层（FRR-003 复测通过） |
 | 0-04 | Go 外壳承载成员（外壳自己的 `go.mod` 引入成员模块；BrickKit 只核对成员版本，不替外壳编译）；成员版本不一致时被拒 | 完成（2026-10-17）；“编进的代码与声明不符”只有启动器能拦，第 2 步的启动器按 Go 构建信息核对；按标签取成员留到第 4 步；v1.6.0、v1.6.1 复测通过（FRR-004、FRB-001） |
-| 0-05 | 全部组件与外壳 `mode: local`（`target: docker`，基础资源在 Docker） | 完成（2026-10-17）；Go、Python 的单跑与外壳都能跑，看护行为与文档一致；v1.7.0 起单跑的本机进程用 `local.migrationCommand` 迁移，本机外壳的成员仍走镜像（FRB-003，由脚本从源码迁移）；`go run` 常驻，内存分开报；计划的“负载与测量”已补三条 |
+| 0-05 | 全部组件与外壳 `mode: local`（`target: docker`，基础资源在 Docker） | 完成（2026-10-17）；Go、Python 的单跑与外壳都能跑，看护行为与文档一致；v1.7.1 起单跑的本机进程与本机外壳的成员都用 `local.migrationCommand` 从源码迁移；`go run` 常驻，内存分开报；计划的“负载与测量”已补三条 |
 | 0-06 | 本机进程与 Podman 混合 | **下一项**；可复用 0-05 的桩项目（`experiment-data/0-05/run1.txt` 里的生成脚本），第 4 部分已在 Docker 上验证过容器调本机进程 |
 | 0-07 | minikube 跑 BrickKit 生成的 K8s 清单（含外壳）；`local`、`debug` 不能配 `k8s` | 未开始；本机有 minikube，没有 kubectl（用 `minikube kubectl --`） |
 | 0-08 | 同一组件两个版本并存（BrickKit 多版本共存：`requiredBy`） | 未开始 |
@@ -57,7 +57,7 @@
 
 **已知、暂不处理**：`infra/scripts/tests/test_ship_dryrun.sh` 失败——旧的 `ship.sh` 还调用旧 `be-acceptance` 的命令，迁移后已不存在；发布工具随重建重新提供，届时一并处理。
 
-**给 BrickKit 的收件箱** `brickkit-feedback/rebuild.md`：FRR-001 到 FRR-005、FRB-001、FRB-002 全部关闭（最后一次复测 2026-10-17，v1.7.0）；FRB-003（本机外壳承载的成员，迁移仍用成员镜像而不用 `local.migrationCommand`）等回复。
+**给 BrickKit 的收件箱** `brickkit-feedback/rebuild.md`：FRR-001 到 FRR-005、FRB-001 到 FRB-003 全部关闭（最后一次复测 2026-10-17，v1.7.1）；没有未回复的条目。
 
 ## 任务结束时：知识库反馈
 
