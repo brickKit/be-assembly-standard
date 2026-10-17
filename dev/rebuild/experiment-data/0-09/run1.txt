@@ -1,0 +1,708 @@
+# note: in run 1 the base resources were not created (their namespace was still terminating from 0-07; the stubs only need them for /api/infra, not for the calls), deploy.local.yaml left from 0-07 failed lint, and the delta probe used a path delta does not serve (404); run 1b redoes the calls and the deletion.
+# 0-09 run 1 (2026-10-17), BrickKit CLI v1.7.2, minikube version: v1.38.1
+minikube: Running Running
+Warning: Detected changes to resource r007-base which is currently being deleted.
+Error from server (Forbidden): error when creating "<scratchpad>/bin/r007-base.yaml": deployments.apps "pg" is forbidden: unable to create new content in namespace r007-base because it is being terminated
+Error from server (Forbidden): error when creating "<scratchpad>/bin/r007-base.yaml": services "pg" is forbidden: unable to create new content in namespace r007-base because it is being terminated
+Error from server (Forbidden): error when creating "<scratchpad>/bin/r007-base.yaml": deployments.apps "nats" is forbidden: unable to create new content in namespace r007-base because it is being terminated
+Error from server (Forbidden): error when creating "<scratchpad>/bin/r007-base.yaml": services "nats" is forbidden: unable to create new content in namespace r007-base because it is being terminated
+Error from server (NotFound): deployments.apps "pg" not found
+Error from server (NotFound): deployments.apps "nats" not found
+images loaded
+
+######## part 1 (k8s): delta (standalone) and the Go shell (alpha, beta) with replicas: 2
+target: k8s
+
+k8s:
+  context: minikube
+  namespace: r007
+  createNamespace: true
+
+vars:
+  PG_HOST: pg.r007-base.svc.cluster.local
+  NATS_URL: nats://nats.r007-base.svc.cluster.local:4222
+
+components:
+  - id: demo/delta
+    replicas: 2
+  - id: demo/gamma
+  - id: demo/pyshell
+    members:
+      - id: demo/pyr
+  - id: demo/shell
+    replicas: 2
+    members:
+      - id: demo/alpha
+      - id: demo/beta
+$ brickkit lint --all
+✅ brickkit.yaml
+✅ deploy.yaml
+❌ [CONFIG_INVALID] Error: deploy.local.yaml failed validation
+   File: deploy.local.yaml
+   components[1].mode: "debug" is only supported with target docker or podman (got k8s) — a cluster Pod cannot reach a process on the developer's own machine
+   Suggestion: Full field reference: brickkit docs 11-reference/03-deploy-yaml-schema (online: https://github.com/brickKit/brickKit/blob/v1.7.2/docs/en/11-reference/03-deploy-yaml-schema.md)
+⚠️ [DOC_PLACEHOLDER] a placeholder (TODO) is still in the text
+   File: AGENTS.md
+   Line: 7
+⚠️ [DOC_PLACEHOLDER] a placeholder (TODO) is still in the text
+   File: AGENTS.md
+   Line: 11
+⚠️ [DOC_PLACEHOLDER] a placeholder (TODO) is still in the text
+   File: AGENTS.md
+   Line: 15
+⚠️ [DOC_PLACEHOLDER] a placeholder (TODO) is still in the text
+   File: AGENTS.md
+   Line: 19
+✅ components/demo/alpha/component.yaml
+✅ components/demo/beta/component.yaml
+✅ components/demo/delta/component.yaml
+✅ components/demo/gamma/component.yaml
+✅ components/demo/pyr/component.yaml
+✅ shell/demo/pyshell/component.yaml
+✅ shell/demo/shell/component.yaml
+⚠️ [DOC_FILE_MISSING] BRICKKIT.md is missing
+   File: components/demo/alpha/BRICKKIT.md
+⚠️ [DOC_FILE_MISSING] AGENTS.md is missing
+   File: components/demo/alpha/AGENTS.md
+⚠️ [DOC_FILE_MISSING] CLAUDE.md is missing
+   File: components/demo/alpha/CLAUDE.md
+⚠️ [DOC_FILE_MISSING] README.md is missing
+   File: components/demo/alpha/README.md
+⚠️ [DOC_FILE_MISSING] BRICKKIT.md is missing
+   File: components/demo/beta/BRICKKIT.md
+⚠️ [DOC_FILE_MISSING] AGENTS.md is missing
+   File: components/demo/beta/AGENTS.md
+⚠️ [DOC_FILE_MISSING] CLAUDE.md is missing
+   File: components/demo/beta/CLAUDE.md
+⚠️ [DOC_FILE_MISSING] README.md is missing
+   File: components/demo/beta/README.md
+⚠️ [DOC_FILE_MISSING] BRICKKIT.md is missing
+   File: components/demo/delta/BRICKKIT.md
+⚠️ [DOC_FILE_MISSING] AGENTS.md is missing
+   File: components/demo/delta/AGENTS.md
+⚠️ [DOC_FILE_MISSING] CLAUDE.md is missing
+   File: components/demo/delta/CLAUDE.md
+⚠️ [DOC_FILE_MISSING] README.md is missing
+   File: components/demo/delta/README.md
+⚠️ [DOC_FILE_MISSING] BRICKKIT.md is missing
+   File: components/demo/gamma/BRICKKIT.md
+⚠️ [DOC_FILE_MISSING] AGENTS.md is missing
+   File: components/demo/gamma/AGENTS.md
+⚠️ [DOC_FILE_MISSING] CLAUDE.md is missing
+   File: components/demo/gamma/CLAUDE.md
+⚠️ [DOC_FILE_MISSING] README.md is missing
+   File: components/demo/gamma/README.md
+⚠️ [DOC_FILE_MISSING] BRICKKIT.md is missing
+   File: components/demo/pyr/BRICKKIT.md
+⚠️ [DOC_FILE_MISSING] AGENTS.md is missing
+   File: components/demo/pyr/AGENTS.md
+⚠️ [DOC_FILE_MISSING] CLAUDE.md is missing
+   File: components/demo/pyr/CLAUDE.md
+⚠️ [DOC_FILE_MISSING] README.md is missing
+   File: components/demo/pyr/README.md
+⚠️ [DOC_FILE_MISSING] BRICKKIT.md is missing
+   File: shell/demo/pyshell/BRICKKIT.md
+⚠️ [DOC_FILE_MISSING] AGENTS.md is missing
+   File: shell/demo/pyshell/AGENTS.md
+⚠️ [DOC_FILE_MISSING] CLAUDE.md is missing
+   File: shell/demo/pyshell/CLAUDE.md
+⚠️ [DOC_FILE_MISSING] README.md is missing
+   File: shell/demo/pyshell/README.md
+⚠️ [DOC_FILE_MISSING] BRICKKIT.md is missing
+   File: shell/demo/shell/BRICKKIT.md
+⚠️ [DOC_FILE_MISSING] AGENTS.md is missing
+   File: shell/demo/shell/AGENTS.md
+⚠️ [DOC_FILE_MISSING] CLAUDE.md is missing
+   File: shell/demo/shell/CLAUDE.md
+⚠️ [DOC_FILE_MISSING] README.md is missing
+   File: shell/demo/shell/README.md
+
+📋 Checked 18 files: 1 with errors, 32 warnings
+❌ Error: the structure check did not pass
+   Checked: 18 files
+   With errors: 1 file
+   Suggestion: Fix them at the locations listed above, then run brickkit lint again
+{"time":"…","level":"ERROR","message":"Command failed","command":"brickkit lint","elapsed_ms":9,"error_code":"LINT_FAILED","error":"LINT_FAILED: Error: the structure check did not pass; Checked=18 files; With errors=1 file","exit_code":1}
+[exit 1]
+$ brickkit up
+🚀 Starting project proj (target: k8s)
+☸️  Target cluster: minikube
+📋 Component state calculation:
+   ✅ demo/alpha@0.1.0    starting (demo/beta needs it)
+   ✅ demo/beta@0.1.0     starting (demo/gamma needs it)
+   ✅ demo/pyr@0.1.0      starting (demo/delta needs it)
+   ✅ demo/delta@0.1.0    starting (top-level)
+   ✅ demo/gamma@0.1.0    starting (top-level)
+   ✅ demo/pyshell@0.1.0  starting (top-level)
+   ✅ demo/shell@0.1.0    starting (top-level)
+
+📋 Start order (topological sort):
+   1. demo-pyshell-0-1-0  no dependencies  (hosts demo/pyr@0.1.0)
+   2. demo-shell-0-1-0    no dependencies  (hosts demo/alpha@0.1.0, demo/beta@0.1.0)
+   3. demo-delta-0-1-0    ← depends on 1, 2
+   4. demo-gamma-0-1-0    ← depends on 2
+
+Can start on their own: demo-pyshell-0-1-0, demo-shell-0-1-0 (no dependencies)
+Longest dependency chain (2 levels): demo-shell-0-1-0 → demo-delta-0-1-0
+   Components not on this chain start in parallel with it
+
+Dependency graph:
+   demo/delta@0.1.0 → demo/alpha@0.1.0
+                    → demo/pyr@0.1.0
+   demo/gamma@0.1.0 → demo/beta@0.1.0
+   demo/beta@0.1.0 → demo/alpha@0.1.0
+📄 Generated 17 manifests: .brickkit/generated/k8s/
+   Namespace: r007
+
+🔧 Database migrations that run before startup (on failure that component won't start):
+   demo/alpha@0.1.0  /server migrate
+   demo/gamma@0.1.0  /server migrate
+
+☸️  Deploying to Kubernetes (namespace r007)...
+   Database migrations run first; the main service starts only after they finish
+   demo-gamma-0-1-0             running (healthy)
+   demo-delta-0-1-0             running (healthy)
+   demo-pyshell-0-1-0           running (healthy)
+   demo-shell-0-1-0             running (healthy)
+✅ All components started (4)
+
+💡 View the status: brickkit status
+   View the logs: kubectl logs deployment/<service-name> -n r007
+   View the Pods: kubectl get pods -n r007
+[exit 0]
+$ ls .brickkit/generated/k8s/ .brickkit/generated/k8s/deployments/ .brickkit/generated/k8s/migrations/ .brickkit/generated/k8s/poddisruptionbudgets/ .brickkit/generated/k8s/secrets/ .brickkit/generated/k8s/services/
+.brickkit/generated/k8s/:
+deployments
+migrations
+namespace.yaml
+poddisruptionbudgets
+secrets
+services
+
+.brickkit/generated/k8s/deployments/:
+demo-delta-0-1-0.yaml
+demo-gamma-0-1-0.yaml
+demo-pyshell-0-1-0.yaml
+demo-shell-0-1-0.yaml
+
+.brickkit/generated/k8s/migrations/:
+demo-alpha-0-1-0-migration.yaml
+demo-gamma-0-1-0-migration.yaml
+
+.brickkit/generated/k8s/poddisruptionbudgets/:
+demo-delta-0-1-0.yaml
+demo-shell-0-1-0.yaml
+
+.brickkit/generated/k8s/secrets/:
+config-secrets.yaml
+
+.brickkit/generated/k8s/services/:
+demo-alpha-0-1-0.yaml
+demo-beta-0-1-0.yaml
+demo-delta-0-1-0.yaml
+demo-gamma-0-1-0.yaml
+demo-pyr-0-1-0.yaml
+demo-pyshell-0-1-0.yaml
+demo-shell-0-1-0.yaml
+[exit 0]
+$ kubectl -n r007 get deploy,pdb,jobs
+NAME                                 READY   UP-TO-DATE   AVAILABLE   AGE
+deployment.apps/demo-delta-0-1-0     2/2     2            2           7s
+deployment.apps/demo-gamma-0-1-0     1/1     1            1           7s
+deployment.apps/demo-pyshell-0-1-0   1/1     1            1           7s
+deployment.apps/demo-shell-0-1-0     2/2     2            2           7s
+
+NAME                                          MIN AVAILABLE   MAX UNAVAILABLE   ALLOWED DISRUPTIONS   AGE
+poddisruptionbudget.policy/demo-delta-0-1-0   N/A             1                 1                     6s
+poddisruptionbudget.policy/demo-shell-0-1-0   N/A             1                 1                     6s
+
+NAME                                   STATUS     COMPLETIONS   DURATION   AGE
+job.batch/demo-alpha-0-1-0-migration   Complete   1/1           4s         11s
+job.batch/demo-gamma-0-1-0-migration   Complete   1/1           4s         11s
+[exit 0]
+$ kubectl -n r007 get pods -o wide
+NAME                                 READY   STATUS      RESTARTS   AGE   IP               NODE       NOMINATED NODE   READINESS GATES
+demo-alpha-0-1-0-migration-gbh2s     0/1     Completed   0          11s   10.244.120.109   minikube   <none>           <none>
+demo-delta-0-1-0-74fcd4c685-68tgh    1/1     Running     0          7s    10.244.120.77    minikube   <none>           <none>
+demo-delta-0-1-0-74fcd4c685-fv6c4    1/1     Running     0          7s    10.244.120.66    minikube   <none>           <none>
+demo-gamma-0-1-0-cfb7d5664-bbptc     1/1     Running     0          7s    10.244.120.75    minikube   <none>           <none>
+demo-gamma-0-1-0-migration-78n4f     0/1     Completed   0          11s   10.244.120.107   minikube   <none>           <none>
+demo-pyshell-0-1-0-94654f65b-gh8fc   1/1     Running     0          7s    10.244.120.95    minikube   <none>           <none>
+demo-shell-0-1-0-6b847c5cfb-b725q    1/1     Running     0          7s    10.244.120.94    minikube   <none>           <none>
+demo-shell-0-1-0-6b847c5cfb-zvz89    1/1     Running     0          7s    10.244.120.102   minikube   <none>           <none>
+[exit 0]
+$ kubectl -n r007 get endpointslices -o custom-columns=NAME:.metadata.name,ADDRESSES:.endpoints[*].addresses
+NAME                       ADDRESSES
+demo-alpha-0-1-0-npwvx     [10.244.120.94],[10.244.120.102]
+demo-beta-0-1-0-t4r6g      [10.244.120.94],[10.244.120.102]
+demo-delta-0-1-0-f7nbx     [10.244.120.66],[10.244.120.77]
+demo-gamma-0-1-0-qlfz2     [10.244.120.75]
+demo-pyr-0-1-0-9c5wt       [10.244.120.95]
+demo-pyshell-0-1-0-958xb   [10.244.120.95]
+demo-shell-0-1-0-p4k9k     [10.244.120.94],[10.244.120.102]
+[exit 0]
+$ [in deploy/demo-gamma-0-1-0] wget -qO- -T 5 http://127.0.0.1:8083/api/chain
+wget: download timed out
+command terminated with exit code 1
+
+$ [in deploy/demo-delta-0-1-0] wget -qO- -T 5 http://127.0.0.1:8092/api/chain
+{"from": "demo/delta", "alphaEndpoint": "http://demo-alpha-0-1-0:8081", "pyrEndpoint": "http://demo-pyr-0-1-0:8091", "alpha": {"from": "demo/alpha", "version": "0.1.0"}, "pyr": {"from": "demo/pyr", "version": "0.1.0"}}
+
+######## part 2 (k8s): delete one replica while calls keep coming
+gamma -> delta service (15 s):
+gamma -> alpha in the shell (15 s):
+deleting pod/demo-delta-0-1-0-74fcd4c685-68tgh and pod/demo-shell-0-1-0-6b847c5cfb-b725q
+pod "demo-delta-0-1-0-74fcd4c685-68tgh" deleted from r007 namespace
+pod "demo-shell-0-1-0-6b847c5cfb-b725q" deleted from r007 namespace
+ok=65 failed=0
+ok=0 failed=70
+$ kubectl -n r007 get pods
+NAME                                 READY   STATUS        RESTARTS   AGE
+demo-alpha-0-1-0-migration-gbh2s     0/1     Completed     0          34s
+demo-delta-0-1-0-74fcd4c685-68tgh    1/1     Terminating   0          30s
+demo-delta-0-1-0-74fcd4c685-fv6c4    1/1     Running       0          30s
+demo-delta-0-1-0-74fcd4c685-qtphb    1/1     Running       0          14s
+demo-gamma-0-1-0-cfb7d5664-bbptc     1/1     Running       0          30s
+demo-gamma-0-1-0-migration-78n4f     0/1     Completed     0          34s
+demo-pyshell-0-1-0-94654f65b-gh8fc   1/1     Running       0          30s
+demo-shell-0-1-0-6b847c5cfb-kgnxd    1/1     Running       0          14s
+demo-shell-0-1-0-6b847c5cfb-zvz89    1/1     Running       0          30s
+[exit 0]
+$ brickkit status
+📊 Project status: proj (target: k8s)
+
+☸️  Target cluster: minikube
+✅ Running (7 components)
+ ┌──────────────┬─────────┬─────────────────────────────────────────────────┬──────────┐
+ │ Component    │ Version │ Status                                          │ Port     │
+ ├──────────────┼─────────┼─────────────────────────────────────────────────┼──────────┤
+ │ demo/alpha   │ 0.1.0   │ running (healthy) (in shell demo/shell@0.1.0)   │          │
+ │ demo/beta    │ 0.1.0   │ running (healthy) (in shell demo/shell@0.1.0)   │          │
+ │ demo/gamma   │ 0.1.0   │ running (healthy)                               │ 8083/tcp │
+ │ demo/pyr     │ 0.1.0   │ running (healthy) (in shell demo/pyshell@0.1.0) │          │
+ │ demo/delta   │ 0.1.0   │ running (healthy)                               │ 8092/tcp │
+ │ demo/pyshell │ 0.1.0   │ running (healthy)                               │ 8090/tcp │
+ │ demo/shell   │ 0.1.0   │ running (healthy)                               │ 8080/tcp │
+ └──────────────┴─────────┴─────────────────────────────────────────────────┴──────────┘
+
+[exit 0]
+
+######## part 3 (k8s): a second up with replicas back to 1
+$ brickkit up
+🚀 Starting project proj (target: k8s)
+☸️  Target cluster: minikube
+📋 Component state calculation:
+   ✅ demo/alpha@0.1.0    starting (demo/beta needs it)
+   ✅ demo/beta@0.1.0     starting (demo/gamma needs it)
+   ✅ demo/pyr@0.1.0      starting (demo/delta needs it)
+   ✅ demo/delta@0.1.0    starting (top-level)
+   ✅ demo/gamma@0.1.0    starting (top-level)
+   ✅ demo/pyshell@0.1.0  starting (top-level)
+   ✅ demo/shell@0.1.0    starting (top-level)
+
+📋 Start order (topological sort):
+   1. demo-pyshell-0-1-0  no dependencies  (hosts demo/pyr@0.1.0)
+   2. demo-shell-0-1-0    no dependencies  (hosts demo/alpha@0.1.0, demo/beta@0.1.0)
+   3. demo-delta-0-1-0    ← depends on 1, 2
+   4. demo-gamma-0-1-0    ← depends on 2
+
+Can start on their own: demo-pyshell-0-1-0, demo-shell-0-1-0 (no dependencies)
+Longest dependency chain (2 levels): demo-shell-0-1-0 → demo-delta-0-1-0
+   Components not on this chain start in parallel with it
+
+Dependency graph:
+   demo/delta@0.1.0 → demo/alpha@0.1.0
+                    → demo/pyr@0.1.0
+   demo/gamma@0.1.0 → demo/beta@0.1.0
+   demo/beta@0.1.0 → demo/alpha@0.1.0
+📄 Generated 15 manifests: .brickkit/generated/k8s/
+   Namespace: r007
+
+🔧 Database migrations that run before startup (on failure that component won't start):
+   demo/alpha@0.1.0  /server migrate
+   demo/gamma@0.1.0  /server migrate
+
+☸️  Deploying to Kubernetes (namespace r007)...
+   Database migrations run first; the main service starts only after they finish
+
+🧹 Cleaned up leftovers from an old version (2 items):
+   - poddisruptionbudget.policy/demo-delta-0-1-0
+   - poddisruptionbudget.policy/demo-shell-0-1-0
+   They carry this project's labels but are not part of this deployment
+   demo-gamma-0-1-0             running (healthy)
+   demo-delta-0-1-0             running (healthy)
+   demo-pyshell-0-1-0           running (healthy)
+   demo-shell-0-1-0             running (healthy)
+✅ All components started (4)
+
+💡 View the status: brickkit status
+   View the logs: kubectl logs deployment/<service-name> -n r007
+   View the Pods: kubectl get pods -n r007
+[exit 0]
+$ kubectl -n r007 get deploy,pdb
+NAME                                 READY   UP-TO-DATE   AVAILABLE   AGE
+deployment.apps/demo-delta-0-1-0     1/1     1            1           38s
+deployment.apps/demo-gamma-0-1-0     1/1     1            1           38s
+deployment.apps/demo-pyshell-0-1-0   1/1     1            1           38s
+deployment.apps/demo-shell-0-1-0     1/1     1            1           38s
+[exit 0]
+$ brickkit down
+☸️  Target cluster: minikube
+🛑 Stopping project proj
+✅ All components stopped
+
+💡 Services your components connect to but BrickKit doesn't deploy (databases and so on) are not affected by brickkit down
+   Start again with: brickkit up
+[exit 0]
+Error from server (NotFound): error when deleting "<scratchpad>/bin/r007-base.yaml": namespaces "r007-base" not found
+Error from server (NotFound): error when deleting "<scratchpad>/bin/r007-base.yaml": deployments.apps "pg" not found
+Error from server (NotFound): error when deleting "<scratchpad>/bin/r007-base.yaml": services "pg" not found
+Error from server (NotFound): error when deleting "<scratchpad>/bin/r007-base.yaml": deployments.apps "nats" not found
+Error from server (NotFound): error when deleting "<scratchpad>/bin/r007-base.yaml": services "nats" not found
+minikube stopped
+
+######## part 4 (docker): the same replicas: 2 under target: docker
+$ brickkit lint --all
+✅ brickkit.yaml
+⚠️ [CONFIG_INVALID] replicas has no effect with target: docker and is ignored
+   File: deploy.yaml
+   Components: demo/delta, demo/shell
+❌ [CONFIG_INVALID] Error: deploy.local.yaml failed validation
+   File: deploy.local.yaml
+   components[1].mode: "debug" is only supported with target docker or podman (got k8s) — a cluster Pod cannot reach a process on the developer's own machine
+   Suggestion: Full field reference: brickkit docs 11-reference/03-deploy-yaml-schema (online: https://github.com/brickKit/brickKit/blob/v1.7.2/docs/en/11-reference/03-deploy-yaml-schema.md)
+⚠️ [DOC_PLACEHOLDER] a placeholder (TODO) is still in the text
+   File: AGENTS.md
+   Line: 7
+⚠️ [DOC_PLACEHOLDER] a placeholder (TODO) is still in the text
+   File: AGENTS.md
+   Line: 11
+⚠️ [DOC_PLACEHOLDER] a placeholder (TODO) is still in the text
+   File: AGENTS.md
+   Line: 15
+⚠️ [DOC_PLACEHOLDER] a placeholder (TODO) is still in the text
+   File: AGENTS.md
+   Line: 19
+✅ components/demo/alpha/component.yaml
+✅ components/demo/beta/component.yaml
+✅ components/demo/delta/component.yaml
+✅ components/demo/gamma/component.yaml
+✅ components/demo/pyr/component.yaml
+✅ shell/demo/pyshell/component.yaml
+✅ shell/demo/shell/component.yaml
+⚠️ [DOC_FILE_MISSING] BRICKKIT.md is missing
+   File: components/demo/alpha/BRICKKIT.md
+⚠️ [DOC_FILE_MISSING] AGENTS.md is missing
+   File: components/demo/alpha/AGENTS.md
+⚠️ [DOC_FILE_MISSING] CLAUDE.md is missing
+   File: components/demo/alpha/CLAUDE.md
+⚠️ [DOC_FILE_MISSING] README.md is missing
+   File: components/demo/alpha/README.md
+⚠️ [DOC_FILE_MISSING] BRICKKIT.md is missing
+   File: components/demo/beta/BRICKKIT.md
+⚠️ [DOC_FILE_MISSING] AGENTS.md is missing
+   File: components/demo/beta/AGENTS.md
+⚠️ [DOC_FILE_MISSING] CLAUDE.md is missing
+   File: components/demo/beta/CLAUDE.md
+⚠️ [DOC_FILE_MISSING] README.md is missing
+   File: components/demo/beta/README.md
+⚠️ [DOC_FILE_MISSING] BRICKKIT.md is missing
+   File: components/demo/delta/BRICKKIT.md
+⚠️ [DOC_FILE_MISSING] AGENTS.md is missing
+   File: components/demo/delta/AGENTS.md
+⚠️ [DOC_FILE_MISSING] CLAUDE.md is missing
+   File: components/demo/delta/CLAUDE.md
+⚠️ [DOC_FILE_MISSING] README.md is missing
+   File: components/demo/delta/README.md
+⚠️ [DOC_FILE_MISSING] BRICKKIT.md is missing
+   File: components/demo/gamma/BRICKKIT.md
+⚠️ [DOC_FILE_MISSING] AGENTS.md is missing
+   File: components/demo/gamma/AGENTS.md
+⚠️ [DOC_FILE_MISSING] CLAUDE.md is missing
+   File: components/demo/gamma/CLAUDE.md
+⚠️ [DOC_FILE_MISSING] README.md is missing
+   File: components/demo/gamma/README.md
+⚠️ [DOC_FILE_MISSING] BRICKKIT.md is missing
+   File: components/demo/pyr/BRICKKIT.md
+⚠️ [DOC_FILE_MISSING] AGENTS.md is missing
+   File: components/demo/pyr/AGENTS.md
+⚠️ [DOC_FILE_MISSING] CLAUDE.md is missing
+   File: components/demo/pyr/CLAUDE.md
+⚠️ [DOC_FILE_MISSING] README.md is missing
+   File: components/demo/pyr/README.md
+⚠️ [DOC_FILE_MISSING] BRICKKIT.md is missing
+   File: shell/demo/pyshell/BRICKKIT.md
+⚠️ [DOC_FILE_MISSING] AGENTS.md is missing
+   File: shell/demo/pyshell/AGENTS.md
+⚠️ [DOC_FILE_MISSING] CLAUDE.md is missing
+   File: shell/demo/pyshell/CLAUDE.md
+⚠️ [DOC_FILE_MISSING] README.md is missing
+   File: shell/demo/pyshell/README.md
+⚠️ [DOC_FILE_MISSING] BRICKKIT.md is missing
+   File: shell/demo/shell/BRICKKIT.md
+⚠️ [DOC_FILE_MISSING] AGENTS.md is missing
+   File: shell/demo/shell/AGENTS.md
+⚠️ [DOC_FILE_MISSING] CLAUDE.md is missing
+   File: shell/demo/shell/CLAUDE.md
+⚠️ [DOC_FILE_MISSING] README.md is missing
+   File: shell/demo/shell/README.md
+
+📋 Checked 18 files: 1 with errors, 33 warnings
+❌ Error: the structure check did not pass
+   Checked: 18 files
+   With errors: 1 file
+   Suggestion: Fix them at the locations listed above, then run brickkit lint again
+{"time":"…","level":"ERROR","message":"Command failed","command":"brickkit lint","elapsed_ms":6,"error_code":"LINT_FAILED","error":"LINT_FAILED: Error: the structure check did not pass; Checked=18 files; With errors=1 file","exit_code":1}
+[exit 1]
+$ brickkit up --dry-run
+⚠️ replicas has no effect with target: docker and is ignored
+   File: deploy.yaml
+   Components: demo/delta, demo/shell
+🚀 Starting project proj (target: docker)
+📋 Component state calculation:
+   ✅ demo/alpha@0.1.0    starting (demo/beta needs it)
+   ✅ demo/beta@0.1.0     starting (demo/gamma needs it)
+   ✅ demo/pyr@0.1.0      starting (demo/delta needs it)
+   ✅ demo/delta@0.1.0    starting (top-level)
+   ✅ demo/gamma@0.1.0    starting (top-level)
+   ✅ demo/pyshell@0.1.0  starting (top-level)
+   ✅ demo/shell@0.1.0    starting (top-level)
+
+📋 Start order (topological sort):
+   1. demo-pyshell-0-1-0  no dependencies  (hosts demo/pyr@0.1.0)
+   2. demo-shell-0-1-0    no dependencies  (hosts demo/alpha@0.1.0, demo/beta@0.1.0)
+   3. demo-delta-0-1-0    ← depends on 1, 2
+   4. demo-gamma-0-1-0    ← depends on 2
+
+Can start on their own: demo-pyshell-0-1-0, demo-shell-0-1-0 (no dependencies)
+Longest dependency chain (2 levels): demo-shell-0-1-0 → demo-delta-0-1-0
+   Components not on this chain start in parallel with it
+
+Dependency graph:
+   demo/delta@0.1.0 → demo/alpha@0.1.0
+                    → demo/pyr@0.1.0
+   demo/gamma@0.1.0 → demo/beta@0.1.0
+   demo/beta@0.1.0 → demo/alpha@0.1.0
+📄 Generated: .brickkit/generated/compose.yaml
+
+🔧 Database migrations that run before startup (on failure that component won't start):
+   demo/alpha@0.1.0  /server migrate
+   demo/gamma@0.1.0  /server migrate
+
+💡 --dry-run only generates the files and starts no component
+   View it: cat .brickkit/generated/compose.yaml
+[exit 0]
+$ grep -n replicas\|scale .brickkit/generated/compose.yaml
+[exit 1]
+
+######## run 1b
+# 0-09 run 1b (2026-10-17), BrickKit CLI v1.7.2
+$ brickkit down
+☸️  Target cluster: minikube
+🛑 Stopping project proj
+✅ All components stopped
+
+💡 Services your components connect to but BrickKit doesn't deploy (databases and so on) are not affected by brickkit down
+   Start again with: brickkit up
+[exit 0]
+$ brickkit build demo/gamma@0.1.0 --force
+🔨 Building demo/gamma@0.1.0 → demo-gamma:0.1.0
+✅ Built demo/gamma@0.1.0 → demo-gamma:0.1.0
+ℹ️  The deploy target is k8s: these images were built on this machine and the cluster cannot pull them; push them to a registry the cluster can reach (for a local cluster: minikube image load / kind load docker-image)
+[exit 0]
+demo-gamma:0.1.0 reloaded
+$ brickkit up
+🚀 Starting project proj (target: k8s)
+☸️  Target cluster: minikube
+📋 Component state calculation:
+   ✅ demo/alpha@0.1.0    starting (demo/beta needs it)
+   ✅ demo/beta@0.1.0     starting (demo/gamma needs it)
+   ✅ demo/pyr@0.1.0      starting (demo/delta needs it)
+   ✅ demo/delta@0.1.0    starting (top-level)
+   ✅ demo/gamma@0.1.0    starting (top-level)
+   ✅ demo/pyshell@0.1.0  starting (top-level)
+   ✅ demo/shell@0.1.0    starting (top-level)
+
+📋 Start order (topological sort):
+   1. demo-pyshell-0-1-0  no dependencies  (hosts demo/pyr@0.1.0)
+   2. demo-shell-0-1-0    no dependencies  (hosts demo/alpha@0.1.0, demo/beta@0.1.0)
+   3. demo-delta-0-1-0    ← depends on 1, 2
+   4. demo-gamma-0-1-0    ← depends on 2
+
+Can start on their own: demo-pyshell-0-1-0, demo-shell-0-1-0 (no dependencies)
+Longest dependency chain (2 levels): demo-shell-0-1-0 → demo-delta-0-1-0
+   Components not on this chain start in parallel with it
+
+Dependency graph:
+   demo/delta@0.1.0 → demo/alpha@0.1.0
+                    → demo/pyr@0.1.0
+   demo/gamma@0.1.0 → demo/beta@0.1.0
+   demo/beta@0.1.0 → demo/alpha@0.1.0
+📄 Generated 17 manifests: .brickkit/generated/k8s/
+   Namespace: r007
+
+🔧 Database migrations that run before startup (on failure that component won't start):
+   demo/alpha@0.1.0  /server migrate
+   demo/gamma@0.1.0  /server migrate
+
+☸️  Deploying to Kubernetes (namespace r007)...
+   Database migrations run first; the main service starts only after they finish
+   demo-gamma-0-1-0             running (healthy)
+   demo-delta-0-1-0             running (healthy)
+   demo-pyshell-0-1-0           running (healthy)
+   demo-shell-0-1-0             running (healthy)
+✅ All components started (4)
+
+💡 View the status: brickkit status
+   View the logs: kubectl logs deployment/<service-name> -n r007
+   View the Pods: kubectl get pods -n r007
+[exit 0]
+== right after up: gamma's chain five times
+{"beta":{"alpha":{"from":"demo/alpha","version":"0.1.0"},"alphaEndpoint":"http://demo-alpha-0-1-0:8081","from":"demo/beta"},"betaEndpoint":"http://demo-beta-0-1-0:8082","from":"demo/gamma"}
+
+{"beta":{"alpha":{"from":"demo/alpha","version":"0.1.0"},"alphaEndpoint":"http://demo-alpha-0-1-0:8081","from":"demo/beta"},"betaEndpoint":"http://demo-beta-0-1-0:8082","from":"demo/gamma"}
+
+{"beta":{"alpha":{"from":"demo/alpha","version":"0.1.0"},"alphaEndpoint":"http://demo-alpha-0-1-0:8081","from":"demo/beta"},"betaEndpoint":"http://demo-beta-0-1-0:8082","from":"demo/gamma"}
+
+{"beta":{"alpha":{"from":"demo/alpha","version":"0.1.0"},"alphaEndpoint":"http://demo-alpha-0-1-0:8081","from":"demo/beta"},"betaEndpoint":"http://demo-beta-0-1-0:8082","from":"demo/gamma"}
+
+{"beta":{"alpha":{"from":"demo/alpha","version":"0.1.0"},"alphaEndpoint":"http://demo-alpha-0-1-0:8081","from":"demo/beta"},"betaEndpoint":"http://demo-beta-0-1-0:8082","from":"demo/gamma"}
+
+== delete one delta replica and one shell replica while two callers keep going (15 s)
+pod "demo-delta-0-1-0-74fcd4c685-6sgpk" deleted from r007 namespace
+pod "demo-shell-0-1-0-6b847c5cfb-dwwc8" deleted from r007 namespace
+http://demo-alpha-0-1-0:8081/api/hello: ok=63 failed=1
+http://demo-delta-0-1-0:8092/api/pid: ok=69 failed=0
+$ kubectl -n r007 get pods
+NAME                                 READY   STATUS        RESTARTS   AGE
+demo-alpha-0-1-0-migration-flx2h     0/1     Completed     0          32s
+demo-delta-0-1-0-74fcd4c685-6sgpk    1/1     Terminating   0          28s
+demo-delta-0-1-0-74fcd4c685-g528b    1/1     Running       0          12s
+demo-delta-0-1-0-74fcd4c685-zzcbl    1/1     Running       0          28s
+demo-gamma-0-1-0-cfb7d5664-th2bh     1/1     Running       0          28s
+demo-gamma-0-1-0-migration-8jsb4     0/1     Completed     0          32s
+demo-pyshell-0-1-0-94654f65b-w8bn6   1/1     Running       0          28s
+demo-shell-0-1-0-6b847c5cfb-4fbn5    1/1     Running       0          12s
+demo-shell-0-1-0-6b847c5cfb-qfhlq    1/1     Running       0          28s
+[exit 0]
+$ brickkit down
+☸️  Target cluster: minikube
+🛑 Stopping project proj
+✅ All components stopped
+
+💡 Services your components connect to but BrickKit doesn't deploy (databases and so on) are not affected by brickkit down
+   Start again with: brickkit up
+[exit 0]
+
+######## run009.sh
+#!/usr/bin/env bash
+# 0-09 run 1: two replicas of one component — Kubernetes (minikube), and what Docker does with replicas. Uses the 0-07 project.
+set -uo pipefail
+S=$(dirname "$0")/..; S=$(cd "$S" && pwd); P=$S/r007/proj; export GOCACHE=$S/gocache; export PATH=$S/k8sbin:$PATH; NS=r007
+run() { echo "\$ $*"; "$@" 2>&1 | sed -E 's/"time":"[^"]*"/"time":"…"/'; echo "[exit ${PIPESTATUS[0]}]"; }
+kx() { local d=$1; shift; echo "\$ [in deploy/$d] $*"; kubectl -n $NS exec deploy/$d -- "$@" 2>&1; echo; }
+# probe <deploy> <url> <seconds>: one request every 0.2 s from inside a pod; prints how many failed
+probe() { kubectl -n $NS exec deploy/$1 -- sh -c "ok=0; bad=0; end=\$((\$(date +%s)+$3)); while [ \$(date +%s) -lt \$end ]; do if wget -qO- -T 2 $2 >/dev/null 2>&1; then ok=\$((ok+1)); else bad=\$((bad+1)); fi; sleep 0.2; done; echo \"ok=\$ok failed=\$bad\""; }
+cd "$P"
+echo "# 0-09 run 1 ($(date +%F)), $(brickkit version | head -1), $(minikube version | head -1)"
+minikube start -p minikube >/dev/null 2>&1; echo "minikube: $(minikube status -f '{{.Host}} {{.APIServer}}')"
+kubectl apply -f $S/bin/r007-base.yaml >/dev/null; kubectl -n r007-base rollout status deploy/pg deploy/nats --timeout=180s >/dev/null && echo "base resources ready"
+for i in $(docker images --format '{{.Repository}}:{{.Tag}}' --filter reference='demo-*'); do minikube image load $i >/dev/null 2>&1; done; echo "images loaded"
+
+echo; echo "######## part 1 (k8s): delta (standalone) and the Go shell (alpha, beta) with replicas: 2"
+cat > deploy.yaml <<'YAML'
+target: k8s
+
+k8s:
+  context: minikube
+  namespace: r007
+  createNamespace: true
+
+vars:
+  PG_HOST: pg.r007-base.svc.cluster.local
+  NATS_URL: nats://nats.r007-base.svc.cluster.local:4222
+
+components:
+  - id: demo/delta
+    replicas: 2
+  - id: demo/gamma
+  - id: demo/pyshell
+    members:
+      - id: demo/pyr
+  - id: demo/shell
+    replicas: 2
+    members:
+      - id: demo/alpha
+      - id: demo/beta
+YAML
+cat deploy.yaml
+run brickkit lint --all
+run brickkit up
+run ls .brickkit/generated/k8s/ .brickkit/generated/k8s/*/
+for f in .brickkit/generated/k8s/*/*pdb* .brickkit/generated/k8s/*pdb* ; do [ -f "$f" ] && { echo "=== $f"; grep -v "^#" "$f"; }; done 2>/dev/null
+run kubectl -n $NS get deploy,pdb,jobs
+run kubectl -n $NS get pods -o wide
+run kubectl -n $NS get endpointslices -o custom-columns=NAME:.metadata.name,ADDRESSES:.endpoints[*].addresses
+kx demo-gamma-0-1-0 wget -qO- -T 5 http://127.0.0.1:8083/api/chain
+kx demo-delta-0-1-0 wget -qO- -T 5 http://127.0.0.1:8092/api/chain
+
+echo; echo "######## part 2 (k8s): delete one replica while calls keep coming"
+D=$(kubectl -n $NS get pods -l app=demo-delta-0-1-0 -o name | head -1); SH=$(kubectl -n $NS get pods -l app=demo-shell-0-1-0 -o name | head -1)
+( sleep 3; echo "deleting $D and $SH"; kubectl -n $NS delete $D $SH --wait=false ) &
+echo "gamma -> delta service (15 s):"; probe demo-gamma-0-1-0 http://demo-delta-0-1-0:8092/api/hello 15 &
+echo "gamma -> alpha in the shell (15 s):"; probe demo-gamma-0-1-0 http://demo-alpha-0-1-0:8081/api/hello 15
+wait
+sleep 2; run kubectl -n $NS get pods
+run brickkit status
+
+echo; echo "######## part 3 (k8s): a second up with replicas back to 1"
+sed -i '/^    replicas: 2$/d' deploy.yaml
+run brickkit up
+run kubectl -n $NS get deploy,pdb
+run brickkit down
+kubectl delete -f $S/bin/r007-base.yaml --wait=false >/dev/null; minikube stop >/dev/null 2>&1; echo "minikube stopped"
+
+echo; echo "######## part 4 (docker): the same replicas: 2 under target: docker"
+cat > deploy.yaml <<'YAML'
+target: docker
+
+components:
+  - id: demo/delta
+    replicas: 2
+  - id: demo/gamma
+  - id: demo/pyshell
+    members:
+      - id: demo/pyr
+  - id: demo/shell
+    replicas: 2
+    members:
+      - id: demo/alpha
+      - id: demo/beta
+YAML
+run brickkit lint --all
+run brickkit up --dry-run
+run grep -n "replicas\|scale" .brickkit/generated/compose.yaml
+
+######## run009b.sh
+#!/usr/bin/env bash
+# 0-09 run 1b: rebuild this project's own gamma image (the cluster had the 0-08 project's demo-gamma:0.1.0), redo the calls and the replica deletion with the right paths.
+set -uo pipefail
+S=$(dirname "$0")/..; S=$(cd "$S" && pwd); P=$S/r007/proj; export GOCACHE=$S/gocache; export PATH=$S/k8sbin:$PATH; NS=r007
+run() { echo "\$ $*"; "$@" 2>&1 | sed -E 's/"time":"[^"]*"/"time":"…"/'; echo "[exit ${PIPESTATUS[0]}]"; }
+probe() { kubectl -n $NS exec deploy/$1 -- sh -c "ok=0; bad=0; end=\$((\$(date +%s)+$3)); while [ \$(date +%s) -lt \$end ]; do if wget -qO- -T 2 $2 >/dev/null 2>&1; then ok=\$((ok+1)); else bad=\$((bad+1)); fi; sleep 0.2; done; echo \"$2: ok=\$ok failed=\$bad\""; }
+cd "$P"
+echo "# 0-09 run 1b ($(date +%F)), $(brickkit version | head -1)"
+run brickkit down
+run brickkit build demo/gamma@0.1.0 --force
+minikube image rm docker.io/library/demo-gamma:0.1.0 >/dev/null 2>&1; minikube image load demo-gamma:0.1.0 && echo "demo-gamma:0.1.0 reloaded"
+run brickkit up
+echo "== right after up: gamma's chain five times"
+for i in 1 2 3 4 5; do kubectl -n $NS exec deploy/demo-gamma-0-1-0 -- wget -qO- -T 5 http://127.0.0.1:8083/api/chain 2>&1; echo; done
+echo "== delete one delta replica and one shell replica while two callers keep going (15 s)"
+D=$(kubectl -n $NS get pods -l app=demo-delta-0-1-0 -o name | head -1); SH=$(kubectl -n $NS get pods -l app=demo-shell-0-1-0 -o name | head -1)
+( sleep 3; kubectl -n $NS delete $D $SH --wait=false ) &
+probe demo-gamma-0-1-0 http://demo-delta-0-1-0:8092/api/pid 15 &
+probe demo-gamma-0-1-0 http://demo-alpha-0-1-0:8081/api/hello 15
+wait
+run kubectl -n $NS get pods
+run brickkit down
