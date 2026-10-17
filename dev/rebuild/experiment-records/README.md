@@ -16,5 +16,5 @@
 | 0-08 | 同一组件两个版本并存（`requiredBy`） | 第 0 步 | 2026-10-17 | 通过；`add` 自动保留兼容版本、外壳编进的版本之外的版本单独运行；迁移按版本串行；迁移顺序保护有效 | [0-08-two-versions.md](0-08-two-versions.md) |
 | 0-09 | 同一组件两个副本 | 第 0 步 | 2026-10-17 | K8s 上通过（PDB、两个端点、迁移只跑一次、删副本不中断）；Docker、Podman 下 `replicas` 被忽略，套件 E 的 E1–E4 改在 K8s 两格（FRR-006） | [0-09-two-replicas.md](0-09-two-replicas.md) |
 | 0-10 | 两个 PostgreSQL 实例 | 第 0 步 | 2026-10-17 | 通过；分实例完全靠配置覆盖；单跑、外壳、本机外壳下每个组件都连到自己的实例；特殊字符的密码在三条注入路径上一致 | [0-10-two-postgres.md](0-10-two-postgres.md) |
-| 0-11 | Podman 有根与无根 | 第 0 步 | 2026-10-17 | 无根通过（0-06）；有根下 BrickKit 流程与到宿主机进程都正常，但与同机的 Docker 冲突：容器之间不通（推断为 FORWARD DROP 加 `br_netfilter`），健康检查全绿；B6 改在没有 Docker 的条件下跑 | [0-11-podman-rootful.md](0-11-podman-rootful.md) |
+| 0-11 | Podman 有根与无根 | 第 0 步 | 2026-10-17 | 无根通过（0-06）；有根下 BrickKit 流程与到宿主机进程都正常，但与同机的 Docker 冲突：容器之间不通（已证实：Docker 的 FORWARD DROP 加 `br_netfilter`），健康检查全绿；B6 改在没有 Docker 的条件下跑 | [0-11-podman-rootful.md](0-11-podman-rootful.md) |
 | 0-12 | 连接池代理的事务模式与 `SET LOCAL`、pgx 的预编译语句 | 第 0 步 | 2026-10-17 | 通过；`SET LOCAL ROLE`（`INHERIT FALSE`）、`SET LOCAL` 超时、事务级应用锁、`SKIP LOCKED` 都成立；禁止的写法实测泄漏；pgx 默认模式要求 PgBouncer 开 `max_prepared_statements` | [0-12-pooler-transaction-mode.md](0-12-pooler-transaction-mode.md) |

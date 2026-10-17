@@ -2,9 +2,9 @@
 
 ## 1. 结论
 
-**无根通过（0-06）；有根在这台机器上部分通过，被 Docker 的防火墙规则挡住**。有根 Podman 下，BrickKit 的构建、迁移、启动、`status`、`down` 都正常，容器经 `host-gateway` 到宿主机上的本机进程也通（外壳为本机进程的布局全部通过）。但全部组件都在有根容器里时，**容器之间、容器到宿主机上映射的端口都超时**，而所有容器 healthy、`status` 全绿。
+**无根通过（0-06）；有根在这台机器上部分通过，被 Docker 的防火墙规则挡住（已证实）**。有根 Podman 下，BrickKit 的构建、迁移、启动、`status`、`down` 都正常，容器经 `host-gateway` 到宿主机上的本机进程也通（外壳为本机进程的布局全部通过）。但全部组件都在有根容器里时，**容器之间、容器到宿主机上映射的端口都超时**，而所有容器 healthy、`status` 全绿。
 
-原因推断：同一台机器上的 Docker 加载了 `br_netfilter`（`bridge-nf-call-iptables = 1`），网桥上的流量要过 iptables 的 FORWARD 链，Docker 把 FORWARD 的默认策略设为 DROP；有根 Podman 网桥上的容器间流量、以及 DNAT 回另一个容器的映射端口流量走 FORWARD，被丢掉；到宿主机自己的进程走 INPUT，不受影响。无根 Podman 用用户态网络（pasta），不经过宿主机的 FORWARD 链，所以没受影响。FORWARD 链的规则只有 root 能看，这一步没有取证。这不是 BrickKit 的问题。
+原因（第二次由用户以 root 执行诊断脚本证实，见第 4 节末）：同一台机器上的 Docker 加载了 `br_netfilter`（`bridge-nf-call-iptables = 1`），网桥上的流量要过 iptables 的 FORWARD 链，Docker 把 FORWARD 的默认策略设为 DROP；netavark 在自己的 `inet netavark` 表里放行也没用，任何一个 forward 钩子上的 DROP 都是最终的。有根 Podman 网桥上的容器间流量、以及 DNAT 回另一个容器的映射端口流量走 FORWARD，被丢掉；到宿主机自己的进程走 INPUT，不受影响。无根 Podman 用用户态网络（pasta），不经过宿主机的 FORWARD 链，所以没受影响。这不是 BrickKit 的问题。
 
 ## 2. 测了什么、为什么
 
@@ -31,10 +31,12 @@
 | 全部在有根容器：内存 | 外壳 1.9 MB、gamma 1.9 MB、Python 外壳 13.3 MB、delta 16.6 MB（`podman stats`） |
 | 外壳是本机进程（root），gamma、delta 在有根容器 | 全部通：容器 `/etc/hosts` 把 `demo-beta-0-1-0` 等成员名映射到 `10.89.0.1`；gamma → beta → alpha、delta → alpha 与 pyr 都通；alpha 从源码迁移；本机外壳经 `localhost:35432`、`:34222` 连通基础资源 |
 | 清理 | 容器与镜像删除；root 的 `podman.socket` 回到 inactive |
+| 诊断（`run011-fw.sh`，用户以 root 执行） | `iptables -S FORWARD`：`-P FORWARD DROP`，只跳 `DOCKER-USER`、`DOCKER-FORWARD`；nft 的 `ip filter` 表 FORWARD `policy drop`，另有 netavark 自己的 `inet netavark` 表。两个临时有根容器之间调用超时，同时 FORWARD 的 DROP 计数从 17 个包涨到 21 个；容器访问自己正常。在 `DOCKER-USER` 里临时放行这个网桥（`-i`、`-o` 各一条 ACCEPT）后同样的调用立即成功；规则删除后 `DOCKER-USER` 恢复为空 |
 
 ## 5. 观察
 
-- **通与不通的分界正好是 FORWARD 链**：容器 → 宿主机进程（INPUT）通；容器 → 容器、容器 → 映射端口（DNAT 后转发到另一个容器）不通。与“Docker 的 FORWARD DROP 策略加 `br_netfilter`”的解释一致。要取证，需要 root 执行 `iptables -S FORWARD` 或 `nft list ruleset`。
+- **通与不通的分界正好是 FORWARD 链**：容器 → 宿主机进程（INPUT）通；容器 → 容器、容器 → 映射端口（DNAT 后转发到另一个容器）不通。诊断的计数与放行对照证实了这一点。
+- **绕法**：在 Docker 预留给用户的 `DOCKER-USER` 链里放行 Podman 的网桥（例如 `iptables -I DOCKER-USER -i podman+ -j ACCEPT` 与 `-o podman+`；netavark 新建的网络默认叫 `podman1`、`podman2`……），或干脆不在同一台机器上同时用 Docker 与有根 Podman。前者要持久化防火墙配置，属于主机运维，不是项目或 BrickKit 该做的事。
 - **故障是静默的**：健康检查只查进程自己（项目规则），所以 BrickKit 与引擎都报全绿；只有真正调用时才超时。部署后的冒烟测试（调一次每条依赖边）能发现它，正式实验的每一格都应该先跑冒烟测试再量。
 - 有根 Podman 自己的机制都正常：`host-gateway` 是网桥网关地址（无根时是 pasta 的 `169.254.1.2`）；成员名经 `extra_hosts` 映射，与 v1.7.2 的地址规则一致。
 - 本项目以后不推荐在同一台机器上同时用 Docker 与有根 Podman；给客户的部署说明写明“二选一”。
@@ -48,4 +50,4 @@
 
 ## 7. 原始数据
 
-`dev/rebuild/experiment-data/0-11/run1.txt`（两次运行的日志、事后以普通用户读到的主机状态、脚本 `run011-rootful.sh`）
+`dev/rebuild/experiment-data/0-11/run1.txt`（两次运行的日志、事后以普通用户读到的主机状态、脚本 `run011-rootful.sh`）；`run2-firewall.txt`（诊断日志与脚本 `run011-fw.sh`）
