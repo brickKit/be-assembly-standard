@@ -1,0 +1,596 @@
+# 0-10 run 1 (2026-10-17), BrickKit CLI v1.7.2, Docker version 29.7.1; A: be-postgres 16.15, B: r010-pg-b 16.15
+# west's password holds $, a double quote, a backslash and braces; .env writes it single-quoted
+
+######## part 0: add and config
+$ brickkit add --local --yes
+🔗 PG_DATABASE in config/demo-east.yaml references the variable of the same name in config/vars.yaml (--yes)
+🔗 PG_HOST in config/demo-east.yaml references the variable of the same name in config/vars.yaml (--yes)
+🔗 PG_PORT in config/demo-east.yaml references the variable of the same name in config/vars.yaml (--yes)
+🔗 PG_DATABASE in config/demo-west.yaml references the variable of the same name in config/vars.yaml (--yes)
+🔗 PG_HOST in config/demo-west.yaml references the variable of the same name in config/vars.yaml (--yes)
+🔗 PG_PORT in config/demo-west.yaml references the variable of the same name in config/vars.yaml (--yes)
+➕ Adding demo/dbshell@0.1.0, demo/east@0.1.0, demo/west@0.1.0
+   ✅ demo/dbshell@0.1.0
+   ✅ demo/east@0.1.0 (in shell demo/dbshell)
+   ✅ demo/west@0.1.0 (in shell demo/dbshell)
+📝 Written: brickkit.yaml, deploy.yaml
+📝 Config skeletons: config/demo-east.yaml, config/demo-west.yaml
+   ✏️ Fill in the required keys in config/demo-east.yaml: PG_PASSWORD, PG_USER
+   ✏️ Fill in the required keys in config/demo-west.yaml: PG_PASSWORD, PG_USER
+[exit 0]
+$ grep -v ^# config/demo-east.yaml
+
+PG_DATABASE: $var:PG_DATABASE  # string
+PG_HOST: $var:PG_HOST  # string
+PG_PASSWORD: ${R010_EAST_PG_PASSWORD}  # string | secret
+PG_PORT: $var:PG_PORT  # string
+PG_USER: r010_east  # string
+[exit 0]
+$ grep -v ^# config/demo-west.yaml
+
+PG_DATABASE: $var:PG_DATABASE  # string
+PG_HOST: $var:PG_HOST  # string
+PG_PASSWORD: ${R010_WEST_PG_PASSWORD}  # string | secret
+PG_PORT: "25432"   # instance B: a literal overrides the shared value
+PG_USER: r010_west  # string
+[exit 0]
+$ brickkit build
+🔨 Building demo/dbshell@0.1.0 → demo-dbshell:0.1.0
+✅ Built demo/dbshell@0.1.0 → demo-dbshell:0.1.0
+🔨 Building demo/east@0.1.0 → demo-east:0.1.0
+✅ Built demo/east@0.1.0 → demo-east:0.1.0
+🔨 Building demo/west@0.1.0 → demo-west:0.1.0
+✅ Built demo/west@0.1.0 → demo-west:0.1.0
+[exit 0]
+
+######## part 1: east and west on their own
+target: docker
+
+components:
+  - id: demo/east
+  - id: demo/west
+  - id: demo/dbshell
+    mode: disable
+$ brickkit up
+🚀 Starting project proj (target: docker)
+📋 Component state calculation:
+   ⬜ demo/dbshell@0.1.0  disabled explicitly (mode: disable)
+   ✅ demo/east@0.1.0     starting (top-level)
+   ✅ demo/west@0.1.0     starting (top-level)
+
+📋 Start order (topological sort):
+   1. demo-east-0-1-0  no dependencies
+   2. demo-west-0-1-0  no dependencies
+
+Can start on their own: demo-east-0-1-0, demo-west-0-1-0 (no dependencies)
+📄 Generated: .brickkit/generated/compose.yaml
+
+🔧 Database migrations that run before startup (on failure that component won't start):
+   demo/east@0.1.0  /server migrate
+   demo/west@0.1.0  /server migrate
+
+🐳 Starting (docker)...
+   demo-east-0-1-0              running (healthy)
+   demo-west-0-1-0              running (healthy)
+✅ All components started (2)
+
+💡 View the status: brickkit status
+   View the logs: docker compose -p brickkit-proj logs -f
+[exit 0]
+$ grep -n -A2 env_file\|PG_PORT\|PG_PASSWORD .brickkit/generated/compose.yaml
+24:    env_file:
+25-      - path: .brickkit/generated/env/demo-east-0-1-0.env
+26-    environment:
+--
+31:      - PG_PORT=5432
+32-      - PG_USER=r010_east
+33-    extra_hosts:
+--
+52:    env_file:
+53-      - path: .brickkit/generated/env/demo-east-0-1-0.env
+54-    environment:
+--
+59:      - PG_PORT=5432
+60-      - PG_USER=r010_east
+61-    extra_hosts:
+--
+76:    env_file:
+77-      - path: .brickkit/generated/env/demo-west-0-1-0.env
+78-    environment:
+--
+83:      - PG_PORT=25432
+84-      - PG_USER=r010_west
+85-    extra_hosts:
+--
+104:    env_file:
+105-      - path: .brickkit/generated/env/demo-west-0-1-0.env
+106-    environment:
+--
+111:      - PG_PORT=25432
+112-      - PG_USER=r010_west
+113-    extra_hosts:
+[exit 0]
+env files (PG_PASSWORD shown masked; the raw form is checked for $ escaping):
+  .brickkit/generated/env/demo-east-0-1-0.env: PG_PASSWORD=<…> raw-form="${xxxx_xxxx_xx_xxxxxxxx}"
+  .brickkit/generated/env/demo-west-0-1-0.env: PG_PASSWORD=<…> raw-form="${xxxx_xxxx_xx_xxxxxxxx}"
+2026/10/17 15:16:53 demo/east migrate: schema east ready on instance A as r010_east
+2026/10/17 15:16:53 demo/west migrate: schema west ready on instance B as r010_west
+$ [in demo-east-0-1-0] wget -qO- -T 5 http://127.0.0.1:8101/api/db
+{"addr":"host.docker.internal:5432","component":"demo/east","database":"r010","instance":"A","rowsInOwnSchema":"1","user":"r010_east"}
+
+$ [in demo-west-0-1-0] wget -qO- -T 5 http://127.0.0.1:8102/api/db
+{"addr":"host.docker.internal:25432","component":"demo/west","database":"r010","instance":"B","rowsInOwnSchema":"1","user":"r010_west"}
+
+schemas in database r010 — A: east  B: west
+$ brickkit down
+🛑 Stopping project proj
+✅ All components stopped
+
+💡 Data volumes were not deleted; database data is still there
+   For a full cleanup, run by hand: docker volume rm <volume-name>
+   Start again with: brickkit up
+[exit 0]
+
+######## part 2: both in one shell
+target: docker
+
+components:
+  - id: demo/dbshell
+    members:
+      - id: demo/east
+      - id: demo/west
+$ brickkit up
+🚀 Starting project proj (target: docker)
+📋 Component state calculation:
+   ✅ demo/dbshell@0.1.0  starting (top-level)
+   ✅ demo/east@0.1.0     starting (top-level)
+   ✅ demo/west@0.1.0     starting (top-level)
+
+📋 Start order (topological sort):
+   1. demo-dbshell-0-1-0  no dependencies  (hosts demo/east@0.1.0, demo/west@0.1.0)
+
+Can start on their own: demo-dbshell-0-1-0 (no dependencies)
+📄 Generated: .brickkit/generated/compose.yaml
+
+🔧 Database migrations that run before startup (on failure that component won't start):
+   demo/east@0.1.0  /server migrate
+   demo/west@0.1.0  /server migrate
+
+🐳 Starting (docker)...
+   demo-dbshell-0-1-0           running (healthy)
+✅ All components started (1)
+
+💡 View the status: brickkit status
+   View the logs: docker compose -p brickkit-proj logs -f
+[exit 0]
+shell env file: PG_PASSWORD of west inside BRICKKIT_SERVED_MEMBERS_CONFIG, letters masked: 
+2026/10/17 15:17:01 demo/east migrate: schema east ready on instance A as r010_east
+2026/10/17 15:17:01 demo/west migrate: schema west ready on instance B as r010_west
+$ [in demo-dbshell-0-1-0] wget -qO- -T 5 http://127.0.0.1:8101/api/db
+{"addr":"host.docker.internal:5432","component":"demo/east","database":"r010","instance":"A","rowsInOwnSchema":"1","user":"r010_east"}
+
+$ [in demo-dbshell-0-1-0] wget -qO- -T 5 http://127.0.0.1:8102/api/db
+{"addr":"host.docker.internal:25432","component":"demo/west","database":"r010","instance":"B","rowsInOwnSchema":"1","user":"r010_west"}
+
+schemas in database r010 — A: east  B: west
+connections from the shell, per instance: A r010_east@r010  B r010_west@r010
+$ brickkit down
+🛑 Stopping project proj
+✅ All components stopped
+
+💡 Data volumes were not deleted; database data is still there
+   For a full cleanup, run by hand: docker volume rm <volume-name>
+   Start again with: brickkit up
+[exit 0]
+
+######## part 3: the shell as a local process (members migrate from source)
+target: docker
+
+components:
+  - id: demo/dbshell
+    mode: local
+    members:
+      - id: demo/east
+      - id: demo/west
+13:🔧 Database migrations that run before startup (on failure that component won't start):
+18:demo-east-0-1-0-migration  running the migration from source: go run -mod=vendor ./cmd/server migrate
+19:demo-east-0-1-0-migration | 2026/10/17 17:17:14 demo/east migrate: schema east ready on instance A as r010_east
+20:demo-east-0-1-0-migration  migration finished
+21:demo-west-0-1-0-migration  running the migration from source: go run -mod=vendor ./cmd/server migrate
+22:demo-west-0-1-0-migration | 2026/10/17 17:17:18 demo/west migrate: schema west ready on instance B as r010_west
+23:demo-west-0-1-0-migration  migration finished
+26:demo-dbshell-0-1-0  listening on port 8100
+$ GET :8101/api/db
+{"addr":"localhost:5432","component":"demo/east","database":"r010","instance":"A","rowsInOwnSchema":"1","user":"r010_east"}
+
+$ GET :8102/api/db
+{"addr":"localhost:25432","component":"demo/west","database":"r010","instance":"B","rowsInOwnSchema":"1","user":"r010_west"}
+
+schemas in database r010 — A: east  B: west
+up exited with 0
+$ brickkit down
+🛑 Stopping project proj
+📋 This project has no containers running right now (the engine has none at all)
+   Start it with brickkit up
+[exit 0]
+
+######## cleanup: database r010 and role r010_east off be-postgres; r010-pg-b removed
+be-postgres cleaned
+r010-pg-b removed
+
+######## run010.sh
+#!/usr/bin/env bash
+# 0-10 run 1: two PostgreSQL instances; east -> A (be-postgres), west -> B (r010-pg-b). Docker.
+set -uo pipefail
+S=$(dirname "$0")/..; S=$(cd "$S" && pwd); P=$S/r010/proj; export GOCACHE=$S/gocache
+run() { echo "\$ $*"; "$@" 2>&1 | sed -E 's/"time":"[^"]*"/"time":"…"/'; echo "[exit ${PIPESTATUS[0]}]"; }
+dx() { local c=$1; shift; echo "\$ [in $c] $*"; docker exec "brickkit-proj-$c-1" "$@" 2>&1; echo; }
+schemas() { echo "schemas in database r010 — A: $(docker exec be-postgres psql -U postgres -d r010 -Atc "select string_agg(nspname, ',' order by nspname) from pg_namespace where nspname in ('east','west')")  B: $(docker exec r010-pg-b psql -U postgres -d r010 -Atc "select string_agg(nspname, ',' order by nspname) from pg_namespace where nspname in ('east','west')")"; }
+reset_schemas() { for c in be-postgres r010-pg-b; do docker exec $c psql -q -U postgres -d r010 -c "drop schema if exists east cascade; drop schema if exists west cascade" >/dev/null 2>&1; done; }
+deploy() { # <layout: alone | shell | local-shell>
+  case $1 in
+    alone) printf 'target: docker\n\ncomponents:\n  - id: demo/east\n  - id: demo/west\n  - id: demo/dbshell\n    mode: disable\n' ;;
+    shell) printf 'target: docker\n\ncomponents:\n  - id: demo/dbshell\n    members:\n      - id: demo/east\n      - id: demo/west\n' ;;
+    local-shell) printf 'target: docker\n\ncomponents:\n  - id: demo/dbshell\n    mode: local\n    members:\n      - id: demo/east\n      - id: demo/west\n' ;;
+  esac > deploy.yaml; cat deploy.yaml; }
+cd "$P"
+echo "# 0-10 run 1 ($(date +%F)), $(brickkit version | head -1), $(docker --version | cut -d, -f1); A: be-postgres $(docker exec be-postgres psql -U postgres -Atc 'show server_version'), B: r010-pg-b $(docker exec r010-pg-b psql -U postgres -Atc 'show server_version')"
+echo "# west's password holds \$, a double quote, a backslash and braces; .env writes it single-quoted"
+
+echo; echo "######## part 0: add and config"
+run brickkit add --local --yes
+sed -i 's/^PG_USER: ""/PG_USER: r010_east/; s/^PG_PASSWORD: ""/PG_PASSWORD: ${R010_EAST_PG_PASSWORD}/' config/demo-east.yaml
+sed -i 's/^PG_USER: ""/PG_USER: r010_west/; s/^PG_PASSWORD: ""/PG_PASSWORD: ${R010_WEST_PG_PASSWORD}/; s/^PG_PORT: .*/PG_PORT: "25432"   # instance B: a literal overrides the shared value/' config/demo-west.yaml
+run grep -v "^#" config/demo-east.yaml
+run grep -v "^#" config/demo-west.yaml
+run brickkit build
+
+echo; echo "######## part 1: east and west on their own"
+reset_schemas; deploy alone
+run brickkit up
+run grep -n -A2 "env_file\|PG_PORT\|PG_PASSWORD" .brickkit/generated/compose.yaml
+echo "env files (PG_PASSWORD shown masked; the raw form is checked for \$ escaping):"; for f in .brickkit/generated/env/*.env; do echo "  $f: $(grep PG_PASSWORD $f | sed -E 's/(PG_PASSWORD=).*/\1<…>/') raw-form=$(grep PG_PASSWORD $f | sed -E 's/^PG_PASSWORD=//; s/[A-Za-z0-9-]/x/g')"; done
+for c in east west; do docker logs brickkit-proj-demo-$c-0-1-0-migration-1 2>&1 | tail -1; done
+dx demo-east-0-1-0 wget -qO- -T 5 http://127.0.0.1:8101/api/db
+dx demo-west-0-1-0 wget -qO- -T 5 http://127.0.0.1:8102/api/db
+schemas
+run brickkit down
+
+echo; echo "######## part 2: both in one shell"
+reset_schemas; deploy shell
+run brickkit up
+echo "shell env file: PG_PASSWORD of west inside BRICKKIT_SERVED_MEMBERS_CONFIG, letters masked: $(grep BRICKKIT_SERVED_MEMBERS_CONFIG .brickkit/generated/env/demo-dbshell-0-1-0.env | grep -o '"PG_PASSWORD":"[^,]*' | sed -E 's/[A-Za-z0-9-]/x/g')"
+for c in east west; do docker logs brickkit-proj-demo-$c-0-1-0-migration-1 2>&1 | tail -1; done
+dx demo-dbshell-0-1-0 wget -qO- -T 5 http://127.0.0.1:8101/api/db
+dx demo-dbshell-0-1-0 wget -qO- -T 5 http://127.0.0.1:8102/api/db
+schemas
+echo "connections from the shell, per instance: A $(docker exec be-postgres psql -U postgres -Atc "select string_agg(usename||'@'||datname, ',') from pg_stat_activity where usename like 'r010%'")  B $(docker exec r010-pg-b psql -U postgres -Atc "select string_agg(usename||'@'||datname, ',') from pg_stat_activity where usename like 'r010%'")"
+run brickkit down
+
+echo; echo "######## part 3: the shell as a local process (members migrate from source)"
+reset_schemas; deploy local-shell
+setsid brickkit up > $S/up10-3.log 2>&1 & UP=$!
+for _ in $(seq 1 300); do wget -qO- -T 1 http://localhost:8102/healthz >/dev/null 2>&1 && break; kill -0 $UP 2>/dev/null || break; sleep 0.3; done
+grep -n "migration\|listening\|Error" $S/up10-3.log
+echo "\$ GET :8101/api/db"; wget -qO- -T 5 http://localhost:8101/api/db; echo
+echo "\$ GET :8102/api/db"; wget -qO- -T 5 http://localhost:8102/api/db; echo
+schemas
+kill -INT $UP; wait $UP; echo "up exited with $?"
+run brickkit down
+
+echo; echo "######## cleanup: database r010 and role r010_east off be-postgres; r010-pg-b removed"
+docker exec be-postgres psql -q -U postgres -c "drop database if exists r010" -c "drop role if exists r010_east" && echo "be-postgres cleaned"
+docker rm -f r010-pg-b >/dev/null && echo "r010-pg-b removed"
+
+######## r010-setup.sh
+#!/usr/bin/env bash
+# 0-10 setup: two PostgreSQL instances. A = be-postgres (make up, host 5432); B = r010-pg-b (host 25432).
+# demo/east uses A, demo/west uses B; both really connect (pgx) and report which instance they reached (r010_meta.instance).
+# Each has its own role and a schema created by its migration. west's password has special characters.
+set -euo pipefail
+S=<scratchpad>
+rm -rf "$S/r010"; mkdir -p "$S/r010"; cd "$S/r010"
+EAST_PW='east-pass-1'
+WEST_PW='We$t"pa\ss{1}'
+
+# instance B
+docker rm -f r010-pg-b >/dev/null 2>&1 || true
+docker run -d --name r010-pg-b -e POSTGRES_PASSWORD=r010-admin -p 25432:5432 postgres:16-alpine >/dev/null
+for _ in $(seq 1 60); do docker exec r010-pg-b pg_isready -U postgres >/dev/null 2>&1 && break; sleep 0.5; done; sleep 1
+prep() { # <container> <instance-name> <role> <password>
+  docker exec -i "$1" psql -q -U postgres -v ON_ERROR_STOP=1 <<SQL
+DROP DATABASE IF EXISTS r010;
+DROP ROLE IF EXISTS $3;
+CREATE ROLE $3 LOGIN PASSWORD \$pw\$$4\$pw\$;
+CREATE DATABASE r010;
+\c r010
+CREATE SCHEMA r010_meta;
+CREATE TABLE r010_meta.instance(name text);
+INSERT INTO r010_meta.instance VALUES ('$2');
+GRANT USAGE ON SCHEMA r010_meta TO $3;
+GRANT SELECT ON r010_meta.instance TO $3;
+GRANT CREATE ON DATABASE r010 TO $3;
+SQL
+}
+prep be-postgres A r010_east "$EAST_PW"
+prep r010-pg-b B r010_west "$WEST_PW"
+
+mkdir proj && cd proj && brickkit init --yes >/dev/null
+printf 'R010_EAST_PG_PASSWORD=%s\n' "$EAST_PW" > .env
+printf "R010_WEST_PG_PASSWORD='%s'\n" "$WEST_PW" >> .env
+cat > config/vars.yaml <<'EOF'
+# config/vars.yaml — instance A is make up's be-postgres
+PG_HOST: host.docker.internal
+PG_PORT: "5432"
+PG_DATABASE: r010
+EOF
+
+member() { # <name> <port>
+  local n=$1 port=$2 d=components/demo/$1
+  mkdir -p "$d/cmd/server"
+  cat > "$d/component.yaml" <<EOF
+apiVersion: brickkit/v1
+kind: Component
+
+metadata:
+  id: demo/$n
+  name: $n
+  version: 0.1.0
+  description: Stub $n that connects to PostgreSQL and reports the instance it reached
+
+deployment:
+  type: container
+  build:
+    dockerfile: Dockerfile
+  port: $port
+
+migration:
+  command: ["/server", "migrate"]
+
+local:
+  migrationCommand: ["go", "run", "-mod=vendor", "./cmd/server", "migrate"]
+  runCommand: ["go", "run", "-mod=vendor", "./cmd/server"]
+
+healthCheck:
+  type: http
+  path: /healthz
+
+configSchema:
+  type: object
+  required: [PG_HOST, PG_PORT, PG_DATABASE, PG_USER, PG_PASSWORD]
+  properties:
+    PG_HOST: { type: string }
+    PG_PORT: { type: string }
+    PG_DATABASE: { type: string }
+    PG_USER: { type: string }
+    PG_PASSWORD: { type: string, secret: true }
+EOF
+  cat > "$d/go.mod" <<EOF
+module example.test/$n
+
+go 1.26
+
+require github.com/jackc/pgx/v5 v5.7.5
+EOF
+  cat > "$d/$n.go" <<EOF
+// Package $n is a stub member that talks to its own PostgreSQL database, configured only from its config table.
+package $n
+
+import (
+	"context"
+	"encoding/json"
+	"net"
+	"net/http"
+	"net/url"
+	"sync"
+
+	"github.com/jackc/pgx/v5/pgxpool"
+)
+
+// Version is the version of this module's code.
+const Version = "0.1.0"
+
+// ConnString builds the connection string from the config table; the password may hold any character.
+func ConnString(cfg map[string]string) string {
+	u := url.URL{Scheme: "postgres", User: url.UserPassword(cfg["PG_USER"], cfg["PG_PASSWORD"]),
+		Host: net.JoinHostPort(cfg["PG_HOST"], cfg["PG_PORT"]), Path: "/" + cfg["PG_DATABASE"]}
+	return u.String()
+}
+
+// Migrate creates this component's schema and table, as its own role.
+func Migrate(ctx context.Context, cfg map[string]string) (string, error) {
+	pool, err := pgxpool.New(ctx, ConnString(cfg))
+	if err != nil {
+		return "", err
+	}
+	defer pool.Close()
+	var inst string
+	err = pool.QueryRow(ctx, \`CREATE SCHEMA IF NOT EXISTS $n;
+CREATE TABLE IF NOT EXISTS $n.hello(id int PRIMARY KEY, at timestamptz DEFAULT now());
+INSERT INTO $n.hello(id) VALUES (1) ON CONFLICT DO NOTHING;
+SELECT name FROM r010_meta.instance\`).Scan(&inst)
+	if err != nil {
+		// pgx runs a multi-statement string through the simple protocol only without arguments; fall back to one by one
+		for _, q := range []string{"CREATE SCHEMA IF NOT EXISTS $n",
+			"CREATE TABLE IF NOT EXISTS $n.hello(id int PRIMARY KEY, at timestamptz DEFAULT now())",
+			"INSERT INTO $n.hello(id) VALUES (1) ON CONFLICT DO NOTHING"} {
+			if _, err := pool.Exec(ctx, q); err != nil {
+				return "", err
+			}
+		}
+		if err := pool.QueryRow(ctx, "SELECT name FROM r010_meta.instance").Scan(&inst); err != nil {
+			return "", err
+		}
+	}
+	return inst, nil
+}
+
+// Handler builds the member's HTTP handler from its config table, never from the process environment.
+func Handler(cfg map[string]string) http.Handler {
+	var once sync.Once
+	var pool *pgxpool.Pool
+	var poolErr error
+	mux := http.NewServeMux()
+	mux.HandleFunc("/healthz", func(w http.ResponseWriter, _ *http.Request) { w.Write([]byte("ok")) })
+	mux.HandleFunc("/api/db", func(w http.ResponseWriter, r *http.Request) {
+		once.Do(func() { pool, poolErr = pgxpool.New(context.Background(), ConnString(cfg)) })
+		if poolErr != nil {
+			http.Error(w, poolErr.Error(), http.StatusBadGateway)
+			return
+		}
+		var db, user, inst, rows string
+		err := pool.QueryRow(r.Context(), \`SELECT current_database(), current_user, (SELECT name FROM r010_meta.instance),
+			(SELECT count(*)::text FROM $n.hello)\`).Scan(&db, &user, &inst, &rows)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadGateway)
+			return
+		}
+		_ = json.NewEncoder(w).Encode(map[string]string{"component": "demo/$n", "instance": inst, "database": db,
+			"user": user, "rowsInOwnSchema": rows, "addr": net.JoinHostPort(cfg["PG_HOST"], cfg["PG_PORT"])})
+	})
+	return mux
+}
+EOF
+  cat > "$d/cmd/server/main.go" <<EOF
+// Command server runs $n on its own: the config table is filled from the environment.
+package main
+
+import (
+	"context"
+	"log"
+	"net/http"
+	"os"
+	"strings"
+
+	"example.test/$n"
+)
+
+func main() {
+	cfg := map[string]string{}
+	for _, kv := range os.Environ() {
+		k, v, _ := strings.Cut(kv, "=")
+		cfg[k] = v
+	}
+	if len(os.Args) > 1 && os.Args[1] == "migrate" {
+		inst, err := $n.Migrate(context.Background(), cfg)
+		if err != nil {
+			log.Fatalf("demo/$n migrate: %v", err)
+		}
+		log.Printf("demo/$n migrate: schema $n ready on instance %s as %s", inst, cfg["PG_USER"])
+		return
+	}
+	port := cfg["PORT"]
+	if port == "" {
+		port = "$port"
+	}
+	log.Printf("demo/$n@%s standalone on :%s", $n.Version, port)
+	log.Fatal(http.ListenAndServe(":"+port, $n.Handler(cfg)))
+}
+EOF
+  cat > "$d/Dockerfile" <<'EOF'
+FROM golang:1.26-alpine AS build
+WORKDIR /src
+COPY . .
+RUN CGO_ENABLED=0 go build -mod=vendor -o /out/server ./cmd/server
+FROM alpine:3
+COPY --from=build /out/server /server
+ENTRYPOINT ["/server"]
+EOF
+  (cd "$d" && GOFLAGS=-mod=mod go mod tidy >/dev/null && go mod vendor && go vet ./...)
+}
+member east 8101
+member west 8102
+
+d=shell/demo/dbshell; mkdir -p "$d"
+cat > "$d/component.yaml" <<'EOF'
+apiVersion: brickkit/v1
+kind: Component
+
+metadata:
+  id: demo/dbshell
+  name: dbshell
+  version: 0.1.0
+  description: Go shell hosting demo/east and demo/west, each with its own database
+
+shell:
+  members:
+    - demo/east@0.1.0
+    - demo/west@0.1.0
+
+deployment:
+  type: container
+  build:
+    dockerfile: Dockerfile
+  port: 8100
+
+local:
+  runCommand: ["go", "run", "-mod=vendor", "."]
+
+healthCheck:
+  type: http
+  path: /healthz
+EOF
+cat > "$d/go.mod" <<'EOF'
+module example.test/dbshell
+
+go 1.26
+
+require (
+	example.test/east v0.1.0
+	example.test/west v0.1.0
+)
+
+replace (
+	example.test/east => ../../../components/demo/east
+	example.test/west => ../../../components/demo/west
+)
+EOF
+cat > "$d/main.go" <<'EOF'
+// Command dbshell hosts the members it compiles in, as told by BRICKKIT_SERVED_MEMBERS_CONFIG.
+package main
+
+import (
+	"encoding/json"
+	"fmt"
+	"log"
+	"net/http"
+	"os"
+
+	"example.test/east"
+	"example.test/west"
+)
+
+type member struct {
+	ComponentID string            `json:"componentId"`
+	Version     string            `json:"version"`
+	HTTPPort    int               `json:"httpPort"`
+	Config      map[string]string `json:"config"`
+}
+
+var compiled = map[string]func(map[string]string) http.Handler{"demo/east": east.Handler, "demo/west": west.Handler}
+
+func main() {
+	var members []member
+	if err := json.Unmarshal([]byte(os.Getenv("BRICKKIT_SERVED_MEMBERS_CONFIG")), &members); err != nil {
+		log.Fatalf("BRICKKIT_SERVED_MEMBERS_CONFIG: %v", err)
+	}
+	for _, m := range members {
+		h, ok := compiled[m.ComponentID]
+		if !ok {
+			log.Fatalf("this shell has no module %s", m.ComponentID)
+		}
+		addr := fmt.Sprintf(":%d", m.HTTPPort)
+		go func(h http.Handler) { log.Fatal(http.ListenAndServe(addr, h)) }(h(m.Config))
+		log.Printf("serving %s@%s on %s", m.ComponentID, m.Version, addr)
+	}
+	port := os.Getenv("PORT")
+	if port == "" {
+		port = "8100"
+	}
+	http.HandleFunc("/healthz", func(w http.ResponseWriter, _ *http.Request) { w.Write([]byte("ok")) })
+	log.Fatal(http.ListenAndServe(":"+port, nil))
+}
+EOF
+cp components/demo/east/Dockerfile "$d/Dockerfile"; sed -i 's#./cmd/server#.#' "$d/Dockerfile"
+(cd "$d" && GOFLAGS=-mod=mod go mod tidy >/dev/null && go mod vendor && go vet -mod=vendor .)
+echo setup ok

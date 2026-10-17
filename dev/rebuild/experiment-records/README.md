@@ -15,3 +15,4 @@
 | 0-07 | minikube 跑 BrickKit 生成的 K8s 清单（含外壳） | 第 0 步 | 2026-10-17 | 通过（v1.7.2）；部署、迁移 Job、拆回、拒绝 `local`/`debug` 与错 context 都正常；v1.7.1 时调用外壳成员的地址在 K8s 上不可达（FRB-004），v1.7.2 改为写成员名后复测通过 | [0-07-minikube.md](0-07-minikube.md) |
 | 0-08 | 同一组件两个版本并存（`requiredBy`） | 第 0 步 | 2026-10-17 | 通过；`add` 自动保留兼容版本、外壳编进的版本之外的版本单独运行；迁移按版本串行；迁移顺序保护有效 | [0-08-two-versions.md](0-08-two-versions.md) |
 | 0-09 | 同一组件两个副本 | 第 0 步 | 2026-10-17 | K8s 上通过（PDB、两个端点、迁移只跑一次、删副本不中断）；Docker、Podman 下 `replicas` 被忽略，套件 E 的 E1–E4 改在 K8s 两格（FRR-006） | [0-09-two-replicas.md](0-09-two-replicas.md) |
+| 0-10 | 两个 PostgreSQL 实例 | 第 0 步 | 2026-10-17 | 通过；分实例完全靠配置覆盖；单跑、外壳、本机外壳下每个组件都连到自己的实例；特殊字符的密码在三条注入路径上一致 | [0-10-two-postgres.md](0-10-two-postgres.md) |
