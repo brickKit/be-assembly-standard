@@ -1,0 +1,500 @@
+######## attempt 1 (root's podman.socket inactive)
+# 0-11 rootful (2026-10-17), BrickKit CLI v1.7.2, podman version 5.7.0, rootless=false, network netavark
+
+######## part 0: base resources in rootful Podman (host 35432, 34222)
+$ podman run -d --name r011-pg -e POSTGRES_PASSWORD=r011 -p 35432:5432 docker.io/library/postgres:16-alpine
+Trying to pull docker.io/library/postgres:16-alpine...
+2ad68c25f98d2da901adbc4d4bac41819786556fb803235765af49f40ee8b7d3
+[exit 0]
+$ podman run -d --name r011-nats -p 34222:4222 docker.io/library/nats:2.10-alpine
+Trying to pull docker.io/library/nats:2.10-alpine...
+9f23ba8b13de4b6628088e9f13c07612abc43130097f3ea9b99075c6e3a4623c
+[exit 0]
+
+######## part 1: everything in rootful Podman containers
+target: podman
+
+vars:
+  PG_PORT: "35432"
+  NATS_URL: nats://host.docker.internal:34222
+
+components:
+  - id: demo/delta
+  - id: demo/gamma
+  - id: demo/pyshell
+    members:
+      - id: demo/pyr
+  - id: demo/shell
+    members:
+      - id: demo/alpha
+      - id: demo/beta
+$ ~/.local/bin/brickkit build
+🔨 Building demo/alpha@0.1.0 → demo-alpha:0.1.0
+✅ Built demo/alpha@0.1.0 → demo-alpha:0.1.0
+🔨 Building demo/beta@0.1.0 → demo-beta:0.1.0
+✅ Built demo/beta@0.1.0 → demo-beta:0.1.0
+🔨 Building demo/pyr@0.1.0 → demo-pyr:0.1.0
+✅ Built demo/pyr@0.1.0 → demo-pyr:0.1.0
+🔨 Building demo/delta@0.1.0 → demo-delta:0.1.0
+✅ Built demo/delta@0.1.0 → demo-delta:0.1.0
+🔨 Building demo/gamma@0.1.0 → demo-gamma:0.1.0
+✅ Built demo/gamma@0.1.0 → demo-gamma:0.1.0
+🔨 Building demo/pyshell@0.1.0 → demo-pyshell:0.1.0
+✅ Built demo/pyshell@0.1.0 → demo-pyshell:0.1.0
+🔨 Building demo/shell@0.1.0 → demo-shell:0.1.0
+✅ Built demo/shell@0.1.0 → demo-shell:0.1.0
+[exit 0]
+build took 79 s
+$ podman images --format {{.Repository}}:{{.Tag}} {{.Size}} --filter reference=localhost/demo-*
+localhost/demo-shell:0.1.0 18.2 MB
+localhost/demo-pyshell:0.1.0 54.2 MB
+localhost/demo-gamma:0.1.0 18.2 MB
+localhost/demo-delta:0.1.0 54.2 MB
+localhost/demo-pyr:0.1.0 54.2 MB
+localhost/demo-beta:0.1.0 18.2 MB
+localhost/demo-alpha:0.1.0 17.3 MB
+[exit 0]
+$ ~/.local/bin/brickkit up
+🚀 Starting project proj (target: podman)
+📋 Component state calculation:
+   ✅ demo/alpha@0.1.0    starting (demo/beta needs it)
+   ✅ demo/beta@0.1.0     starting (demo/gamma needs it)
+   ✅ demo/pyr@0.1.0      starting (demo/delta needs it)
+   ✅ demo/delta@0.1.0    starting (top-level)
+   ✅ demo/gamma@0.1.0    starting (top-level)
+   ✅ demo/pyshell@0.1.0  starting (top-level)
+   ✅ demo/shell@0.1.0    starting (top-level)
+
+📋 Start order (topological sort):
+   1. demo-pyshell-0-1-0  no dependencies  (hosts demo/pyr@0.1.0)
+   2. demo-shell-0-1-0    no dependencies  (hosts demo/alpha@0.1.0, demo/beta@0.1.0)
+   3. demo-delta-0-1-0    ← depends on 1, 2
+   4. demo-gamma-0-1-0    ← depends on 2
+
+Can start on their own: demo-pyshell-0-1-0, demo-shell-0-1-0 (no dependencies)
+Longest dependency chain (2 levels): demo-shell-0-1-0 → demo-delta-0-1-0
+   Components not on this chain start in parallel with it
+
+Dependency graph:
+   demo/delta@0.1.0 → demo/alpha@0.1.0
+                    → demo/pyr@0.1.0
+   demo/gamma@0.1.0 → demo/beta@0.1.0
+   demo/beta@0.1.0 → demo/alpha@0.1.0
+📄 Generated: .brickkit/generated/compose.yaml
+
+🔧 Database migrations that run before startup (on failure that component won't start):
+   demo/alpha@0.1.0  /server migrate
+   demo/gamma@0.1.0  /server migrate
+
+🐳 Starting (podman)...
+❌ Error: podman failed to run
+   Command: podman compose --project-directory . -p brickkit-proj -f .brickkit/generated/compose.yaml up -d --wait --remove-orphans demo-gamma-0-1-0 demo-delta-0-1-0 demo-pyshell-0-1-0 demo-shell-0-1-0
+   Output: [4m>>>> Executing external compose provider "/usr/libexec/docker/cli-plugins/docker-compose". Please see podman-compose(1) for how to disable this message. <<<<
+      [0munable to get image 'demo-delta:0.1.0': failed to connect to the docker API at unix:///run/podman/podman.sock; check if the path is correct and if the daemon is running: dial unix /run/podman/podman.sock: connect: no such file or directory
+      Error: executing /usr/libexec/docker/cli-plugins/docker-compose --project-directory . -p brickkit-proj -f .brickkit/generated/compose.yaml up -d --wait --remove-orphans demo-gamma-0-1-0 demo-delta-0-1-0 demo-pyshell-0-1-0 demo-shell-0-1-0: exit status 1
+{"time":"…","level":"ERROR","message":"Command failed","command":"brickkit up","elapsed_ms":801,"error_code":"ENGINE_FAILED","error":"ENGINE_FAILED: Error: podman failed to run; Command=podman compose --project-directory /tmp/r011-rootful/proj -p brickkit-proj -f /tmp/r011-rootful/proj/.brickkit/generated/compose.yaml up -d --wait --remove-orphans demo-gamma-0-1-0 demo-delta-0-1-0 demo-pyshell-0-1-0 demo-shell-0-1-0; Output=\u001b[4m>>>> Executing external compose provider \"/usr/libexec/docker/cli-plugins/docker-compose\". Please see podman-compose(1) for how to disable this message. <<<< / \u001b[0munable to get image 'demo-delta:0.1.0': failed to connect to the docker API at unix:///run/podman/podman.sock; check if the path is correct and if the daemon is running: dial unix /run/podman/podman.sock: connect: no such file or directory / Error: executing /usr/libexec/docker/cli-plugins/docker-compose --project-directory /tmp/r011-rootful/proj -p brickkit-proj -f /tmp/r011-rootful/proj/.brickkit/generated/compose.yaml up -d --wait --remove-orphans demo-gamma-0-1-0 demo-delta-0-1-0 demo-pyshell-0-1-0 demo-shell-0-1-0: exit status 1","exit_code":1}
+[exit 1]
+up took 1 s
+$ podman ps --filter name=brickkit-proj --format {{.Names}} | {{.Status}}
+[exit 0]
+$ [in demo-gamma-0-1-0] wget -qO- -T 5 http://127.0.0.1:8083/api/chain
+Error: no container with name or ID "brickkit-proj-demo-gamma-0-1-0-1" found: no such container
+
+$ [in demo-delta-0-1-0] wget -qO- -T 5 http://127.0.0.1:8092/api/chain
+Error: no container with name or ID "brickkit-proj-demo-delta-0-1-0-1" found: no such container
+
+$ [in demo-delta-0-1-0] wget -qO- -T 5 http://127.0.0.1:8092/api/infra
+Error: no container with name or ID "brickkit-proj-demo-delta-0-1-0-1" found: no such container
+
+$ [in demo-gamma-0-1-0] cat /etc/hosts
+Error: no container with name or ID "brickkit-proj-demo-gamma-0-1-0-1" found: no such container
+
+$ podman stats --no-stream --format {{.Name}} {{.MemUsage}}
+r011-pg 23.84MB / 15.83GB
+r011-nats 3.465MB / 15.83GB
+[exit 0]
+$ ~/.local/bin/brickkit status
+📊 Project status: proj (target: podman)
+
+❌ Error: podman failed to run
+   Command: podman compose -p brickkit-proj ps -a --format json
+   Output: [4m>>>> Executing external compose provider "/usr/libexec/docker/cli-plugins/docker-compose". Please see podman-compose(1) for how to disable this message. <<<<
+      [0mfailed to connect to the docker API at unix:///run/podman/podman.sock; check if the path is correct and if the daemon is running: dial unix /run/podman/podman.sock: connect: no such file or directory
+      Error: executing /usr/libexec/docker/cli-plugins/docker-compose -p brickkit-proj ps -a --format json: exit status 1
+{"time":"…","level":"ERROR","message":"Command failed","command":"brickkit status","elapsed_ms":59,"error_code":"ENGINE_FAILED","error":"ENGINE_FAILED: Error: podman failed to run; Command=podman compose -p brickkit-proj ps -a --format json; Output=\u001b[4m>>>> Executing external compose provider \"/usr/libexec/docker/cli-plugins/docker-compose\". Please see podman-compose(1) for how to disable this message. <<<< / \u001b[0mfailed to connect to the docker API at unix:///run/podman/podman.sock; check if the path is correct and if the daemon is running: dial unix /run/podman/podman.sock: connect: no such file or directory / Error: executing /usr/libexec/docker/cli-plugins/docker-compose -p brickkit-proj ps -a --format json: exit status 1","exit_code":1}
+[exit 1]
+$ ~/.local/bin/brickkit down
+🛑 Stopping project proj
+❌ Error: podman failed to run
+   Command: podman compose -p brickkit-proj down --remove-orphans
+   Output: [4m>>>> Executing external compose provider "/usr/libexec/docker/cli-plugins/docker-compose". Please see podman-compose(1) for how to disable this message. <<<<
+      [0mfailed to connect to the docker API at unix:///run/podman/podman.sock; check if the path is correct and if the daemon is running: dial unix /run/podman/podman.sock: connect: no such file or directory
+      Error: executing /usr/libexec/docker/cli-plugins/docker-compose -p brickkit-proj down --remove-orphans: exit status 1
+{"time":"…","level":"ERROR","message":"Command failed","command":"brickkit down","elapsed_ms":90,"error_code":"ENGINE_FAILED","error":"ENGINE_FAILED: Error: podman failed to run; Command=podman compose -p brickkit-proj down --remove-orphans; Output=\u001b[4m>>>> Executing external compose provider \"/usr/libexec/docker/cli-plugins/docker-compose\". Please see podman-compose(1) for how to disable this message. <<<< / \u001b[0mfailed to connect to the docker API at unix:///run/podman/podman.sock; check if the path is correct and if the daemon is running: dial unix /run/podman/podman.sock: connect: no such file or directory / Error: executing /usr/libexec/docker/cli-plugins/docker-compose -p brickkit-proj down --remove-orphans: exit status 1","exit_code":1}
+[exit 1]
+
+######## part 2: the shells as local processes (root), gamma and delta in rootful containers
+target: podman
+
+vars:
+  PG_PORT: "35432"
+  NATS_URL: nats://host.docker.internal:34222
+
+components:
+  - id: demo/delta
+  - id: demo/gamma
+  - id: demo/pyshell
+    mode: local
+    members:
+      - id: demo/pyr
+  - id: demo/shell
+    mode: local
+    members:
+      - id: demo/alpha
+      - id: demo/beta
+28:🔧 Database migrations that run before startup (on failure that component won't start):
+33:❌ Error: podman failed to run
+37:      Error: executing /usr/libexec/docker/cli-plugins/docker-compose --project-directory . -p brickkit-proj -f .brickkit/generated/compose.yaml up -d --wait --remove-orphans demo-gamma-0-1-0 demo-delta-0-1-0: exit status 1
+38:{"time":"2026-10-17T17:42:37.680579929+02:00","level":"ERROR","message":"Command failed","command":"brickkit up","elapsed_ms":336,"error_code":"ENGINE_FAILED","error":"ENGINE_FAILED: Error: podman failed to run; Command=podman compose --project-directory /tmp/r011-rootful/proj -p brickkit-proj -f /tmp/r011-rootful/proj/.brickkit/generated/compose.yaml up -d --wait --remove-orphans demo-gamma-0-1-0 demo-delta-0-1-0; Output=\u001b[4m>>>> Executing external compose provider \"/usr/libexec/docker/cli-plugins/docker-compose\". Please see podman-compose(1) for how to disable this message. <<<< / \u001b[0munable to get image 'demo-delta:0.1.0': failed to connect to the docker API at unix:///run/podman/podman.sock; check if the path is correct and if the daemon is running: dial unix /run/podman/podman.sock: connect: no such file or directory / Error: executing /usr/libexec/docker/cli-plugins/docker-compose --project-directory /tmp/r011-rootful/proj -p brickkit-proj -f /tmp/r011-rootful/proj/.brickkit/generated/compose.yaml up -d --wait --remove-orphans demo-gamma-0-1-0 demo-delta-0-1-0: exit status 1","exit_code":1}
+$ grep -n -A3 extra_hosts .brickkit/generated/compose.yaml
+30:    extra_hosts:
+31-      - demo-alpha-0-1-0:host-gateway
+32-      - demo-pyr-0-1-0:host-gateway
+33-      - host.docker.internal:host-gateway
+--
+63:    extra_hosts:
+64-      - demo-beta-0-1-0:host-gateway
+65-      - host.docker.internal:host-gateway
+66-    healthcheck:
+--
+91:    extra_hosts:
+92-      - demo-beta-0-1-0:host-gateway
+93-      - host.docker.internal:host-gateway
+94-    image: demo-gamma:0.1.0
+[exit 0]
+$ [in demo-gamma-0-1-0] cat /etc/hosts
+Error: no container with name or ID "brickkit-proj-demo-gamma-0-1-0-1" found: no such container
+
+$ [in demo-gamma-0-1-0] wget -qO- -T 5 http://127.0.0.1:8083/api/chain
+Error: no container with name or ID "brickkit-proj-demo-gamma-0-1-0-1" found: no such container
+
+$ [in demo-delta-0-1-0] wget -qO- -T 5 http://127.0.0.1:8092/api/chain
+Error: no container with name or ID "brickkit-proj-demo-delta-0-1-0-1" found: no such container
+
+$ GET :8081/api/infra (local shell)
+
+<scratchpad>/bin/run011-rootful.sh: line 52: kill: (2476213) - No such process
+up exited with 1
+$ ~/.local/bin/brickkit down
+🛑 Stopping project proj
+❌ Error: podman failed to run
+   Command: podman compose -p brickkit-proj down --remove-orphans
+   Output: [4m>>>> Executing external compose provider "/usr/libexec/docker/cli-plugins/docker-compose". Please see podman-compose(1) for how to disable this message. <<<<
+      [0mfailed to connect to the docker API at unix:///run/podman/podman.sock; check if the path is correct and if the daemon is running: dial unix /run/podman/podman.sock: connect: no such file or directory
+      Error: executing /usr/libexec/docker/cli-plugins/docker-compose -p brickkit-proj down --remove-orphans: exit status 1
+{"time":"…","level":"ERROR","message":"Command failed","command":"brickkit down","elapsed_ms":196,"error_code":"ENGINE_FAILED","error":"ENGINE_FAILED: Error: podman failed to run; Command=podman compose -p brickkit-proj down --remove-orphans; Output=\u001b[4m>>>> Executing external compose provider \"/usr/libexec/docker/cli-plugins/docker-compose\". Please see podman-compose(1) for how to disable this message. <<<< / \u001b[0mfailed to connect to the docker API at unix:///run/podman/podman.sock; check if the path is correct and if the daemon is running: dial unix /run/podman/podman.sock: connect: no such file or directory / Error: executing /usr/libexec/docker/cli-plugins/docker-compose -p brickkit-proj down --remove-orphans: exit status 1","exit_code":1}
+[exit 1]
+
+######## cleanup
+base resources removed
+demo images removed from root's storage
+log: /tmp/r011-rootful.log
+
+######## attempt 2 (socket started by the script)
+# 0-11 rootful (2026-10-17), BrickKit CLI v1.7.2, podman version 5.7.0, rootless=false, network netavark
+# root's podman.socket: active (started by this script: yes)
+
+######## part 0: base resources in rootful Podman (host 35432, 34222)
+$ podman run -d --name r011-pg -e POSTGRES_PASSWORD=r011 -p 35432:5432 docker.io/library/postgres:16-alpine
+f9d7d0284c566d23f599a0235f5bcb2dd2becd4c649672869340141e6212d13e
+[exit 0]
+$ podman run -d --name r011-nats -p 34222:4222 docker.io/library/nats:2.10-alpine
+4688303895a909410fbcf41f18242d60243baefc76c671f2da5db2554abdc210
+[exit 0]
+
+######## part 1: everything in rootful Podman containers
+target: podman
+
+vars:
+  PG_PORT: "35432"
+  NATS_URL: nats://host.docker.internal:34222
+
+components:
+  - id: demo/delta
+  - id: demo/gamma
+  - id: demo/pyshell
+    members:
+      - id: demo/pyr
+  - id: demo/shell
+    members:
+      - id: demo/alpha
+      - id: demo/beta
+$ ~/.local/bin/brickkit build
+🔨 Building demo/alpha@0.1.0 → demo-alpha:0.1.0
+✅ Built demo/alpha@0.1.0 → demo-alpha:0.1.0
+🔨 Building demo/beta@0.1.0 → demo-beta:0.1.0
+✅ Built demo/beta@0.1.0 → demo-beta:0.1.0
+🔨 Building demo/pyr@0.1.0 → demo-pyr:0.1.0
+✅ Built demo/pyr@0.1.0 → demo-pyr:0.1.0
+🔨 Building demo/delta@0.1.0 → demo-delta:0.1.0
+✅ Built demo/delta@0.1.0 → demo-delta:0.1.0
+🔨 Building demo/gamma@0.1.0 → demo-gamma:0.1.0
+✅ Built demo/gamma@0.1.0 → demo-gamma:0.1.0
+🔨 Building demo/pyshell@0.1.0 → demo-pyshell:0.1.0
+✅ Built demo/pyshell@0.1.0 → demo-pyshell:0.1.0
+🔨 Building demo/shell@0.1.0 → demo-shell:0.1.0
+✅ Built demo/shell@0.1.0 → demo-shell:0.1.0
+[exit 0]
+build took 20 s
+$ podman images --format {{.Repository}}:{{.Tag}} {{.Size}} --filter reference=localhost/demo-*
+localhost/demo-shell:0.1.0 18.2 MB
+localhost/demo-gamma:0.1.0 18.2 MB
+localhost/demo-pyshell:0.1.0 54.2 MB
+localhost/demo-pyr:0.1.0 54.2 MB
+localhost/demo-delta:0.1.0 54.2 MB
+localhost/demo-beta:0.1.0 18.2 MB
+localhost/demo-alpha:0.1.0 17.3 MB
+[exit 0]
+$ ~/.local/bin/brickkit up
+🚀 Starting project proj (target: podman)
+📋 Component state calculation:
+   ✅ demo/alpha@0.1.0    starting (demo/beta needs it)
+   ✅ demo/beta@0.1.0     starting (demo/gamma needs it)
+   ✅ demo/pyr@0.1.0      starting (demo/delta needs it)
+   ✅ demo/delta@0.1.0    starting (top-level)
+   ✅ demo/gamma@0.1.0    starting (top-level)
+   ✅ demo/pyshell@0.1.0  starting (top-level)
+   ✅ demo/shell@0.1.0    starting (top-level)
+
+📋 Start order (topological sort):
+   1. demo-pyshell-0-1-0  no dependencies  (hosts demo/pyr@0.1.0)
+   2. demo-shell-0-1-0    no dependencies  (hosts demo/alpha@0.1.0, demo/beta@0.1.0)
+   3. demo-delta-0-1-0    ← depends on 1, 2
+   4. demo-gamma-0-1-0    ← depends on 2
+
+Can start on their own: demo-pyshell-0-1-0, demo-shell-0-1-0 (no dependencies)
+Longest dependency chain (2 levels): demo-shell-0-1-0 → demo-delta-0-1-0
+   Components not on this chain start in parallel with it
+
+Dependency graph:
+   demo/delta@0.1.0 → demo/alpha@0.1.0
+                    → demo/pyr@0.1.0
+   demo/gamma@0.1.0 → demo/beta@0.1.0
+   demo/beta@0.1.0 → demo/alpha@0.1.0
+📄 Generated: .brickkit/generated/compose.yaml
+
+🔧 Database migrations that run before startup (on failure that component won't start):
+   demo/alpha@0.1.0  /server migrate
+   demo/gamma@0.1.0  /server migrate
+
+🐳 Starting (podman)...
+   demo-gamma-0-1-0             running (healthy)
+   demo-delta-0-1-0             running (healthy)
+   demo-pyshell-0-1-0           running (healthy)
+   demo-shell-0-1-0             running (healthy)
+✅ All components started (4)
+
+💡 View the status: brickkit status
+   View the logs: podman compose -p brickkit-proj logs -f
+[exit 0]
+up took 23 s
+$ podman ps --filter name=brickkit-proj --format {{.Names}} | {{.Status}}
+brickkit-proj-demo-pyshell-0-1-0-1 | Up 23 seconds (healthy)
+brickkit-proj-demo-shell-0-1-0-1 | Up 22 seconds (healthy)
+brickkit-proj-demo-gamma-0-1-0-1 | Up 22 seconds (healthy)
+brickkit-proj-demo-delta-0-1-0-1 | Up 12 seconds (healthy)
+[exit 0]
+$ [in demo-gamma-0-1-0] wget -qO- -T 5 http://127.0.0.1:8083/api/chain
+wget: download timed out
+
+$ [in demo-delta-0-1-0] wget -qO- -T 5 http://127.0.0.1:8092/api/chain
+wget: download timed out
+
+$ [in demo-delta-0-1-0] wget -qO- -T 5 http://127.0.0.1:8092/api/infra
+{"pg": "host.docker.internal:35432 FAIL timed out", "nats": "host.docker.internal:34222 FAIL timed out"}
+$ [in demo-gamma-0-1-0] cat /etc/hosts
+10.89.0.1	host.docker.internal
+127.0.0.1	localhost
+::1	localhost
+10.89.0.1	host.containers.internal
+10.89.0.6	ecd25c56e5ed brickkit-proj-demo-gamma-0-1-0-1
+
+$ podman stats --no-stream --format {{.Name}} {{.MemUsage}}
+r011-pg 23.02MB / 15.83GB
+r011-nats 3.154MB / 15.83GB
+brickkit-proj-demo-pyshell-0-1-0-1 13.33MB / 15.83GB
+brickkit-proj-demo-shell-0-1-0-1 1.917MB / 15.83GB
+brickkit-proj-demo-gamma-0-1-0-1 1.876MB / 15.83GB
+brickkit-proj-demo-delta-0-1-0-1 16.56MB / 15.83GB
+[exit 0]
+$ ~/.local/bin/brickkit status
+📊 Project status: proj (target: podman)
+
+✅ Running (7 components)
+ ┌──────────────┬─────────┬─────────────────────────────────────────────────┬──────┐
+ │ Component    │ Version │ Status                                          │ Port │
+ ├──────────────┼─────────┼─────────────────────────────────────────────────┼──────┤
+ │ demo/alpha   │ 0.1.0   │ running (healthy) (in shell demo/shell@0.1.0)   │      │
+ │ demo/beta    │ 0.1.0   │ running (healthy) (in shell demo/shell@0.1.0)   │      │
+ │ demo/gamma   │ 0.1.0   │ running (healthy)                               │      │
+ │ demo/pyr     │ 0.1.0   │ running (healthy) (in shell demo/pyshell@0.1.0) │      │
+ │ demo/delta   │ 0.1.0   │ running (healthy)                               │      │
+ │ demo/pyshell │ 0.1.0   │ running (healthy)                               │      │
+ │ demo/shell   │ 0.1.0   │ running (healthy)                               │      │
+ └──────────────┴─────────┴─────────────────────────────────────────────────┴──────┘
+
+[exit 0]
+$ ~/.local/bin/brickkit down
+🛑 Stopping project proj
+✅ All components stopped
+
+💡 Data volumes were not deleted; database data is still there
+   For a full cleanup, run by hand: podman volume rm <volume-name>
+   Start again with: brickkit up
+[exit 0]
+
+######## part 2: the shells as local processes (root), gamma and delta in rootful containers
+target: podman
+
+vars:
+  PG_PORT: "35432"
+  NATS_URL: nats://host.docker.internal:34222
+
+components:
+  - id: demo/delta
+  - id: demo/gamma
+  - id: demo/pyshell
+    mode: local
+    members:
+      - id: demo/pyr
+  - id: demo/shell
+    mode: local
+    members:
+      - id: demo/alpha
+      - id: demo/beta
+28:🔧 Database migrations that run before startup (on failure that component won't start):
+33:   demo-gamma-0-1-0             running (healthy)
+34:   demo-delta-0-1-0             running (healthy)
+43:demo-pyshell-0-1-0  listening on port 8090
+44:demo-alpha-0-1-0-migration  running the migration from source: go run ./cmd/server migrate
+45:demo-alpha-0-1-0-migration | 2026/10/17 17:47:12 demo/alpha migrate: nothing to do (PG_HOST=localhost PG_PORT=35432)
+46:demo-alpha-0-1-0-migration  migration finished
+50:demo-shell-0-1-0  listening on port 8080
+$ grep -n -A3 extra_hosts .brickkit/generated/compose.yaml
+30:    extra_hosts:
+31-      - demo-alpha-0-1-0:host-gateway
+32-      - demo-pyr-0-1-0:host-gateway
+33-      - host.docker.internal:host-gateway
+--
+63:    extra_hosts:
+64-      - demo-beta-0-1-0:host-gateway
+65-      - host.docker.internal:host-gateway
+66-    healthcheck:
+--
+91:    extra_hosts:
+92-      - demo-beta-0-1-0:host-gateway
+93-      - host.docker.internal:host-gateway
+94-    image: demo-gamma:0.1.0
+[exit 0]
+$ [in demo-gamma-0-1-0] cat /etc/hosts
+10.89.0.1	host.docker.internal
+10.89.0.1	demo-beta-0-1-0
+127.0.0.1	localhost
+::1	localhost
+10.89.0.1	host.containers.internal
+10.89.0.4	9af140ff00a9 brickkit-proj-demo-gamma-0-1-0-1
+
+$ [in demo-gamma-0-1-0] wget -qO- -T 5 http://127.0.0.1:8083/api/chain
+{"beta":{"alpha":{"from":"demo/alpha","version":"0.1.0"},"alphaEndpoint":"http://localhost:8081","from":"demo/beta"},"betaEndpoint":"http://demo-beta-0-1-0:8082","from":"demo/gamma"}
+
+$ [in demo-delta-0-1-0] wget -qO- -T 5 http://127.0.0.1:8092/api/chain
+{"from": "demo/delta", "alphaEndpoint": "http://demo-alpha-0-1-0:8081", "pyrEndpoint": "http://demo-pyr-0-1-0:8091", "alpha": {"from": "demo/alpha", "version": "0.1.0"}, "pyr": {"from": "demo/pyr", "version": "0.1.0"}}
+$ GET :8081/api/infra (local shell)
+{"nats":"localhost:34222 ok","pg":"localhost:35432 ok"}
+
+up exited with 0
+$ ~/.local/bin/brickkit down
+🛑 Stopping project proj
+✅ All components stopped
+
+💡 Data volumes were not deleted; database data is still there
+   For a full cleanup, run by hand: podman volume rm <volume-name>
+   Start again with: brickkit up
+[exit 0]
+
+######## cleanup
+base resources removed
+demo images removed from root's storage
+root's podman.socket now: inactive
+log: /tmp/r011-rootful.log
+
+######## host state read afterwards as the user (no root)
+/proc/sys/net/bridge/bridge-nf-call-iptables = 1
+/proc/sys/net/ipv4/ip_forward = 1
+br_netfilter           32768  0
+
+######## run011-rootful.sh (attempt 2; attempt 1 lacked the podman.socket lines)
+#!/usr/bin/env bash
+# 0-11 rootful part: the 0-06 stub project under rootful Podman (run with sudo). Everything happens in /tmp/r011-rootful
+# and in root's Podman storage; the log ends up owned by the invoking user. Cleans up its containers at the end.
+set -uo pipefail
+[ "$(id -u)" = 0 ] || { echo "run me with sudo"; exit 1; }
+SRC=<scratchpad>/r006/proj
+BK=~/.local/bin/brickkit
+OWNER=${SUDO_USER:-zhijie}
+W=/tmp/r011-rootful; LOG=$W.log; mv -f "$LOG" "$LOG.1" 2>/dev/null   # keep the previous attempt
+rm -rf "$W"; mkdir -p "$W"
+exec > >(tee "$LOG") 2>&1
+run() { echo "\$ $*"; "$@" 2>&1 | sed -E 's/"time":"[^"]*"/"time":"…"/'; echo "[exit ${PIPESTATUS[0]}]"; }
+pexec() { local c=$1; shift; echo "\$ [in $c] $*"; podman exec "brickkit-proj-$c-1" "$@" 2>&1; echo; }
+echo "# 0-11 rootful ($(date +%F)), $($BK version | head -1), $(podman --version), rootless=$(podman info --format '{{.Host.Security.Rootless}}'), network $(podman info --format '{{.Host.NetworkBackend}}')"
+# podman compose hands the work to docker-compose, which talks to Podman through its API socket: root's must be running.
+# Started for this run only (not enabled), and stopped again at the end when this script started it.
+SOCK_STARTED=no
+if ! systemctl is-active --quiet podman.socket; then systemctl start podman.socket && SOCK_STARTED=yes; fi
+echo "# root's podman.socket: $(systemctl is-active podman.socket) (started by this script: $SOCK_STARTED)"
+cp -a "$SRC" "$W/proj"; rm -rf "$W/proj/.brickkit/generated"; cd "$W/proj"
+
+echo; echo "######## part 0: base resources in rootful Podman (host 35432, 34222)"
+podman rm -f r011-pg r011-nats >/dev/null 2>&1
+run podman run -d --name r011-pg -e POSTGRES_PASSWORD=r011 -p 35432:5432 docker.io/library/postgres:16-alpine
+run podman run -d --name r011-nats -p 34222:4222 docker.io/library/nats:2.10-alpine
+deploy() { # <local components...>
+  local l=" $* "; m() { [[ $l == *" $1 "* ]] && echo "    mode: local"; }
+  { echo "target: podman"; echo; echo "vars:"; echo '  PG_PORT: "35432"'; echo "  NATS_URL: nats://host.docker.internal:34222"; echo; echo "components:"
+    echo "  - id: demo/delta"; m delta; echo "  - id: demo/gamma"; m gamma
+    echo "  - id: demo/pyshell"; m pyshell; echo "    members:"; echo "      - id: demo/pyr"
+    echo "  - id: demo/shell"; m shell; echo "    members:"; echo "      - id: demo/alpha"; echo "      - id: demo/beta"; } > deploy.yaml; cat deploy.yaml; }
+
+echo; echo "######## part 1: everything in rootful Podman containers"
+deploy
+T0=$(date +%s); run $BK build; echo "build took $(( $(date +%s) - T0 )) s"
+run podman images --format '{{.Repository}}:{{.Tag}} {{.Size}}' --filter reference='localhost/demo-*'
+T0=$(date +%s); run $BK up; echo "up took $(( $(date +%s) - T0 )) s"
+run podman ps --filter name=brickkit-proj --format '{{.Names}} | {{.Status}}'
+pexec demo-gamma-0-1-0 wget -qO- -T 5 http://127.0.0.1:8083/api/chain
+pexec demo-delta-0-1-0 wget -qO- -T 5 http://127.0.0.1:8092/api/chain
+pexec demo-delta-0-1-0 wget -qO- -T 5 http://127.0.0.1:8092/api/infra
+pexec demo-gamma-0-1-0 cat /etc/hosts
+run podman stats --no-stream --format '{{.Name}} {{.MemUsage}}'
+run $BK status
+run $BK down
+
+echo; echo "######## part 2: the shells as local processes (root), gamma and delta in rootful containers"
+deploy shell pyshell
+setsid $BK up > $W/up2.log 2>&1 & UP=$!
+for _ in $(seq 1 400); do wget -qO- -T 1 http://localhost:8081/healthz >/dev/null 2>&1 && podman ps --format '{{.Status}}' --filter name=brickkit-proj-demo-delta | grep -q healthy && podman ps --format '{{.Status}}' --filter name=brickkit-proj-demo-gamma | grep -q healthy && break; kill -0 $UP 2>/dev/null || break; sleep 0.3; done
+grep -n "migration\|listening\|healthy\|Error" $W/up2.log
+run grep -n -A3 "extra_hosts" .brickkit/generated/compose.yaml
+pexec demo-gamma-0-1-0 cat /etc/hosts
+pexec demo-gamma-0-1-0 wget -qO- -T 5 http://127.0.0.1:8083/api/chain
+pexec demo-delta-0-1-0 wget -qO- -T 5 http://127.0.0.1:8092/api/chain
+echo "\$ GET :8081/api/infra (local shell)"; wget -qO- -T 5 http://localhost:8081/api/infra; echo
+kill -INT $UP; wait $UP; echo "up exited with $?"
+run $BK down
+
+echo; echo "######## cleanup"
+podman rm -f r011-pg r011-nats >/dev/null 2>&1 && echo "base resources removed"
+for i in $(podman images -q --filter reference='localhost/demo-*'); do podman rmi -f $i >/dev/null 2>&1; done; echo "demo images removed from root's storage"
+[ "$SOCK_STARTED" = yes ] && systemctl stop podman.socket podman.service 2>/dev/null; echo "root's podman.socket now: $(systemctl is-active podman.socket)"
+chown "$OWNER" "$LOG"; echo "log: $LOG"
