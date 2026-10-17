@@ -33,7 +33,7 @@
 | `mode: local` | BrickKit 回复不做长期运行的本机部署；本机进程三行只量资源与通信，标“不推荐”（图省事的另类模式） | FRR-001 已关闭（v1.4.2 复测通过） |
 | `local` 之后的用法 | 全部部署形态测完后本项目基本不再用 `local`，用 Docker 或 Podman（按结果定）；给 BrickKit 的部署形态反馈预定在第 14 步一次发出，中途不发（用户 2026-10-17） | experiment-plan.md 的“给 BrickKit 的部署形态反馈（预定）” |
 | 记录方式 | 档案（给 AI，详细、先结论、表格优先）+ 报告（给用户，含“用什么测的”与额外发现的表）+ 原始数据 | experiment-plan.md 的“记录与报告” |
-| BrickKit CLI | 项目要求升到 v1.8.0（2026-10-17；项目技能同步更新）。v1.6.0 起只写 `deployment.image` 的组件来自本地源也拉取，要在本机构建的组件必须写 `deployment.build` | `infra/scripts/lib/require-brickkit.sh` |
+| BrickKit CLI | 项目要求升到 v1.8.1（2026-10-17；项目技能同步更新）。v1.6.0 起只写 `deployment.image` 的组件来自本地源也拉取，要在本机构建的组件必须写 `deployment.build` | `infra/scripts/lib/require-brickkit.sh` |
 
 **第 0 步的进度**：
 
@@ -59,7 +59,7 @@
 
 **已知、暂不处理**：`infra/scripts/tests/test_ship_dryrun.sh` 失败——旧的 `ship.sh` 还调用旧 `be-acceptance` 的命令，迁移后已不存在；发布工具随重建重新提供，届时一并处理。
 
-**给 BrickKit 的收件箱** `brickkit-feedback/rebuild.md`：FRR-001 到 FRR-005、FRB-001 到 FRB-004 全部关闭（最后一次复测 2026-10-17，v1.7.2）；FRR-006 已关闭（v1.8.0）；FRB-005 复测部分通过（文档与识别都对；环境检查脚本的固定日志路径与 `status`/`down` 缺 socket 提示两处小问题，等回复，不挡路）。
+**给 BrickKit 的收件箱** `brickkit-feedback/rebuild.md`：FRR-001 到 FRR-005、FRB-001 到 FRB-004 全部关闭（最后一次复测 2026-10-17，v1.7.2）；FRR-006 已关闭（v1.8.0）；FRB-005 也已关闭（v1.8.1 复测通过）；没有未回复的条目。
 
 ## 任务结束时：知识库反馈
 

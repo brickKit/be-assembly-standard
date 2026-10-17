@@ -52,7 +52,7 @@
 
 `dev/rebuild/experiment-data/0-11/run1.txt`（两次运行的日志、事后以普通用户读到的主机状态、脚本 `run011-rootful.sh`）；`run2-firewall.txt`（诊断日志与脚本 `run011-fw.sh`）
 
-## 8. FRB-005 复测（v1.8.0，2026-10-17）
+## 8. FRB-005 复测（v1.8.0、v1.8.1，2026-10-17）
 
 BrickKit 在 v1.8.0 重写了排障文档的 Podman 部分，把有根与 Docker 同机的识别放进 `scripts/podman/check-environment.sh`，并让 CLI 按 socket 的路径给出开启命令。
 
@@ -64,4 +64,8 @@ BrickKit 在 v1.8.0 重写了排障文档的 Podman 部分，把有根与 Docker
 | 临时加上规则再跑 | “容器互访”通过；但最后一项误报“删除容器失败”，退出码仍是 1：日志固定写 `/tmp/brickkit-podman-check.log`，前一次普通用户运行留下的文件归普通用户，`fs.protected_regular = 2` 下 root 打不开，`podman rm` 没执行 |
 | root 的 socket 停着时 `brickkit status` | `ENGINE_FAILED`，没有开启命令：CLI 只认 `up` 那种报错措辞，`ps`、`down` 的措辞是 “Cannot connect to the Docker daemon at …” |
 
-**结论**：部分通过；两处小问题记在 FRB-005 上请 BrickKit 补，不挡路。原始数据：`dev/rebuild/experiment-data/0-11/run3-frb005-retest.txt`。
+**结论**：v1.8.0 时部分通过，两处小问题记在 FRB-005 上。
+
+v1.8.1 修了这两处（检查脚本每次用 `mktemp` 建日志；socket 提示认两种措辞），第二次复测（用户以 root 执行）通过：`/tmp` 里留着普通用户的同名旧文件时，root 跑检查识别出与 Docker 同机、退出码 1，加上规则后退出码 0；root 与无根的 socket 停着时，`status`、`down` 都给出对应的开启命令。FRB-005 关闭。
+
+原始数据：`dev/rebuild/experiment-data/0-11/run3-frb005-retest.txt`（v1.8.0）、`run4-frb005-retest2.txt`（v1.8.1）。

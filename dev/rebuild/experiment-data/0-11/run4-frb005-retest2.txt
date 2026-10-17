@@ -1,0 +1,72 @@
+# FRB-005 second retest, rootful (2026-10-17 18:59:51), BrickKit CLI v1.8.1; root's podman.socket at start: inactive
+# a file left by a normal user's earlier run: -rw-rw-r-- 1 zhijie zhijie 33 Oct 17 18:59 /tmp/brickkit-podman-check.log
+
+######## 1. check-environment.sh as root
+== Podman environment check ==
+
+✅ podman found: podman version 5.7.0
+✅ $XDG_DATA_HOME does not look snap-redirected.
+✅ 'podman info' runs cleanly.
+Running as root: checking rootful Podman.
+✅ podman.socket is active (needed for 'podman compose').
+
+Checking that two containers on one network can reach each other...
+❌ A container could not reach another container on the same network.
+❌ This matches rootful Podman next to Docker: the FORWARD policy is DROP and Docker's DOCKER-USER chain exists.
+
+Let Podman's bridges through in Docker's chain (persisting the rules is up to this host's setup):
+  iptables -I DOCKER-USER -i podman+ -j ACCEPT
+  iptables -I DOCKER-USER -o podman+ -j ACCEPT
+or don't run rootful Podman and Docker on the same machine. Rootless Podman isn't affected.
+Details: docs/en/10-troubleshooting/01-up-down-issues.md
+
+Running a real create+remove cycle to check teardown reliability...
+✅ Container removed cleanly. This machine does not show the AppArmor teardown issue.
+You don't need scripts/podman/fix-apparmor.sh.
+
+[exit 1]
+
+######## 2. with Podman's bridges accepted in DOCKER-USER
+== Podman environment check ==
+
+✅ podman found: podman version 5.7.0
+✅ $XDG_DATA_HOME does not look snap-redirected.
+✅ 'podman info' runs cleanly.
+Running as root: checking rootful Podman.
+✅ podman.socket is active (needed for 'podman compose').
+
+Checking that two containers on one network can reach each other...
+✅ Containers on one network reach each other.
+
+Running a real create+remove cycle to check teardown reliability...
+✅ Container removed cleanly. This machine does not show the AppArmor teardown issue.
+You don't need scripts/podman/fix-apparmor.sh.
+
+Nothing to do.
+[exit 0]
+rules removed:
+-N DOCKER-USER
+
+######## 3. root's podman.socket stopped: status and down
+podman.socket: inactive
+$ brickkit status
+📊 Project status: proj (target: podman)
+
+❌ Error: podman failed to run
+   Command: podman compose -p brickkit-proj ps -a --format json
+   Output: [4m>>>> Executing external compose provider "/usr/libexec/docker/cli-plugins/docker-compose". Please see podman-compose(1) for how to disable this message. <<<<
+      [0mCannot connect to the Docker daemon at unix:///run/podman/podman.sock. Is the docker daemon running?
+      Error: executing /usr/libexec/docker/cli-plugins/docker-compose -p brickkit-proj ps -a --format json: exit status 1
+   Suggestion: podman compose talks to Podman through its API socket, and that socket isn't running — enable it: sudo systemctl enable --now podman.socket (more: brickkit docs 10-troubleshooting/01-up-down-issues, online: https://github.com/brickKit/brickKit/blob/v1.8.1/docs/en/10-troubleshooting/01-up-down-issues.md)
+$ brickkit down
+🛑 Stopping project proj
+❌ Error: podman failed to run
+   Command: podman compose -p brickkit-proj down --remove-orphans
+   Output: [4m>>>> Executing external compose provider "/usr/libexec/docker/cli-plugins/docker-compose". Please see podman-compose(1) for how to disable this message. <<<<
+      [0mCannot connect to the Docker daemon at unix:///run/podman/podman.sock. Is the docker daemon running?
+      Error: executing /usr/libexec/docker/cli-plugins/docker-compose -p brickkit-proj down --remove-orphans: exit status 1
+   Suggestion: podman compose talks to Podman through its API socket, and that socket isn't running — enable it: sudo systemctl enable --now podman.socket (more: brickkit docs 10-troubleshooting/01-up-down-issues, online: https://github.com/brickKit/brickKit/blob/v1.8.1/docs/en/10-troubleshooting/01-up-down-issues.md)
+
+restored: podman.socket inactive; DOCKER-USER: -N DOCKER-USER 
+files left in /tmp by the check: /tmp/brickkit-podman-check.log 
+log: /tmp/r011-fw3.log
