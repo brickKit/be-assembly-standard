@@ -1,0 +1,930 @@
+# 0-04 run 1 (2026-10-17), BrickKit CLI v1.5.0, Docker 29.7.1, Go 1.26.0 (golang:1.26-alpine)
+# setup script: r004-setup.sh (copied below the logs); stub members demo/alpha (8081), demo/beta (8082, depends on alpha); shell demo/shell (8080) imports both through its own go.mod with local replace, vendored for the image build
+
+######## part 1: add, lint, dry-run
+$ brickkit add --local --yes
+➕ Adding demo/alpha@0.1.0, demo/beta@0.1.0, demo/shell@0.1.0
+   ✅ demo/alpha@0.1.0 (in shell demo/shell)
+   ✅ demo/beta@0.1.0 (in shell demo/shell)
+   ✅ demo/shell@0.1.0
+📝 Written: brickkit.yaml, deploy.yaml
+📝 Config skeletons: config/demo-alpha.yaml, config/demo-beta.yaml
+[exit 0]
+$ cat brickkit.yaml (components)
+components:
+  - id: demo/alpha
+    version: 0.1.0
+  - id: demo/beta
+    version: 0.1.0
+  - id: demo/shell
+    version: 0.1.0
+    kind: shell
+$ cat deploy.yaml
+target: docker # docker | podman | k8s
+
+components:
+  - id: demo/shell
+    members:
+      - id: demo/alpha
+      - id: demo/beta
+$ brickkit lint --all
+✅ brickkit.yaml
+✅ deploy.yaml
+✅ cross-file: brickkit.yaml ↔ deploy.yaml ↔ config/
+⚠️ [DOC_PLACEHOLDER] a placeholder (TODO) is still in the text
+   File: AGENTS.md
+   Line: 7
+⚠️ [DOC_PLACEHOLDER] a placeholder (TODO) is still in the text
+   File: AGENTS.md
+   Line: 11
+⚠️ [DOC_PLACEHOLDER] a placeholder (TODO) is still in the text
+   File: AGENTS.md
+   Line: 15
+⚠️ [DOC_PLACEHOLDER] a placeholder (TODO) is still in the text
+   File: AGENTS.md
+   Line: 19
+✅ components/demo/alpha/component.yaml
+✅ components/demo/beta/component.yaml
+✅ shell/demo/shell/component.yaml
+⚠️ [DOC_FILE_MISSING] BRICKKIT.md is missing
+   File: components/demo/alpha/BRICKKIT.md
+⚠️ [DOC_FILE_MISSING] AGENTS.md is missing
+   File: components/demo/alpha/AGENTS.md
+⚠️ [DOC_FILE_MISSING] CLAUDE.md is missing
+   File: components/demo/alpha/CLAUDE.md
+⚠️ [DOC_FILE_MISSING] README.md is missing
+   File: components/demo/alpha/README.md
+⚠️ [DOC_FILE_MISSING] BRICKKIT.md is missing
+   File: components/demo/beta/BRICKKIT.md
+⚠️ [DOC_FILE_MISSING] AGENTS.md is missing
+   File: components/demo/beta/AGENTS.md
+⚠️ [DOC_FILE_MISSING] CLAUDE.md is missing
+   File: components/demo/beta/CLAUDE.md
+⚠️ [DOC_FILE_MISSING] README.md is missing
+   File: components/demo/beta/README.md
+⚠️ [DOC_FILE_MISSING] BRICKKIT.md is missing
+   File: shell/demo/shell/BRICKKIT.md
+⚠️ [DOC_FILE_MISSING] AGENTS.md is missing
+   File: shell/demo/shell/AGENTS.md
+⚠️ [DOC_FILE_MISSING] CLAUDE.md is missing
+   File: shell/demo/shell/CLAUDE.md
+⚠️ [DOC_FILE_MISSING] README.md is missing
+   File: shell/demo/shell/README.md
+
+📋 Checked 10 files: 0 with errors, 16 warnings
+[exit 0]
+$ brickkit up --dry-run
+🚀 Starting project proj (target: docker)
+📋 Component state calculation:
+   ✅ demo/alpha@0.1.0  starting (demo/beta needs it)
+   ✅ demo/beta@0.1.0   starting (top-level)
+   ✅ demo/shell@0.1.0  starting (top-level)
+
+📋 Start order (topological sort):
+   1. demo-shell-0-1-0  no dependencies  (hosts demo/alpha@0.1.0, demo/beta@0.1.0)
+
+Can start on their own: demo-shell-0-1-0 (no dependencies)
+
+Dependency graph:
+   demo/beta@0.1.0 → demo/alpha@0.1.0
+📄 Generated: .brickkit/generated/compose.yaml
+
+💡 --dry-run only generates the files and starts no component
+   View it: cat .brickkit/generated/compose.yaml
+[exit 0]
+$ compose: shell service
+demo-shell-0-1-0 {"image": "demo-shell:0.1.0", "networks": {"brickkit-net": {"aliases": ["demo-alpha-0-1-0", "demo-beta-0-1-0"]}}, "env_file": [{"path": ".brickkit/generated/env/demo-shell-0-1-0.env"}], "depends_on": null, "ports": null}
+$ env file (BRICKKIT_SERVED_*)
+BRICKKIT_SERVED_MEMBERS_CONFIG="[{\"componentId\":\"demo/alpha\",\"version\":\"0.1.0\",\"httpPort\":8081,\"extraPorts\":[],\"config\":{\"GREETING\":\"hello from alpha\"}},{\"componentId\":\"demo/beta\",\"version\":\"0.1.0\",\"httpPort\":8082,\"extraPorts\":[],\"config\":{\"DEMO_ALPHA_ENDPOINT\":\"http://demo-shell-0-1-0:8081\",\"GREETING\":\"hello from beta\"}}]"
+
+######## part 2: build, label, up, calls through the shell
+$ brickkit build
+🔨 Building demo/alpha@0.1.0 → demo-alpha:0.1.0
+✅ Built demo/alpha@0.1.0 → demo-alpha:0.1.0
+🔨 Building demo/beta@0.1.0 → demo-beta:0.1.0
+✅ Built demo/beta@0.1.0 → demo-beta:0.1.0
+🔨 Building demo/shell@0.1.0 → demo-shell:0.1.0
+✅ Built demo/shell@0.1.0 → demo-shell:0.1.0
+[exit 0]
+$ label demo-alpha:0.1.0:  size=8641481
+$ label demo-beta:0.1.0:  size=9134898
+$ label demo-shell:0.1.0: demo/alpha@0.1.0,demo/beta@0.1.0 size=9139821
+$ brickkit up
+🚀 Starting project proj (target: docker)
+📋 Component state calculation:
+   ✅ demo/alpha@0.1.0  starting (demo/beta needs it)
+   ✅ demo/beta@0.1.0   starting (top-level)
+   ✅ demo/shell@0.1.0  starting (top-level)
+
+📋 Start order (topological sort):
+   1. demo-shell-0-1-0  no dependencies  (hosts demo/alpha@0.1.0, demo/beta@0.1.0)
+
+Can start on their own: demo-shell-0-1-0 (no dependencies)
+
+Dependency graph:
+   demo/beta@0.1.0 → demo/alpha@0.1.0
+📄 Generated: .brickkit/generated/compose.yaml
+
+🐳 Starting (docker)...
+   demo-shell-0-1-0             running (healthy)
+✅ All components started (1)
+
+💡 View the status: brickkit status
+   View the logs: docker compose -p brickkit-proj logs -f
+[exit 0]
+$ brickkit status
+📊 Project status: proj (target: docker)
+
+✅ Running (3 components)
+ ┌────────────┬─────────┬───────────────────────────────────────────────┬──────┐
+ │ Component  │ Version │ Status                                        │ Port │
+ ├────────────┼─────────┼───────────────────────────────────────────────┼──────┤
+ │ demo/alpha │ 0.1.0   │ running (healthy) (in shell demo/shell@0.1.0) │      │
+ │ demo/beta  │ 0.1.0   │ running (healthy) (in shell demo/shell@0.1.0) │      │
+ │ demo/shell │ 0.1.0   │ running (healthy)                             │      │
+ └────────────┴─────────┴───────────────────────────────────────────────┴──────┘
+
+[exit 0]
+$ docker logs demo-shell-0-1-0
+Error response from daemon: No such container: demo-shell-0-1-0
+[exit 1]
+container=brickkit-proj-demo-shell-0-1-0-1
+$ docker logs brickkit-proj-demo-shell-0-1-0-1
+2026/10/17 09:36:06 serving demo/alpha@0.1.0 on :8081
+2026/10/17 09:36:06 serving demo/beta@0.1.0 on :8082
+[exit 0]
+$ docker exec brickkit-proj-demo-shell-0-1-0-1 wget -qO- http://demo-alpha-0-1-0:8081/api/hello
+{"from":"demo/alpha","greeting":"hello from alpha","version":"0.1.0"}
+[exit 0]
+$ docker exec brickkit-proj-demo-shell-0-1-0-1 wget -qO- http://demo-beta-0-1-0:8082/api/chain
+{"alpha":{"from":"demo/alpha","greeting":"hello from alpha","version":"0.1.0"},"alphaEndpoint":"http://demo-shell-0-1-0:8081","from":"demo/beta","greeting":"hello from beta","version":"0.1.0"}
+[exit 0]
+$ docker exec brickkit-proj-demo-shell-0-1-0-1 wget -qO- http://localhost:8080/healthz
+ok[exit 0]
+$ docker stats
+brickkit-proj-demo-shell-0-1-0-1 2.688MiB / 14.74GiB 0.00%
+be-casdoor 216MiB / 14.74GiB 3.54%
+be-postgres 78MiB / 14.74GiB 4.58%
+be-nats 18.93MiB / 14.74GiB 0.04%
+be-rustfs 149.1MiB / 14.74GiB 3.54%
+be-traefik 123.8MiB / 14.74GiB 0.00%
+
+######## part 3: cases C1-C3 (C4-C6 of this pass are void: C3's upgrade left config/demo-alpha@0.1.0.yaml behind; rerun in part 4)
+
+== C1 move demo/beta out of the shell: it runs from its own image and calls alpha in the shell ==
+$ brickkit up
+🚀 Starting project proj (target: docker)
+📋 Component state calculation:
+   ✅ demo/alpha@0.1.0  starting (demo/beta needs it)
+   ✅ demo/beta@0.1.0   starting (top-level)
+   ✅ demo/shell@0.1.0  starting (top-level)
+
+📋 Start order (topological sort):
+   1. demo-shell-0-1-0  no dependencies  (hosts demo/alpha@0.1.0)
+   2. demo-beta-0-1-0   ← depends on 1
+
+Can start on their own: demo-shell-0-1-0 (no dependencies)
+Longest dependency chain (2 levels): demo-shell-0-1-0 → demo-beta-0-1-0
+
+Dependency graph:
+   demo/beta@0.1.0 → demo/alpha@0.1.0
+📄 Generated: .brickkit/generated/compose.yaml
+
+🐳 Starting (docker)...
+   demo-beta-0-1-0              running (healthy)
+   demo-shell-0-1-0             running (healthy)
+✅ All components started (2)
+
+💡 View the status: brickkit status
+   View the logs: docker compose -p brickkit-proj logs -f
+[exit 0]
+$ docker exec brickkit-proj-demo-beta-0-1-0-1 wget -qO- http://localhost:8082/api/chain
+{"alpha":{"from":"demo/alpha","greeting":"hello from alpha","version":"0.1.0"},"alphaEndpoint":"http://demo-shell-0-1-0:8081","from":"demo/beta","greeting":"hello from beta","version":"0.1.0"}
+[exit 0]
+$ docker logs brickkit-proj-demo-shell-0-1-0-1
+2026/10/17 09:36:47 serving demo/alpha@0.1.0 on :8081
+[exit 0]
+$ docker logs brickkit-proj-demo-beta-0-1-0-1
+2026/10/17 09:36:52 demo/beta@0.1.0 standalone on :8082
+[exit 0]
+$ docker stats
+brickkit-proj-demo-beta-0-1-0-1 2.281MiB / 14.74GiB
+brickkit-proj-demo-shell-0-1-0-1 1.773MiB / 14.74GiB
+$ brickkit down
+🛑 Stopping project proj
+✅ All components stopped
+
+💡 Data volumes were not deleted; database data is still there
+   For a full cleanup, run by hand: docker volume rm <volume-name>
+   Start again with: brickkit up
+[exit 0]
+
+== C2 the deploy file nests a component the shell does not compile in ==
+$ brickkit add demo/gamma --yes
+🔎 No version given for demo/gamma; the latest is 0.1.0 (install source local-dev)
+➕ Adding demo/gamma@0.1.0
+   ✅ demo/gamma@0.1.0
+📝 Written: brickkit.yaml, deploy.yaml
+📝 Config skeletons: config/demo-gamma.yaml
+[exit 0]
+$ brickkit up --dry-run
+🚀 Starting project proj (target: docker)
+📋 Component state calculation:
+   ✅ demo/alpha@0.1.0  starting (demo/beta needs it)
+   ✅ demo/beta@0.1.0   starting (top-level)
+   ✅ demo/gamma@0.1.0  starting (top-level)
+   ✅ demo/shell@0.1.0  starting (top-level)
+
+❌ Error: demo/gamma is listed in the members of demo/shell@0.1.0, but that shell's component.yaml does not contain it
+   File: deploy.yaml
+   Compiled into the shell (shell.members): demo/alpha@0.1.0, demo/beta@0.1.0
+   Suggestion: Remove it from members so it runs on its own, or use a shell version whose component.yaml lists it under shell.members
+{"time":"…","level":"ERROR","message":"Command failed","command":"brickkit up","elapsed_ms":6,"error_code":"CONFIG_INVALID","error":"CONFIG_INVALID: Error: demo/gamma is listed in the members of demo/shell@0.1.0, but that shell's component.yaml does not contain it; File=<scratch>/proj/deploy.yaml; Compiled into the shell (shell.members)=demo/alpha@0.1.0, demo/beta@0.1.0","exit_code":1}
+[exit 1]
+$ brickkit lint --all --quiet
+❌ Error: invalid arguments
+   Command: brickkit lint
+   Reason: unknown flag: --quiet
+   Suggestion: Run brickkit lint --help to see the parameter descriptions of that command
+{"time":"…","level":"ERROR","message":"Command failed","command":"brickkit lint","elapsed_ms":0,"error_code":"INVALID_ARGUMENT","error":"INVALID_ARGUMENT: Error: invalid arguments; Command=brickkit lint; Reason=unknown flag: --quiet","exit_code":2}
+[exit 2]
+
+== C3 a member's local repository moves to 0.2.0; the shell still declares 0.1.0 ==
+$ brickkit up --dry-run
+🚀 Starting project proj (target: docker)
+📋 Component state calculation:
+   ✅ demo/alpha@0.1.0  starting (demo/beta needs it)
+   ✅ demo/beta@0.1.0   starting (top-level)
+   ✅ demo/shell@0.1.0  starting (top-level)
+
+📋 Start order (topological sort):
+   1. demo-shell-0-1-0  no dependencies  (hosts demo/alpha@0.1.0, demo/beta@0.1.0)
+
+Can start on their own: demo-shell-0-1-0 (no dependencies)
+
+Dependency graph:
+   demo/beta@0.1.0 → demo/alpha@0.1.0
+📄 Generated: .brickkit/generated/compose.yaml
+
+💡 --dry-run only generates the files and starts no component
+   View it: cat .brickkit/generated/compose.yaml
+[exit 0]
+$ brickkit upgrade demo/alpha@0.2.0 --yes
+   ⬆️  demo/alpha: 0.1.0 → 0.2.0
+   ✅ demo/alpha@0.1.0 (requiredBy: demo/beta, demo/shell)
+📝 config/demo-alpha.yaml
+📝 Written: brickkit.yaml, deploy.yaml
+[exit 0]
+$ brickkit.yaml / deploy.yaml after upgrade
+components:
+  - id: demo/alpha
+    version: 0.2.0
+  - id: demo/alpha
+    version: 0.1.0
+    requiredBy: [demo/beta, demo/shell]
+  - id: demo/beta
+    version: 0.1.0
+  - id: demo/shell
+    version: 0.1.0
+    kind: shell
+target: docker # docker | podman | k8s
+
+components:
+  - id: demo/alpha
+  - id: demo/shell
+    members:
+      - id: demo/alpha@0.1.0
+      - id: demo/beta
+$ brickkit up --dry-run
+🚀 Starting project proj (target: docker)
+📋 Component state calculation:
+   ✅ demo/alpha@0.2.0  starting (top-level)
+   ✅ demo/alpha@0.1.0  starting (demo/beta needs it)
+   ✅ demo/beta@0.1.0   starting (top-level)
+   ✅ demo/shell@0.1.0  starting (top-level)
+
+📋 Start order (topological sort):
+   1. demo-alpha-0-2-0  no dependencies
+   2. demo-shell-0-1-0  no dependencies  (hosts demo/alpha@0.1.0, demo/beta@0.1.0)
+
+Can start on their own: demo-alpha-0-2-0, demo-shell-0-1-0 (no dependencies)
+
+Dependency graph:
+   demo/beta@0.1.0 → demo/alpha@0.1.0
+📄 Generated: .brickkit/generated/compose.yaml
+
+💡 --dry-run only generates the files and starts no component
+   View it: cat .brickkit/generated/compose.yaml
+[exit 0]
+
+
+######## part 4: C3b, C4-C6 with config/ restored between cases
+$ brickkit up --dry-run
+🚀 Starting project proj (target: docker)
+📋 Component state calculation:
+   ✅ demo/alpha@0.1.0  starting (demo/beta needs it)
+   ✅ demo/beta@0.1.0   starting (top-level)
+   ✅ demo/shell@0.1.0  starting (top-level)
+
+📋 Start order (topological sort):
+   1. demo-shell-0-1-0  no dependencies  (hosts demo/alpha@0.1.0, demo/beta@0.1.0)
+
+Can start on their own: demo-shell-0-1-0 (no dependencies)
+
+Dependency graph:
+   demo/beta@0.1.0 → demo/alpha@0.1.0
+📄 Generated: .brickkit/generated/compose.yaml
+
+💡 --dry-run only generates the files and starts no component
+   View it: cat .brickkit/generated/compose.yaml
+[exit 0]
+
+== C3b container mode: brickkit.yaml says alpha 0.1.0, the working copy says 0.2.0 and has 0.2.0 code; build alpha ==
+$ brickkit build demo/alpha@0.1.0 --force
+🔨 Building demo/alpha@0.1.0 → demo-alpha:0.1.0
+❌ Error: component not found
+   Component: demo/alpha@0.1.0
+   Reason: The component was not found in any install source
+   Install sources tried: local-dev (local), local-shells (local)
+   Component: demo/alpha@0.1.0
+   Suggestion: Building it needs its source: a git component is exported from its version tag; a market component only ships an image, so use its published image or put the source in a local install source
+{"time":"…","level":"ERROR","message":"Command failed","command":"brickkit build","elapsed_ms":5,"error_code":"COMPONENT_NOT_FOUND","error":"COMPONENT_NOT_FOUND: Error: component not found; Component=demo/alpha@0.1.0; Reason=The component was not found in any install source; Install sources tried=local-dev (local), local-shells (local); Component=demo/alpha@0.1.0","exit_code":1}
+[exit 1]
+$ docker run --rm --entrypoint sh demo-alpha:0.1.0 -c /server & sleep 1; wget -qO- http://localhost:8081/api/hello
+2026/10/17 09:37:53 demo/alpha@0.1.0 standalone on :8081
+{"from":"demo/alpha","greeting":"","version":"0.1.0"}
+[exit 0]
+$ brickkit lint --all
+✅ brickkit.yaml
+✅ deploy.yaml
+✅ cross-file: brickkit.yaml ↔ deploy.yaml ↔ config/
+⚠️ [DOC_PLACEHOLDER] a placeholder (TODO) is still in the text
+   File: AGENTS.md
+   Line: 7
+⚠️ [DOC_PLACEHOLDER] a placeholder (TODO) is still in the text
+   File: AGENTS.md
+   Line: 11
+⚠️ [DOC_PLACEHOLDER] a placeholder (TODO) is still in the text
+   File: AGENTS.md
+   Line: 15
+⚠️ [DOC_PLACEHOLDER] a placeholder (TODO) is still in the text
+   File: AGENTS.md
+   Line: 19
+✅ components/demo/alpha/component.yaml
+✅ components/demo/beta/component.yaml
+✅ shell/demo/shell/component.yaml
+⚠️ [DOC_FILE_MISSING] BRICKKIT.md is missing
+   File: components/demo/alpha/BRICKKIT.md
+⚠️ [DOC_FILE_MISSING] AGENTS.md is missing
+   File: components/demo/alpha/AGENTS.md
+⚠️ [DOC_FILE_MISSING] CLAUDE.md is missing
+   File: components/demo/alpha/CLAUDE.md
+⚠️ [DOC_FILE_MISSING] README.md is missing
+   File: components/demo/alpha/README.md
+⚠️ [DOC_FILE_MISSING] BRICKKIT.md is missing
+   File: components/demo/beta/BRICKKIT.md
+⚠️ [DOC_FILE_MISSING] AGENTS.md is missing
+   File: components/demo/beta/AGENTS.md
+⚠️ [DOC_FILE_MISSING] CLAUDE.md is missing
+   File: components/demo/beta/CLAUDE.md
+⚠️ [DOC_FILE_MISSING] README.md is missing
+   File: components/demo/beta/README.md
+⚠️ [DOC_FILE_MISSING] BRICKKIT.md is missing
+   File: shell/demo/shell/BRICKKIT.md
+⚠️ [DOC_FILE_MISSING] AGENTS.md is missing
+   File: shell/demo/shell/AGENTS.md
+⚠️ [DOC_FILE_MISSING] CLAUDE.md is missing
+   File: shell/demo/shell/CLAUDE.md
+⚠️ [DOC_FILE_MISSING] README.md is missing
+   File: shell/demo/shell/README.md
+ℹ️ demo/alpha: the source in components/demo/alpha is version 0.2.0, but the project pins 0.1.0 and keeps running that one — brickkit upgrade demo/alpha@0.2.0 moves the project to the source's version
+
+📋 Checked 10 files: 0 with errors, 16 warnings
+[exit 0]
+$ brickkit build demo/alpha@0.1.0 --force
+🔨 Building demo/alpha@0.1.0 → demo-alpha:0.1.0
+✅ Built demo/alpha@0.1.0 → demo-alpha:0.1.0
+[exit 0]
+
+== C4 shell.members changed to alpha@0.2.0 (alpha's repo at 0.2.0, project upgraded) without rebuilding the shell image ==
+$ brickkit upgrade demo/alpha@0.2.0 --yes
+   ⬆️  demo/alpha: 0.1.0 → 0.2.0
+📝 config/demo-alpha.yaml
+🗄️  Config archived: config/demo-alpha.yaml → config/.archive/demo-alpha@0.1.0.yaml
+📝 Written: brickkit.yaml, deploy.yaml
+[exit 0]
+$ brickkit.yaml / deploy.yaml after upgrade
+components:
+  - id: demo/alpha
+    version: 0.2.0
+  - id: demo/beta
+    version: 0.1.0
+  - id: demo/shell
+    version: 0.1.0
+    kind: shell
+target: docker # docker | podman | k8s
+
+components:
+  - id: demo/shell
+    members:
+      - id: demo/alpha
+      - id: demo/beta
+$ brickkit up --dry-run
+🚀 Starting project proj (target: docker)
+⬆️ Version change detected:
+   demo/alpha: 0.1.0 → 0.2.0
+
+📋 Component state calculation:
+   ✅ demo/alpha@0.2.0  starting (demo/beta needs it)
+   ✅ demo/beta@0.1.0   starting (top-level)
+   ✅ demo/shell@0.1.0  starting (top-level)
+
+📋 Start order (topological sort):
+   1. demo-shell-0-1-0  no dependencies  (hosts demo/alpha@0.2.0, demo/beta@0.1.0)
+
+Can start on their own: demo-shell-0-1-0 (no dependencies)
+
+Dependency graph:
+   demo/beta@0.1.0 → demo/alpha@0.2.0
+📄 Generated: .brickkit/generated/compose.yaml
+
+📋 Version change summary:
+   demo/alpha: 0.1.0 → 0.2.0
+   ├── Dependency changes: none
+   ├── Added config items: none
+   ├── Removed config items: none
+   ├── Database migration: none
+   ├── Artifacts changes: none
+   ├── Resource quota changes: none
+   └── Old-version artifacts: kept (callers may still point at the old version)
+
+💡 --dry-run only generates the files and starts no component
+   View it: cat .brickkit/generated/compose.yaml
+[exit 0]
+$ brickkit up
+🚀 Starting project proj (target: docker)
+📋 Component state calculation:
+   ✅ demo/alpha@0.2.0  starting (demo/beta needs it)
+   ✅ demo/beta@0.1.0   starting (top-level)
+   ✅ demo/shell@0.1.0  starting (top-level)
+
+📋 Start order (topological sort):
+   1. demo-shell-0-1-0  no dependencies  (hosts demo/alpha@0.2.0, demo/beta@0.1.0)
+
+Can start on their own: demo-shell-0-1-0 (no dependencies)
+
+Dependency graph:
+   demo/beta@0.1.0 → demo/alpha@0.2.0
+📄 Generated: .brickkit/generated/compose.yaml
+❌ Error: the local image of shell demo/shell@0.1.0 contains other member versions than its component.yaml declares
+   Image: demo-shell:0.1.0
+   Members in the image: demo/alpha@0.1.0,demo/beta@0.1.0
+   Members declared in component.yaml: demo/alpha@0.2.0,demo/beta@0.1.0
+   Suggestion: Rebuild the shell image: brickkit build demo/shell@0.1.0 --force
+{"time":"…","level":"ERROR","message":"Command failed","command":"brickkit up","elapsed_ms":111,"error_code":"IMAGE_STALE","error":"IMAGE_STALE: Error: the local image of shell demo/shell@0.1.0 contains other member versions than its component.yaml declares; Image=demo-shell:0.1.0; Members in the image=demo/alpha@0.1.0,demo/beta@0.1.0; Members declared in component.yaml=demo/alpha@0.2.0,demo/beta@0.1.0","exit_code":1}
+[exit 1]
+$ brickkit down
+🛑 Stopping project proj
+📋 This project has no containers running right now (the engine has none at all)
+   Start it with brickkit up
+[exit 0]
+
+== C4b rebuild the shell (with the 0.2.0 code vendored), then up ==
+$ brickkit build demo/shell@0.1.0 --force
+🔨 Building demo/shell@0.1.0 → demo-shell:0.1.0
+✅ Built demo/shell@0.1.0 → demo-shell:0.1.0
+[exit 0]
+$ label: demo/alpha@0.2.0,demo/beta@0.1.0
+$ brickkit up
+🚀 Starting project proj (target: docker)
+📋 Component state calculation:
+   ✅ demo/alpha@0.2.0  starting (demo/beta needs it)
+   ✅ demo/beta@0.1.0   starting (top-level)
+   ✅ demo/shell@0.1.0  starting (top-level)
+
+📋 Start order (topological sort):
+   1. demo-shell-0-1-0  no dependencies  (hosts demo/alpha@0.2.0, demo/beta@0.1.0)
+
+Can start on their own: demo-shell-0-1-0 (no dependencies)
+
+Dependency graph:
+   demo/beta@0.1.0 → demo/alpha@0.2.0
+📄 Generated: .brickkit/generated/compose.yaml
+
+🐳 Starting (docker)...
+   demo-shell-0-1-0             running (healthy)
+✅ All components started (1)
+
+💡 View the status: brickkit status
+   View the logs: docker compose -p brickkit-proj logs -f
+[exit 0]
+$ docker logs brickkit-proj-demo-shell-0-1-0-1
+2026/10/17 09:38:08 serving demo/alpha@0.2.0 on :8081
+2026/10/17 09:38:08 serving demo/beta@0.1.0 on :8082
+[exit 0]
+$ brickkit down
+🛑 Stopping project proj
+✅ All components stopped
+
+💡 Data volumes were not deleted; database data is still there
+   For a full cleanup, run by hand: docker volume rm <volume-name>
+   Start again with: brickkit up
+[exit 0]
+
+== C5 every declaration says alpha@0.1.0, but the code vendored into the shell is 0.2.0 ==
+$ brickkit build demo/shell@0.1.0 --force
+🔨 Building demo/shell@0.1.0 → demo-shell:0.1.0
+✅ Built demo/shell@0.1.0 → demo-shell:0.1.0
+[exit 0]
+$ label: demo/alpha@0.1.0,demo/beta@0.1.0
+$ brickkit up
+🚀 Starting project proj (target: docker)
+⬆️ Version change detected:
+   demo/alpha: 0.2.0 → 0.1.0
+
+📋 Component state calculation:
+   ✅ demo/alpha@0.1.0  starting (demo/beta needs it)
+   ✅ demo/beta@0.1.0   starting (top-level)
+   ✅ demo/shell@0.1.0  starting (top-level)
+
+📋 Start order (topological sort):
+   1. demo-shell-0-1-0  no dependencies  (hosts demo/alpha@0.1.0, demo/beta@0.1.0)
+
+Can start on their own: demo-shell-0-1-0 (no dependencies)
+
+Dependency graph:
+   demo/beta@0.1.0 → demo/alpha@0.1.0
+📄 Generated: .brickkit/generated/compose.yaml
+
+🐳 Starting (docker)...
+❌ Error: docker failed to run
+   Command: docker compose --project-directory . -p brickkit-proj -f .brickkit/generated/compose.yaml up -d --wait --remove-orphans demo-shell-0-1-0
+   Output: Container brickkit-proj-demo-shell-0-1-0-1 Started
+      Container brickkit-proj-demo-shell-0-1-0-1 Waiting
+      container brickkit-proj-demo-shell-0-1-0-1 is unhealthy
+{"time":"…","level":"ERROR","message":"Command failed","command":"brickkit up","elapsed_ms":1162,"error_code":"ENGINE_FAILED","error":"ENGINE_FAILED: Error: docker failed to run; Command=docker compose --project-directory <scratch>/proj -p brickkit-proj -f <scratch>/proj/.brickkit/generated/compose.yaml up -d --wait --remove-orphans demo-shell-0-1-0; Output=Container brickkit-proj-demo-shell-0-1-0-1 Started / Container brickkit-proj-demo-shell-0-1-0-1 Waiting / container brickkit-proj-demo-shell-0-1-0-1 is unhealthy","exit_code":1}
+[exit 1]
+$ docker logs brickkit-proj-demo-shell-0-1-0-1
+2026/10/17 09:38:28 asked to host demo/alpha@0.1.0, but the code compiled in is 0.2.0
+2026/10/17 09:38:28 asked to host demo/alpha@0.1.0, but the code compiled in is 0.2.0
+2026/10/17 09:38:29 asked to host demo/alpha@0.1.0, but the code compiled in is 0.2.0
+2026/10/17 09:38:29 asked to host demo/alpha@0.1.0, but the code compiled in is 0.2.0
+2026/10/17 09:38:30 asked to host demo/alpha@0.1.0, but the code compiled in is 0.2.0
+[exit 0]
+$ brickkit status
+📊 Project status: proj (target: docker)
+
+❌ Not running (3 components)
+ ┌────────────┬─────────┬────────────────────────────────────────┐
+ │ Component  │ Version │ Status                                 │
+ ├────────────┼─────────┼────────────────────────────────────────┤
+ │ demo/alpha │ 0.1.0   │ restarting (in shell demo/shell@0.1.0) │
+ │ demo/beta  │ 0.1.0   │ restarting (in shell demo/shell@0.1.0) │
+ │ demo/shell │ 0.1.0   │ restarting                             │
+ └────────────┴─────────┴────────────────────────────────────────┘
+   View the logs to find out why: docker compose -p brickkit-proj logs <service-name>
+
+📋 No components are running (perhaps brickkit down was already run)
+   Start again with: brickkit up
+
+[exit 0]
+$ brickkit down
+🛑 Stopping project proj
+✅ All components stopped
+
+💡 Data volumes were not deleted; database data is still there
+   For a full cleanup, run by hand: docker volume rm <volume-name>
+   Start again with: brickkit up
+[exit 0]
+
+== C6 shell.members lists demo/beta, but the binary has no beta module ==
+$ brickkit build demo/shell@0.1.0 --force
+🔨 Building demo/shell@0.1.0 → demo-shell:0.1.0
+✅ Built demo/shell@0.1.0 → demo-shell:0.1.0
+[exit 0]
+$ brickkit up
+🚀 Starting project proj (target: docker)
+📋 Component state calculation:
+   ✅ demo/alpha@0.1.0  starting (demo/beta needs it)
+   ✅ demo/beta@0.1.0   starting (top-level)
+   ✅ demo/shell@0.1.0  starting (top-level)
+
+📋 Start order (topological sort):
+   1. demo-shell-0-1-0  no dependencies  (hosts demo/alpha@0.1.0, demo/beta@0.1.0)
+
+Can start on their own: demo-shell-0-1-0 (no dependencies)
+
+Dependency graph:
+   demo/beta@0.1.0 → demo/alpha@0.1.0
+📄 Generated: .brickkit/generated/compose.yaml
+
+🐳 Starting (docker)...
+❌ Error: docker failed to run
+   Command: docker compose --project-directory . -p brickkit-proj -f .brickkit/generated/compose.yaml up -d --wait --remove-orphans demo-shell-0-1-0
+   Output: Container brickkit-proj-demo-shell-0-1-0-1 Started
+      Container brickkit-proj-demo-shell-0-1-0-1 Waiting
+      container brickkit-proj-demo-shell-0-1-0-1 is unhealthy
+{"time":"…","level":"ERROR","message":"Command failed","command":"brickkit up","elapsed_ms":1137,"error_code":"ENGINE_FAILED","error":"ENGINE_FAILED: Error: docker failed to run; Command=docker compose --project-directory <scratch>/proj -p brickkit-proj -f <scratch>/proj/.brickkit/generated/compose.yaml up -d --wait --remove-orphans demo-shell-0-1-0; Output=Container brickkit-proj-demo-shell-0-1-0-1 Started / Container brickkit-proj-demo-shell-0-1-0-1 Waiting / container brickkit-proj-demo-shell-0-1-0-1 is unhealthy","exit_code":1}
+[exit 1]
+$ docker logs brickkit-proj-demo-shell-0-1-0-1
+2026/10/17 09:38:44 serving demo/alpha@0.1.0 on :8081
+2026/10/17 09:38:44 this shell has no module demo/beta
+2026/10/17 09:38:44 serving demo/alpha@0.1.0 on :8081
+2026/10/17 09:38:44 this shell has no module demo/beta
+2026/10/17 09:38:44 serving demo/alpha@0.1.0 on :8081
+2026/10/17 09:38:44 this shell has no module demo/beta
+2026/10/17 09:38:45 serving demo/alpha@0.1.0 on :8081
+2026/10/17 09:38:45 this shell has no module demo/beta
+2026/10/17 09:38:46 serving demo/alpha@0.1.0 on :8081
+2026/10/17 09:38:46 this shell has no module demo/beta
+[exit 0]
+$ brickkit down
+🛑 Stopping project proj
+✅ All components stopped
+
+💡 Data volumes were not deleted; database data is still there
+   For a full cleanup, run by hand: docker volume rm <volume-name>
+   Start again with: brickkit up
+[exit 0]
+$ brickkit build demo/shell@0.1.0 --force
+🔨 Building demo/shell@0.1.0 → demo-shell:0.1.0
+✅ Built demo/shell@0.1.0 → demo-shell:0.1.0
+[exit 0]
+$ brickkit up
+🚀 Starting project proj (target: docker)
+📋 Component state calculation:
+   ✅ demo/alpha@0.1.0  starting (demo/beta needs it)
+   ✅ demo/beta@0.1.0   starting (top-level)
+   ✅ demo/shell@0.1.0  starting (top-level)
+
+📋 Start order (topological sort):
+   1. demo-shell-0-1-0  no dependencies  (hosts demo/alpha@0.1.0, demo/beta@0.1.0)
+
+Can start on their own: demo-shell-0-1-0 (no dependencies)
+
+Dependency graph:
+   demo/beta@0.1.0 → demo/alpha@0.1.0
+📄 Generated: .brickkit/generated/compose.yaml
+
+🐳 Starting (docker)...
+   demo-shell-0-1-0             running (healthy)
+✅ All components started (1)
+
+💡 View the status: brickkit status
+   View the logs: docker compose -p brickkit-proj logs -f
+[exit 0]
+$ brickkit down
+🛑 Stopping project proj
+✅ All components stopped
+
+💡 Data volumes were not deleted; database data is still there
+   For a full cleanup, run by hand: docker volume rm <volume-name>
+   Start again with: brickkit up
+[exit 0]
+
+######## go version -m of the shell binary
+<scratch>/shellbin: go1.26.0
+	path	example.test/shell
+	mod	example.test/shell	(devel)	
+	dep	example.test/alpha	v0.1.0
+	=>	../../../components/demo/alpha	(devel)	
+	
+	dep	example.test/beta	v0.1.0
+	=>	../../../components/demo/beta	(devel)	
+
+######## r004-setup.sh
+#!/usr/bin/env bash
+# 0-04 setup: a project with two stub Go members and a Go shell whose own go.mod imports them.
+set -euo pipefail
+S=<scratch>
+rm -rf "$S"; mkdir -p "$S"; cd "$S"
+mkdir proj && cd proj && brickkit init --yes >/dev/null
+
+member() { # <name> <port> <deps-yaml> <handler-body>
+  local n=$1 port=$2 deps=$3 body=$4 d=components/demo/$1
+  mkdir -p "$d/cmd/server"
+  cat > "$d/component.yaml" <<EOF
+apiVersion: brickkit/v1
+kind: Component
+
+metadata:
+  id: demo/$n
+  name: $n
+  version: 0.1.0
+  description: Stub member $n for the shell experiment
+$deps
+deployment:
+  type: container
+  build:
+    context: .
+    dockerfile: Dockerfile
+  port: $port
+
+healthCheck:
+  type: http
+  path: /healthz
+
+configSchema:
+  type: object
+  properties:
+    GREETING:
+      type: string
+      default: hello from $n
+EOF
+  cat > "$d/go.mod" <<EOF
+module example.test/$n
+
+go 1.26
+EOF
+  cat > "$d/$n.go" <<EOF
+// Package $n is a stub member: one HTTP handler built from its own config table.
+package $n
+
+import (
+	"encoding/json"
+	"net/http"
+)
+
+// Version is the version of this module's code; a shell compares it with the version it is told to host.
+const Version = "0.1.0"
+
+// Handler builds the member's HTTP handler from its config table, never from the process environment.
+func Handler(cfg map[string]string) http.Handler {
+	mux := http.NewServeMux()
+	mux.HandleFunc("/healthz", func(w http.ResponseWriter, _ *http.Request) { w.Write([]byte("ok")) })
+$body
+	return mux
+}
+
+func writeJSON(w http.ResponseWriter, v any) { _ = json.NewEncoder(w).Encode(v) }
+EOF
+  cat > "$d/cmd/server/main.go" <<EOF
+// Command server runs $n on its own: the config table is filled from the environment.
+package main
+
+import (
+	"log"
+	"net/http"
+	"os"
+	"strings"
+
+	"example.test/$n"
+)
+
+func main() {
+	cfg := map[string]string{}
+	for _, kv := range os.Environ() {
+		k, v, _ := strings.Cut(kv, "=")
+		cfg[k] = v
+	}
+	log.Printf("demo/$n@%s standalone on :$port", $n.Version)
+	log.Fatal(http.ListenAndServe(":$port", $n.Handler(cfg)))
+}
+EOF
+  cat > "$d/Dockerfile" <<'EOF'
+FROM golang:1.26-alpine AS build
+WORKDIR /src
+COPY . .
+RUN CGO_ENABLED=0 go build -o /out/server ./cmd/server
+FROM alpine:3
+COPY --from=build /out/server /server
+ENTRYPOINT ["/server"]
+EOF
+}
+
+member alpha 8081 "" '	mux.HandleFunc("/api/hello", func(w http.ResponseWriter, _ *http.Request) {
+		writeJSON(w, map[string]string{"from": "demo/alpha", "version": Version, "greeting": cfg["GREETING"]})
+	})'
+
+member beta 8082 "
+dependencies:
+  components:
+    - demo/alpha@0.1.0
+" '	mux.HandleFunc("/api/chain", func(w http.ResponseWriter, _ *http.Request) {
+		var a map[string]string
+		resp, err := http.Get(cfg["DEMO_ALPHA_ENDPOINT"] + "/api/hello")
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadGateway)
+			return
+		}
+		defer resp.Body.Close()
+		_ = json.NewDecoder(resp.Body).Decode(&a)
+		writeJSON(w, map[string]any{"from": "demo/beta", "version": Version, "greeting": cfg["GREETING"],
+			"alphaEndpoint": cfg["DEMO_ALPHA_ENDPOINT"], "alpha": a})
+	})'
+
+# The shell: its own module imports both members; local replace stands in for fetching by tag.
+d=shell/demo/shell
+mkdir -p "$d"
+cat > "$d/component.yaml" <<'EOF'
+apiVersion: brickkit/v1
+kind: Component
+
+metadata:
+  id: demo/shell
+  name: shell
+  version: 0.1.0
+  description: Go shell compiling demo/alpha and demo/beta into one process
+
+shell:
+  members:
+    - demo/alpha@0.1.0
+    - demo/beta@0.1.0
+
+deployment:
+  type: container
+  build:
+    context: .
+    dockerfile: Dockerfile
+  port: 8080
+
+healthCheck:
+  type: http
+  path: /healthz
+EOF
+cat > "$d/go.mod" <<'EOF'
+module example.test/shell
+
+go 1.26
+
+require (
+	example.test/alpha v0.1.0
+	example.test/beta v0.1.0
+)
+
+replace (
+	example.test/alpha => ../../../components/demo/alpha
+	example.test/beta => ../../../components/demo/beta
+)
+EOF
+cat > "$d/main.go" <<'EOF'
+// Command shell hosts the members it compiles in, as told by BRICKKIT_SERVED_MEMBERS_CONFIG.
+package main
+
+import (
+	"encoding/json"
+	"fmt"
+	"log"
+	"net/http"
+	"os"
+
+	"example.test/alpha"
+	"example.test/beta"
+)
+
+type member struct {
+	ComponentID string            `json:"componentId"`
+	Version     string            `json:"version"`
+	HTTPPort    int               `json:"httpPort"`
+	Config      map[string]string `json:"config"`
+}
+
+type module struct {
+	version string
+	handler func(map[string]string) http.Handler
+}
+
+// compiled lists the modules this binary contains, with the version of their code.
+var compiled = map[string]module{
+	"demo/alpha": {alpha.Version, alpha.Handler},
+	"demo/beta":  {beta.Version, beta.Handler},
+}
+
+func main() {
+	raw, ok := os.LookupEnv("BRICKKIT_SERVED_MEMBERS_CONFIG")
+	if !ok {
+		log.Fatal("BRICKKIT_SERVED_MEMBERS_CONFIG is not set")
+	}
+	var members []member
+	if err := json.Unmarshal([]byte(raw), &members); err != nil {
+		log.Fatalf("BRICKKIT_SERVED_MEMBERS_CONFIG: %v", err)
+	}
+	for _, m := range members {
+		mod, ok := compiled[m.ComponentID]
+		if !ok {
+			log.Fatalf("this shell has no module %s", m.ComponentID)
+		}
+		if mod.version != m.Version {
+			log.Fatalf("asked to host %s@%s, but the code compiled in is %s", m.ComponentID, m.Version, mod.version)
+		}
+		addr := fmt.Sprintf(":%d", m.HTTPPort)
+		go func(h http.Handler) { log.Fatal(http.ListenAndServe(addr, h)) }(mod.handler(m.Config))
+		log.Printf("serving %s@%s on %s", m.ComponentID, m.Version, addr)
+	}
+	http.HandleFunc("/healthz", func(w http.ResponseWriter, _ *http.Request) { w.Write([]byte("ok")) })
+	log.Fatal(http.ListenAndServe(":8080", nil))
+}
+EOF
+cat > "$d/Dockerfile" <<'EOF'
+FROM golang:1.26-alpine AS build
+WORKDIR /src
+COPY . .
+RUN CGO_ENABLED=0 go build -mod=vendor -o /out/shell .
+FROM alpine:3
+COPY --from=build /out/shell /shell
+ENTRYPOINT ["/shell"]
+EOF
+(cd "$d" && go mod vendor)
+for x in components/demo/alpha components/demo/beta; do (cd "$x" && go vet ./...); done
+(cd "$d" && go vet -mod=vendor .)
+echo setup ok

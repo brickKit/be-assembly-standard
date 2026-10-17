@@ -40,8 +40,8 @@
 | 0-01 | `GOPRIVATE` 绕过 Go 代理与校验和库 | 完成；因 A110 已不需要，留作历史 |
 | 0-02 | 同号重发与 BrickKit 两层缓存 | 完成；缓存会静默给出旧内容；v1.5.0 起报 `VERSION_CHANGED`（FRR-002 复测通过） |
 | 0-03 | 一个仓库放多个组件（探针） | 完成；v1.5.0 起安装源可写 `repo`，探针用 `brickkit add` 加入，不再手写三层（FRR-003 复测通过） |
-| 0-04 | Go 外壳承载成员（外壳自己的 `go.mod` 引入成员模块；BrickKit 只核对成员版本，不替外壳编译）；成员版本不一致时被拒 | **下一项**。先用最小的桩组件（几行的 Go HTTP 服务）在草稿目录做，模块取法用本地 `replace`；从 GitHub 按标签取的那一半，在第 4 步建外壳时验证 |
-| 0-05 | 全部组件与外壳 `mode: local`（`target: docker`，基础资源在 Docker） | 未开始 |
+| 0-04 | Go 外壳承载成员（外壳自己的 `go.mod` 引入成员模块；BrickKit 只核对成员版本，不替外壳编译）；成员版本不一致时被拒 | 完成（2026-10-17）；“编进的代码与声明不符”只有启动器能拦，第 2 步的启动器按 Go 构建信息核对；按标签取成员留到第 4 步 |
+| 0-05 | 全部组件与外壳 `mode: local`（`target: docker`，基础资源在 Docker） | **下一项**；可复用 0-04 的桩项目（`experiment-data/0-04/run1.txt` 里的生成脚本） |
 | 0-06 | 本机进程与 Podman 混合 | 未开始 |
 | 0-07 | minikube 跑 BrickKit 生成的 K8s 清单（含外壳）；`local`、`debug` 不能配 `k8s` | 未开始；本机有 minikube，没有 kubectl（用 `minikube kubectl --`） |
 | 0-08 | 同一组件两个版本并存（BrickKit 多版本共存：`requiredBy`） | 未开始 |
@@ -57,7 +57,7 @@
 
 **已知、暂不处理**：`infra/scripts/tests/test_ship_dryrun.sh` 失败——旧的 `ship.sh` 还调用旧 `be-acceptance` 的命令，迁移后已不存在；发布工具随重建重新提供，届时一并处理。
 
-**给 BrickKit 的收件箱** `brickkit-feedback/rebuild.md`：FRR-001、FRR-002、FRR-003 全部关闭（2026-10-17 用 v1.5.0 复测）；没有未回复的条目。
+**给 BrickKit 的收件箱** `brickkit-feedback/rebuild.md`：FRR-001、FRR-002、FRR-003 全部关闭（2026-10-17 用 v1.5.0 复测）；FRR-004（`build` 遇到本地源版本不同时报错不够直接，低优先级）等回复。
 
 ## 任务结束时：知识库反馈
 
