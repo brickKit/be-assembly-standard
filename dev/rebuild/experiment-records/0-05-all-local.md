@@ -6,7 +6,7 @@
 
 | 要绕开的 | 影响 | 本项目的做法 |
 | --- | --- | --- |
-| `mode: local` 不跑迁移；提示里的命令是镜像里的路径（`/server migrate`），宿主机上不存在 | L、LD、LP 行每个有表的组件都要先手动迁移 | 组件的模块入口提供从源码运行的迁移子命令（`go run . migrate`），实验脚本在 `up` 之前逐个跑；已写给 BrickKit（FRR-005） |
+| `mode: local` 不跑迁移；提示里的命令是镜像里的路径（`/server migrate`），宿主机上不存在 | L、LD、LP 行每个有表的组件都要先手动迁移 | v1.7.0 起单跑的本机进程写 `local.migrationCommand`，`up` 先迁移再启动（FRR-005，第 9 节）；**本机外壳承载的成员仍用自己的镜像跑迁移**（FRB-003），这部分由脚本从源码迁移 |
 | Go 默认用 `go run`，编译出的程序是它的子进程，`go run` 本身常驻 | 每个 Go 进程多约 25–28 MiB 常驻内存（程序本身约 9 MiB）；冷启动含编译 | L 行的内存把组件进程与工具链包装分开报；冷启动分冷、热编译缓存两种报（见第 7 节） |
 
 ## 2. 测了什么、为什么
@@ -84,3 +84,22 @@
 ## 8. 原始数据
 
 `dev/rebuild/experiment-data/0-05/run1.txt`（含 `run005.sh`、`run005b.sh` 与生成脚本 `r005-setup.sh`）
+
+## 9. v1.7.0 复测（2026-10-17）
+
+BrickKit 的回复：FRB-002 改为启动任何本机进程之前先检查它们要绑的全部端口（含外壳替成员监听的端口），被占就报 `PORT_CONFLICT`、一个都不启动；FRR-005 新增 `local.migrationCommand`，`mode: local` 时 `up` 在启动进程之前用同样的环境变量从源码跑迁移，失败报 `MIGRATION_FAILED`、进程不启动；没写时提示不再把镜像里的命令当作本机命令。
+
+| 步 | 结果 |
+| --- | --- |
+| 8083（gamma）、8082（beta，由 Go 外壳监听）被别的程序占着，`up` | 报 `PORT_CONFLICT`，两个端口一次列全（点名 `demo-gamma-0-1-0`、`demo-beta-0-1-0`），一个本机进程都没启动；不再出现“listening”。`--dry-run` 不报（回复写明） |
+| gamma 写 `localPort: 8183`，8083 仍被占 | 正常启动，gamma 在 8183，链路通 |
+| gamma 写 `local.migrationCommand`（先打印环境再 `go run . migrate`） | `--dry-run` 把它列在“启动前会执行的数据库迁移”；`up` 先输出 `demo-gamma-0-1-0-migration` 前缀的迁移输出与“migration finished”，再启动进程。迁移拿到的环境与进程相同：`PG_HOST=localhost`、`PORT=8083`、`COMPONENT_ID=demo/gamma` |
+| 迁移以 3 退出 | `MIGRATION_FAILED`，gamma 不启动，会话结束，没有端口在监听 |
+| 去掉这个字段 | 提示改为“`migration.command` 在镜像里运行，不能照原样在这台机器上运行”，并指向 `local.migrationCommand` |
+| **本机 Go 外壳承载的 alpha 声明了 `migration` 与 `local.migrationCommand`** | `local.migrationCommand` 没有用到：`--dry-run` 列出 `demo/alpha@0.1.0  /server migrate`，`up` 用 alpha 的镜像起迁移容器。这台机器上的 `demo-alpha:0.1.0` 是 0-04 那个项目 4 小时前构建的，代码是别的项目的，照样被拿来跑（桩程序不认 `migrate`，迁移容器一直不退出，手动停掉）；把镜像挪开后 `up` 报 `IMAGE_MISSING`，要求先构建 alpha 的镜像 |
+
+**结论**：FRB-002、FRR-005 通过，关闭。新发现 FRB-003（一般）：本机外壳承载的成员，迁移仍走成员镜像，不用 `local.migrationCommand`。后果是“全部本机进程”这一行仍要构建成员镜像，而且镜像旧了（同名同版本、别的代码）时静默跑旧代码的迁移。BrickKit 源码里 `local.migrationCommand` 只在本机进程自己身上读取（`internal/cli/up_local.go`、`internal/compose/local.go`）。已写给 BrickKit。
+
+**对计划的影响**：单跑的本机进程改用 `local.migrationCommand`；本机外壳的成员在 FRB-003 有结论前，由脚本在 `up` 之前从源码跑迁移（计划“负载与测量”的第一条已改）。
+
+原始数据：`dev/rebuild/experiment-data/0-05/run2.txt`（含 `run005-2.sh`、`run005-2b.sh`）。

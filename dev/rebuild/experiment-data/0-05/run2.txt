@@ -1,0 +1,419 @@
+# note: part 3 of run 2 hung — the stub's /server ignores 'migrate' and serves, so the migration container never exited; stopped by hand (Ctrl+C, docker rm, down). Run 2b repeats part 3 with the image set aside.
+# 0-05 run 2 (2026-10-17), BrickKit CLI v1.7.0
+
+######## part 1 (FRB-002): 8083 (gamma) and 8082 (beta, served by the Go shell) held by another program
+$ brickkit up --dry-run
+🚀 Starting project proj (target: docker)
+📋 Component state calculation:
+   ✅ demo/alpha@0.1.0    starting (demo/beta needs it)
+   ✅ demo/beta@0.1.0     starting (demo/gamma needs it)
+   ✅ demo/pyr@0.1.0      starting (demo/delta needs it)
+   ✅ demo/delta@0.1.0    starting (top-level)
+   ✅ demo/gamma@0.1.0    starting (top-level)
+   ✅ demo/pyshell@0.1.0  starting (top-level)
+   ✅ demo/shell@0.1.0    starting (top-level)
+
+📋 Start order (topological sort):
+   1. demo-pyshell-0-1-0  no dependencies  (hosts demo/pyr@0.1.0)
+   2. demo-shell-0-1-0    no dependencies  (hosts demo/alpha@0.1.0, demo/beta@0.1.0)
+   3. demo-delta-0-1-0    ← depends on 1, 2
+   4. demo-gamma-0-1-0    ← depends on 2
+
+Can start on their own: demo-pyshell-0-1-0, demo-shell-0-1-0 (no dependencies)
+Longest dependency chain (2 levels): demo-shell-0-1-0 → demo-delta-0-1-0
+   Components not on this chain start in parallel with it
+
+Dependency graph:
+   demo/delta@0.1.0 → demo/alpha@0.1.0
+                    → demo/pyr@0.1.0
+   demo/gamma@0.1.0 → demo/beta@0.1.0
+   demo/beta@0.1.0 → demo/alpha@0.1.0
+⚠️ Note: a mode: local component's database migration won't run automatically
+   Component: demo/gamma@0.1.0
+   Reason: A mode: local component generates no container, so its migration container is skipped too
+   Suggestions:
+   1. Its migration.command (/server migrate) runs inside its image and can't be run on this machine as written
+   2. To run it from source, the component declares local.migrationCommand in component.yaml (see its BRICKKIT.md); with mode: local, up then runs it before starting the process
+📄 Generated: .brickkit/generated/compose.yaml
+
+The following mode: local component(s) would start:
+   demo/gamma@0.1.0  go run .
+   demo/delta@0.1.0  python3 delta.py
+   demo/pyshell@0.1.0  python3 shell.py
+   demo/shell@0.1.0  go run .
+
+💡 --dry-run only generates the files and starts no component
+   View it: cat .brickkit/generated/compose.yaml
+[exit 0]
+up exited with 1
+🚀 Starting project proj (target: docker)
+   1. demo-pyshell-0-1-0  no dependencies  (hosts demo/pyr@0.1.0)
+   2. demo-shell-0-1-0    no dependencies  (hosts demo/alpha@0.1.0, demo/beta@0.1.0)
+   Suggestions:
+   1. Its migration.command (/server migrate) runs inside its image and can't be run on this machine as written
+   2. To run it from source, the component declares local.migrationCommand in component.yaml (see its BRICKKIT.md); with mode: local, up then runs it before starting the process
+❌ Error: another program on this machine already holds a port a mode: local process needs
+   Port 8083: demo-gamma-0-1-0: another program already answers on it
+   Port 8082: demo-beta-0-1-0: another program already answers on it
+   Suggestions:
+   1. Stop the program holding it, then run up again; none of the mode: local processes was started
+   2. Or move the process to another port: write localPort on its entry in the deploy file (ports declared in component.yaml can't be moved)
+{"time":"2026-10-17T14:57:03.658267416+02:00","level":"ERROR","message":"Command failed","command":"brickkit up","elapsed_ms":70,"error_code":"PORT_CONFLICT","error":"PORT_CONFLICT: Error: another program on this machine already holds a port a mode: local process needs; Port 8083=demo-gamma-0-1-0: another program already answers on it; Port 8082=demo-beta-0-1-0: another program already answers on it","exit_code":1}
+listeners:
+  :8082 users:(("python3",pid=1586119,fd=3))
+  :8083 users:(("python3",pid=1586118,fd=3))
+
+== gamma moves: localPort 8183 on its entry; 8083 still held ==
+  - id: demo/gamma
+    localPort: 8183
+    mode: local
+ready: 8080 8081 8082 8090 8091 8092 8183
+1:🚀 Starting project proj (target: docker)
+34:Starting 4 local component(s) — press Ctrl+C to stop
+36:demo-gamma-0-1-0  listening on port 8183
+38:demo-delta-0-1-0  listening on port 8092
+41:demo-pyshell-0-1-0  listening on port 8090
+45:demo-shell-0-1-0  listening on port 8080
+$ GET :8183/api/chain
+{"beta":{"alpha":{"from":"demo/alpha","version":"0.1.0"},"alphaEndpoint":"http://localhost:8081","from":"demo/beta"},"betaEndpoint":"http://localhost:8082","from":"demo/gamma"}
+
+up exited with 0
+
+######## part 2 (FRR-005): gamma writes local.migrationCommand (prints its environment, then go run . migrate)
+$ brickkit lint components/demo/gamma
+❌ Error: components/demo/gamma is not in this project
+   Suggestions:
+   1. To add it: brickkit add components/demo/gamma
+   2. brickkit lint --all checks every component in the project
+   3. Did you mean: demo/gamma?
+{"time":"…","level":"ERROR","message":"Command failed","command":"brickkit lint","elapsed_ms":0,"error_code":"COMPONENT_NOT_FOUND","error":"COMPONENT_NOT_FOUND: Error: components/demo/gamma is not in this project","exit_code":1}
+[exit 1]
+$ brickkit up --dry-run
+🚀 Starting project proj (target: docker)
+📋 Component state calculation:
+   ✅ demo/alpha@0.1.0    starting (demo/beta needs it)
+   ✅ demo/beta@0.1.0     starting (demo/gamma needs it)
+   ✅ demo/pyr@0.1.0      starting (demo/delta needs it)
+   ✅ demo/delta@0.1.0    starting (top-level)
+   ✅ demo/gamma@0.1.0    starting (top-level)
+   ✅ demo/pyshell@0.1.0  starting (top-level)
+   ✅ demo/shell@0.1.0    starting (top-level)
+
+📋 Start order (topological sort):
+   1. demo-pyshell-0-1-0  no dependencies  (hosts demo/pyr@0.1.0)
+   2. demo-shell-0-1-0    no dependencies  (hosts demo/alpha@0.1.0, demo/beta@0.1.0)
+   3. demo-delta-0-1-0    ← depends on 1, 2
+   4. demo-gamma-0-1-0    ← depends on 2
+
+Can start on their own: demo-pyshell-0-1-0, demo-shell-0-1-0 (no dependencies)
+Longest dependency chain (2 levels): demo-shell-0-1-0 → demo-delta-0-1-0
+   Components not on this chain start in parallel with it
+
+Dependency graph:
+   demo/delta@0.1.0 → demo/alpha@0.1.0
+                    → demo/pyr@0.1.0
+   demo/gamma@0.1.0 → demo/beta@0.1.0
+   demo/beta@0.1.0 → demo/alpha@0.1.0
+📄 Generated: .brickkit/generated/compose.yaml
+
+🔧 Database migrations that run before startup (on failure that component won't start):
+   demo/gamma@0.1.0  sh -c echo PG_HOST=$PG_HOST PG_PORT=$PG_PORT PORT=${PORT:-unset} COMPONENT_ID=$COMPONENT_ID; go run . migrate
+
+The following mode: local component(s) would start:
+   demo/gamma@0.1.0  go run .
+   demo/delta@0.1.0  python3 delta.py
+   demo/pyshell@0.1.0  python3 shell.py
+   demo/shell@0.1.0  go run .
+
+💡 --dry-run only generates the files and starts no component
+   View it: cat .brickkit/generated/compose.yaml
+[exit 0]
+ready: 8080 8081 8082 8083 8090 8091 8092
+🚀 Starting project proj (target: docker)
+🔧 Database migrations that run before startup (on failure that component won't start):
+Starting 4 local component(s) — press Ctrl+C to stop
+demo-gamma-0-1-0-migration  running the migration from source: sh -c echo PG_HOST=$PG_HOST PG_PORT=$PG_PORT PORT=${PORT:-unset} COMPONENT_ID=$COMPONENT_ID; go run . migrate
+demo-gamma-0-1-0-migration | PG_HOST=localhost PG_PORT=5432 PORT=8083 COMPONENT_ID=demo/gamma
+demo-gamma-0-1-0-migration | 2026/10/17 14:57:05 demo/gamma migrate: nothing to do
+demo-gamma-0-1-0-migration  migration finished
+demo-gamma-0-1-0  listening on port 8083
+demo-delta-0-1-0  listening on port 8092
+demo-pyshell-0-1-0  listening on port 8090
+demo-shell-0-1-0  listening on port 8080
+up exited with 0
+
+== the migration fails (exit 3) ==
+up exited with 1
+🚀 Starting project proj (target: docker)
+   1. demo-pyshell-0-1-0  no dependencies  (hosts demo/pyr@0.1.0)
+   2. demo-shell-0-1-0    no dependencies  (hosts demo/alpha@0.1.0, demo/beta@0.1.0)
+🔧 Database migrations that run before startup (on failure that component won't start):
+Starting 4 local component(s) — press Ctrl+C to stop
+demo-gamma-0-1-0-migration  running the migration from source: sh -c echo failing on purpose; exit 3
+demo-gamma-0-1-0-migration | failing on purpose
+❌ Error: database migration failed
+   Suggestions:
+   1. The migration failed, so its process wasn't started and the session ended; its output is above, prefixed with demo-gamma-0-1-0-migration
+   2. Fix it and run brickkit up again: the migration runs once more before the process
+{"time":"2026-10-17T14:57:05.613612973+02:00","level":"ERROR","message":"Command failed","command":"brickkit up","elapsed_ms":75,"error_code":"MIGRATION_FAILED","error":"MIGRATION_FAILED: Error: database migration failed; Component=demo/gamma@0.1.0; Command=sh -c echo failing on purpose; exit 3; Reason=exit code 3","exit_code":1}
+listeners:
+
+== migration without local.migrationCommand: the hint ==
+$ brickkit up --dry-run
+🚀 Starting project proj (target: docker)
+📋 Component state calculation:
+   ✅ demo/alpha@0.1.0    starting (demo/beta needs it)
+   ✅ demo/beta@0.1.0     starting (demo/gamma needs it)
+   ✅ demo/pyr@0.1.0      starting (demo/delta needs it)
+   ✅ demo/delta@0.1.0    starting (top-level)
+   ✅ demo/gamma@0.1.0    starting (top-level)
+   ✅ demo/pyshell@0.1.0  starting (top-level)
+   ✅ demo/shell@0.1.0    starting (top-level)
+
+📋 Start order (topological sort):
+   1. demo-pyshell-0-1-0  no dependencies  (hosts demo/pyr@0.1.0)
+   2. demo-shell-0-1-0    no dependencies  (hosts demo/alpha@0.1.0, demo/beta@0.1.0)
+   3. demo-delta-0-1-0    ← depends on 1, 2
+   4. demo-gamma-0-1-0    ← depends on 2
+
+Can start on their own: demo-pyshell-0-1-0, demo-shell-0-1-0 (no dependencies)
+Longest dependency chain (2 levels): demo-shell-0-1-0 → demo-delta-0-1-0
+   Components not on this chain start in parallel with it
+
+Dependency graph:
+   demo/delta@0.1.0 → demo/alpha@0.1.0
+                    → demo/pyr@0.1.0
+   demo/gamma@0.1.0 → demo/beta@0.1.0
+   demo/beta@0.1.0 → demo/alpha@0.1.0
+⚠️ Note: a mode: local component's database migration won't run automatically
+   Component: demo/gamma@0.1.0
+   Reason: A mode: local component generates no container, so its migration container is skipped too
+   Suggestions:
+   1. Its migration.command (/server migrate) runs inside its image and can't be run on this machine as written
+   2. To run it from source, the component declares local.migrationCommand in component.yaml (see its BRICKKIT.md); with mode: local, up then runs it before starting the process
+📄 Generated: .brickkit/generated/compose.yaml
+
+The following mode: local component(s) would start:
+   demo/gamma@0.1.0  go run .
+   demo/delta@0.1.0  python3 delta.py
+   demo/pyshell@0.1.0  python3 shell.py
+   demo/shell@0.1.0  go run .
+
+💡 --dry-run only generates the files and starts no component
+   View it: cat .brickkit/generated/compose.yaml
+[exit 0]
+
+######## part 3: a member hosted by the local Go shell has a migration (alpha)
+$ sed -n /^migration:/,/^healthCheck:/p components/demo/alpha/component.yaml
+migration:
+  command: ["/server", "migrate"]
+
+local:
+  migrationCommand: ["sh", "-c", "echo alpha migration PG_HOST=$PG_HOST"]
+
+healthCheck:
+[exit 0]
+$ brickkit lint components/demo/alpha
+❌ Error: components/demo/alpha is not in this project
+   Suggestions:
+   1. To add it: brickkit add components/demo/alpha
+   2. brickkit lint --all checks every component in the project
+   3. Did you mean: demo/alpha?
+{"time":"…","level":"ERROR","message":"Command failed","command":"brickkit lint","elapsed_ms":1,"error_code":"COMPONENT_NOT_FOUND","error":"COMPONENT_NOT_FOUND: Error: components/demo/alpha is not in this project","exit_code":1}
+[exit 1]
+$ brickkit up --dry-run
+🚀 Starting project proj (target: docker)
+📋 Component state calculation:
+   ✅ demo/alpha@0.1.0    starting (demo/beta needs it)
+   ✅ demo/beta@0.1.0     starting (demo/gamma needs it)
+   ✅ demo/pyr@0.1.0      starting (demo/delta needs it)
+   ✅ demo/delta@0.1.0    starting (top-level)
+   ✅ demo/gamma@0.1.0    starting (top-level)
+   ✅ demo/pyshell@0.1.0  starting (top-level)
+   ✅ demo/shell@0.1.0    starting (top-level)
+
+📋 Start order (topological sort):
+   1. demo-pyshell-0-1-0  no dependencies  (hosts demo/pyr@0.1.0)
+   2. demo-shell-0-1-0    no dependencies  (hosts demo/alpha@0.1.0, demo/beta@0.1.0)
+   3. demo-delta-0-1-0    ← depends on 1, 2
+   4. demo-gamma-0-1-0    ← depends on 2
+
+Can start on their own: demo-pyshell-0-1-0, demo-shell-0-1-0 (no dependencies)
+Longest dependency chain (2 levels): demo-shell-0-1-0 → demo-delta-0-1-0
+   Components not on this chain start in parallel with it
+
+Dependency graph:
+   demo/delta@0.1.0 → demo/alpha@0.1.0
+                    → demo/pyr@0.1.0
+   demo/gamma@0.1.0 → demo/beta@0.1.0
+   demo/beta@0.1.0 → demo/alpha@0.1.0
+⚠️ Note: a mode: local component's database migration won't run automatically
+   Component: demo/gamma@0.1.0
+   Reason: A mode: local component generates no container, so its migration container is skipped too
+   Suggestions:
+   1. Its migration.command (/server migrate) runs inside its image and can't be run on this machine as written
+   2. To run it from source, the component declares local.migrationCommand in component.yaml (see its BRICKKIT.md); with mode: local, up then runs it before starting the process
+📄 Generated: .brickkit/generated/compose.yaml
+
+🔧 Database migrations that run before startup (on failure that component won't start):
+   demo/alpha@0.1.0  /server migrate
+
+The following mode: local component(s) would start:
+   demo/gamma@0.1.0  go run .
+   demo/delta@0.1.0  python3 delta.py
+   demo/pyshell@0.1.0  python3 shell.py
+   demo/shell@0.1.0  go run .
+
+💡 --dry-run only generates the files and starts no component
+   View it: cat .brickkit/generated/compose.yaml
+[exit 0]
+not ready
+🚀 Starting project proj (target: docker)
+⚠️ Note: a mode: local component's database migration won't run automatically
+   Reason: A mode: local component generates no container, so its migration container is skipped too
+   1. Its migration.command (/server migrate) runs inside its image and can't be run on this machine as written
+   2. To run it from source, the component declares local.migrationCommand in component.yaml (see its BRICKKIT.md); with mode: local, up then runs it before starting the process
+🔧 Database migrations that run before startup (on failure that component won't start):
+🐳 Starting (docker)...
+up exited with 1
+
+######## run 2b
+# 0-05 run 2b (2026-10-17), BrickKit CLI v1.7.0
+demo-alpha:0.1.0 on this machine: 3db315d642e7 (left by the 0-04 project; set aside for this run)
+$ timeout 60 brickkit up
+🚀 Starting project proj (target: docker)
+📋 Component state calculation:
+   ✅ demo/alpha@0.1.0    starting (demo/beta needs it)
+   ✅ demo/beta@0.1.0     starting (demo/gamma needs it)
+   ✅ demo/pyr@0.1.0      starting (demo/delta needs it)
+   ✅ demo/delta@0.1.0    starting (top-level)
+   ✅ demo/gamma@0.1.0    starting (top-level)
+   ✅ demo/pyshell@0.1.0  starting (top-level)
+   ✅ demo/shell@0.1.0    starting (top-level)
+
+📋 Start order (topological sort):
+   1. demo-pyshell-0-1-0  no dependencies  (hosts demo/pyr@0.1.0)
+   2. demo-shell-0-1-0    no dependencies  (hosts demo/alpha@0.1.0, demo/beta@0.1.0)
+   3. demo-delta-0-1-0    ← depends on 1, 2
+   4. demo-gamma-0-1-0    ← depends on 2
+
+Can start on their own: demo-pyshell-0-1-0, demo-shell-0-1-0 (no dependencies)
+Longest dependency chain (2 levels): demo-shell-0-1-0 → demo-delta-0-1-0
+   Components not on this chain start in parallel with it
+
+Dependency graph:
+   demo/delta@0.1.0 → demo/alpha@0.1.0
+                    → demo/pyr@0.1.0
+   demo/gamma@0.1.0 → demo/beta@0.1.0
+   demo/beta@0.1.0 → demo/alpha@0.1.0
+⚠️ Note: a mode: local component's database migration won't run automatically
+   Component: demo/gamma@0.1.0
+   Reason: A mode: local component generates no container, so its migration container is skipped too
+   Suggestions:
+   1. Its migration.command (/server migrate) runs inside its image and can't be run on this machine as written
+   2. To run it from source, the component declares local.migrationCommand in component.yaml (see its BRICKKIT.md); with mode: local, up then runs it before starting the process
+📄 Generated: .brickkit/generated/compose.yaml
+
+🔧 Database migrations that run before startup (on failure that component won't start):
+   demo/alpha@0.1.0  /server migrate
+❌ Error: these images are built locally and have not been built yet
+   demo/alpha@0.1.0: demo-alpha:0.1.0
+   Suggestion: up never builds on its own (building and deploying are separate): run brickkit build demo/alpha@0.1.0 first
+{"time":"…","level":"ERROR","message":"Command failed","command":"brickkit up","elapsed_ms":28,"error_code":"IMAGE_MISSING","error":"IMAGE_MISSING: Error: these images are built locally and have not been built yet; demo/alpha@0.1.0=demo-alpha:0.1.0","exit_code":1}
+[exit 1]
+$ brickkit down
+🛑 Stopping project proj
+📋 This project has no containers running right now (the engine has none at all)
+   Start it with brickkit up
+[exit 0]
+
+######## run005-2.sh
+#!/usr/bin/env bash
+# 0-05 run 2 (v1.7.0): FRB-002 (port check before any local process) and FRR-005 (local.migrationCommand).
+set -uo pipefail
+S=$(dirname "$0")/..; S=$(cd "$S" && pwd)
+P=$S/r005/proj; export GOCACHE=$S/gocache
+run() { echo "\$ $*"; "$@" 2>&1 | sed -E 's/"time":"[^"]*"/"time":"…"/'; echo "[exit ${PIPESTATUS[0]}]"; }
+start_up() { setsid brickkit up > "$1" 2>&1 & UP=$!; }
+wait_ready() { local p ok; for _ in $(seq 1 600); do ok=1; for p in "$@"; do wget -qO- -T 1 "http://localhost:$p/healthz" >/dev/null 2>&1 || { ok=0; break; }; done
+  [ $ok = 1 ] && { echo "ready: $*"; return 0; }; kill -0 $UP 2>/dev/null || { echo "up exited before ready"; return 1; }; sleep 0.2; done; echo "not ready"; return 1; }
+stop_up() { kill -INT $UP 2>/dev/null; wait $UP; echo "up exited with $?"; }
+listeners() { echo "listeners:"; for p in 8080 8081 8082 8083 8090 8091 8092 8183; do ss -ltnpH "sport = :$p" | awk -v p=$p '{print "  :"p, $NF}'; done; }
+cd "$P"
+echo "# 0-05 run 2 ($(date +%F)), $(brickkit version | head -1)"
+cp deploy.yaml.all-local deploy.yaml; cp components/demo/gamma/component.yaml $S/gamma.component.yaml.orig; cp components/demo/alpha/component.yaml $S/alpha.component.yaml.orig
+
+echo; echo "######## part 1 (FRB-002): 8083 (gamma) and 8082 (beta, served by the Go shell) held by another program"
+python3 -m http.server 8083 >/dev/null 2>&1 & B1=$!
+python3 -m http.server 8082 >/dev/null 2>&1 & B2=$!
+sleep 0.5
+run brickkit up --dry-run
+start_up $S/up2-1.log; for _ in $(seq 1 100); do kill -0 $UP 2>/dev/null || break; sleep 0.2; done
+wait $UP; echo "up exited with $?"; sed -n '/Starting\|PORT_CONFLICT\|another program\|Port \|Suggest\|  [12]\. \|listening/p' $S/up2-1.log
+listeners
+kill $B2; wait $B2 2>/dev/null
+
+echo; echo "== gamma moves: localPort 8183 on its entry; 8083 still held =="
+sed -i 's#^  - id: demo/gamma$#  - id: demo/gamma\n    localPort: 8183#' deploy.yaml; sed -n '/demo\/gamma/,+2p' deploy.yaml
+start_up $S/up2-2.log; wait_ready 8080 8081 8082 8090 8091 8092 8183
+grep -n "listening\|Starting" $S/up2-2.log
+echo "\$ GET :8183/api/chain"; wget -qO- http://localhost:8183/api/chain; echo
+stop_up; kill $B1; wait $B1 2>/dev/null
+cp deploy.yaml.all-local deploy.yaml
+
+echo; echo "######## part 2 (FRR-005): gamma writes local.migrationCommand (prints its environment, then go run . migrate)"
+cat >> components/demo/gamma/component.yaml <<'YAML'
+
+local:
+  migrationCommand: ["sh", "-c", "echo PG_HOST=$PG_HOST PG_PORT=$PG_PORT PORT=${PORT:-unset} COMPONENT_ID=$COMPONENT_ID; go run . migrate"]
+YAML
+run brickkit lint components/demo/gamma
+run brickkit up --dry-run
+start_up $S/up2-3.log; wait_ready 8080 8081 8082 8083 8090 8091 8092
+sed -n '/Starting\|migration\|listening/p' $S/up2-3.log
+stop_up
+
+echo; echo "== the migration fails (exit 3) =="
+sed -i 's#^  migrationCommand: .*#  migrationCommand: ["sh", "-c", "echo failing on purpose; exit 3"]#' components/demo/gamma/component.yaml
+start_up $S/up2-4.log; for _ in $(seq 1 150); do kill -0 $UP 2>/dev/null || break; sleep 0.2; done
+kill -0 $UP 2>/dev/null && { echo "up still running"; stop_up; } || { wait $UP; echo "up exited with $?"; }
+sed -n '/Starting\|migration\|MIGRATION\|listening\|Error\|Suggest\|  [12]\. /p' $S/up2-4.log
+listeners
+
+echo; echo "== migration without local.migrationCommand: the hint =="
+cp $S/gamma.component.yaml.orig components/demo/gamma/component.yaml
+run brickkit up --dry-run
+
+echo; echo "######## part 3: a member hosted by the local Go shell has a migration (alpha)"
+python3 - components/demo/alpha/component.yaml <<'PY'
+import sys; p=sys.argv[1]; s=open(p).read()
+s=s.replace("healthCheck:", 'migration:\n  command: ["/server", "migrate"]\n\nlocal:\n  migrationCommand: ["sh", "-c", "echo alpha migration PG_HOST=$PG_HOST"]\n\nhealthCheck:',1)
+open(p,'w').write(s)
+PY
+run sed -n '/^migration:/,/^healthCheck:/p' components/demo/alpha/component.yaml
+run brickkit lint components/demo/alpha
+run brickkit up --dry-run
+start_up $S/up2-5.log; wait_ready 8080 8081 8082 8083 8090 8091 8092
+sed -n '/Starting\|migration\|listening/p' $S/up2-5.log
+stop_up
+cp $S/alpha.component.yaml.orig components/demo/alpha/component.yaml
+
+######## run005-2b.sh
+#!/usr/bin/env bash
+# 0-05 run 2b: a member of the local Go shell declares migration and local.migrationCommand; its image is absent.
+set -uo pipefail
+S=$(dirname "$0")/..; S=$(cd "$S" && pwd); P=$S/r005/proj; export GOCACHE=$S/gocache
+run() { echo "\$ $*"; "$@" 2>&1 | sed -E 's/"time":"[^"]*"/"time":"…"/'; echo "[exit ${PIPESTATUS[0]}]"; }
+cd "$P"
+echo "# 0-05 run 2b ($(date +%F)), $(brickkit version | head -1)"
+python3 - components/demo/alpha/component.yaml <<'PY'
+import sys; p=sys.argv[1]; s=open(p).read()
+s=s.replace("healthCheck:", 'migration:\n  command: ["/server", "migrate"]\n\nlocal:\n  migrationCommand: ["sh", "-c", "echo alpha migration PG_HOST=$PG_HOST"]\n\nhealthCheck:',1)
+open(p,'w').write(s)
+PY
+echo "demo-alpha:0.1.0 on this machine: $(docker images -q demo-alpha:0.1.0 | head -1) (left by the 0-04 project; set aside for this run)"
+docker tag demo-alpha:0.1.0 demo-alpha:aside-0-05 && docker rmi demo-alpha:0.1.0 >/dev/null
+run timeout 60 brickkit up
+run brickkit down
+docker tag demo-alpha:aside-0-05 demo-alpha:0.1.0 && docker rmi demo-alpha:aside-0-05 >/dev/null
+cp $S/alpha.component.yaml.orig components/demo/alpha/component.yaml

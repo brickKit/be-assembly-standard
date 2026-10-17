@@ -51,10 +51,10 @@ CLI 从不替你合并。团队加了组件后，你的本地文件就对不上�
 它说的是「我此刻在本机调试这个组件」，不是团队决策，写进 `deploy.yaml` 会被拒绝。写了之后这个
 组件**不生成容器**，其他容器通过 `extra_hosts` 把它的版本化服务名解析到宿主机；每个组件给一个
 `localPort`，CLI 生成 `local-debug.<版本化服务名>.env` 给 IDE 加载，让进程监听那个端口。
-**迁移不会自动跑**，第一次要手动跑一遍。
+**迁移不会自动跑**：`up` 把组件的 `local.migrationCommand` 告诉你，自己跑一遍（组件没写时，迁移只在它的镜像里运行）。
 
 `mode: local` 是「不用容器，BrickKit 替我起」：从本地仓库探测启动命令、起裸进程、前台监管（`Ctrl+C`
-停掉），`localPort` 可不写（自动挑空端口）；它的变量同样写进 `local-debug.<…>.env`，供手动跑迁移（它的迁移也不会自动跑）。它不是个人的，可以写在 `deploy.yaml`。进程继承你终端的环境变量，
+停掉），`localPort` 可不写（自动挑空端口）；它的变量同样写进 `local-debug.<…>.env`。组件写了 `local.migrationCommand`（从源码运行的迁移）时，`up` 在启动它之前先跑，失败就不启动（`MIGRATION_FAILED`）；没写就不跑迁移。它不是个人的，可以写在 `deploy.yaml`。进程继承你终端的环境变量，
 平台自己的名字除外（`COMPONENT_ID`、`COMPONENT_VERSION`、`PORT`、`BRICKKIT_SERVED_MEMBERS`、
 `BRICKKIT_SERVED_MEMBERS_CONFIG`、所有 `*_ENDPOINT`、组件自己 `configSchema` 里的键）——这些只取 BrickKit
 给的值，终端里残留的 `export` 冒充不了它们。两者都只支持
@@ -67,7 +67,7 @@ docker / podman，`target: k8s` 下拒绝——集群里的 Pod 到不了你的�
 它依赖的每个容器发布到宿主机的 10000 + 容器端口（5432 → 15432、8080 → 18080），被占了再从 18080 往上找，env 文件 /
 进程拿到的就是 `localhost:<那个端口>`；被外壳承载的依赖发布在外壳的容器上。调用它的容器照旧用它的服务名，靠
 `extra_hosts: <服务名>:host-gateway` 解析到宿主机。这些是 BrickKit 在一次运行里自己分的；本机别的程序已经占着的端口，
-要等引擎绑定时才失败。项目自己的端口登记表照常用 8080、8081 这些号：进程只有在它的 `deployment.port` 已被这次 `up`
+要等引擎绑定时才失败——`mode: local` 进程的端口除外，`up` 启动任何进程之前先查（`PORT_CONFLICT`）。项目自己的端口登记表照常用 8080、8081 这些号：进程只有在它的 `deployment.port` 已被这次 `up`
 分给别人时才让出来（从 8081 往上顺延，可能落到另一个组件的端口上，写 `localPort` 就固定了）；「10000 + 各容器端口」
 这一段要留给映射，别登记给组件。这样的进程拿到的值里，`host.docker.internal`（容器里对宿主机的称呼）换成 `localhost`；
 容器拿到的仍是原文，所以同一份 `config/` 两边都能用——不要在 `vars:` 里覆盖它，`vars:` 同样作用于容器。
@@ -198,4 +198,4 @@ p99 毛刺）；内存 requests = limits（拿 Guaranteed QoS）。写法：
 - 某个组件要配哪些值：`.brickkit/manifests/<scope>/<name>/<版本>/BRICKKIT.md` 的配置指南
 - 完整规范：<https://github.com/brickKit/brickKit> 根目录 `AGENTS.zh.md`
 
-<!-- brickkit:skill version=v1.6.1 sum=sha256:47539de6d46a74a5ec55ff0344fc36d3c691089bb2b24560acaee13df5cfb5dd -->
+<!-- brickkit:skill version=v1.7.0 sum=sha256:85be9a8a3aa2f8f33ed44414b556a6f2454f666264a6e613e6e1ebf3c3f3c9c5 -->

@@ -166,9 +166,9 @@ docker / podman 用就留着，否则删掉。
 | `COMPONENT_BLOCKED` | 市场把这个组件版本下架了 | 换一个版本 |
 | `COMPONENT_DISABLED` | 钉住要跑的组件（`enabled` / `local` / `debug`）有个强依赖写了 `disable` | 两个意图矛盾，去掉其中一个 |
 | `MANIFEST_INVALID` | 某个 `component.yaml` 不合法，报错点名字段 | 由组件作者修（在组件仓库里 `brickkit lint`） |
-| `PORT_CONFLICT` | `localPort` / `exposePort` 重复，或宿主机端口被占 | 换端口；只是你机器上的事就改在 `deploy.local.yaml` |
+| `PORT_CONFLICT` | `localPort` / `exposePort` 重复，或 `mode: local` 进程要用的端口被别的程序占着 | 换端口；只是你机器上的事就改在 `deploy.local.yaml` |
 | `MIGRATION_FAILED` | 迁移命令失败（或入口没拒绝写错的参数） | 看迁移容器的日志，修好重跑 |
-| `MIGRATION_SKIPPED`（警告） | `mode: local` / `debug` 的组件没有迁移容器 | 手动跑一次它的迁移 |
+| `MIGRATION_SKIPPED`（警告） | `mode: local` / `debug` 的组件没有迁移容器，`up` 也不替它跑迁移 | 跑提示里给出的 `local.migrationCommand`；没给出的，组件该写一条 |
 | `ENGINE_MISSING` | `docker` / `podman` / `kubectl` 不在 `PATH` 上或没在运行；或者只装了 Podman，部署文件却写着 `target: docker` | 装上、启动；或改成 `target: podman` |
 | `ENGINE_FAILED` | `docker compose` / `podman compose` / `kubectl` 执行失败，组件起来了但不健康，或 `mode: local` 的进程崩了 | 报错里带着引擎自己的输出；再看组件日志 |
 | `AUTH_REQUIRED` / `TOKEN_EXPIRED` | 市场要登录，或登录过期 | `brickkit login` |
@@ -208,7 +208,7 @@ docker / podman 用就留着，否则删掉。
 **`mode: debug` 写进 `deploy.yaml` 被拒。** 它只能写在 `deploy.local.yaml`：`brickkit local on`，再到那里写。
 `target: k8s` 下 `mode: debug` / `mode: local` 都被拒，集群到不了你的机器。
 
-**`mode: debug` 的组件报 `relation does not exist`。** 它不生成迁移容器，手动跑一次迁移。
+**`mode: debug` 的组件报 `relation does not exist`。** 它不生成迁移容器：跑提示里给出的 `local.migrationCommand`（没给出的，组件没有从源码迁移的写法，看它的 `BRICKKIT.md`）。
 
 **没有注册中心、配置中心、网关。** 找不到不是装漏了，别建议加上。
 
@@ -236,4 +236,4 @@ docker / podman 用就留着，否则删掉。
 - 组件自己的说明（配置怎么填、依赖为什么要）：`.brickkit/manifests/<scope>/<name>/<版本>/BRICKKIT.md`
 - 「为什么这样设计」的完整论证与全部错误码：<https://github.com/brickKit/brickKit> 根目录 `AGENTS.zh.md`
 
-<!-- brickkit:skill version=v1.6.1 sum=sha256:ff3584ea51eedefef420cf03dc46878249fc257049f2f9c66f86e1cd99d2df55 -->
+<!-- brickkit:skill version=v1.7.0 sum=sha256:b9d89b33c1411ba0be581acc3a7e4525b2db6f8ce525b7518758a1be24b896b5 -->
