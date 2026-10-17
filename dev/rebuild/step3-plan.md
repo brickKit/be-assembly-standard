@@ -27,7 +27,7 @@
 
 | 编号 | 任务 | 仓库 | 验收 | 状态 |
 | --- | --- | --- | --- | --- |
-| T3.1 | 仓库与骨架：主分支（第 1 步已重启）上建包结构、`pyproject.toml` 与 `uv.lock`、取协议的脚本与检查、`make test`（单元与向量）与 `make test-integration`（`be-postgres`、`be-nats`、`be-rustfs`） | `be-sdk-python` | 向量读取通过 `SHA256SUMS` 核对；`make protocol-check` 通过 | 待做 |
+| T3.1 | 仓库与骨架：主分支（第 1 步已重启）上建包结构、`pyproject.toml` 与 `uv.lock`、取协议的脚本与检查、`make test`（单元与向量）与 `make test-integration`（`be-postgres`、`be-nats`、`be-rustfs`） | `be-sdk-python` | 向量读取通过 `SHA256SUMS` 核对；`make protocol-check` 通过 | 完成 |
 | T3.2 | 运行时与单跑：组件定义与模块接口、配置（声明的键、严格解析、`_FILE` 密钥与重读）、错误对象与原因目录（problem+json、gRPC 状态）、观测基本档（标准 `logging` 的 JSON 格式、每成员一个指标注册表、OpenTelemetry）、FastAPI 跑在 uvicorn 上（单进程、单事件循环）、单跑启动器（`serve`/`migrate`、退出码、健康与就绪、自描述、计时源检查、体面停止）、合并安全检查（AST 扫描：读进程环境、进程级初始化、退出进程、绕过 SDK） | `be-sdk-python` | 向量 `errors`、`config-parse` 通过；合并安全检查对 SDK 自身通过、对故意加入的违规报出 | 待做 |
 | T3.3 | 外壳启动器：按 `BRICKKIT_SERVED_MEMBERS_CONFIG` 构造成员；按安装的分发元数据核对成员版本，拒绝可编辑安装或路径安装（对应 Go 的 `replace`）；每个成员独立的端口与运行时；进程级键一致；同一数据库目标的成员共用一个池；拒绝条件一起报出；并行停止 | `be-sdk-python` | 与 Go 外壳同样的拒绝情形与“单跑与外壳行为一致”的测试 | 待做 |
 | T3.4 | 数据库：`asyncpg` 池（按成员的预算，外壳中用外壳登录角色）、事务入口（`SET LOCAL ROLE`、`search_path`、超时；`40001`/`40P01` 重试；错误映射；不许嵌套）、外壳中按成员区分语句缓存（P5.4）、启动检查、迁移入口（按上面的决定）、UUIDv7、单号序列 | `be-sdk-python` | 向量 `db-errors`、`migration-lint` 通过；0-12 的泄漏情形不出现；**同一个 schema 先由 Go SDK 迁移、再由 Python SDK 迁移时“已是最新”**，反过来也一样 | 待做 |
@@ -41,3 +41,4 @@
 ## 进度
 
 （每完成一个任务在这里加一行：日期、提交、结论。）
+- 2026-10-17 T3.1 完成：`be-sdk-python` `64bea8e`。主分支上建 `pyproject.toml` 与 `uv.lock`（Python 3.14；FastAPI 0.143、uvicorn 0.54、grpcio 1.84、asyncpg 0.32 等锁定的技术栈全部能在 3.14 上解析与导入）；`besdk/_protocol/` 是 `be-protocol` `v3.0.0-alpha.1`（`659215e`）的向量、迁移与能力清单，`scripts/protocol.py` 按标签取与逐字节核对（`make protocol-check`），向量另按 `SHA256SUMS` 核对；清掉了旧代码留下的缓存与虚拟环境（只有缓存，没有源码）。
