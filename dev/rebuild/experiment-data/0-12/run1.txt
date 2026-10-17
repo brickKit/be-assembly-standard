@@ -1,0 +1,366 @@
+# 0-12 run 1 (2026-10-17): PostgreSQL 16.15, PgBouncer 1.26.0, pgx v5.7.5, go1.26.0
+# roles: r012_shell (login) is granted r012_east WITH INHERIT FALSE; east.items belongs to r012_owner_east, r012_east may select and update
+# pb0: pool_mode = transaction default_pool_size = 1 max_prepared_statements = 0 
+# pb100: pool_mode = transaction default_pool_size = 1 max_prepared_statements = 100 
+# pbc: pool_mode = transaction default_pool_size = 4 max_prepared_statements = 100 
+
+== pool 1, max_prepared_statements 0
+PASS    SET LOCAL ROLE in a transaction, then the next transactions inside="r012_east rows=5" after(A)=r012_shell after(B)=r012_shell backend A=98 B=98; without the role: error: ERROR: permission denied for schema east (SQLSTATE 42501)
+HAZARD  plain SET / SET ROLE outside a transaction (the forbidden form) client B then sees search_path="east" current_user=r012_east (backend 98)
+PASS    SET LOCAL statement_timeout                                inside: 57014 canceling statement due to statement timeout; next client sees statement_timeout=0
+FAIL    pgx exec mode CacheStatement (pgx default)                 3/6 failed, first: ERROR: prepared statement "stmtcache_01ec8e0728552c4691edcb4e5e8bc0f64b22619fe19c6692" already exists (SQLSTAT…
+PASS    pgx exec mode CacheDescribe                                6/6 ok
+PASS    pgx exec mode DescribeExec                                 6/6 ok
+PASS    pgx exec mode Exec                                         6/6 ok
+PASS    pgx exec mode SimpleProtocol                               6/6 ok
+
+== pool 1, max_prepared_statements 100
+PASS    SET LOCAL ROLE in a transaction, then the next transactions inside="r012_east rows=5" after(A)=r012_shell after(B)=r012_shell backend A=99 B=99; without the role: error: ERROR: permission denied for schema east (SQLSTATE 42501)
+HAZARD  plain SET / SET ROLE outside a transaction (the forbidden form) client B then sees search_path="east" current_user=r012_east (backend 99)
+PASS    SET LOCAL statement_timeout                                inside: 57014 canceling statement due to statement timeout; next client sees statement_timeout=0
+PASS    pgx exec mode CacheStatement (pgx default)                 6/6 ok
+PASS    pgx exec mode CacheDescribe                                6/6 ok
+PASS    pgx exec mode DescribeExec                                 6/6 ok
+PASS    pgx exec mode Exec                                         6/6 ok
+PASS    pgx exec mode SimpleProtocol                               6/6 ok
+
+== concurrency (pool 4) and a shared backend (pool 1)
+PASS    pg_advisory_xact_lock held by A, B tries                   B got false
+HAZARD  session pg_advisory_lock by A, then B on a shared backend  B's try_advisory_lock=true (backend 99)
+PASS    FOR UPDATE SKIP LOCKED, two clients at once                A claimed 1, B claimed 2
+PASS    20 clients through the pooler                              server connections for r012_shell during the burst: 6; errors 0; took 1.07s
+
+== the same checks straight to PostgreSQL (no pooler)
+PASS    SET LOCAL ROLE in a transaction, then the next transactions inside="r012_east rows=5" after(A)=r012_shell after(B)=r012_shell backend A=105 B=106; without the role: error: ERROR: permission denied for schema east (SQLSTATE 42501)
+PASS    pgx exec mode CacheStatement (pgx default)                 6/6 ok
+PASS    pgx exec mode CacheDescribe                                6/6 ok
+PASS    pgx exec mode DescribeExec                                 6/6 ok
+PASS    pgx exec mode Exec                                         6/6 ok
+PASS    pgx exec mode SimpleProtocol                               6/6 ok
+
+# PgBouncer logs (warnings and errors)
+# cleaned up
+
+######## run012.sh
+#!/usr/bin/env bash
+# 0-12 run 1: PostgreSQL 16 behind PgBouncer in transaction mode; the probe (r012/probe) checks session state and statements.
+set -uo pipefail
+S=$(dirname "$0")/..; S=$(cd "$S" && pwd); R=$S/r012; export GOCACHE=$S/gocache
+cleanup() { docker rm -f r012-pg r012-pb0 r012-pb100 r012-pbc >/dev/null 2>&1; docker network rm r012-net >/dev/null 2>&1; }
+cleanup; docker network create r012-net >/dev/null
+docker run -d --name r012-pg --network r012-net -e POSTGRES_PASSWORD=r012-admin -p 26432:5432 postgres:16-alpine >/dev/null
+for _ in $(seq 1 60); do docker exec r012-pg pg_isready -U postgres >/dev/null 2>&1 && break; sleep 0.5; done; sleep 1
+docker exec -i r012-pg psql -q -U postgres -v ON_ERROR_STOP=1 <<'SQL'
+CREATE DATABASE r012;
+\c r012
+-- the member's owner role (migrations), its runtime role (no login), and the shell's login role
+CREATE ROLE r012_owner_east NOLOGIN;
+CREATE ROLE r012_east NOLOGIN;
+CREATE ROLE r012_shell LOGIN PASSWORD 'shell-pass';
+GRANT r012_east TO r012_shell WITH INHERIT FALSE;
+CREATE SCHEMA east AUTHORIZATION r012_owner_east;
+CREATE TABLE east.items(id int PRIMARY KEY, claimed_by text);
+ALTER TABLE east.items OWNER TO r012_owner_east;
+INSERT INTO east.items SELECT g, NULL FROM generate_series(1, 5) g;
+GRANT USAGE ON SCHEMA east TO r012_east;
+GRANT SELECT, UPDATE ON east.items TO r012_east;
+SQL
+mkdir -p $R/pb
+printf '"r012_shell" "shell-pass"\n' > $R/pb/userlist.txt
+bouncer() { # <name> <host-port> <pool> <max_prepared_statements>
+  cat > $R/pb/$1.ini <<INI
+[databases]
+r012 = host=r012-pg port=5432 dbname=r012
+
+[pgbouncer]
+listen_addr = 0.0.0.0
+listen_port = 6432
+auth_type = scram-sha-256
+auth_file = /etc/pgbouncer/userlist.txt
+pool_mode = transaction
+default_pool_size = $3
+max_prepared_statements = $4
+max_client_conn = 200
+ignore_startup_parameters = extra_float_digits
+INI
+  docker run -d --name r012-$1 --network r012-net -p $2:6432 -v $R/pb/$1.ini:/etc/pgbouncer/pgbouncer.ini:ro -v $R/pb/userlist.txt:/etc/pgbouncer/userlist.txt:ro edoburu/pgbouncer:latest >/dev/null
+}
+bouncer pb0 26440 1 0
+bouncer pb100 26441 1 100
+bouncer pbc 26442 4 100
+sleep 2
+echo "# 0-12 run 1 ($(date +%F)): PostgreSQL $(docker exec r012-pg psql -U postgres -Atc 'show server_version'), $(docker exec r012-pb0 pgbouncer --version | head -1), pgx v5.7.5, $(go version | cut -d' ' -f3)"
+echo "# roles: r012_shell (login) is granted r012_east WITH INHERIT FALSE; east.items belongs to r012_owner_east, r012_east may select and update"
+for b in pb0 pb100 pbc; do echo "# $b: $(grep -E 'pool_mode|default_pool_size|max_prepared' $R/pb/$b.ini | tr '\n' ' ')"; done
+(cd $R/probe && go run . \
+  -direct "postgres://postgres:r012-admin@localhost:26432/r012?sslmode=disable" \
+  -pb0 "postgres://r012_shell:shell-pass@localhost:26440/r012?sslmode=disable" \
+  -pb100 "postgres://r012_shell:shell-pass@localhost:26441/r012?sslmode=disable" \
+  -pbc "postgres://r012_shell:shell-pass@localhost:26442/r012?sslmode=disable") 2>&1
+echo; echo "# PgBouncer logs (warnings and errors)"; for b in pb0 pb100 pbc; do docker logs r012-$b 2>&1 | grep -i -E "warning|error" | sed "s/^/  $b: /" | head -5; done
+cleanup; echo "# cleaned up"
+
+######## probe/main.go
+// Command poolprobe checks how the session state and the statements this project relies on behave behind a
+// transaction-mode connection pooler (PgBouncer). Every check prints one line: PASS, FAIL or HAZARD (a rule's reason).
+package main
+
+import (
+	"context"
+	"errors"
+	"flag"
+	"fmt"
+	"os"
+	"strings"
+	"sync"
+	"time"
+
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
+)
+
+var ctx = context.Background()
+
+func connect(dsn string, mode pgx.QueryExecMode) *pgx.Conn {
+	cfg, err := pgx.ParseConfig(dsn)
+	if err != nil {
+		panic(err)
+	}
+	cfg.DefaultQueryExecMode = mode
+	c, err := pgx.ConnectConfig(ctx, cfg)
+	if err != nil {
+		panic(fmt.Sprintf("connect %s: %v", cfg.Host, err))
+	}
+	return c
+}
+
+func report(name, verdict, detail string) { fmt.Printf("%-7s %-58s %s\n", verdict, name, detail) }
+
+func one(c *pgx.Conn, q string, args ...any) string {
+	var s string
+	if err := c.QueryRow(ctx, q, args...).Scan(&s); err != nil {
+		return "error: " + err.Error()
+	}
+	return s
+}
+
+func backendPID(c *pgx.Conn) string { return one(c, "SELECT pg_backend_pid()::text") }
+
+// roleSwitch: SET LOCAL ROLE inside a transaction, then a second client on the same server connection.
+func roleSwitch(dsn string) {
+	a, b := connect(dsn, pgx.QueryExecModeSimpleProtocol), connect(dsn, pgx.QueryExecModeSimpleProtocol)
+	defer a.Close(ctx)
+	defer b.Close(ctx)
+	tx, _ := a.Begin(ctx)
+	_, err := tx.Exec(ctx, "SET LOCAL ROLE r012_east")
+	inside := "error"
+	if err == nil {
+		var u, n string
+		if err := tx.QueryRow(ctx, "SELECT current_user, count(*)::text FROM east.items").Scan(&u, &n); err == nil {
+			inside = u + " rows=" + n
+		} else {
+			inside = err.Error()
+		}
+	}
+	pidA := one(a, "SELECT pg_backend_pid()::text") // still inside the transaction: the server connection A holds
+	_ = tx.Commit(ctx)
+	afterA := one(a, "SELECT current_user")
+	afterB, pidB := one(b, "SELECT current_user"), backendPID(b)
+	noInherit := one(b, "SELECT count(*)::text FROM east.items")
+	ok := strings.HasPrefix(inside, "r012_east") && afterA == "r012_shell" && afterB == "r012_shell" && strings.Contains(noInherit, "permission denied")
+	report("SET LOCAL ROLE in a transaction, then the next transactions", verdict(ok),
+		fmt.Sprintf("inside=%q after(A)=%s after(B)=%s backend A=%s B=%s; without the role: %s", inside, afterA, afterB, pidA, pidB, short(noInherit)))
+}
+
+// sessionSetLeaks: a plain SET outside a transaction stays on the server connection and reaches the next client.
+func sessionSetLeaks(dsn string) {
+	a, b := connect(dsn, pgx.QueryExecModeSimpleProtocol), connect(dsn, pgx.QueryExecModeSimpleProtocol)
+	defer a.Close(ctx)
+	defer b.Close(ctx)
+	_, _ = a.Exec(ctx, "SET search_path TO east")
+	_, _ = a.Exec(ctx, "SET ROLE r012_east")
+	gotPath, gotUser, pid := one(b, "SELECT current_setting('search_path')"), one(b, "SELECT current_user"), backendPID(b)
+	leaked := gotPath == "east" || gotUser == "r012_east"
+	v := "PASS"
+	if leaked {
+		v = "HAZARD"
+	}
+	report("plain SET / SET ROLE outside a transaction (the forbidden form)", v,
+		fmt.Sprintf("client B then sees search_path=%q current_user=%s (backend %s)", gotPath, gotUser, pid))
+	_, _ = b.Exec(ctx, "RESET ROLE")
+	_, _ = b.Exec(ctx, "RESET search_path")
+}
+
+// localTimeout: SET LOCAL statement_timeout applies inside and is gone afterwards.
+func localTimeout(dsn string) {
+	a, b := connect(dsn, pgx.QueryExecModeSimpleProtocol), connect(dsn, pgx.QueryExecModeSimpleProtocol)
+	defer a.Close(ctx)
+	defer b.Close(ctx)
+	tx, _ := a.Begin(ctx)
+	_, _ = tx.Exec(ctx, "SET LOCAL statement_timeout = '100ms'")
+	_, err := tx.Exec(ctx, "SELECT pg_sleep(0.3)")
+	_ = tx.Rollback(ctx)
+	var pe *pgconn.PgError
+	cancelled := errors.As(err, &pe) && pe.Code == "57014"
+	after := one(b, "SELECT current_setting('statement_timeout')")
+	report("SET LOCAL statement_timeout", verdict(cancelled && after == "0"),
+		fmt.Sprintf("inside: %s; next client sees statement_timeout=%s", code(err), after))
+}
+
+// prepared: each pgx exec mode, two clients alternating on the same query with an argument.
+func prepared(dsn string) {
+	modes := []struct {
+		name string
+		mode pgx.QueryExecMode
+	}{{"CacheStatement (pgx default)", pgx.QueryExecModeCacheStatement}, {"CacheDescribe", pgx.QueryExecModeCacheDescribe},
+		{"DescribeExec", pgx.QueryExecModeDescribeExec}, {"Exec", pgx.QueryExecModeExec}, {"SimpleProtocol", pgx.QueryExecModeSimpleProtocol}}
+	for _, m := range modes {
+		a, b := connect(dsn, m.mode), connect(dsn, m.mode)
+		fails := []string{}
+		for i := 0; i < 6; i++ {
+			c := a
+			if i%2 == 1 {
+				c = b
+			}
+			var n int
+			if err := c.QueryRow(ctx, "SELECT $1::int + 1", i).Scan(&n); err != nil {
+				fails = append(fails, short(err.Error()))
+			} else if n != i+1 {
+				fails = append(fails, fmt.Sprintf("wrong result %d", n))
+			}
+		}
+		a.Close(ctx)
+		b.Close(ctx)
+		d := "6/6 ok"
+		if len(fails) > 0 {
+			d = fmt.Sprintf("%d/6 failed, first: %s", len(fails), fails[0])
+		}
+		report("pgx exec mode "+m.name, verdict(len(fails) == 0), d)
+	}
+}
+
+// advisory: the transaction-level lock excludes another client; the session-level lock stays on the server connection.
+func advisory(dsnShared, dsnConcurrent string) {
+	a, b := connect(dsnConcurrent, pgx.QueryExecModeSimpleProtocol), connect(dsnConcurrent, pgx.QueryExecModeSimpleProtocol)
+	ta, _ := a.Begin(ctx)
+	_, _ = ta.Exec(ctx, "SELECT pg_advisory_xact_lock(42)")
+	tb, _ := b.Begin(ctx)
+	got := ""
+	_ = tb.QueryRow(ctx, "SELECT pg_try_advisory_xact_lock(42)::text").Scan(&got)
+	_ = tb.Rollback(ctx)
+	_ = ta.Commit(ctx)
+	a.Close(ctx)
+	b.Close(ctx)
+	report("pg_advisory_xact_lock held by A, B tries", verdict(got == "false"), "B got "+got)
+
+	c, d := connect(dsnShared, pgx.QueryExecModeSimpleProtocol), connect(dsnShared, pgx.QueryExecModeSimpleProtocol)
+	_ = one(c, "SELECT pg_advisory_lock(7)::text")
+	got2, pid := one(d, "SELECT pg_try_advisory_lock(7)::text"), backendPID(d)
+	v := "PASS"
+	if got2 == "true" {
+		v = "HAZARD"
+	}
+	report("session pg_advisory_lock by A, then B on a shared backend", v, "B's try_advisory_lock="+got2+" (backend "+pid+")")
+	_, _ = d.Exec(ctx, "SELECT pg_advisory_unlock_all()")
+	c.Close(ctx)
+	d.Close(ctx)
+}
+
+// skipLocked: two clients claim rows concurrently.
+func skipLocked(dsn string) {
+	a, b := connect(dsn, pgx.QueryExecModeSimpleProtocol), connect(dsn, pgx.QueryExecModeSimpleProtocol)
+	defer a.Close(ctx)
+	defer b.Close(ctx)
+	claim := func(tx pgx.Tx) string {
+		var id string
+		_ = tx.QueryRow(ctx, "SELECT id::text FROM east.items WHERE claimed_by IS NULL ORDER BY id FOR UPDATE SKIP LOCKED LIMIT 1").Scan(&id)
+		return id
+	}
+	ta, _ := a.Begin(ctx)
+	_, _ = ta.Exec(ctx, "SET LOCAL ROLE r012_east")
+	tb, _ := b.Begin(ctx)
+	_, _ = tb.Exec(ctx, "SET LOCAL ROLE r012_east")
+	ia, ib := claim(ta), claim(tb)
+	_ = ta.Rollback(ctx)
+	_ = tb.Rollback(ctx)
+	report("FOR UPDATE SKIP LOCKED, two clients at once", verdict(ia != "" && ib != "" && ia != ib), "A claimed "+ia+", B claimed "+ib)
+}
+
+// fanIn: many client connections, few server connections.
+func fanIn(dsn, direct string, clients int) {
+	var wg sync.WaitGroup
+	var mu sync.Mutex
+	errs := 0
+	start := time.Now()
+	for i := 0; i < clients; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			c := connect(dsn, pgx.QueryExecModeSimpleProtocol)
+			defer c.Close(ctx)
+			tx, err := c.Begin(ctx)
+			if err == nil {
+				_, err = tx.Exec(ctx, "SELECT pg_sleep(0.2)")
+				_ = tx.Commit(ctx)
+			}
+			if err != nil {
+				mu.Lock()
+				errs++
+				mu.Unlock()
+			}
+		}()
+	}
+	time.Sleep(100 * time.Millisecond)
+	d := connect(direct, pgx.QueryExecModeSimpleProtocol)
+	backends := one(d, "SELECT count(*)::text FROM pg_stat_activity WHERE usename = 'r012_shell'")
+	d.Close(ctx)
+	wg.Wait()
+	report(fmt.Sprintf("%d clients through the pooler", clients), verdict(errs == 0),
+		fmt.Sprintf("server connections for r012_shell during the burst: %s; errors %d; took %s", backends, errs, time.Since(start).Round(10*time.Millisecond)))
+}
+
+func verdict(ok bool) string {
+	if ok {
+		return "PASS"
+	}
+	return "FAIL"
+}
+func code(err error) string {
+	var pe *pgconn.PgError
+	if errors.As(err, &pe) {
+		return pe.Code + " " + pe.Message
+	}
+	if err == nil {
+		return "no error"
+	}
+	return err.Error()
+}
+func short(s string) string {
+	if len(s) > 110 {
+		return s[:110] + "…"
+	}
+	return s
+}
+
+func main() {
+	direct := flag.String("direct", "", "DSN straight to PostgreSQL (admin)")
+	pb0 := flag.String("pb0", "", "DSN through PgBouncer, pool 1, max_prepared_statements 0")
+	pb100 := flag.String("pb100", "", "DSN through PgBouncer, pool 1, max_prepared_statements 100")
+	pbc := flag.String("pbc", "", "DSN through PgBouncer, pool 4, max_prepared_statements 100")
+	flag.Parse()
+	for _, t := range []struct{ name, dsn string }{{"pool 1, max_prepared_statements 0", *pb0}, {"pool 1, max_prepared_statements 100", *pb100}} {
+		fmt.Printf("\n== %s\n", t.name)
+		roleSwitch(t.dsn)
+		sessionSetLeaks(t.dsn)
+		localTimeout(t.dsn)
+		prepared(t.dsn)
+	}
+	fmt.Printf("\n== concurrency (pool 4) and a shared backend (pool 1)\n")
+	advisory(*pb100, *pbc)
+	skipLocked(*pbc)
+	fanIn(*pbc, *direct, 20)
+	fmt.Printf("\n== the same checks straight to PostgreSQL (no pooler)\n")
+	roleSwitch(strings.Replace(*direct, "postgres:r012-admin", "r012_shell:shell-pass", 1))
+	prepared(strings.Replace(*direct, "postgres:r012-admin", "r012_shell:shell-pass", 1))
+	os.Exit(0)
+}
