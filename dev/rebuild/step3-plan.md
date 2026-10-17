@@ -19,9 +19,9 @@
 | 依赖管理 | `uv`（本机已装 0.12.1），`pyproject.toml` 加 `uv.lock`，版本精确 | 确切版本以依赖锁为准（锁定的技术栈一节） |
 | 包名 | 分发名 `be-sdk`，导入名 `besdk`；从 `3.0.0a1`（PEP 440 写法，对应 `3.0.0-alpha.1`）起 | 沿用旧仓库的导入名，组件代码的导入路径不变 |
 | 协议的机器可读部分 | 按精确的标签（`v3.0.0-alpha.1`）取 `be-protocol` 的 `vectors/`、`migrations/`、`migrations-bus/`、`capabilities.json`，放进包内 `besdk/_protocol/`（迁移要随包分发），附来源的标签与提交；`make protocol-check` 重新取一次并逐字节比较，向量另按 `SHA256SUMS` 核对 | Python 不能像 Go 那样按模块版本引用；拷贝必须可验证，不能手改 |
-| 迁移入口 | **待用户决定**，见下 | P5.12 与锁定的技术栈冲突 |
+| 迁移入口 | SDK 自带（A111，用户 2026-10-17 选定），按 P5.11–P5.16，状态表与 Go 相同 | 见下 |
 
-**冲突：迁移工具。** 锁定的技术栈给 Python 定的是 `yoyo-migrations`；`be-protocol` 的 P5.12 要求两张状态表（`be_sdk_migrations`、`schema_migrations`）在组件 schema 里、形状与 golang-migrate 相同，“所以三种语言的 SDK 读写同一份状态”（同一个库可以先后由不同语言的实现迁移，组件换语言不用重建库）。yoyo 的状态表名与形状是固定的（`_yoyo_migration` 等），做不到。推荐：Python SDK 自己实现迁移入口（迁移检查、迁移锁、状态表、每个文件一个事务、锁等待重试与阻塞者报告，按 P5.11–P5.16，Go 的实现约 300 行），把锁定的技术栈中 Python 的迁移一格改为“SDK 自带的迁移入口，纯 SQL 文件”，记一条 AI 决定；备选是放宽 P5.12、各语言各用自己的状态表（换语言就要重新迁移，违背语言中立）。
+**冲突与决定：迁移工具。** 锁定的技术栈给 Python 定的是 `yoyo-migrations`；`be-protocol` 的 P5.12 要求两张状态表（`be_sdk_migrations`、`schema_migrations`）在组件 schema 里、形状与 golang-migrate 相同，“所以三种语言的 SDK 读写同一份状态”（同一个库可以先后由不同语言的实现迁移，组件换语言不用重建库）。yoyo 的状态表名与形状是固定的（`_yoyo_migration` 等），做不到。用户选定（A111）：Python SDK 自己实现迁移入口（迁移检查、迁移锁、状态表、每个文件一个事务、锁等待重试与阻塞者报告，按 P5.11–P5.16，Go 的实现约 300 行），把锁定的技术栈中 Python 的迁移一格改为“SDK 自带的迁移入口，纯 SQL 文件”（TypeScript 的 `node-pg-migrate` 同样做不到，一并改）；没有采用的是放宽 P5.12、各语言各用自己的状态表（换语言就要重新迁移，违背语言中立）。
 
 ## 任务
 

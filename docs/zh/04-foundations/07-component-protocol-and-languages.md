@@ -30,7 +30,7 @@
 | HTTP | Gin；移动聚合的 GraphQL 用 gqlgen（从 schema 生成），挂在 Gin 上 | FastAPI 跑在 uvicorn 上，单进程、单事件循环 | Fastify |
 | gRPC | `grpc-go` | `grpc.aio` | `@grpc/grpc-js` + ts-proto |
 | 数据库 | `database/sql` + `pgx`，`sqlc`，手写 SQL | `asyncpg`，手写 SQL | `pg`（node-postgres），手写 SQL |
-| 迁移 | `golang-migrate`，纯 SQL 文件 | `yoyo-migrations`，纯 SQL 文件 | `node-pg-migrate`，纯 SQL 文件 |
+| 迁移 | `golang-migrate`，纯 SQL 文件 | SDK 自带的迁移入口，纯 SQL 文件（A111） | SDK 自带的迁移入口，纯 SQL 文件（A111） |
 | 消息 | `nats.go` JetStream | `nats-py` JetStream | `@nats-io/jetstream` |
 | 十进制 | `cockroachdb/apd` | `decimal` | `decimal.js` |
 | 令牌验证 | `golang-jwt` + `keyfunc` | PyJWT（一律传受众） | `jose` |
@@ -39,7 +39,7 @@
 | 对象存储 | `aws-sdk-go-v2` | `aioboto3` | `@aws-sdk/client-s3` |
 | 测试 | `testing` + `testify` + `rapid` | `pytest` + `hypothesis` | `vitest` + `fast-check` |
 
-任何地方都不用 ORM：SDK 要在每个事务里切换角色与 `search_path`，ORM 与查询构造器做不到或会隐式缓存语句。绝不使用：Go 的 Echo、Fiber、chi 或裸 `ServeMux`、GORM、`lib/pq`；Python 的 Flask、Django、同步 gRPC、SQLAlchemy、alembic、gunicorn 或多个 worker。同一种语言内迁移工具统一，每个组件镜像里是同一个迁移入口。能自由选的依赖库版本，与系统里已有的保持一致；依赖链强制要求更新的版本时跟着走。
+任何地方都不用 ORM：SDK 要在每个事务里切换角色与 `search_path`，ORM 与查询构造器做不到或会隐式缓存语句。绝不使用：Go 的 Echo、Fiber、chi 或裸 `ServeMux`、GORM、`lib/pq`；Python 的 Flask、Django、同步 gRPC、SQLAlchemy、alembic、gunicorn 或多个 worker。同一种语言内迁移工具统一，每个组件镜像里是同一个迁移入口；三种语言的迁移状态表相同（`be-protocol` 的 P5.12），所以 Python 与 TypeScript 不用自带状态表的迁移工具，由 SDK 实现迁移入口（A111）。能自由选的依赖库版本，与系统里已有的保持一致；依赖链强制要求更新的版本时跟着走。
 
 TypeScript 的栈对照过市场方案：Fastify 而不是 Hono、Express 或 NestJS（它的钩子正好放下 SDK 的中间件链，每个成员一个实例天然隔离）；node-postgres 而不是 porsager/postgres、Kysely、Drizzle 或 Prisma（前者默认隐式缓存预编译语句，其余是查询构造器或 ORM，Prisma 做不到每个事务切角色）；grpc-js 而不是 connect-node（后者没有服务配置里的重试与重试预算）。
 
