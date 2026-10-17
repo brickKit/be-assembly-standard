@@ -12,6 +12,7 @@
 | [rebuild-plan.md](rebuild-plan.md) | 仓库复用、`legacy/` 分支、改名与新建的清单与顺序；每一步动仓库前先列动作请用户确认（改名除外） |
 | [implementation-checks.md](implementation-checks.md) | 冻结时列出、交给实现阶段核对的项 |
 | [experiment-plan.md](experiment-plan.md) | 代表部署实验（D41）的实施计划（待用户审） |
+| [step1-repo-actions.md](step1-repo-actions.md) | 实验第 1 步的仓库动作清单（待用户确认） |
 
 ## 现在在哪里
 
