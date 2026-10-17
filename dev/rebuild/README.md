@@ -59,7 +59,7 @@
 
 **已知、暂不处理**：`infra/scripts/tests/test_ship_dryrun.sh` 失败——旧的 `ship.sh` 还调用旧 `be-acceptance` 的命令，迁移后已不存在；发布工具随重建重新提供，届时一并处理。
 
-**给 BrickKit 的收件箱** `brickkit-feedback/rebuild.md`：FRR-001 到 FRR-005、FRB-001 到 FRB-004 全部关闭（最后一次复测 2026-10-17，v1.7.2）；FRR-006 已关闭（v1.8.0）；FRB-005 也已关闭（v1.8.1 复测通过）；没有未回复的条目。
+**给 BrickKit 的收件箱** `brickkit-feedback/rebuild.md`：FRR-001 到 FRR-006、FRB-001 到 FRB-005 全部关闭（最后一次复测 2026-10-17，v1.8.1）；没有未回复的条目。
 
 ## 任务结束时：知识库反馈
 
