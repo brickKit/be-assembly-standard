@@ -14,6 +14,7 @@
 | [experiment-plan.md](experiment-plan.md) | 代表部署实验（D41）的实施计划（待用户审） |
 | [step1-repo-actions.md](step1-repo-actions.md) | 实验第 1 步的仓库动作清单与执行结果（2026-10-17 已执行） |
 | [step2-plan.md](step2-plan.md) | 实验第 2 步（`be-protocol` 子集与 Go SDK）的任务、取舍与进度 |
+| [step3-plan.md](step3-plan.md) | 实验第 3 步（Python SDK 子集、外壳启动器、两种语言的探针与一致性剖面）的任务、取舍与进度 |
 
 ## 现在在哪里
 
@@ -54,7 +55,7 @@
 | 0-12 | 连接池代理的事务模式与 `SET LOCAL`（以及 pgx 的预编译语句） | 完成（2026-10-17）；设计依赖的事务内设置都成立；pgx 默认模式要求 PgBouncer 开 `max_prepared_statements`（记进交实现核对的项） |
 | 0-13 | 负载与数据的试跑规模 | 推迟到有业务组件之后（第 8 步前） |
 
-**第 0、1、2 步已完成**（2026-10-17）：0-01 到 0-12 完成，0-13 按计划推迟；第 1 步的仓库动作已执行（[step1-repo-actions.md](step1-repo-actions.md)）；第 2 步发布了 `be-protocol` 与 `be-sdk-go` 的 `v3.0.0-alpha.1`（第 1–9 章、语义向量、功能矩阵；任务、取舍、实测发现与留到后续的项在 [step2-plan.md](step2-plan.md)）。**下一步是第 3 步**：Python 的 SDK 子集与外壳启动器、两种语言的探针与一致性剖面（`be-sdk-python`、`be-acceptance`），先照第 2 步的做法起草 `step3-plan.md`。
+**第 0、1、2 步已完成**（2026-10-17）：0-01 到 0-12 完成，0-13 按计划推迟；第 1 步的仓库动作已执行（[step1-repo-actions.md](step1-repo-actions.md)）；第 2 步发布了 `be-protocol` 与 `be-sdk-go` 的 `v3.0.0-alpha.1`（第 1–9 章、语义向量、功能矩阵；任务、取舍、实测发现与留到后续的项在 [step2-plan.md](step2-plan.md)）。**下一步是第 3 步**：Python 的 SDK 子集与外壳启动器、两种语言的探针与一致性剖面（`be-sdk-python`、`be-acceptance`），计划已起草（[step3-plan.md](step3-plan.md)），迁移工具的冲突待用户决定。
 
 2026-10-17 起连续推进（用户授权）：每项做完写记录、更新本文件、提交，直接做下一项；只在需要用户决定、需要 BrickKit 配合、对外难撤回的动作（第 1 步的仓库动作先列清单请用户确认；首次推送或发布标签）时停下。
 
