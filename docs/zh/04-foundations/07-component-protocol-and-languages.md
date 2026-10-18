@@ -27,7 +27,7 @@
 
 | 层 | Go | Python | TypeScript |
 | --- | --- | --- | --- |
-| HTTP | Gin；移动聚合的 GraphQL 用 gqlgen（从 schema 生成），挂在 Gin 上 | FastAPI 跑在 uvicorn 上（请求用 httptools 解析），单进程、单事件循环；出站用 httpx | Fastify |
+| HTTP | Gin；移动聚合的 GraphQL 用 gqlgen（从 schema 生成），挂在 Gin 上 | FastAPI 跑在 uvicorn 上（请求用 httptools 解析），单进程、单事件循环；出站用 aiohttp | Fastify |
 | gRPC | `grpc-go` | `grpc.aio` | `@grpc/grpc-js` + ts-proto |
 | 数据库 | `database/sql` + `pgx`，`sqlc`，手写 SQL | `asyncpg`，手写 SQL | `pg`（node-postgres），手写 SQL |
 | 迁移 | `golang-migrate`，纯 SQL 文件 | SDK 自带的迁移入口，纯 SQL 文件（A111） | SDK 自带的迁移入口，纯 SQL 文件（A111） |
@@ -36,10 +36,12 @@
 | 令牌验证 | `golang-jwt` + `keyfunc` | PyJWT（一律传受众） | `jose` |
 | 日志与指标 | `slog`；每个模块一个 Prometheus 注册表 | 标准 `logging` 配 SDK 的 JSON 格式；每个模块一个注册表 | `pino`；每个模块一个注册表 |
 | 追踪 | OpenTelemetry Go | OpenTelemetry Python | OpenTelemetry JS，不用自动插桩 |
-| 对象存储 | `aws-sdk-go-v2` | `aioboto3` | `@aws-sdk/client-s3` |
+| 对象存储 | `aws-sdk-go-v2` | aiohttp 加 SDK 自带的 SigV4 签名（只有上传对象与预签名读取两种请求） | `@aws-sdk/client-s3` |
 | 测试 | `testing` + `testify` + `rapid` | `pytest` + `hypothesis` | `vitest` + `fast-check` |
 
-任何地方都不用 ORM：SDK 要在每个事务里切换角色与 `search_path`，ORM 与查询构造器做不到或会隐式缓存语句。绝不使用：Go 的 Echo、Fiber、chi 或裸 `ServeMux`、GORM、`lib/pq`；Python 的 Flask、Django、同步 gRPC、SQLAlchemy、alembic、gunicorn 或多个 worker。同一种语言内迁移工具统一，每个组件镜像里是同一个迁移入口；三种语言的迁移状态表相同（`be-protocol` 的 P5.12），所以 Python 与 TypeScript 不用自带状态表的迁移工具，由 SDK 实现迁移入口（A111）。能自由选的依赖库版本，与系统里已有的保持一致；依赖链强制要求更新的版本时跟着走。
+任何地方都不用 ORM：SDK 要在每个事务里切换角色与 `search_path`，ORM 与查询构造器做不到或会隐式缓存语句。绝不使用：Go 的 Echo、Fiber、chi 或裸 `ServeMux`、GORM、`lib/pq`；Python 的 Flask、Django、同步 gRPC、SQLAlchemy、alembic、gunicorn 或多个 worker。同一种语言内迁移工具统一，每个组件镜像里是同一个迁移入口；三种语言的迁移状态表相同（`be-protocol` 的 P5.12），所以 Python 与 TypeScript 不用自带状态表的迁移工具，由 SDK 实现迁移入口（A111）。同一个依赖库在整个系统里只用一个版本，这个版本取当前最新、实测可用的那个，升级时为全部组件一起换（[底层选择的原则](README.md#原则)）。
+
+Python 的出站 HTTP 对照过 httpx：同一个探针按 100/s 经 HTTP 调用下一个探针，aiohttp 每次调用的 CPU 从 4.1 毫秒降到 2.6 毫秒、一跳 p50 从 3.3 毫秒降到 1.9 毫秒（代表部署实验第 4 步）；aiohttp 本来就随对象存储的客户端装着，所以不多一个依赖，组件间调用、取发行方公钥与取大载荷都用它。uvloop 同次实测只省 5%–10%，在测量的波动之内，暂不采用。对象存储同样实测过：大载荷的生产者一端只发两种请求（上传对象、签发预签名读取地址），经 aioboto3 每次上传加签名约 4.3 毫秒 CPU，其中大半是 botocore 为每次调用构建与校验请求模型；改为 SDK 自带的 SigV4 签名加 aiohttp 后约 1.1 毫秒，8 个并发时上传延迟 p50 从 28 毫秒降到 10 毫秒。签名与 botocore 对同样输入的结果逐字节相同（SDK 的测试拿 botocore 作参照）。aioboto3 因此不再是 SDK 的依赖；以后要用到更多的 S3 能力（分片上传、生命周期管理）时，再按同样的实测比较。
 
 TypeScript 的栈对照过市场方案：Fastify 而不是 Hono、Express 或 NestJS（它的钩子正好放下 SDK 的中间件链，每个成员一个实例天然隔离）；node-postgres 而不是 porsager/postgres、Kysely、Drizzle 或 Prisma（前者默认隐式缓存预编译语句，其余是查询构造器或 ORM，Prisma 做不到每个事务切角色）；grpc-js 而不是 connect-node（后者没有服务配置里的重试与重试预算）。
 

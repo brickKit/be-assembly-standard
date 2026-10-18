@@ -41,7 +41,7 @@
 | T4.5 | 负载驱动（`be-acceptance/load/`，Go）：操作、速率、加压、事件路径的完成时间、结果文件 | `be-acceptance` | 对一条路径跑出 p50/p95/p99、吞吐、错误；协调遗漏的自检 | 完成 |
 | T4.6 | 报告生成与运行一格的入口：从结果文件出档案的结果表与报告的表 | `be-acceptance`、`dev/rebuild/` | 一格一条命令跑完并写出档案 | 完成 |
 | T4.6b | 全面复测（插入）：全部相关测试与 15 格固定速率测量，按操作设合理上限；找到的问题当场修 | 各仓库 | 三轮后无缺陷；FRB-006 的升级部署测试通过；记录 4-03 | 三轮完成（第三轮 11 个阶段全过、408 项）；FRB-006 部署测试在跑 |
-| T4.6c | 性能跟进（插入）：Go 每请求 CPU 的剖析与 `perf/httpx`；Python 的 `uvloop`、aiohttp（`perf/uvloop`、`perf/aiohttp`、`perf/both`）；第三轮新看出的三项：提交后唤醒转发器的 CPU 代价、PostgreSQL 队列订阅每条消息的往返次数、Python 大事件路径的 CPU | `be-sdk-go`、`be-sdk-python` | 实测收益；有收益的合入并发版 | 实验代码已备好；三项待设计 |
+| T4.6c | 性能跟进（插入）：Go 每请求 CPU 的剖析与 `perf/httpx`；Python 的 `uvloop`、aiohttp（`perf/uvloop`、`perf/aiohttp`、`perf/both`）；第三轮新看出的三项：提交后唤醒转发器的 CPU 代价、PostgreSQL 队列订阅每条消息的往返次数、Python 大事件路径的 CPU；Go 升到 1.27.2（`encoding/json` 改由 v2 实现）、Python 升到 3.15.0（用户 2026-10-18 同意升级）；Python 的 JSON 换 orjson 或 msgspec、服务端 granian 与 uvicorn 的对比 | `be-sdk-go`、`be-sdk-python`、探针、外壳 | 实测收益；有收益的合入并发版 | 已完成：`perf/httpx` 合入（用户面约快 5%）；出站 HTTP 全部改用 aiohttp（每次调用的 CPU 少约 37%）；uvloop 不采用（5%–10%，在波动之内）；转发器只转发写过的分区（每个事件约 25 个事务降到 2 个）；队列先领取再推进（每条 7–9 次往返降到 2 次）；工具链升级在测。未做：大事件剖析、orjson、granian |
 | T4.7 | D 行：进程底价（各语言单跑一个探针；Go 外壳承载 1、2、4 个；Python 外壳承载 1、2 个）与 S、H、X 三列的通信细分（全部操作 × 全部负载），每格 3 次 | 本项目 | 第一份报告：D 行的通信代价 | 待做 |
 
 ## 进度
