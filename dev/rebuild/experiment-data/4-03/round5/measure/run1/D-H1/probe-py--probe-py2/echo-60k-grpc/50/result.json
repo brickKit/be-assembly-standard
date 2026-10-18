@@ -1,0 +1,182 @@
+{
+  "cell": "D-H1",
+  "caller": "test/probe-py",
+  "callee": "test/probe-py2",
+  "op": "echo-60k-grpc",
+  "load": "50",
+  "flags": [
+    "-op",
+    "call",
+    "-surface",
+    "grpc",
+    "-inner",
+    "echo",
+    "-bytes",
+    "61440",
+    "-rate",
+    "50",
+    "-warmup",
+    "3s",
+    "-duration",
+    "10s",
+    "-step-time",
+    "3s"
+  ],
+  "before": {
+    "settled": true,
+    "waited": 3.0545138400048018
+  },
+  "containers": {
+    "brickkit-d-h1-be-py-render-3-0-7-1": [
+      "test/probe-py",
+      "test/probe-py2"
+    ]
+  },
+  "resources": {
+    "elapsed": 9.971594053000445,
+    "requests": 500,
+    "containers": {
+      "brickkit-d-h1-be-py-render-3-0-7-1": {
+        "process": {
+          "memory_median": 111669248,
+          "memory_peak": 111878144,
+          "cpu_seconds": 2.25,
+          "cores": 0.22564095449944402,
+          "cpu_seconds_per_1000": 4.5
+        },
+        "cgroup": {
+          "memory_median": 143159296,
+          "memory_peak": 143646720,
+          "cpu_seconds": 2.27209000000002,
+          "cores": 0.22785624724828724,
+          "cpu_seconds_per_1000": 4.54418000000004
+        }
+      },
+      "be-postgres": {
+        "process": {
+          "memory_median": 1514319872,
+          "memory_peak": 1514442752,
+          "cpu_seconds": 0.7100000000009459,
+          "cores": 0.07120225675325276,
+          "cpu_seconds_per_1000": 1.4200000000018917
+        },
+        "cgroup": {
+          "memory_median": 425340928,
+          "memory_peak": 425918464,
+          "cpu_seconds": 0.7471230000001015,
+          "cores": 0.07492513193267156,
+          "cpu_seconds_per_1000": 1.494246000000203
+        }
+      },
+      "be-nats": {
+        "process": {
+          "memory_median": 52158464,
+          "memory_peak": 52158464,
+          "cpu_seconds": 0.03000000000002956,
+          "cores": 0.0030085460599955515,
+          "cpu_seconds_per_1000": 0.06000000000005912
+        },
+        "cgroup": {
+          "memory_median": 76533760,
+          "memory_peak": 77221888,
+          "cpu_seconds": 0.06906600000002072,
+          "cores": 0.006926274739317012,
+          "cpu_seconds_per_1000": 0.13813200000004144
+        }
+      },
+      "be-rustfs": {
+        "process": {
+          "memory_median": 474013696,
+          "memory_peak": 474013696,
+          "cpu_seconds": 0.17000000000007276,
+          "cores": 0.017048427673298623,
+          "cpu_seconds_per_1000": 0.3400000000001455
+        },
+        "cgroup": {
+          "memory_median": 2095017984,
+          "memory_peak": 2097033216,
+          "cpu_seconds": 0.21066000000018903,
+          "cores": 0.021126010433286904,
+          "cpu_seconds_per_1000": 0.42132000000037806
+        }
+      }
+    },
+    "platform": {
+      "memory_median": 536002560,
+      "memory_peak": 536698880,
+      "cpu_seconds": 0.9100000000034925,
+      "cores": 0.09125923048679205,
+      "cpu_seconds_per_1000": 1.820000000006985
+    },
+    "db_connections": {
+      "postgres": {
+        "median": 5,
+        "peak": 5
+      },
+      "shell_go_core": {
+        "median": 8,
+        "peak": 8
+      },
+      "shell_py_render": {
+        "median": 6,
+        "peak": 6
+      }
+    }
+  },
+  "driver": {
+    "target": "http://127.0.0.1:18601",
+    "op": {
+      "Kind": "call",
+      "Surface": "grpc",
+      "Inner": "echo",
+      "Bytes": 61440,
+      "MS": 10,
+      "Relay": false
+    },
+    "rate": 50,
+    "seconds": 10,
+    "sent": 500,
+    "ok": 500,
+    "errors": {},
+    "error_rate": 0,
+    "throughput": 50,
+    "latency_ms": {
+      "P50": 4.572,
+      "P90": 5.321,
+      "P95": 5.548,
+      "P99": 6.654,
+      "Max": 12.845
+    },
+    "service_ms": {
+      "P50": 3.941,
+      "P90": 4.617,
+      "P95": 4.826,
+      "P99": 5.763,
+      "Max": 11.734
+    },
+    "hop_ms": {
+      "P50": 2.713,
+      "P90": 3.228,
+      "P95": 3.418,
+      "P99": 4.214,
+      "Max": 5.719
+    },
+    "driver_overloaded": 0
+  },
+  "backlog": {
+    "test.probe_py": {
+      "test_probe_py2_peer": {
+        "pending": 0,
+        "ack_pending": 0,
+        "oldest_age": 0.0
+      }
+    },
+    "test.probe_py2": {
+      "test_probe_go_peer": {
+        "pending": 0,
+        "ack_pending": 0,
+        "oldest_age": 0.0
+      }
+    }
+  }
+}
