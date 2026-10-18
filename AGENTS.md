@@ -34,7 +34,7 @@
 - **提交与发布**：英文提交信息先写进文件再 `git commit -F`，带注释的标签，按依赖顺序发布（[开发流程与发布](docs/zh/01-conventions/10-development-workflow.md#提交)）。
 - **子模块地图**：`.gitmodules` 与子模块指针只经 `git submodule` 命令改变，指针与需要它的 `brickkit upgrade` 一起提交。
 - **参考实现**：先自己设计，卡住才看参考，绝不照抄（[参考实现](docs/zh/01-conventions/08-reference-implementations.md)）。
-- **AI 友好的代码**：模式只用在帮助 AI 读懂的地方；函数、文件与会话有大小上限（[AI 编码习惯](docs/zh/01-conventions/09-ai-coding.md)、[AI 导航](docs/zh/01-conventions/05-ai-navigation.md)）。
+- **AI 友好的代码**：模式只用在帮助 AI 读懂的地方；越底层越要想性能、查市场上更好的做法，业务逻辑以看得懂优先；函数、文件与会话有大小上限（[AI 编码习惯](docs/zh/01-conventions/09-ai-coding.md)、[AI 导航](docs/zh/01-conventions/05-ai-navigation.md)）。
 - **表达方式**：根据情况选图、表、代码、步骤、填好的样例或文字，哪种最好懂用哪种；意图类的图表先改再改代码，事实类从代码生成；用了设计模式画角色图（[图与表的规范](docs/zh/01-conventions/04-diagrams-and-tables.md)）。
 - **文档**：开发完成前只写中文（D67），同一规则只写在一处；正式文档不链接 `dev/` 与 `archive/`（`make gates`）（[文档规则](docs/zh/01-conventions/03-documentation.md)）。
 - **容器默认关着**：`make up` 的基础资源可以常开；组件容器验证完就 `brickkit down`。
@@ -63,7 +63,7 @@
 | 演示数据；测试账号；怎样登录；依赖方没有我要的数据 | [种子与测试数据](docs/zh/01-conventions/07-seed-and-test-data.md)、[种子数据清单](docs/zh/03-seed-data.md) |
 | 前端页面、组件库、主题、菜单、只有部分用户看得到的按钮 | [前端技术栈](docs/zh/04-foundations/04-frontend-stack.md)、[协议 20](docs/zh/06-protocols/20-frontend.md) |
 | 这段业务逻辑该怎样；看哪个开源 ERP；几种做法都合理 | [参考实现](docs/zh/01-conventions/08-reference-implementations.md)、[选择方式](docs/zh/00-overview/04-selection.md) |
-| 要不要用设计模式；文件或函数太长；用了模式怎样画图 | [AI 编码习惯](docs/zh/01-conventions/09-ai-coding.md)、[图与表的模式与协作图](docs/zh/01-conventions/04-diagrams-and-tables.md#模式与协作图) |
+| 要不要用设计模式；文件或函数太长；用了模式怎样画图；要不要为性能优化、有没有更好的做法 | [AI 编码习惯](docs/zh/01-conventions/09-ai-coding.md)、[图与表的模式与协作图](docs/zh/01-conventions/04-diagrams-and-tables.md#模式与协作图) |
 | 写、拆或翻译文档；组件的文档；画图与表；用图、表还是样例 | [文档规则](docs/zh/01-conventions/03-documentation.md)、[图与表](docs/zh/01-conventions/04-diagrams-and-tables.md) |
 | 升版本；发布；打标签；“发版” | [开发流程与发布的版本与发布](docs/zh/01-conventions/10-development-workflow.md#版本)、`brickkit-component` 技能（`brickkit release`）；版本传播工具随重建的工具重新提供 |
 | 怎样安装或部署；谁建数据库；密钥；Kubernetes；另一个环境 | `brickkit-deploy` 技能（[SKILL.md](.claude/skills/brickkit-deploy/SKILL.md)）、[部署与运行](docs/zh/04-foundations/01-deployment-and-runtime.md)、各组件 `BRICKKIT.md` 的“部署前准备” |
