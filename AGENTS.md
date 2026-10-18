@@ -36,6 +36,7 @@
 - **参考实现**：先自己设计，卡住才看参考，绝不照抄（[参考实现](docs/zh/01-conventions/08-reference-implementations.md)）。
 - **AI 友好的代码**：模式只用在帮助 AI 读懂的地方；越底层越要想性能、查市场上更好的做法，业务逻辑以看得懂优先；函数、文件与会话有大小上限（[AI 编码习惯](docs/zh/01-conventions/09-ai-coding.md)、[AI 导航](docs/zh/01-conventions/05-ai-navigation.md)）。
 - **版本与技术栈随时可更新**：语言、运行时、底层服务、依赖库的版本与锁定的技术栈都按需要更新，按最新、性能最好、适配度最好优先；先确认依赖可用、测试全过、实测更好再换，同一个库全系统一个版本（[底层选择的原则](docs/zh/04-foundations/README.md#原则)）。
+- **优化不牺牲需求**：只优化用户用不到或不妨碍需求的部分，要放弃一项保证的先确认没有需求依赖它；实测按当时的需求做，记录写明服务的需求（[底层选择的原则](docs/zh/04-foundations/README.md#原则)）。
 - **表达方式**：根据情况选图、表、代码、步骤、填好的样例或文字，哪种最好懂用哪种；意图类的图表先改再改代码，事实类从代码生成；用了设计模式画角色图（[图与表的规范](docs/zh/01-conventions/04-diagrams-and-tables.md)）。
 - **文档**：开发完成前只写中文（D67），同一规则只写在一处；正式文档不链接 `dev/` 与 `archive/`（`make gates`）（[文档规则](docs/zh/01-conventions/03-documentation.md)）。
 - **容器默认关着**：`make up` 的基础资源可以常开；组件容器验证完就 `brickkit down`。
