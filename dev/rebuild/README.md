@@ -68,7 +68,7 @@
 
 ## 任务结束时：知识库反馈
 
-把知识库反馈作为一个 PR 提交（走 `kb-contribute`）。目前草稿有六项：
+把知识库反馈作为一个 PR 提交（走 `kb-contribute`）。目前草稿有六项（第 7、8 项——测试定期检查进用户级指令、asyncio 的 Nagle——已于 2026-10-18 按用户要求先行提交：knowledge-base PR #16）：
 
 1. Linux 的 `CLOCK_MONOTONIC` 在系统休眠期间停走（`CLOCK_BOOTTIME` 才计入）；知识库选主相关文档按单调时钟计租约时没有提醒这一点。提交前先在 Linux 上验证。
 2. 跨平台 D2 一节没有把 uni-app 列为 Vue 团队的 App 选项。

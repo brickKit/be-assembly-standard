@@ -33,8 +33,8 @@
 | T4.1 | 探针 3.1.0：按 ID 的变体与 `elapsed_us`；注册表追加变体的端口与 schema；变体目录；剖面与探针测试覆盖变体；发布 | `be-acceptance`、`registry/` | 六个变体单跑通过剖面；`brickkit lint` 通过；按标签能取到 | 完成 |
 | T4.2 | Go 外壳 `be-go-core`、`be-go-infra`：编进四个 Go 探针变体；`go.mod` 按标签；镜像、清单、文档；在一格里由 BrickKit 部署并承载 1、2、4 个成员；重做 C4、C5 | `be-go-core`、`be-go-infra` | 外壳内成员通过剖面（含 CK-OBS-05）；C4 由 BrickKit 拒绝、C5 由启动器拒绝 | 完成 |
 | T4.3 | Python 外壳 `be-py-render`：编进两个 Python 探针变体；同上 | `be-py-render` | 同上 | 完成 |
-| T4.4 | 资源采集（`be-acceptance/measure/`）：进程与容器口径、平台与基础资源、数据库连接、积压 | `be-acceptance` | 对已知负载（单跑探针、固定 CPU 消耗）的读数自洽 | 待做 |
-| T4.5 | 负载驱动（`be-acceptance/load/`，Go）：操作、速率、加压、事件路径的完成时间、结果文件 | `be-acceptance` | 对一条路径跑出 p50/p95/p99、吞吐、错误；协调遗漏的自检 | 待做 |
+| T4.4 | 资源采集（`be-acceptance/measure/`）：进程与容器口径、平台与基础资源、数据库连接、积压 | `be-acceptance` | 对已知负载（单跑探针、固定 CPU 消耗）的读数自洽 | 完成 |
+| T4.5 | 负载驱动（`be-acceptance/load/`，Go）：操作、速率、加压、事件路径的完成时间、结果文件 | `be-acceptance` | 对一条路径跑出 p50/p95/p99、吞吐、错误；协调遗漏的自检 | 完成 |
 | T4.6 | 报告生成与运行一格的入口：从结果文件出档案的结果表与报告的表 | `be-acceptance`、`dev/rebuild/` | 一格一条命令跑完并写出档案 | 待做 |
 | T4.7 | D 行：进程底价（各语言单跑一个探针；Go 外壳承载 1、2、4 个；Python 外壳承载 1、2 个）与 S、H、X 三列的通信细分（全部操作 × 全部负载），每格 3 次 | 本项目 | 第一份报告：D 行的通信代价 | 待做 |
 
@@ -45,3 +45,10 @@
 - 2026-10-18 T4.2、T4.3 完成：外壳 `be/go-core`、`be/go-infra`、`be/py-render` `3.0.2`（成员按标签取，`members_test`/`test_members` 核对与 `shell.members` 一致）；D·H2 格由 BrickKit 从标签构建并部署，五个探针成员与三个外壳全部通过剖面；C4、C5 复现并各被一道拦下。记录 [4-02](experiment-records/4-02-shells.md)。
   - **途中的改动**：①协议 P4.26（配置给出的组件地址），`be-protocol` `v3.0.0-alpha.3`；②`be-sdk-go` `v3.0.0-alpha.3`/`alpha.4`、`be-sdk-python` `v3.0.0a2`/`a3`：配置地址的客户端、外壳成员的就绪日志、客户端的 SNI、Python 关掉 gRPC 核心的日志，以及一个与时间有关的测试缺陷；③探针 3.2.0/3.2.1、外壳 3.0.1/3.0.2 随之发布。
   - **格的工具（T4.6 的一部分已先做）**：`be-acceptance/conformance/cells/`：`create`（从 `cell.yaml` 重建 BrickKit 项目；升级共用成员的外壳会失败，FRB-006）、`prepare`（库、角色、证书、桶、流、配置）、`profile`（部署好的格的剖面与报告）。
+- 2026-10-18 T4.4 完成：`be-acceptance` `119b8d3`（`conformance/measure/`）。每个容器里进程的常驻内存与 CPU 时间（`/proc`，含已回收子进程的时间）、容器的 cgroup 内存与 CPU、Docker 平台进程（守护、每个容器的 shim、每个发布端口的 proxy）、基础资源、数据库按角色的连接数、JetStream 消费者的积压与最老未确认消息的年龄；窗口给出内存中位数与峰值、CPU 核数与每千次请求的 CPU 秒。自检：一个进程正好 3 秒 CPU 读出 2.9–3.3 秒（进程与 cgroup 两种口径），持有 200 MiB 读出 200–240 MiB，没人运行的持久订阅显示积压与年龄。
+  - **实测发现**：①只读 `utime`/`stime` 会漏掉已退出的子进程（`cutime`/`cstime`）；②“cgroup 内存不小于进程常驻内存”不成立：常驻内存含共享的文件页，可能记在别的 cgroup 上，两种口径分开报，不互相约束；③参照负载本身要准：shell 按 `date +%s` 计时只有秒级精度，改为单进程按 CPU 时间烧满 3 秒。
+- 2026-10-18 T4.5 完成：`be-acceptance` `ab99de4`（`load/`，Go，只用标准库）。开环固定速率，延迟从每个请求“该发出”的时刻算；记录调用方测的一跳（`elapsed_us`）、写入的身份（完成时间事后从数据库取）；加压按台阶上升，p99 超过限度或错误率超过 1% 时停，报出最高的持续速率。自检：200/秒 2 秒发出 400 个；服务端停顿 500 毫秒时这段时间里该发出的约 50 个请求都记下等待（闭环驱动只会记下一个慢请求）；对每秒能处理 50 个的服务端，加压停在约 50/秒。
+- 2026-10-18 T4.6 工具完成、试运行通过：`be-acceptance` `38b6929`（`cells/` 的 `runner`、`campaign`、`tables`、`watch`）、`8fc45ac`（监视：异常立即报、每 5 分钟汇总）。D 行各格的 `cell.yaml` 与两份成批测量清单（`experiment-cells/campaign-trial.yaml`、`campaign-D.yaml`，后者共 1881 项）。试运行（D-X、D-S-pg、Go 外壳承载 4 个的空闲）32 项全部完成、0 失败、0 异常。
+  - **试运行抓到的缺陷（已修）**：Python 调用方的写入在客户端看来 46 ms、服务端只记 4 ms。Python SDK 建监听时协议号为 0，asyncio 因此不关 Nagle，保持连接上每个响应的第二段等对方的延迟确认。协议加 P1.19（接受的连接关闭 Nagle）与黑盒检查 CK-LC-14：`be-protocol` `v3.0.0-alpha.4`，`be-sdk-python` `v3.0.0a4`，探针 `test-probe-py`、`-py2` `3.2.2`，外壳 `be/py-render` `3.0.3`。修复后同一项 p50 7 ms。Go SDK（`net/http` 默认关 Nagle）随下次发版升到 `alpha.4` 并补 P1.19 的证据。
+  - **试运行的初步读数（不进结果）**：加压的上限——Go 写入约 1900/s（数据库预算用满）；Python 单进程处理 mTLS gRPC 或写入约 250–500/s（单线程 CPU 用满）；Go 调用方在被调方变慢时由出站并发上限（P4.10，64）快速失败。
+  - **其他**：试运行期间用户要求“所有测试定期检查、约每 5 分钟汇报、不阻塞对话”，已写进知识库反馈（knowledge-base PR #16）。

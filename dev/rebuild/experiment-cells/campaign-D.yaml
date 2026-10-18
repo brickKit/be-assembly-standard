@@ -1,0 +1,20 @@
+# The D row of suite A for the probes (experiment step 4, T4.7): process base costs (item 3) and the communication
+# breakdown of every column (item 4), three repetitions. Single loads: 10 s warmup, 30 s measured; the ramp: 10 s
+# steps from 50/s, x1.5 each, until p99 passes 10 s, errors pass 1% or the throughput falls below 90% of the offer.
+runs: 3
+cells:
+  - {cell: D-base-go, idle_only: true, idle: 600}
+  - {cell: D-base-py, idle_only: true, idle: 600}
+  - {cell: D-base-goshell-1, idle_only: true, idle: 600}
+  - {cell: D-base-goshell-2, idle_only: true, idle: 600}
+  - {cell: D-base-goshell-4, idle_only: true, idle: 600}
+  - {cell: D-base-pyshell-1, idle_only: true, idle: 600}
+  - {cell: D-base-pyshell-2, idle_only: true, idle: 600}
+  - {cell: D-S, loads: [50, 200, ramp], idle: 600, warmup: 10, seconds: 30}
+  - {cell: D-H1, loads: [50, 200, ramp], idle: 600, warmup: 10, seconds: 30}
+  - {cell: D-H2, loads: [50, 200, ramp], idle: 600, warmup: 10, seconds: 30}
+  - {cell: D-X, loads: [50, 200, ramp], idle: 600, warmup: 10, seconds: 30}
+  - {cell: D-S-pg, ops: [write, relay, big-event], loads: [50, 200, ramp], idle: 120, warmup: 10, seconds: 30}
+  - {cell: D-H1-pg, ops: [write, relay, big-event], loads: [50, 200, ramp], idle: 120, warmup: 10, seconds: 30}
+  - {cell: D-H2-pg, ops: [write, relay, big-event], loads: [50, 200, ramp], idle: 120, warmup: 10, seconds: 30}
+  - {cell: D-X-pg, ops: [write, relay, big-event], loads: [50, 200, ramp], idle: 120, warmup: 10, seconds: 30}
