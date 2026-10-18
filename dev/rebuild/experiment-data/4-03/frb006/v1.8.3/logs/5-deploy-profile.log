@@ -1,0 +1,142 @@
+prepared D-H2: 5 probes, chain test/probe-go -> test/probe-go2 -> test/probe-go3 -> test/probe-py -> test/probe-py2
+⏭️  be/go-core@3.0.4: image be-go-core:3.0.4 already exists, skipped (--force rebuilds)
+⏭️  be/go-infra@3.0.4: image be-go-infra:3.0.4 already exists, skipped (--force rebuilds)
+⏭️  be/py-render@3.0.5: image be-py-render:3.0.5 already exists, skipped (--force rebuilds)
+⏭️  test/probe-go@3.2.4: image test-probe-go:3.2.4 already exists, skipped (--force rebuilds)
+⏭️  test/probe-go2@3.2.4: image test-probe-go2:3.2.4 already exists, skipped (--force rebuilds)
+⏭️  test/probe-go3@3.2.4: image test-probe-go3:3.2.4 already exists, skipped (--force rebuilds)
+⏭️  test/probe-py@3.2.4: image test-probe-py:3.2.4 already exists, skipped (--force rebuilds)
+⏭️  test/probe-py2@3.2.4: image test-probe-py2:3.2.4 already exists, skipped (--force rebuilds)
+🚀 Starting project d-h2 (target: docker)
+📋 Component state calculation:
+   ✅ be/go-core@3.0.4      starting (top-level)
+   ✅ be/go-infra@3.0.4     starting (top-level)
+   ✅ be/py-render@3.0.5    starting (top-level)
+   ✅ test/probe-go@3.2.4   starting (test/probe-py2 needs it)
+   ✅ test/probe-go2@3.2.4  starting (test/probe-go needs it)
+   ✅ test/probe-go3@3.2.4  starting (test/probe-go2 needs it)
+   ✅ test/probe-py@3.2.4   starting (test/probe-go3 needs it)
+   ✅ test/probe-py2@3.2.4  starting (test/probe-py needs it)
+
+📋 Start order (topological sort):
+   1. be-go-core-3-0-4    no dependencies  (hosts test/probe-go@3.2.4, test/probe-go2@3.2.4)
+   2. be-go-infra-3-0-4   no dependencies  (hosts test/probe-go3@3.2.4)
+   3. be-py-render-3-0-5  no dependencies  (hosts test/probe-py@3.2.4, test/probe-py2@3.2.4)
+
+Can start on their own: be-go-core-3-0-4, be-go-infra-3-0-4, be-py-render-3-0-5 (no dependencies)
+📄 Generated: .brickkit/generated/compose.yaml
+
+🔧 Database migrations that run before startup (on failure that component won't start):
+   test/probe-go@3.2.4  /probe-go migrate
+   test/probe-go2@3.2.4  /probe-go migrate
+   test/probe-go3@3.2.4  /probe-go migrate
+   test/probe-py@3.2.4  python -m probe_py migrate
+   test/probe-py2@3.2.4  python -m probe_py migrate
+
+🐳 Starting (docker)...
+   be-go-core-3-0-4             running (healthy)
+   be-go-infra-3-0-4            running (healthy)
+   be-py-render-3-0-5           running (healthy)
+✅ All components started (3)
+
+💡 View the status: brickkit status
+   View the logs: docker compose -p brickkit-d-h2 logs -f
+test/probe-go core: 符合
+  CK-LC-01/02 通过
+  CK-CF-03 通过
+  CK-LC-04/05/06 通过
+  CK-LC-14 通过
+  CK-LC-08 通过
+  CK-LC-10 通过
+  CK-LC-11/12 通过
+  CK-DB-09 通过
+  CK-EV-09 通过
+  CK-OBS-01 通过
+  CK-OBS-02 通过
+  CK-OBS-03 通过
+  CK-OBS-04 通过
+  CK-OBS-05 不适用 — 只对外壳（见外壳的报告）
+test/probe-go2 core: 符合
+  CK-LC-01/02 通过
+  CK-CF-03 通过
+  CK-LC-04/05/06 通过
+  CK-LC-14 通过
+  CK-LC-08 通过
+  CK-LC-10 通过
+  CK-LC-11/12 通过
+  CK-DB-09 通过
+  CK-EV-09 通过
+  CK-OBS-01 通过
+  CK-OBS-02 通过
+  CK-OBS-03 通过
+  CK-OBS-04 通过
+  CK-OBS-05 不适用 — 只对外壳（见外壳的报告）
+test/probe-go3 core: 符合
+  CK-LC-01/02 通过
+  CK-CF-03 通过
+  CK-LC-04/05/06 通过
+  CK-LC-14 通过
+  CK-LC-08 通过
+  CK-LC-10 通过
+  CK-LC-11/12 通过
+  CK-DB-09 通过
+  CK-EV-09 通过
+  CK-OBS-01 通过
+  CK-OBS-02 通过
+  CK-OBS-03 通过
+  CK-OBS-04 通过
+  CK-OBS-05 不适用 — 只对外壳（见外壳的报告）
+test/probe-py core: 符合
+  CK-LC-01/02 通过
+  CK-CF-03 通过
+  CK-LC-04/05/06 通过
+  CK-LC-14 通过
+  CK-LC-08 通过
+  CK-LC-10 通过
+  CK-LC-11/12 通过
+  CK-DB-09 通过
+  CK-EV-09 通过
+  CK-OBS-01 通过
+  CK-OBS-02 通过
+  CK-OBS-03 通过
+  CK-OBS-04 通过
+  CK-OBS-05 不适用 — 只对外壳（见外壳的报告）
+test/probe-py2 core: 符合
+  CK-LC-01/02 通过
+  CK-CF-03 通过
+  CK-LC-04/05/06 通过
+  CK-LC-14 通过
+  CK-LC-08 通过
+  CK-LC-10 通过
+  CK-LC-11/12 通过
+  CK-DB-09 通过
+  CK-EV-09 通过
+  CK-OBS-01 通过
+  CK-OBS-02 通过
+  CK-OBS-03 通过
+  CK-OBS-04 通过
+  CK-OBS-05 不适用 — 只对外壳（见外壳的报告）
+be/go-core shell: 符合
+  CK-LC-05/06/08 通过
+  CK-LC-12 通过
+  CK-OBS-01 通过
+  CK-LC-14 通过
+  CK-OBS-05 通过
+be/go-infra shell: 符合
+  CK-LC-05/06/08 通过
+  CK-LC-12 通过
+  CK-OBS-01 通过
+  CK-LC-14 通过
+  CK-OBS-05 通过
+be/py-render shell: 符合
+  CK-LC-05/06/08 通过
+  CK-LC-12 通过
+  CK-OBS-01 通过
+  CK-LC-14 通过
+  CK-OBS-05 通过
+🛑 Stopping project d-h2
+✅ All components stopped
+
+💡 Data volumes were not deleted; database data is still there
+   For a full cleanup, run by hand: docker volume rm <volume-name>
+   Start again with: brickkit up

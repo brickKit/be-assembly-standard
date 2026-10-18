@@ -23,8 +23,8 @@
 ## 现在在哪里
 
 - 设计冻结、正式文档迁移已完成（[migration-plan.md](migration-plan.md)）；AI 选择 A99–A110 记在 `docs/zh/02-decisions/09-ai-choices.md`（A109 驻留期起始值待复核，其余已确认）。
-- **代表部署实验（D41）进行中**，第 0–3 步已完成，**现在在第 4 步**（[step4-plan.md](step4-plan.md)）：外壳、资源采集、负载驱动、报告生成已完成；插入的全面复测（T4.6b）找出并修好六处问题（[4-03](experiment-records/4-03-full-check.md)），第三轮在跑。
-- **第 4 步接下来的顺序**：第三轮复测跑完 → FRB-006 的升级部署测试（排在复测后自动开始）→ 补 4-03 的修复后数字、改写消息运输文档的 PostgreSQL 队列吞吐 → 性能跟进 T4.6c（Go 基准与剖析、Python 的 `uvloop` 与 aiohttp，代码在 `be-sdk-go` 的 `perf/httpx`、`be-sdk-python` 的 `perf/uvloop`、`perf/aiohttp`、`perf/both`；脚本留底在 [experiment-scripts/](experiment-scripts/README.md)）→ 有收益的合入发版 → 知识库反馈定稿提交 → D 行正式测量 T4.7（`experiment-cells/campaign-D.yaml`，约 1881 项、两天）→ 第一份报告 → 停下汇报。
+- **代表部署实验（D41）进行中**，第 0–3 步已完成，**现在在第 4 步**（[step4-plan.md](step4-plan.md)）：外壳、资源采集、负载驱动、报告生成已完成；插入的全面复测（T4.6b）找出并修好六处问题（[4-03](experiment-records/4-03-full-check.md)），第三轮已确认修复（11 个阶段、408 项全过），另看出三项待修的性能问题（提交后唤醒转发器的 CPU、PostgreSQL 队列订阅每条的往返、Python 外壳内大事件的 CPU，见 4-03 第 5 节）。
+- **第 4 步接下来的顺序**：改写消息运输文档的 PostgreSQL 队列吞吐 → 性能跟进 T4.6c（第三轮新看出的三项；Go 基准与剖析、Python 的 `uvloop` 与 aiohttp，代码在 `be-sdk-go` 的 `perf/httpx`、`be-sdk-python` 的 `perf/uvloop`、`perf/aiohttp`、`perf/both`；脚本留底在 [experiment-scripts/](experiment-scripts/README.md)）→ 有收益的合入发版 → 知识库反馈定稿提交 → D 行正式测量 T4.7（`experiment-cells/campaign-D.yaml`，约 1881 项、两天）→ 第一份报告 → 停下汇报。
 - 测量期间不在机器上跑任何测试、编译或剖析：会干扰数字，也会抢端口（4-03 记了一次）。
 - 实验之后先做底层（权限、登录、冷热数据、事务、消息），再按 [rebuild-plan.md](rebuild-plan.md) 重建业务组件。
 
@@ -39,7 +39,7 @@
 | `mode: local` | BrickKit 回复不做长期运行的本机部署；本机进程三行只量资源与通信，标“不推荐”（图省事的另类模式） | FRR-001 已关闭（v1.4.2 复测通过） |
 | `local` 之后的用法 | 全部部署形态测完后本项目基本不再用 `local`，用 Docker 或 Podman（按结果定）；给 BrickKit 的部署形态反馈预定在第 14 步一次发出，中途不发（用户 2026-10-17） | experiment-plan.md 的“给 BrickKit 的部署形态反馈（预定）” |
 | 记录方式 | 档案（给 AI，详细、先结论、表格优先）+ 报告（给用户，含“用什么测的”与额外发现的表）+ 原始数据 | experiment-plan.md 的“记录与报告” |
-| BrickKit CLI | 项目要求 v1.8.2（2026-10-18；项目技能同步更新）。v1.6.0 起只写 `deployment.image` 的组件来自本地源也拉取，要在本机构建的组件必须写 `deployment.build` | `infra/scripts/lib/require-brickkit.sh` |
+| BrickKit CLI | 项目要求 v1.8.4（2026-10-18；项目技能同步更新）。v1.6.0 起只写 `deployment.image` 的组件来自本地源也拉取，要在本机构建的组件必须写 `deployment.build` | `infra/scripts/lib/require-brickkit.sh` |
 | 发布标签 | AI 决定怎样发、按依赖顺序发、发后从远端核对并汇报（用户 2026-10-18）；仓库的新建、改名、删除仍先确认 | 记忆 |
 | 测试与长时间运行 | 放后台、监视脚本每 30 秒检查、约每 5 分钟汇报、缺陷当场停、预期上限跑完再一次修 | 用户级指令（知识库） |
 | 性能与可读性 | 越底层越要想性能、查市场上更好的做法；业务逻辑以看得懂为先 | `docs/zh/01-conventions/09-ai-coding.md`；知识库 PR #17 |
@@ -73,8 +73,8 @@
 ## 未推送、已知问题与外部往来
 
 - **未推送的提交**：`main` 比 `origin/main` 多若干提交（从 7aad7d4 起），用户没有要求推送；以 `git log origin/main..main` 为准。子仓库（协议、SDK、验收、外壳）都已推送。
-- **已知、暂不处理**：`infra/scripts/tests/test_ship_dryrun.sh` 失败——旧的 `ship.sh` 还调用旧 `be-acceptance` 的命令，迁移后已不存在；发布工具随重建重新提供，届时一并处理。
-- **给 BrickKit 的收件箱** `brickkit-feedback/rebuild.md`：FRR-001 到 FRR-006、FRB-001 到 FRB-006 全部关闭（FRB-006 于 2026-10-18 在 v1.8.2 复测通过）；没有未回复的条目。
+- **已知、暂不处理**：旧的发布、接入与验证工具的测试失败，工具随重建重新提供，届时一并处理：`infra/scripts/tests/test_ship_dryrun.sh`（旧的 `ship.sh` 还调用旧 `be-acceptance` 的命令，迁移后已不存在）；`test_config_fill.py` 中 `integrate.sh` 的 4 项（伪造的 `brickkit` 报 v1.4.0，被版本检查拒绝）与 `test_verify_deploy.py`（`verify-component.sh`）——2026-10-18 在改动之前的提交上核实同样失败。
+- **给 BrickKit 的收件箱** `brickkit-feedback/rebuild.md`：FRR-001 到 FRR-006、FRB-001 到 FRB-006 全部关闭（FRB-006 于 2026-10-18 在 v1.8.2 复测通过，升级后的部署与测量也通过）；FRB-007（升级把用户已移除、但旧外壳版本编进了的成员加回来）2026-10-18 新开、当天在 v1.8.3 复测通过并关闭；FRR-007（使用者移除过的成员因强依赖被升级加回来时提示一声）当天在 v1.8.4 实现、复测通过并关闭；没有未回复的条目。
 - **知识库**：PR #16（测试定期检查、asyncio 的 Nagle）、#17（性能与可读性）等审查；其余草稿见下一节。
 
 ## 任务结束时：知识库反馈

@@ -1,0 +1,214 @@
+# BrickKit CLI v1.8.4
+
+################ R66: a removed member becomes required, comes back
+
+## add the shell, write a value into b's config, remove b
+$ brickkit add frr66/shell@1.0.0 --yes
+➕ Adding frr66/shell@1.0.0
+   ✅ frr66/shell@1.0.0
+   ✅ frr66/a@1.0.0 (in shell frr66/shell)
+   ✅ frr66/b@1.0.0 (in shell frr66/shell)
+📝 Written: brickkit.yaml, deploy.yaml
+📝 Config skeletons: config/frr66-b.yaml
+⚠️ AGENTS.md is missing, so no component table is maintained for this project
+   Suggestion: Run brickkit skills update to add it (an explicit request: no other command changes your file)
+(exit 0)
+7:B_URL: http://b.internal
+$ brickkit remove frr66/b
+➖ Removed frr66/b@1.0.0
+🗄️  Config archived: config/frr66-b.yaml → config/.archive/frr66-b@1.0.0.yaml
+📝 Written: brickkit.yaml, deploy.yaml
+⚠️ AGENTS.md is missing, so no component table is maintained for this project
+   Suggestion: Run brickkit skills update to add it (an explicit request: no other command changes your file)
+(exit 0)
+config:
+
+config/.archive:
+frr66-b@1.0.0.yaml
+
+## upgrade --dry-run
+$ brickkit upgrade frr66/shell@2.0.0 --dry-run
+📋 upgrade would do this:
+   ⬆️  frr66/shell: 1.0.0 → 2.0.0
+   ⬆️  frr66/a: 1.0.0 → 2.0.0
+   ℹ️  frr66/b was removed from the project, but frr66/a@2.0.0 requires it: it comes back, hosted by shell frr66/shell
+   ✅ frr66/b@2.0.0 (in shell frr66/shell)
+♻️  Would restore config/frr66-b.yaml from the archive (config/.archive/frr66-b@1.0.0.yaml, migrated to this version)
+📝 config/frr66-b.yaml
+   Kept as written: B_URL
+📝 Would write: brickkit.yaml, deploy.yaml
+
+💡 --dry-run: no file was changed
+(exit 0)
+
+## upgrade
+$ brickkit upgrade frr66/shell@2.0.0 --yes
+   ⬆️  frr66/shell: 1.0.0 → 2.0.0
+   ⬆️  frr66/a: 1.0.0 → 2.0.0
+   ℹ️  frr66/b was removed from the project, but frr66/a@2.0.0 requires it: it comes back, hosted by shell frr66/shell
+   ✅ frr66/b@2.0.0 (in shell frr66/shell)
+♻️  config/frr66-b.yaml restored from the archive (config/.archive/frr66-b@1.0.0.yaml, migrated to this version)
+📝 config/frr66-b.yaml
+   Kept as written: B_URL
+📝 Written: brickkit.yaml, deploy.yaml
+⚠️ AGENTS.md is missing, so no component table is maintained for this project
+   Suggestion: Run brickkit skills update to add it (an explicit request: no other command changes your file)
+(exit 0)
+
+## result
+components:
+  - id: frr66/a
+    version: 2.0.0
+  - id: frr66/b
+    version: 2.0.0
+  - id: frr66/shell
+    version: 2.0.0
+    kind: shell
+target: docker
+components:
+  - id: frr66/shell
+    members:
+      - id: frr66/a
+      - id: frr66/b
+7:B_URL: http://b.internal
+$ brickkit up --dry-run
+🚀 Starting project repro (target: docker)
+📋 Component state calculation:
+   ✅ frr66/b@2.0.0      starting (frr66/a needs it)
+   ✅ frr66/a@2.0.0      starting (top-level)
+   ✅ frr66/shell@2.0.0  starting (top-level)
+
+📋 Start order (topological sort):
+   1. frr66-shell-2-0-0  no dependencies  (hosts frr66/b@2.0.0, frr66/a@2.0.0)
+
+Can start on their own: frr66-shell-2-0-0 (no dependencies)
+
+Dependency graph:
+   frr66/a@2.0.0 → frr66/b@2.0.0
+📄 Generated: .brickkit/generated/compose.yaml
+
+💡 --dry-run only generates the files and starts no component
+   View it: cat .brickkit/generated/compose.yaml
+(exit 0)
+
+################ R63: a removed member stays out; a newly compiled-in member joins
+$ brickkit add frr63/shell@1.0.0 --yes
+➕ Adding frr63/shell@1.0.0
+   ✅ frr63/shell@1.0.0
+   ✅ frr63/a@1.0.0 (in shell frr63/shell)
+   ✅ frr63/b@1.0.0 (in shell frr63/shell)
+📝 Written: brickkit.yaml, deploy.yaml
+⚠️ AGENTS.md is missing, so no component table is maintained for this project
+   Suggestion: Run brickkit skills update to add it (an explicit request: no other command changes your file)
+(exit 0)
+$ brickkit remove frr63/b
+➖ Removed frr63/b@1.0.0
+📝 Written: brickkit.yaml, deploy.yaml
+⚠️ AGENTS.md is missing, so no component table is maintained for this project
+   Suggestion: Run brickkit skills update to add it (an explicit request: no other command changes your file)
+(exit 0)
+$ brickkit upgrade frr63/shell@2.0.0 --yes
+   ⬆️  frr63/shell: 1.0.0 → 2.0.0
+   ⬆️  frr63/a: 1.0.0 → 2.0.0
+   ℹ️  Shell frr63/shell@2.0.0 contains frr63/b@2.0.0, but frr63/b is not in the project: it stays out (brickkit add frr63/b@2.0.0 to host it)
+   ✅ frr63/c@1.0.0 (in shell frr63/shell)
+📝 Written: brickkit.yaml, deploy.yaml
+⚠️ AGENTS.md is missing, so no component table is maintained for this project
+   Suggestion: Run brickkit skills update to add it (an explicit request: no other command changes your file)
+(exit 0)
+components:
+  - id: frr63/a
+    version: 2.0.0
+  - id: frr63/c
+    version: 1.0.0
+  - id: frr63/shell
+    version: 2.0.0
+    kind: shell
+target: docker
+components:
+  - id: frr63/shell
+    members:
+      - id: frr63/a
+      - id: frr63/c
+ls: cannot access 'config': No such file or directory
+$ brickkit up --dry-run
+🚀 Starting project repro (target: docker)
+📋 Component state calculation:
+   ✅ frr63/a@2.0.0      starting (top-level)
+   ✅ frr63/c@1.0.0      starting (top-level)
+   ✅ frr63/shell@2.0.0  starting (top-level)
+
+📋 Start order (topological sort):
+   1. frr63-shell-2-0-0  no dependencies  (hosts frr63/a@2.0.0, frr63/c@1.0.0)
+
+Can start on their own: frr63-shell-2-0-0 (no dependencies)
+📄 Generated: .brickkit/generated/compose.yaml
+
+💡 --dry-run only generates the files and starts no component
+   View it: cat .brickkit/generated/compose.yaml
+(exit 0)
+
+################ R65: removed from shell B's offer, shell A newly compiles it in: stays out
+$ brickkit add frr65/sa@1.0.0 --yes
+➕ Adding frr65/sa@1.0.0
+   ✅ frr65/sa@1.0.0
+   ✅ frr65/a@1.0.0 (in shell frr65/sa)
+📝 Written: brickkit.yaml, deploy.yaml
+⚠️ AGENTS.md is missing, so no component table is maintained for this project
+   Suggestion: Run brickkit skills update to add it (an explicit request: no other command changes your file)
+(exit 0)
+$ brickkit add frr65/sb@1.0.0 --yes
+➕ Adding frr65/sb@1.0.0
+   ✅ frr65/sb@1.0.0
+   ✅ frr65/b@1.0.0 (in shell frr65/sb)
+📝 Written: brickkit.yaml, deploy.yaml
+⚠️ AGENTS.md is missing, so no component table is maintained for this project
+   Suggestion: Run brickkit skills update to add it (an explicit request: no other command changes your file)
+(exit 0)
+$ brickkit remove frr65/b
+➖ Removed frr65/b@1.0.0
+📝 Written: brickkit.yaml, deploy.yaml
+⚠️ AGENTS.md is missing, so no component table is maintained for this project
+   Suggestion: Run brickkit skills update to add it (an explicit request: no other command changes your file)
+(exit 0)
+$ brickkit upgrade frr65/sa@2.0.0 --yes
+   ⬆️  frr65/sa: 1.0.0 → 2.0.0
+   ⬆️  frr65/a: 1.0.0 → 2.0.0
+   ℹ️  Shell frr65/sa@2.0.0 contains frr65/b@2.0.0, but frr65/b is not in the project: it stays out (brickkit add frr65/b@2.0.0 to host it)
+📝 Written: brickkit.yaml, deploy.yaml
+⚠️ AGENTS.md is missing, so no component table is maintained for this project
+   Suggestion: Run brickkit skills update to add it (an explicit request: no other command changes your file)
+(exit 0)
+components:
+  - id: frr65/a
+    version: 2.0.0
+  - id: frr65/sa
+    version: 2.0.0
+    kind: shell
+  - id: frr65/sb
+    version: 1.0.0
+    kind: shell
+target: docker
+components:
+  - id: frr65/sa
+    members:
+      - id: frr65/a
+  - id: frr65/sb
+ls: cannot access 'config': No such file or directory
+$ brickkit up --dry-run
+🚀 Starting project repro (target: docker)
+📋 Component state calculation:
+   ✅ frr65/a@2.0.0   starting (top-level)
+   ✅ frr65/sa@2.0.0  starting (top-level)
+   ✅ frr65/sb@1.0.0  starting (top-level)
+
+📋 Start order (topological sort):
+   1. frr65-sa-2-0-0  no dependencies  (hosts frr65/a@2.0.0)
+   2. frr65-sb-1-0-0  no dependencies
+
+Can start on their own: frr65-sa-2-0-0, frr65-sb-1-0-0 (no dependencies)
+📄 Generated: .brickkit/generated/compose.yaml
+
+💡 --dry-run only generates the files and starts no component
+   View it: cat .brickkit/generated/compose.yaml
+(exit 0)

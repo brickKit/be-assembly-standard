@@ -1,0 +1,45 @@
+prepared D-H2: 5 probes, chain test/probe-go -> test/probe-go2 -> test/probe-go3 -> test/probe-py -> test/probe-py2
+⏭️  be/go-core@3.0.4: image be-go-core:3.0.4 already exists, skipped (--force rebuilds)
+⏭️  be/go-infra@3.0.4: image be-go-infra:3.0.4 already exists, skipped (--force rebuilds)
+⏭️  be/py-render@3.0.5: image be-py-render:3.0.5 already exists, skipped (--force rebuilds)
+⏭️  test/probe-go@3.2.4: image test-probe-go:3.2.4 already exists, skipped (--force rebuilds)
+⏭️  test/probe-go2@3.2.4: image test-probe-go2:3.2.4 already exists, skipped (--force rebuilds)
+⏭️  test/probe-go3@3.2.4: image test-probe-go3:3.2.4 already exists, skipped (--force rebuilds)
+⏭️  test/probe-go4@3.2.4: image test-probe-go4:3.2.4 already exists, skipped (--force rebuilds)
+⏭️  test/probe-py@3.2.4: image test-probe-py:3.2.4 already exists, skipped (--force rebuilds)
+⏭️  test/probe-py2@3.2.4: image test-probe-py2:3.2.4 already exists, skipped (--force rebuilds)
+🚀 Starting project d-h2 (target: docker)
+📋 Component state calculation:
+   ✅ be/go-core@3.0.4      starting (top-level)
+   ✅ be/go-infra@3.0.4     starting (top-level)
+   ✅ be/py-render@3.0.5    starting (top-level)
+   ✅ test/probe-go@3.2.4   starting (test/probe-py2 needs it)
+   ✅ test/probe-go2@3.2.4  starting (test/probe-go needs it)
+   ✅ test/probe-go3@3.2.4  starting (test/probe-go2 needs it)
+   ✅ test/probe-go4@3.2.4  starting (top-level)
+   ✅ test/probe-py@3.2.4   starting (test/probe-go3 needs it)
+   ✅ test/probe-py2@3.2.4  starting (test/probe-py needs it)
+
+📋 Start order (topological sort):
+   1. be-go-core-3-0-4    no dependencies  (hosts test/probe-go@3.2.4, test/probe-go2@3.2.4, test/probe-go4@3.2.4)
+   2. be-go-infra-3-0-4   no dependencies  (hosts test/probe-go3@3.2.4)
+   3. be-py-render-3-0-5  no dependencies  (hosts test/probe-py@3.2.4, test/probe-py2@3.2.4)
+
+Can start on their own: be-go-core-3-0-4, be-go-infra-3-0-4, be-py-render-3-0-5 (no dependencies)
+❌ Error: a required component config item has no value
+   Missing config: test/probe-go4@3.2.4 → BUS_URL
+   Missing config: test/probe-go4@3.2.4 → IMPLEMENTATION_INSTANCE
+   Missing config: test/probe-go4@3.2.4 → PG_DATABASE
+   Missing config: test/probe-go4@3.2.4 → PG_HOST
+   Missing config: test/probe-go4@3.2.4 → PG_PASSWORD
+   Missing config: test/probe-go4@3.2.4 → PG_SCHEMA
+   Missing config: test/probe-go4@3.2.4 → PG_USER
+   Reason: The component declares it in configSchema.required without a default — the platform can't derive this one, so the project has to supply it
+   Suggestions:
+   1. Give it a value in config/test-probe-go4.yaml:
+    BUS_URL: <value>
+   2. The value may be ${ENV_VAR} (real value in .env), $var:NAME (shared, from config/vars.yaml) or file://path
+{"time":"2026-10-18T14:41:16.929682476+02:00","level":"ERROR","message":"Command failed","command":"brickkit up","elapsed_ms":59,"error_code":"CONFIG_INVALID","error":"CONFIG_INVALID: Error: a required component config item has no value; Missing config=test/probe-go4@3.2.4 → BUS_URL; Missing config=test/probe-go4@3.2.4 → IMPLEMENTATION_INSTANCE; Missing config=test/probe-go4@3.2.4 → PG_DATABASE; Missing config=test/probe-go4@3.2.4 → PG_HOST; Missing config=test/probe-go4@3.2.4 → PG_PASSWORD; Missing config=test/probe-go4@3.2.4 → PG_SCHEMA; Missing config=test/probe-go4@3.2.4 → PG_USER; Reason=The component declares it in configSchema.required without a default — the platform can't derive this one, so the project has to supply it","exit_code":1}
+🛑 Stopping project d-h2
+📋 This project has no containers running right now (the engine has none at all)
+   Start it with brickkit up

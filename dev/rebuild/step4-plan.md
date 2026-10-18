@@ -65,4 +65,4 @@
 - **Python 的进一步加速实验**：`uvloop`（要改启动器、验证与 `grpc.aio` 的兼容）与出站改用 aiohttp；先量收益再决定是否进锁定的技术栈。
 - **消息运输文档的吞吐数字**：`docs/zh/04-foundations/06-message-transport.md` 里“PostgreSQL 队列每秒处理数千条消息”按修复后的实测改写。
 - **对象存储在高并发下变贵**：清空前缀后若仍随格变贵，做空桶与满桶、并发 1 与 8 的对照。
-- **旧发布脚本的测试**：`infra/scripts/tests/test_ship_dryrun.sh` 构建的验收程序在重建后已不存在，随重建的发布工具一起处理。
+- **旧发布、接入与验证工具的测试**：`test_ship_dryrun.sh` 构建的验收程序在重建后已不存在；`test_config_fill.py` 的 `integrate.sh` 4 项与 `test_verify_deploy.py` 也失败（改动之前的提交上同样失败）。随重建的工具一起处理。

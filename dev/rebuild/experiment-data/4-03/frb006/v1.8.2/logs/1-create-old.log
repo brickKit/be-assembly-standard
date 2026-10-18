@@ -1,0 +1,59 @@
+# D row, column H2: two Go shells and the Python shell; inside a Go shell, between Go shells, Go shell to Python shell, inside the Python shell, Python shell to Go shell
+cell: D-H2
+shells:
+  be/go-core@3.0.1: [test/probe-go, test/probe-go2]
+  be/go-infra@3.0.1: [test/probe-go3]
+  be/py-render@3.0.1: [test/probe-py, test/probe-py2]
+chain: [test/probe-go, test/probe-go2, test/probe-go3, test/probe-py, test/probe-py2]
+created /tmp/claude-1000/-home-zhijie-Desktop-github-be-assembly-standard/50abddb1-4a5f-46f1-951a-1c59973ee1b3/scratchpad/frb006run/cell/D-H2
+components:
+  - id: be/go-core
+    version: 3.0.1
+    kind: shell
+  - id: be/go-infra
+    version: 3.0.1
+    kind: shell
+  - id: be/py-render
+    version: 3.0.1
+    kind: shell
+  - id: test/probe-go
+    version: 3.2.0
+  - id: test/probe-go2
+    version: 3.2.0
+  - id: test/probe-go3
+    version: 3.2.0
+  - id: test/probe-py
+    version: 3.2.0
+  - id: test/probe-py2
+    version: 3.2.0
+# deploy.yaml — cell D-H2; written by be-acceptance/conformance/cells/create.py from cell.yaml
+target: docker
+
+components:
+  - id: be/go-core
+    expose: true
+    exposePort: 18090
+    members:
+      - id: test/probe-go
+        expose: true
+        exposePort: 18600
+      - id: test/probe-go2
+        expose: true
+        exposePort: 18602
+  - id: be/go-infra
+    expose: true
+    exposePort: 18224
+    members:
+      - id: test/probe-go3
+        expose: true
+        exposePort: 18603
+  - id: be/py-render
+    expose: true
+    exposePort: 18402
+    members:
+      - id: test/probe-py
+        expose: true
+        exposePort: 18601
+      - id: test/probe-py2
+        expose: true
+        exposePort: 18605

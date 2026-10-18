@@ -1,10 +1,10 @@
 # name	project	compose_file	service	container	image	host_ports	default	profile	mutex
 # --- 默认必须部署（5 个）---
-postgres	be-infra	infra/docker-compose.infra.yml	postgres	be-postgres	postgres:16-alpine	5432	yes	-	-
-nats	be-infra	infra/docker-compose.infra.yml	nats	be-nats	nats:2.10-alpine	4222,8222	yes	-	mq
-traefik	be-infra	infra/docker-compose.infra.yml	traefik	be-traefik	traefik:v3.0	80,443,28080	yes	-	gateway
-casdoor	be-infra	infra/docker-compose.infra.yml	casdoor	be-casdoor	casbin/casdoor:latest	8000	yes	-	iam
-rustfs	be-infra	infra/docker-compose.infra.yml	rustfs	be-rustfs	rustfs/rustfs:latest	9000	yes	-	storage
+postgres	be-infra	infra/docker-compose.infra.yml	postgres	be-postgres	postgres:16.15-alpine	5432	yes	-	-
+nats	be-infra	infra/docker-compose.infra.yml	nats	be-nats	nats:2.10.29-alpine	4222,8222	yes	-	mq
+traefik	be-infra	infra/docker-compose.infra.yml	traefik	be-traefik	traefik:v3.0.4	80,443,28080	yes	-	gateway
+casdoor	be-infra	infra/docker-compose.infra.yml	casdoor	be-casdoor	casbin/casdoor:4.1.0	8000	yes	-	iam
+rustfs	be-infra	infra/docker-compose.infra.yml	rustfs	be-rustfs	rustfs/rustfs:1.0.0-beta.12	9000	yes	-	storage
 # --- 可选替换件（与默认互斥）---
 minio	be-infra	infra/docker-compose.infra.yml	minio	be-minio	minio/minio:latest	9000,9001	no	minio	storage
 keycloak	be-infra	infra/docker-compose.infra.yml	keycloak	be-keycloak	quay.io/keycloak/keycloak:latest	28081	no	keycloak	iam

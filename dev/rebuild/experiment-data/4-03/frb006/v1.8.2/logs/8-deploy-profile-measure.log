@@ -1,0 +1,266 @@
+prepared D-H2: 5 probes, chain test/probe-go -> test/probe-go2 -> test/probe-go3 -> test/probe-py -> test/probe-py2
+⏭️  be/go-core@3.0.4: image be-go-core:3.0.4 already exists, skipped (--force rebuilds)
+⏭️  be/go-infra@3.0.4: image be-go-infra:3.0.4 already exists, skipped (--force rebuilds)
+⏭️  be/py-render@3.0.5: image be-py-render:3.0.5 already exists, skipped (--force rebuilds)
+⏭️  test/probe-go@3.2.4: image test-probe-go:3.2.4 already exists, skipped (--force rebuilds)
+⏭️  test/probe-go2@3.2.4: image test-probe-go2:3.2.4 already exists, skipped (--force rebuilds)
+⏭️  test/probe-go3@3.2.4: image test-probe-go3:3.2.4 already exists, skipped (--force rebuilds)
+⏭️  test/probe-py@3.2.4: image test-probe-py:3.2.4 already exists, skipped (--force rebuilds)
+⏭️  test/probe-py2@3.2.4: image test-probe-py2:3.2.4 already exists, skipped (--force rebuilds)
+🚀 Starting project d-h2 (target: docker)
+📋 Component state calculation:
+   ✅ be/go-core@3.0.4      starting (top-level)
+   ✅ be/go-infra@3.0.4     starting (top-level)
+   ✅ be/py-render@3.0.5    starting (top-level)
+   ✅ test/probe-go@3.2.4   starting (test/probe-py2 needs it)
+   ✅ test/probe-go2@3.2.4  starting (test/probe-go needs it)
+   ✅ test/probe-go3@3.2.4  starting (test/probe-go2 needs it)
+   ✅ test/probe-py@3.2.4   starting (test/probe-go3 needs it)
+   ✅ test/probe-py2@3.2.4  starting (test/probe-py needs it)
+
+📋 Start order (topological sort):
+   1. be-go-core-3-0-4    no dependencies  (hosts test/probe-go@3.2.4, test/probe-go2@3.2.4)
+   2. be-go-infra-3-0-4   no dependencies  (hosts test/probe-go3@3.2.4)
+   3. be-py-render-3-0-5  no dependencies  (hosts test/probe-py@3.2.4, test/probe-py2@3.2.4)
+
+Can start on their own: be-go-core-3-0-4, be-go-infra-3-0-4, be-py-render-3-0-5 (no dependencies)
+📄 Generated: .brickkit/generated/compose.yaml
+
+🔧 Database migrations that run before startup (on failure that component won't start):
+   test/probe-go@3.2.4  /probe-go migrate
+   test/probe-go2@3.2.4  /probe-go migrate
+   test/probe-go3@3.2.4  /probe-go migrate
+   test/probe-py@3.2.4  python -m probe_py migrate
+   test/probe-py2@3.2.4  python -m probe_py migrate
+
+🐳 Starting (docker)...
+   be-go-core-3-0-4             running (healthy)
+   be-go-infra-3-0-4            running (healthy)
+   be-py-render-3-0-5           running (healthy)
+✅ All components started (3)
+
+💡 View the status: brickkit status
+   View the logs: docker compose -p brickkit-d-h2 logs -f
+test/probe-go -> test/probe-go2 echo-1k-grpc 50: ok 500 p50 0.654 p99 1.272 sustained -
+test/probe-go -> test/probe-go2 echo-1k-grpc 200: ok 2000 p50 0.566 p99 1.102 sustained -
+test/probe-go -> test/probe-go2 echo-1k-http 50: ok 500 p50 0.547 p99 1.085 sustained -
+test/probe-go -> test/probe-go2 echo-1k-http 200: ok 2000 p50 0.481 p99 0.83 sustained -
+test/probe-go -> test/probe-go2 echo-60k-grpc 50: ok 500 p50 1.487 p99 2.471 sustained -
+test/probe-go -> test/probe-go2 echo-60k-grpc 200: ok 2000 p50 1.312 p99 2.375 sustained -
+test/probe-go -> test/probe-go2 echo-60k-http 50: ok 500 p50 2.763 p99 4.607 sustained -
+test/probe-go -> test/probe-go2 echo-60k-http 200: ok 2000 p50 2.541 p99 4.315 sustained -
+test/probe-go -> test/probe-go2 work-grpc 50: ok 500 p50 10.701 p99 11.065 sustained -
+test/probe-go -> test/probe-go2 work-grpc 200: ok 2000 p50 10.545 p99 11.049 sustained -
+test/probe-go -> test/probe-go2 work-http 50: ok 500 p50 10.526 p99 10.764 sustained -
+test/probe-go -> test/probe-go2 work-http 200: ok 2000 p50 10.407 p99 10.652 sustained -
+test/probe-go -> test/probe-go2 write 50: ok 500 p50 2.848 p99 4.251 sustained -
+test/probe-go -> test/probe-go2 write 200: ok 2000 p50 3.485 p99 8.402 sustained -
+test/probe-go -> test/probe-go2 relay 50: ok 500 p50 3.601 p99 8.778 sustained -
+test/probe-go -> test/probe-go2 relay 200: ok 2000 p50 3.404 p99 12.059 sustained -
+test/probe-go -> test/probe-go2 big-event 50: ok 500 p50 5.471 p99 11.408 sustained -
+test/probe-go -> test/probe-go2 big-event 200: ok 2000 p50 5.82 p99 10.637 sustained -
+test/probe-go2 -> test/probe-go3 echo-1k-grpc 50: ok 500 p50 0.781 p99 1.15 sustained -
+test/probe-go2 -> test/probe-go3 echo-1k-grpc 200: ok 2000 p50 0.682 p99 1.044 sustained -
+test/probe-go2 -> test/probe-go3 echo-1k-http 50: ok 500 p50 0.703 p99 1.148 sustained -
+test/probe-go2 -> test/probe-go3 echo-1k-http 200: ok 2000 p50 0.665 p99 1.45 sustained -
+test/probe-go2 -> test/probe-go3 echo-60k-grpc 50: ok 500 p50 1.687 p99 2.964 sustained -
+test/probe-go2 -> test/probe-go3 echo-60k-grpc 200: ok 2000 p50 1.552 p99 2.528 sustained -
+test/probe-go2 -> test/probe-go3 echo-60k-http 50: ok 500 p50 2.782 p99 4.413 sustained -
+test/probe-go2 -> test/probe-go3 echo-60k-http 200: ok 2000 p50 2.763 p99 11.987 sustained -
+test/probe-go2 -> test/probe-go3 work-grpc 50: ok 500 p50 10.861 p99 14.771 sustained -
+test/probe-go2 -> test/probe-go3 work-grpc 200: ok 2000 p50 10.649 p99 11.208 sustained -
+test/probe-go2 -> test/probe-go3 work-http 50: ok 500 p50 10.678 p99 11.478 sustained -
+test/probe-go2 -> test/probe-go3 work-http 200: ok 2000 p50 10.529 p99 11.271 sustained -
+test/probe-go2 -> test/probe-go3 write 50: ok 500 p50 3.044 p99 13.813 sustained -
+test/probe-go2 -> test/probe-go3 write 200: ok 2000 p50 3.213 p99 4.787 sustained -
+test/probe-go2 -> test/probe-go3 relay 50: ok 500 p50 2.812 p99 4.122 sustained -
+test/probe-go2 -> test/probe-go3 relay 200: ok 2000 p50 3.118 p99 5.627 sustained -
+test/probe-go2 -> test/probe-go3 big-event 50: ok 500 p50 4.872 p99 7.21 sustained -
+test/probe-go2 -> test/probe-go3 big-event 200: ok 2000 p50 5.815 p99 11.964 sustained -
+test/probe-go3 -> test/probe-py echo-1k-grpc 50: ok 500 p50 2.562 p99 4.995 sustained -
+test/probe-go3 -> test/probe-py echo-1k-grpc 200: ok 2000 p50 2.536 p99 12.135 sustained -
+test/probe-go3 -> test/probe-py echo-1k-http 50: ok 500 p50 1.865 p99 2.994 sustained -
+test/probe-go3 -> test/probe-py echo-1k-http 200: ok 2000 p50 2.433 p99 12.575 sustained -
+test/probe-go3 -> test/probe-py echo-60k-grpc 50: ok 500 p50 6.413 p99 15.714 sustained -
+test/probe-go3 -> test/probe-py echo-60k-grpc 200: ok 2000 p50 3.729 p99 8.463 sustained -
+test/probe-go3 -> test/probe-py echo-60k-http 50: ok 500 p50 3.942 p99 5.616 sustained -
+test/probe-go3 -> test/probe-py echo-60k-http 200: ok 2000 p50 4.018 p99 6.613 sustained -
+test/probe-go3 -> test/probe-py work-grpc 50: ok 500 p50 14.482 p99 38.608 sustained -
+test/probe-go3 -> test/probe-py work-grpc 200: ok 837 p50 761.464 p99 779.543 sustained -
+test/probe-go3 -> test/probe-py work-http 50: ok 500 p50 11.909 p99 12.556 sustained -
+test/probe-go3 -> test/probe-py work-http 200: ok 869 p50 733.353 p99 758.707 sustained -
+test/probe-go3 -> test/probe-py write 50: ok 500 p50 2.892 p99 4.775 sustained -
+test/probe-go3 -> test/probe-py write 200: ok 2000 p50 2.823 p99 5.454 sustained -
+test/probe-go3 -> test/probe-py relay 50: ok 500 p50 3.019 p99 6.405 sustained -
+test/probe-go3 -> test/probe-py relay 200: ok 2000 p50 3.924 p99 14.66 sustained -
+test/probe-go3 -> test/probe-py big-event 50: ok 500 p50 5.191 p99 7.666 sustained -
+test/probe-go3 -> test/probe-py big-event 200: ok 2000 p50 7.11 p99 116.768 sustained -
+test/probe-py -> test/probe-py2 echo-1k-grpc 50: ok 500 p50 3.351 p99 6.979 sustained -
+test/probe-py -> test/probe-py2 echo-1k-grpc 200: ok 2000 p50 6.719 p99 128.697 sustained -
+test/probe-py -> test/probe-py2 echo-1k-http 50: ok 500 p50 3.984 p99 8.399 sustained -
+test/probe-py -> test/probe-py2 echo-1k-http 200: ok 1731 p50 255.14 p99 1444.584 sustained -
+test/probe-py -> test/probe-py2 echo-60k-grpc 50: ok 500 p50 4.847 p99 8.782 sustained -
+test/probe-py -> test/probe-py2 echo-60k-grpc 200: ok 2000 p50 15.016 p99 294.896 sustained -
+test/probe-py -> test/probe-py2 echo-60k-http 50: ok 500 p50 7.559 p99 16.642 sustained -
+test/probe-py -> test/probe-py2 echo-60k-http 200: ok 599 p50 740.781 p99 2757.317 sustained -
+test/probe-py -> test/probe-py2 work-grpc 50: ok 500 p50 21.881 p99 70.968 sustained -
+test/probe-py -> test/probe-py2 work-grpc 200: ok 419 p50 1427.135 p99 2015.829 sustained -
+test/probe-py -> test/probe-py2 work-http 50: ok 500 p50 15.517 p99 22.936 sustained -
+test/probe-py -> test/probe-py2 work-http 200: ok 401 p50 1029.457 p99 2923.866 sustained -
+test/probe-py -> test/probe-py2 write 50: ok 500 p50 8.689 p99 27.726 sustained -
+test/probe-py -> test/probe-py2 write 200: ok 2000 p50 8.558 p99 35.55 sustained -
+test/probe-py -> test/probe-py2 relay 50: ok 500 p50 6.81 p99 21.24 sustained -
+test/probe-py -> test/probe-py2 relay 200: ok 2000 p50 9.643 p99 22.105 sustained -
+test/probe-py -> test/probe-py2 big-event 50: ok 500 p50 12.72 p99 33.056 sustained -
+test/probe-py -> test/probe-py2 big-event 200: ok 1777 p50 1491.299 p99 2152.9 sustained -
+test/probe-py2 -> test/probe-go echo-1k-grpc 50: ok 500 p50 1.95 p99 2.85 sustained -
+test/probe-py2 -> test/probe-go echo-1k-grpc 200: ok 2000 p50 1.799 p99 3.157 sustained -
+test/probe-py2 -> test/probe-go echo-1k-http 50: ok 500 p50 2.9 p99 4.971 sustained -
+test/probe-py2 -> test/probe-go echo-1k-http 200: ok 1758 p50 248.221 p99 1526.903 sustained -
+test/probe-py2 -> test/probe-go echo-60k-grpc 50: ok 500 p50 3.165 p99 4.515 sustained -
+test/probe-py2 -> test/probe-go echo-60k-grpc 200: ok 2000 p50 3.009 p99 6.996 sustained -
+test/probe-py2 -> test/probe-go echo-60k-http 50: ok 500 p50 5.471 p99 8.176 sustained -
+test/probe-py2 -> test/probe-go echo-60k-http 200: ok 1275 p50 342.463 p99 2096.904 sustained -
+test/probe-py2 -> test/probe-go work-grpc 50: ok 500 p50 11.983 p99 12.856 sustained -
+test/probe-py2 -> test/probe-go work-grpc 200: ok 2000 p50 11.909 p99 14.546 sustained -
+test/probe-py2 -> test/probe-go work-http 50: ok 500 p50 13.519 p99 15.752 sustained -
+test/probe-py2 -> test/probe-go work-http 200: ok 1908 p50 161.506 p99 1201.849 sustained -
+test/probe-py2 -> test/probe-go write 50: ok 500 p50 5.741 p99 8.571 sustained -
+test/probe-py2 -> test/probe-go write 200: ok 2000 p50 5.802 p99 15.351 sustained -
+test/probe-py2 -> test/probe-go relay 50: ok 500 p50 5.987 p99 10.059 sustained -
+test/probe-py2 -> test/probe-go relay 200: ok 2000 p50 8.087 p99 26.152 sustained -
+test/probe-py2 -> test/probe-go big-event 50: ok 500 p50 10.837 p99 25.59 sustained -
+test/probe-py2 -> test/probe-go big-event 200: ok 1782 p50 1438.547 p99 2164.124 sustained -
+🚀 Starting project d-h2 (target: docker)
+📋 Component state calculation:
+   ✅ be/go-core@3.0.4      starting (top-level)
+   ✅ be/go-infra@3.0.4     starting (top-level)
+   ✅ be/py-render@3.0.5    starting (top-level)
+   ✅ test/probe-go@3.2.4   starting (test/probe-py2 needs it)
+   ✅ test/probe-go2@3.2.4  starting (test/probe-go needs it)
+   ✅ test/probe-go3@3.2.4  starting (test/probe-go2 needs it)
+   ✅ test/probe-py@3.2.4   starting (test/probe-go3 needs it)
+   ✅ test/probe-py2@3.2.4  starting (test/probe-py needs it)
+
+📋 Start order (topological sort):
+   1. be-go-core-3-0-4    no dependencies  (hosts test/probe-go@3.2.4, test/probe-go2@3.2.4)
+   2. be-go-infra-3-0-4   no dependencies  (hosts test/probe-go3@3.2.4)
+   3. be-py-render-3-0-5  no dependencies  (hosts test/probe-py@3.2.4, test/probe-py2@3.2.4)
+
+Can start on their own: be-go-core-3-0-4, be-go-infra-3-0-4, be-py-render-3-0-5 (no dependencies)
+📄 Generated: .brickkit/generated/compose.yaml
+
+🔧 Database migrations that run before startup (on failure that component won't start):
+   test/probe-go@3.2.4  /probe-go migrate
+   test/probe-go2@3.2.4  /probe-go migrate
+   test/probe-go3@3.2.4  /probe-go migrate
+   test/probe-py@3.2.4  python -m probe_py migrate
+   test/probe-py2@3.2.4  python -m probe_py migrate
+
+🐳 Starting (docker)...
+   be-go-core-3-0-4             running (healthy)
+   be-go-infra-3-0-4            running (healthy)
+   be-py-render-3-0-5           running (healthy)
+✅ All components started (3)
+
+💡 View the status: brickkit status
+   View the logs: docker compose -p brickkit-d-h2 logs -f
+test/probe-go core: 符合
+  CK-LC-01/02 通过
+  CK-CF-03 通过
+  CK-LC-04/05/06 通过
+  CK-LC-14 通过
+  CK-LC-08 通过
+  CK-LC-10 通过
+  CK-LC-11/12 通过
+  CK-DB-09 通过
+  CK-EV-09 通过
+  CK-OBS-01 通过
+  CK-OBS-02 通过
+  CK-OBS-03 通过
+  CK-OBS-04 通过
+  CK-OBS-05 不适用 — 只对外壳（见外壳的报告）
+test/probe-go2 core: 符合
+  CK-LC-01/02 通过
+  CK-CF-03 通过
+  CK-LC-04/05/06 通过
+  CK-LC-14 通过
+  CK-LC-08 通过
+  CK-LC-10 通过
+  CK-LC-11/12 通过
+  CK-DB-09 通过
+  CK-EV-09 通过
+  CK-OBS-01 通过
+  CK-OBS-02 通过
+  CK-OBS-03 通过
+  CK-OBS-04 通过
+  CK-OBS-05 不适用 — 只对外壳（见外壳的报告）
+test/probe-go3 core: 符合
+  CK-LC-01/02 通过
+  CK-CF-03 通过
+  CK-LC-04/05/06 通过
+  CK-LC-14 通过
+  CK-LC-08 通过
+  CK-LC-10 通过
+  CK-LC-11/12 通过
+  CK-DB-09 通过
+  CK-EV-09 通过
+  CK-OBS-01 通过
+  CK-OBS-02 通过
+  CK-OBS-03 通过
+  CK-OBS-04 通过
+  CK-OBS-05 不适用 — 只对外壳（见外壳的报告）
+test/probe-py core: 符合
+  CK-LC-01/02 通过
+  CK-CF-03 通过
+  CK-LC-04/05/06 通过
+  CK-LC-14 通过
+  CK-LC-08 通过
+  CK-LC-10 通过
+  CK-LC-11/12 通过
+  CK-DB-09 通过
+  CK-EV-09 通过
+  CK-OBS-01 通过
+  CK-OBS-02 通过
+  CK-OBS-03 通过
+  CK-OBS-04 通过
+  CK-OBS-05 不适用 — 只对外壳（见外壳的报告）
+test/probe-py2 core: 符合
+  CK-LC-01/02 通过
+  CK-CF-03 通过
+  CK-LC-04/05/06 通过
+  CK-LC-14 通过
+  CK-LC-08 通过
+  CK-LC-10 通过
+  CK-LC-11/12 通过
+  CK-DB-09 通过
+  CK-EV-09 通过
+  CK-OBS-01 通过
+  CK-OBS-02 通过
+  CK-OBS-03 通过
+  CK-OBS-04 通过
+  CK-OBS-05 不适用 — 只对外壳（见外壳的报告）
+be/go-core shell: 符合
+  CK-LC-05/06/08 通过
+  CK-LC-12 通过
+  CK-OBS-01 通过
+  CK-LC-14 通过
+  CK-OBS-05 通过
+be/go-infra shell: 符合
+  CK-LC-05/06/08 通过
+  CK-LC-12 通过
+  CK-OBS-01 通过
+  CK-LC-14 通过
+  CK-OBS-05 通过
+be/py-render shell: 符合
+  CK-LC-05/06/08 通过
+  CK-LC-12 通过
+  CK-OBS-01 通过
+  CK-LC-14 通过
+  CK-OBS-05 通过
+🛑 Stopping project d-h2
+✅ All components stopped
+
+💡 Data volumes were not deleted; database data is still there
+   For a full cleanup, run by hand: docker volume rm <volume-name>
+   Start again with: brickkit up

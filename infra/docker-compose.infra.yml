@@ -23,7 +23,7 @@ volumes:
 services:
   # ① PostgreSQL —— 共享单一 Database + 每组件独立 Schema（决策 3）
   postgres:
-    image: postgres:16-alpine
+    image: postgres:16.15-alpine
     container_name: be-postgres
     networks: [be-net]
     ports: ["5432:5432"]
@@ -46,7 +46,7 @@ services:
 
   # ② NATS —— 事件总线（默认）。JetStream 必开
   nats:
-    image: nats:2.10-alpine
+    image: nats:2.10.29-alpine
     container_name: be-nats
     networks: [be-net]
     ports: ["4222:4222", "8222:8222"]
@@ -65,7 +65,7 @@ services:
 
   # ③ Traefik —— API 网关（默认）。Dashboard 8080 → 28080（总纲 §1.2：1xxxx 整段归平台）
   traefik:
-    image: traefik:v3.0
+    image: traefik:v3.0.4
     container_name: be-traefik
     networks: [be-net]
     ports: ["80:80", "443:443", "28080:28080"]
@@ -84,7 +84,7 @@ services:
 
   # ④ Casdoor —— IAM 认证（默认）。带外容器，不进 brickkit.yaml
   casdoor:
-    image: casbin/casdoor:latest
+    image: casbin/casdoor:4.1.0
     container_name: be-casdoor
     networks: [be-net, brickkit-net]
     ports: ["8000:8000"]
@@ -111,7 +111,7 @@ services:
 
   # ⑤ RustFS —— 对象存储（默认）
   rustfs:
-    image: rustfs/rustfs:latest
+    image: rustfs/rustfs:1.0.0-beta.12
     container_name: be-rustfs
     networks: [be-net]
     ports: ["9000:9000"]

@@ -83,7 +83,8 @@ def main(out: str, spec: str) -> int:
                 print(f"PROBLEM stage {line.split()[1]} {name} failed ({line.split('END ')[1]}): "
                       f"{tail(logs / f'{n}-{name}.log')}", flush=True)
         seen_lines = len(lines)
-        for f in sorted({*meas.glob("**/result.json"), *meas.glob("**/failed.txt")} - seen_files):
+        # in the order they were written: a 50/s result must be seen before its 200/s one (the paths sort 200 first)
+        for f in sorted({*meas.glob("**/result.json"), *meas.glob("**/failed.txt")} - seen_files, key=lambda p: p.stat().st_mtime):
             seen_files.add(f)
             if f.name == "failed.txt":
                 problems += 1
