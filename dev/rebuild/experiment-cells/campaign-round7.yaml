@@ -1,0 +1,13 @@
+# Round 7, under the performance power profile, short windows (about an hour):
+# - the calls of D-H2 (Go shell to Go shell) and D-X (mixed): with round 5 every call path of the D row in one profile;
+# - the subscription knob: D-S and D-S-pg with each subscription handling 4 messages at once (the -c4 cells);
+# - the PostgreSQL queue after P6.30 (a publish wakes the idle readers): D-H1-pg and D-S-pg again, D-S-pg last so the
+#   database's statement statistics can be read for it alone.
+runs: 1
+cells:
+  - {cell: D-H2, ops: [echo-1k-grpc, echo-1k-http, echo-60k-grpc, echo-60k-http, work-grpc, work-http], loads: [50, 200], idle: 15, warmup: 3, seconds: 10}
+  - {cell: D-X, ops: [echo-1k-grpc, echo-1k-http, echo-60k-grpc, echo-60k-http, work-grpc, work-http], loads: [50, 200], idle: 15, warmup: 3, seconds: 10}
+  - {cell: D-S-c4, ops: [write, relay, big-event], loads: [50, 200], idle: 15, warmup: 3, seconds: 10}
+  - {cell: D-S-pg-c4, ops: [write, relay, big-event], loads: [50, 200], idle: 15, warmup: 3, seconds: 10}
+  - {cell: D-H1-pg, ops: [write, relay, big-event], loads: [50, 200], idle: 15, warmup: 3, seconds: 10}
+  - {cell: D-S-pg, ops: [write, relay, big-event], loads: [50, 200], idle: 15, warmup: 3, seconds: 10}
