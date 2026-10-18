@@ -73,6 +73,7 @@
 | `brickkit` 命令报错或给出 `error_code` | `brickkit-troubleshoot` 技能（[SKILL.md](.claude/skills/brickkit-troubleshoot/SKILL.md)）；参数：`brickkit <命令> --help` |
 | 可能与已有决定冲突的改动；“为什么不用 React／Java／行级安全／Deny／配置中心……” | [决定记录](docs/zh/02-decisions/README.md)（先读再提议；决定优先于规范） |
 | 为什么选这个数据库、消息系统、事务模型、身份格式、金额格式；替换某个底层产品 | [底层选择](docs/zh/04-foundations/README.md) |
+| 不改代码换底层：消息运输换 PostgreSQL 队列、换对象存储、加连接池代理、换观测后端或容器引擎 | [部署时可切换的底层实现](docs/zh/04-foundations/README.md#部署时可切换的底层实现) |
 | 重建计划；仓库复用与 `legacy/` 分支；当前进度 | `dev/rebuild/`（开发区） |
 | 某个组件做什么；改一个组件 | 下面的组件表，然后该组件的 `BRICKKIT.md`（它拥有什么）与 `AGENTS.md`（怎样改它）；新设计中的边界见[边界卡](docs/zh/07-components/README.md) |
 
