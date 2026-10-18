@@ -1,0 +1,33 @@
+$ docker tag be-go-core:3.0.1 be-go-core:3.0.2   # the image holds members 3.2.0; component.yaml declares 3.2.1
+$ brickkit up
+🚀 Starting project d-h2 (target: docker)
+📋 Component state calculation:
+   ✅ be/go-core@3.0.2      starting (top-level)
+   ✅ be/go-infra@3.0.2     starting (top-level)
+   ✅ be/py-render@3.0.2    starting (top-level)
+   ✅ test/probe-go@3.2.1   starting (test/probe-py2 needs it)
+   ✅ test/probe-go2@3.2.1  starting (test/probe-go needs it)
+   ✅ test/probe-go3@3.2.1  starting (test/probe-go2 needs it)
+   ✅ test/probe-py@3.2.1   starting (test/probe-go3 needs it)
+   ✅ test/probe-py2@3.2.1  starting (test/probe-py needs it)
+
+📋 Start order (topological sort):
+   1. be-go-core-3-0-2    no dependencies  (hosts test/probe-go@3.2.1, test/probe-go2@3.2.1)
+   2. be-go-infra-3-0-2   no dependencies  (hosts test/probe-go3@3.2.1)
+   3. be-py-render-3-0-2  no dependencies  (hosts test/probe-py@3.2.1, test/probe-py2@3.2.1)
+
+Can start on their own: be-go-core-3-0-2, be-go-infra-3-0-2, be-py-render-3-0-2 (no dependencies)
+📄 Generated: .brickkit/generated/compose.yaml
+
+🔧 Database migrations that run before startup (on failure that component won't start):
+   test/probe-go@3.2.1  /probe-go migrate
+   test/probe-go2@3.2.1  /probe-go migrate
+   test/probe-go3@3.2.1  /probe-go migrate
+   test/probe-py@3.2.1  python -m probe_py migrate
+   test/probe-py2@3.2.1  python -m probe_py migrate
+❌ Error: the local image of shell be/go-core@3.0.2 contains other member versions than its component.yaml declares
+   Image: be-go-core:3.0.2
+   Members in the image: test/probe-go2@3.2.0,test/probe-go3@3.2.0,test/probe-go4@3.2.0,test/probe-go@3.2.0
+   Members declared in component.yaml: test/probe-go2@3.2.1,test/probe-go3@3.2.1,test/probe-go4@3.2.1,test/probe-go@3.2.1
+   Suggestion: Rebuild the shell image: brickkit build be/go-core@3.0.2 --force
+[exit 0]

@@ -1,0 +1,22 @@
+# be-go-core:3.0.2 built from tag 3.0.2 with go.mod changed to probes v3.2.0; the labels copied from the real build (members 3.2.1)
+$ go version -m /shell | grep probes
+	dep	github.com/brickKit/be-acceptance/probes/go/v3	v3.2.0	h1:B8zDF5hnalURErhxv6lSxquTzd1vGdhVljXg8gr4Lr0=
+$ brickkit up
+   test/probe-py2@3.2.1  python -m probe_py migrate
+
+🐳 Starting (docker)...
+❌ Error: docker failed to run
+   Command: docker compose --project-directory . -p brickkit-d-h2 -f .brickkit/generated/compose.yaml up -d --wait --remove-orphans be-go-core-3-0-2 be-go-infra-3-0-2 be-py-render-3-0-2
+   Output: Container brickkit-d-h2-test-probe-py-3-2-1-migration-1 Exited
+      Container brickkit-d-h2-be-go-infra-3-0-2-1 Healthy
+      container brickkit-d-h2-be-go-core-3-0-2-1 is unhealthy
+$ docker logs (the go-core shell)
+{"component":"be/go-core","expected":"module github.com/brickKit/be-acceptance/probes/go/v3 at v3.2.1, but the build info has v3.2.0","got":"","key":"test/probe-go:module","kind":"invalid","level":"ERROR","msg":"configuration"}
+{"component":"be/go-core","expected":"3.2.1, the version compiled in is 3.2.0","got":"","key":"test/probe-go2:version","kind":"invalid","level":"ERROR","msg":"configuration"}
+{"component":"be/go-core","expected":"module github.com/brickKit/be-acceptance/probes/go/v3 at v3.2.1, but the build info has v3.2.0","got":"","key":"test/probe-go2:module","kind":"invalid","level":"ERROR","msg":"configuration"}
+$ brickkit status
+✅ Running (5 components)
+ │ be/go-core     │ 3.0.2   │ running                                        │ 0.0.0.0:38090->8090/tcp, [::]:38090->8090/tcp, 0.0.0.0:38600->8600/tcp, [::]:38600->8600/tcp, 0.0.0.0:38602->8602/tcp, [::]:38602->8602/tcp │
+ │ test/probe-go  │ 3.2.1   │ running (in shell be/go-core@3.0.2)            │                                                                                                                                             │
+ │ test/probe-go2 │ 3.2.1   │ running (in shell be/go-core@3.0.2)            │                                                                                                                                             │
+ │ be/py-render   │ 3.0.2   │ running but unhealthy (starting)                               │

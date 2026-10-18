@@ -31,8 +31,8 @@
 | 编号 | 任务 | 仓库 | 验收 | 状态 |
 | --- | --- | --- | --- | --- |
 | T4.1 | 探针 3.1.0：按 ID 的变体与 `elapsed_us`；注册表追加变体的端口与 schema；变体目录；剖面与探针测试覆盖变体；发布 | `be-acceptance`、`registry/` | 六个变体单跑通过剖面；`brickkit lint` 通过；按标签能取到 | 完成 |
-| T4.2 | Go 外壳 `be-go-core`、`be-go-infra`：编进四个 Go 探针变体；`go.mod` 按标签；镜像、清单、文档；在一格里由 BrickKit 部署并承载 1、2、4 个成员；重做 C4、C5 | `be-go-core`、`be-go-infra` | 外壳内成员通过剖面（含 CK-OBS-05）；C4 由 BrickKit 拒绝、C5 由启动器拒绝 | 待做 |
-| T4.3 | Python 外壳 `be-py-render`：编进两个 Python 探针变体；同上 | `be-py-render` | 同上 | 待做 |
+| T4.2 | Go 外壳 `be-go-core`、`be-go-infra`：编进四个 Go 探针变体；`go.mod` 按标签；镜像、清单、文档；在一格里由 BrickKit 部署并承载 1、2、4 个成员；重做 C4、C5 | `be-go-core`、`be-go-infra` | 外壳内成员通过剖面（含 CK-OBS-05）；C4 由 BrickKit 拒绝、C5 由启动器拒绝 | 完成 |
+| T4.3 | Python 外壳 `be-py-render`：编进两个 Python 探针变体；同上 | `be-py-render` | 同上 | 完成 |
 | T4.4 | 资源采集（`be-acceptance/measure/`）：进程与容器口径、平台与基础资源、数据库连接、积压 | `be-acceptance` | 对已知负载（单跑探针、固定 CPU 消耗）的读数自洽 | 待做 |
 | T4.5 | 负载驱动（`be-acceptance/load/`，Go）：操作、速率、加压、事件路径的完成时间、结果文件 | `be-acceptance` | 对一条路径跑出 p50/p95/p99、吞吐、错误；协调遗漏的自检 | 待做 |
 | T4.6 | 报告生成与运行一格的入口：从结果文件出档案的结果表与报告的表 | `be-acceptance`、`dev/rebuild/` | 一格一条命令跑完并写出档案 | 待做 |
@@ -42,3 +42,6 @@
 
 （每完成一个任务在这里加一行：日期、提交、结论。）
 - 2026-10-18 T4.1 完成：`be-acceptance` `test-probe-{go,go2,go3,go4,py,py2}/3.1.0`（模块标签 `probes/go/v3.1.0`）；注册表追加变体的端口（8602–8605、9602–9605）与 schema。变体目录由 `probes/variants.py` 从主探针生成（清单换 ID、名字、端口与本机运行命令；`Dockerfile` 按发布标签构建主探针：Go 用 `go install …@v3.1.0`，Python 按标签克隆后 `uv sync --frozen`），测试核对生成结果与端口；入口按 `COMPONENT_ID` 选变体（Python 的 `__main__.py` 不进外壳，合并安全检查不扫它）；资源类型与操作键按组件 ID 取前缀（`test.probe_go2`），两个组件不拥有同样的键；`/call` 回答带调用方测的 `elapsed_us`。六个探针单跑都通过，两个主探针的核心剖面仍“符合”；六个清单 `brickkit lint` 0 错误 0 警告；四个镜像（含两个变体）按标签构建，以自己的 ID 启动。
+- 2026-10-18 T4.2、T4.3 完成：外壳 `be/go-core`、`be/go-infra`、`be/py-render` `3.0.2`（成员按标签取，`members_test`/`test_members` 核对与 `shell.members` 一致）；D·H2 格由 BrickKit 从标签构建并部署，五个探针成员与三个外壳全部通过剖面；C4、C5 复现并各被一道拦下。记录 [4-02](experiment-records/4-02-shells.md)。
+  - **途中的改动**：①协议 P4.26（配置给出的组件地址），`be-protocol` `v3.0.0-alpha.3`；②`be-sdk-go` `v3.0.0-alpha.3`/`alpha.4`、`be-sdk-python` `v3.0.0a2`/`a3`：配置地址的客户端、外壳成员的就绪日志、客户端的 SNI、Python 关掉 gRPC 核心的日志，以及一个与时间有关的测试缺陷；③探针 3.2.0/3.2.1、外壳 3.0.1/3.0.2 随之发布。
+  - **格的工具（T4.6 的一部分已先做）**：`be-acceptance/conformance/cells/`：`create`（从 `cell.yaml` 重建 BrickKit 项目；升级共用成员的外壳会失败，FRB-006）、`prepare`（库、角色、证书、桶、流、配置）、`profile`（部署好的格的剖面与报告）。

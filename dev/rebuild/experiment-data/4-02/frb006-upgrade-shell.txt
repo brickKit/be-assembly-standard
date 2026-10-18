@@ -1,0 +1,42 @@
+$ brickkit --version
+BrickKit CLI v1.8.1
+$ brickkit init --yes --no-skills
+   ✅ closing check passed: the project loads
+# sources: be-acceptance (repo) and https://github.com/brickKit/ (baseUrl)
+$ brickkit add be/go-core@3.0.1 --yes
+   ✅ be/go-core@3.0.1
+   ✅ test/probe-go@3.2.0 (in shell be/go-core)
+   ✅ test/probe-go2@3.2.0 (in shell be/go-core)
+   ✅ test/probe-go3@3.2.0 (in shell be/go-core)
+   ✅ test/probe-go4@3.2.0 (in shell be/go-core)
+$ brickkit add be/go-infra@3.0.1 --yes
+   ✅ be/go-infra@3.0.1
+ℹ️  test/probe-go@3.2.0 is nested under shell be/go-core, so shell be/go-infra does not host it (a version can be in only one shell)
+ℹ️  test/probe-go2@3.2.0 is nested under shell be/go-core, so shell be/go-infra does not host it (a version can be in only one shell)
+ℹ️  test/probe-go3@3.2.0 is nested under shell be/go-core, so shell be/go-infra does not host it (a version can be in only one shell)
+ℹ️  test/probe-go4@3.2.0 is nested under shell be/go-core, so shell be/go-infra does not host it (a version can be in only one shell)
+# deploy.yaml edited: go-infra hosts go3 and go4
+target: docker # docker | podman | k8s
+
+components:
+  - id: be/go-core
+    members:
+      - id: test/probe-go
+      - id: test/probe-go2
+  - id: be/go-infra
+    members:
+      - id: test/probe-go3
+      - id: test/probe-go4
+$ brickkit lint
+📋 Checked 4 files: 1 with errors, 4 warnings
+$ brickkit upgrade be/go-core@3.0.2 --yes
+❌ Error: this change would leave a project that does not load; all three files were restored
+   Reason: Error: deploy.yaml failed validation
+   File: deploy.yaml
+   components[1].members[0]: test/probe-go is already a member of shell be/go-core; a component belongs to at most one shell
+   components[1].members[1]: test/probe-go2 is already a member of shell be/go-core; a component belongs to at most one shell
+   components[1].members[2]: test/probe-go3 is already a member of shell be/go-core; a component belongs to at most one shell
+   components[1].members[3]: test/probe-go4 is already a member of shell be/go-core; a component belongs to at most one shell
+   Suggestions:
+   1. Full field reference: brickkit docs 11-reference/03-deploy-yaml-schema (online: https://github.com/brickKit/brickKit/blob/v1.8.1/docs/en/11-reference/03-deploy-yaml-schema.md)
+   2. Fix what the reason names, then run it again

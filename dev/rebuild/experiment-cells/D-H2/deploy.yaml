@@ -1,0 +1,31 @@
+# deploy.yaml — cell D-H2; written by be-acceptance/conformance/cells/create.py from cell.yaml
+target: docker
+
+components:
+  - id: be/go-core
+    expose: true
+    exposePort: 38090
+    members:
+      - id: test/probe-go
+        expose: true
+        exposePort: 38600
+      - id: test/probe-go2
+        expose: true
+        exposePort: 38602
+  - id: be/go-infra
+    expose: true
+    exposePort: 38224
+    members:
+      - id: test/probe-go3
+        expose: true
+        exposePort: 38603
+  - id: be/py-render
+    expose: true
+    exposePort: 38402
+    members:
+      - id: test/probe-py
+        expose: true
+        exposePort: 38601
+      - id: test/probe-py2
+        expose: true
+        exposePort: 38605
