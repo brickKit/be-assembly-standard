@@ -45,7 +45,7 @@
 
 ## 6. 观察与异常
 
-- **两个外壳编进同一组成员时没法原地升级外壳**（FRB-006）：`upgrade be/go-core` 把成员都写进被升级的外壳，与 `go-infra` 承载的成员冲突，BrickKit 发现后恢复了三份文件。格因此改为每次从 `cell.yaml` 重建（`cells/create.py`）。
+- **两个外壳编进同一组成员时没法原地升级外壳**（FRB-006）：`upgrade be/go-core` 把成员都写进被升级的外壳，与 `go-infra` 承载的成员冲突，BrickKit 发现后恢复了三份文件。格因此改为每次从 `cell.yaml` 重建（`cells/create.py`）。BrickKit v1.8.2 已修复（按部署文件里的嵌套判断承载，别的外壳承载的成员留在原处），同一复现复测通过（`experiment-data/4-02/frb006-retest-v1.8.2.txt`）；格仍从 `cell.yaml` 重建，每格从干净的项目开始。
 - **探针怎样找到下一个探针**：探针不声明依赖（链按格组合，可以成环），BrickKit 不注入 `*_ENDPOINT`，而两种 SDK 只给声明的依赖建客户端。按协议已有的“授权、身份的地址是配置里的引用”推广为 P4.26：配置给出的组件地址（`$endpoint:`）由运行时给出与依赖相同的客户端（Go `HTTPAt`、`GRPCAt`，Python `http_at`、`grpc_at`）；`be-protocol` `v3.0.0-alpha.3`，`be-sdk-go` `v3.0.0-alpha.3`，`be-sdk-python` `v3.0.0a2`；探针 3.2.0 改用 `PROBE_NEXT_URL`、`PROBE_NEXT_GRPC_URL`。
 - **部署好的格里剖面抓到的 SDK 缺口（已修，`be-sdk-go` `v3.0.0-alpha.4`、`be-sdk-python` `v3.0.0a3`）**：①外壳里的成员不写自己的就绪日志，只有外壳写（P1.12；协议 17 要求单跑与在外壳里行为一致）；单跑的进程测试发现不了。②Python 外壳的输出里有 gRPC C 核心的纯文本行（`ssl_transport_security.cc … No match found for server name`），破坏“每行一个 JSON”（P10.1）：起因是 Go 客户端握手时不发服务端的名字（SNI），Python 服务端（gRPC 核心）每个连接都记一条。Go 客户端改为把目标的派生 DNS 名作为 SNI，Python SDK 默认关掉 gRPC 核心自己的日志（`GRPC_VERBOSITY=NONE`，运维显式设置时保留）。
 - **重跑迁移**：BrickKit 生成的 `compose.yaml` 里环境文件是相对路径，`docker compose run` 要带 `--project-directory`。
@@ -61,4 +61,4 @@
 
 ## 8. 原始数据
 
-`dev/rebuild/experiment-data/4-02/`：八份剖面报告（`*.json`）、`c4.txt`、`c5.txt`、`frb006-upgrade-shell.txt`。
+`dev/rebuild/experiment-data/4-02/`：八份剖面报告（`*.json`）、`c4.txt`、`c5.txt`、`frb006-upgrade-shell.txt`、`frb006-retest-v1.8.2.txt`。
