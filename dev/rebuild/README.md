@@ -18,6 +18,7 @@
 | [step4-plan.md](step4-plan.md) | 实验第 4 步（三个外壳、资源采集、负载驱动、报告生成，D 行的底价与通信细分）的任务、取舍与进度 |
 | [experiment-report.md](experiment-report.md) | 实验报告（给维护者与客户）；第 4 步起按行填写 |
 | [step5-plan.md](step5-plan.md) | 实验第 5 步（身份适配、授权、审计与两个契约包）的**草稿**，第 4 步结束后与用户确认再定稿 |
+| [step5-contracts.md](step5-contracts.md) | 第 5 步的契约草稿（系统面的方法、信封与记录字节、定稿前要补的设计） |
 
 ## 现在在哪里
 
