@@ -68,7 +68,7 @@
 
 ## 任务结束时：知识库反馈
 
-把知识库反馈作为一个 PR 提交（走 `kb-contribute`）。目前草稿有十项（另有两项——测试定期检查进用户级指令、asyncio 的 Nagle——已于 2026-10-18 按用户要求先行提交：knowledge-base PR #16）：
+把知识库反馈作为一个 PR 提交（走 `kb-contribute`）。**提交时机（用户 2026-10-18）**：等全部复测与 `step4-plan.md` 留到后续的 Go、Python 性能实验做完，按结果修改第 7–10 项（尤其第 9 项的 Python 加速件与新发现的 Go 优化）后再提交。目前草稿有十项（另有两项——测试定期检查进用户级指令、asyncio 的 Nagle——已于 2026-10-18 按用户要求先行提交：knowledge-base PR #16）：
 
 1. Linux 的 `CLOCK_MONOTONIC` 在系统休眠期间停走（`CLOCK_BOOTTIME` 才计入）；知识库选主相关文档按单调时钟计租约时没有提醒这一点。提交前先在 Linux 上验证。
 2. 跨平台 D2 一节没有把 uni-app 列为 Vue 团队的 App 选项。
