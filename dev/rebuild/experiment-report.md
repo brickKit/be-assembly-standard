@@ -8,8 +8,8 @@
 
 | 项 | 内容 |
 | --- | --- |
-| 组件 | 本版只有探针：`test/probe-go`、`-go2`、`-go3`、`-go4`（Go），`test/probe-py`、`-py2`（Python），同一份代码按组件 ID 出的变体，版本 3.2.5（`be-sdk-go` `v3.0.0-alpha.8`、`be-sdk-python` `v3.0.0a8`；Go 1.27.2、Python 3.15.0）；业务组件从第 5 步起 |
-| 外壳 | `be/go-core`、`be/go-infra` 3.0.5（Go）、`be/py-render` 3.0.6（Python）；各格承载哪些成员见各格的 `experiment-cells/<格>/cell.yaml` |
+| 组件 | 本版只有探针：`test/probe-go`、`-go2`、`-go3`、`-go4`（Go），`test/probe-py`、`-py2`（Python），同一份代码按组件 ID 出的变体，版本 3.2.6（`be-sdk-go` `v3.0.0-alpha.9`、`be-sdk-python` `v3.0.0a9`；Go 1.27.2、Python 3.15.0）；业务组件从第 5 步起 |
+| 外壳 | `be/go-core`、`be/go-infra` 3.0.6（Go）、`be/py-render` 3.0.7（Python）；各格承载哪些成员见各格的 `experiment-cells/<格>/cell.yaml` |
 | 探针 | 操作：经 gRPC 或 HTTP 调用下一个探针的 echo（1 KiB、60 KiB）与 work（10 ms CPU）；写入并发出事件（100 字节），对方收到后转成一次调用（relay）；100 KiB 的大事件经对象存储传递 |
 | 负载 | 开环固定速率：空闲、50/s、200/s，以及加压（从 50/s 起每级乘 1.5，直到 p99 超过 10 s、错误超过 1% 或吞吐低于发出的 90%）；每项预热 10 秒、测 30 秒，每格 3 次 |
 | 基础资源与机器 | PostgreSQL、NATS JetStream、RustFS（`make up`）；Linux 7.0.0-38，12 核，14 GiB；Docker 29.7.1；BrickKit CLI v1.8.4 |
