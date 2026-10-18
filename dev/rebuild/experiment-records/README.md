@@ -19,3 +19,4 @@
 | 0-11 | Podman 有根与无根 | 第 0 步 | 2026-10-17 | 无根通过（0-06）；有根下 BrickKit 流程与到宿主机进程都正常，但与同机的 Docker 冲突：容器之间不通（已证实：Docker 的 FORWARD DROP 加 `br_netfilter`），健康检查全绿；B6 改在没有 Docker 的条件下跑 | [0-11-podman-rootful.md](0-11-podman-rootful.md) |
 | 0-12 | 连接池代理的事务模式与 `SET LOCAL`、pgx 的预编译语句 | 第 0 步 | 2026-10-17 | 通过；`SET LOCAL ROLE`（`INHERIT FALSE`）、`SET LOCAL` 超时、事务级应用锁、`SKIP LOCKED` 都成立；禁止的写法实测泄漏；pgx 默认模式要求 PgBouncer 开 `max_prepared_statements` | [0-12-pooler-transaction-mode.md](0-12-pooler-transaction-mode.md) |
 | 4-02 | 三个外壳按标签编进成员；部署好的格里通过剖面；重做 0-04 的 C4、C5 | D·H2（探针） | 2026-10-18 | 通过；C4 由 BrickKit 拒绝、C5 由外壳启动器拒绝；途中补了 P4.26 与三处 SDK 缺口；升级共用成员的外壳失败（FRB-006） | [4-02-shells.md](4-02-shells.md) |
+| 4-03 | 全面复测：全部测试与 15 格固定速率测量，按操作设合理上限 | 第 4 步（全部 D 格） | 2026-10-18 | 找出并修好六处问题（Nagle、大事件逐条上传、PostgreSQL 队列跟不上积压、低负载下的轮询延迟、Python 的 HTTP 开销、对象存储累积），五处功能测试全过、只有测量看得出；三类预期上限写进报告；协议 P1.19、P6.28、P6.29 | [4-03-full-check.md](4-03-full-check.md) |
