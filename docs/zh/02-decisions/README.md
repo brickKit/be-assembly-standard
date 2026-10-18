@@ -10,7 +10,7 @@
 | --- | --- |
 | [主数据与组织](01-master-data-and-organization.md) | D01、D04、D05、D06、D15、D20、D21、D22、D69 |
 | [业务组件边界](02-business-boundaries.md) | D02、D03、D16、D27、D44–D53、D68、D70–D73 |
-| [权限与身份](03-permissions-and-identity.md) | D07–D10、D29–D31、D35–D37、D57、D61、D62、D64 |
+| [权限与身份](03-permissions-and-identity.md) | D07–D10、D29–D31、D35–D37、D57、D61、D62、D64、D76 |
 | [审批与流程](04-approval-and-workflow.md) | D11、D18、D19、D23、D33、D38、D39、D60 |
 | [事务、数据、审计与恢复](05-transactions-data-and-recovery.md) | D12–D14、D26、D28、D65（已被取代）、D66 |
 | [前端与终端](06-frontend.md) | D17、D24、D34 |
@@ -19,7 +19,7 @@
 | [AI 做出的设计选择](09-ai-choices.md) | A 编号：AI 按授权做出的选择与维护者的复核结论 |
 | [原有决定](10-earlier-decisions.md) | 0101–0509：终局设计之前的决定，按原编号承接、修订或取代 |
 
-编号是裁定的先后顺序，不连续出现在同一文件中。D01–D63 来自 2026-10-12 至 10-13 的逐题问答与复查；D64 起来自后续复查与整理。D64 是 AI 按维护者的授权做出的决定；其余都是维护者裁定。设计中 AI 按授权做出的选择（A 编号）经维护者复核后列在 [09-ai-choices.md](09-ai-choices.md)。
+编号是裁定的先后顺序，不连续出现在同一文件中。D01–D63 来自 2026-10-12 至 10-13 的逐题问答与复查；D64 起来自后续复查、整理与代表部署实验。D64 是 AI 按维护者的授权做出的决定；其余都是维护者裁定。设计中 AI 按授权做出的选择（A 编号）经维护者复核后列在 [09-ai-choices.md](09-ai-choices.md)。
 
 ## 维护者的前提
 
