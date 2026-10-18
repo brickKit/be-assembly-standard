@@ -125,7 +125,7 @@ description: 在 BrickKit 项目里增删组件、升级组件版本、调整启
 它们是两个互不冲突的服务名（`people-basic-1-0-0`、`people-basic-2-0-0`）。但**同一份
 `component.yaml` 的 `dependencies` 里一个组件 ID 只能出现一次**（原因见 `brickkit-component` 技能）。
 
-**加一个外壳**会把它编进的成员版本一起加进来，并嵌到外壳的部署条目下面；**升级外壳**会换成新外壳编进的成员。
+**加一个外壳**会把它编进的成员版本一起加进来，并嵌到外壳的部署条目下面；**升级外壳**会把嵌在它下面的成员换成新外壳编进的版本（别的外壳下面、顶层的成员位置和版本都不动）。
 
 **多环境**是每个环境一份完整的部署文件（`deploy.prod.yaml`），用 `brickkit up -f deploy.prod.yaml`
 指定；`brickkit.yaml` 与 `config/` 各环境共用，环境差异的值走部署文件的 `vars:`。没有 overlay、
@@ -141,4 +141,4 @@ description: 在 BrickKit 项目里增删组件、升级组件版本、调整启
 - 来了新需求、要跨组件改动：`brickkit-plan-change` 技能
 - 完整规范与「为什么这样设计」：<https://github.com/brickKit/brickKit> 根目录 `AGENTS.zh.md`
 
-<!-- brickkit:skill version=v1.6.0 sum=sha256:d316e36f21528d8fc803d7af8cd60a2a80d45c8f497af86b82a83d763e712c00 -->
+<!-- brickkit:skill version=v1.8.2 sum=sha256:143bcbb809e08bf979b7286ca13689f6bf98cc51d0eace2ae13daf76d7bff39d -->

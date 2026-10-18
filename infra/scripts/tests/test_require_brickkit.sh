@@ -12,7 +12,7 @@ expect() { # <期望退出码> <说明>
   PATH="$T:$PATH" LIB="$LIB" bash -c 'set -euo pipefail; source "$LIB"; require_brickkit' >/dev/null 2>&1; rc=$?
   if [ "$rc" = "$1" ]; then echo "ok   $2"; else echo "FAIL $2（rc=$rc，期望 $1）"; fail=1; fi
 }
-fake 'echo "BrickKit CLI v1.8.1"; sleep 0.3; echo "Supported Manifest version: brickkit/v1"; echo more'
+fake 'echo "BrickKit CLI v1.8.2"; sleep 0.3; echo "Supported Manifest version: brickkit/v1"; echo more'
 expect 0 "正确版本、版本行之后慢慢再写几行 → 放行"
 fake 'echo "BrickKit CLI v0.4.6"'
 expect 2 "旧版本 → 拒绝"
@@ -37,8 +37,10 @@ expect 2 "更早要求的版本 v1.7.1 → 拒绝（外壳成员的地址写成�
 fake 'echo "BrickKit CLI v1.7.2"'
 expect 2 "更早要求的版本 v1.7.2 → 拒绝（Docker、Podman 下的 replicas 在 v1.8.0）"
 fake 'echo "BrickKit CLI v1.8.0"'
-expect 2 "上一个要求的版本 v1.8.0 → 拒绝（status、down 的 Podman socket 提示在 v1.8.1）"
-fake 'echo "{\"level\":\"info\"}" >&2; echo "BrickKit CLI v1.8.1"'
+expect 2 "更早要求的版本 v1.8.0 → 拒绝（status、down 的 Podman socket 提示在 v1.8.1）"
+fake 'echo "BrickKit CLI v1.8.1"'
+expect 2 "上一个要求的版本 v1.8.1 → 拒绝（两个外壳编进同一组成员时的升级在 v1.8.2，FRB-006）"
+fake 'echo "{\"level\":\"info\"}" >&2; echo "BrickKit CLI v1.8.2"'
 expect 0 "stderr 有日志、stdout 版本对 → 放行"
 fake 'exit 1'
 expect 2 "brickkit version 失败 → 拒绝"
