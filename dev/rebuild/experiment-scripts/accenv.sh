@@ -1,0 +1,2 @@
+. /tmp/claude-1000/-home-zhijie-Desktop-github-be-assembly-standard/50abddb1-4a5f-46f1-951a-1c59973ee1b3/scratchpad/itenv.sh
+export BE_ACC_PG_ADMIN="$BE_SDK_TEST_PG_ADMIN" BE_ACC_NATS_URL="$BE_SDK_TEST_NATS_URL" BE_ACC_S3_URL="$BE_SDK_TEST_S3_URL" BE_ACC_S3_ACCESS_KEY="$BE_SDK_TEST_S3_ACCESS_KEY" BE_ACC_S3_SECRET_KEY="$BE_SDK_TEST_S3_SECRET_KEY"

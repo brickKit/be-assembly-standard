@@ -16,16 +16,17 @@
 | [step2-plan.md](step2-plan.md) | 实验第 2 步（`be-protocol` 子集与 Go SDK）的任务、取舍与进度 |
 | [step3-plan.md](step3-plan.md) | 实验第 3 步（Python SDK 子集、外壳启动器、两种语言的探针与一致性剖面）的任务、取舍与进度 |
 | [step4-plan.md](step4-plan.md) | 实验第 4 步（三个外壳、资源采集、负载驱动、报告生成，D 行的底价与通信细分）的任务、取舍与进度 |
+| [experiment-report.md](experiment-report.md) | 实验报告（给维护者与客户）；第 4 步起按行填写 |
 
 ## 现在在哪里
 
 - 设计冻结、正式文档迁移已完成（[migration-plan.md](migration-plan.md)）；AI 选择 A99–A110 记在 `docs/zh/02-decisions/09-ai-choices.md`（A109 驻留期起始值待复核，其余已确认）。
-- **代表部署实验（D41）进行中**：计划 [experiment-plan.md](experiment-plan.md) 用户 2026-10-16 说“开始”，按计划执行；第 0–3 步已完成，下一步是**第 4 步**（见下文交接）。档案在 [experiment-records/](experiment-records/README.md)，原始输出在 `experiment-data/`。
+- **代表部署实验（D41）进行中**，第 0–3 步已完成，**现在在第 4 步**（[step4-plan.md](step4-plan.md)）：外壳、资源采集、负载驱动、报告生成已完成；插入的全面复测（T4.6b）找出并修好六处问题（[4-03](experiment-records/4-03-full-check.md)），第三轮在跑。
+- **第 4 步接下来的顺序**：第三轮复测跑完 → FRB-006 的升级部署测试（排在复测后自动开始）→ 补 4-03 的修复后数字、改写消息运输文档的 PostgreSQL 队列吞吐 → 性能跟进 T4.6c（Go 基准与剖析、Python 的 `uvloop` 与 aiohttp，代码在 `be-sdk-go` 的 `perf/httpx`、`be-sdk-python` 的 `perf/uvloop`、`perf/aiohttp`、`perf/both`；脚本留底在 [experiment-scripts/](experiment-scripts/README.md)）→ 有收益的合入发版 → 知识库反馈定稿提交 → D 行正式测量 T4.7（`experiment-cells/campaign-D.yaml`，约 1881 项、两天）→ 第一份报告 → 停下汇报。
+- 测量期间不在机器上跑任何测试、编译或剖析：会干扰数字，也会抢端口（4-03 记了一次）。
 - 实验之后先做底层（权限、登录、冷热数据、事务、消息），再按 [rebuild-plan.md](rebuild-plan.md) 重建业务组件。
 
-## 2026-10-16 会话结束时的交接
-
-**已定（这次会话）**：
+## 已定的事（跨步骤）
 
 | 项 | 结论 | 记在 |
 | --- | --- | --- |
@@ -36,9 +37,14 @@
 | `mode: local` | BrickKit 回复不做长期运行的本机部署；本机进程三行只量资源与通信，标“不推荐”（图省事的另类模式） | FRR-001 已关闭（v1.4.2 复测通过） |
 | `local` 之后的用法 | 全部部署形态测完后本项目基本不再用 `local`，用 Docker 或 Podman（按结果定）；给 BrickKit 的部署形态反馈预定在第 14 步一次发出，中途不发（用户 2026-10-17） | experiment-plan.md 的“给 BrickKit 的部署形态反馈（预定）” |
 | 记录方式 | 档案（给 AI，详细、先结论、表格优先）+ 报告（给用户，含“用什么测的”与额外发现的表）+ 原始数据 | experiment-plan.md 的“记录与报告” |
-| BrickKit CLI | 项目要求升到 v1.8.1（2026-10-17；项目技能同步更新）。v1.6.0 起只写 `deployment.image` 的组件来自本地源也拉取，要在本机构建的组件必须写 `deployment.build` | `infra/scripts/lib/require-brickkit.sh` |
+| BrickKit CLI | 项目要求 v1.8.2（2026-10-18；项目技能同步更新）。v1.6.0 起只写 `deployment.image` 的组件来自本地源也拉取，要在本机构建的组件必须写 `deployment.build` | `infra/scripts/lib/require-brickkit.sh` |
+| 发布标签 | AI 决定怎样发、按依赖顺序发、发后从远端核对并汇报（用户 2026-10-18）；仓库的新建、改名、删除仍先确认 | 记忆 |
+| 测试与长时间运行 | 放后台、监视脚本每 30 秒检查、约每 5 分钟汇报、缺陷当场停、预期上限跑完再一次修 | 用户级指令（知识库） |
+| 性能与可读性 | 越底层越要想性能、查市场上更好的做法；业务逻辑以看得懂为先 | `docs/zh/01-conventions/09-ai-coding.md`；知识库 PR #17 |
 
-**第 0 步的进度**：
+## 第 0–3 步的结果
+
+**第 0 步**：
 
 | 编号 | 项 | 状态 |
 | --- | --- | --- |
@@ -56,15 +62,18 @@
 | 0-12 | 连接池代理的事务模式与 `SET LOCAL`（以及 pgx 的预编译语句） | 完成（2026-10-17）；设计依赖的事务内设置都成立；pgx 默认模式要求 PgBouncer 开 `max_prepared_statements`（记进交实现核对的项） |
 | 0-13 | 负载与数据的试跑规模 | 推迟到有业务组件之后（第 8 步前） |
 
-**第 0–3 步已完成**（2026-10-18）：0-01 到 0-12 完成，0-13 按计划推迟；第 1 步的仓库动作已执行（[step1-repo-actions.md](step1-repo-actions.md)）；第 2 步发布 `be-protocol`、`be-sdk-go` 的 `v3.0.0-alpha.1`（[step2-plan.md](step2-plan.md)）；第 3 步做了 Python 的 SDK 子集与外壳启动器、两种语言的探针与核心一致性剖面，发布 `be-protocol`、`be-sdk-go` 的 `v3.0.0-alpha.2`、`be-sdk-python` 的 `v3.0.0a1`、探针 `test-probe-go/3.0.1` 与 `test-probe-py/3.0.0`（任务、取舍、实测发现与留到后续的项在 [step3-plan.md](step3-plan.md)）。**下一步是第 4 步**：三个外壳（`go.mod` 按标签取成员、不用 `replace`，重做 0-04 的 C4、C5）、资源采集、负载驱动（探针部分）、报告生成，跑 D 行的底价与通信细分（[experiment-plan.md](experiment-plan.md) 的第 4 步）；计划见 [step4-plan.md](step4-plan.md)。
+**第 1–3 步**：0-01 到 0-12 完成，0-13 按计划推迟；第 1 步的仓库动作已执行（[step1-repo-actions.md](step1-repo-actions.md)）；第 2 步发布 `be-protocol`、`be-sdk-go` 的 `v3.0.0-alpha.1`（[step2-plan.md](step2-plan.md)）；第 3 步做了 Python 的 SDK 子集与外壳启动器、两种语言的探针与核心一致性剖面（[step3-plan.md](step3-plan.md)）。之后的版本以各计划的进度为准（2026-10-18 时：协议 `alpha.6`、`be-sdk-go` `alpha.7`、`be-sdk-python` `a7`、探针 3.2.4、外壳 3.0.4／3.0.5）。
 
-2026-10-17 起连续推进（用户授权）：每项做完写记录、更新本文件、提交，直接做下一项；只在需要用户决定、需要 BrickKit 配合、对外难撤回的动作（第 1 步的仓库动作先列清单请用户确认；首次推送或发布标签）时停下。
+## 推进方式与停点
 
-**未推送的提交**：`main` 比 `origin/main` 多若干提交（从 7aad7d4 起），用户没有要求推送；以 `git log origin/main..main` 为准。
+2026-10-17 起连续推进（用户授权）：每项做完写记录、更新本文件、提交，直接做下一项；只在需要用户决定、需要 BrickKit 配合、仓库的新建改名删除时停下。每一步结束停下汇报，用户确认后进入下一步（计划的“步骤与检查点”）。
 
-**已知、暂不处理**：`infra/scripts/tests/test_ship_dryrun.sh` 失败——旧的 `ship.sh` 还调用旧 `be-acceptance` 的命令，迁移后已不存在；发布工具随重建重新提供，届时一并处理。
+## 未推送、已知问题与外部往来
 
-**给 BrickKit 的收件箱** `brickkit-feedback/rebuild.md`：FRR-001 到 FRR-006、FRB-001 到 FRB-005 全部关闭（最后一次复测 2026-10-17，v1.8.1）；没有未回复的条目。
+- **未推送的提交**：`main` 比 `origin/main` 多若干提交（从 7aad7d4 起），用户没有要求推送；以 `git log origin/main..main` 为准。子仓库（协议、SDK、验收、外壳）都已推送。
+- **已知、暂不处理**：`infra/scripts/tests/test_ship_dryrun.sh` 失败——旧的 `ship.sh` 还调用旧 `be-acceptance` 的命令，迁移后已不存在；发布工具随重建重新提供，届时一并处理。
+- **给 BrickKit 的收件箱** `brickkit-feedback/rebuild.md`：FRR-001 到 FRR-006、FRB-001 到 FRB-006 全部关闭（FRB-006 于 2026-10-18 在 v1.8.2 复测通过）；没有未回复的条目。
+- **知识库**：PR #16（测试定期检查、asyncio 的 Nagle）、#17（性能与可读性）等审查；其余草稿见下一节。
 
 ## 任务结束时：知识库反馈
 
