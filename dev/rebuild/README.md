@@ -24,7 +24,7 @@
 
 - 设计冻结、正式文档迁移已完成（[migration-plan.md](migration-plan.md)）；AI 选择 A99–A110 记在 `docs/zh/02-decisions/09-ai-choices.md`（A109 驻留期起始值待复核，其余已确认）。
 - **代表部署实验（D41）进行中**，第 0–3 步已完成，**第 4 步的任务已全部完成，等用户确认后进入第 5 步**（[step4-plan.md](step4-plan.md)）：外壳、资源采集、负载驱动、报告生成；全面复测（T4.6b，[4-03](experiment-records/4-03-full-check.md)）修好六处问题；性能跟进（T4.6c）；D 行（T4.7）几轮短测，修好后台任务不唤醒（P7.21）、PostgreSQL 队列只靠轮询（P6.30）、Python 连接池每次归还都重置（P5.30），报告第二部分已填（[4-04](experiment-records/4-04-d-row.md)、[实验报告](experiment-report.md)）。
-- **接下来**：停下汇报第 4 步，等用户确认；待用户定的一件事：订阅的默认并发（4-04 第 5.5 节）。第 5 步的草稿在 [step5-plan.md](step5-plan.md)。测量一律在 performance 电源模式下、按小时算。
+- **接下来**：停下汇报第 4 步，等用户确认；订阅的默认并发已定为 1（取舍写进消息运输的正式文档）；待用户定：要不要给部署方一个调并发的配置项。第 5 步的草稿在 [step5-plan.md](step5-plan.md)。测量一律在 performance 电源模式下、按小时算。
 - 测量期间不在机器上跑任何测试、编译或剖析：会干扰数字，也会抢端口（4-03 记了一次）。 每一轮记下电源模式；运行脚本切到 performance 并在结束时恢复。
 - 实验之后先做底层（权限、登录、冷热数据、事务、消息），再按 [rebuild-plan.md](rebuild-plan.md) 重建业务组件。
 
