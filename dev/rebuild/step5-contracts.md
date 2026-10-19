@@ -1,47 +1,40 @@
 # 实验第 5 步的契约
 
-> **定稿（2026-10-19）**，与 [step5-plan.md](step5-plan.md) 一起。依据：D76（安全记录以规范 JSON 字节传输，protobuf 只作信封）；安全 09a（记录的字段表、定义的提交与核对）；协议第 08 章（调用方一侧，两个 SDK 已实现）；安全 03（视图与核验）；协议 03（审计的转运与回执）；协议 02（来源水位与补取）；底层选择（系统面 gRPC + protobuf，用户面 REST + OpenAPI）。
+> 2026-10-19 起已发布，契约本身以各契约包为准，这里只记下它们在哪、为什么这样定。依据：D76（安全记录以规范 JSON 字节传输，protobuf 只作信封）；安全 03、09a；协议 03、14；协议第 08 章；底层选择（系统面 gRPC + protobuf，用户面 REST + OpenAPI）。
+
+## 在哪
+
+| 契约 | 位置与版本 | 内容 |
+| --- | --- | --- |
+| 授权（族契约） | `contract-infra-authz` `v3.0.0-alpha.1` | `be.authz.v3`：`ViewService.Verify`、`DefinitionService.Submit`；Go 包 `authzv3`、Python 模块 `be.authz.v3`；README 写授权成员的义务 |
+| 审计 | `infra-audit` 的 `contract/`，标签 `contract/v3.0.0-alpha.1` | `be.audit.v3`：`IntakeService.Submit`、`IntakeService.Watermark`；模块 `github.com/brickKit/infra-audit/contract/v3`；README 写审计组件的义务 |
+| 身份（族契约） | `contract-infra-iam` `v3.0.0-alpha.1` | 没有系统方法，所以没有 protobuf：签发的凭据（按 P8.1 核验）与事件 `infra.iam.account_status_changed.v1` |
+| 安全记录的 JSON Schema | `be-protocol` 3.0.0-alpha.18 的 `schemas/security/` | 从安全 09a 与协议第 08 章的字段表生成（`be-acceptance` 的 `doc-checks/security-schemas.py`），`make gates` 核对 |
 
 ## 原则
 
-- **系统面的方法进契约包，用户面的路由不进**：管理员授予、撤销、角色，审计查询，登录与会话，都是用户面 REST，由组件仓库里的 OpenAPI 描述；契约包只放组件之间经 mTLS 调用的系统方法与事件。
-- **信封薄，记录用字节**（D76）：protobuf 消息只承载调用本身的字段；安全记录与审计记录是规范 JSON 字节（`bytes`），按 JSON Schema 校验，摘要对收到的字节核对。
-- **包与版本**：protobuf 包 `be.authz.v3`、`be.iam.v3`、`be.audit.v3`；Go 模块 `github.com/brickKit/contract-infra-authz/v3` 等，Python 包同名；版本从 `3.0.0` 的预发布起（A110）。
+- **系统面的方法进契约包，用户面的路由不进**：管理员授予、撤销、角色，审计查询，登录与会话，都是用户面 REST，由组件仓库里的 OpenAPI 描述。
+- **信封薄，记录用字节**（D76）：线上的记录不带自己的摘要，摘要放在信封里；接收方先按 schema 校验，再核对字节是规范形式、摘要相符。
+- **生成的代码提交在仓库里**：buf 1.74.0 在一次性容器里运行。远程插件的版本等于 SDK 锁定的运行时：protobuf-go v1.36.12、grpc-go 插件 v1.6.2、Python protobuf 36.2 与 grpcio 1.84.0。Python 的 `be` 是各契约包共用的命名空间。
 
-## 授权：`contract-infra-authz`（`be.authz.v3`）
+## 定下的设计（AI 决定）
 
-| 服务与方法 | 调用者 | 请求（信封） | 回答（信封） | 依据 |
-| --- | --- | --- | --- | --- |
-| `ViewService.Verify` | 每个组件（SDK） | `component`、`held[]`（分片号、持有的摘要）、`nonce` | `nonce`、`computed_at`、`recovery_generation`（规范 JSON 字节）、`shards[]`：分片号、状态（`UNCHANGED`、`CHANGED`、`CLOSED`）、视图分片（规范 JSON 字节，只在 `CHANGED` 时有） | 安全 03、09a 的视图与核验；协议 P8.9–P8.11 |
-| `DefinitionService.Submit` | 每个组件（SDK，启动时） | `component`、`version`、定义集合（规范 JSON 字节：资源、操作、字段、维度、角色模板片段、附件类别） | 状态（`ACCEPTED`、`REJECTED`）、被接受的摘要、拒绝的逐条原因 | 安全 09a 的“定义由业务组件随版本提交”：只接受服务身份等于属主的提交，按注册表核对资源类型与权限键的属主 |
-
-与现在的过渡写法相比：`Verify` 的整个回答现在是一段 JSON，改为信封字段加视图字节；`Submit` 是新增的。
-
-## 身份：`contract-infra-iam`（`be.iam.v3`）
-
-| 接口 | 面 | 说明 |
+| 问题 | 决定 | 为什么 |
 | --- | --- | --- |
-| 公钥集合（JWKS） | 用户面 HTTP，公开 | 标准 JWKS 文档；协议 P8.2 规定只从配置的地址取（`IAM_JWKS_URL`），不进契约包 |
-| 令牌签发、刷新、登录回调、登出 | 用户面 HTTP | 协议 20 的登录与会话；不进契约包 |
-| 开发与测试专用的换取入口 | 用户面 HTTP，只在开发与测试环境存在 | A101；正式部署的上线检查确认它关闭 |
-| 事件：账号停用、会话撤销 | 消息 | 事件类型与载荷字段进契约包（事件也是契约） |
-| 补取（水位来源） | 系统面 | 组织、员工、身份、授权与数据集共用的族契约（协议 02 的“来源一侧编号、纪元与补取”）；**不在第 5 步**（身份只做到令牌、公钥与换取入口），留到底层阶段 |
+| 审计的契约放哪 | `infra-audit` 仓库的 `contract/` 子目录，单独的模块与标签 | 被调方发布契约；不为一个小包另建仓库 |
+| JSON Schema 放哪 | `be-protocol`，不放各契约包 | 安全记录是全部组件与成员共用的协议内容，SDK 已按精确版本引用 `be-protocol` |
+| 核验回答里成员实例放哪 | 回答的 `instance` 字段（安全 09a） | 只答“未变”的回答不带视图；从备份另建的环境内容相同、摘要也相同 |
+| 恢复代次怎样传 | 信封里的 `RevisionRef` 消息，不用字节 | 它是调用本身的字段，不是安全记录 |
+| 授权组件从哪里拿到注册表 | 部署时作为授权组件的配置提供，由装配生成，不读项目仓库 | 提交的核对要按注册表判断属主 |
+| SDK 何时提交定义、失败怎样 | 启动时提交，被接受之前不就绪；同一版本、同一集合重复提交是幂等的；版本相同而集合不同，整次拒绝（`DEFINITION_VERSION_CONFLICT`） | 改了定义就要升版本，与“镜像标签就是版本”一致 |
+| 视图分片按什么分 | 第 5 步一个组件一个分片，第 8 步按负载再定 | 安全 09a 把分片方式列为“在代表部署实验中测量” |
+| 审计记录不合格怎样回答 | 单独的回执状态 `INVALID`；来源按 `conflict` 处理，停止重发并告警；不认识的状态也按 `conflict` | 不让一条坏记录挡住整批，也不把它当成已收到 |
+| 回执什么时候给 | 写入同步提交之后 | 来源凭回执删除本地行 |
+| 身份事件的分区 | 流 `infra.iam`，1 个分区 | 账号状态变化很少 |
 
-所以第 5 步的身份契约包很薄：主要是事件的定义。
+## 定稿时发现并修好的
 
-## 审计：放在 `infra-audit` 仓库的子目录（`be.audit.v3`）
-
-| 服务与方法 | 调用者 | 请求（信封） | 回答（信封） | 依据 |
-| --- | --- | --- | --- | --- |
-| `Intake.Submit` | 每个组件（SDK 的转运工作项） | `items[]`：`id`、`seq`、`epoch`、`digest`、审计记录（规范 JSON 字节） | `receipts[]`：`id`、状态（`RECEIVED`、`CONFLICT`）、审计库的纪元与存储序号、来源链的摘要 | 协议 03、P8.21 |
-| `Intake.Watermark` | 每个组件（SDK，删除本地行之前） | 无 | 已备份水位（纪元、位置、分叉点） | 协议 03、P8.22 |
-
-审计查询、保留与法律保全是用户面 REST。
-
-## 定稿时补的设计
-
-| 空缺 | 说明 | 决定（AI 决定） |
-| --- | --- | --- |
-| 授权组件从哪里拿到注册表 | 提交的核对要按注册表（`registry/permissions.tsv` 等）判断属主；授权组件运行时怎样拿到它，正式文档没写 | 部署时作为授权组件的配置提供（由装配生成，随部署版本走），不让授权组件读项目仓库 |
-| SDK 何时提交定义、失败怎样 | 两个 SDK 现在都不提交；没有被接受的定义，视图里就没有这个组件的资源 | 启动时提交，被接受之前不进入就绪；失败按调用策略重试并报错；同一版本、同一摘要重复提交是幂等的 |
-| 视图分片按什么分 | 现在的假实现只有一个分片（`all`）；安全 09a 把分片方式与大小列为“在代表部署实验中测量” | 第 5 步先按组件分片，第 8 步按负载再定 |
+- **组件 ID 的类型**：`owner_component` 与 `authority` 原写作 `Key`，可组件 ID（`infra/authz`、`test/probe-go`）带 `/` 与 `-`，不符合 `Key` 的写法。安全 09a 加了 `ComponentId`。
+- **审计转运的字节**：两个 SDK 转运时从各列重新拼出记录，字节与算摘要时的不同。改为写入时存下规范字节、转运原样发送（协议 alpha.17 的 P8.20、P8.21，迁移 0009）；SDK 在 T5.3 跟上。
+- **定义的提交**：安全 09a 原来没有定义集合的记录，也没有提交被拒的原因。补了 `be.security.definition_set` 与三个原因：`DEFINITION_OWNER_MISMATCH`、`DEFINITION_INVALID`、`DEFINITION_VERSION_CONFLICT`。
+- **账号状态**：原来是行内写法，生成不了 schema，改写成字段表（`be.security.account_status`）。

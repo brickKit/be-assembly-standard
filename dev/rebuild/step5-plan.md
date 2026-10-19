@@ -66,3 +66,9 @@
   - **09a 补了 `ComponentId` 类型**：组件 ID（`infra/authz`、`test/probe-go`）不符合 `Key` 的写法（没有 `/` 与 `-`），`owner_component`、`authority` 原来写成 `Key`，是错的。
   - **修了审计转运的缺陷**：两个 SDK 转运时从各列重新拼出记录，字节与算摘要时的不同（null、数据库的时刻格式、键序），审计组件核对不了摘要。改为写入时把规范字节存进行里（迁移 0009），转运原样发送（P8.20、P8.21）；SDK 在 T5.3 跟上。
   - **向量 `security-records`**：schema 接受与拒绝的样例记录，并给出规范字节与摘要。
+- **T5.2 完成（2026-10-19）**：三个契约包已发布，位置与决定见 [step5-contracts.md](step5-contracts.md)。
+  - 授权：`contract-infra-authz` v3.0.0-alpha.1。
+  - 审计：`infra-audit` 的 `contract/`，标签 `contract/v3.0.0-alpha.1`。
+  - 身份：`contract-infra-iam` v3.0.0-alpha.1，只有凭据与事件。
+  - 协议升到 alpha.18：定义集合与账号状态的 schema，审计回执的 `INVALID`。
+  - 五个子模块（两个契约仓库、`infra-authz`、`infra-iam-casdoor`、`infra-audit`）的指针移到重启后的 `main`。

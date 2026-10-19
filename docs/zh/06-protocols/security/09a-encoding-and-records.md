@@ -163,6 +163,14 @@
 | `derived_from` | `Set<Key>` | 否 | 派生依赖：读取它，要求有读取全部依赖字段的资格 |
 | `queryable` | `Set<Enum>` | 否 | `filter`、`sort`、`group`、`aggregate`；缺省为空，表示不能用于这些查询用途 |
 
+**定义集合 `be.security.definition_set`**：一个组件的一个版本提交的全部定义，只用来算“被接受的摘要”，不另外保存。同一组件、同一版本再次提交同一集合，按幂等接受；版本相同、集合不同，整次拒绝（`DEFINITION_VERSION_CONFLICT`）：改了定义就要升版本。
+
+| 字段 | 类型 | 必填 | 约束 |
+| --- | --- | --- | --- |
+| `component` | `ComponentId` | 是 | 提交者，等于它的服务身份 |
+| `version` | `Text` | 是 | 组件的精确版本 |
+| `definitions` | `Set<Digest>` | 是 | 每份定义（资源定义、操作定义）的摘要 |
+
 ## 授予段与原子
 
 **原子 `Atom`**（按 `kind` 区分的联合）
@@ -252,7 +260,15 @@
 | --- | --- | --- |
 | 任职实例 `appointment` | 员工组件 | `employee: Id`；`legal_entity: Id`；`org_unit: Id`；`position: Key`；`valid: TimeWindow`；`state: Enum(planned, active, ended)`；`revision: RevisionRef` |
 | 账号关联 `account_link` | 员工组件（确认记录在授权组件） | `account: PrincipalRef`；`employee: Id`；`state`（通用状态）；`confirmations: List<Id>`；`revision: RevisionRef` |
-| 账号状态 `account_status` | 身份组件 | `account: PrincipalRef`；`status: Enum(active, disabled, security_frozen)`；`security_mark: Enum(none, compromised, suspicious)`（停用时可以带，身份侧处置按它派生，安全 08）；`revision: RevisionRef` |
+| 账号状态 `account_status` | 身份组件 | 见下表（带记录封装，`authority` 是身份成员） |
+
+**账号状态 `be.security.account_status`**：身份成员发出（事件 `infra.iam.account_status_changed.v1`，[contract-infra-iam](https://github.com/brickKit/contract-infra-iam)），授权组件保存受控视图；修订在身份成员的库内分配。
+
+| 字段 | 类型 | 必填 | 约束 |
+| --- | --- | --- | --- |
+| `account` | `PrincipalRef` | 是 | `kind` 为 `user` |
+| `status` | `Enum` | 是 | `active`、`disabled`、`security_frozen` |
+| `security_mark` | `Enum` | 否 | `none`、`compromised`、`suspicious`；停用或冻结时可以带，身份侧处置按它派生（安全 08）；缺省等于 `none` |
 
 ## 变更协议
 
@@ -372,6 +388,9 @@
 | 安全处置限制 | `HELD_BY_SECURITY_DISPOSITION` | 403 | 否 | — | 只出现在解释中：求值时与同一自然人被安全处置暂停的范围相交的段不生效；对外按无权表达（安全 08） |
 | 部署待恢复 | `RECOVERY_IN_PROGRESS` | 503 | 是 | 否 | 管理结构的放宽（管理员恢复除外；安全 08 的待恢复）；收紧照常；已有的记录不变，可以稍后重新提交 |
 | 成员切换中 | `MEMBER_SWITCH_IN_PROGRESS` | 503 | 是 | 否 | 授权成员切换窗口内的全部放宽（`widen` 与 `restore_*`，已有的记录不变），身份成员切换窗口内的放宽类账号变更（[安全 10](10-providers-and-member-switching.md)、[安全 11](11-identity-member-switching.md)）；身份切换中新成员接管之后，旧地址上的收紧代理失败（安全 11） |
+| 定义的属主不符 | `DEFINITION_OWNER_MISMATCH` | — | 否 | — | 只在系统面：提交的定义的 `authority`、资源类型或权限键在注册表中的属主不是提交者（EN21、EN23）；同时记录安全事件 |
+| 定义不合格 | `DEFINITION_INVALID` | — | 否 | — | 只在系统面：不符合 schema、字节不是规范形式、摘要不符，或违反约束一列的条件规则（例如 `restricted` 字段缺 `read_key`、写字段不在读字段中） |
+| 定义的版本冲突 | `DEFINITION_VERSION_CONFLICT` | — | 否 | — | 只在系统面：同一组件、同一版本已被接受的定义集合与这次的不同 |
 | 能力不支持 | `CAPABILITY_UNSUPPORTED` | 501 | 否 | — | 装配时应已阻止；运行时发现则保护受影响的路径 |
 | 结果未知 | `RESULT_UNKNOWN` | 504 | 查询后再定 | — | 用变更键或动作键查询，不换键重试 |
 
