@@ -1,4 +1,4 @@
-# 4-04 D 行的结果：性能跟进之后的复测、电源模式与三处唤醒和往返
+# 4-04 D 行的结果：性能跟进之后的复测、电源模式与几处唤醒、往返和领取
 
 ## 1. 结论
 
@@ -8,7 +8,8 @@
   - 事件转成后台任务再转成调用（relay），全部格 p50 约 250 ms：任务执行器提交后不唤醒（P7.21）。修好后 7–10 ms（第 5.3 节）。
   - PostgreSQL 队列的到达下限约 55 ms：订阅方只靠 100 ms 轮询（P6.30，发布时 `NOTIFY` 唤醒）。修好后 50/s 写入到收到 6–9 ms。第一版一条通知唤醒订阅的全部读取者，并发 4 时数据库 CPU 翻倍，改为一条通知只唤醒一个（第 5.4 节）。
   - Python 的每个事务在归还连接时多一次会话重置的往返：asyncpg 的默认行为，占 PostgreSQL 每个短事务约 27% 的 CPU。改为事务入口拒绝会话级语句、连接池不再重置（P5.30）（第 5.6 节）。
-- **订阅并发是 Python 吞吐的开关**：Python 订阅在 PostgreSQL 队列上逐条处理，200/s 时大事件排队约 2.5 s；同时处理 4 条后为 40 ms，代价是数据库 CPU（第 5.5 节）。默认值保持 1（用户 2026-10-19 定），取舍写进消息运输的正式文档，由使用方选择。
+- **订阅并发是 Python 吞吐的开关**：Python 订阅在 PostgreSQL 队列上逐条处理，200/s 时大事件排队约 2.5 s；同时处理 4 条后为 40 ms，代价是数据库 CPU（第 5.5 节）。默认值保持 1（用户 2026-10-19 定），取舍写进消息运输的正式文档；部署方用配置项 `BUS_SUBSCRIPTION_CONCURRENCY` 调大（P6.31，第十轮验证），依赖到达顺序的订阅由组件声明、始终逐条处理。
+- **后台任务的领取不随积压变慢**：领取语句用 `OR` 跨两个部分索引时，到期的任务一多就整批取出再排序，2 万条到期时每次领取约 8 ms；改为先取过期的租约、再按到期时间取最早的一条，各走自己的有序索引（P7.22），约 1.3 ms，与 40 条时相当（第 5.8 节）。
 - **两天的正式测量没有跑**：用户 2026-10-18 定下“测量按小时算，不按天”。D 行的结果由几轮各约 1 小时的短测拼成，每个数字写明来自哪一轮；全部格都在 performance 下测过一遍。
 
 ## 2. 测了什么、为什么
@@ -24,6 +25,8 @@
 | relay 复测 | D-S-pg 的写入与 relay，200/s，两次（`campaign-relay-check.yaml`） | performance | 第七轮一项 1.9 s 能不能复现 |
 | 第八轮 | P5.30 与一条通知只唤醒一个读取者之后的 D-S、D-S-pg、D-S-pg-c4（`campaign-round8.yaml`），同样读语句统计 | performance | 两处修复的效果；PostgreSQL 队列格的最终数字 |
 | 第九轮 | P5.31 之后同样的三格（`campaign-round9.yaml`） | performance | 归还时核对的成本 |
+| 第十轮 | 订阅并发改由部署方的配置项设定之后的 D-S-pg、D-S-pg-c4，写入、relay、大事件（`campaign-round10.yaml`） | performance | 配置项端到端生效 |
+| 第十轮复查 | D-S-pg-c4 的大事件（`campaign-round10-recheck.yaml`） | performance | 第十轮一项变慢能不能复现 |
 | 事务基准 | 只有一个表的短写事务，asyncpg 与 pgx，三种写法各 3 轮（`experiment-data/4-03/txbench/`） | performance | 会话重置与合并 `BEGIN` 各值多少 |
 
 ## 3. 环境与版本
@@ -38,6 +41,7 @@
 | 第七轮与复测 | 协议 `alpha.10`；`be-sdk-go` `alpha.12`、`be-sdk-python` `a10`；探针 3.2.9；外壳 3.0.9 |
 | 第八轮 | 协议 `alpha.11`；`be-sdk-go` `alpha.13`、`be-sdk-python` `a11`；探针 3.2.10；外壳 3.0.10 |
 | 第九轮 | 协议 `alpha.12`；`be-sdk-go` `alpha.14`、`be-sdk-python` `a12`；探针 3.2.11；外壳 3.0.11 |
+| 第十轮与复查 | 协议 `alpha.13`；`be-sdk-go` `alpha.15`、`be-sdk-python` `a13`；探针 3.2.12；外壳 3.0.12 |
 
 ## 4. 怎样跑
 
@@ -120,6 +124,15 @@ D-S-pg，第六轮（只有轮询）→ 第七轮（发布时唤醒，一条通�
 - 并发 1 时 Python 订阅进程只用约 0.5 核，排队来自串行的数据库往返（领取、处理事务、确认）与对象存储取回；并发 4 把它们重叠起来。Go 订阅每次往返更快，200/s 下并发 1 也不排队。
 - NATS 上收益小：200/s 的大事件快约 25%–35%（Python → Python 73 → 48 ms），因为本来就不排队。
 - **默认值保持 1**（用户 2026-10-19 定）：PostgreSQL 队列本身是为了少运行一个消息服务的妥协，调大并发的取舍写进正式文档的“PostgreSQL 队列的取舍”（`docs/zh/04-foundations/06-message-transport.md`），由使用方选择。
+- **部署方的配置项（P6.31）**：订阅的成员读 `BUS_SUBSCRIPTION_CONCURRENCY`（1–64，按成员设）。实际并发：组件声明依赖到达顺序的订阅（`Ordered`）始终为 1；否则取部署方的值，没有时取组件的声明，再没有时为 1。第八、九轮的 `-c4` 格由探针自己的键 `PROBE_SUB_CONCURRENCY` 设定，探针 3.2.12 起删掉这个键，格的 `subscription_concurrency` 改写这个配置项。
+
+| 项（第十轮，200/s） | D-S-pg（未设，1） | D-S-pg-c4（配置项 4） | 第九轮 c4（探针的键） |
+| --- | --- | --- | --- |
+| Go → Python 大事件，到达 p50 | 2 523 ms | 40 ms | 40 ms |
+| Go → Python relay，p50 | 539 ms | 22 ms | 20 ms |
+| Python → Python 大事件，到达 p50 | 2 511 ms | 105 ms | 99 ms |
+
+配置项与原来探针的键效果相同，端到端生效。
 
 ### 5.6 事务的固定往返（P5.30）
 
@@ -151,23 +164,32 @@ P5.30 拒绝的是语句本身；写在函数或 `DO` 块里的 `set_config(…,
 - **第九轮**（与第八轮同样的三格，performance）：第九轮 ÷ 第八轮的中位数，延迟 p50 0.99–1.02、组件 CPU 1.01–1.02、PostgreSQL CPU 0.95–1.02（不含排队的上限项），都在波动之内；核对没有可测量的成本。
 - 协议 `alpha.12`；`be-sdk-go` `alpha.14`、`be-sdk-python` `a12`；探针 3.2.11；外壳 3.0.11。
 
+### 5.8 后台任务的领取（P7.22）
+
+第七轮的语句统计里，后台任务的领取每次约 0.4–0.5 ms：语句用 `OR` 把“过期的租约”与“到期的待办”放在一个条件里，跨两个部分索引，数据库只能把两边符合的行都取出来再排序。与 P6.28 修过的总线领取是同一种写法，积压越多越慢。
+
+- **改法**：先取一条过期的租约；没有时再按到期时间取最早的一条待办。两步各走自己的有序部分索引（迁移 `0008_work_claim_order`：到期索引只按 `run_at` 排序，取代原来的 `(job, run_at)` 索引）。几个任务种类混在一起时也只读一行。
+- **测量**（`be-sdk-go` 的集成测试，同一数据库）：2 万条到期时，原来的语句每次领取约 8 ms，40 条时约 1.3 ms；新的语句分别约 1.3 ms 与 1.1 ms。新测试在原来的语句上失败。协议的记录另有一组单独执行语句的数字：2 万条时 3–8 ms 对 0.1–0.2 ms。
+- 只有 Go 的 SDK 有后台任务执行器；Python 的 SDK 子集里没有（`features.json` 标为未实现），只随协议带上迁移，以后补齐时按 P7.22 写。协议 `alpha.13`；`be-sdk-go` `alpha.15`。
+
 ## 6. 观察与异常
 
 - **没有复现的一项**：第七轮 D-S-pg 的 Go → Go relay 200/s 到达 p50 1.9 s；同一格紧接着两次重测为 9.6 与 13.5 ms，第八轮 9.8 ms。按偶发记下。同一轮里 Python 订阅并发 1、200/s 的几项每次相差很大（同一项 32 ms 与 177 ms），是这个上限的临界状态。
+- **第十轮有一项没有复现的变慢**：D-S-pg-c4 的 Python → Go 大事件 50/s 到达 p50 175 ms（第八、九轮 14 ms），200/s 924 ms（约 80 ms）。延迟全部在发布这一段：发布 p50 170 ms，在 0–365 ms 之间均匀分布；收到只比发布晚约 5 ms。发送方每条消息的 CPU 反而更少，各容器都不忙，像是这段时间里转发器没被提交唤醒、只按 250 ms 的轮询成批发。紧接着的复查（`round10-recheck/`）为 13.4 ms 与 83 ms。与第七轮那次 relay 一样按偶发记下。再出现时，先取发送方的日志与转发器的唤醒次数。
 - **并发 4 下有一项变差**：第八轮 D-S-pg-c4 的 Go → Python relay 50/s p50 32 ms（第七轮 14 ms），同类的其他项都没变，按波动记下。
 - **停在格与格之间要看“上一格完成”，不要看“下一格开始”**：第五轮按“出现 D-H2 的开始行”停下，D-H2 已经开始重建，留下半成品的部署文件被提交了一次，已从上一个提交恢复。
 - **监视的盲点**：一个指标只要有一个环节没检查，“全部正常”就可能是假的（relay）。新加的检查项要覆盖操作的最终完成，分段的部分按差值判断。
-- **两个 SDK 的集成测试不能同时跑**：同时执行 `GRANT CONNECT ON DATABASE` 时报 `tuple concurrently updated`；改为依次跑。另有一个外壳测试（`TestEachMemberServesItsSystemSurfaceOnItsOwnPort`）在整套集成测试的负载下偶发超时（5 秒内没等到就绪），单独重复 8 次全过，记为待办。
+- **两个 SDK 的集成测试不能同时跑**：同时执行 `GRANT CONNECT ON DATABASE` 时报 `tuple concurrently updated`；改为依次跑。另有一个外壳测试（`TestEachMemberServesItsSystemSurfaceOnItsOwnPort`）在整套集成测试的负载下偶发超时（5 秒内没等到就绪），单独重复 8 次全过；等待放宽到 15 秒，单独一次提交写明原因（`be-sdk-go` `b70ec54`）。
 
 ## 7. 影响
 
-- 协议：P7.21（`alpha.9`）、P6.30（`alpha.10`）、P5.30（`alpha.11`）、P5.31（`alpha.12`）。
-- SDK：`be-sdk-go` `alpha.11`–`alpha.14`、`be-sdk-python` `a10`–`a12`；探针 3.2.8–3.2.11（3.2.9 起有 `PROBE_SUB_CONCURRENCY`）；外壳 3.0.8–3.0.11。
+- 协议：P7.21（`alpha.9`）、P6.30（`alpha.10`）、P5.30（`alpha.11`）、P5.31（`alpha.12`）、P6.31 与 P7.22（`alpha.13`）。
+- SDK：`be-sdk-go` `alpha.11`–`alpha.15`、`be-sdk-python` `a10`–`a13`；探针 3.2.8–3.2.12（3.2.9–3.2.11 有 `PROBE_SUB_CONCURRENCY`，3.2.12 起改用 `BUS_SUBSCRIPTION_CONCURRENCY`）；外壳 3.0.8–3.0.12。
 - 测量工具：relay 的检查（按比到达多出的部分）；`cell.yaml` 的 `subscription_concurrency`；两个对照格 D-S-c4、D-S-pg-c4；开发用的 PostgreSQL 加载 `pg_stat_statements`。
 - 报告第二部分的三张表按本记录与第五至八轮填写。
 - 方法：每一轮记下电源模式，报告的数字在 performance 下测；测量按小时算；优化不牺牲需求（底层选择的原则）。
-- 待办：后台任务的领取语句每次约 0.4–0.5 ms（`OR` 跨两个部分索引，与 P6.28 修过的总线领取同一种写法），绝对量还小；外壳测试的偶发超时；Kafka 镜像是 `latest`（违反镜像固定版本）。开发用的 PostgreSQL 16.15 不列为待办：按 2026-10-19 修订的版本规则，新版本优点明显才换，目前没有项目碰得到的理由。
+- 基础资源的镜像：Kafka、Keycloak、otel、Prometheus、Loki、Tempo、Grafana、nginx 固定到确切版本与摘要（在用的照用，本地没有的取当前稳定版，nginx 1.25 已停止支持换到 1.30），`infra/resources.tsv` 同步；可观测性整套在新版本下启动、健康检查通过。RabbitMQ 选项移除（正式文档不计划这个运输，SDK 没有适配器），端口在注册表标为退役。MinIO 的镜像已拿不到，待用户定。开发用的 PostgreSQL 16.15 照用：按 2026-10-19 修订的版本规则，新版本优点明显才换，目前没有项目碰得到的理由。
 
 ## 8. 原始数据
 
-`dev/rebuild/experiment-data/4-03/`：`round4/`–`round9/`、`relaycheck/`（各轮含 `tables.md`；第七、八轮含 `pgprof.tsv` 语句统计，第七轮另有按调用次数排序的 `pgprof-by-calls.tsv`）、`power/`（版本二分与休眠验证）、`txbench/`（事务基准）、`round5-vs-round4.py`。
+`dev/rebuild/experiment-data/4-03/`：`round4/`–`round10/`、`round10-recheck/`、`relaycheck/`（各轮含 `tables.md`；第七、八轮含 `pgprof.tsv` 语句统计，第七轮另有按调用次数排序的 `pgprof-by-calls.tsv`）、`power/`（版本二分与休眠验证）、`txbench/`（事务基准）、`round5-vs-round4.py`。

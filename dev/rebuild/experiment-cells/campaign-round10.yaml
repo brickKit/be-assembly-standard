@@ -1,0 +1,7 @@
+# Round 10, under the performance power profile (about 16 minutes): the subscription concurrency set by the deployment
+# (BUS_SUBSCRIPTION_CONCURRENCY, P6.31) instead of the probes' own key. D-S-pg-c4 should read as in round 9; D-S-pg is
+# the one-at-a-time reference.
+runs: 1
+cells:
+  - {cell: D-S-pg, ops: [write, relay, big-event], loads: [50, 200], idle: 15, warmup: 3, seconds: 10}
+  - {cell: D-S-pg-c4, ops: [write, relay, big-event], loads: [50, 200], idle: 15, warmup: 3, seconds: 10}
