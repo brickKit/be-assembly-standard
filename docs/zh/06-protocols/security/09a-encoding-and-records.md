@@ -319,6 +319,7 @@
 | --- | --- | --- | --- |
 | `nonce` | `Text` | 是 | 必须等于请求中的 `nonce`；不等则丢弃，不续期 |
 | `computed_at` | `Instant` | 是 | 只供审计；组件不用它计算有效期 |
+| `instance` | `Text` | 是 | 作答的授权成员实例；与组件记下的不同（没有登记的成员切换）时整个回答判为回退。放在回答上而不只在视图的修订里：只答“未变”的回答不带视图，从备份另建的环境内容相同、摘要也相同 |
 | `shards` | `List<{shard: Key, status: Enum(unchanged, changed, closed), view: be.security.view（条件）}>` | 是 | `changed` 时附新视图；`closed` 表示该分片暂时不能续发（安全 03） |
 | `recovery_generation` | `RevisionRef` | 是 | 比组件持有的大时，组件丢弃全部旧视图并采用新视图；比持有的小时判为回退（[安全 03](03-authorization-acceptance-and-revocation.md#授权视图与核验)） |
 
