@@ -79,3 +79,14 @@
   - **Python 的 schema 校验用 fastjsonschema**：同一组 schema 上比 jsonschema 省 15–45 倍 CPU（审计记录约 8 µs 对 364 µs；省电模式下各跑一次，差距远大于电源的影响），并按向量 `security-records` 核对了它的接受与拒绝。
   - **`besdk.Version` 改为从包的元数据读取**：原来的常量停在 3.0.0-alpha.9，自我描述报的版本落后了八个版本。
   - 验证：两个 SDK 的单元与集成测试全过，探针的一致性测试 25 项与负载驱动都通过。
+- **T5.4 完成（2026-10-19，`infra/iam-casdoor` 3.0.0，be-sdk-go alpha.19）**：
+  - **变更序号**：最小复现确认 Casdoor 4.1.0 给不出可靠的变更序号，按外部来源声明（[5-01](experiment-records/5-01-casdoor-change-sequence.md)，边界卡已改）。
+  - **组件从零写起**，做了四样：
+    - 授权码加 PKCE 的浏览器登录与服务端会话；
+    - 会话换取本组件签名的短期访问令牌；
+    - 公开的 JWKS（当前密钥与备用密钥）；
+    - 只在开发与测试环境打开的密码换取入口（A101）。
+  - **SDK 补了两样**（alpha.19）：用户面的 Cookie 与跳转；外部产品的非协议错误带上状态与正文（`calls.StatusError`）。
+  - **验证**：对真实的 Casdoor 与 PostgreSQL 端到端测试全过，令牌经 SDK 自己的核验器核对。
+  - **开发环境里建了这些**：Casdoor 里的应用 `be-iam`、`be-iam-dev` 与测试用户 `test.alice`、`test.bob`（`scripts/dev_setup.py`）；`.env` 里三个新的密钥；`.secrets/infra-iam-casdoor/` 里两把 Ed25519 签名密钥。
+  - **未做，留到后续**：停用的拉取与事件、补取与水位回声、边缘插件、移动端的刷新令牌。
