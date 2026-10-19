@@ -1,0 +1,7 @@
+# Round 12, under the performance power profile (about 16 minutes): the PostgreSQL queue's NOTIFY off the publish path
+# (P6.30, be-sdk-go alpha.17, be-sdk-python a15). Round 11 (the NOTIFY as a second statement inside the publish) made a
+# Python publisher at 200 a second slower; the same cells and items as rounds 10 and 11.
+runs: 1
+cells:
+  - {cell: D-S-pg, ops: [write, relay, big-event], loads: [50, 200], idle: 15, warmup: 3, seconds: 10}
+  - {cell: D-S-pg-c4, ops: [write, relay, big-event], loads: [50, 200], idle: 15, warmup: 3, seconds: 10}

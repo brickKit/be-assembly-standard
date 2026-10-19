@@ -1,0 +1,21 @@
+# be-sdk-python, one publisher publishing 5000 messages in order, three rounds; performance profile; 2026-10-19.
+# First run (before the dedicated connection; "dedicated-conn" is the benchmark's own variant):
+round 1 in-statement     cpu 0.157 ms/msg  wall 0.647 ms/msg
+round 1 second-statement cpu 0.255 ms/msg  wall 0.765 ms/msg
+round 1 notifier         cpu 0.396 ms/msg  wall 0.846 ms/msg
+round 1 dedicated-conn   cpu 0.242 ms/msg  wall 0.723 ms/msg
+round 2 in-statement     cpu 0.167 ms/msg  wall 0.688 ms/msg
+round 2 second-statement cpu 0.239 ms/msg  wall 0.753 ms/msg
+round 2 notifier         cpu 0.331 ms/msg  wall 0.747 ms/msg
+round 2 dedicated-conn   cpu 0.204 ms/msg  wall 0.649 ms/msg
+round 3 in-statement     cpu 0.140 ms/msg  wall 0.629 ms/msg
+round 3 second-statement cpu 0.235 ms/msg  wall 0.740 ms/msg
+round 3 notifier         cpu 0.314 ms/msg  wall 0.719 ms/msg
+round 3 dedicated-conn   cpu 0.237 ms/msg  wall 0.724 ms/msg
+# After a16 (the transport's notifier on a connection of its own):
+round 1 in-statement     cpu 0.154 ms/msg  wall 0.651 ms/msg
+round 1 notifier         cpu 0.246 ms/msg  wall 0.734 ms/msg
+round 2 in-statement     cpu 0.156 ms/msg  wall 0.656 ms/msg
+round 2 notifier         cpu 0.275 ms/msg  wall 0.801 ms/msg
+round 3 in-statement     cpu 0.161 ms/msg  wall 0.673 ms/msg
+round 3 notifier         cpu 0.209 ms/msg  wall 0.661 ms/msg

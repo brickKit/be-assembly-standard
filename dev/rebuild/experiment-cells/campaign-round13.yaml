@@ -1,0 +1,7 @@
+# Round 13, under the performance power profile (about 32 minutes): the Python notifier on a connection of its own
+# (be-sdk-python a16, about 0.1 ms of CPU less a publish). Twice, since the Python publisher of 100 KiB events at
+# 200 a second in D-S-pg-c4 sits at its CPU limit and either keeps up (about 80 ms) or falls behind (seconds).
+runs: 2
+cells:
+  - {cell: D-S-pg, ops: [write, relay, big-event], loads: [50, 200], idle: 15, warmup: 3, seconds: 10}
+  - {cell: D-S-pg-c4, ops: [write, relay, big-event], loads: [50, 200], idle: 15, warmup: 3, seconds: 10}

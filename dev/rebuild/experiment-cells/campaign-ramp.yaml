@@ -1,0 +1,8 @@
+# Write ramps under the performance profile (about 25 minutes): the highest sustained write rate of every edge on NATS
+# (D-S) and on the PostgreSQL queue (D-S-pg). The trial's reading (Go about 1900/s, the database budget used up) was
+# taken without a recorded power profile. Steps of 10 s from 50/s, x1.5 each, until p99 passes 10 s, errors pass 1%
+# or the throughput falls below 90% of the offer.
+runs: 1
+cells:
+  - {cell: D-S, ops: [write], loads: [ramp], idle: 15, warmup: 3, seconds: 10}
+  - {cell: D-S-pg, ops: [write], loads: [ramp], idle: 15, warmup: 3, seconds: 10}

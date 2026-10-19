@@ -1,0 +1,421 @@
+{
+  "cell": "D-S-pg",
+  "caller": "test/probe-py2",
+  "callee": "test/probe-go",
+  "op": "write",
+  "load": "ramp",
+  "flags": [
+    "-op",
+    "write",
+    "-bytes",
+    "100",
+    "-ramp",
+    "-warmup",
+    "3s",
+    "-duration",
+    "10s",
+    "-step-time",
+    "3s"
+  ],
+  "before": {
+    "settled": true,
+    "waited": 17.92416597099509
+  },
+  "containers": {
+    "brickkit-d-s-pg-test-probe-go-3-2-12-1": [
+      "test/probe-go"
+    ],
+    "brickkit-d-s-pg-test-probe-py2-3-2-12-1": [
+      "test/probe-py2"
+    ]
+  },
+  "resources": {
+    "elapsed": 24.314485939976294,
+    "requests": 7393,
+    "containers": {
+      "brickkit-d-s-pg-test-probe-go-3-2-12-1": {
+        "process": {
+          "memory_median": 38342656,
+          "memory_peak": 38535168,
+          "cpu_seconds": 4.589999999999996,
+          "cores": 0.18877635378889163,
+          "cpu_seconds_per_1000": 0.6208575679697006
+        },
+        "cgroup": {
+          "memory_median": 17620992,
+          "memory_peak": 18485248,
+          "cpu_seconds": 4.626269999999998,
+          "cores": 0.19026805713353728,
+          "cpu_seconds_per_1000": 0.6257635601244418
+        }
+      },
+      "brickkit-d-s-pg-test-probe-py2-3-2-12-1": {
+        "process": {
+          "memory_median": 103854080,
+          "memory_peak": 121102336,
+          "cpu_seconds": 16.470000000000006,
+          "cores": 0.6773739753601414,
+          "cpu_seconds_per_1000": 2.227783038008928
+        },
+        "cgroup": {
+          "memory_median": 90767360,
+          "memory_peak": 109920256,
+          "cpu_seconds": 16.550337999999996,
+          "cores": 0.6806780962121436,
+          "cpu_seconds_per_1000": 2.238649803868524
+        }
+      },
+      "be-postgres": {
+        "process": {
+          "memory_median": 4086640640,
+          "memory_peak": 4493594624,
+          "cpu_seconds": 24.809999999999945,
+          "cores": 1.0203793763621776,
+          "cpu_seconds_per_1000": 3.355877181117266
+        },
+        "cgroup": {
+          "memory_median": 1124409344,
+          "memory_peak": 1162334208,
+          "cpu_seconds": 25.02118900000005,
+          "cores": 1.029065103896021,
+          "cpu_seconds_per_1000": 3.384443257135134
+        }
+      },
+      "be-nats": {
+        "process": {
+          "memory_median": 23642112,
+          "memory_peak": 23642112,
+          "cpu_seconds": 0.02999999999999403,
+          "cores": 0.0012338323777049296,
+          "cpu_seconds_per_1000": 0.00405789260110835
+        },
+        "cgroup": {
+          "memory_median": 111017984,
+          "memory_peak": 111329280,
+          "cpu_seconds": 0.14119699999999824,
+          "cores": 0.005807114341161181,
+          "cpu_seconds_per_1000": 0.019098742053293417
+        }
+      },
+      "be-rustfs": {
+        "process": {
+          "memory_median": 457318400,
+          "memory_peak": 459595776,
+          "cpu_seconds": 0.0,
+          "cores": 0.0,
+          "cpu_seconds_per_1000": 0.0
+        },
+        "cgroup": {
+          "memory_median": 1314004992,
+          "memory_peak": 1316044800,
+          "cpu_seconds": 0.10054300000001604,
+          "cores": 0.004135106958387707,
+          "cpu_seconds_per_1000": 0.013599756526446103
+        }
+      }
+    },
+    "platform": {
+      "memory_median": 586326016,
+      "memory_peak": 599564288,
+      "cpu_seconds": 4.080000000001746,
+      "cores": 0.16780120336797563,
+      "cpu_seconds_per_1000": 0.5518733937510816
+    },
+    "db_connections": {
+      "be_bus": {
+        "median": 12,
+        "peak": 12
+      },
+      "postgres": {
+        "median": 5,
+        "peak": 5
+      },
+      "test_probe_go2_rw": {
+        "median": 11,
+        "peak": 11
+      },
+      "test_probe_go_rw": {
+        "median": 10,
+        "peak": 10
+      },
+      "test_probe_py2_rw": {
+        "median": 3,
+        "peak": 10
+      },
+      "test_probe_py_rw": {
+        "median": 9,
+        "peak": 9
+      }
+    }
+  },
+  "driver": {
+    "steps": [
+      {
+        "target": "http://127.0.0.1:18605",
+        "op": {
+          "Kind": "write",
+          "Surface": "grpc",
+          "Inner": "echo",
+          "Bytes": 100,
+          "MS": 10,
+          "Relay": false
+        },
+        "rate": 50,
+        "seconds": 3,
+        "sent": 150,
+        "ok": 150,
+        "errors": {},
+        "error_rate": 0,
+        "throughput": 50,
+        "latency_ms": {
+          "P50": 3.743,
+          "P90": 4.606,
+          "P95": 5.137,
+          "P99": 5.574,
+          "Max": 8.246
+        },
+        "service_ms": {
+          "P50": 3.042,
+          "P90": 3.995,
+          "P95": 4.23,
+          "P99": 5.004,
+          "Max": 6.372
+        },
+        "driver_overloaded": 0
+      },
+      {
+        "target": "http://127.0.0.1:18605",
+        "op": {
+          "Kind": "write",
+          "Surface": "grpc",
+          "Inner": "echo",
+          "Bytes": 100,
+          "MS": 10,
+          "Relay": false
+        },
+        "rate": 75,
+        "seconds": 3,
+        "sent": 226,
+        "ok": 226,
+        "errors": {},
+        "error_rate": 0,
+        "throughput": 75,
+        "latency_ms": {
+          "P50": 3.32,
+          "P90": 4.178,
+          "P95": 4.456,
+          "P99": 4.831,
+          "Max": 5.11
+        },
+        "service_ms": {
+          "P50": 2.674,
+          "P90": 3.499,
+          "P95": 3.657,
+          "P99": 4.26,
+          "Max": 4.416
+        },
+        "driver_overloaded": 0
+      },
+      {
+        "target": "http://127.0.0.1:18605",
+        "op": {
+          "Kind": "write",
+          "Surface": "grpc",
+          "Inner": "echo",
+          "Bytes": 100,
+          "MS": 10,
+          "Relay": false
+        },
+        "rate": 112.5,
+        "seconds": 3,
+        "sent": 338,
+        "ok": 338,
+        "errors": {},
+        "error_rate": 0,
+        "throughput": 112.66666666666667,
+        "latency_ms": {
+          "P50": 3.129,
+          "P90": 3.998,
+          "P95": 4.161,
+          "P99": 4.573,
+          "Max": 4.875
+        },
+        "service_ms": {
+          "P50": 2.541,
+          "P90": 3.261,
+          "P95": 3.448,
+          "P99": 3.877,
+          "Max": 4.186
+        },
+        "driver_overloaded": 0
+      },
+      {
+        "target": "http://127.0.0.1:18605",
+        "op": {
+          "Kind": "write",
+          "Surface": "grpc",
+          "Inner": "echo",
+          "Bytes": 100,
+          "MS": 10,
+          "Relay": false
+        },
+        "rate": 168.75,
+        "seconds": 3,
+        "sent": 507,
+        "ok": 507,
+        "errors": {},
+        "error_rate": 0,
+        "throughput": 168.66666666666666,
+        "latency_ms": {
+          "P50": 3.264,
+          "P90": 4.387,
+          "P95": 4.687,
+          "P99": 5.532,
+          "Max": 9.391
+        },
+        "service_ms": {
+          "P50": 2.665,
+          "P90": 3.796,
+          "P95": 4.026,
+          "P99": 4.856,
+          "Max": 8.342
+        },
+        "driver_overloaded": 0
+      },
+      {
+        "target": "http://127.0.0.1:18605",
+        "op": {
+          "Kind": "write",
+          "Surface": "grpc",
+          "Inner": "echo",
+          "Bytes": 100,
+          "MS": 10,
+          "Relay": false
+        },
+        "rate": 253.125,
+        "seconds": 3,
+        "sent": 760,
+        "ok": 760,
+        "errors": {},
+        "error_rate": 0,
+        "throughput": 253,
+        "latency_ms": {
+          "P50": 3.503,
+          "P90": 4.61,
+          "P95": 4.983,
+          "P99": 6.142,
+          "Max": 6.599
+        },
+        "service_ms": {
+          "P50": 2.982,
+          "P90": 3.977,
+          "P95": 4.362,
+          "P99": 5.305,
+          "Max": 5.798
+        },
+        "driver_overloaded": 0
+      },
+      {
+        "target": "http://127.0.0.1:18605",
+        "op": {
+          "Kind": "write",
+          "Surface": "grpc",
+          "Inner": "echo",
+          "Bytes": 100,
+          "MS": 10,
+          "Relay": false
+        },
+        "rate": 379.6875,
+        "seconds": 3,
+        "sent": 1140,
+        "ok": 1140,
+        "errors": {},
+        "error_rate": 0,
+        "throughput": 379.3333333333333,
+        "latency_ms": {
+          "P50": 4.092,
+          "P90": 7.029,
+          "P95": 8.222,
+          "P99": 10.224,
+          "Max": 16.688
+        },
+        "service_ms": {
+          "P50": 3.579,
+          "P90": 6.472,
+          "P95": 7.656,
+          "P99": 9.473,
+          "Max": 16.009
+        },
+        "driver_overloaded": 0
+      },
+      {
+        "target": "http://127.0.0.1:18605",
+        "op": {
+          "Kind": "write",
+          "Surface": "grpc",
+          "Inner": "echo",
+          "Bytes": 100,
+          "MS": 10,
+          "Relay": false
+        },
+        "rate": 569.53125,
+        "seconds": 3,
+        "sent": 1709,
+        "ok": 1709,
+        "errors": {},
+        "error_rate": 0,
+        "throughput": 568,
+        "latency_ms": {
+          "P50": 4.724,
+          "P90": 11.459,
+          "P95": 15.575,
+          "P99": 21.881,
+          "Max": 43.187
+        },
+        "service_ms": {
+          "P50": 4.23,
+          "P90": 10.903,
+          "P95": 15.159,
+          "P99": 21.29,
+          "Max": 42.833
+        },
+        "driver_overloaded": 0
+      },
+      {
+        "target": "http://127.0.0.1:18605",
+        "op": {
+          "Kind": "write",
+          "Surface": "grpc",
+          "Inner": "echo",
+          "Bytes": 100,
+          "MS": 10,
+          "Relay": false
+        },
+        "rate": 854.296875,
+        "seconds": 3,
+        "sent": 2563,
+        "ok": 2563,
+        "errors": {},
+        "error_rate": 0,
+        "throughput": 710.3333333333334,
+        "latency_ms": {
+          "P50": 222.673,
+          "P90": 457.501,
+          "P95": 479.193,
+          "P99": 500.091,
+          "Max": 506.394
+        },
+        "service_ms": {
+          "P50": 222.273,
+          "P90": 457.295,
+          "P95": 478.894,
+          "P99": 499.433,
+          "Max": 505.714
+        },
+        "driver_overloaded": 0
+      }
+    ],
+    "sustained_rate": 569.53125,
+    "stopped_by": "saturated"
+  }
+}
