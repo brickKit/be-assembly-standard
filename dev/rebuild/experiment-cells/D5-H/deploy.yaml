@@ -1,0 +1,23 @@
+# deploy.yaml — cell D5-H; written by be-acceptance/conformance/cells/create.py from cell.yaml
+target: docker
+
+components:
+  - id: be/go-infra
+    expose: true
+    exposePort: 18224
+    members:
+      - id: infra/iam-casdoor
+        expose: true
+        exposePort: 18200
+      - id: infra/authz
+        expose: true
+        exposePort: 18223
+      - id: infra/audit
+        expose: true
+        exposePort: 18206
+      - id: test/probe-go
+        expose: true
+        exposePort: 18600
+  - id: test/probe-py
+    expose: true
+    exposePort: 18601

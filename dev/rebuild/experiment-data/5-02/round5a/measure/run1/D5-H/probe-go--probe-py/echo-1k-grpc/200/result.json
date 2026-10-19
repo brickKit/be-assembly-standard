@@ -1,0 +1,200 @@
+{
+  "cell": "D5-H",
+  "caller": "test/probe-go",
+  "callee": "test/probe-py",
+  "op": "echo-1k-grpc",
+  "load": "200",
+  "flags": [
+    "-op",
+    "call",
+    "-surface",
+    "grpc",
+    "-inner",
+    "echo",
+    "-bytes",
+    "1024",
+    "-rate",
+    "200",
+    "-warmup",
+    "3s",
+    "-duration",
+    "10s",
+    "-step-time",
+    "3s"
+  ],
+  "before": {
+    "settled": true,
+    "waited": 3.031802893994609
+  },
+  "containers": {
+    "brickkit-d5-h-be-go-infra-3-0-19-1": [
+      "test/probe-go"
+    ],
+    "brickkit-d5-h-test-probe-py-3-2-19-1": [
+      "test/probe-py"
+    ]
+  },
+  "resources": {
+    "elapsed": 10.077369120001094,
+    "requests": 2000,
+    "containers": {
+      "brickkit-d5-h-be-go-infra-3-0-19-1": {
+        "process": {
+          "memory_median": 46327808.0,
+          "memory_peak": 46854144,
+          "cpu_seconds": 1.8199999999999998,
+          "cores": 0.18060269285837197,
+          "cpu_seconds_per_1000": 0.9099999999999999
+        },
+        "cgroup": {
+          "memory_median": 22417408.0,
+          "memory_peak": 22990848,
+          "cpu_seconds": 1.833409,
+          "cores": 0.18193329808284336,
+          "cpu_seconds_per_1000": 0.9167045
+        }
+      },
+      "brickkit-d5-h-test-probe-py-3-2-19-1": {
+        "process": {
+          "memory_median": 116377600.0,
+          "memory_peak": 116404224,
+          "cpu_seconds": 2.45,
+          "cores": 0.24311900961703922,
+          "cpu_seconds_per_1000": 1.225
+        },
+        "cgroup": {
+          "memory_median": 98486272.0,
+          "memory_peak": 99262464,
+          "cpu_seconds": 2.458424999999999,
+          "cores": 0.24395504131337528,
+          "cpu_seconds_per_1000": 1.2292124999999996
+        }
+      },
+      "be-postgres": {
+        "process": {
+          "memory_median": 830373888.0,
+          "memory_peak": 830648320,
+          "cpu_seconds": 0.599999999999909,
+          "cores": 0.05953934929395976,
+          "cpu_seconds_per_1000": 0.2999999999999545
+        },
+        "cgroup": {
+          "memory_median": 309549056.0,
+          "memory_peak": 310149120,
+          "cpu_seconds": 0.669383999999809,
+          "cores": 0.06642447964630438,
+          "cpu_seconds_per_1000": 0.3346919999999045
+        }
+      },
+      "be-nats": {
+        "process": {
+          "memory_median": 43999232.0,
+          "memory_peak": 43999232,
+          "cpu_seconds": 0.030000000000001137,
+          "cores": 0.0029769674646985523,
+          "cpu_seconds_per_1000": 0.015000000000000568
+        },
+        "cgroup": {
+          "memory_median": 46977024.0,
+          "memory_peak": 47325184,
+          "cpu_seconds": 0.060740000000009786,
+          "cores": 0.0060273667935270775,
+          "cpu_seconds_per_1000": 0.030370000000004893
+        }
+      },
+      "be-rustfs": {
+        "process": {
+          "memory_median": 554766336.0,
+          "memory_peak": 554790912,
+          "cpu_seconds": 0.7399999999997817,
+          "cores": 0.0734318641292065,
+          "cpu_seconds_per_1000": 0.36999999999989086
+        },
+        "cgroup": {
+          "memory_median": 3442726912.0,
+          "memory_peak": 3443445760,
+          "cpu_seconds": 0.7898549999999886,
+          "cores": 0.07837908789431174,
+          "cpu_seconds_per_1000": 0.3949274999999943
+        }
+      }
+    },
+    "platform": {
+      "memory_median": 671504384.0,
+      "memory_peak": 672034816,
+      "cpu_seconds": 1.5200000000004366,
+      "cores": 0.1508330182114309,
+      "cpu_seconds_per_1000": 0.7600000000002183
+    },
+    "db_connections": {
+      "postgres": {
+        "median": 4.0,
+        "peak": 4
+      },
+      "shell_go_infra": {
+        "median": 8.0,
+        "peak": 8
+      },
+      "test_probe_py_rw": {
+        "median": 3.0,
+        "peak": 3
+      }
+    }
+  },
+  "driver": {
+    "target": "http://127.0.0.1:18600",
+    "op": {
+      "Kind": "call",
+      "Surface": "grpc",
+      "Inner": "echo",
+      "Bytes": 1024,
+      "MS": 10,
+      "Relay": false
+    },
+    "rate": 200,
+    "seconds": 10,
+    "sent": 2000,
+    "ok": 2000,
+    "errors": {},
+    "error_rate": 0,
+    "throughput": 200,
+    "latency_ms": {
+      "P50": 2.173,
+      "P90": 2.77,
+      "P95": 2.925,
+      "P99": 3.306,
+      "Max": 5.476
+    },
+    "service_ms": {
+      "P50": 1.539,
+      "P90": 1.991,
+      "P95": 2.166,
+      "P99": 2.507,
+      "Max": 4.501
+    },
+    "hop_ms": {
+      "P50": 1.038,
+      "P90": 1.36,
+      "P95": 1.527,
+      "P99": 1.82,
+      "Max": 3.448
+    },
+    "driver_overloaded": 0
+  },
+  "backlog": {
+    "test.probe_go": {
+      "test_probe_py_peer": {
+        "pending": 0,
+        "ack_pending": 0,
+        "oldest_age": 0.0
+      }
+    },
+    "test.probe_py": {
+      "test_probe_go_peer": {
+        "pending": 0,
+        "ack_pending": 0,
+        "oldest_age": 0.0
+      }
+    }
+  }
+}
