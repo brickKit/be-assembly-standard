@@ -72,3 +72,10 @@
   - 身份：`contract-infra-iam` v3.0.0-alpha.1，只有凭据与事件。
   - 协议升到 alpha.18：定义集合与账号状态的 schema，审计回执的 `INVALID`。
   - 五个子模块（两个契约仓库、`infra-authz`、`infra-iam-casdoor`、`infra-audit`）的指针移到重启后的 `main`。
+- **T5.3 完成（2026-10-19）**：两个 SDK 改用契约包，版本为 `be-sdk-go` v3.0.0-alpha.18、`be-sdk-python` v3.0.0a17；探针 3.2.16、外壳 3.0.16 跟着发布。
+  - **视图**：经 `ViewService` 取得，按记录打开（规范字节、摘要、生成的 schema）；回答按完整的 P8.11 接受，两个 SDK 都过了向量 `view-accept`。
+  - **定义**：声明变成完整的定义记录。两种语言给出的身份与摘要相同，启动时提交；有受保护路由的成员（在外壳里也一样）被接受之前不就绪。
+  - **审计**：写入时存下规范字节，原样经 `IntakeService` 发送；回执不是 `received` 的一律停住这条记录。Python 原来把 `conflict` 以外的状态都当作已收到，不合格的记录会因此被删掉，已修好。两个 SDK 都过了向量 `audit-purge`。
+  - **Python 的 schema 校验用 fastjsonschema**：同一组 schema 上比 jsonschema 省 15–45 倍 CPU（审计记录约 8 µs 对 364 µs；省电模式下各跑一次，差距远大于电源的影响），并按向量 `security-records` 核对了它的接受与拒绝。
+  - **`besdk.Version` 改为从包的元数据读取**：原来的常量停在 3.0.0-alpha.9，自我描述报的版本落后了八个版本。
+  - 验证：两个 SDK 的单元与集成测试全过，探针的一致性测试 25 项与负载驱动都通过。
