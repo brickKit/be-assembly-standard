@@ -44,7 +44,7 @@
 | T4.6 | 报告生成与运行一格的入口：从结果文件出档案的结果表与报告的表 | `be-acceptance`、`dev/rebuild/` | 一格一条命令跑完并写出档案 | 完成 |
 | T4.6b | 全面复测（插入）：全部相关测试与 15 格固定速率测量，按操作设合理上限；找到的问题当场修 | 各仓库 | 三轮后无缺陷；FRB-006 的升级部署测试通过；记录 4-03 | 三轮完成（第三轮 11 个阶段全过、408 项）；FRB-006 部署测试在跑 |
 | T4.6c | 性能跟进（插入）：Go 每请求 CPU 的剖析与 `perf/httpx`；Python 的 `uvloop`、aiohttp（`perf/uvloop`、`perf/aiohttp`、`perf/both`）；第三轮新看出的三项：提交后唤醒转发器的 CPU 代价、PostgreSQL 队列订阅每条消息的往返次数、Python 大事件路径的 CPU；Go 升到 1.27.2（`encoding/json` 改由 v2 实现）、Python 升到 3.15.0（用户 2026-10-18 同意升级）；Python 的 JSON 换 orjson 或 msgspec、服务端 granian 与 uvicorn 的对比 | `be-sdk-go`、`be-sdk-python`、探针、外壳 | 实测收益；有收益的合入并发版 | 已完成：`perf/httpx` 合入（用户面约快 5%）；出站 HTTP 全部改用 aiohttp（每次调用的 CPU 少约 37%）；uvloop 不采用（5%–10%，在波动之内）；转发器只转发写过的分区（每个事件约 25 个事务降到 2 个）；队列先领取再推进（每条 7–9 次往返降到 2 次）；Go 1.27.2、Python 3.15.0 升级；Python 与 Go 的认领检查都改为自签 SigV4（每次上传的 CPU 分别少约 75%、40%）；服务端的空闲超时长于客户端（P1.20，修好 2/2000 的 EOF）。实测后不采用：granian、orjson/msgspec（JSON 不占剖析的明显份额）、Python 3.15 的 JIT、Go 的 PGO、psqlpy。记录 [4-04](experiment-records/4-04-d-row.md) 5.1 节与知识库的实测记录 01–15 |
-| T4.7 | D 行：进程底价（各语言单跑一个探针；Go 外壳承载 1、2、4 个；Python 外壳承载 1、2 个）与 S、H、X 三列的通信细分。原计划每格 3 次、约 1881 项、两天；用户 2026-10-18 定下测量按小时算，改为几轮短测（第五至七轮，performance 电源模式） | 本项目 | 第一份报告：D 行的通信代价 | 进行中：第五轮完成；途中找到并修好后台任务不唤醒（P7.21）；第六轮（事件路径）在跑，第七轮（D-H2、D-X 的调用）待跑。记录 [4-04](experiment-records/4-04-d-row.md) |
+| T4.7 | D 行：进程底价（各语言单跑一个探针；Go 外壳承载 1、2、4 个；Python 外壳承载 1、2 个）与 S、H、X 三列的通信细分。原计划每格 3 次、约 1881 项、两天；用户 2026-10-18 定下测量按小时算，改为几轮短测（第五至七轮，performance 电源模式） | 本项目 | 第一份报告：D 行的通信代价 | 完成：第五至八轮与事务基准，全部在 performance 下；途中修好后台任务不唤醒（P7.21）、PostgreSQL 队列只靠轮询（P6.30）、Python 连接池每次归还都重置（P5.30）；报告第二部分已填。记录 [4-04](experiment-records/4-04-d-row.md) |
 
 ## 进度
 
@@ -62,10 +62,14 @@
 - 2026-10-18 T4.6b 前两轮完成、第三轮在跑：找出并修好六处问题——Nagle、大事件逐条上传、PostgreSQL 队列跟不上积压、低负载下的轮询延迟、Python 的 HTTP 开销、对象存储在格之间累积；协议 P1.19、P6.28、P6.29，`be-sdk-go` 到 `alpha.7`、`be-sdk-python` 到 `a7`，探针 3.2.4，外壳 3.0.4／3.0.5。第三轮途中修了格的端口段（`be-acceptance` `542457e`）。问题、原因、修复与前后对比见 [4-03](experiment-records/4-03-full-check.md)。
 - 2026-10-18 T4.6b 第三轮完成（11 个阶段、408 项全过），T4.6c 完成：协议 `alpha.7`（P6.11、P6.28、P6.29）、`alpha.8`（P1.20）；`be-sdk-go` `alpha.8`–`alpha.10`、`be-sdk-python` `a8`、`a9`；Go 探针 3.2.7、Python 探针 3.2.6，外壳 3.0.7；BrickKit CLI v1.8.4。第四轮全格检查 0 异常，修复前后的对比见 [4-04](experiment-records/4-04-d-row.md) 5.1 节。`alpha.8`、`alpha.9` 误带了一个 48 MB 的测试程序，`alpha.10` 删掉并在 `.gitignore` 排除，发版脚本提交前检查暂存区。
 - 2026-10-18 T4.7 改为短测：正式测量开跑 7 分钟后停下（用户：测量按小时算）。版本二分与休眠验证说明新版低负载下写入延迟略高来自 CPU 深度休眠；第五轮在 performance 下复测基础格、D-S、D-H1，与第四轮对照得出电源模式的影响（约 0.6 倍）。第五轮看出 relay 在全部格 p50 约 250 ms：协议 `alpha.9`（P7.21），`be-sdk-go` `alpha.11`，探针 3.2.8，外壳 3.0.8；监视补上 relay 完成的检查。
+- 2026-10-19 T4.7 完成：第六轮（8 格事件路径）验证 P7.21，relay 50/s p50 从约 250 ms 降到 7–10 ms；第七轮（D-H2、D-X 的调用，订阅并发 4 的两格，P6.30 之后的 PostgreSQL 队列）与 relay 复测；第八轮验证一条消息只唤醒一个读取者与 P5.30。协议 `alpha.10`（P6.30）、`alpha.11`（P5.30）；`be-sdk-go` `alpha.12`、`alpha.13`，`be-sdk-python` `a10`、`a11`；探针 3.2.9、3.2.10；外壳 3.0.9、3.0.10。报告第二部分（进程底价、通信代价、已知上限）按第五至八轮填写。
 
 ## 留到后续的项
 
-- **Go 每个请求的 CPU 剖析**、**Python 的进一步加速实验**：已在 T4.6c 做完（剖析、`perf/httpx`、aiohttp、`uvloop`、granian、JSON 库、JIT、PGO、驱动），结论见 T4.6c 一行。
-- **消息运输文档的吞吐数字**：`docs/zh/04-foundations/06-message-transport.md` 里“PostgreSQL 队列每秒处理数千条消息”按第六轮的实测改写。
+- **订阅的默认并发**：默认 1 保持单个副本内的处理顺序；Python 订阅在 PostgreSQL 队列上 200/s 时要调到 4 才不排队。是否改默认值要用户定（4-04 第 5.5 节）。
+- **后台任务的领取语句**：每次约 0.4–0.5 ms，`OR` 跨两个部分索引，与 P6.28 修过的总线领取同一种写法；绝对量还小，随业务组件的负载再看。
+- **外壳测试的偶发超时**：`be-sdk-go` 的 `TestEachMemberServesItsSystemSurfaceOnItsOwnPort` 在整套集成测试的负载下偶发 5 秒内等不到就绪；单独一次提交放宽等待并写明原因。
+- **开发用基础资源的版本**：PostgreSQL 仍是 16.15（大版本升级要迁移数据），Kafka 镜像是 `latest`（违反镜像固定版本）。
+- **消息运输文档的吞吐数字**：`docs/zh/04-foundations/06-message-transport.md` 按 4-04 的实测改写（本步已改，见进度）。
 - **对象存储在高并发下变贵**：清空前缀后若仍随格变贵，做空桶与满桶、并发 1 与 8 的对照。
 - **旧发布、接入与验证工具的测试**：`test_ship_dryrun.sh` 构建的验收程序在重建后已不存在；`test_config_fill.py` 的 `integrate.sh` 4 项与 `test_verify_deploy.py` 也失败（改动之前的提交上同样失败）。随重建的工具一起处理。

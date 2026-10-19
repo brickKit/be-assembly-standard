@@ -23,8 +23,8 @@
 ## 现在在哪里
 
 - 设计冻结、正式文档迁移已完成（[migration-plan.md](migration-plan.md)）；AI 选择 A99–A110 记在 `docs/zh/02-decisions/09-ai-choices.md`（A109 驻留期起始值待复核，其余已确认）。
-- **代表部署实验（D41）进行中**，第 0–3 步已完成，**现在在第 4 步**（[step4-plan.md](step4-plan.md)）：外壳、资源采集、负载驱动、报告生成已完成；全面复测（T4.6b，[4-03](experiment-records/4-03-full-check.md)）找出并修好六处问题，性能跟进（T4.6c）修好第三轮看出的三项并升级工具链；D 行（T4.7）改为几轮短测，途中发现电源模式决定约一半的数字、修好后台任务不唤醒（P7.21），见 [4-04](experiment-records/4-04-d-row.md)。
-- **第 4 步接下来的顺序**：第六轮（事件路径）、第七轮（D-H2、D-X 的调用）→ 填报告第二部分 → 看结果决定的优化（PostgreSQL 队列的数据库 CPU、Python 订阅逐条处理、Python 外壳内大事件的 CPU），每项改完短测 → 消息运输文档的吞吐数字 → 知识库的实测记录与反馈 → 停下汇报。测量一律在 performance 电源模式下、按小时算。
+- **代表部署实验（D41）进行中**，第 0–3 步已完成，**第 4 步的任务已全部完成，等用户确认后进入第 5 步**（[step4-plan.md](step4-plan.md)）：外壳、资源采集、负载驱动、报告生成；全面复测（T4.6b，[4-03](experiment-records/4-03-full-check.md)）修好六处问题；性能跟进（T4.6c）；D 行（T4.7）几轮短测，修好后台任务不唤醒（P7.21）、PostgreSQL 队列只靠轮询（P6.30）、Python 连接池每次归还都重置（P5.30），报告第二部分已填（[4-04](experiment-records/4-04-d-row.md)、[实验报告](experiment-report.md)）。
+- **接下来**：停下汇报第 4 步，等用户确认；待用户定的一件事：订阅的默认并发（4-04 第 5.5 节）。第 5 步的草稿在 [step5-plan.md](step5-plan.md)。测量一律在 performance 电源模式下、按小时算。
 - 测量期间不在机器上跑任何测试、编译或剖析：会干扰数字，也会抢端口（4-03 记了一次）。 每一轮记下电源模式；运行脚本切到 performance 并在结束时恢复。
 - 实验之后先做底层（权限、登录、冷热数据、事务、消息），再按 [rebuild-plan.md](rebuild-plan.md) 重建业务组件。
 
@@ -64,7 +64,7 @@
 | 0-12 | 连接池代理的事务模式与 `SET LOCAL`（以及 pgx 的预编译语句） | 完成（2026-10-17）；设计依赖的事务内设置都成立；pgx 默认模式要求 PgBouncer 开 `max_prepared_statements`（记进交实现核对的项） |
 | 0-13 | 负载与数据的试跑规模 | 推迟到有业务组件之后（第 8 步前） |
 
-**第 1–3 步**：0-01 到 0-12 完成，0-13 按计划推迟；第 1 步的仓库动作已执行（[step1-repo-actions.md](step1-repo-actions.md)）；第 2 步发布 `be-protocol`、`be-sdk-go` 的 `v3.0.0-alpha.1`（[step2-plan.md](step2-plan.md)）；第 3 步做了 Python 的 SDK 子集与外壳启动器、两种语言的探针与核心一致性剖面（[step3-plan.md](step3-plan.md)）。之后的版本以各计划的进度为准（2026-10-18 晚：协议 `alpha.9`、`be-sdk-go` `alpha.11`、`be-sdk-python` `a9`、探针 3.2.8、外壳 3.0.8、BrickKit CLI v1.8.4）。
+**第 1–3 步**：0-01 到 0-12 完成，0-13 按计划推迟；第 1 步的仓库动作已执行（[step1-repo-actions.md](step1-repo-actions.md)）；第 2 步发布 `be-protocol`、`be-sdk-go` 的 `v3.0.0-alpha.1`（[step2-plan.md](step2-plan.md)）；第 3 步做了 Python 的 SDK 子集与外壳启动器、两种语言的探针与核心一致性剖面（[step3-plan.md](step3-plan.md)）。之后的版本以各计划的进度为准（2026-10-19：协议 `alpha.11`、`be-sdk-go` `alpha.13`、`be-sdk-python` `a11`、探针 3.2.10、外壳 3.0.10、BrickKit CLI v1.8.4）。
 
 ## 推进方式与停点
 
