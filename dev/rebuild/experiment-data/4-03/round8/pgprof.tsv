@@ -1,0 +1,55 @@
+# statements of every database during D-S-pg (round 8): database, calls, total ms, mean ms, rows, query
+be_experiment	108047	9961.1	0.092	39000	WITH ready AS (SELECT seq FROM "be_bus"."be_bus_delivery" WHERE durable = $1 AND NOT in_flight AND not_before <= clock_timestamp() ORDER BY seq LIMIT $5 FOR UPDATE SKIP LOCKED), expired AS (SELECT seq FROM "be_bus
+be_experiment	10688	5756.8	0.539	3362	/* test/probe-go */ WITH c AS ( SELECT id FROM be_work_item WHERE job = ANY($1) AND ( (state IN ($4, $5) AND run_at <= now()) OR (state = $6 AND lease_until <= now())) ORDER BY run_at LIMIT $7 FOR UPDATE SKI
+be_experiment	10681	4513.2	0.423	3361	/* test/probe-go2 */ WITH c AS ( SELECT id FROM be_work_item WHERE job = ANY($1) AND ( (state IN ($4, $5) AND run_at <= now()) OR (state = $6 AND lease_until <= now())) ORDER BY run_at LIMIT $7 FOR UPDATE SK
+be_experiment	39000	3057.3	0.078	39000	WITH m AS (INSERT INTO "be_bus"."be_bus_message" (msg_id, subject, headers, data) VALUES ($1, $2, $3, $4) ON CONFLICT (msg_id) WHERE msg_id IS NOT NULL DO NOTHING RETURNING $6) SELECT pg_notify($5, $2) FROM m
+be_experiment	9750	2568.9	0.263	9750	/* test/probe-go2 */ INSERT INTO be_outbox (event_id, stream, partition, type, occurred_at, record_id, version, projection, legal_entity, subjects, causation, hops, trace, payload, digest) VALUES ($1, $2, $3, $4, $5,
+be_experiment	9750	2487.9	0.255	9750	/* test/probe-go */ INSERT INTO be_outbox (event_id, stream, partition, type, occurred_at, record_id, version, projection, legal_entity, subjects, causation, hops, trace, payload, digest) VALUES ($1, $2, $3, $4, $5, 
+be_experiment	9750	2439.9	0.250	9750	/* test/probe-py2 */ INSERT INTO be_outbox (event_id, stream, partition, type, occurred_at, record_id, version, projection, legal_entity, subjects, causation, hops, trace, payload, digest) VALUES 
+be_experiment	9750	2434.9	0.250	9750	/* test/probe-py */ INSERT INTO be_outbox (event_id, stream, partition, type, occurred_at, record_id, version, projection, legal_entity, subjects, causation, hops, trace, payload, digest) VALUES (
+be_experiment	16849	2288.0	0.136	9750	/* test/probe-go2 */ SELECT ord, event_id::text, type, occurred_at, record_id, version, projection, coalesce(legal_entity, $4), subjects, coalesce(causation::text, $5), hops, trace, payload, digest, seq, epoch_genera
+be_experiment	16848	2272.7	0.135	9750	/* test/probe-go */ SELECT ord, event_id::text, type, occurred_at, record_id, version, projection, coalesce(legal_entity, $4), subjects, coalesce(causation::text, $5), hops, trace, payload, digest, seq, epoch_generat
+be_experiment	39000	2248.3	0.058	39000	DELETE FROM "be_bus"."be_bus_delivery" WHERE durable = $1 AND lease_token = $2 AND in_flight
+be_experiment	16956	1757.8	0.104	16956	/* test/probe-go */ SELECT generation, timeline FROM be_current_db_epoch()
+be_experiment	16956	1723.6	0.102	16956	/* test/probe-go2 */ SELECT generation, timeline FROM be_current_db_epoch()
+be_experiment	14286	1401.6	0.098	9750	/* test/probe-py */ SELECT ord, event_id::text AS event_id, type, occurred_at, record_id, version, projection, coalesce(legal_entity, $4) AS legal_entity, subjects, coalesce(causation::text, $5) AS causation,
+be_experiment	16849	1398.6	0.083	9750	/* test/probe-go2 */ WITH picked AS ( SELECT ord, row_number() OVER (ORDER BY ord) AS rn FROM ( SELECT ord FROM be_outbox WHERE stream = $1 AND partition = $2 AND seq IS NULL ORDER BY ord LIMIT $3 ) p ) UPD
+be_experiment	16848	1386.3	0.082	9750	/* test/probe-go */ WITH picked AS ( SELECT ord, row_number() OVER (ORDER BY ord) AS rn FROM ( SELECT ord FROM be_outbox WHERE stream = $1 AND partition = $2 AND seq IS NULL ORDER BY ord LIMIT $3 ) p ) UPDA
+be_experiment	14393	1365.0	0.095	14393	/* test/probe-py */ SELECT generation, timeline FROM be_current_db_epoch()
+be_experiment	14249	1357.4	0.095	14249	/* test/probe-py2 */ SELECT generation, timeline FROM be_current_db_epoch()
+be_experiment	69047	1282.4	0.019	69047	SELECT pos_xid::text::bigint, pos_seq FROM "be_bus"."be_bus_subscription" WHERE durable = $1 FOR UPDATE
+be_experiment	3250	1248.8	0.384	3250	/* test/probe-go */ UPDATE be_work_item SET state = $5, outcome_unknown = $6, waiting_since = $7, holder = $8, lease_until = $9, finished_at = now() WHERE id = $1 AND state = $10 AND epoch = $2 AND claim_db_generation 
+be_experiment	14142	1154.0	0.082	9750	/* test/probe-py2 */ SELECT ord, event_id::text AS event_id, type, occurred_at, record_id, version, projection, coalesce(legal_entity, $4) AS legal_entity, subjects, coalesce(causation::text, $5) AS causation
+be_experiment	8494	1095.8	0.129	9750	/* test/probe-go2 */ UPDATE be_outbox SET published_at = now(), claim = coalesce(ord = ANY($2), $3) WHERE ord = ANY($1) AND published_at IS NULL
+be_experiment	14286	1075.5	0.075	9750	/* test/probe-py */ WITH picked AS ( SELECT ord, row_number() OVER (ORDER BY ord) AS rn FROM ( SELECT ord FROM be_outbox WHERE stream = $1 AND partition = $2 AND seq IS NULL ORDER BY ord LIMIT
+be_experiment	8486	1072.3	0.126	9750	/* test/probe-go */ UPDATE be_outbox SET published_at = now(), claim = coalesce(ord = ANY($2), $3) WHERE ord = ANY($1) AND published_at IS NULL
+be_experiment	14142	1070.4	0.076	9750	/* test/probe-py2 */ WITH picked AS ( SELECT ord, row_number() OVER (ORDER BY ord) AS rn FROM ( SELECT ord FROM be_outbox WHERE stream = $1 AND partition = $2 AND seq IS NULL ORDER BY ord LIMI
+be_experiment	11979	993.3	0.083	14939	INSERT INTO "be_bus"."be_bus_delivery" (durable, seq) SELECT $1, unnest($2::bigint[]) ON CONFLICT DO NOTHING
+be_experiment	9756	975.5	0.100	24061	INSERT INTO "be_bus"."be_bus_delivery" (durable, seq) SELECT $1, unnest($2::bigint[]) ON CONFLICT DO NOTHING
+be_experiment	43896	965.2	0.022	78000	SELECT xid::text::bigint, seq, subject FROM "be_bus"."be_bus_message" WHERE (xid, seq) > ($1::bigint::text::xid8, $2) AND xid < pg_snapshot_xmin(pg_current_snapshot()) ORDER BY xid, seq LIMIT $3
+be_experiment	3250	954.1	0.294	3250	/* test/probe-go2 */ UPDATE be_work_item SET state = $5, outcome_unknown = $6, waiting_since = $7, holder = $8, lease_until = $9, finished_at = now() WHERE id = $1 AND state = $10 AND epoch = $2 AND claim_db_generation
+be_experiment	6183	897.4	0.145	9750	/* test/probe-py */ UPDATE be_outbox SET published_at = now(), claim = coalesce(ord = ANY($2), $3) WHERE ord = ANY($1) AND published_at IS NULL
+be_experiment	59640	896.7	0.015	59640	/* test/probe-go */ SELECT set_config($7, $1, $8), set_config($9, $2, $10), set_config($11, $3, $12), set_config($13, $4, $14), set_config($15, $5, $16), set_config($17, $6, $18)
+be_experiment	59636	893.2	0.015	59636	/* test/probe-go2 */ SELECT set_config($7, $1, $8), set_config($9, $2, $10), set_config($11, $3, $12), set_config($13, $4, $14), set_config($15, $5, $16), set_config($17, $6, $18)
+be_experiment	6101	811.2	0.133	9750	/* test/probe-py2 */ UPDATE be_outbox SET published_at = now(), claim = coalesce(ord = ANY($2), $3) WHERE ord = ANY($1) AND published_at IS NULL
+be_experiment	17271	747.9	0.043	4	/* test/probe-go2 */ INSERT INTO be_outbox_partition (stream, partition) VALUES ($1, $2) ON CONFLICT DO NOTHING
+be_experiment	17272	736.9	0.043	4	/* test/probe-go */ INSERT INTO be_outbox_partition (stream, partition) VALUES ($1, $2) ON CONFLICT DO NOTHING
+be_experiment	34646	728.6	0.021	34646	UPDATE "be_bus"."be_bus_subscription" SET pos_xid = $2::bigint::text::xid8, pos_seq = $3 WHERE durable = $1
+be_experiment	50201	724.3	0.014	50201	/* test/probe-py2 */ SELECT set_config($7, $1, $8), set_config($9, $2, $10), set_config($11, $3, $12), set_config($13, $4, $14), set_config($15, $5, $16), set_config($17, $6, $18)
+be_experiment	49558	712.1	0.014	49558	/* test/probe-py */ SELECT set_config($7, $1, $8), set_config($9, $2, $10), set_config($11, $3, $12), set_config($13, $4, $14), set_config($15, $5, $16), set_config($17, $6, $18)
+be_experiment	9750	586.5	0.060	9750	/* test/probe-go */ INSERT INTO be_inbox (subscription, event_id) VALUES ($1, $2) ON CONFLICT DO NOTHING
+be_experiment	9750	576.5	0.059	9750	/* test/probe-go2 */ INSERT INTO be_inbox (subscription, event_id) VALUES ($1, $2) ON CONFLICT DO NOTHING
+be_experiment	14558	573.7	0.039	4	/* test/probe-py2 */ INSERT INTO be_outbox_partition (stream, partition) VALUES ($1, $2) ON CONFLICT DO NOTHING
+be_experiment	14702	568.0	0.039	4	/* test/probe-py */ INSERT INTO be_outbox_partition (stream, partition) VALUES ($1, $2) ON CONFLICT DO NOTHING
+be_experiment	9750	528.8	0.054	9750	/* test/probe-py2 */ INSERT INTO be_inbox (subscription, event_id) VALUES ($1, $2) ON CONFLICT DO NOTHING
+be_experiment	9750	525.2	0.054	9750	/* test/probe-py */ INSERT INTO be_inbox (subscription, event_id) VALUES ($1, $2) ON CONFLICT DO NOTHING
+be_experiment	25151	404.6	0.016	78000	SELECT xid::text::bigint AS x, seq, subject FROM "be_bus"."be_bus_message" WHERE (xid, seq) > ($1::bigint::text::xid8, $2) AND xid < pg_snapshot_xmin(pg_current_snapshot()) ORDER BY xid, s
+be_experiment	3250	295.6	0.091	3250	/* test/probe-go */ INSERT INTO be_work_item (id, job, kind, state, max_attempts, effect_class, operation_id, args) VALUES ($1, $2, $7, $8, $3, $4, $5, $6::jsonb)
+be_experiment	3250	286.6	0.088	3250	/* test/probe-go2 */ INSERT INTO be_work_item (id, job, kind, state, max_attempts, effect_class, operation_id, args) VALUES ($1, $2, $7, $8, $3, $4, $5, $6::jsonb)
+be_experiment	16849	276.1	0.016	16849	/* test/probe-go2 */ UPDATE be_outbox_partition SET last_seq = $3, epoch_generation = $4, epoch_timeline = $5 WHERE stream = $1 AND partition = $2
+be_experiment	16848	274.8	0.016	16848	/* test/probe-go */ UPDATE be_outbox_partition SET last_seq = $3, epoch_generation = $4, epoch_timeline = $5 WHERE stream = $1 AND partition = $2
+be_experiment	6471	258.8	0.040	3250	/* test/probe-py2 */ UPDATE probe_relay SET leased_to = now() + make_interval(secs => $2), attempts = attempts + $3 WHERE event_id IN (SELECT event_id FROM probe_relay WHERE leased_to IS NULL OR leased_to < now() ORDER B
+# totals per database: database, calls, total ms
+be_experiment	1814281	80572.5
+brickkit_db	76	1.7
+postgres	5	0.1
