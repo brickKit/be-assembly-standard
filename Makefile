@@ -51,8 +51,6 @@ keycloak-up:  ; @bash $(S)/optional.sh keycloak up   ## 开启 Keycloak（替换
 keycloak-down:; @bash $(S)/optional.sh keycloak down ## 关闭 Keycloak
 kafka-up:     ; @bash $(S)/optional.sh kafka up      ## 开启 Kafka（替换 NATS）
 kafka-down:   ; @bash $(S)/optional.sh kafka down    ## 关闭 Kafka
-rabbitmq-up:  ; @bash $(S)/optional.sh rabbitmq up   ## 开启 RabbitMQ（替换 NATS）
-rabbitmq-down:; @bash $(S)/optional.sh rabbitmq down ## 关闭 RabbitMQ
 nginx-up:     ; @bash $(S)/optional.sh nginx up      ## 开启 Nginx（替换 Traefik）
 nginx-down:   ; @bash $(S)/optional.sh nginx down    ## 关闭 Nginx
 obs-up:       ; @bash $(S)/optional.sh obs up        ## 开启可观测性 5 件套（整套）
@@ -60,7 +58,7 @@ obs-down:     ; @bash $(S)/optional.sh obs down      ## 关闭可观测性 5 件
 
 .PHONY: up down status logs nuke \
         minio-up minio-down keycloak-up keycloak-down kafka-up kafka-down \
-        rabbitmq-up rabbitmq-down nginx-up nginx-down obs-up obs-down
+        nginx-up nginx-down obs-up obs-down
 
 ##@ 全局册子
 registry-check:  ## 校验端口册与 schema 册自洽

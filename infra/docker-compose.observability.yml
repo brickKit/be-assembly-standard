@@ -12,7 +12,7 @@ volumes:
 
 services:
   otel-collector:
-    image: otel/opentelemetry-collector-contrib:latest
+    image: otel/opentelemetry-collector-contrib:0.160.0@sha256:799dc6cf12c96192af37b5bdba804da8c10b3bc563b43cb90c3f3c58d9572ad6
     container_name: be-otel
     networks: [be-net]
     ports: ["4317:4317", "4318:4318", "13133:13133"]
@@ -31,7 +31,7 @@ services:
     #   curl -fsS http://localhost:13133/   → {"status":"Server available",...}
 
   prometheus:
-    image: prom/prometheus:latest
+    image: prom/prometheus:v3.15.0@sha256:efd719c99d83b060d9daefdcf00360461adf279f45ef5391f8d111892118753e
     container_name: be-prometheus
     networks: [be-net]
     ports: ["29090:9090"]
@@ -54,7 +54,7 @@ services:
       retries: 5
 
   loki:
-    image: grafana/loki:latest
+    image: grafana/loki:3.7.7@sha256:d70e4659623f3e109af669cae76fe2a5dd5be54e2298fe8aed380d982fbc2500
     container_name: be-loki
     networks: [be-net]
     ports: ["3100:3100"]
@@ -69,7 +69,7 @@ services:
     #   curl -fsS http://localhost:3100/ready   → 一段时间后变成 "ready"
 
   tempo:
-    image: grafana/tempo:latest
+    image: grafana/tempo:3.0.0@sha256:78439f7f7cf3c97122846c13a832e060c6c7ef67dcc814dccf0a5f3f78393a93
     container_name: be-tempo
     networks: [be-net]
     ports: ["3200:3200"]
@@ -81,7 +81,7 @@ services:
     #   curl -fsS http://localhost:3200/ready   → "ready"
 
   grafana:
-    image: grafana/grafana:latest
+    image: grafana/grafana:13.2.4@sha256:dbbc38ea21103cefb50396340cd88afec779c7e070b0a7bf5a75b4ce46651d3f
     container_name: be-grafana
     networks: [be-net]
     ports: ["3000:3000"]
