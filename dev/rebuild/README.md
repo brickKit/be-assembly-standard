@@ -17,14 +17,14 @@
 | [step3-plan.md](step3-plan.md) | 实验第 3 步（Python SDK 子集、外壳启动器、两种语言的探针与一致性剖面）的任务、取舍与进度 |
 | [step4-plan.md](step4-plan.md) | 实验第 4 步（三个外壳、资源采集、负载驱动、报告生成，D 行的底价与通信细分）的任务、取舍与进度 |
 | [experiment-report.md](experiment-report.md) | 实验报告（给维护者与客户）；第 4 步起按行填写 |
-| [step5-plan.md](step5-plan.md) | 实验第 5 步（身份适配、授权、审计与两个契约包）的**草稿**，第 4 步结束后与用户确认再定稿 |
-| [step5-contracts.md](step5-contracts.md) | 第 5 步的契约草稿（系统面的方法、信封与记录字节、定稿前要补的设计） |
+| [step5-plan.md](step5-plan.md) | 实验第 5 步（身份适配、授权、审计与两个契约包）的计划，2026-10-19 定稿 |
+| [step5-contracts.md](step5-contracts.md) | 第 5 步的契约（系统面的方法、信封与记录字节、定稿时补的设计） |
 
 ## 现在在哪里
 
 - 设计冻结、正式文档迁移已完成（[migration-plan.md](migration-plan.md)）；AI 选择 A99–A110 记在 `docs/zh/02-decisions/09-ai-choices.md`（A109 驻留期起始值待复核，其余已确认）。
-- **代表部署实验（D41）进行中**，第 0–3 步已完成，**第 4 步的任务已全部完成，等用户确认后进入第 5 步**（[step4-plan.md](step4-plan.md)）：外壳、资源采集、负载驱动、报告生成；全面复测（T4.6b，[4-03](experiment-records/4-03-full-check.md)）修好六处问题；性能跟进（T4.6c）；D 行（T4.7）几轮短测，修好后台任务不唤醒（P7.21）、PostgreSQL 队列只靠轮询（P6.30）、Python 连接池每次归还都重置（P5.30）、函数里的会话设置（P5.31）、后台任务的领取随积压变慢（P7.22），给部署方加了订阅并发的配置项（P6.31），报告第二部分已填（[4-04](experiment-records/4-04-d-row.md)、[实验报告](experiment-report.md)）。
-- **接下来**：停下汇报第 4 步，等用户确认；订阅的默认并发为 1，部署方用 `BUS_SUBSCRIPTION_CONCURRENCY` 调大（取舍写进消息运输的正式文档）；可选的对象存储由 MinIO 换成 SeaweedFS（用户 2026-10-19 定）。第 5 步的草稿在 [step5-plan.md](step5-plan.md)。测量一律在 performance 电源模式下、按小时算。
+- **代表部署实验（D41）进行中**，第 0–3 步已完成，**第 4 步已完成，第 5 步进行中（2026-10-19 起）**（[step4-plan.md](step4-plan.md)）：外壳、资源采集、负载驱动、报告生成；全面复测（T4.6b，[4-03](experiment-records/4-03-full-check.md)）修好六处问题；性能跟进（T4.6c）；D 行（T4.7）几轮短测，修好后台任务不唤醒（P7.21）、PostgreSQL 队列只靠轮询（P6.30）、Python 连接池每次归还都重置（P5.30）、函数里的会话设置（P5.31）、后台任务的领取随积压变慢（P7.22），给部署方加了订阅并发的配置项（P6.31），报告第二部分已填（[4-04](experiment-records/4-04-d-row.md)、[实验报告](experiment-report.md)）。
+- **接下来**：第 5 步按 [step5-plan.md](step5-plan.md) 从 T5.1 起依次做；订阅的默认并发为 1，部署方用 `BUS_SUBSCRIPTION_CONCURRENCY` 调大（取舍写进消息运输的正式文档）；可选的对象存储由 MinIO 换成 SeaweedFS（用户 2026-10-19 定）。测量一律在 performance 电源模式下、按小时算。
 - 测量期间不在机器上跑任何测试、编译或剖析：会干扰数字，也会抢端口（4-03 记了一次）。 每一轮记下电源模式；运行脚本切到 performance 并在结束时恢复。
 - 实验之后先做底层（权限、登录、冷热数据、事务、消息），再按 [rebuild-plan.md](rebuild-plan.md) 重建业务组件。
 
