@@ -45,8 +45,8 @@ nuke:  ## 停止并删除所有 volume（危险，需二次确认）
 	 docker compose --env-file .env -p be-obs   -f infra/docker-compose.observability.yml down -v 2>/dev/null || true
 
 ##@ 可选资源（单个开关）
-minio-up:     ; @bash $(S)/optional.sh minio up      ## 开启 MinIO（替换 RustFS）
-minio-down:   ; @bash $(S)/optional.sh minio down    ## 关闭 MinIO
+seaweedfs-up: ; @bash $(S)/optional.sh seaweedfs up  ## 开启 SeaweedFS（替换 RustFS）
+seaweedfs-down:; @bash $(S)/optional.sh seaweedfs down ## 关闭 SeaweedFS
 keycloak-up:  ; @bash $(S)/optional.sh keycloak up   ## 开启 Keycloak（替换 Casdoor）
 keycloak-down:; @bash $(S)/optional.sh keycloak down ## 关闭 Keycloak
 kafka-up:     ; @bash $(S)/optional.sh kafka up      ## 开启 Kafka（替换 NATS）
@@ -57,7 +57,7 @@ obs-up:       ; @bash $(S)/optional.sh obs up        ## 开启可观测性 5 件
 obs-down:     ; @bash $(S)/optional.sh obs down      ## 关闭可观测性 5 件套（整套）
 
 .PHONY: up down status logs nuke \
-        minio-up minio-down keycloak-up keycloak-down kafka-up kafka-down \
+        seaweedfs-up seaweedfs-down keycloak-up keycloak-down kafka-up kafka-down \
         nginx-up nginx-down obs-up obs-down
 
 ##@ 全局册子
@@ -79,9 +79,12 @@ docs-ids:  ## Expectation IDs: one owner per prefix, unique, contiguous (check 3
 docs-closure:  ## Required dependencies acyclic and customer combinations closed (check 34)
 	@python3 tools/be-acceptance/doc-checks/34-dependency-closure.py .
 
+infra-images:  ## 基础资源的镜像都写确切版本与摘要，infra/resources.tsv 与 compose 一致
+	@python3 -I infra/scripts/infra-images.py
+
 design-models:  ## Run every reference model in be-acceptance (about 15 minutes)
 	@$(MAKE) -C tools/be-acceptance models
-.PHONY: registry-check docs-boundary docs-mirror docs-links docs-ids docs-closure design-models
+.PHONY: registry-check docs-boundary docs-mirror docs-links docs-ids docs-closure infra-images design-models
 
 ##@ 校验
 lint:  ## brickKit 自身的三层 + 文档检查（严格模式）
@@ -153,7 +156,7 @@ teardown-down:  ## 停掉拆回验证的容器
 # The Go gates of the 0.x be-acceptance (import, SystemClient, bare-route, event and OpenAPI
 # breaking changes, data-scope tests, dependency versions, config keys) moved to its legacy/v0
 # branch with the old code (D59); conformance suites and gates return with the rebuilt tools.
-gates: docs-boundary docs-mirror docs-links docs-ids docs-closure  ## Document gates (boundary, mirror, links, IDs, closure) + brickkit up --dry-run
+gates: docs-boundary docs-mirror docs-links docs-ids docs-closure infra-images  ## Document gates (boundary, mirror, links, IDs, closure), infra image pins + brickkit up --dry-run
 	@echo "▸ brickkit up --dry-run"
 	@bash $(S)/lib/require-brickkit.sh
 	@brickkit up --dry-run
