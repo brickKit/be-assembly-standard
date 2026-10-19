@@ -1,0 +1,8 @@
+# Round 8, under the performance power profile, short windows (about 25 minutes): after P5.30 (no session reset on
+# release in Python, every transaction one round trip shorter) and one wake per message on the PostgreSQL queue, the
+# event paths of D-S, D-S-pg and D-S-pg-c4 again, to compare the CPU per operation with rounds 6 and 7.
+runs: 1
+cells:
+  - {cell: D-S, ops: [write, relay, big-event], loads: [50, 200], idle: 15, warmup: 3, seconds: 10}
+  - {cell: D-S-pg, ops: [write, relay, big-event], loads: [50, 200], idle: 15, warmup: 3, seconds: 10}
+  - {cell: D-S-pg-c4, ops: [write, relay, big-event], loads: [50, 200], idle: 15, warmup: 3, seconds: 10}
