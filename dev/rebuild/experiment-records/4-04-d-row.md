@@ -27,6 +27,7 @@
 | 第九轮 | P5.31 之后同样的三格（`campaign-round9.yaml`） | performance | 归还时核对的成本 |
 | 第十轮 | 订阅并发改由部署方的配置项设定之后的 D-S-pg、D-S-pg-c4，写入、relay、大事件（`campaign-round10.yaml`） | performance | 配置项端到端生效 |
 | 第十轮复查 | D-S-pg-c4 的大事件（`campaign-round10-recheck.yaml`） | performance | 第十轮一项变慢能不能复现 |
+| 对象存储对比 | D-S 的大事件，SeaweedFS 4.48 与 RustFS 1.0.0-beta.12 交替，两遍（`campaign-storage.yaml`，第一遍没有采到 SeaweedFS 的 CPU） | performance | 第二个存储实现的验证与参照 |
 | 事务基准 | 只有一个表的短写事务，asyncpg 与 pgx，三种写法各 3 轮（`experiment-data/4-03/txbench/`） | performance | 会话重置与合并 `BEGIN` 各值多少 |
 
 ## 3. 环境与版本
@@ -173,11 +174,30 @@ P5.30 拒绝的是语句本身；写在函数或 `DO` 块里的 `set_config(…,
 - **最小基准**（`experiment-data/4-03/claimbench/`，pgbench 1 个客户端，事务里领取后回滚，两种写法交替各 3 次，performance）：积压 40、2 000、2 万条时，`OR` 写法每次 0.35–0.39、0.86–0.93、5.44–5.53 ms，拆开写 0.39–0.41 ms 不变；2 万条时 `OR` 写法的计划是全表扫描再排序。积压很小时拆开写略慢（约 0.05 ms）。
 - 只有 Go 的 SDK 有后台任务执行器；Python 的 SDK 子集里没有（`features.json` 标为未实现），只随协议带上迁移，以后补齐时按 P7.22 写。协议 `alpha.13`；`be-sdk-go` `alpha.15`。
 
+### 5.9 对象存储的第二个实现
+
+MinIO 的镜像已拿不到，开发环境的可选存储换成 SeaweedFS（用户 2026-10-19 定）：单进程模式，S3 接口发布在宿主机 9000，与 RustFS 互斥，组件与测试的地址不用改；凭据由 `AWS_*` 环境变量建成管理员身份，匿名被拒绝，关掉默认的匿名统计上报（`-master.telemetry=false`）。
+
+- **正确性**：两个 SDK 的对象存储与事件集成测试在 SeaweedFS 4.48 上全部通过（Go 的对象存储两项与两种运输的事件链，Python 的对象存储三项与 Go↔Python 互通四项），先打在临时容器上，再经 `make seaweedfs-up` 与项目凭据跑一遍。
+- **性能**（D-S 的大事件，两遍，每遍先 SeaweedFS 后 RustFS）：
+
+| 项 | SeaweedFS ÷ RustFS |
+| --- | --- |
+| 写入到收到 p50，50/s | 0.94–0.98（两遍之间同一项最多差 5%） |
+| 写入到收到 p50，200/s | 0.76–0.96（Go 发出的路径快约 20%；两遍中位差 2%，最多 14%） |
+| 存储进程的 CPU（第二遍） | 中位 1.46：50/s 0.26 对 0.19 核，200/s 0.9 对 0.59 核 |
+| 存储的内存 | 相当，约 0.5–0.6 GiB |
+
+- **结论**：RustFS 更省 CPU，默认不变；SeaweedFS 是验证过的替换件。存储一致性套件的其余项（分段、范围读取、生命周期、对象锁、桶策略）没有测，随附件组件一起验。正式文档写在数据与生命周期的“对象存储”一节。
+- RustFS 有一项两遍都偏高：Go → Python 50/s 时存储 CPU 第一遍 1.44 核、第二遍 0.57 核（其余 50/s 的项约 0.19 核），像是它自己的后台工作碰巧落在这段时间，记下来，不影响结论。
+- 测量工具只采 `be-rustfs`，第一遍没有 SeaweedFS 的 CPU；`be-acceptance` `1ca033b` 把 `be-seaweedfs` 加进基础资源的名单后跑了第二遍。
+
 ## 6. 观察与异常
 
 - **没有复现的一项**：第七轮 D-S-pg 的 Go → Go relay 200/s 到达 p50 1.9 s；同一格紧接着两次重测为 9.6 与 13.5 ms，第八轮 9.8 ms。按偶发记下。同一轮里 Python 订阅并发 1、200/s 的几项每次相差很大（同一项 32 ms 与 177 ms），是这个上限的临界状态。
 - **第十轮有一项没有复现的变慢**：D-S-pg-c4 的 Python → Go 大事件 50/s 到达 p50 175 ms（第八、九轮 14 ms），200/s 924 ms（约 80 ms）。延迟全部在发布这一段：发布 p50 170 ms，在 0–365 ms 之间均匀分布；收到只比发布晚约 5 ms。发送方每条消息的 CPU 反而更少，各容器都不忙，像是这段时间里转发器没被提交唤醒、只按 250 ms 的轮询成批发。紧接着的复查（`round10-recheck/`）为 13.4 ms 与 83 ms。与第七轮那次 relay 一样按偶发记下。再出现时，先取发送方的日志与转发器的唤醒次数。
 - **并发 4 下有一项变差**：第八轮 D-S-pg-c4 的 Go → Python relay 50/s p50 32 ms（第七轮 14 ms），同类的其他项都没变，按波动记下。
+- **对象存储对比的启动脚本错了两次**：第一次没有带测量的环境变量，测量立即失败，但清单的退出码是 0，脚本照样切到了下一个后端；第二次把每个阶段的结果数写成 9（D-S 是 4 条边乘 2 档负载，8 项），完整的一个阶段被判为失败。改为按结果文件数核对每个阶段、预期数按格算。电源模式由脚本自己记录与恢复，两次都恢复正确。
 - **复查的启动脚本漏记了电源模式**：复查的脚本由第十轮的脚本替换路径生成，替换把清单的文件名也改成了不存在的名字，脚本立刻退出；`power-before.txt` 写在脚本外面、没有跟着生成，恢复读到空值，机器停在 performance。已手工恢复为 balanced、改正后重跑。以后记下原模式与恢复放在同一个脚本里，启动后先看状态文件里两行模式是否成对。
 - **停在格与格之间要看“上一格完成”，不要看“下一格开始”**：第五轮按“出现 D-H2 的开始行”停下，D-H2 已经开始重建，留下半成品的部署文件被提交了一次，已从上一个提交恢复。
 - **监视的盲点**：一个指标只要有一个环节没检查，“全部正常”就可能是假的（relay）。新加的检查项要覆盖操作的最终完成，分段的部分按差值判断。
@@ -190,8 +210,8 @@ P5.30 拒绝的是语句本身；写在函数或 `DO` 块里的 `set_config(…,
 - 测量工具：relay 的检查（按比到达多出的部分）；`cell.yaml` 的 `subscription_concurrency`；两个对照格 D-S-c4、D-S-pg-c4；开发用的 PostgreSQL 加载 `pg_stat_statements`。
 - 报告第二部分的三张表按本记录与第五至八轮填写。
 - 方法：每一轮记下电源模式，报告的数字在 performance 下测；测量按小时算；优化不牺牲需求（底层选择的原则）。
-- 基础资源的镜像：Kafka、Keycloak、otel、Prometheus、Loki、Tempo、Grafana、nginx 固定到确切版本与摘要（在用的照用，本地没有的取当前稳定版，nginx 1.25 已停止支持换到 1.30），`infra/resources.tsv` 同步；可观测性整套在新版本下启动、健康检查通过。RabbitMQ 选项移除（正式文档不计划这个运输，SDK 没有适配器），端口在注册表标为退役。MinIO 的镜像已拿不到，待用户定。开发用的 PostgreSQL 16.15 照用：按 2026-10-19 修订的版本规则，新版本优点明显才换，目前没有项目碰得到的理由。
+- 基础资源的镜像：Kafka、Keycloak、otel、Prometheus、Loki、Tempo、Grafana、nginx 固定到确切版本与摘要（在用的照用，本地没有的取当前稳定版，nginx 1.25 已停止支持换到 1.30），`infra/resources.tsv` 同步；可观测性整套在新版本下启动、健康检查通过。RabbitMQ 选项移除（正式文档不计划这个运输，SDK 没有适配器），端口在注册表标为退役。MinIO 的镜像已拿不到，可选存储换成 SeaweedFS（第 5.9 节）。默认的 5 个资源也按正在用的镜像补上摘要，重建后健康；新检查 `make infra-images`（进了 `make gates`）要求每个镜像带摘要、不用 `latest`，并且 `infra/resources.tsv` 与 compose 一致。开发用的 PostgreSQL 16.15 照用：按 2026-10-19 修订的版本规则，新版本优点明显才换，目前没有项目碰得到的理由。
 
 ## 8. 原始数据
 
-`dev/rebuild/experiment-data/4-03/`：`round4/`–`round10/`、`round10-recheck/`、`relaycheck/`（各轮含 `tables.md`；第七、八轮含 `pgprof.tsv` 语句统计，第七轮另有按调用次数排序的 `pgprof-by-calls.tsv`）、`power/`（版本二分与休眠验证）、`txbench/`（事务基准）、`claimbench/`（后台任务领取的基准）、`round5-vs-round4.py`。
+`dev/rebuild/experiment-data/4-03/`：`round4/`–`round10/`、`round10-recheck/`、`relaycheck/`（各轮含 `tables.md`；第七、八轮含 `pgprof.tsv` 语句统计，第七轮另有按调用次数排序的 `pgprof-by-calls.tsv`）、`power/`（版本二分与休眠验证）、`txbench/`（事务基准）、`claimbench/`（后台任务领取的基准）、`storage/`（两种对象存储，两遍）、`round5-vs-round4.py`。
