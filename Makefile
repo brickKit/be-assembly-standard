@@ -82,9 +82,12 @@ docs-closure:  ## Required dependencies acyclic and customer combinations closed
 infra-images:  ## 基础资源的镜像都写确切版本与摘要，infra/resources.tsv 与 compose 一致
 	@python3 -I infra/scripts/infra-images.py
 
+security-schemas:  ## The security records' JSON Schemas in be-protocol are exactly what the field tables (security 09a, protocol 08) generate
+	@python3 -I tools/be-acceptance/doc-checks/security-schemas.py --check tools/be-protocol/schemas/security
+
 design-models:  ## Run every reference model in be-acceptance (about 15 minutes)
 	@$(MAKE) -C tools/be-acceptance models
-.PHONY: registry-check docs-boundary docs-mirror docs-links docs-ids docs-closure infra-images design-models
+.PHONY: registry-check docs-boundary docs-mirror docs-links docs-ids docs-closure infra-images security-schemas design-models
 
 ##@ 校验
 lint:  ## brickKit 自身的三层 + 文档检查（严格模式）
@@ -156,7 +159,7 @@ teardown-down:  ## 停掉拆回验证的容器
 # The Go gates of the 0.x be-acceptance (import, SystemClient, bare-route, event and OpenAPI
 # breaking changes, data-scope tests, dependency versions, config keys) moved to its legacy/v0
 # branch with the old code (D59); conformance suites and gates return with the rebuilt tools.
-gates: docs-boundary docs-mirror docs-links docs-ids docs-closure infra-images  ## Document gates (boundary, mirror, links, IDs, closure), infra image pins + brickkit up --dry-run
+gates: docs-boundary docs-mirror docs-links docs-ids docs-closure infra-images security-schemas  ## Document gates (boundary, mirror, links, IDs, closure), infra image pins, security schemas + brickkit up --dry-run
 	@echo "▸ brickkit up --dry-run"
 	@bash $(S)/lib/require-brickkit.sh
 	@brickkit up --dry-run

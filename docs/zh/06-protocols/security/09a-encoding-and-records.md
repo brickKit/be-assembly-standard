@@ -4,9 +4,9 @@
 
 ## 本页的形式
 
-本页用字段表写定语义：字段名、类型、是否必填、约束。冻结时由这些表统一生成 protobuf 与 JSON Schema；在此之前不写线格式文件，避免过早绑定。摘要与签名只按本页定义的规范 JSON 形式计算，不使用任何语言或 protobuf 的二进制序列化结果（[安全 06](06-security-contracts-and-capabilities.md#共同标识与封装)引用了官方说明）。
+本页用字段表写定语义：字段名、类型、是否必填、约束。JSON Schema 由这些表生成（见下一段）；protobuf 只作信封，写在各成员的契约包里。摘要与签名只按本页定义的规范 JSON 形式计算，不使用任何语言或 protobuf 的二进制序列化结果（[安全 06](06-security-contracts-and-capabilities.md#共同标识与封装)引用了官方说明）。
 
-**线上怎样传**（D76）：系统面照常是 gRPC 加 protobuf，但安全记录（视图分片、授予段、定义等本页定义的记录）本身以规范 JSON 字节放在 protobuf 信封的 `bytes` 字段里传输，按本页生成的 JSON Schema 校验；信封只承载调用本身的字段（随机数、分片号与状态、恢复代次、回执等）。接收方直接对收到的字节核对摘要，不把 protobuf 还原成规范 JSON。
+**线上怎样传**（D76）：系统面照常是 gRPC 加 protobuf，但安全记录（视图分片、授予段、定义等本页定义的记录）本身以规范 JSON 字节放在 protobuf 信封的 `bytes` 字段里传输，按本页生成的 JSON Schema 校验；信封只承载调用本身的字段（随机数、分片号与状态、恢复代次、回执等）。接收方直接对收到的字节核对摘要，不把 protobuf 还原成规范 JSON。线上的记录字节不含记录自己的 `digest`：摘要放在信封里与字节并列，接收方对收到的字节计算摘要并比较；字节不是规范形式（解析后重新规范化，结果不同）的，整条拒绝。JSON Schema 由本页与组件协议第 08 章的字段表生成（`be-acceptance` 的 `doc-checks/security-schemas.py`），放在 `be-protocol` 的 `schemas/security/`，每种记录类型一份；schema 只查结构与类型，约束一列的条件规则由代码检查。
 
 “必填”一列：**是**表示缺失即无效；**否**表示可以缺省，缺省有明确的含义（写在约束里）；**条件**表示在约束所述的情况下必填。
 
@@ -18,6 +18,7 @@
 | --- | --- | --- |
 | `Id` | 字符串 | 小写 UUIDv7 文本，36 个字符；只表示身份，不携带任何权限 |
 | `Key` | 字符串 | 注册键，`[a-z][a-z0-9_]*` 以点分段，最长 128 字符；权限键、操作、资源类型、维度、字段、能力、记录类型都用它 |
+| `ComponentId` | 字符串 | 组件 ID `<领域>/<名字>`，与 BrickKit 的组件 ID 同一写法：两段各为小写字母、数字与连字符，不以连字符开头或结尾（例如 `infra/authz`、`test/probe-go`）；不能用 `Key`，因为它不允许 `/` 与 `-`；服务身份证书里的组件就是它（协议 P8.5） |
 | `Text` | 字符串 | UTF-8，按 Unicode NFC 规范化后存储与计算摘要；不用于任何授权判断 |
 | `Decimal` | 字符串 | 无指数、无前导 `+`、无多余的前导零与末尾零，整数不带小数点，零写作 `0`；最多 38 位有效数字，小数位不超过 18 |
 | `Currency` | 字符串 | ISO 4217 三位大写字母 |
@@ -58,14 +59,14 @@
 | `PrincipalRef` | `deployment` | `Id` | 是 | 部署身份 |
 | | `kind` | `Enum` | 是 | `user`、`service`、`job` |
 | | `id` | `Id` | 是 | 平台的稳定主体；不是邮箱、登录名或外部身份源的 subject |
-| `ObjectRef` | `owner_component` | `Key` | 是 | 权威属主组件 |
+| `ObjectRef` | `owner_component` | `ComponentId` | 是 | 权威属主组件 |
 | | `type` | `Key` | 是 | 资源类型 |
 | | `id` | `Id` | 是 | 不同类型的相同 ID 不是同一对象 |
 | `RevisionRef` | `domain` | `Key` | 是 | 修订域，例如 `authz.security.legal_entity`；只在同一域内比较 |
 | | `value` | `Text` | 是 | 不透明；比较规则由域声明（多数为十进制整数文本） |
 | | `epoch` | `Text` | 否 | 库内分配、别处比较的计数所带的纪元（[协议 14 的库内计数与纪元](../14-data-foundations.md#库内计数与纪元)）；有它的域，比较按协议 14：同一纪元按整数，不同纪元用分叉点判断旧值是否仍被包含 |
 | | `instance` | `Text` | 否 | 分配处的实现实例（例如授权成员实例）；分配处可以被另一个实现替换时必填。不同实例的值不按数值比较，只经登记的包含关系比较（协议 14） |
-| `DefinitionRef` | `owner_component` | `Key` | 是 | — |
+| `DefinitionRef` | `owner_component` | `ComponentId` | 是 | — |
 | | `kind` | `Enum` | 是 | `resource`、`operation`、`field`、`dimension`、`role_template` |
 | | `key` | `Key` | 是 | — |
 | | `version` | `Text` | 是 | 定义的版本 |
@@ -86,7 +87,7 @@
 | `record_type` | `Key` | 是 | `be.security.<name>`；记录类型只由这个字段表达 |
 | `schema` | `Text` | 是 | `主.次` |
 | `deployment` | `Id` | 是 | — |
-| `authority` | `Key` | 是 | 权威属主组件 |
+| `authority` | `ComponentId` | 是 | 权威属主组件 |
 | `id` | `Id` | 是 | 记录身份，终身不变 |
 | `revision` | `RevisionRef` | 是 | 内容修订 |
 | `required_features` | `Set<Key>` | 否 | 缺省为空；读者不认识其中任一项即拒绝整条记录 |
@@ -428,6 +429,6 @@ EN 预期全部在本页；其中 EN16、EN17 检验的是[安全 09b](09b-capab
 
 ## 已知风险与待定
 
-- 冻结时由本页生成安全记录的 JSON Schema 与调用信封的 protobuf（D76），并写出三门语言的共同向量（EN、FX、CP、AT、PA 合并映射）。
+- 安全记录的 JSON Schema 已由本页生成（实验第 5 步）；只覆盖写成字段表的记录，行内写法的记录（核验请求、确认、变更计划的项等）要用到时先改写成字段表。调用信封的 protobuf 在各成员的契约包里（D76）。三门语言的共同向量（EN、FX、CP、AT、PA 合并映射）还没有全部写出，第 5 步只写了视图核验与记录校验用到的。
 - 视图的分片方式、分片大小与核验频率对授权组件负载的影响，在代表部署实验中测量。
 - 错误 reason 的最终名称、HTTP 映射与可显示的文案，在新的错误目录中统一登记。
