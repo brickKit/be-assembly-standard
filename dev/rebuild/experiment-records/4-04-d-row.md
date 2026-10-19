@@ -23,6 +23,7 @@
 | 第七轮 | D-H2、D-X 的调用；订阅并发 4 的两格（`-c4`）；P6.30 之后的 D-H1-pg、D-S-pg（`campaign-round7.yaml`），D-S-pg 期间读 `pg_stat_statements` | performance | 外壳到外壳、混合的调用；P6.30 与并发的效果；数据库的语句统计 |
 | relay 复测 | D-S-pg 的写入与 relay，200/s，两次（`campaign-relay-check.yaml`） | performance | 第七轮一项 1.9 s 能不能复现 |
 | 第八轮 | P5.30 与一条通知只唤醒一个读取者之后的 D-S、D-S-pg、D-S-pg-c4（`campaign-round8.yaml`），同样读语句统计 | performance | 两处修复的效果；PostgreSQL 队列格的最终数字 |
+| 第九轮 | P5.31 之后同样的三格（`campaign-round9.yaml`） | performance | 归还时核对的成本 |
 | 事务基准 | 只有一个表的短写事务，asyncpg 与 pgx，三种写法各 3 轮（`experiment-data/4-03/txbench/`） | performance | 会话重置与合并 `BEGIN` 各值多少 |
 
 ## 3. 环境与版本
@@ -36,6 +37,7 @@
 | 第六轮 | 协议 `alpha.9`；`be-sdk-go` `alpha.11`、`be-sdk-python` `a9`；探针 3.2.8；外壳 3.0.8 |
 | 第七轮与复测 | 协议 `alpha.10`；`be-sdk-go` `alpha.12`、`be-sdk-python` `a10`；探针 3.2.9；外壳 3.0.9 |
 | 第八轮 | 协议 `alpha.11`；`be-sdk-go` `alpha.13`、`be-sdk-python` `a11`；探针 3.2.10；外壳 3.0.10 |
+| 第九轮 | 协议 `alpha.12`；`be-sdk-go` `alpha.14`、`be-sdk-python` `a12`；探针 3.2.11；外壳 3.0.11 |
 
 ## 4. 怎样跑
 
@@ -134,9 +136,20 @@ D-S-pg，第六轮（只有轮询）→ 第七轮（发布时唤醒，一条通�
 | 现在的写法 | 0.15 ms | 0.19–0.20 ms |
 | 合并 `BEGIN` 与事务内设置 | 0.12–0.13 ms | 0.20–0.23 ms |
 
-- **采用**：Python 的两个连接池（数据库、总线）不再做会话重置；asyncpg 在调用自定义重置之前仍回滚还开着的事务。重置原来也兜着违规写法，现在由事务入口直接拒绝：不带 `LOCAL` 的 `SET`、`set_config(…, false)`、`RESET`、`DISCARD`、`LISTEN`、`UNLISTEN`、会话级咨询锁（P5.30，Go 与 Python 都加了，Go 因此也多了这层保护）。函数或 `DO` 块内部的会话设置看不到，这是余下的风险；外壳里同一数据库目标的成员共用连接池，违规会影响同一外壳的其他成员。
+- **采用**：Python 的两个连接池（数据库、总线）不再做会话重置；asyncpg 在调用自定义重置之前仍回滚还开着的事务。重置原来也兜着违规写法，现在由事务入口直接拒绝：不带 `LOCAL` 的 `SET`、`set_config(…, false)`、`RESET`、`DISCARD`、`LISTEN`、`UNLISTEN`、会话级咨询锁（P5.30，Go 与 Python 都加了，Go 因此也多了这层保护）。函数或 `DO` 块内部的会话设置由 P5.31 补上（见下一节）。
 - **不采用**：合并 `BEGIN` 与设置。asyncpg 上只再省约 10%，要改最核心的事务入口；pgx 上客户端省、数据库多（简单协议用不上缓存的预备语句），延迟不变。
 - **第八轮的整体效果**（D-S，对第六轮）：有 Python 参与的路径，PostgreSQL CPU 少约 5%–20%、Python 进程 CPU 少约 5%–10%，200/s 的延迟明显下降（Python → Go 写入 16 → 6 ms）；只有 Go 的路径差别在波动之内。语句统计里重置语句已经没有了。
+
+### 5.7 函数与 `DO` 块里的会话设置（P5.31）
+
+P5.30 拒绝的是语句本身；写在函数或 `DO` 块里的 `set_config(…, false)` 它看不到。以前 Python 的会话重置能清掉，Go 本来就清不掉。外壳里同一数据库目标的成员共用连接池，这样的设置会被同一外壳的其他成员继承：例如时区被改成东京，下一个借到这条连接的成员算出的业务日期就错了。
+
+- **核对推送值（两个 SDK）**：`TimeZone`、`DateStyle`、`IntervalStyle`、`client_encoding`、`standard_conforming_strings`、`application_name` 变化时由服务端主动推送（在 PostgreSQL 16 上用 asyncpg 与 pgx 验证过，函数里改的也推送；`SET LOCAL` 在事务结束后推送回原值）。每条连接建立时记下这几项；事务结束、归还之前比较，不同就关掉这条连接，并记录成员、参数与前后的值。不增加往返。
+- **迁移检查**：新规则 `SESSION_IN_BODY` 检查函数、过程与 `DO` 块的正文（不带 `LOCAL` 的 `SET`、`RESET`、`set_config(…, false)`、会话级咨询锁）；运行时的事务入口对 `DO` 块做同样的检查。两个 SDK 按协议的同一组向量验证。
+- **不在此列**：角色、`search_path` 与各项超时每个事务开始时都会重设；服务端不推送、只影响性能的设置（如 `work_mem`）不检查；动态 `EXECUTE` 的字符串不检查。
+- **测试**：用一个改时区的函数制造泄漏，下一个事务拿到新连接、仍是 UTC，日志点名 P5.31；去掉核对时两个 SDK 的测试都失败（继承了东京时区、同一条连接）。
+- **第九轮**（与第八轮同样的三格，performance）：第九轮 ÷ 第八轮的中位数，延迟 p50 0.99–1.02、组件 CPU 1.01–1.02、PostgreSQL CPU 0.95–1.02（不含排队的上限项），都在波动之内；核对没有可测量的成本。
+- 协议 `alpha.12`；`be-sdk-go` `alpha.14`、`be-sdk-python` `a12`；探针 3.2.11；外壳 3.0.11。
 
 ## 6. 观察与异常
 
@@ -148,8 +161,8 @@ D-S-pg，第六轮（只有轮询）→ 第七轮（发布时唤醒，一条通�
 
 ## 7. 影响
 
-- 协议：P7.21（`alpha.9`）、P6.30（`alpha.10`）、P5.30（`alpha.11`）。
-- SDK：`be-sdk-go` `alpha.11`–`alpha.13`、`be-sdk-python` `a10`、`a11`；探针 3.2.8–3.2.10（3.2.9 起有 `PROBE_SUB_CONCURRENCY`）；外壳 3.0.8–3.0.10。
+- 协议：P7.21（`alpha.9`）、P6.30（`alpha.10`）、P5.30（`alpha.11`）、P5.31（`alpha.12`）。
+- SDK：`be-sdk-go` `alpha.11`–`alpha.14`、`be-sdk-python` `a10`–`a12`；探针 3.2.8–3.2.11（3.2.9 起有 `PROBE_SUB_CONCURRENCY`）；外壳 3.0.8–3.0.11。
 - 测量工具：relay 的检查（按比到达多出的部分）；`cell.yaml` 的 `subscription_concurrency`；两个对照格 D-S-c4、D-S-pg-c4；开发用的 PostgreSQL 加载 `pg_stat_statements`。
 - 报告第二部分的三张表按本记录与第五至八轮填写。
 - 方法：每一轮记下电源模式，报告的数字在 performance 下测；测量按小时算；优化不牺牲需求（底层选择的原则）。
@@ -157,4 +170,4 @@ D-S-pg，第六轮（只有轮询）→ 第七轮（发布时唤醒，一条通�
 
 ## 8. 原始数据
 
-`dev/rebuild/experiment-data/4-03/`：`round4/`–`round8/`、`relaycheck/`（各轮含 `tables.md`；第七、八轮含 `pgprof.tsv` 语句统计，第七轮另有按调用次数排序的 `pgprof-by-calls.tsv`）、`power/`（版本二分与休眠验证）、`txbench/`（事务基准）、`round5-vs-round4.py`。
+`dev/rebuild/experiment-data/4-03/`：`round4/`–`round9/`、`relaycheck/`（各轮含 `tables.md`；第七、八轮含 `pgprof.tsv` 语句统计，第七轮另有按调用次数排序的 `pgprof-by-calls.tsv`）、`power/`（版本二分与休眠验证）、`txbench/`（事务基准）、`round5-vs-round4.py`。

@@ -64,7 +64,7 @@
 | 0-12 | 连接池代理的事务模式与 `SET LOCAL`（以及 pgx 的预编译语句） | 完成（2026-10-17）；设计依赖的事务内设置都成立；pgx 默认模式要求 PgBouncer 开 `max_prepared_statements`（记进交实现核对的项） |
 | 0-13 | 负载与数据的试跑规模 | 推迟到有业务组件之后（第 8 步前） |
 
-**第 1–3 步**：0-01 到 0-12 完成，0-13 按计划推迟；第 1 步的仓库动作已执行（[step1-repo-actions.md](step1-repo-actions.md)）；第 2 步发布 `be-protocol`、`be-sdk-go` 的 `v3.0.0-alpha.1`（[step2-plan.md](step2-plan.md)）；第 3 步做了 Python 的 SDK 子集与外壳启动器、两种语言的探针与核心一致性剖面（[step3-plan.md](step3-plan.md)）。之后的版本以各计划的进度为准（2026-10-19：协议 `alpha.11`、`be-sdk-go` `alpha.13`、`be-sdk-python` `a11`、探针 3.2.10、外壳 3.0.10、BrickKit CLI v1.8.4）。
+**第 1–3 步**：0-01 到 0-12 完成，0-13 按计划推迟；第 1 步的仓库动作已执行（[step1-repo-actions.md](step1-repo-actions.md)）；第 2 步发布 `be-protocol`、`be-sdk-go` 的 `v3.0.0-alpha.1`（[step2-plan.md](step2-plan.md)）；第 3 步做了 Python 的 SDK 子集与外壳启动器、两种语言的探针与核心一致性剖面（[step3-plan.md](step3-plan.md)）。之后的版本以各计划的进度为准（2026-10-19：协议 `alpha.12`、`be-sdk-go` `alpha.14`、`be-sdk-python` `a12`、探针 3.2.11、外壳 3.0.11、BrickKit CLI v1.8.4）。
 
 ## 推进方式与停点
 
