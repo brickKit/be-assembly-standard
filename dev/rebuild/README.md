@@ -74,11 +74,10 @@
 ## 待用户决定
 
 - **组件仓库的布局与正式规则冲突**：[AI 导航的标准布局](../../docs/zh/01-conventions/05-ai-navigation.md#组件仓库的标准布局与代码地图)写的是 `contracts/`、`gen/`、`backend/module|cmd|internal`、根目录的 `migrations/`、`assembly.yaml`、`docs/design.md`；第 5、6 步的七个组件实际是 `contract/`（单独的 Go 模块，含 proto、事件 schema、OpenAPI 与生成代码）、以组件命名的包（`org/`、`partner/`……，外壳以 `org.Definition()` 引入）、包内的 `migrations/`（随包嵌入）、根目录 `main.go` 与 `cmd/seed`，没有 `assembly.yaml` 与 `docs/design.md`。建议按实际布局改规则（契约单独成模块是为了调用方只引入契约；迁移随包嵌入是为了外壳里每个成员带着自己的迁移），也可以按规则改七个组件。
-- **父仓库的推送**：`e454403` 之后的提交未推送。
 
 ## 未推送、已知问题与外部往来
 
-- **未推送的提交**：父仓库 2026-10-19 夜里按用户要求推送过一次（到 `e454403`），之后的提交是否推送等用户决定；以 `git log origin/main..main` 为准。子仓库（协议、SDK、验收、外壳、组件）的发布都已推送并从远端核对。
+- **未推送的提交**：父仓库 2026-10-20 按用户要求推送到 `9e58039`（第 5、6、6b 步与之后的知识库、BrickKit 往来），之后的提交是否推送等用户决定；以 `git log origin/main..main` 为准。子仓库（协议、SDK、验收、外壳、组件）的发布都已推送并从远端核对。
 - **发布说明是空的（2026-10-20 发现）**：第 5、6、6b 步的发布脚本直接打注释标签，说明只有“mdm/org 3.0.2”一句，没有照[开发流程与发布](../../docs/zh/01-conventions/10-development-workflow.md)用 `brickkit release` 写发布说明；`brickkit upgrade` 把标签说明当作发布说明显示，使用方看不到改了什么。已发布的标签不改（版本不可变）；第 7 步起用 `brickkit release --notes <文件>` 发布（使用方必须做什么在前，新增在后），Go 的 `v` 标签用同一份说明。
 - **已知、暂不处理**：旧的发布、接入与验证工具的测试失败，工具随重建重新提供，届时一并处理：`infra/scripts/tests/test_ship_dryrun.sh`（旧的 `ship.sh` 还调用旧 `be-acceptance` 的命令，迁移后已不存在）；`test_config_fill.py` 中 `integrate.sh` 的 4 项（伪造的 `brickkit` 报 v1.4.0，被版本检查拒绝）与 `test_verify_deploy.py`（`verify-component.sh`）——2026-10-18 在改动之前的提交上核实同样失败。
 - **给 BrickKit 的收件箱** `brickkit-feedback/rebuild.md`：FRR-001 到 FRR-006、FRB-001 到 FRB-006 全部关闭（FRB-006 于 2026-10-18 在 v1.8.2 复测通过，升级后的部署与测量也通过）；FRB-007（升级把用户已移除、但旧外壳版本编进了的成员加回来）2026-10-18 新开、当天在 v1.8.3 复测通过并关闭；FRR-007（使用者移除过的成员因强依赖被升级加回来时提示一声）当天在 v1.8.4 实现、复测通过并关闭；2026-10-20 新开 FRR-008（依赖方的精确依赖没跟上时提醒两个版本会并存、报错点名依赖方；已在 v1.8.4 复现，脚本在 `experiment-data/6b/frr008/`）与 FRR-009（种子数据页补三条做法），当天在 v1.8.5 实现、复测通过并关闭；没有未回复的条目。
