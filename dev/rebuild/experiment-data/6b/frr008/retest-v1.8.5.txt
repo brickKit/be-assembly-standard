@@ -1,0 +1,48 @@
+BrickKit CLI v1.8.5
+=== A: add mdm/org@3.0.2, then mdm/partner@3.0.2 (depends on mdm/org@3.0.1)
+➕ Adding mdm/org@3.0.2
+   ✅ mdm/org@3.0.2
+📝 Written: brickkit.yaml, deploy.yaml
+➕ Adding mdm/partner@3.0.2
+   ✅ mdm/org@3.0.1 (requiredBy: mdm/partner)
+   ✅ mdm/partner@3.0.2
+📝 Written: brickkit.yaml, deploy.yaml
+ℹ️  mdm/org@3.0.1 runs beside mdm/org@3.0.2, a separate deployment with its own config, kept for mdm/partner; if one version was meant, upgrade mdm/partner to versions that depend on mdm/org@3.0.2
+=== A2: the kept version's deploy entry removed; build
+❌ Error: deploy.yaml does not match the components in brickkit.yaml
+   File: deploy.yaml
+   No entry for: mdm/org@3.0.1 (requiredBy: mdm/partner)
+   Suggestions:
+=== B: add mdm/org@3.0.2, then mdm/partner@3.0.3 (depends on mdm/org@3.0.2)
+➕ Adding mdm/org@3.0.2
+   ✅ mdm/org@3.0.2
+📝 Written: brickkit.yaml, deploy.yaml
+➕ Adding mdm/partner@3.0.3
+   ✅ mdm/partner@3.0.3
+📝 Written: brickkit.yaml, deploy.yaml
+components:
+  - id: mdm/org
+    version: 3.0.2
+  - id: mdm/partner
+    version: 3.0.3
+=== C: add mdm/partner@3.0.2 (brings mdm/org@3.0.1), then upgrade mdm/org@3.0.2
+➕ Adding mdm/partner@3.0.2
+   ✅ mdm/org@3.0.1
+   ✅ mdm/partner@3.0.2
+📝 Written: brickkit.yaml, deploy.yaml
+📋 Release notes of mdm/org, 3.0.1 → 3.0.2:
+   ── 3.0.2 ──
+      mdm/org 3.0.2
+   ⬆️  mdm/org: 3.0.1 → 3.0.2
+   ℹ️  mdm/org@3.0.1 runs beside mdm/org@3.0.2, a separate deployment with its own config, kept for mdm/partner; if one version was meant, upgrade mdm/partner to versions that depend on mdm/org@3.0.2
+   ✅ mdm/org@3.0.1 (requiredBy: mdm/partner)
+📝 config/mdm-org.yaml
+📝 Written: brickkit.yaml, deploy.yaml
+components:
+  - id: mdm/org
+    version: 3.0.2
+  - id: mdm/org
+    version: 3.0.1
+    requiredBy: [mdm/partner]
+  - id: mdm/partner
+    version: 3.0.2

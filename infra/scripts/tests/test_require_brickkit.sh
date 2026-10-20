@@ -12,7 +12,7 @@ expect() { # <期望退出码> <说明>
   PATH="$T:$PATH" LIB="$LIB" bash -c 'set -euo pipefail; source "$LIB"; require_brickkit' >/dev/null 2>&1; rc=$?
   if [ "$rc" = "$1" ]; then echo "ok   $2"; else echo "FAIL $2（rc=$rc，期望 $1）"; fail=1; fi
 }
-fake 'echo "BrickKit CLI v1.8.4"; sleep 0.3; echo "Supported Manifest version: brickkit/v1"; echo more'
+fake 'echo "BrickKit CLI v1.8.5"; sleep 0.3; echo "Supported Manifest version: brickkit/v1"; echo more'
 expect 0 "正确版本、版本行之后慢慢再写几行 → 放行"
 fake 'echo "BrickKit CLI v0.4.6"'
 expect 2 "旧版本 → 拒绝"
@@ -43,8 +43,10 @@ expect 2 "更早要求的版本 v1.8.1 → 拒绝（两个外壳编进同一组�
 fake 'echo "BrickKit CLI v1.8.2"'
 expect 2 "更早要求的版本 v1.8.2 → 拒绝（升级外壳不加回使用者移除的成员在 v1.8.3，FRB-007）"
 fake 'echo "BrickKit CLI v1.8.3"'
-expect 2 "上一个要求的版本 v1.8.3 → 拒绝（移除过的成员因强依赖加回时的提示、升级报出新配置在 v1.8.4，FRR-007）"
-fake 'echo "{\"level\":\"info\"}" >&2; echo "BrickKit CLI v1.8.4"'
+expect 2 "更早要求的版本 v1.8.3 → 拒绝（移除过的成员因强依赖加回时的提示、升级报出新配置在 v1.8.4，FRR-007）"
+fake 'echo "BrickKit CLI v1.8.4"'
+expect 2 "上一个要求的版本 v1.8.4 → 拒绝（依赖方的精确依赖没跟上时“两个版本会并存”的提醒、报错点名依赖方在 v1.8.5，FRR-008）"
+fake 'echo "{\"level\":\"info\"}" >&2; echo "BrickKit CLI v1.8.5"'
 expect 0 "stderr 有日志、stdout 版本对 → 放行"
 fake 'exit 1'
 expect 2 "brickkit version 失败 → 拒绝"

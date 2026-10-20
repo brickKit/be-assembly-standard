@@ -40,7 +40,7 @@
 | `mode: local` | BrickKit 回复不做长期运行的本机部署；本机进程三行只量资源与通信，标“不推荐”（图省事的另类模式） | FRR-001 已关闭（v1.4.2 复测通过） |
 | `local` 之后的用法 | 全部部署形态测完后本项目基本不再用 `local`，用 Docker 或 Podman（按结果定）；给 BrickKit 的部署形态反馈预定在第 14 步一次发出，中途不发（用户 2026-10-17） | experiment-plan.md 的“给 BrickKit 的部署形态反馈（预定）” |
 | 记录方式 | 档案（给 AI，详细、先结论、表格优先）+ 报告（给用户，含“用什么测的”与额外发现的表）+ 原始数据 | experiment-plan.md 的“记录与报告” |
-| BrickKit CLI | 项目要求 v1.8.4（2026-10-18；项目技能同步更新）。v1.6.0 起只写 `deployment.image` 的组件来自本地源也拉取，要在本机构建的组件必须写 `deployment.build` | `infra/scripts/lib/require-brickkit.sh` |
+| BrickKit CLI | 项目要求 v1.8.5（2026-10-20；项目技能同步更新）。v1.6.0 起只写 `deployment.image` 的组件来自本地源也拉取，要在本机构建的组件必须写 `deployment.build` | `infra/scripts/lib/require-brickkit.sh` |
 | 发布标签 | AI 决定怎样发、按依赖顺序发、发后从远端核对并汇报（用户 2026-10-18）；仓库的新建、改名、删除仍先确认 | 记忆 |
 | 测试与长时间运行 | 放后台、监视脚本每 30 秒检查、约每 5 分钟汇报、缺陷当场停、预期上限跑完再一次修 | 用户级指令（知识库） |
 | 性能与可读性 | 越底层越要想性能、查市场上更好的做法；业务逻辑以看得懂为先 | `docs/zh/01-conventions/09-ai-coding.md`；知识库 PR #17 |
@@ -65,7 +65,7 @@
 | 0-12 | 连接池代理的事务模式与 `SET LOCAL`（以及 pgx 的预编译语句） | 完成（2026-10-17）；设计依赖的事务内设置都成立；pgx 默认模式要求 PgBouncer 开 `max_prepared_statements`（记进交实现核对的项） |
 | 0-13 | 负载与数据的试跑规模 | 推迟到有业务组件之后（第 8 步前） |
 
-**第 1–3 步**：0-01 到 0-12 完成，0-13 按计划推迟；第 1 步的仓库动作已执行（[step1-repo-actions.md](step1-repo-actions.md)）；第 2 步发布 `be-protocol`、`be-sdk-go` 的 `v3.0.0-alpha.1`（[step2-plan.md](step2-plan.md)）；第 3 步做了 Python 的 SDK 子集与外壳启动器、两种语言的探针与核心一致性剖面（[step3-plan.md](step3-plan.md)）。之后的版本以各计划的进度为准（2026-10-20：协议 `alpha.19`、`be-sdk-go` `alpha.24`、`be-sdk-python` `a21`、探针 3.2.19、外壳 3.0.19（`be/go-infra` 3.0.20）；`infra/iam-casdoor` 3.0.1、`infra/authz` 3.0.2、`infra/audit` 3.0.1；`mdm/org` 3.0.2、`mdm/currency` 3.0.3、`mdm/partner` 3.0.3、`mdm/product` 3.0.3，四者的 `contract/` 各 `v3.0.0-alpha.1`；第 6b 步之后 `be-sdk-go` `alpha.25`、`infra/iam-casdoor` 3.0.2、`infra/authz` 3.0.3、`infra/audit` 3.0.2、`be/go-infra` 3.0.22；契约包 `contract-infra-authz`、`contract-infra-iam` 与 `infra-audit` 的 `contract/` 各 `v3.0.0-alpha.1`；BrickKit CLI v1.8.4）。
+**第 1–3 步**：0-01 到 0-12 完成，0-13 按计划推迟；第 1 步的仓库动作已执行（[step1-repo-actions.md](step1-repo-actions.md)）；第 2 步发布 `be-protocol`、`be-sdk-go` 的 `v3.0.0-alpha.1`（[step2-plan.md](step2-plan.md)）；第 3 步做了 Python 的 SDK 子集与外壳启动器、两种语言的探针与核心一致性剖面（[step3-plan.md](step3-plan.md)）。之后的版本以各计划的进度为准（2026-10-20：协议 `alpha.19`、`be-sdk-go` `alpha.24`、`be-sdk-python` `a21`、探针 3.2.19、外壳 3.0.19（`be/go-infra` 3.0.20）；`infra/iam-casdoor` 3.0.1、`infra/authz` 3.0.2、`infra/audit` 3.0.1；`mdm/org` 3.0.2、`mdm/currency` 3.0.3、`mdm/partner` 3.0.3、`mdm/product` 3.0.3，四者的 `contract/` 各 `v3.0.0-alpha.1`；第 6b 步之后 `be-sdk-go` `alpha.25`、`infra/iam-casdoor` 3.0.2、`infra/authz` 3.0.3、`infra/audit` 3.0.2、`be/go-infra` 3.0.22；契约包 `contract-infra-authz`、`contract-infra-iam` 与 `infra-audit` 的 `contract/` 各 `v3.0.0-alpha.1`；BrickKit CLI v1.8.5）。
 
 ## 推进方式与停点
 
@@ -79,8 +79,9 @@
 ## 未推送、已知问题与外部往来
 
 - **未推送的提交**：父仓库 2026-10-19 夜里按用户要求推送过一次（到 `e454403`），之后的提交是否推送等用户决定；以 `git log origin/main..main` 为准。子仓库（协议、SDK、验收、外壳、组件）的发布都已推送并从远端核对。
+- **发布说明是空的（2026-10-20 发现）**：第 5、6、6b 步的发布脚本直接打注释标签，说明只有“mdm/org 3.0.2”一句，没有照[开发流程与发布](../../docs/zh/01-conventions/10-development-workflow.md)用 `brickkit release` 写发布说明；`brickkit upgrade` 把标签说明当作发布说明显示，使用方看不到改了什么。已发布的标签不改（版本不可变）；第 7 步起用 `brickkit release --notes <文件>` 发布（使用方必须做什么在前，新增在后），Go 的 `v` 标签用同一份说明。
 - **已知、暂不处理**：旧的发布、接入与验证工具的测试失败，工具随重建重新提供，届时一并处理：`infra/scripts/tests/test_ship_dryrun.sh`（旧的 `ship.sh` 还调用旧 `be-acceptance` 的命令，迁移后已不存在）；`test_config_fill.py` 中 `integrate.sh` 的 4 项（伪造的 `brickkit` 报 v1.4.0，被版本检查拒绝）与 `test_verify_deploy.py`（`verify-component.sh`）——2026-10-18 在改动之前的提交上核实同样失败。
-- **给 BrickKit 的收件箱** `brickkit-feedback/rebuild.md`：FRR-001 到 FRR-006、FRB-001 到 FRB-006 全部关闭（FRB-006 于 2026-10-18 在 v1.8.2 复测通过，升级后的部署与测量也通过）；FRB-007（升级把用户已移除、但旧外壳版本编进了的成员加回来）2026-10-18 新开、当天在 v1.8.3 复测通过并关闭；FRR-007（使用者移除过的成员因强依赖被升级加回来时提示一声）当天在 v1.8.4 实现、复测通过并关闭；2026-10-20 新开 FRR-008（依赖方的精确依赖没跟上时提醒两个版本会并存、报错点名依赖方；已在 v1.8.4 复现，脚本在 `experiment-data/6b/frr008/`）与 FRR-009（种子数据页补三条做法），待 BrickKit 回复。
+- **给 BrickKit 的收件箱** `brickkit-feedback/rebuild.md`：FRR-001 到 FRR-006、FRB-001 到 FRB-006 全部关闭（FRB-006 于 2026-10-18 在 v1.8.2 复测通过，升级后的部署与测量也通过）；FRB-007（升级把用户已移除、但旧外壳版本编进了的成员加回来）2026-10-18 新开、当天在 v1.8.3 复测通过并关闭；FRR-007（使用者移除过的成员因强依赖被升级加回来时提示一声）当天在 v1.8.4 实现、复测通过并关闭；2026-10-20 新开 FRR-008（依赖方的精确依赖没跟上时提醒两个版本会并存、报错点名依赖方；已在 v1.8.4 复现，脚本在 `experiment-data/6b/frr008/`）与 FRR-009（种子数据页补三条做法），当天在 v1.8.5 实现、复测通过并关闭；没有未回复的条目。
 - **知识库**：PR #22（基准在共用测试环境里留下数据）、#23（2026-10-20：Python 与 Go 的 JSON Schema 校验库实测；反馈：校验库怎样选、Go 代理缓存“找不到”、`&&` 链挡不住下一行；追加：nil 切片在 JSON 比较里不同于空切片、集成测试固定端口被本机部署占用）待审查；PR #16（测试定期检查、asyncio 的 Nagle）、#17（性能与可读性）、#18（版本与技术栈按最新、性能、适配度优先；不知道就测；实测对比与项目经验分开）、#19（2026-10-18 的实测对比，陆续追加：granian、Go 的 S3 客户端、修复后的数字）等审查；其余草稿见下一节。**性能发现一律交给知识库**（用户 2026-10-18）：写成好读的结论，原始数据作为同编号的日志文件一起提交。
 
 ## 任务结束时：知识库反馈

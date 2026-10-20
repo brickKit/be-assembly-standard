@@ -41,7 +41,9 @@ description: 在 BrickKit 项目里增删组件、升级组件版本、调整启
 **5. 换默认版本用 `upgrade`，不是再 `add` 一次。**
 
 直接 `add` 一个已在项目里的组件的另一个版本会报错并指向 `brickkit upgrade`。
-依赖链上需要另一个版本时，`add` 会自己写 `requiredBy` 行，那是正常的。
+依赖链上需要另一个版本时，`add` 会自己写 `requiredBy` 行，并用一行 `ℹ️ … 并存` 说明为谁保留。
+两个版本同时跑多半是某个依赖方没跟上上游的升级：除非使用者就是要两个，否则把那个依赖方升到依赖
+默认版本的版本，而不是多养一份部署。
 
 `upgrade` 要点：不写组件就升级所有有新版本的；不写版本只往上升，不会降；旧版本还有人依赖
 就留作兼容版本，否则移除（配置进 `config/.archive/`）。配置逐键迁移——你写过且新 schema
@@ -141,4 +143,4 @@ description: 在 BrickKit 项目里增删组件、升级组件版本、调整启
 - 来了新需求、要跨组件改动：`brickkit-plan-change` 技能
 - 完整规范与「为什么这样设计」：<https://github.com/brickKit/brickKit> 根目录 `AGENTS.zh.md`
 
-<!-- brickkit:skill version=v1.8.4 sum=sha256:30c6da03d477970709c79e368542df3a717bd2cda71fca6d250fb965068dd20d -->
+<!-- brickkit:skill version=v1.8.5 sum=sha256:bdc272c86323c734fd9f78204527409d0d98ef754743e12c784a00c98f93a5aa -->

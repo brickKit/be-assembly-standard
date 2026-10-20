@@ -29,7 +29,8 @@ description: brickkit 命令报错、组件起不来、地址注入不生效、�
 
 每个组件版本在部署文件里必须恰好一个条目（外壳下的成员也算），报错列出缺的和多的。通常是有人
 手改了 `brickkit.yaml` 或部署文件。处理：按列出的补上或删掉条目；以后增删走 `add` / `remove` /
-`upgrade`，它们会把三份文件一起改齐。
+`upgrade`，它们会把三份文件一起改齐。缺的是兼容版本时，报错带上它的 `requiredBy`：补条目之前先想想
+是不是那个依赖方本该跟着升到默认版本。
 
 **2. 本地模式下报 `deploy.local.yaml` 已过期。**
 
@@ -236,4 +237,4 @@ docker / podman 用就留着，否则删掉。
 - 组件自己的说明（配置怎么填、依赖为什么要）：`.brickkit/manifests/<scope>/<name>/<版本>/BRICKKIT.md`
 - 「为什么这样设计」的完整论证与全部错误码：<https://github.com/brickKit/brickKit> 根目录 `AGENTS.zh.md`
 
-<!-- brickkit:skill version=v1.7.2 sum=sha256:4f40b09b946e633d7ab6b809e4d0c74173cbf59f6f29c25c5eab624fb0225232 -->
+<!-- brickkit:skill version=v1.8.5 sum=sha256:79bcf0c8b7219a46847e45014350b70fe09c2b4367b24ff9f36eca4c034db1c9 -->
