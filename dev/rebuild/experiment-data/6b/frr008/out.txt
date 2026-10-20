@@ -1,0 +1,38 @@
+== add mdm/org@3.0.2
+➕ Adding mdm/org@3.0.2
+   ✅ mdm/org@3.0.2
+📝 Written: brickkit.yaml, deploy.yaml
+📝 Config skeletons: config/mdm-org.yaml
+   ✏️ Fill in the required keys in config/mdm-org.yaml: BUS_URL, IMPLEMENTATION_INSTANCE, PG_DATABASE, PG_HOST, PG_PASSWORD, PG_SCHEMA, PG_USER
+== add mdm/partner@3.0.2 (depends on mdm/org@3.0.1)
+➕ Adding mdm/partner@3.0.2
+   ✅ mdm/org@3.0.1 (requiredBy: mdm/partner)
+   ✅ mdm/partner@3.0.2
+📝 Written: brickkit.yaml, deploy.yaml
+📝 Config skeletons: config/mdm-org@3.0.1.yaml, config/mdm-partner.yaml
+   ✏️ Fill in the required keys in config/mdm-org@3.0.1.yaml: BUS_URL, IMPLEMENTATION_INSTANCE, PG_DATABASE, PG_HOST, PG_PASSWORD, PG_SCHEMA, PG_USER
+   ✏️ Fill in the required keys in config/mdm-partner.yaml: BUS_URL, IMPLEMENTATION_INSTANCE, PG_DATABASE, PG_HOST, PG_PASSWORD, PG_SCHEMA, PG_USER
+== brickkit.yaml components
+components:
+  - id: mdm/org
+    version: 3.0.2
+  - id: mdm/org
+    version: 3.0.1
+    requiredBy: [mdm/partner]
+  - id: mdm/partner
+    version: 3.0.2
+== deploy.yaml components as add wrote them
+components:
+  - id: mdm/org
+  - id: mdm/org@3.0.1
+  - id: mdm/partner
+== deploy.yaml rewritten with bare IDs only; brickkit build
+components:
+  - id: mdm/org
+  - id: mdm/partner
+❌ Error: deploy.yaml does not match the components in brickkit.yaml
+   File: deploy.yaml
+   No entry for: mdm/org@3.0.1
+   Suggestions:
+   1. Every component version in brickkit.yaml needs exactly one entry in the deploy file: a bare ID covers the default version (the line without requiredBy), a version kept for a dependent (requiredBy) needs its own id@version entry; a shell's members count as entries too; brickkit add and remove keep deploy.yaml in sync
+   2. Add or remove the listed entries by hand
