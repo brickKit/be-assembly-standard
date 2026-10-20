@@ -1,6 +1,6 @@
 # 实验第 6 步：主数据四个
 
-> **起草（2026-10-20）**：用户 2026-10-19 夜里让 AI 自己继续、能做的决策自己做。“决定”一节标“AI 决定”的，列入冻结报告供复核。依据：[experiment-plan.md](experiment-plan.md) 的“组件与外壳的选择”与第 6 步；边界卡 [mdm](../../docs/zh/07-components/mdm.md)；协议 02（S1–S6）、07、14；安全 06、07、09a；[组件实现约定](../../docs/zh/01-conventions/06-component-implementation.md)；[种子与测试数据](../../docs/zh/01-conventions/07-seed-and-test-data.md)；D20–D22、D59、D68、D75。
+> **完成（2026-10-20）**。起草（2026-10-20）：用户 2026-10-19 夜里让 AI 自己继续、能做的决策自己做。“决定”一节标“AI 决定”的，列入冻结报告供复核。依据：[experiment-plan.md](experiment-plan.md) 的“组件与外壳的选择”与第 6 步；边界卡 [mdm](../../docs/zh/07-components/mdm.md)；协议 02（S1–S6）、07、14；安全 06、07、09a；[组件实现约定](../../docs/zh/01-conventions/06-component-implementation.md)；[种子与测试数据](../../docs/zh/01-conventions/07-seed-and-test-data.md)；D20–D22、D59、D68、D75。
 
 ## 范围
 
@@ -45,6 +45,9 @@
 | 币种与单位的基准数据 | 迁移；种子 | 迁移（种子与测试数据：每个部署都需要、不依赖客户信息的标准代码属于迁移）。币种全表、单位目录与通用换算随迁移写入；汇率类型只写一个 `spot`，其余由客户维护 |
 | 用户面 OpenAPI | 手写并由测试核对；从代码生成 | **AI 决定**：手写 `contract/openapi.yaml`，测试核对注册的路由与文件一致。第 5 步的三个安全组件也补上（第 5 步发现的缺口） |
 | 组件 ID 与资源命名 | — | 资源类型与操作键以领域开头：`mdm.partner`、`mdm.partner.read`、`mdm.partner.create` 等。授权注册表由格的准备阶段从定义生成（同第 5 步）；项目的 `registry/permissions.tsv` 还是旧设计的键，随重建的注册表工具一起改，记进后续 |
+| 主数据的种子要不要清除命令 | 清除（删自己灌的行）；只有重置 | **AI 决定**（做的时候）：没有清除。全状态事件已发出，删行后消费者的投影对不上；主数据在业务上只停用、退役。要清空就在开发库删 schema、重新迁移（[种子数据清单](../../docs/zh/03-seed-data.md)） |
+| 根目录的 `make seed-data` | 保留旧设计的编排；改成重建后的组件 | **AI 决定**（做的时候）：只调用重建后的四个主数据组件，按依赖顺序。原来调用的 `mdm/customer` 已改名、旧组件的种子依赖它，整条链本来就断了；后续步骤的组件建好时逐个加进来 |
+| be-sdk-python 的记录校验换不换 jsonschema-rs | 换；不换 | **AI 决定**（做的时候）：暂不换。实测快 4–18 倍（知识库 PR #23 的记录 20），但用在每次审计写入与视图刷新，每次省约 3 µs，不在请求的热路径上。协议的 schema 用到 2020-12 的新关键字（fastjsonschema 只支持到 draft-07）或视图大到刷新耗时可见时再换 |
 
 ## 任务
 
@@ -60,6 +63,14 @@
 | T6.8 | 记录、报告、交接 | 本项目 | — |
 
 顺序：T6.1 → T6.2（没有依赖）→ T6.3 → T6.4、T6.5（依赖组织）→ T6.6 → T6.7 → T6.8。每个组件先写契约（proto、事件的 JSON Schema、OpenAPI），再写业务规则测试，再写实现（开发流程的七步循环）。
+
+## 进度
+
+- **T6.1 完成（2026-10-20，be-sdk-go alpha.24、be-sdk-python a21）**：`events.ReadStamp` 在同一个 REPEATABLE READ 快照里读实现实例、纪元与分区位置高点；`list.Page` 与布尔筛选；`launcher.ConfigSchema`、`ManifestProblems`（清单的 `configSchema` 由定义生成并核对）；`httpx.OpenAPIProblems`（路由与 OpenAPI 核对）；审计变更保留整数、去掉空值（两个 SDK）。
+- **T6.2–T6.5 完成（2026-10-20）**：四个组件 L2 通过、`brickkit lint` 无提醒，契约各 `contract/v3.0.0-alpha.1`；发布 `mdm/currency` 3.0.1、`mdm/org` 3.0.1、`mdm/partner` 3.0.0、`mdm/product` 3.0.0。伙伴组件的子模块路径从 `components/mdm/customer` 改到 `components/mdm/partner`（`brickkit lint` 要求目录与组件名一致）。
+- **T6.6 完成（2026-10-20）**：四个种子程序经用户面灌入，两格各两遍不重复（数据库里行数等于唯一键数）。真机查出的三处种子问题已修：`mdm/currency` 3.0.2、`mdm/partner` 3.0.1、`mdm/product` 3.0.1。种子数据清单与根目录 `make seed-data` 已更新。
+- **T6.7 完成（2026-10-20）**：`be/go-infra` 3.0.20 编进四个成员（共 8 个成员，约 0.5 秒就绪）；D6-S、D6-H 剖面全部符合。`cells secure` 改为等主数据组件拿到授予（be-acceptance `5783c82`），否则外壳里的成员刷新视图之前种子就开始写，答 404。剖面只对探针与外壳生成流量，业务组件自身的剖面记进后续。
+- **T6.8 完成（2026-10-20）**：记录 [6-01](experiment-records/6-01-master-data-cells.md)；后续项列在 6-01 第 6 节。
 
 ## 风险
 

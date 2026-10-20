@@ -178,38 +178,19 @@ test-cross:  ## 组件局部测试：只跑 ID 一个组件，强依赖 gRPC 指
 .PHONY: test-cross
 
 ##@ 本地开发数据（只给本地用，不用于生产/CI；每个组件自己拥有种子数据，见 docs/zh/03-seed-data.md）
-# ⚠️ 这里曾经是 infra/seed-data/ 的编排脚本（seed.sh/clean.sh）。等到每个
-# 组件都有了自己的 make seed（且互不需要装配层帮它们传 id/sub——各自反查
-# 依赖组件的 command_idempotency 表），编排层就只剩"按顺序调用谁"这一件
-# 事，薄到直接写在这里就够了，不需要再维护一个单独的目录/脚本文件。
-# ⚠️ 顺序不能乱：erp-inventory 必须先于 crm-opportunity——crm-opportunity
-# 的 WON 商机会真实触发 erp-sales 自动建单确认（含 Reserve 库存），库存
-# 不够会走 TCC 补偿建异常待办（不是失败，但不是"打开就是一条干净
-# CONFIRMED 订单"这个演示效果）。erp-finance/infra-print 零依赖，谁先谁
-# 后都行。
-seed-data:  ## 灌本地开发/测试用的示例数据（身份+客户/产品+库存+订单+商机+财务凭证+打印模板），可重复跑
-	@$(MAKE) -C components/mdm/customer seed
+# Rebuilt components only, in dependency order; each component's `make seed` seeds its declared dependencies first and
+# every seed is idempotent, so the repeats cost a few requests. Needs the components and the identity member up, and
+# SEED_PASSWORD (the test users' password); the addresses default to the cell's host ports (see each cmd/seed).
+seed-data:  ## 灌重建后组件的种子数据（主数据四个组件），可重复跑；需要 SEED_PASSWORD
+	@$(MAKE) -C components/mdm/org seed
+	@$(MAKE) -C components/mdm/currency seed
+	@$(MAKE) -C components/mdm/partner seed
 	@$(MAKE) -C components/mdm/product seed
-	@$(MAKE) -C components/erp/inventory seed
-	@$(MAKE) -C components/erp/sales seed
-	@$(MAKE) -C components/crm/opportunity seed
-	@$(MAKE) -C components/erp/finance seed
-	@$(MAKE) -C components/infra/print seed
-	@echo ""
-	@echo "✓ 种子数据灌完了。登录方式：Casdoor 用户名 dev.superuser / 密码 DevSeed123!"
 .PHONY: seed-data
 
-seed-data-clean:  ## 清空 seed-data 能清的部分（见下方哪些组件没有 seed-clean）
-	@$(MAKE) -C components/crm/opportunity seed-clean
-	@$(MAKE) -C components/erp/sales seed-clean
-	@$(MAKE) -C components/mdm/customer seed-clean
-	@$(MAKE) -C components/mdm/product seed-clean
-	@$(MAKE) -C components/infra/authz seed-clean
-	@$(MAKE) -C components/infra/iam-casdoor seed-clean
-	@echo ""
-	@echo "⚠️ erp-inventory/erp-finance 没有 seed-clean，只有 db-reset（entry_no_seq/post_no 等计数器只增不回退，LockPeriod 是终态——逐行 DELETE 做不到干净复原）：make -C components/erp/inventory db-reset / make -C components/erp/finance db-reset（会清空该组件全部数据，不止 seed 灌的那部分）"
-	@echo "⚠️ infra-print 也没有 seed-clean——模板走版本管理，重跑 seed 只追加新版本，不需要撤销机制"
-	@echo "✓ 其余组件的种子数据已清空"
+seed-data-clean:  ## 主数据组件没有清除命令：说明怎样重置（docs/zh/03-seed-data.md）
+	@echo "主数据组件没有清除命令（全状态事件已发出，删行会让消费者的投影对不上）。要清空某个组件："
+	@echo "在开发库里删掉它的 schema（mdm_org、mdm_currency、mdm_partner、mdm_product），再 brickkit up 让迁移重建。"
 .PHONY: seed-data-clean
 
 # tier0/tier1/tier2 acceptance lived in the 0.x be-acceptance (legacy/v0); acceptance returns
