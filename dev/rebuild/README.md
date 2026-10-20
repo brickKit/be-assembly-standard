@@ -24,8 +24,8 @@
 ## 现在在哪里
 
 - 设计冻结、正式文档迁移已完成（[migration-plan.md](migration-plan.md)）；AI 选择 A99–A110 记在 `docs/zh/02-decisions/09-ai-choices.md`（A109 驻留期起始值待复核，其余已确认）。
-- **代表部署实验（D41）进行中**：第 0–6 步已完成（第 6 步 2026-10-20 完成：主数据四个组件，[step6-plan.md](step6-plan.md)、[6-01](experiment-records/6-01-master-data-cells.md)）。第 4 步的 D 行结果见 [4-04](experiment-records/4-04-d-row.md)，第 5 步带真实安全组件的通信代价见 [5-02](experiment-records/5-02-security-cells.md)，都已写进[实验报告](experiment-report.md)。
-- **接下来**：等用户确认第 6 步，再开始第 7 步（业务链）。待用户决定的事见下面“待用户决定”。测量一律在 performance 电源模式下、按小时算。
+- **代表部署实验（D41）进行中**：第 0–6 步已完成（第 6 步 2026-10-20 完成：主数据四个组件，[step6-plan.md](step6-plan.md)、[6-01](experiment-records/6-01-master-data-cells.md)；随后按用户要求补了种子数据，第 6b 步，[step6b-seed-plan.md](step6b-seed-plan.md)、[6-02](experiment-records/6-02-richer-seeds.md)）。第 4 步的 D 行结果见 [4-04](experiment-records/4-04-d-row.md)，第 5 步带真实安全组件的通信代价见 [5-02](experiment-records/5-02-security-cells.md)，都已写进[实验报告](experiment-report.md)。
+- **接下来**：用户在第 7 步之前还要问一些问题、做一些测试；之后开始第 7 步（业务链）。第 7 步的组件写种子时引用[种子数据清单](../../docs/zh/03-seed-data.md)的“下游可以直接引用的数据”，缺的到上游种子里补；角色与授予照主数据的做法（be-sdk-go 的 `seed` 包），带上法人与部门的维度。待用户决定的事见下面“待用户决定”。测量一律在 performance 电源模式下、按小时算。
 - 测量期间不在机器上跑任何测试、编译或剖析：会干扰数字，也会抢端口（4-03 记了一次）。 每一轮记下电源模式；运行脚本切到 performance 并在结束时恢复。
 - 实验之后先做底层（权限、登录、冷热数据、事务、消息），再按 [rebuild-plan.md](rebuild-plan.md) 重建业务组件。
 
@@ -65,7 +65,7 @@
 | 0-12 | 连接池代理的事务模式与 `SET LOCAL`（以及 pgx 的预编译语句） | 完成（2026-10-17）；设计依赖的事务内设置都成立；pgx 默认模式要求 PgBouncer 开 `max_prepared_statements`（记进交实现核对的项） |
 | 0-13 | 负载与数据的试跑规模 | 推迟到有业务组件之后（第 8 步前） |
 
-**第 1–3 步**：0-01 到 0-12 完成，0-13 按计划推迟；第 1 步的仓库动作已执行（[step1-repo-actions.md](step1-repo-actions.md)）；第 2 步发布 `be-protocol`、`be-sdk-go` 的 `v3.0.0-alpha.1`（[step2-plan.md](step2-plan.md)）；第 3 步做了 Python 的 SDK 子集与外壳启动器、两种语言的探针与核心一致性剖面（[step3-plan.md](step3-plan.md)）。之后的版本以各计划的进度为准（2026-10-20：协议 `alpha.19`、`be-sdk-go` `alpha.24`、`be-sdk-python` `a21`、探针 3.2.19、外壳 3.0.19（`be/go-infra` 3.0.20）；`infra/iam-casdoor` 3.0.1、`infra/authz` 3.0.2、`infra/audit` 3.0.1；`mdm/org` 3.0.1、`mdm/currency` 3.0.2、`mdm/partner` 3.0.1、`mdm/product` 3.0.1，四者的 `contract/` 各 `v3.0.0-alpha.1`；契约包 `contract-infra-authz`、`contract-infra-iam` 与 `infra-audit` 的 `contract/` 各 `v3.0.0-alpha.1`；BrickKit CLI v1.8.4）。
+**第 1–3 步**：0-01 到 0-12 完成，0-13 按计划推迟；第 1 步的仓库动作已执行（[step1-repo-actions.md](step1-repo-actions.md)）；第 2 步发布 `be-protocol`、`be-sdk-go` 的 `v3.0.0-alpha.1`（[step2-plan.md](step2-plan.md)）；第 3 步做了 Python 的 SDK 子集与外壳启动器、两种语言的探针与核心一致性剖面（[step3-plan.md](step3-plan.md)）。之后的版本以各计划的进度为准（2026-10-20：协议 `alpha.19`、`be-sdk-go` `alpha.24`、`be-sdk-python` `a21`、探针 3.2.19、外壳 3.0.19（`be/go-infra` 3.0.20）；`infra/iam-casdoor` 3.0.1、`infra/authz` 3.0.2、`infra/audit` 3.0.1；`mdm/org` 3.0.2、`mdm/currency` 3.0.3、`mdm/partner` 3.0.3、`mdm/product` 3.0.3，四者的 `contract/` 各 `v3.0.0-alpha.1`；第 6b 步之后 `be-sdk-go` `alpha.25`、`infra/iam-casdoor` 3.0.2、`infra/authz` 3.0.3、`infra/audit` 3.0.2、`be/go-infra` 3.0.22；契约包 `contract-infra-authz`、`contract-infra-iam` 与 `infra-audit` 的 `contract/` 各 `v3.0.0-alpha.1`；BrickKit CLI v1.8.4）。
 
 ## 推进方式与停点
 
@@ -81,7 +81,7 @@
 - **未推送的提交**：父仓库 2026-10-19 夜里按用户要求推送过一次（到 `e454403`），之后的提交是否推送等用户决定；以 `git log origin/main..main` 为准。子仓库（协议、SDK、验收、外壳、组件）的发布都已推送并从远端核对。
 - **已知、暂不处理**：旧的发布、接入与验证工具的测试失败，工具随重建重新提供，届时一并处理：`infra/scripts/tests/test_ship_dryrun.sh`（旧的 `ship.sh` 还调用旧 `be-acceptance` 的命令，迁移后已不存在）；`test_config_fill.py` 中 `integrate.sh` 的 4 项（伪造的 `brickkit` 报 v1.4.0，被版本检查拒绝）与 `test_verify_deploy.py`（`verify-component.sh`）——2026-10-18 在改动之前的提交上核实同样失败。
 - **给 BrickKit 的收件箱** `brickkit-feedback/rebuild.md`：FRR-001 到 FRR-006、FRB-001 到 FRB-006 全部关闭（FRB-006 于 2026-10-18 在 v1.8.2 复测通过，升级后的部署与测量也通过）；FRB-007（升级把用户已移除、但旧外壳版本编进了的成员加回来）2026-10-18 新开、当天在 v1.8.3 复测通过并关闭；FRR-007（使用者移除过的成员因强依赖被升级加回来时提示一声）当天在 v1.8.4 实现、复测通过并关闭；没有未回复的条目。
-- **知识库**：PR #22（基准在共用测试环境里留下数据）、#23（2026-10-20：Python 与 Go 的 JSON Schema 校验库实测；反馈：校验库怎样选、Go 代理缓存“找不到”、`&&` 链挡不住下一行）待审查；PR #16（测试定期检查、asyncio 的 Nagle）、#17（性能与可读性）、#18（版本与技术栈按最新、性能、适配度优先；不知道就测；实测对比与项目经验分开）、#19（2026-10-18 的实测对比，陆续追加：granian、Go 的 S3 客户端、修复后的数字）等审查；其余草稿见下一节。**性能发现一律交给知识库**（用户 2026-10-18）：写成好读的结论，原始数据作为同编号的日志文件一起提交。
+- **知识库**：PR #22（基准在共用测试环境里留下数据）、#23（2026-10-20：Python 与 Go 的 JSON Schema 校验库实测；反馈：校验库怎样选、Go 代理缓存“找不到”、`&&` 链挡不住下一行；追加：nil 切片在 JSON 比较里不同于空切片、集成测试固定端口被本机部署占用）待审查；PR #16（测试定期检查、asyncio 的 Nagle）、#17（性能与可读性）、#18（版本与技术栈按最新、性能、适配度优先；不知道就测；实测对比与项目经验分开）、#19（2026-10-18 的实测对比，陆续追加：granian、Go 的 S3 客户端、修复后的数字）等审查；其余草稿见下一节。**性能发现一律交给知识库**（用户 2026-10-18）：写成好读的结论，原始数据作为同编号的日志文件一起提交。
 
 ## 任务结束时：知识库反馈
 

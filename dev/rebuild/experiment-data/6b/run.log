@@ -1,0 +1,355 @@
+STEP D6-S-down-first BEGIN 2026-10-20T09:44:16+02:00
+🛑 Stopping project d6-s
+📋 This project has no containers running right now (the engine has none at all)
+   Start it with brickkit up
+STEP END exit=0 2026-10-20T09:44:16+02:00
+STEP D6-S-create BEGIN 2026-10-20T09:44:16+02:00
+created /home/zhijie/Desktop/github/be-assembly-standard/dev/rebuild/experiment-cells/D6-S
+STEP END exit=0 2026-10-20T09:44:27+02:00
+STEP D6-S-prepare BEGIN 2026-10-20T09:44:27+02:00
+prepared D6-S: 2 probes, chain test/probe-go -> test/probe-py
+STEP END exit=0 2026-10-20T09:44:29+02:00
+STEP D6-S-build BEGIN 2026-10-20T09:44:29+02:00
+🔨 Building infra/audit@3.0.2 → infra-audit:3.0.2
+✅ Built infra/audit@3.0.2 → infra-audit:3.0.2
+🔨 Building infra/authz@3.0.3 → infra-authz:3.0.3
+✅ Built infra/authz@3.0.3 → infra-authz:3.0.3
+🔨 Building infra/iam-casdoor@3.0.2 → infra-iam-casdoor:3.0.2
+✅ Built infra/iam-casdoor@3.0.2 → infra-iam-casdoor:3.0.2
+🔨 Building mdm/currency@3.0.3 → mdm-currency:3.0.3
+✅ Built mdm/currency@3.0.3 → mdm-currency:3.0.3
+🔨 Building mdm/org@3.0.2 → mdm-org:3.0.2
+✅ Built mdm/org@3.0.2 → mdm-org:3.0.2
+🔨 Building mdm/partner@3.0.3 → mdm-partner:3.0.3
+✅ Built mdm/partner@3.0.3 → mdm-partner:3.0.3
+🔨 Building mdm/product@3.0.3 → mdm-product:3.0.3
+✅ Built mdm/product@3.0.3 → mdm-product:3.0.3
+⏭️  test/probe-go@3.2.19: image test-probe-go:3.2.19 already exists, skipped (--force rebuilds)
+⏭️  test/probe-py@3.2.19: image test-probe-py:3.2.19 already exists, skipped (--force rebuilds)
+STEP END exit=0 2026-10-20T09:49:58+02:00
+STEP D6-S-up BEGIN 2026-10-20T09:49:58+02:00
+🚀 Starting project d6-s (target: docker)
+📋 Component state calculation:
+   ✅ infra/audit@3.0.2        starting (infra/authz needs it)
+   ✅ infra/authz@3.0.3        starting (infra/audit needs it)
+   ✅ infra/iam-casdoor@3.0.2  starting (infra/audit needs it)
+   ✅ mdm/currency@3.0.3       starting (top-level)
+   ✅ mdm/org@3.0.2            starting (mdm/partner needs it)
+   ✅ mdm/partner@3.0.3        starting (top-level)
+   ✅ mdm/product@3.0.3        starting (top-level)
+   ✅ test/probe-go@3.2.19     starting (test/probe-py needs it)
+   ✅ test/probe-py@3.2.19     starting (test/probe-go needs it)
+
+📋 Start order (topological sort):
+   1. infra-audit-3-0-2        no dependencies
+   2. infra-authz-3-0-3        no dependencies
+   3. infra-iam-casdoor-3-0-2  no dependencies
+   4. mdm-currency-3-0-3       no dependencies
+   5. mdm-org-3-0-2            no dependencies
+   6. mdm-partner-3-0-3        ← depends on 5
+   7. mdm-product-3-0-3        ← depends on 5
+   8. test-probe-go-3-2-19     no dependencies
+   9. test-probe-py-3-2-19     no dependencies
+
+Can start on their own: infra-audit-3-0-2, infra-authz-3-0-3, infra-iam-casdoor-3-0-2, mdm-currency-3-0-3, mdm-org-3-0-2, test-probe-go-3-2-19, test-probe-py-3-2-19 (no dependencies)
+Longest dependency chain (2 levels): mdm-org-3-0-2 → mdm-partner-3-0-3
+   Components not on this chain start in parallel with it
+
+Dependency graph:
+   mdm/product@3.0.3 → mdm/org@3.0.2
+   mdm/partner@3.0.3 → mdm/org@3.0.2
+📄 Generated: .brickkit/generated/compose.yaml
+
+🔧 Database migrations that run before startup (on failure that component won't start):
+   infra/audit@3.0.2  /infra-audit migrate
+   infra/authz@3.0.3  /infra-authz migrate
+   infra/iam-casdoor@3.0.2  /infra-iam-casdoor migrate
+   mdm/currency@3.0.3  /mdm-currency migrate
+   mdm/org@3.0.2  /mdm-org migrate
+   mdm/partner@3.0.3  /mdm-partner migrate
+   mdm/product@3.0.3  /mdm-product migrate
+   test/probe-go@3.2.19  /probe-go migrate
+   test/probe-py@3.2.19  python -m probe_py migrate
+
+🐳 Starting (docker)...
+   infra-audit-3-0-2            running (healthy)
+   infra-authz-3-0-3            running (healthy)
+   infra-iam-casdoor-3-0-2      running (healthy)
+   mdm-currency-3-0-3           running (healthy)
+   mdm-org-3-0-2                running (healthy)
+   mdm-partner-3-0-3            running (healthy)
+   mdm-product-3-0-3            running (healthy)
+   test-probe-go-3-2-19         running (healthy)
+   test-probe-py-3-2-19         running (healthy)
+✅ All components started (9)
+
+💡 View the status: brickkit status
+   View the logs: docker compose -p brickkit-d6-s logs -f
+STEP END exit=0 2026-10-20T09:50:18+02:00
+STEP D6-S-secure BEGIN 2026-10-20T09:50:18+02:00
+{'admin': '01a1584a-2e53-7bb9-8f09-3ed1980d9367', 'load_user': '01a1584a-2f07-70cc-b7f1-6dc01154722a', 'credentials': '/api/product/products'}
+STEP END exit=0 2026-10-20T09:50:32+02:00
+STEP D6-S-accounts BEGIN 2026-10-20T09:50:32+02:00
+user brickkit/test.alice: updated
+user brickkit/test.bob: updated
+user brickkit/test.mdm.admin: updated
+user brickkit/test.mdm.viewer: updated
+user brickkit/test.rates: updated
+user brickkit/test.sales.cn: updated
+user brickkit/test.sales.es: updated
+user brickkit/test.sales.multi: updated
+user brickkit/test.unit.admin.cn: updated
+user brickkit/test.revoked: updated
+user brickkit/test.expired: updated
+user brickkit/test.nobody: updated
+STEP END exit=0 2026-10-20T09:50:33+02:00
+STEP D6-S-seed-twice BEGIN 2026-10-20T09:50:33+02:00
+seed infra/authz: the unit admin test.unit.admin.cn reads and changes security records
+seed mdm/org: 5 legal entities, 95 units; roles maintain and read, 1 revoked, 1 ended (2026-10-20T09:50:39+02:00)
+seed mdm/currency: 2 rate types, 681 rates (8 pairs both ways), CHF cash 0.05, VES off; roles maintain, rates, read
+seed mdm/partner: 209 partners (181 organizations, 25 persons, 3 negative), 311 customer roles in CN01, ES01, US01 and the suspended HK01, 3 negative roles, 1 merge candidate; unit 中国区客户 with its admin
+seed mdm/product: 12 categories, 146 products, 366 availabilities (10 in the suspended HK01), 1 suspended, 1 retired; roles maintain, read
+SEED DONE
+seed infra/authz: the unit admin test.unit.admin.cn reads and changes security records
+seed mdm/org: 5 legal entities, 95 units; roles maintain and read, 1 revoked, 1 ended (2026-10-20T09:51:00+02:00)
+seed mdm/currency: 2 rate types, 681 rates (8 pairs both ways), CHF cash 0.05, VES off; roles maintain, rates, read
+seed mdm/partner: 209 partners (181 organizations, 25 persons, 3 negative), 311 customer roles in CN01, ES01, US01 and the suspended HK01, 3 negative roles, 1 merge candidate; unit 中国区客户 with its admin
+seed mdm/product: 12 categories, 146 products, 366 availabilities (10 in the suspended HK01), 1 suspended, 1 retired; roles maintain, read
+SEED DONE
+legal_entity|5|5|11
+org_unit|95|95|101
+exchange_rate|681|681|682
+partner|209|209|211
+partner_role|311|311|314
+product|146|146|514
+category|12|12|12
+authz_record|48|48|0
+second run: no change
+STEP END exit=0 2026-10-20T09:51:12+02:00
+STEP D6-S-see BEGIN 2026-10-20T09:51:12+02:00
+| 账号 | 法人 | 部门 | 币种 | 汇率 | 伙伴 | 产品 | 分类 | 组织维护 | 币种维护 | 汇率维护 | 新建伙伴 | 修改伙伴 | 客户角色 | 产品维护 |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| `test.alice` | 0 | 0 | 0 | 0 | 0 | 0 | 0 | — | — | — | — | — | — | — |
+| `test.bob` | 5 | 95 | 155 | 200+ | 200+ | 146 | 12 | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
+| `test.mdm.admin` | 5 | 95 | 155 | 200+ | 200+ | 146 | 12 | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
+| `test.mdm.viewer` | 5 | 95 | 155 | 200+ | 200+ | 146 | 12 | 403 | 403 | 403 | 403 | 403 | 403 | 403 |
+| `test.rates` | 0 | 0 | 155 | 200+ | 0 | 0 | 0 | — | 403 | ✓ | — | — | — | — |
+| `test.sales.cn` | 5 | 95 | 155 | 200+ | 200+ | 146 | 12 | 403 | 403 | 403 | 403 | 403 | ✓ | 403 |
+| `test.sales.es` | 5 | 95 | 155 | 200+ | 200+ | 146 | 12 | 403 | 403 | 403 | 403 | 403 | ✓ | 403 |
+| `test.sales.multi` | 5 | 95 | 155 | 200+ | 200+ | 146 | 12 | 403 | 403 | 403 | 403 | 403 | ✓ | 403 |
+| `test.unit.admin.cn` | 5 | 95 | 155 | 200+ | 200+ | 146 | 12 | 403 | 403 | 403 | 403 | 403 | 403 | 403 |
+| `test.revoked` | 0 | 0 | 0 | 0 | 0 | 0 | 0 | — | — | — | — | — | — | — |
+| `test.expired` | 0 | 0 | 0 | 0 | 0 | 0 | 0 | — | — | — | — | — | — | — |
+| `test.nobody` | 0 | 0 | 0 | 0 | 0 | 0 | 0 | — | — | — | — | — | — | — |
+STEP END exit=0 2026-10-20T09:51:15+02:00
+STEP D6-S-profile BEGIN 2026-10-20T09:51:15+02:00
+test/probe-go core: 符合
+  CK-LC-01/02 通过
+  CK-CF-03 通过
+  CK-LC-04/05/06 通过
+  CK-LC-14 通过
+  CK-LC-08 通过
+  CK-LC-10 通过
+  CK-LC-11/12 通过
+  CK-DB-09 通过
+  CK-EV-09 通过
+  CK-OBS-01 通过
+  CK-OBS-02 通过
+  CK-OBS-03 通过
+  CK-OBS-04 通过
+  CK-OBS-05 不适用 — 只对外壳（见外壳的报告）
+test/probe-py core: 符合
+  CK-LC-01/02 通过
+  CK-CF-03 通过
+  CK-LC-04/05/06 通过
+  CK-LC-14 通过
+  CK-LC-08 通过
+  CK-LC-10 通过
+  CK-LC-11/12 通过
+  CK-DB-09 通过
+  CK-EV-09 通过
+  CK-OBS-01 通过
+  CK-OBS-02 通过
+  CK-OBS-03 通过
+  CK-OBS-04 通过
+  CK-OBS-05 不适用 — 只对外壳（见外壳的报告）
+STEP END exit=0 2026-10-20T09:51:44+02:00
+STEP D6-S-down BEGIN 2026-10-20T09:51:44+02:00
+🛑 Stopping project d6-s
+✅ All components stopped
+
+💡 Data volumes were not deleted; database data is still there
+   For a full cleanup, run by hand: docker volume rm <volume-name>
+   Start again with: brickkit up
+STEP END exit=0 2026-10-20T09:51:49+02:00
+STEP D6-H-down-first BEGIN 2026-10-20T09:51:49+02:00
+🛑 Stopping project d6-h
+📋 This project has no containers running right now (the engine has none at all)
+   Start it with brickkit up
+STEP END exit=0 2026-10-20T09:51:50+02:00
+STEP D6-H-create BEGIN 2026-10-20T09:51:50+02:00
+created /home/zhijie/Desktop/github/be-assembly-standard/dev/rebuild/experiment-cells/D6-H
+STEP END exit=0 2026-10-20T09:51:57+02:00
+STEP D6-H-prepare BEGIN 2026-10-20T09:51:57+02:00
+prepared D6-H: 2 probes, chain test/probe-go -> test/probe-py
+STEP END exit=0 2026-10-20T09:52:00+02:00
+STEP D6-H-build BEGIN 2026-10-20T09:52:00+02:00
+🔨 Building be/go-infra@3.0.22 → be-go-infra:3.0.22
+✅ Built be/go-infra@3.0.22 → be-go-infra:3.0.22
+⏭️  infra/audit@3.0.2: image infra-audit:3.0.2 already exists, skipped (--force rebuilds)
+⏭️  infra/authz@3.0.3: image infra-authz:3.0.3 already exists, skipped (--force rebuilds)
+⏭️  infra/iam-casdoor@3.0.2: image infra-iam-casdoor:3.0.2 already exists, skipped (--force rebuilds)
+⏭️  mdm/currency@3.0.3: image mdm-currency:3.0.3 already exists, skipped (--force rebuilds)
+⏭️  mdm/org@3.0.2: image mdm-org:3.0.2 already exists, skipped (--force rebuilds)
+⏭️  mdm/partner@3.0.3: image mdm-partner:3.0.3 already exists, skipped (--force rebuilds)
+⏭️  mdm/product@3.0.3: image mdm-product:3.0.3 already exists, skipped (--force rebuilds)
+⏭️  test/probe-go@3.2.19: image test-probe-go:3.2.19 already exists, skipped (--force rebuilds)
+⏭️  test/probe-py@3.2.19: image test-probe-py:3.2.19 already exists, skipped (--force rebuilds)
+STEP END exit=0 2026-10-20T09:52:50+02:00
+STEP D6-H-up BEGIN 2026-10-20T09:52:50+02:00
+🚀 Starting project d6-h (target: docker)
+📋 Component state calculation:
+   ✅ be/go-infra@3.0.22       starting (top-level)
+   ✅ infra/audit@3.0.2        starting (infra/authz needs it)
+   ✅ infra/authz@3.0.3        starting (infra/audit needs it)
+   ✅ infra/iam-casdoor@3.0.2  starting (infra/audit needs it)
+   ✅ mdm/currency@3.0.3       starting (top-level)
+   ✅ mdm/org@3.0.2            starting (mdm/partner needs it)
+   ✅ mdm/partner@3.0.3        starting (top-level)
+   ✅ mdm/product@3.0.3        starting (top-level)
+   ✅ test/probe-go@3.2.19     starting (test/probe-py needs it)
+   ✅ test/probe-py@3.2.19     starting (test/probe-go needs it)
+
+📋 Start order (topological sort):
+   1. be-go-infra-3-0-22    no dependencies  (hosts infra/audit@3.0.2, infra/authz@3.0.3, infra/iam-casdoor@3.0.2, mdm/currency@3.0.3, mdm/org@3.0.2, mdm/partner@3.0.3, mdm/product@3.0.3, test/probe-go@3.2.19)
+   2. test-probe-py-3-2-19  no dependencies
+
+Can start on their own: be-go-infra-3-0-22, test-probe-py-3-2-19 (no dependencies)
+
+Dependency graph:
+   mdm/product@3.0.3 → mdm/org@3.0.2
+   mdm/partner@3.0.3 → mdm/org@3.0.2
+📄 Generated: .brickkit/generated/compose.yaml
+
+🔧 Database migrations that run before startup (on failure that component won't start):
+   infra/audit@3.0.2  /infra-audit migrate
+   infra/authz@3.0.3  /infra-authz migrate
+   infra/iam-casdoor@3.0.2  /infra-iam-casdoor migrate
+   mdm/currency@3.0.3  /mdm-currency migrate
+   mdm/org@3.0.2  /mdm-org migrate
+   mdm/partner@3.0.3  /mdm-partner migrate
+   mdm/product@3.0.3  /mdm-product migrate
+   test/probe-go@3.2.19  /probe-go migrate
+   test/probe-py@3.2.19  python -m probe_py migrate
+
+🐳 Starting (docker)...
+   be-go-infra-3-0-22           running (healthy)
+   test-probe-py-3-2-19         running (healthy)
+✅ All components started (2)
+
+💡 View the status: brickkit status
+   View the logs: docker compose -p brickkit-d6-h logs -f
+STEP END exit=0 2026-10-20T09:53:09+02:00
+STEP D6-H-secure BEGIN 2026-10-20T09:53:09+02:00
+{'admin': '01a1584c-cd52-7d86-901a-b0037bdc522f', 'load_user': '01a1584c-ce1d-761e-baf6-19b2c94741d2', 'credentials': '/api/product/products'}
+STEP END exit=0 2026-10-20T09:53:24+02:00
+STEP D6-H-accounts BEGIN 2026-10-20T09:53:24+02:00
+user brickkit/test.alice: updated
+user brickkit/test.bob: updated
+user brickkit/test.mdm.admin: updated
+user brickkit/test.mdm.viewer: updated
+user brickkit/test.rates: updated
+user brickkit/test.sales.cn: updated
+user brickkit/test.sales.es: updated
+user brickkit/test.sales.multi: updated
+user brickkit/test.unit.admin.cn: updated
+user brickkit/test.revoked: updated
+user brickkit/test.expired: updated
+user brickkit/test.nobody: updated
+STEP END exit=0 2026-10-20T09:53:25+02:00
+STEP D6-H-seed-twice BEGIN 2026-10-20T09:53:25+02:00
+seed infra/authz: the unit admin test.unit.admin.cn reads and changes security records
+seed mdm/org: 5 legal entities, 95 units; roles maintain and read, 1 revoked, 1 ended (2026-10-20T09:53:29+02:00)
+seed mdm/currency: 2 rate types, 681 rates (8 pairs both ways), CHF cash 0.05, VES off; roles maintain, rates, read
+seed mdm/partner: 209 partners (181 organizations, 25 persons, 3 negative), 311 customer roles in CN01, ES01, US01 and the suspended HK01, 3 negative roles, 1 merge candidate; unit 中国区客户 with its admin
+seed mdm/product: 12 categories, 146 products, 366 availabilities (10 in the suspended HK01), 1 suspended, 1 retired; roles maintain, read
+SEED DONE
+seed infra/authz: the unit admin test.unit.admin.cn reads and changes security records
+seed mdm/org: 5 legal entities, 95 units; roles maintain and read, 1 revoked, 1 ended (2026-10-20T09:53:48+02:00)
+seed mdm/currency: 2 rate types, 681 rates (8 pairs both ways), CHF cash 0.05, VES off; roles maintain, rates, read
+seed mdm/partner: 209 partners (181 organizations, 25 persons, 3 negative), 311 customer roles in CN01, ES01, US01 and the suspended HK01, 3 negative roles, 1 merge candidate; unit 中国区客户 with its admin
+seed mdm/product: 12 categories, 146 products, 366 availabilities (10 in the suspended HK01), 1 suspended, 1 retired; roles maintain, read
+SEED DONE
+legal_entity|5|5|11
+org_unit|95|95|101
+exchange_rate|681|681|682
+partner|209|209|211
+partner_role|311|311|314
+product|146|146|514
+category|12|12|12
+authz_record|48|48|0
+second run: no change
+STEP END exit=0 2026-10-20T09:53:59+02:00
+STEP D6-H-see BEGIN 2026-10-20T09:53:59+02:00
+| 账号 | 法人 | 部门 | 币种 | 汇率 | 伙伴 | 产品 | 分类 | 组织维护 | 币种维护 | 汇率维护 | 新建伙伴 | 修改伙伴 | 客户角色 | 产品维护 |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| `test.alice` | 0 | 0 | 0 | 0 | 0 | 0 | 0 | — | — | — | — | — | — | — |
+| `test.bob` | 5 | 95 | 155 | 200+ | 200+ | 146 | 12 | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
+| `test.mdm.admin` | 5 | 95 | 155 | 200+ | 200+ | 146 | 12 | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
+| `test.mdm.viewer` | 5 | 95 | 155 | 200+ | 200+ | 146 | 12 | 403 | 403 | 403 | 403 | 403 | 403 | 403 |
+| `test.rates` | 0 | 0 | 155 | 200+ | 0 | 0 | 0 | — | 403 | ✓ | — | — | — | — |
+| `test.sales.cn` | 5 | 95 | 155 | 200+ | 200+ | 146 | 12 | 403 | 403 | 403 | 403 | 403 | ✓ | 403 |
+| `test.sales.es` | 5 | 95 | 155 | 200+ | 200+ | 146 | 12 | 403 | 403 | 403 | 403 | 403 | ✓ | 403 |
+| `test.sales.multi` | 5 | 95 | 155 | 200+ | 200+ | 146 | 12 | 403 | 403 | 403 | 403 | 403 | ✓ | 403 |
+| `test.unit.admin.cn` | 5 | 95 | 155 | 200+ | 200+ | 146 | 12 | 403 | 403 | 403 | 403 | 403 | 403 | 403 |
+| `test.revoked` | 0 | 0 | 0 | 0 | 0 | 0 | 0 | — | — | — | — | — | — | — |
+| `test.expired` | 0 | 0 | 0 | 0 | 0 | 0 | 0 | — | — | — | — | — | — | — |
+| `test.nobody` | 0 | 0 | 0 | 0 | 0 | 0 | 0 | — | — | — | — | — | — | — |
+STEP END exit=0 2026-10-20T09:54:02+02:00
+STEP D6-H-profile BEGIN 2026-10-20T09:54:02+02:00
+test/probe-py core: 符合
+  CK-LC-01/02 通过
+  CK-CF-03 通过
+  CK-LC-04/05/06 通过
+  CK-LC-14 通过
+  CK-LC-08 通过
+  CK-LC-10 通过
+  CK-LC-11/12 通过
+  CK-DB-09 通过
+  CK-EV-09 通过
+  CK-OBS-01 通过
+  CK-OBS-02 通过
+  CK-OBS-03 通过
+  CK-OBS-04 通过
+  CK-OBS-05 不适用 — 只对外壳（见外壳的报告）
+test/probe-go core: 符合
+  CK-LC-01/02 通过
+  CK-CF-03 通过
+  CK-LC-04/05/06 通过
+  CK-LC-14 通过
+  CK-LC-08 通过
+  CK-LC-10 通过
+  CK-LC-11/12 通过
+  CK-DB-09 通过
+  CK-EV-09 通过
+  CK-OBS-01 通过
+  CK-OBS-02 通过
+  CK-OBS-03 通过
+  CK-OBS-04 通过
+  CK-OBS-05 不适用 — 只对外壳（见外壳的报告）
+be/go-infra shell: 符合
+  CK-LC-05/06/08 通过
+  CK-LC-12 通过
+  CK-OBS-01 通过
+  CK-LC-14 通过
+  CK-OBS-05 通过
+STEP END exit=0 2026-10-20T09:54:31+02:00
+STEP D6-H-down BEGIN 2026-10-20T09:54:31+02:00
+🛑 Stopping project d6-h
+✅ All components stopped
+
+💡 Data volumes were not deleted; database data is still there
+   For a full cleanup, run by hand: docker volume rm <volume-name>
+   Start again with: brickkit up
+STEP END exit=0 2026-10-20T09:54:31+02:00
+ALL DONE
