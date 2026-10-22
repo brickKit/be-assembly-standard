@@ -79,6 +79,12 @@ docs-ids:  ## Expectation IDs: one owner per prefix, unique, contiguous (check 3
 docs-closure:  ## Required dependencies acyclic and customer combinations closed (check 34)
 	@python3 tools/be-acceptance/doc-checks/34-dependency-closure.py .
 
+docs-index:  ## Regenerate the component index (docs/zh/00-overview/09-component-index.md) from the catalog, cards and component.yaml files
+	@python3 infra/scripts/component-index.py
+
+docs-index-check:  ## The component index is up to date
+	@python3 infra/scripts/component-index.py --check
+
 infra-images:  ## 基础资源的镜像都写确切版本与摘要，infra/resources.tsv 与 compose 一致
 	@python3 -I infra/scripts/infra-images.py
 
@@ -87,7 +93,7 @@ security-schemas:  ## The security records' JSON Schemas in be-protocol are exac
 
 design-models:  ## Run every reference model in be-acceptance (about 15 minutes)
 	@$(MAKE) -C tools/be-acceptance models
-.PHONY: registry-check docs-boundary docs-mirror docs-links docs-ids docs-closure infra-images security-schemas design-models
+.PHONY: registry-check docs-boundary docs-mirror docs-links docs-ids docs-closure docs-index docs-index-check infra-images security-schemas design-models
 
 ##@ 校验
 lint:  ## brickKit 自身的三层 + 文档检查（严格模式）
@@ -159,7 +165,7 @@ teardown-down:  ## 停掉拆回验证的容器
 # The Go gates of the 0.x be-acceptance (import, SystemClient, bare-route, event and OpenAPI
 # breaking changes, data-scope tests, dependency versions, config keys) moved to its legacy/v0
 # branch with the old code (D59); conformance suites and gates return with the rebuilt tools.
-gates: docs-boundary docs-mirror docs-links docs-ids docs-closure infra-images security-schemas  ## Document gates (boundary, mirror, links, IDs, closure), infra image pins, security schemas + brickkit up --dry-run
+gates: docs-boundary docs-mirror docs-links docs-ids docs-closure docs-index-check infra-images security-schemas  ## Document gates (boundary, mirror, links, IDs, closure), infra image pins, security schemas + brickkit up --dry-run
 	@echo "▸ brickkit up --dry-run"
 	@bash $(S)/lib/require-brickkit.sh
 	@brickkit up --dry-run

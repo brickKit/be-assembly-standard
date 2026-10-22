@@ -16,6 +16,7 @@
 | [08-reference-implementations.md](08-reference-implementations.md) | 怎样参考成熟软件：三步法、许可、记录、每个组件看哪个项目、要绕开的弱点、几种做法都合理时 |
 | [09-ai-coding.md](09-ai-coding.md) | 代码怎样写才便于 AI 修改：何时用设计模式、已定的模式、长函数的注释、人要审什么、整体重写 |
 | [10-development-workflow.md](10-development-workflow.md) | 七步循环、动手之前的自问、提交、真机运行、版本与发布 |
+| [11-change-recipes.md](11-change-recipes.md) | 常见改动按步骤要守的规则：加字段、加接口、加或改事件、调用别的组件、加表、新建组件 |
 
 **按任务找**：
 
@@ -33,5 +34,6 @@
 | 设计业务逻辑、几种做法都合理 | [参考实现](08-reference-implementations.md) |
 | 要不要用设计模式、文件太长、重写还是打补丁 | [AI 编码习惯](09-ai-coding.md) |
 | 开始做一个组件、真机运行、升版本、发布 | [开发流程与发布](10-development-workflow.md) |
+| 加字段、加接口、改事件、调用别的组件、加表 | [改动配方](11-change-recipes.md) |
 | 前端的写法、主题与视觉 | [前端技术栈](../04-foundations/04-frontend-stack.md)、协议 20 |
 | 配置键、注册表、端口与 schema | [协议 19](../06-protocols/19-config-secrets-registries-release.md) |

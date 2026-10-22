@@ -43,9 +43,19 @@
 
 ## 查找路由
 
+先分清问的是什么：
+
+- **一个名字**（业务词“资格”“预占”“汇率”，组件 ID，事件、权限键、错误码）：业务词查[术语表](docs/zh/00-overview/07-glossary.md)，它给出所属组件与代码标识符；组件查[组件索引](docs/zh/00-overview/09-component-index.md)，它给出边界卡、仓库文档、实现版本、谁依赖它、事件的发布与订阅。已重建的组件接着读它的 `AGENTS.md`，从代码地图下到文件。
+- **一件事怎样做**：下表。一步步的改动（加字段、加接口、改事件、调用别的组件、加表）先看[改动配方](docs/zh/01-conventions/11-change-recipes.md)。
+- **一个现象**（报错、症状）：本文件的易错点、`brickkit-troubleshoot` 技能、[运维手册](docs/zh/05-operations/README.md)。
+
+全仓搜索用 `rg`：它读根目录的 `.ignore`，跳过生成的契约代码与过程记录。
+
 | 你要做的事（你会用的词） | 先读 |
 | --- | --- |
-| 新需求、新功能、“放在哪里”、“这样好不好”、跨组件的改动 | `brickkit-plan-change` 技能（[SKILL.md](.claude/skills/brickkit-plan-change/SKILL.md)），然后[领域与边界](docs/zh/00-overview/02-domains-and-boundaries.md)、[边界卡](docs/zh/07-components/README.md)与[决定记录](docs/zh/02-decisions/README.md) |
+| 新需求、新功能、“放在哪里”、“这样好不好”、跨组件的改动 | `brickkit-plan-change` 技能（[SKILL.md](.claude/skills/brickkit-plan-change/SKILL.md)；组件清单用[组件索引](docs/zh/00-overview/09-component-index.md)，不用本文件末尾的旧组件表），然后[领域与边界](docs/zh/00-overview/02-domains-and-boundaries.md)、[边界卡](docs/zh/07-components/README.md)与[决定记录](docs/zh/02-decisions/README.md) |
+| 整个业务怎样走（“下单到收款”）；这一步在哪个组件做；改这一步牵动谁 | [业务流程](docs/zh/08-flows/README.md)，然后组件索引 |
+| 改了会影响谁：谁依赖这个组件、谁订阅这个事件 | [组件索引](docs/zh/00-overview/09-component-index.md)的“被谁必需依赖”与[事件](docs/zh/00-overview/09-component-index.md#事件)；`brickkit deps <ID>` |
 | 开始做一个组件；先做什么后做什么；一次会话做多少 | [开发流程与发布](docs/zh/01-conventions/10-development-workflow.md)、[AI 导航的每次会话读多少](docs/zh/01-conventions/05-ai-navigation.md#每次会话读多少) |
 | 写新组件；改 `component.yaml`；仓库布局 | `brickkit-component` 技能（[SKILL.md](.claude/skills/brickkit-component/SKILL.md)），[组件实现约定](docs/zh/01-conventions/06-component-implementation.md#仓库布局与入口) |
 | 用哪个端口、schema、数据库角色、权限键 | [协议 19 的注册表](docs/zh/06-protocols/19-config-secrets-registries-release.md#注册表) |
@@ -77,7 +87,8 @@
 | 为什么选这个数据库、消息系统、事务模型、身份格式、金额格式；替换某个底层产品 | [底层选择](docs/zh/04-foundations/README.md) |
 | 不改代码换底层：消息运输换 PostgreSQL 队列、换对象存储、加连接池代理、换观测后端或容器引擎 | [部署时可切换的底层实现](docs/zh/04-foundations/README.md#部署时可切换的底层实现) |
 | 重建计划；仓库复用与 `legacy/` 分支；当前进度 | `dev/rebuild/`（开发区） |
-| 某个组件做什么；改一个组件 | 下面的组件表，然后该组件的 `BRICKKIT.md`（它拥有什么）与 `AGENTS.md`（怎样改它）；新设计中的边界见[边界卡](docs/zh/07-components/README.md) |
+| 某个组件做什么；改一个组件；跑它的测试；部署它之前要准备什么 | [组件索引](docs/zh/00-overview/09-component-index.md) → 已重建的：它的 `AGENTS.md`（代码地图、构建与测试、易错点）、`BRICKKIT.md`（负责什么、部署前准备、配置）、`docs/design.md`（为什么这样设计）；没重建的：它的边界卡 |
+| SDK 怎样做某件事（幂等键、事务入口、发件表、迁移、种子工具）；线协议条款（`P4.21` 这类编号） | [`be-sdk-go` 的 AGENTS.md](tools/be-sdk-go/AGENTS.md)（包地图）；条款在 [`be-protocol` 的 spec/](tools/be-protocol/spec/00-reading.md)；项目层的规则在[协议 18](docs/zh/06-protocols/18-sdk-and-conformance.md) |
 
 这里没有时：先看[正式文档的索引](docs/zh/README.md)，再看组件表与组件自己的 `AGENTS.md`。
 

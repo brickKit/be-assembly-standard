@@ -33,6 +33,7 @@
 | 授权视图 | 组件本地用来求值的授权快照，带有效期与安全修订 | `authorization_view` | `infra/authz` 发行 | [安全 03](../06-protocols/security/03-authorization-acceptance-and-revocation.md) |
 | 有界本地授权 | 默认路径：组件在视图有效期内本地判定，撤权有明确的上界 | `W_read`、`W_high` | 各组件 | 安全 03 |
 | 无法证明 | 判断所需的事实不可得、过期或不相容；按保护处理，不当作拒绝后返回空 | `unprovable`、`AUTHORIZATION_UNPROVABLE` | 各组件 | 安全 03、09a |
+| 管理职责单元 | 机构的授权管理边界：所管的法人、组织与人员，允许的管理动作，可授出的上限；管理者持有它，在上限内授予。易混：限定的是能授出什么，不自动限定被授予者能看到哪些行（那由资源的维度决定） | `management_unit` | `infra/authz` | [安全 04](../06-protocols/security/04-authorization-administration-and-appointments.md) |
 | 生效点 | 授权组件中改变安全记录的那个本地事务；放宽只在这里检查通过才生效 | `effect_point` | `infra/authz` | 安全 08 |
 | 收紧、放宽 | 收紧只减少访问，经生效点只检查谁有权收紧与最后管理员，不要证明；放宽须在生效点通过全部检查。易混：“收窄”是收紧的一种（内容缩小、身份不变） | `tighten`、`widen` | `infra/authz` | 安全 08 |
 | 受保护暂停 | 记录暂不提供访问：安全处置（`security_hold`）或来源约束无法计算（`uncomputable`） | `held` | `infra/authz` | 安全 08 |
@@ -66,6 +67,11 @@
 | --- | --- | --- | --- | --- |
 | 业务伙伴 | 客户、供应商、员工往来、关联方等角色的共同主体 | `partner`、`partner_role` | `mdm/partner` | [主数据卡](../07-components/mdm.md) |
 | 法人 | 记账与合规的单位；业务时区按法人配置 | `legal_entity` | `mdm/org` | 主数据卡、协议 14 |
+| 部门 | 法人下的一棵组织树；部门路径是授权的组织维度，按段比较 | `org_unit`、`dept_path` | `mdm/org` | 主数据卡、[安全 07](../06-protocols/security/07-finite-expressions-containment-and-queries.md) |
+| 客户角色 | 业务伙伴在一个法人下作为客户的资格，有自己的启用、暂停、退役，与伙伴的状态分开；易混：伙伴本身没有“客户”属性，是否能卖给它看角色 | `partner_role`（`role`: `customer`） | `mdm/partner` | [主数据卡](../07-components/mdm.md#mdmpartner) |
+| 资格查询 | 新单据引用一个对象之前向属主取的“此刻可用”的证据，带取证时刻，在有效期 W 内提交；伙伴的资格只看伙伴与角色，法人等其他对象各自取证 | `CheckEligibility`、`eligibility` | 各属主（伙伴、产品、组织……） | [协议 07 的资格引用的提交检查](../06-protocols/07-references.md#资格引用的提交检查) |
+| 币种与汇率 | 币种的最小单位与舍入；汇率按类型与日期取不晚于该日的最近一条，单据保存汇率快照（值、日期、类型、记录身份与版本） | `currency`、`exchange_rate`、`RateService/EffectiveRate` | `mdm/currency` | 主数据卡、[协议 14](../06-protocols/14-data-foundations.md#金额数量汇率与单位) |
+| 信用额度与信用占用 | 按伙伴、法人、币种的额度；已用 = 订单占用（确认的预占分支）+ 应收占用（未结清的账单），不超过额度 | `credit_limit`、`reservation_branch`、`receivable_exposure` | `erp/credit` | [财务卡](../07-components/erp-finance.md#erpcredit)、协议 04、05 |
 | 发生时归属与当前责任 | 业务发生时的组织与现在负责的人或部门，分别保存；授权多用当前责任，指标可按发生时归属 | `occurred_org`、`current_owner` | 各业务组件 | [数据与生命周期](../04-foundations/02-data-and-lifecycle.md#发生时归属与当前责任) |
 | 预占 | 订单确认时在库存与信用上保留的数量或金额，以分支表达；易混：出库是库存的实际减少 | `reservation_branch`；`reserving`、`committed`、`consumed`、`released` | `erp/inventory`、`erp/credit` | [协议 04](../06-protocols/04-order-reservation.md) |
 | 期初 | 上线切点之前的结果，以专门的业务类型进入，不伪造成新交易 | `opening` | 各业务组件 | [协议 16](../06-protocols/16-go-live-and-import.md) |

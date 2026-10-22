@@ -6,14 +6,15 @@
 
 | 目录 | 内容 |
 | --- | --- |
-| [00-overview/](00-overview/README.md) | 产品、领域与边界、组件全景与货架、选择关系与客户组合、变更与停用、路线、术语表、系统视图、选型说明 |
-| [01-conventions/](01-conventions/README.md) | 开发与维护的规则：工程规范、测试与验证（含验收矩阵）、文档、图与表、AI 导航、组件实现、种子与测试数据、参考实现、AI 编码习惯、开发流程与发布 |
+| [00-overview/](00-overview/README.md) | 产品、领域与边界、组件全景与货架、选择关系与客户组合、变更与停用、路线、术语表、系统视图、组件索引（生成）、选型说明 |
+| [01-conventions/](01-conventions/README.md) | 开发与维护的规则：工程规范、测试与验证（含验收矩阵）、文档、图与表、AI 导航、组件实现、种子与测试数据、参考实现、AI 编码习惯、开发流程与发布、改动配方 |
 | [02-decisions/](02-decisions/README.md) | 决定记录：维护者的前提、决定（D 编号）、AI 选择（A 编号）、原有决定（0101–0509）的承接 |
 | [03-seed-data.md](03-seed-data.md) | 种子数据清单与测试账号 |
 | [04-foundations/](04-foundations/README.md) | 底层选择：跨方面的取舍，以及数据库、消息运输、组件协议与语言、调用与错误、边缘、观测、前端各一篇 |
 | [05-operations/](05-operations/README.md) | 运维手册：备份与恢复、升级与维护窗口、告警与处置、客户上线 |
 | [06-protocols/](06-protocols/README.md) | 安全 01–11（[security/](06-protocols/security/README.md)）与协议 01–21：跨组件的规则、状态与独立预期 |
 | [07-components/](07-components/README.md) | 组件边界卡 |
+| [08-flows/](08-flows/README.md) | 端到端的业务流程：步骤、组件与衔接方式 |
 
 ## 两条阅读路线
 
