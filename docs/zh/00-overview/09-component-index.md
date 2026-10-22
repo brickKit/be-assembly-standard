@@ -125,7 +125,7 @@
 | 外壳 | 版本 | 编进的成员 | 文档 |
 | --- | --- | --- | --- |
 | `be/go-core` | 3.0.19 | `test/probe-go@3.2.19`、`test/probe-go2@3.2.19`、`test/probe-go3@3.2.19`、`test/probe-go4@3.2.19` | [BRICKKIT](../../../shell/be/go-core/BRICKKIT.md) · [AGENTS](../../../shell/be/go-core/AGENTS.md) |
-| `be/go-infra` | 3.0.22 | `test/probe-go@3.2.19`、`test/probe-go2@3.2.19`、`test/probe-go3@3.2.19`、`test/probe-go4@3.2.19`、`infra/iam-casdoor@3.0.2`、`infra/authz@3.0.3`、`infra/audit@3.0.2`、`mdm/org@3.0.2`、`mdm/currency@3.0.3`、`mdm/partner@3.0.3`、`mdm/product@3.0.3` | [BRICKKIT](../../../shell/be/go-infra/BRICKKIT.md) · [AGENTS](../../../shell/be/go-infra/AGENTS.md) |
+| `be/go-infra` | 3.0.24 | `test/probe-go@3.2.19`、`test/probe-go2@3.2.19`、`test/probe-go3@3.2.19`、`test/probe-go4@3.2.19`、`infra/iam-casdoor@3.0.2`、`infra/authz@3.0.3`、`infra/audit@3.0.2`、`mdm/org@3.0.3`、`mdm/currency@3.0.4`、`mdm/partner@3.0.4`、`mdm/product@3.0.4` | [BRICKKIT](../../../shell/be/go-infra/BRICKKIT.md) · [AGENTS](../../../shell/be/go-infra/AGENTS.md) |
 | `be/py-render` | 3.0.19 | `test/probe-py@3.2.19`、`test/probe-py2@3.2.19` | [BRICKKIT](../../../shell/be/py-render/BRICKKIT.md) · [AGENTS](../../../shell/be/py-render/AGENTS.md) |
 
 ## 事件
