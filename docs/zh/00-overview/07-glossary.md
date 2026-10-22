@@ -67,9 +67,10 @@
 | --- | --- | --- | --- | --- |
 | 业务伙伴 | 客户、供应商、员工往来、关联方等角色的共同主体 | `partner`、`partner_role` | `mdm/partner` | [主数据卡](../07-components/mdm.md) |
 | 法人 | 记账与合规的单位；业务时区按法人配置 | `legal_entity` | `mdm/org` | 主数据卡、协议 14 |
+| 业务日期 | 一个时刻在法人的 IANA 时区里的本地日期；单据与事件按它记账，“今天”由 SDK 按法人时区算出后作为参数传给 SQL，数据库会话的时区永远是 UTC | `bizdate`（SDK）、`/business-date`（`mdm/org`）、线协议 P5.29 | `mdm/org`（时区）、SDK | [协议 14 的时间、日历与期间](../06-protocols/14-data-foundations.md#时间日历与期间)、决定 0307 |
 | 部门 | 法人下的一棵组织树；部门路径是授权的组织维度，按段比较 | `org_unit`、`dept_path` | `mdm/org` | 主数据卡、[安全 07](../06-protocols/security/07-finite-expressions-containment-and-queries.md) |
 | 客户角色 | 业务伙伴在一个法人下作为客户的资格，有自己的启用、暂停、退役，与伙伴的状态分开；易混：伙伴本身没有“客户”属性，是否能卖给它看角色 | `partner_role`（`role`: `customer`） | `mdm/partner` | [主数据卡](../07-components/mdm.md#mdmpartner) |
-| 资格查询 | 新单据引用一个对象之前向属主取的“此刻可用”的证据，带取证时刻，在有效期 W 内提交；伙伴的资格只看伙伴与角色，法人等其他对象各自取证 | `CheckEligibility`、`eligibility` | 各属主（伙伴、产品、组织……） | [协议 07 的资格引用的提交检查](../06-protocols/07-references.md#资格引用的提交检查) |
+| 资格查询 | 新单据引用一个对象之前向属主取的“此刻可用”的证据，带取证时刻，在有效期 W 内提交；每个属主各有一个（伙伴看伙伴与客户角色，产品看产品与按法人开通），法人等其他对象各自取证 | `PartnerService/CheckEligibility`（`mdm/partner`）、`ProductService/CheckEligibility`（`mdm/product`） | 各属主 | [协议 07 的资格引用的提交检查](../06-protocols/07-references.md#资格引用的提交检查) |
 | 币种与汇率 | 币种的最小单位与舍入；汇率按类型与日期取不晚于该日的最近一条，单据保存汇率快照（值、日期、类型、记录身份与版本） | `currency`、`exchange_rate`、`RateService/EffectiveRate` | `mdm/currency` | 主数据卡、[协议 14](../06-protocols/14-data-foundations.md#金额数量汇率与单位) |
 | 信用额度与信用占用 | 按伙伴、法人、币种的额度；已用 = 订单占用（确认的预占分支）+ 应收占用（未结清的账单），不超过额度 | `credit_limit`、`reservation_branch`、`receivable_exposure` | `erp/credit` | [财务卡](../07-components/erp-finance.md#erpcredit)、协议 04、05 |
 | 发生时归属与当前责任 | 业务发生时的组织与现在负责的人或部门，分别保存；授权多用当前责任，指标可按发生时归属 | `occurred_org`、`current_owner` | 各业务组件 | [数据与生命周期](../04-foundations/02-data-and-lifecycle.md#发生时归属与当前责任) |

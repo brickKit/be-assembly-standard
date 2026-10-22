@@ -118,9 +118,22 @@
 | `frontend/terminal` | 仓库终端入口 | 远期 | — | [frontend.md](../07-components/frontend.md#frontendterminal) | — | 身份（`infra/iam-*`） | — |
 | `frontend/advanced` | 行业或高级交互入口 | 远期 | — | [frontend.md](../07-components/frontend.md#frontendadvanced) | — | — | — |
 
+## 外壳
+
+已按新设计重建的外壳与它们编进的成员（外壳只把几个成员合进一个进程，见[部署与运行](../04-foundations/01-deployment-and-runtime.md)）。成员的版本是外壳编进的版本，可能落后于组件自己的最新版本。
+
+| 外壳 | 版本 | 编进的成员 | 文档 |
+| --- | --- | --- | --- |
+| `be/go-core` | 3.0.19 | `test/probe-go@3.2.19`、`test/probe-go2@3.2.19`、`test/probe-go3@3.2.19`、`test/probe-go4@3.2.19` | [BRICKKIT](../../../shell/be/go-core/BRICKKIT.md) · [AGENTS](../../../shell/be/go-core/AGENTS.md) |
+| `be/go-infra` | 3.0.22 | `test/probe-go@3.2.19`、`test/probe-go2@3.2.19`、`test/probe-go3@3.2.19`、`test/probe-go4@3.2.19`、`infra/iam-casdoor@3.0.2`、`infra/authz@3.0.3`、`infra/audit@3.0.2`、`mdm/org@3.0.2`、`mdm/currency@3.0.3`、`mdm/partner@3.0.3`、`mdm/product@3.0.3` | [BRICKKIT](../../../shell/be/go-infra/BRICKKIT.md) · [AGENTS](../../../shell/be/go-infra/AGENTS.md) |
+| `be/py-render` | 3.0.19 | `test/probe-py@3.2.19`、`test/probe-py2@3.2.19` | [BRICKKIT](../../../shell/be/py-render/BRICKKIT.md) · [AGENTS](../../../shell/be/py-render/AGENTS.md) |
+
 ## 事件
 
 已重建组件在 `component.yaml` 的 `events` 里声明的发布与订阅（`brickkit deps` 给出同一张表）。订阅项以 `*` 结尾时匹配以它前面那一段开头的全部事件。
+
+- 订阅者一栏的“—”是“已重建的组件都没有声明订阅它”；还没重建的组件将来是否订阅，看它们的边界卡与协议。
+- 订阅者不是全部受影响的组件：完整状态事件的载荷通常也是发布方来源方法（`SourceService`）返回的数据，经来源方法读它的依赖方同样受影响，看上面各表的“被谁必需依赖”。
 
 | 事件 | 发布者 | 订阅者 |
 | --- | --- | --- |

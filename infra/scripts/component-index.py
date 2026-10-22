@@ -91,6 +91,19 @@ def built():
     return out
 
 
+def shells():
+    """Returns [(id, manifest)] of the shells rebuilt on the new design (major version 3 or later)."""
+    out = []
+    for path in sorted(glob.glob(os.path.join(ROOT, "shell/*/*/component.yaml"))):
+        m = yaml.safe_load(open(path, encoding="utf-8"))
+        meta = m.get("metadata", {})
+        if int(str(meta.get("version", "0")).split(".")[0]) < 3:
+            continue
+        m["_dir"] = os.path.dirname(os.path.relpath(path, ROOT))
+        out.append((meta["id"], m))
+    return out
+
+
 def code(cid):
     return "身份（`infra/iam-*`）" if cid == FAMILY else f"`{cid}`"
 
@@ -132,6 +145,12 @@ def render():
             else:
                 impl, docs = "—", "—"
             lines.append(f"| {code(cid)} | {cap} | {scope} | {impl} | {card_link} | {docs} | {req} | {by} |")
+    lines += ["", "## 外壳", "", "已按新设计重建的外壳与它们编进的成员（外壳只把几个成员合进一个进程，见[部署与运行](../04-foundations/01-deployment-and-runtime.md)）。成员的版本是外壳编进的版本，可能落后于组件自己的最新版本。", "",
+              "| 外壳 | 版本 | 编进的成员 | 文档 |", "| --- | --- | --- | --- |"]
+    for sid, m in shells():
+        d = "../../../" + m["_dir"]
+        members = "、".join(f"`{x}`" for x in (m.get("shell") or {}).get("members") or []) or "—"
+        lines.append(f"| `{sid}` | {m['metadata']['version']} | {members} | [BRICKKIT]({d}/BRICKKIT.md) · [AGENTS]({d}/AGENTS.md) |")
     pub, sub = {}, {}
     for cid, m in blt.items():
         ev = m.get("events") or {}
@@ -139,7 +158,9 @@ def render():
             pub.setdefault(e, []).append(cid)
         for e in ev.get("subscribes") or []:
             sub.setdefault(e, []).append(cid)
-    lines += ["", "## 事件", "", "已重建组件在 `component.yaml` 的 `events` 里声明的发布与订阅（`brickkit deps` 给出同一张表）。订阅项以 `*` 结尾时匹配以它前面那一段开头的全部事件。", ""]
+    lines += ["", "## 事件", "", "已重建组件在 `component.yaml` 的 `events` 里声明的发布与订阅（`brickkit deps` 给出同一张表）。订阅项以 `*` 结尾时匹配以它前面那一段开头的全部事件。", "",
+              "- 订阅者一栏的“—”是“已重建的组件都没有声明订阅它”；还没重建的组件将来是否订阅，看它们的边界卡与协议。",
+              "- 订阅者不是全部受影响的组件：完整状态事件的载荷通常也是发布方来源方法（`SourceService`）返回的数据，经来源方法读它的依赖方同样受影响，看上面各表的“被谁必需依赖”。", ""]
     if pub or sub:
         lines += ["| 事件 | 发布者 | 订阅者 |", "| --- | --- | --- |"]
         for e in sorted(pub):

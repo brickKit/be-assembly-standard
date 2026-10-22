@@ -113,7 +113,9 @@ flowchart TD
 ├── CLAUDE.md               只有 @AGENTS.md
 ├── README.md               给代码托管平台上的人
 ├── docs/                   需要时：design.md，再需要时 rules/、flows/、data-model.md（组件的文档）
-├── contract/               本组件发布的契约，单独的 Go 模块：proto/、events/、openapi.yaml、生成的代码
+├── go.mod                  模块路径带主版本：github.com/brickKit/<仓库>/v3
+├── contract/               本组件发布的契约，单独的 Go 模块（路径 …/<仓库>/contract/v3，标签 contract/v3.…）：
+│                           proto/、events/、openapi.yaml、README.md（契约的义务），生成的 gen/go/ 与 python/
 ├── <包>/                   组件的包（模块入口）：
 │   ├── definition.go       身份、版本、依赖、配置键、事件流、资源与操作（权限键）
 │   ├── module.go           路由与系统面的注册
@@ -213,6 +215,7 @@ AI 路由测试的题库与评分放在开发区，正式文档不链接、不�
 ## 已知风险与待定
 
 - 系统层的[术语表](../00-overview/07-glossary.md)随组件设计继续补充。
-- 生成的索引、名字存在性检查、预期覆盖的对照表与代码地图的生成部分，在重建计划的工具工作中实现；生成物所在的目录与命令随工具确定。
+- 组件索引已由 `make docs-index` 生成；名字存在性检查、预期覆盖的对照表与代码地图的生成部分，在重建计划的工具工作中实现。
+- 注册表的权限键由重写后的装配工具从组件的资源定义汇总；重写之前，`registry/permissions.tsv` 里没有按新设计重建的组件的权限键（以组件定义为准），现有的 `make permissions` 仍读旧的清单。
 - 读取预算的具体数字与 AI 路由测试的新题库，按新的正式文档重新制定（旧题库针对旧文档）。作为参照：2026-10-13 时，旧的英文正式文档约 81 万字符，新的正式文档约 41 万字。
 - 测试名带预期编号的具体写法（Go、Python、TypeScript 各一种），随第一个组件的测试确定。
