@@ -20,6 +20,7 @@
 | [step5-plan.md](step5-plan.md) | 实验第 5 步（身份适配、授权、审计与两个契约包）的计划，2026-10-19 定稿 |
 | [step5-contracts.md](step5-contracts.md) | 第 5 步的契约（系统面的方法、信封与记录字节、定稿时补的设计） |
 | [step6-plan.md](step6-plan.md) | 实验第 6 步（主数据四个）的计划、决定与进度（2026-10-20 起草） |
+| [step7-plan.md](step7-plan.md) | 实验第 7 步（销售、库存、信用、出账、打印）的范围、决定、任务与进度；同时是文档结构实验的 R2（2026-10-22 起） |
 | [doc-structure-plan.md](doc-structure-plan.md) | 文档结构实验（2026-10-22 起）：内容类型 × 层、初步结构、给 BrickKit 的 FRR-010–012、R0–R3 的轮次；题库在 `dev/routing-tests/structure-questions.md` |
 
 ## 现在在哪里
@@ -27,7 +28,7 @@
 - 设计冻结、正式文档迁移已完成（[migration-plan.md](migration-plan.md)）；AI 选择 A99–A110 记在 `docs/zh/02-decisions/09-ai-choices.md`（A109 驻留期起始值待复核，其余已确认）。
 - **代表部署实验（D41）进行中**：第 0–6 步已完成（第 6 步 2026-10-20 完成：主数据四个组件，[step6-plan.md](step6-plan.md)、[6-01](experiment-records/6-01-master-data-cells.md)；随后按用户要求补了种子数据，第 6b 步，[step6b-seed-plan.md](step6b-seed-plan.md)、[6-02](experiment-records/6-02-richer-seeds.md)）。第 4 步的 D 行结果见 [4-04](experiment-records/4-04-d-row.md)，第 5 步带真实安全组件的通信代价见 [5-02](experiment-records/5-02-security-cells.md)，都已写进[实验报告](experiment-report.md)。
 - **文档结构实验**（2026-10-22 起，[doc-structure-plan.md](doc-structure-plan.md)）：R0 基线、R1 改结构与重考、R1b 压短根 `AGENTS.md` 已完成；剩下 R1 的尾巴（`infra` 三个组件）、R2（随第 7 步）、R3（定规则并反馈知识库与 BrickKit）。本轮的发布已推送（2026-10-22，用户同意）：`be-protocol` `v3.0.0-alpha.20`、`be-sdk-go` `v3.0.0-alpha.26`；`mdm/org` 3.0.4，`mdm/currency`、`mdm/partner`、`mdm/product` 3.0.5；`infra/authz` 3.0.5（包改名为 `authz/`）、`infra/audit` 3.0.3（包改名为 `audit/`）、`infra/iam-casdoor` 3.0.4；外壳 `be/go-infra` 3.0.25 编进 `mdm` 3.0.3/3.0.4、`infra/authz` 3.0.4、`infra/audit` 3.0.3、`infra/iam-casdoor` 3.0.3（之后只改了文档的版本没有再进外壳）。外壳 3.0.23 误带了 52MB 的构建产物，3.0.24 移除；用户同意保留历史、不改写。
-- **接下来**：用户在第 7 步之前还要问一些问题、做一些测试；之后开始第 7 步（业务链）。第 7 步的组件写种子时引用[种子数据清单](../../docs/zh/03-seed-data.md)的“下游可以直接引用的数据”，缺的到上游种子里补；角色与授予照主数据的做法（be-sdk-go 的 `seed` 包），带上法人与部门的维度。待用户决定的事见下面“待用户决定”。测量一律在 performance 电源模式下、按小时算。
+- **第 7 步进行中**（2026-10-22 起，用户同意开始）：[step7-plan.md](step7-plan.md)。第 7 步的组件写种子时引用[种子数据清单](../../docs/zh/03-seed-data.md)的“下游可以直接引用的数据”，缺的到上游种子里补；角色与授予照主数据的做法（be-sdk-go 的 `seed` 包），带上法人与部门的维度。待用户决定的事见下面“待用户决定”。测量一律在 performance 电源模式下、按小时算。
 - 测量期间不在机器上跑任何测试、编译或剖析：会干扰数字，也会抢端口（4-03 记了一次）。 每一轮记下电源模式；运行脚本切到 performance 并在结束时恢复。
 - 实验之后先做底层（权限、登录、冷热数据、事务、消息），再按 [rebuild-plan.md](rebuild-plan.md) 重建业务组件。
 
