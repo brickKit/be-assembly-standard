@@ -28,11 +28,11 @@
 
 | 组件 ID | 能力 | 范围 | 实现 | 边界卡 | 组件文档 | 必需依赖 | 被谁必需依赖 |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| `mdm/partner` | 业务伙伴：共有身份、客户／供应商／员工往来／关联方角色、正式联络资料、伙伴银行账户 | 当前重建 | 3.0.3 | [mdm.md](../07-components/mdm.md#mdmpartner) | [BRICKKIT](../../../components/mdm/partner/BRICKKIT.md) · [AGENTS](../../../components/mdm/partner/AGENTS.md) | `mdm/org`、身份（`infra/iam-*`）、`infra/authz` | `crm/activity`、`crm/case`、`crm/customer`、`crm/lead`、`crm/opportunity`、`erp/billing`、`erp/contract`、`erp/credit`、`erp/finance`、`erp/intercompany`、`erp/payment`、`erp/purchase`、`erp/sales`、`erp/tax` |
-| `mdm/product` | 产品、物料、单位换算、批次与序列追踪政策 | 当前重建 | 3.0.3 | [mdm.md](../07-components/mdm.md#mdmproduct) | [BRICKKIT](../../../components/mdm/product/BRICKKIT.md) · [AGENTS](../../../components/mdm/product/AGENTS.md) | `mdm/org`、身份（`infra/iam-*`）、`infra/authz` | `erp/contract`、`erp/costing`、`erp/inventory`、`erp/maintenance`、`erp/manufacturing`、`erp/planning`、`erp/purchase`、`erp/quality`、`erp/sales`、`erp/tax`、`erp/warehouse` |
-| `mdm/org` | 法人、部门、岗位、汇报关系、地点、工作日历 | 当前重建 | 3.0.2 | [mdm.md](../07-components/mdm.md#mdmorg) | [BRICKKIT](../../../components/mdm/org/BRICKKIT.md) · [AGENTS](../../../components/mdm/org/AGENTS.md) | 身份（`infra/iam-*`）、`infra/authz` | `crm/case`、`erp/asset`、`erp/billing`、`erp/budget`、`erp/consolidation`、`erp/contract`、`erp/costing`、`erp/credit`、`erp/finance`、`erp/intercompany`、`erp/inventory`、`erp/maintenance`、`erp/manufacturing`、`erp/payment`、`erp/planning`、`erp/purchase`、`erp/sales`、`erp/tax`、`hrm/attendance`、`hrm/expense`、`hrm/leave`、`hrm/recruitment`、`mdm/employee`、`mdm/partner`、`mdm/product`、`prj/project` |
+| `mdm/partner` | 业务伙伴：共有身份、客户／供应商／员工往来／关联方角色、正式联络资料、伙伴银行账户 | 当前重建 | 3.0.4 | [mdm.md](../07-components/mdm.md#mdmpartner) | [BRICKKIT](../../../components/mdm/partner/BRICKKIT.md) · [AGENTS](../../../components/mdm/partner/AGENTS.md) · [design](../../../components/mdm/partner/docs/design.md) | `mdm/org`、身份（`infra/iam-*`）、`infra/authz` | `crm/activity`、`crm/case`、`crm/customer`、`crm/lead`、`crm/opportunity`、`erp/billing`、`erp/contract`、`erp/credit`、`erp/finance`、`erp/intercompany`、`erp/payment`、`erp/purchase`、`erp/sales`、`erp/tax` |
+| `mdm/product` | 产品、物料、单位换算、批次与序列追踪政策 | 当前重建 | 3.0.4 | [mdm.md](../07-components/mdm.md#mdmproduct) | [BRICKKIT](../../../components/mdm/product/BRICKKIT.md) · [AGENTS](../../../components/mdm/product/AGENTS.md) · [design](../../../components/mdm/product/docs/design.md) | `mdm/org`、身份（`infra/iam-*`）、`infra/authz` | `erp/contract`、`erp/costing`、`erp/inventory`、`erp/maintenance`、`erp/manufacturing`、`erp/planning`、`erp/purchase`、`erp/quality`、`erp/sales`、`erp/tax`、`erp/warehouse` |
+| `mdm/org` | 法人、部门、岗位、汇报关系、地点、工作日历 | 当前重建 | 3.0.3 | [mdm.md](../07-components/mdm.md#mdmorg) | [BRICKKIT](../../../components/mdm/org/BRICKKIT.md) · [AGENTS](../../../components/mdm/org/AGENTS.md) · [design](../../../components/mdm/org/docs/design.md) | 身份（`infra/iam-*`）、`infra/authz` | `crm/case`、`erp/asset`、`erp/billing`、`erp/budget`、`erp/consolidation`、`erp/contract`、`erp/costing`、`erp/credit`、`erp/finance`、`erp/intercompany`、`erp/inventory`、`erp/maintenance`、`erp/manufacturing`、`erp/payment`、`erp/planning`、`erp/purchase`、`erp/sales`、`erp/tax`、`hrm/attendance`、`hrm/expense`、`hrm/leave`、`hrm/recruitment`、`mdm/employee`、`mdm/partner`、`mdm/product`、`prj/project` |
 | `mdm/employee` | 员工、任职、员工与账号的映射 | 当前重建 | — | [mdm.md](../07-components/mdm.md#mdmemployee) | — | `mdm/org`、身份（`infra/iam-*`）、`infra/authz` | `crm/commission`、`crm/customer`、`hrm/appraisal`、`hrm/attendance`、`hrm/expense`、`hrm/leave`、`prj/timesheet` |
-| `mdm/currency` | 币种、汇率类型与汇率 | 当前重建 | 3.0.3 | [mdm.md](../07-components/mdm.md#mdmcurrency) | [BRICKKIT](../../../components/mdm/currency/BRICKKIT.md) · [AGENTS](../../../components/mdm/currency/AGENTS.md) | 身份（`infra/iam-*`）、`infra/authz` | `crm/commission`、`erp/asset`、`erp/billing`、`erp/budget`、`erp/consolidation`、`erp/contract`、`erp/costing`、`erp/credit`、`erp/finance`、`erp/payment`、`erp/purchase`、`erp/sales`、`hrm/expense`、`prj/project` |
+| `mdm/currency` | 币种、汇率类型与汇率 | 当前重建 | 3.0.4 | [mdm.md](../07-components/mdm.md#mdmcurrency) | [BRICKKIT](../../../components/mdm/currency/BRICKKIT.md) · [AGENTS](../../../components/mdm/currency/AGENTS.md) · [design](../../../components/mdm/currency/docs/design.md) | 身份（`infra/iam-*`）、`infra/authz` | `crm/commission`、`erp/asset`、`erp/billing`、`erp/budget`、`erp/consolidation`、`erp/contract`、`erp/costing`、`erp/credit`、`erp/finance`、`erp/payment`、`erp/purchase`、`erp/sales`、`hrm/expense`、`prj/project` |
 
 ## 交易与库存
 
@@ -122,4 +122,14 @@
 
 已重建组件在 `component.yaml` 的 `events` 里声明的发布与订阅（`brickkit deps` 给出同一张表）。订阅项以 `*` 结尾时匹配以它前面那一段开头的全部事件。
 
-已重建的组件还没有声明事件。
+| 事件 | 发布者 | 订阅者 |
+| --- | --- | --- |
+| `mdm.currency.changed.v1` | `mdm/currency` | — |
+| `mdm.exchange_rate.published.v1` | `mdm/currency` | — |
+| `mdm.legal_entity.changed.v1` | `mdm/org` | — |
+| `mdm.org_unit.changed.v1` | `mdm/org` | — |
+| `mdm.partner.changed.v1` | `mdm/partner` | — |
+| `mdm.partner_role.changed.v1` | `mdm/partner` | — |
+| `mdm.product.changed.v1` | `mdm/product` | — |
+| `mdm.product_category.changed.v1` | `mdm/product` | — |
+| `mdm.rate_type.changed.v1` | `mdm/currency` | — |
