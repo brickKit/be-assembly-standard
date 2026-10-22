@@ -2,7 +2,7 @@
 
 # Registries
 
-The project-wide tables a component copies from before writing its `component.yaml` or `assembly.yaml`. A port, a schema, a role or a permission key is never invented: it comes from here, or a new row is appended here first. The full rules are in [protocol 19's registries](../docs/zh/06-protocols/19-config-secrets-registries-release.md#注册表) (Chinese only until development is done, D67); this page only says what each file is.
+The project-wide tables a component copies from before writing its `component.yaml` and its component definition. A port, a schema, a role or a permission key is never invented: it comes from here, or a new row is appended here first. The full rules are in [protocol 19's registries](../docs/zh/06-protocols/19-config-secrets-registries-release.md#注册表) (Chinese only until development is done, D67); this page only says what each file is.
 
 ## Files
 

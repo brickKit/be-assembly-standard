@@ -2,7 +2,7 @@
 
 # 登记表
 
-组件写 `component.yaml` 或 `assembly.yaml` 之前要照抄的全项目表。端口、schema、角色、权限键从不自拟：要么从这里抄，要么先在这里追加一行。完整规则见[协议 19 的注册表](../docs/zh/06-protocols/19-config-secrets-registries-release.md#注册表)；本页只说明每个文件是什么。
+组件写 `component.yaml` 与组件定义之前要照抄的全项目表。端口、schema、角色、权限键从不自拟：要么从这里抄，要么先在这里追加一行。完整规则见[协议 19 的注册表](../docs/zh/06-protocols/19-config-secrets-registries-release.md#注册表)；本页只说明每个文件是什么。
 
 ## 文件
 

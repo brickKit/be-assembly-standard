@@ -68,12 +68,12 @@
 
 | 生成物 | 来源 |
 | --- | --- |
-| 组件依赖图、组件清单 | 各组件的 `component.yaml`、`assembly.yaml`，装配项目的 `brickkit.yaml` |
-| 事件清单与事件拓扑 | 各组件契约中的事件定义与订阅声明 |
+| 组件依赖图、组件清单 | 各组件的 `component.yaml`（依赖与 `events`），组件全景，装配项目的 `brickkit.yaml` |
+| 事件清单与事件拓扑 | 各组件 `component.yaml` 的 `events`（发布与订阅，测试核对它与契约的事件定义一致） |
 | 接口文档 | 契约（protobuf、OpenAPI） |
 | 物理 ER 图与数据字典 | 各组件的数据库迁移 |
 | 部署图 | 生成的部署文件（compose、Kubernetes 清单） |
-| 权限键与数据范围清单 | `registry/` 与各组件的 `assembly.yaml` |
+| 权限键与数据范围清单 | 各组件定义中的资源定义（安全 09a），汇总进 `registry/` |
 
 ## 每层放什么
 

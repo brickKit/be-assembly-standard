@@ -23,7 +23,7 @@ flowchart TD
     Root["根 AGENTS.md<br/>（每次加载，只指路）"] --> Task["按任务：规范、技能"]
     Root --> Name["按名字：术语表、生成的索引"]
     Root --> Symptom["按现象：易错点、排障技能"]
-    Name --> Comp["组件仓库<br/>BRICKKIT.md / AGENTS.md / docs/design.md"]
+    Name --> Comp["组件仓库<br/>BRICKKIT.md / AGENTS.md / docs/"]
     Task --> Comp
     Comp --> Local["子目录的 AGENTS.md<br/>（需要时）"]
     Comp --> Map["代码地图 → 源文件"]
@@ -59,7 +59,7 @@ flowchart TD
 
 | 业务叫法 | 定义 | 代码标识符 | 所属组件 | 所在文档 |
 | --- | --- | --- | --- | --- |
-| 例：信用额度 | 允许一个客户未结清的应收上限 | `credit_limit` | `erp/credit` | 边界卡、协议 |
+| 例：信用额度 | 一个客户在一个法人、一种币种下允许的信用占用上限（订单占用 + 应收占用） | `credit_limit` | `erp/credit` | 边界卡、协议 |
 | 例：预占 | 订单确认时为订单行保留库存，到期或取消即释放 | `Reservation`、`reservations` | `erp/inventory` | 协议 04 |
 
 - **两层**：跨组件、全项目通用的概念在系统层的术语表；只在一个组件内使用的在该组件的 `docs/design.md`（“术语”一节）。同一个词只在一层定义。
@@ -73,11 +73,11 @@ flowchart TD
 
 | 索引 | 回答 | 来源 |
 | --- | --- | --- |
-| 组件清单 | 有哪些组件，ID、仓库、版本、范围（当前重建、远期、留位、评估） | `component.yaml`、`assembly.yaml`、`brickkit.yaml` |
+| 组件清单 | 有哪些组件，ID、仓库、版本、范围（当前重建、远期、留位、评估） | `component.yaml`、组件全景、`brickkit.yaml` |
 | 依赖图 | 谁依赖谁，必需还是可选 | `component.yaml` 的依赖声明 |
 | 契约方法 | 每个方法由谁提供、哪些组件声明了对它的依赖 | 契约、`component.yaml` |
 | 事件清单与拓扑 | 每个事件谁发布、谁订阅、版本 | 契约中的事件定义与订阅声明 |
-| 权限键与数据范围 | 每个键属于哪个组件、哪个接口、是否已弃用 | `registry/`、`assembly.yaml`、路由注册 |
+| 权限键与数据范围 | 每个键属于哪个组件、哪个接口、是否已弃用 | 组件定义中的资源定义、路由注册、`registry/` |
 | 配置键 | 每个键属于哪个组件、是否必需、是否是密钥、默认值 | `configSchema`、`config/` |
 | 端口与数据库 schema | 每个组件的端口、schema 与数据库角色 | `registry/` |
 | 预期覆盖 | 每个独立预期由哪些测试覆盖，哪些还没有 | 测试名或注释中的预期编号（[追踪链](#追踪链)） |
@@ -103,32 +103,40 @@ flowchart TD
 
 ## 组件仓库的标准布局与代码地图
 
-每个组件仓库的目录结构一致，AI 在一个组件学会的位置，在别的组件同样成立：
+每个组件仓库的目录结构一致，AI 在一个组件学会的位置，在别的组件同样成立。Go 组件：
 
 ```text
 <仓库>/
-├── component.yaml          BrickKit 读取：身份、版本、依赖、配置、端口
-├── assembly.yaml           本项目的工具读取：权限、数据范围、领域（菜单由前端的页面模块声明，协议 20）等
-├── contracts/              契约：protobuf、OpenAPI、事件定义
-├── gen/                    从契约生成的代码，不手改
-├── backend/
-│   ├── module/             唯一入口
-│   ├── cmd/                独立运行与迁移的一行入口
-│   └── internal/           按职责分包：接口层、服务、存储、消费者……
-├── migrations/             数据库迁移
-├── docs/design.md          设计结论（含组件的术语）
+├── component.yaml          BrickKit 读取：身份、版本、依赖、配置、端口、事件（发布与订阅）
 ├── BRICKKIT.md             给使用者
 ├── AGENTS.md               给修改者，含代码地图
-└── CLAUDE.md               只有 @AGENTS.md
+├── CLAUDE.md               只有 @AGENTS.md
+├── README.md               给代码托管平台上的人
+├── docs/                   需要时：design.md，再需要时 rules/、flows/、data-model.md（组件的文档）
+├── contract/               本组件发布的契约，单独的 Go 模块：proto/、events/、openapi.yaml、生成的代码
+├── <包>/                   组件的包（模块入口）：
+│   ├── definition.go       身份、版本、依赖、配置键、事件流、资源与操作（权限键）
+│   ├── module.go           路由与系统面的注册
+│   ├── <业务>.go           按业务分文件
+│   └── migrations/         数据库迁移，随包嵌入，NNNN_<名字>.up.sql
+├── cmd/seed/               种子数据（make seed）
+├── main.go                 单独运行的入口，一行：launcher.Main(<包>.Definition())
+├── Makefile                test、test-integration、seed、lint
+└── Dockerfile
 ```
 
-入口、迁移与生成代码的约定见[组件实现约定](06-component-implementation.md#仓库布局与入口)；同一种语言的组件布局完全相同。
+- **包名**：组件名的最后一段（`mdm/partner` → `partner/`）；槽位家族的成员用家族名（`infra/iam-casdoor` → `iam/`），同一家族的成员可以互换。
+- **契约的位置**：组件自己的契约在 `contract/`，调用方只引入这个模块；槽位家族共用的族契约在装配项目的 `contracts/<领域>/<家族>/`，是单独的仓库（例如 `contracts/infra/authz`），成员仓库不再带一份。
+- **权限、资源与维度写在组件定义里**（SDK 的资源定义，[安全 09a](../06-protocols/security/09a-encoding-and-records.md)）；项目的注册表由工具从资源定义汇总，组件仓库里没有另一份项目专用的清单。
+- 一个包长到某一块有自己的规则与测试时，拆成子包，并在子包放局部的 `AGENTS.md`（[局部的 AI 说明](#局部的-ai-说明)）。
+
+入口、迁移与生成代码的约定见[组件实现约定](06-component-implementation.md#仓库布局与入口)；同一种语言的组件布局完全相同。Python 组件的布局随第一个 Python 组件确定。
 
 组件 `AGENTS.md` 的“代码地图”一节固定有两张表：
 
 | 表 | 每行写 | 例子 |
 | --- | --- | --- |
-| **路径 → 职责** | 一个文件或目录、它拥有什么（函数名、表名、事件名） | `backend/internal/repo/reservation.go`：`Reserve`、`CancelReservation`，防止超卖的条件更新 |
+| **路径 → 职责** | 一个文件或目录、它拥有什么（函数名、表名、事件名） | `inventory/reservation.go`：`Reserve`、`CancelReservation`，防止超卖的条件更新 |
 | **功能 → 从哪开始、然后看哪** | 一类常见改动、第一个要打开的文件、接下来的文件与要重跑的测试 | “可预占数量的规则”：先看 `reservation.go` 中条件更新的 `WHERE`，再看并发测试 |
 
 另外：
@@ -173,7 +181,7 @@ flowchart TD
 - 这个目录有上层没有的局部约定，而且违反了不容易发现（例如迁移目录：迁移只追加、不改已发布的迁移、分区键的写法）；
 - 这个目录的结构需要一张自己的地图才能快速定位（例如一个有十几种规则文件的定价包、一个前端的页面模块目录）；
 - AI 在这个目录反复犯同一类错误；
-- 目录由工具生成或有特殊的修改方式（例如 `gen/`：不要手改，改契约后重新生成）。
+- 目录由工具生成或有特殊的修改方式（例如契约的生成代码：不要手改，改契约后重新生成）。
 
 **什么时候不建**：目录内容简单、上层的说明已经够用；只是想重复一遍上层的规则。
 

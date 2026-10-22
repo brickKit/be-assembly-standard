@@ -74,7 +74,7 @@ AUTHZ_URL: $endpoint:infra/authz-openfga
 AUTHZ_GRPC_URL: $endpoint:infra/authz-openfga:grpc
 ```
 
-换成员时两个地址指向新成员；但只改地址不等于迁移成功。所需与提供能力的元数据由 `assembly.yaml`、契约与 be-ops 承接，不假设 BrickKit 能理解 RBAC／ABAC／ReBAC 的业务含义。
+换成员时两个地址指向新成员；但只改地址不等于迁移成功。所需与提供能力的元数据由组件定义（能力与资源定义）、契约与装配工具承接，不假设 BrickKit 能理解 RBAC／ABAC／ReBAC 的业务含义。
 
 ## 授权管理
 

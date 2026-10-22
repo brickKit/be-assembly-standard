@@ -101,7 +101,7 @@
 | 资源定义缺维度，或把空部门路径当作树的根 | 新建的无部门用户看到全部部门的行；缺维度被当作“全部” | 维度必须显式声明（[安全 09a](docs/zh/06-protocols/security/09a-encoding-and-records.md)）；没有部门的主体不贡献任何部门条件（[安全 07](docs/zh/06-protocols/security/07-finite-expressions-containment-and-queries.md)） |
 | 改名或复用已发布的权限键、端口、schema | 被授予旧键的角色静默失去它；依赖方与外壳全部断开；schema 改名是一次数据迁移 | 注册表身份列只追加，退役是状态（[协议 19 的注册表](docs/zh/06-protocols/19-config-secrets-registries-release.md#注册表)） |
 | 前端只检查 `features` 不检查 `permissions` | 菜单看得见，点进去整页被拒 | `features` 是部署启用了什么，`permissions` 是这个用户能做什么（[协议 20](docs/zh/06-protocols/20-frontend.md)） |
-| 把本项目的键写进 `component.yaml` | `brickkit lint` 与 `add` 拒绝整个清单（`MANIFEST_INVALID`、`unknown field`） | `component.yaml` 没有扩展字段，项目的键在 `assembly.yaml`（[AI 导航的标准布局](docs/zh/01-conventions/05-ai-navigation.md#组件仓库的标准布局与代码地图)） |
+| 把本项目的键写进 `component.yaml` | `brickkit lint` 与 `add` 拒绝整个清单（`MANIFEST_INVALID`、`unknown field`） | `component.yaml` 没有扩展字段；权限、资源与维度写在组件定义里（[AI 导航的标准布局](docs/zh/01-conventions/05-ai-navigation.md#组件仓库的标准布局与代码地图)） |
 | 先普通 `SELECT` 再写入来认领队列行或幂等键 | 两个副本把每条发件行发两次；两个并发请求都执行 | 原子认领：`FOR UPDATE SKIP LOCKED`、`INSERT … ON CONFLICT DO NOTHING`（[协议 01 的认领与接管](docs/zh/06-protocols/01-background-work.md)、[事务与消息](docs/zh/04-foundations/03-transactions-and-messaging.md#本地事务)） |
 | 金额用浮点；列表用偏移量分页 | 金额在语言之间丢精度；深分页变慢并跳行 | 十进制字符串与游标（[协议 14](docs/zh/06-protocols/14-data-foundations.md)） |
 | 为了让测试通过而改测试：注释掉、加跳过、放宽断言 | 全绿而什么都没守住 | 改实现；测试真错了，单独一次提交说明为什么（[一轮红绿与铁律](docs/zh/01-conventions/02-testing-and-validation.md#一轮红绿与铁律)） |
