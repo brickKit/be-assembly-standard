@@ -74,7 +74,7 @@
 | 币种与汇率 | 币种的最小单位与舍入；汇率按类型与日期取不晚于该日的最近一条，单据保存汇率快照（值、日期、类型、记录身份与版本） | `currency`、`exchange_rate`、`RateService/EffectiveRate` | `mdm/currency` | 主数据卡、[协议 14](../06-protocols/14-data-foundations.md#金额数量汇率与单位) |
 | 信用额度与信用占用 | 按伙伴、法人、币种的额度；已用 = 订单占用（确认的预占分支）+ 应收占用（未结清的账单），不超过额度 | `credit_limit`、`reservation_branch`、`receivable_exposure` | `erp/credit` | [财务卡](../07-components/erp-finance.md#erpcredit)、协议 04、05 |
 | 发生时归属与当前责任 | 业务发生时的组织与现在负责的人或部门，分别保存；授权多用当前责任，指标可按发生时归属 | `occurred_org`、`current_owner` | 各业务组件 | [数据与生命周期](../04-foundations/02-data-and-lifecycle.md#发生时归属与当前责任) |
-| 预占 | 订单确认时在库存与信用上保留的数量或金额，以分支表达；易混：出库是库存的实际减少 | `reservation_branch`；`reserving`、`committed`、`consumed`、`released` | `erp/inventory`、`erp/credit` | [协议 04](../06-protocols/04-order-reservation.md) |
+| 预占 | 订单确认时在库存与信用上保留的数量或金额，以分支表达；库存的可用量 = 在库 − 已预占；易混：出库是库存的实际减少，带分支的出库同时减在库与已预占，可用量不变 | `branch`；分支状态 `held`、`committed`、`consumed`、`released`、`expired`、`rejected`、`cancelled`（销售一侧的确认过程另有状态，见协议 04） | `erp/inventory`、`erp/credit` | [协议 04](../06-protocols/04-order-reservation.md) |
 | 期初 | 上线切点之前的结果，以专门的业务类型进入，不伪造成新交易 | `opening` | 各业务组件 | [协议 16](../06-protocols/16-go-live-and-import.md) |
 | 出账额度与认领 | 来源（订单、合同、项目）裁决每次可出账的额度，出账按认领模式向来源认领 | `billable`、`claim` | 来源组件、`erp/billing` | [协议 05](../06-protocols/05-billing-settlement-and-payment.md) |
 | 增量事实 | 跨组件不可遗漏的事实，带产生方的序号与纪元，按事实身份去重 | `fact`、`fact_sequence` | 产生方 | 协议 05 |
