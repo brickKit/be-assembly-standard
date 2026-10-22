@@ -1,0 +1,28 @@
+# 文档结构实验的题库
+
+> 开发文件，考生看不到（考场排除 `dev/`）。计划见 [doc-structure-plan.md](../rebuild/doc-structure-plan.md)，评分规则见 [README.md](README.md)；另记定位成本（读过的文件与行数、第一次读到关键位置之前读了多少、走错的路）。
+> 类型编号对应计划里“内容类型 × 层”的行。参考答案按 2026-10-22 的代码与文档核对。
+
+## R0 基线（19 题）
+
+| 题 | 类型 · 层 | 受测 | 原话 | 必经 | 参考答案的要点 |
+| --- | --- | --- | --- | --- | --- |
+| S01 | 2 术语 · P→M | Sonnet | 客户资格查询在代码里是哪个函数？调用方拿到回答后多久内必须提交？ | `mdm/partner` 的 `AGENTS.md` 代码地图；协议 07 的资格引用 | `partner/roles.go` 的 `eligibility`（系统面 `source.go`）；W 为 30 秒，过期重新取证 |
+| S02 | 3 分布 · P→C | Haiku | 我想给客户加一个“信用等级”，应该加在哪个组件？ | 全景或边界卡；`mdm/partner` 的 `BRICKKIT.md` 不负责 | `erp/credit`（D02、D03），不是 `mdm/partner`；它在当前重建范围、还没建 |
+| S03 | 4 关联 · P | Sonnet | 我要改 `mdm.partner_role.changed.v1` 事件的载荷，会影响哪些组件？ | 契约只追加（0302）；事件拓扑 | 没有权威的订阅方清单（应由生成的拓扑回答）；只能追加字段，破坏性改动换 `v2` 并排发布；候选：依赖伙伴、引用客户角色的组件（销售等） |
+| S04 | 5 流程 · P | Haiku | 客户从下单到我们收到钱，整个过程经过哪些组件，按什么顺序？ | 协议 04、05；边界卡 | `erp/sales` 订单 → 确认时向 `erp/inventory`、`erp/credit` 预占（协议 04）→ 交货与出库（库存）→ `erp/billing` 向销售认领可出账额度、出账（协议 05）→ `erp/finance` 应收，信用占用转应收占用 → `erp/payment` 资金到账 → 财务核销 |
+| S05 | 6 机制 · P | Sonnet | 订单确认时库存预占成功了，但信用额度不够，系统会怎样？ | 协议 04 的确认过程 | 信用 `rejected` → `rejecting`，取消库存分支 → 全部释放后 `rejected`，订单退出确认中、原因“超额度”；只有 `confirmed` 才返回已确认 |
+| S06 | 7 规则 · C | Haiku | 两个伙伴税号一样时系统会拒绝新建吗？代码在哪？ | `mdm/partner` 的 `BRICKKIT.md`、代码地图 | 不拒绝，给提示、由人决定是否合并（D22）；同一国家；`partner/records.go` |
+| S07 | 7 规则 · P/C | Sonnet | 法人被暂停以后，这个法人下已有的客户还能用来下新单吗？ | 协议 07 的生命周期与提交检查；伙伴的资格查询 | 不能：暂停的对象拒绝新的资格引用；但拒绝来自法人（`mdm/org`）的证据，伙伴的资格查询只看伙伴与角色，法人暂停时它仍答 eligible；销售要分别取证 |
+| S08 | 8 数据 · C/M | Haiku | 给业务伙伴加一个“所属行业”字段，要改哪些地方？ | 代码地图；协议 14；契约规则 | 先判断标准列还是扩展字段：协议 08 以“客户的行业分类”为扩展字段的例子，边界卡写客户特有字段用扩展字段（扩展字段 SDK 尚未实现）；作为标准列时：新迁移 `0002_….up.sql`（不改已发布的）、`records.go`、`module.go`、proto、`openapi.yaml`、事件 schema → 发布 `contract/v3…`，组件升版本；契约只追加 |
+| S09 | 8 归属 · P | Sonnet | 销售开报价单要用汇率，汇率归谁维护，销售怎么拿到？ | 边界卡 `mdm/currency`；协议 02 | `mdm/currency` 拥有币种、汇率类型、每日汇率；销售同步调 `RateService/EffectiveRate`（按类型、日期、币种对，取不晚于该日的最近一条），单据存汇率快照（协议 14） |
+| S10 | 14 结构 · C/M | Haiku | 在 `mdm/partner` 里加一个新接口，路由在哪注册，权限键在哪声明？ | 代码地图 | `module.go` 注册路由；`definition.go` 的资源与操作（操作定义是注册的一部分）；`contract/openapi.yaml`；注册表 `registry/permissions.tsv` 没有新组件的键（漂移） |
+| S11 | 14 结构 · P | Sonnet | 我要新建 Go 组件 `erp/credit`，仓库目录应该怎样排？ | 标准布局；已建组件 | 实际做法：`contract/` 独立模块、以组件命名的包（`definition.go`、`module.go`、包内 `migrations/`）、`cmd/seed`、根 `main.go`；规范写的 `contracts/`、`backend/…`、`assembly.yaml` 与实际不符 |
+| S12 | 11 约定 · P/C | Haiku | 在写入伙伴的事务里，能不能顺便调用 `mdm/org` 确认法人存在？ | 事务与消息；伙伴的设计取舍 | 不能：事务内不发网络调用；先取证，再在事务里写；中间窗口由资格检查兜住 |
+| S13 | 10 权限 · C | Sonnet | “中国区客户的管理员只能管中国区客户”在伙伴组件里是怎么做到的？ | 种子数据清单；安全 04；`definition.go` | 不是按行：伙伴这一版没有数据范围维度；管理单元「中国区客户」限定可授予的操作（读伙伴、维护客户角色），由 `test.unit.admin.cn` 在单元内授予，越出单元的授予被拒 |
+| S14 | 15 测试 · C | Haiku | 怎么跑 `mdm/partner` 的集成测试？需要准备什么？ | 组件 `AGENTS.md` 构建与测试 | `go test -tags integration ./partner/`；`BE_SDK_TEST_PG_ADMIN`、`BE_SDK_TEST_NATS_URL`；真实 PostgreSQL 与 NATS；`mdm/org` 用替身 |
+| S15 | 16 部署 · C/P | Sonnet | 部署 `mdm/partner` 之前数据库要准备什么？ | `BRICKKIT.md` 部署前准备；注册表 | 自己的 schema、运行角色与属主角色（`mdm_partner`）；`PG_*`，迁移用 `PG_OWNER_*` |
+| S16 | 17 种子 · P | Haiku | 我要一个只能看到西班牙法人客户、能维护客户角色的测试账号，用哪个？ | 种子数据清单 | `test.sales.es`（ES01 销售，客户角色 ✓）；但它看得到全部伙伴：伙伴没有数据范围维度，“只看西班牙”现在做不到 |
+| S17 | 12 决定 · P | Sonnet | 数据范围能不能用 PostgreSQL 的行级安全来做？ | 决定记录 | 不能，0206；SDK 编译成参数化 SQL（安全 07） |
+| S18 | 14 结构 · SDK | Haiku | SDK 里的请求幂等键是怎么实现的？组件要怎样用？ | `be-sdk-go` 的 `idem` 包；协议 14 | `tools/be-sdk-go/idem`：表 `be_idempotency`（主体 + 键），过期清理按小时；组件在路由上声明幂等、请求带 `Idempotency-Key`（伙伴新建即如此）；SDK 没有 `AGENTS.md` |
+| S19 | 13 理念 · P | Sonnet | 外壳里几个组件在同一个进程，为什么还要走网络调用，不直接调函数？ | 两条不变的原则；0101 | 每个组件能单独运行，合并只在部署时；直接调函数就拆不开；复制生成代码进同一外壳会崩溃 |

@@ -20,6 +20,7 @@
 | [step5-plan.md](step5-plan.md) | 实验第 5 步（身份适配、授权、审计与两个契约包）的计划，2026-10-19 定稿 |
 | [step5-contracts.md](step5-contracts.md) | 第 5 步的契约（系统面的方法、信封与记录字节、定稿时补的设计） |
 | [step6-plan.md](step6-plan.md) | 实验第 6 步（主数据四个）的计划、决定与进度（2026-10-20 起草） |
+| [doc-structure-plan.md](doc-structure-plan.md) | 文档结构实验（2026-10-22 起）：内容类型 × 层、初步结构、给 BrickKit 的 FRR-010–012、R0–R3 的轮次；题库在 `dev/routing-tests/structure-questions.md` |
 
 ## 现在在哪里
 
