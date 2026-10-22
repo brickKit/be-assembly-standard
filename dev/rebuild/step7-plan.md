@@ -80,6 +80,7 @@
 
 ## 进度
 
+- **T7.2 完成（2026-10-22）**：五个契约（库存与信用同形的 `ReservationService`；库存的 `StockService`；销售的 `BillingSourceService` 与 `OrderService`；出账的 `InvoiceService`；打印的 `RenderService`）、事件 schema（事件类型按协议 19 的 `<领域>.<聚合>.<动作>.v<n>`）、OpenAPI；`make check` 全过，标签 `contract/v3.0.0-alpha.1` 已推送。打印的输出上限缺省 3 MiB（SDK 用 gRPC 缺省的 4 MiB 消息上限）。
 - **T7.1 完成（2026-10-22）**：五个组件的 `docs/design.md`（销售另有确认、定价、交货与出账三份细则，库存有可用量，出账有出账顺序），边界卡缩短并链到它们；组件索引标“设计中”；R2a 10 题全对，查出的设计缺口已改（[结果](../routing-tests/results-2026-10-22-r2a.md)）。
 - **T7.0 完成（2026-10-22）**：五个子模块移到新的主分支（只有 README）；be-sdk-python 3.0.0a22 用 jsonschema-rs 0.60.0 校验安全记录，单元、向量与集成测试全过（141 + 77）。
 
