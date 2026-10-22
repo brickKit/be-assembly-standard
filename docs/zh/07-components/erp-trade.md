@@ -74,7 +74,7 @@
 | 必需依赖 | `mdm/product`、`mdm/org`、身份、授权 |
 | 可选依赖与缺件 | `erp/warehouse`（下游，经库存契约执行作业）：缺时由简单操作直接出入库；`infra/workflow`（下游）：调整的审批，缺时在本组件页面中处理；`erp/costing`（下游）：缺时流水照常带计价序号，只是没有成本计算 |
 | 范围 | 当前重建 |
-| 设计 | 重建中（实验第 7 步）：统一语言、拥有的数据、不变量、命令与查询、事件、依赖、实现状态与验证故事在组件仓库的 [docs/design.md](../../../components/erp/inventory/docs/design.md)；可用量与分支的细则在 [docs/rules/availability.md](../../../components/erp/inventory/docs/rules/availability.md)；用法、部署与配置在组件做好后的 `BRICKKIT.md` |
+| 设计 | 已重建：统一语言、拥有的数据、不变量、命令与查询、事件、依赖、实现状态与验证故事在组件仓库的 [docs/design.md](../../../components/erp/inventory/docs/design.md)；可用量与分支的细则在 [docs/rules/availability.md](../../../components/erp/inventory/docs/rules/availability.md)；用法、部署与配置在 [BRICKKIT.md](../../../components/erp/inventory/BRICKKIT.md) |
 
 ## erp/planning
 

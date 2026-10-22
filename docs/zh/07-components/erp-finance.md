@@ -28,7 +28,7 @@
 | 必需依赖 | `mdm/partner`、`mdm/org`、`mdm/currency`、身份、授权 |
 | 可选依赖与缺件 | `erp/billing`：缺时没有“已出账”事实，订单占用不转换为应收占用，只按订单占用控制，订单完成或关闭时由销售释放剩余分支，并注明；`infra/workflow`（下游）：临时额度的审批，缺时在本组件页面处理；`erp/finance`：缺时应收占用只增不减（没有结清事实），需要人工释放 |
 | 范围 | 当前重建（新身份） |
-| 设计 | 重建中（实验第 7 步）：统一语言、拥有的数据、不变量、命令与查询、事件、依赖、实现状态与验证故事在组件仓库的 [docs/design.md](../../../components/erp/credit/docs/design.md)；用法、部署与配置在组件做好后的 `BRICKKIT.md` |
+| 设计 | 已重建：统一语言、拥有的数据、不变量、命令与查询、事件、依赖、实现状态与验证故事在组件仓库的 [docs/design.md](../../../components/erp/credit/docs/design.md)；用法、部署与配置在 [BRICKKIT.md](../../../components/erp/credit/BRICKKIT.md) |
 
 ## erp/costing
 

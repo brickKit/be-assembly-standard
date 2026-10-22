@@ -51,7 +51,7 @@
 | 组件 ID | 能力 | 范围 | 实现 | 边界卡 | 组件文档 | 必需依赖 | 被谁必需依赖 |
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | `erp/finance` | 总账、应收应付（含预收、预付、员工借款）、付款认领、核销、外币重估与期末暂估、维度目录与递延、会计期间；应付内部的供应商票据匹配 | 当前重建 | — | [erp-finance.md](../07-components/erp-finance.md#erpfinance) | — | `mdm/org`、`mdm/partner`、`mdm/currency`、身份（`infra/iam-*`）、`infra/authz` | `erp/consolidation` |
-| `erp/credit` | 信用政策、额度与信用占用 | 当前重建 | 设计中 | [erp-finance.md](../07-components/erp-finance.md#erpcredit) | [design](../../../components/erp/credit/docs/design.md) | `mdm/partner`、`mdm/org`、`mdm/currency`、身份（`infra/iam-*`）、`infra/authz` | — |
+| `erp/credit` | 信用政策、额度与信用占用 | 当前重建 | 3.0.0 | [erp-finance.md](../07-components/erp-finance.md#erpcredit) | [BRICKKIT](../../../components/erp/credit/BRICKKIT.md) · [AGENTS](../../../components/erp/credit/AGENTS.md) · [design](../../../components/erp/credit/docs/design.md) | `mdm/partner`、`mdm/org`、`mdm/currency`、身份（`infra/iam-*`）、`infra/authz` | — |
 | `erp/costing` | 存货计价与成本子账；暂估、到岸成本、工单成本与差异、退货冲回 | 当前重建 | — | [erp-finance.md](../07-components/erp-finance.md#erpcosting) | — | `erp/inventory`、`mdm/product`、`mdm/org`、`mdm/currency`、身份（`infra/iam-*`）、`infra/authz` | — |
 | `erp/billing` | 客户账单与商业发票 | 当前重建 | 设计中 | [erp-finance.md](../07-components/erp-finance.md#erpbilling) | [design](../../../components/erp/billing/docs/design.md) | `mdm/partner`、`mdm/org`、`mdm/currency`、身份（`infra/iam-*`）、`infra/authz` | — |
 | `erp/payment` | 收付款业务与银行／渠道对账 | 当前重建 | — | [erp-finance.md](../07-components/erp-finance.md#erppayment) | — | `mdm/partner`、`mdm/org`、`mdm/currency`、身份（`infra/iam-*`）、`infra/authz` | — |
@@ -137,6 +137,10 @@
 
 | 事件 | 发布者 | 订阅者 |
 | --- | --- | --- |
+| `erp.credit_branch.changed.v1` | `erp/credit` | — |
+| `erp.credit_limit.changed.v1` | `erp/credit` | — |
+| `erp.credit_limit.exceeded.v1` | `erp/credit` | — |
+| `erp.credit_policy.changed.v1` | `erp/credit` | — |
 | `erp.inventory_branch.changed.v1` | `erp/inventory` | — |
 | `erp.inventory_movement.recorded.v1` | `erp/inventory` | — |
 | `erp.stock_position.changed.v1` | `erp/inventory` | — |
