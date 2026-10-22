@@ -122,7 +122,7 @@ def render():
         "按组件 ID 找到它的边界卡、仓库里的文档与实现状态；“被谁必需依赖”是改它会影响到的组件（只算必需依赖，可选依赖与缺件行为见边界卡）。",
         "业务词先查[术语表](07-glossary.md)，它给出所属组件；跨组件的业务过程见[业务流程](../08-flows/README.md)。",
         "",
-        "**实现**一列：已按新设计重建的组件写版本，打开“组件文档”里的 `AGENTS.md` 从代码地图开始；没有版本的只有设计（边界卡与协议）。",
+        "**实现**一列：已按新设计重建的组件写版本，打开“组件文档”里的 `AGENTS.md` 从代码地图开始；“设计中”的组件已在仓库里写好 `docs/design.md`、代码还没有；没有版本的只有设计（边界卡与协议）。",
     ]
     for title, rows in cats:
         lines += ["", f"## {title}", "", "| 组件 ID | 能力 | 范围 | 实现 | 边界卡 | 组件文档 | 必需依赖 | 被谁必需依赖 |", "| --- | --- | --- | --- | --- | --- | --- | --- |"]
@@ -142,6 +142,10 @@ def render():
                 if os.path.exists(os.path.join(ROOT, m["_dir"], "docs/design.md")):
                     docs.append(f"[design]({d}/docs/design.md)")
                 impl, docs = m["metadata"]["version"], " · ".join(docs)
+            elif (os.path.exists(os.path.join(ROOT, "components", cid, "docs/design.md"))
+                  and not os.path.exists(os.path.join(ROOT, "components", cid, "component.yaml"))):
+                # Started on the new design (the repo restarted without a 2.x manifest), no code yet.
+                impl, docs = "设计中", f"[design](../../../components/{cid}/docs/design.md)"
             else:
                 impl, docs = "—", "—"
             lines.append(f"| {code(cid)} | {cap} | {scope} | {impl} | {card_link} | {docs} | {req} | {by} |")

@@ -87,6 +87,7 @@
 | 可贷记台账 | 退货单行上已出账、可开红字的额度；出账组件按认领模式认领后开出贷项 | `creditable`、`credit_claimed`、`credited` | `erp/sales` | 协议 05 |
 | 收货计价依据、待定价 | 采购按收货行发布的单价与口径，是暂估成本的依据；超时未到时成本组件按政策取单价并标“待定价”；单价来源按政策价、计价依据、票据价的优先级替换 | `receipt_valuation_basis`；`pending_price` | `erp/purchase`；`erp/costing` | [协议 05b](../06-protocols/05b-inventory-costing.md) |
 | 货主 | 库存维度之一：库存归谁所有（自有、寄售、存放在供应商处），与存放位置分开 | `stock_owner` | `erp/inventory` | [领域与边界](02-domains-and-boundaries.md) |
+| 库存流水序号、计价序号 | 库存给每条流水编的两个连续序号，提交后在锁内分配：库存流水序号在整个库存范围内，供成本组件关账时取高点与补取；计价序号在“产品 + 法人”内，成本组件按它的顺序计价；易混：两条序列中同一产品的先后可以不同 | `inventory_seq`、`valuation_seq` | `erp/inventory` | [协议 05b](../06-protocols/05b-inventory-costing.md)、[协议 06](../06-protocols/06-period-close.md) |
 | 核销 | 收付款与未清项的分配，在财务的本地事务内完成 | `settlement` | `erp/finance` | 协议 05 |
 | 期间与关账批次 | 会计期间的状态与关账的协调；迟到单据顺延 | `period`；`open`、`closing`、`closed`、`reopened`、`pre_go_live` | `erp/finance` | [协议 06](../06-protocols/06-period-close.md) |
 | 历史引用与资格引用 | 前者只记录当时的快照；后者要求被引用对象当前合格 | `historical_ref`、`eligibility_ref` | 引用方 | [协议 07](../06-protocols/07-references.md) |

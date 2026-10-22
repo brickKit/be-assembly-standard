@@ -5,7 +5,7 @@
 按组件 ID 找到它的边界卡、仓库里的文档与实现状态；“被谁必需依赖”是改它会影响到的组件（只算必需依赖，可选依赖与缺件行为见边界卡）。
 业务词先查[术语表](07-glossary.md)，它给出所属组件；跨组件的业务过程见[业务流程](../08-flows/README.md)。
 
-**实现**一列：已按新设计重建的组件写版本，打开“组件文档”里的 `AGENTS.md` 从代码地图开始；没有版本的只有设计（边界卡与协议）。
+**实现**一列：已按新设计重建的组件写版本，打开“组件文档”里的 `AGENTS.md` 从代码地图开始；“设计中”的组件已在仓库里写好 `docs/design.md`、代码还没有；没有版本的只有设计（边界卡与协议）。
 
 ## 基础与通用能力
 
@@ -19,7 +19,7 @@
 | `infra/workflow` | 统一待办（不含流程引擎） | 当前重建 | — | [infra.md](../07-components/infra.md#infraworkflow) | — | 身份（`infra/iam-*`）、`infra/authz` | — |
 | `infra/notification` | 通知意图、偏好与通道路由 | 当前重建 | — | [infra.md](../07-components/infra.md#infranotification) | — | 身份（`infra/iam-*`）、`infra/authz` | — |
 | `infra/attachment` | 附件元数据、处理状态与授权协作 | 当前重建 | — | [infra.md](../07-components/infra.md#infraattachment) | — | 身份（`infra/iam-*`）、`infra/authz` | `hrm/expense` |
-| `infra/print` | 单据与标签渲染 | 当前重建 | — | [infra.md](../07-components/infra.md#infraprint) | — | 身份（`infra/iam-*`）、`infra/authz` | — |
+| `infra/print` | 单据与标签渲染 | 当前重建 | 设计中 | [infra.md](../07-components/infra.md#infraprint) | [design](../../../components/infra/print/docs/design.md) | 身份（`infra/iam-*`）、`infra/authz` | — |
 | `infra/audit` | 业务审计的集中保存与查询；兼任独立证据存储 | 当前重建 | 3.0.3 | [infra.md](../07-components/infra.md#infraaudit) | [BRICKKIT](../../../components/infra/audit/BRICKKIT.md) · [AGENTS](../../../components/infra/audit/AGENTS.md) · [design](../../../components/infra/audit/docs/design.md) | 身份（`infra/iam-*`）、`infra/authz` | — |
 | `infra/bff-mobile` | 移动端展示聚合 | 当前重建 | — | [infra.md](../07-components/infra.md#infrabff-mobile) | — | 身份（`infra/iam-*`） | `frontend/mobile` |
 | `infra/dlq-monitor` | 死信观察、处理与审计 | 远期 | — | [infra.md](../07-components/infra.md#infradlq-monitor) | — | 身份（`infra/iam-*`）、`infra/authz` | — |
@@ -38,9 +38,9 @@
 
 | 组件 ID | 能力 | 范围 | 实现 | 边界卡 | 组件文档 | 必需依赖 | 被谁必需依赖 |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| `erp/sales` | 报价、计价与销售订单；实物与服务共同基础 | 当前重建 | — | [erp-trade.md](../07-components/erp-trade.md#erpsales) | — | `mdm/partner`、`mdm/product`、`mdm/org`、`mdm/currency`、身份（`infra/iam-*`）、`infra/authz` | `erp/intercompany` |
+| `erp/sales` | 报价、计价与销售订单；实物与服务共同基础 | 当前重建 | 设计中 | [erp-trade.md](../07-components/erp-trade.md#erpsales) | [design](../../../components/erp/sales/docs/design.md) | `mdm/partner`、`mdm/product`、`mdm/org`、`mdm/currency`、身份（`infra/iam-*`）、`infra/authz` | `erp/intercompany` |
 | `erp/purchase` | 采购申请、订单与到货 | 当前重建 | — | [erp-trade.md](../07-components/erp-trade.md#erppurchase) | — | `mdm/partner`、`mdm/product`、`mdm/org`、`mdm/currency`、身份（`infra/iam-*`）、`infra/authz` | `erp/intercompany` |
-| `erp/inventory` | 库存数量、预占与物理变动（唯一写入者） | 当前重建 | — | [erp-trade.md](../07-components/erp-trade.md#erpinventory) | — | `mdm/product`、`mdm/org`、身份（`infra/iam-*`）、`infra/authz` | `erp/costing`、`erp/manufacturing`、`erp/planning`、`erp/quality`、`erp/warehouse` |
+| `erp/inventory` | 库存数量、预占与物理变动（唯一写入者） | 当前重建 | 设计中 | [erp-trade.md](../07-components/erp-trade.md#erpinventory) | [design](../../../components/erp/inventory/docs/design.md) | `mdm/product`、`mdm/org`、身份（`infra/iam-*`）、`infra/authz` | `erp/costing`、`erp/manufacturing`、`erp/planning`、`erp/quality`、`erp/warehouse` |
 | `erp/contract` | 客户合同、客户与供应商的框架协议、订阅与周期出账计划（D70） | 远期 | — | [erp-trade.md](../07-components/erp-trade.md#erpcontract) | — | `mdm/partner`、`mdm/product`、`mdm/org`、`mdm/currency`、身份（`infra/iam-*`）、`infra/authz` | — |
 | `erp/intercompany` | 公司间规则、对开单据与内部往来对账（D72） | 远期 | — | [erp-trade.md](../07-components/erp-trade.md#erpintercompany) | — | `erp/sales`、`erp/purchase`、`mdm/partner`、`mdm/org`、身份（`infra/iam-*`）、`infra/authz` | — |
 | `erp/planning` | 补货规则（再订货点、安全库存）、需求预测与物料需求计划（D71） | 远期 | — | [erp-trade.md](../07-components/erp-trade.md#erpplanning) | — | `erp/inventory`、`mdm/product`、`mdm/org`、身份（`infra/iam-*`）、`infra/authz` | — |
@@ -51,9 +51,9 @@
 | 组件 ID | 能力 | 范围 | 实现 | 边界卡 | 组件文档 | 必需依赖 | 被谁必需依赖 |
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | `erp/finance` | 总账、应收应付（含预收、预付、员工借款）、付款认领、核销、外币重估与期末暂估、维度目录与递延、会计期间；应付内部的供应商票据匹配 | 当前重建 | — | [erp-finance.md](../07-components/erp-finance.md#erpfinance) | — | `mdm/org`、`mdm/partner`、`mdm/currency`、身份（`infra/iam-*`）、`infra/authz` | `erp/consolidation` |
-| `erp/credit` | 信用政策、额度与信用占用 | 当前重建 | — | [erp-finance.md](../07-components/erp-finance.md#erpcredit) | — | `mdm/partner`、`mdm/org`、`mdm/currency`、身份（`infra/iam-*`）、`infra/authz` | — |
+| `erp/credit` | 信用政策、额度与信用占用 | 当前重建 | 设计中 | [erp-finance.md](../07-components/erp-finance.md#erpcredit) | [design](../../../components/erp/credit/docs/design.md) | `mdm/partner`、`mdm/org`、`mdm/currency`、身份（`infra/iam-*`）、`infra/authz` | — |
 | `erp/costing` | 存货计价与成本子账；暂估、到岸成本、工单成本与差异、退货冲回 | 当前重建 | — | [erp-finance.md](../07-components/erp-finance.md#erpcosting) | — | `erp/inventory`、`mdm/product`、`mdm/org`、`mdm/currency`、身份（`infra/iam-*`）、`infra/authz` | — |
-| `erp/billing` | 客户账单与商业发票 | 当前重建 | — | [erp-finance.md](../07-components/erp-finance.md#erpbilling) | — | `mdm/partner`、`mdm/org`、`mdm/currency`、身份（`infra/iam-*`）、`infra/authz` | — |
+| `erp/billing` | 客户账单与商业发票 | 当前重建 | 设计中 | [erp-finance.md](../07-components/erp-finance.md#erpbilling) | [design](../../../components/erp/billing/docs/design.md) | `mdm/partner`、`mdm/org`、`mdm/currency`、身份（`infra/iam-*`）、`infra/authz` | — |
 | `erp/payment` | 收付款业务与银行／渠道对账 | 当前重建 | — | [erp-finance.md](../07-components/erp-finance.md#erppayment) | — | `mdm/partner`、`mdm/org`、`mdm/currency`、身份（`infra/iam-*`）、`infra/authz` | — |
 | `erp/consolidation` | 集团结构、抵销、外币报表折算与合并报表（D72） | 远期 | — | [erp-finance.md](../07-components/erp-finance.md#erpconsolidation) | — | `erp/finance`、`mdm/org`、`mdm/currency`、身份（`infra/iam-*`）、`infra/authz` | — |
 | `erp/tax` | 税计算 | 远期 | — | [erp-finance.md](../07-components/erp-finance.md#erptax) | — | `mdm/org`、`mdm/partner`、`mdm/product`、身份（`infra/iam-*`）、`infra/authz` | — |
