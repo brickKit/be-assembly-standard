@@ -38,7 +38,7 @@
 
 | 组件 ID | 能力 | 范围 | 实现 | 边界卡 | 组件文档 | 必需依赖 | 被谁必需依赖 |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| `erp/sales` | 报价、计价与销售订单；实物与服务共同基础 | 当前重建 | 3.0.3 | [erp-trade.md](../07-components/erp-trade.md#erpsales) | [BRICKKIT](../../../components/erp/sales/BRICKKIT.md) · [AGENTS](../../../components/erp/sales/AGENTS.md) · [design](../../../components/erp/sales/docs/design.md) | `mdm/partner`、`mdm/product`、`mdm/org`、`mdm/currency`、身份（`infra/iam-*`）、`infra/authz` | `erp/intercompany` |
+| `erp/sales` | 报价、计价与销售订单；实物与服务共同基础 | 当前重建 | 3.0.4 | [erp-trade.md](../07-components/erp-trade.md#erpsales) | [BRICKKIT](../../../components/erp/sales/BRICKKIT.md) · [AGENTS](../../../components/erp/sales/AGENTS.md) · [design](../../../components/erp/sales/docs/design.md) | `mdm/partner`、`mdm/product`、`mdm/org`、`mdm/currency`、身份（`infra/iam-*`）、`infra/authz` | `erp/intercompany` |
 | `erp/purchase` | 采购申请、订单与到货 | 当前重建 | — | [erp-trade.md](../07-components/erp-trade.md#erppurchase) | — | `mdm/partner`、`mdm/product`、`mdm/org`、`mdm/currency`、身份（`infra/iam-*`）、`infra/authz` | `erp/intercompany` |
 | `erp/inventory` | 库存数量、预占与物理变动（唯一写入者） | 当前重建 | 3.0.2 | [erp-trade.md](../07-components/erp-trade.md#erpinventory) | [BRICKKIT](../../../components/erp/inventory/BRICKKIT.md) · [AGENTS](../../../components/erp/inventory/AGENTS.md) · [design](../../../components/erp/inventory/docs/design.md) | `mdm/product`、`mdm/org`、身份（`infra/iam-*`）、`infra/authz` | `erp/costing`、`erp/manufacturing`、`erp/planning`、`erp/quality`、`erp/warehouse` |
 | `erp/contract` | 客户合同、客户与供应商的框架协议、订阅与周期出账计划（D70） | 远期 | — | [erp-trade.md](../07-components/erp-trade.md#erpcontract) | — | `mdm/partner`、`mdm/product`、`mdm/org`、`mdm/currency`、身份（`infra/iam-*`）、`infra/authz` | — |
@@ -124,7 +124,7 @@
 
 | 外壳 | 版本 | 编进的成员 | 文档 |
 | --- | --- | --- | --- |
-| `be/go-core` | 3.0.24 | `test/probe-go@3.2.19`、`test/probe-go2@3.2.19`、`test/probe-go3@3.2.19`、`test/probe-go4@3.2.19`、`erp/inventory@3.0.2`、`erp/credit@3.0.2`、`erp/sales@3.0.3`、`erp/billing@3.0.3` | [BRICKKIT](../../../shell/be/go-core/BRICKKIT.md) · [AGENTS](../../../shell/be/go-core/AGENTS.md) |
+| `be/go-core` | 3.0.25 | `test/probe-go@3.2.19`、`test/probe-go2@3.2.19`、`test/probe-go3@3.2.19`、`test/probe-go4@3.2.19`、`erp/inventory@3.0.2`、`erp/credit@3.0.2`、`erp/sales@3.0.4`、`erp/billing@3.0.3` | [BRICKKIT](../../../shell/be/go-core/BRICKKIT.md) · [AGENTS](../../../shell/be/go-core/AGENTS.md) |
 | `be/go-infra` | 3.0.27 | `test/probe-go@3.2.19`、`test/probe-go2@3.2.19`、`test/probe-go3@3.2.19`、`test/probe-go4@3.2.19`、`infra/iam-casdoor@3.0.5`、`infra/authz@3.0.5`、`infra/audit@3.0.3`、`mdm/org@3.0.4`、`mdm/currency@3.0.5`、`mdm/partner@3.0.5`、`mdm/product@3.0.5` | [BRICKKIT](../../../shell/be/go-infra/BRICKKIT.md) · [AGENTS](../../../shell/be/go-infra/AGENTS.md) |
 | `be/py-render` | 3.0.22 | `test/probe-py@3.2.19`、`test/probe-py2@3.2.19`、`infra/print@3.0.3` | [BRICKKIT](../../../shell/be/py-render/BRICKKIT.md) · [AGENTS](../../../shell/be/py-render/AGENTS.md) |
 
