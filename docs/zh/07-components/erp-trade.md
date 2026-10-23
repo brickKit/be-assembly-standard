@@ -10,7 +10,7 @@
 | 必需依赖 | `mdm/partner`、`mdm/product`、`mdm/org`、`mdm/currency`、身份、授权 |
 | 可选依赖与缺件 | `erp/inventory`：实物订单必需，只有服务订单时可以不装；`erp/credit`：缺时无信用控制（装配时确认）；`erp/tax`：缺时报价的税额为人工录入；`crm/opportunity`（上游，只经事件）：商机发布“请求报价”，销售生成带商机参考的报价草稿，缺时报价照常手工创建；`erp/finance`：款到发货策略在放行交货前认领订单的预收额度（或采用预收发票形态），缺时该策略不能启用；`crm/customer`（上游，只经事件）：负责人变化，只用于显示与建订单时负责人的默认值；订单与报价的负责人是销售自己拥有的字段，按负责人限定的数据范围（“销售只看自己的订单”）用这个字段，不用 CRM 的关系投影；`erp/contract`：订单引用合同的价格与框架额度，缺时只用价格表；物流承运成员（`integration/carrier-*`）：缺时运单号人工录入；`erp/billing`（下游）：缺时不能出账；`infra/workflow`（下游）：缺时人工审批照常，任务在本组件页面中处理，没有统一待办入口（协议 09）（D11）；电商平台成员（下游，`integration/shop-*` 转换平台订单）：缺时没有平台订单入口 |
 | 范围 | 当前重建 |
-| 设计 | 重建中（实验第 7 步）：统一语言、拥有的数据、不变量、命令与查询、事件、依赖、实现状态与验证故事在组件仓库的 [docs/design.md](../../../components/erp/sales/docs/design.md)；细则在 [docs/flows/confirmation.md](../../../components/erp/sales/docs/flows/confirmation.md)（确认过程）、[docs/rules/pricing.md](../../../components/erp/sales/docs/rules/pricing.md)（单价与金额）、[docs/flows/delivery-and-billing.md](../../../components/erp/sales/docs/flows/delivery-and-billing.md)（交货与可出账台账）；用法、部署与配置在组件做好后的 `BRICKKIT.md` |
+| 设计 | 已重建：统一语言、拥有的数据、不变量、命令与查询、事件、依赖、实现状态与验证故事在组件仓库的 [docs/design.md](../../../components/erp/sales/docs/design.md)；细则在 [docs/flows/confirmation.md](../../../components/erp/sales/docs/flows/confirmation.md)（确认过程）、[docs/rules/pricing.md](../../../components/erp/sales/docs/rules/pricing.md)（单价与金额）、[docs/flows/delivery-and-billing.md](../../../components/erp/sales/docs/flows/delivery-and-billing.md)（交货与可出账台账）；用法、部署与配置在 [BRICKKIT.md](../../../components/erp/sales/BRICKKIT.md) |
 
 ## erp/contract
 

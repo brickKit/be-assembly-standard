@@ -80,47 +80,20 @@
 
 ## 进度
 
-- **T7.5 进行中（2026-10-22 暂停，交接见下一节）**：`erp/sales` 写了一半，在子模块的本地分支 `t7.5-wip`（提交 `af6c2c5`，未推送，还不能编译）。
+- **T7.5 完成（2026-10-23）**：`erp/sales` 3.0.0 已发布（`3.0.0` 与 `v3.0.0`）。L2 一个端到端测试（按步骤分成七段）连跑多次全过，替身可以拒绝、丢一次应答、不可达、让暂存到期：RS02、RS03、RS04（墓碑拒绝迟到的预占）、RS05（处理超时）、RS07 与恢复工作项、RS08、RS09、RS14、RS19（交货身份即消耗身份）；BL01、BL02、BL05/BL26、BL24、两个认领抢同一行只有一个成功、正式化后订单完成并释放剩余分支；取价（箱价 = 基本单位价 × 系数）、行金额与税额、按交货的可出账金额（最后一次取余数）；部门移动的事件改写单据上的路径，按部门树的授予随之看到。RS06（最后一次提交与本地确认之间的崩溃）留给 L3。写的过程中两个文件超过 600 行，按职责拆开（行、报价、订单、确认、推进、取消），测试也拆成按步骤的方法。
 - **T7.4 完成（2026-10-22）**：`erp/credit` 3.0.0 已发布。L2：两张订单同时确认只有额度内的一张成功、十张抢剩余额度恰好八张、超限各发一条事实、没有政策按 `block`、`unlimited` 自动建空额度行、额度按币种不换算、同身份不同金额冲突、确认—消耗—取消的占用算术、墓碑、到期不复活、停用的额度拒绝新预占。之后修了 README 的一句（新仓库不是重开），随下一次发布出去。
 - **T7.3 完成（2026-10-22）**：`erp/inventory` 3.0.0 已发布（`3.0.0` 与 `v3.0.0`，发布说明在标签里）。L2 一个端到端测试连跑两次全过：并发预占不超卖（RS01）、反向加锁不死锁（RS16）、预占重试只占一次（RS03）、同身份不同内容冲突（RS17）、墓碑（RS04）、到期不复活、出库同一事务消耗分支并按消耗身份幂等（RS19）、批次先进先出、序列号必须指定、两个序号连续且事件带着它们、仓库维度。写测试时纠正了一个预期：没有授予时列表答 200 与空页（安全 07 的“列表只显示看得见的”），不是 403。
 - **T7.2 完成（2026-10-22）**：五个契约（库存与信用同形的 `ReservationService`；库存的 `StockService`；销售的 `BillingSourceService` 与 `OrderService`；出账的 `InvoiceService`；打印的 `RenderService`）、事件 schema（事件类型按协议 19 的 `<领域>.<聚合>.<动作>.v<n>`）、OpenAPI；`make check` 全过，标签 `contract/v3.0.0-alpha.1` 已推送。打印的输出上限缺省 3 MiB（SDK 用 gRPC 缺省的 4 MiB 消息上限）。
 - **T7.1 完成（2026-10-22）**：五个组件的 `docs/design.md`（销售另有确认、定价、交货与出账三份细则，库存有可用量，出账有出账顺序），边界卡缩短并链到它们；组件索引标“设计中”；R2a 10 题全对，查出的设计缺口已改（[结果](../routing-tests/results-2026-10-22-r2a.md)）。
 - **T7.0 完成（2026-10-22）**：五个子模块移到新的主分支（只有 README）；be-sdk-python 3.0.0a22 用 jsonschema-rs 0.60.0 校验安全记录，单元、向量与集成测试全过（141 + 77）。
 
-## T7.5 交接（`erp/sales`，2026-10-22 暂停时）
+## 第 7 步报告要写的发现
 
-**已写**（`components/erp/sales` 的分支 `t7.5-wip`，包 `sales/`）：
-
-| 文件 | 内容 |
-| --- | --- |
-| `definition.go` | 身份（8084/9094）、依赖（库存与信用是可选参与方）、流与事件类型、资源与操作（报价、订单、交货带法人、部门、负责人三个维度；价格表带法人；退货只占位）、参数（同步预算 3 秒、W 30 秒、认领期限 7 天） |
-| `migrations/0001_sales.up.sql` | 价格表与价格、报价与行、订单与行（**可出账台账嵌在订单行上**：`billable/claimed/billed` 两维，带 CHECK）、确认过程与分支、交货与行、出账认领与行 |
-| `upstream.go` | 事务外的取证：法人（代码、时区、本位币）、部门（来源读取）、客户资格与快照、产品资格与快照、换算系数、即期汇率、币种小数位 |
-| `orgunits.go` | 部门投影（SDK `projection`，名 `org_units`）：订阅 `mdm.org_unit.changed.v1`，变了就改写报价、订单、交货上的 `department_path`；按需从 `mdm/org` 补一条；每小时对齐一次并补改路径 |
-| `module.go` | 错误原因、路由（全部在 OpenAPI 里）、系统面注册（`BillingSourceService` 只给 `erp/billing`）、订阅、后台工作的声明、`docFacts`、`check`、`decimal`；**`itoa` 是临时写法，要换成 `strconv.Itoa`** |
-| `records.go` | 记录类型（报价行与订单行分开，订单行多仓库、已交货与台账）、读取的 SQL、`emitOrder` |
-| `pricing.go` | 价格表与价格的维护和列表、`priceOf`（销售单位的价，否则基本单位的价乘系数） |
-
-**还没写**（`module.go` 已引用，编译要它们）：
-
-1. `documents.go`：报价与订单的新建、修改、读取、`quotationAction`（发出、取消）、`acceptQuotation`（转订单草稿）、`order(ctx,id)`；行的计算按 `docs/rules/pricing.md`（行金额、行税额按订单币种小数位舍入，合计不另舍入）；单号用 `db.NextGappedNumber`（法人、`SO`/`QT`/`DN`、年），格式 `<前缀>-<法人代码>-<年>-<六位>`；部门要在投影里、`active`、属于订单的法人。
-2. `confirmation.go`：`confirmOrder`（幂等键 → 取证 → T1 建过程与分支身份 → 同步路径 `advance` → 预算内答 confirmed、rejected，否则 processing）、`advance`（协议 04 的状态表；库存分支按“产品 + 仓库”合并基本单位数量；信用分支是含税合计）、`advanceJob`/`advanceDead`（`jobAdvance` 队列工作项，`idempotent_external`；死信转 rejecting，原因 `dependency_unavailable`）、`cancelOrder`（draft 直接；confirming 转 cancelling；confirmed 且没有交货用 kind=cancel 的过程；有交货拒绝）、`getConfirmation`、订单完成时 kind=release 的过程释放剩余分支；服务明细在确认的事务里 `billable` 直接等于订单数量与金额。
-3. `delivery.go`：`createDelivery`（T1 锁订单、检查数量、建 issuing 交货 → 调库存 `Issue`，消耗身份 = 交货身份 → T2 posted、已交货、台账按 pricing.md 的算法、事件；拒绝 → failed；未知 → `jobIssue` 工作项）、`issueJob`/`issueDead`、`getDelivery`。
-4. `billing.go`：`Ledger`、`Claim`（锁订单，全部行两维都够才认领）、`Renew`、`Confirm`（过期拒绝）、`Formalize`（按实际数量，剩余释放；全部交完并全部出账 → 订单 completed，排释放剩余分支）、`Release`、`Reverse`（能力不支持）、`expireClaims`；`OrderService.Read`。
-5. `lists.go`：报价、订单、交货列表（维度编进 WHERE，`q` 搜单号与客户名，订单的 `to_deliver`、`to_bill` 筛选）。
-6. 根文件（照 `erp/inventory`）：`main.go`、`go.mod`（依赖 SDK alpha.26、五个主数据与本组件契约 `contract/v3.0.0-alpha.1`、库存与信用的契约）、`component.yaml`（`mdm/*` 必需；`erp/inventory@3.0.0`、`erp/credit@3.0.0` 可选；事件 8 种）、`Dockerfile`（8084/9094）、`Makefile`、`.gitignore`、`.dockerignore`、`CLAUDE.md`。
-7. 测试：`contract_test.go`（照库存）；L2 `sales_integration_test.go`：替身 `mdm/org`、`mdm/partner`、`mdm/product`、`mdm/currency`，库存与信用用替身（可以模拟应答丢失、拒绝、超时），以 `erp/billing` 身份调出账来源。要证明：RS01–RS09、RS16–RS19 中销售一侧能在 L2 证明的；BL01、BL02、BL05、BL24、BL26 的来源一侧；部门维度（调部门后路径改写）。端口 28084、9094，替身从 19102 起。
-8. 文档：`BRICKKIT.md`、`AGENTS.md`（代码地图）、`README.md`；`docs/design.md` 的数据一节改成“台账在订单行上”；`brickkit lint`；合回 `main`（`t7.5-wip` 的提交可以压成正式提交）、推送、发布 3.0.0（`brickkit release --notes-file` 加 `v3.0.0`）。
-
-**要记住的发现**：
-
-- **销售是第一个消费别的组件事件的已重建组件**：SDK 的 `projection` 与 `events.Sub` 第一次在组件里用，测试时留意对齐、补取与纪元。
-- **SDK 的列表编译只按本表的列下推组织树维度**（`authz/sql.go` 的 `tree` 原子），定义里的 `LocalProjection` 下推没有实现；所以销售把部门路径复制到单据上并随事件改写。部门移动到单据改写之间有一个窗口（投影的新鲜度），记为已知风险，第 7 步报告里写，也考虑在 be-sdk-go 实现按投影下推。
-- **授权视图是定期取的**：测试中途加的授予要等下一次取到（库存的测试用 `Eventually`）。
-- **列表没有授予时答 200 与空页**，不是 403（安全 07）。
+- **销售是第一个消费别的组件事件的已重建组件**：组件定义要写 `Subscribes: true`，清单要声明 `BUS_SUBSCRIPTION_CONCURRENCY`（SDK 生成的 `configSchema` 会提示）；L2 里测试自己扮演 `mdm/org` 发事件（SDK 的运输、`Row.Headers`、`events.Subject`），投影按需补取、事件改写、对齐都走通了。
+- **SDK 的列表编译只按本表的列下推组织树维度**（`authz/sql.go` 的 `tree` 原子），定义里的 `LocalProjection` 下推没有实现；销售把部门路径复制到单据上并随事件改写，部门移动到改写之间有一个窗口（投影的新鲜度）。记为已知风险，也考虑在 be-sdk-go 实现按投影下推。
+- **契约里的“规范 JSON”与 SDK 的 `canon.Encode` 不一致**：来源方法的 `data` 在契约注释里叫“规范 JSON”，主数据组件与销售都用 `json.Marshal`；`canon.Encode`（RFC 8785）拒绝 `null`，而载荷里有可空字段。要么改契约的说法，要么让规范编码允许 `null`，在第 7 步报告里提出。
+- **授权视图是定期取的**：测试中途加的授予要等下一次取到（`Eventually`）。**列表没有授予时答 200 与空页**，不是 403（安全 07）。
 - `erp-credit` 的 README 修了一句（新仓库不是重开），在 `main` 上还没发布，随信用下一次发布出去。
-
-之后照原计划：T7.6 出账、T7.7 打印（Python，先按知识库“打印与单据模板”的比较实测 WeasyPrint 与 Typst）、T7.8 种子、T7.9 外壳与格、T7.10 负载、T7.11 R2b 与报告。
 
 ## 风险
 

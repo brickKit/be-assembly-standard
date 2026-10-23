@@ -38,7 +38,7 @@
 
 | 组件 ID | 能力 | 范围 | 实现 | 边界卡 | 组件文档 | 必需依赖 | 被谁必需依赖 |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| `erp/sales` | 报价、计价与销售订单；实物与服务共同基础 | 当前重建 | 设计中 | [erp-trade.md](../07-components/erp-trade.md#erpsales) | [design](../../../components/erp/sales/docs/design.md) | `mdm/partner`、`mdm/product`、`mdm/org`、`mdm/currency`、身份（`infra/iam-*`）、`infra/authz` | `erp/intercompany` |
+| `erp/sales` | 报价、计价与销售订单；实物与服务共同基础 | 当前重建 | 3.0.0 | [erp-trade.md](../07-components/erp-trade.md#erpsales) | [BRICKKIT](../../../components/erp/sales/BRICKKIT.md) · [AGENTS](../../../components/erp/sales/AGENTS.md) · [design](../../../components/erp/sales/docs/design.md) | `mdm/partner`、`mdm/product`、`mdm/org`、`mdm/currency`、身份（`infra/iam-*`）、`infra/authz` | `erp/intercompany` |
 | `erp/purchase` | 采购申请、订单与到货 | 当前重建 | — | [erp-trade.md](../07-components/erp-trade.md#erppurchase) | — | `mdm/partner`、`mdm/product`、`mdm/org`、`mdm/currency`、身份（`infra/iam-*`）、`infra/authz` | `erp/intercompany` |
 | `erp/inventory` | 库存数量、预占与物理变动（唯一写入者） | 当前重建 | 3.0.0 | [erp-trade.md](../07-components/erp-trade.md#erpinventory) | [BRICKKIT](../../../components/erp/inventory/BRICKKIT.md) · [AGENTS](../../../components/erp/inventory/AGENTS.md) · [design](../../../components/erp/inventory/docs/design.md) | `mdm/product`、`mdm/org`、身份（`infra/iam-*`）、`infra/authz` | `erp/costing`、`erp/manufacturing`、`erp/planning`、`erp/quality`、`erp/warehouse` |
 | `erp/contract` | 客户合同、客户与供应商的框架协议、订阅与周期出账计划（D70） | 远期 | — | [erp-trade.md](../07-components/erp-trade.md#erpcontract) | — | `mdm/partner`、`mdm/product`、`mdm/org`、`mdm/currency`、身份（`infra/iam-*`）、`infra/authz` | — |
@@ -137,18 +137,26 @@
 
 | 事件 | 发布者 | 订阅者 |
 | --- | --- | --- |
+| `erp.billable.changed.v1` | `erp/sales` | — |
 | `erp.credit_branch.changed.v1` | `erp/credit` | — |
 | `erp.credit_limit.changed.v1` | `erp/credit` | — |
 | `erp.credit_limit.exceeded.v1` | `erp/credit` | — |
 | `erp.credit_policy.changed.v1` | `erp/credit` | — |
+| `erp.delivery.changed.v1` | `erp/sales` | — |
+| `erp.delivery.posted.v1` | `erp/sales` | — |
 | `erp.inventory_branch.changed.v1` | `erp/inventory` | — |
 | `erp.inventory_movement.recorded.v1` | `erp/inventory` | — |
+| `erp.price_list.changed.v1` | `erp/sales` | — |
+| `erp.price_list_item.changed.v1` | `erp/sales` | — |
+| `erp.quotation.changed.v1` | `erp/sales` | — |
+| `erp.sales_order.changed.v1` | `erp/sales` | — |
+| `erp.sales_order.confirmation_ended.v1` | `erp/sales` | — |
 | `erp.stock_position.changed.v1` | `erp/inventory` | — |
 | `erp.warehouse.changed.v1` | `erp/inventory` | — |
 | `mdm.currency.changed.v1` | `mdm/currency` | — |
 | `mdm.exchange_rate.published.v1` | `mdm/currency` | — |
 | `mdm.legal_entity.changed.v1` | `mdm/org` | — |
-| `mdm.org_unit.changed.v1` | `mdm/org` | — |
+| `mdm.org_unit.changed.v1` | `mdm/org` | `erp/sales` |
 | `mdm.partner.changed.v1` | `mdm/partner` | — |
 | `mdm.partner_role.changed.v1` | `mdm/partner` | — |
 | `mdm.product.changed.v1` | `mdm/product` | — |
