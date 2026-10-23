@@ -7,6 +7,8 @@
 | D7-S | 14 个组件全部单跑 | 交易链 `erp/inventory`、`erp/credit` 3.0.1，`erp/sales`、`erp/billing` 3.0.2，`infra/print` 3.0.2 | 种子约 2 分钟；重跑不变；L3 6 项通过；两个探针剖面符合 |
 | D7-H | 三个外壳：`be/go-infra` 3.0.26（安全、主数据、Go 探针）、`be/go-core` 3.0.23（四个交易组件）、`be/py-render` 3.0.21（打印、Python 探针） | 同上 | 同上；三个外壳与两个探针剖面符合 |
 
+**最终版本再跑一遍**（R2b 的修复之后，`final/`）：D7-S 用 `erp/inventory`、`erp/credit` 3.0.2，`erp/sales`、`erp/billing`、`infra/print` 3.0.3；D7-H 用 `be/go-core` 3.0.24、`be/py-render` 3.0.22（`be/go-infra` 3.0.26 不变）。两格各约 8 分钟：种子两轮、重跑不变、L3 6 项通过、剖面全部符合（D7-S 两个探针；D7-H 两个探针与三个外壳），种子的数字与上一轮相同。下面的文件表同样适用于 `final/D7-*/`。
+
 | 文件 | 内容 |
 | --- | --- |
 | `D7-*/run.log` | 各阶段的开始与结束（D7-S 的第一次“重跑”失败是快照取早了，见计划的发现；之后从 `settle` 接着跑） |

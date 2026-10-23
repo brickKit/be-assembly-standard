@@ -60,3 +60,20 @@ R1 重考 S01–S19（受测的模型与 R0 相同），另加下面 10 题；�
 | D08 | 4 关联 · P/C | Sonnet | 账单开出以后，哪些组件会收到消息，各自做什么？现在实现到哪一步？ | 出账的设计（事件、依赖）；信用的实现状态；业务流程 | 编号事务写“已出账”增量事实；财务形成应收、信用把订单占用转为应收占用（都是以后）；向销售正式化认领（同步，恢复工作项重发）；本版信用只按订单占用，订单完成时销售释放剩余分支 |
 | D09 | 7 规则 · C | Haiku | 库存出库的时候必须指定批次吗？序列号呢？ | 库存的 `availability.md` 或 `design.md` | 批次可以不指定，按入库先后分配（替换点）；序列号产品必须逐个指定，序列号存在、在库、在该仓库 |
 | D10 | 6 机制 · C | Sonnet | 两个会计同时给同一张订单开账单会怎样？ | 销售的 `delivery-and-billing.md`；出账的 `flows/billing.md`；协议 05 | 认领由销售在订单行锁下裁决，每维 `claimed + billed + 数量 ≤ billable`，只有不超额的成功（BL01）；另一张不建账单并回答原因 |
+
+## R2b 新题（10 题，第 7 步的代码做完之后）
+
+考场是 T7.10 完成后的副本：五个组件有代码、`AGENTS.md`（代码地图）、`BRICKKIT.md` 与设计。问题要从设计下到代码：设计说的规则在代码哪里、两者是否一致、改一处要动哪些文件。“码”层指代码地图下面的函数与文件。另记：考生是否用了组件 `AGENTS.md` 的代码地图、设计与代码有没有对不上的地方。参考答案按 2026-10-23 的代码核对。
+
+| 题 | 类型 · 层 | 受测 | 原话 | 必经 | 参考答案的要点 |
+| --- | --- | --- | --- | --- | --- |
+| E01 | 5 流程 · 码 | Haiku | 销售确认订单时，库存和信用是同时调还是一个一个调？代码里哪个函数决定下一步做什么？ | 销售的 `AGENTS.md` 代码地图 → `sales/advance.go` | 每一轮按状态向需要的分支并行发命令；`decide`（协议 04 的过程表）在过程行的锁下定下一状态；同步路径与恢复工作项调同一个 `advance` |
+| E02 | 6 机制 · 码 | Sonnet | 开账单时号码是在哪一步取的？如果取号前后进程崩了会怎样？ | 出账的 `AGENTS.md` → `billing/issue.go`；`docs/flows/billing.md` | 先 `confirmClaim`（来源确认认领，过期则草稿作废、答 `CLAIM_EXPIRED`），再在编号事务 `number` 里 `db.NextNumber`（回滚还号、只接受 `confirmed`），之后 `formalize`；确认后停下的由“继续开具”工作项在 `ContinueAfter`（1 分钟）后编号；正式化不应答由工作项重发 |
+| E03 | 7 规则 · 码 | Haiku | 库存一次预占好几个产品时，为什么不会死锁？代码在哪？ | 库存的 `AGENTS.md` → `inventory/stock.go` | `lockPositions` 按（产品，仓库）升序锁余额行（RS16）；余额行是唯一裁决点，`on_hand >= reserved` 约束兜底 |
+| E04 | 18 配方 · 码 | Sonnet | 想在打印出来的账单上加客户的收货地址，要改哪些文件？ | 出账的 `AGENTS.md`（打印的数据）→ `billing/print.go` 的 `viewModel`；打印的 `AGENTS.md` → `bundled/invoice/` | 视图模型加字段（数据从哪来：账单或订单的快照，或事务外取伙伴）；打印组件的 `template.typ` 与 `schema.json` 同步改，内容变了就是新模板版本（启动时按摘要登记）；旧账单重打仍用快照里的旧版本与旧视图模型；两个组件各升版本，出账依赖打印的新版本；测试（`print_test`、打印的渲染测试） |
+| E05 | 8 数据 · 码 | Haiku | 信用额度的“可用”是怎么算的？“已用”里包括什么？ | 信用的 `docs/design.md`；`credit/records.go` 或 `limits.go` | 已用 = 订单占用 + 应收占用；可用 = 额度 − 已用（在 SQL 里算）；额度为空（不受控制）时可用为空；本版应收占用不跟踪（`receivables_tracked` 为假） |
+| E06 | 7 规则 · 码 | Sonnet | 订单行没有填单价时价格从哪来？按“箱”卖但价格表只有“件”的价会怎样？都没有呢？ | 销售的 `docs/rules/pricing.md`；`sales/lines.go` 的 `buildLines`、`sales/pricing.go` 的 `priceOf` | 手填即 `manual`；否则沿用被替换行的价；否则价格表（法人、币种、产品、单位、业务日期有效）；没有销售单位的价就取基本单位价乘换算系数；都没有则拒绝（`NO_PRICE`，409） |
+| E07 | 4 关联 · 码 | Haiku | 在组织里把一个部门挪到别的大区下面，销售那边已有的订单会跟着变吗？是怎么做到的？ | 销售的 `AGENTS.md` → `sales/orgunits.go`；`docs/design.md` 的部门 | 订阅 `mdm/org` 的部门事件（`onOrgUnit`），投影 `org_units`，`repath` 改写单据上复制的 `department_path`；按需补取、每小时对齐（`align-org-units`）兜底；改写之前有窗口；按部门树的授权随之变化 |
+| E08 | 6 机制 · 码 | Sonnet | 打印服务渲染一个很大或写坏了的模板，会不会把整个服务拖死？代码里怎么防的？ | 打印的 `AGENTS.md` → `renderer.py`、`worker.py`；`__init__.py` 的配置键 | 渲染在工作进程池里（不占事件循环）；`PRINT_RENDER_TIMEOUT` 超时杀掉、死了换新；`PRINT_RENDER_MEMORY_MIB` 是工作进程的 `RLIMIT_AS`（缺省 1 GiB，Rayon 只开一个线程）；`PRINT_RENDER_OUTPUT_KIB` 输出上限；`PRINT_RENDER_WORKERS` 与 `PRINT_RENDER_QUEUE_WAIT`，排不上答 `SERVICE_BUSY` |
+| E09 | 18 配方 · 码 | Haiku | 出库时批次是怎么分配的？想改成到期早的先出，改哪里？ | 库存的 `AGENTS.md`（分配策略一行）→ `inventory/issue.go` 的 `allocateBatches` | 指定了批次就用它，否则按入库先后（先进先出），批次行按键序加锁；不够则整笔拒绝；按到期分配要在 `allocateBatches` 换排序（批次要有到期日：入库与产品的追踪政策），设计的“部署与替换”写它是替换点 |
+| E10 | 7 规则 · 码 | Sonnet | 出账向销售认领了金额但一直没开具，这笔认领会一直占着吗？谁来清？ | 销售的 `sales/billing.go`、`sales/module.go` 的后台工作；`definition.go` 的 `ClaimPeriod` | 待定认领有期限（`ClaimPeriod` 7 天，续期会延长）；销售的单例工作项 `expire-claims` 每分钟把过期的认领释放回可出账；之后出账开具时来源拒绝确认，草稿作废、不编号（BL05、BL26） |

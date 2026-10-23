@@ -26,9 +26,10 @@
 ## 现在在哪里
 
 - 设计冻结、正式文档迁移已完成（[migration-plan.md](migration-plan.md)）；AI 选择 A99–A110 记在 `docs/zh/02-decisions/09-ai-choices.md`（A109 驻留期起始值待复核，其余已确认）。
-- **代表部署实验（D41）进行中**：第 0–6 步已完成（第 6 步 2026-10-20 完成：主数据四个组件，[step6-plan.md](step6-plan.md)、[6-01](experiment-records/6-01-master-data-cells.md)；随后按用户要求补了种子数据，第 6b 步，[step6b-seed-plan.md](step6b-seed-plan.md)、[6-02](experiment-records/6-02-richer-seeds.md)）。第 4 步的 D 行结果见 [4-04](experiment-records/4-04-d-row.md)，第 5 步带真实安全组件的通信代价见 [5-02](experiment-records/5-02-security-cells.md)，都已写进[实验报告](experiment-report.md)。
-- **文档结构实验**（2026-10-22 起，[doc-structure-plan.md](doc-structure-plan.md)）：R0 基线、R1 改结构与重考、R1b 压短根 `AGENTS.md` 已完成；剩下 R1 的尾巴（`infra` 三个组件）、R2（随第 7 步）、R3（定规则并反馈知识库与 BrickKit）。本轮的发布已推送（2026-10-22，用户同意）：`be-protocol` `v3.0.0-alpha.20`、`be-sdk-go` `v3.0.0-alpha.26`；`mdm/org` 3.0.4，`mdm/currency`、`mdm/partner`、`mdm/product` 3.0.5；`infra/authz` 3.0.5（包改名为 `authz/`）、`infra/audit` 3.0.3（包改名为 `audit/`）、`infra/iam-casdoor` 3.0.4；外壳 `be/go-infra` 3.0.25 编进 `mdm` 3.0.3/3.0.4、`infra/authz` 3.0.4、`infra/audit` 3.0.3、`infra/iam-casdoor` 3.0.3（之后只改了文档的版本没有再进外壳）。外壳 3.0.23 误带了 52MB 的构建产物，3.0.24 移除；用户同意保留历史、不改写。
-- **第 7 步进行中**（2026-10-22 起，用户同意开始）：[step7-plan.md](step7-plan.md)。第 7 步的组件写种子时引用[种子数据清单](../../docs/zh/03-seed-data.md)的“下游可以直接引用的数据”，缺的到上游种子里补；角色与授予照主数据的做法（be-sdk-go 的 `seed` 包），带上法人与部门的维度。待用户决定的事见下面“待用户决定”。测量一律在 performance 电源模式下、按小时算。
+- **代表部署实验（D41）进行中**：第 0–7 步已完成（第 6 步 2026-10-20 完成：主数据四个组件，[step6-plan.md](step6-plan.md)、[6-01](experiment-records/6-01-master-data-cells.md)；随后按用户要求补了种子数据，第 6b 步，[step6b-seed-plan.md](step6b-seed-plan.md)、[6-02](experiment-records/6-02-richer-seeds.md)）。第 4 步的 D 行结果见 [4-04](experiment-records/4-04-d-row.md)，第 5 步带真实安全组件的通信代价见 [5-02](experiment-records/5-02-security-cells.md)，都已写进[实验报告](experiment-report.md)。
+- **文档结构实验**（2026-10-22 起，[doc-structure-plan.md](doc-structure-plan.md)）：R0 基线、R1 改结构与重考、R1b 压短根 `AGENTS.md` 已完成；R1 的尾巴与 R2（R2a 设计、R2b 设计与代码一致性，2026-10-22、23）都已完成；剩下 R3（定规则并反馈知识库与 BrickKit）。本轮的发布已推送（2026-10-22，用户同意）：`be-protocol` `v3.0.0-alpha.20`、`be-sdk-go` `v3.0.0-alpha.26`；`mdm/org` 3.0.4，`mdm/currency`、`mdm/partner`、`mdm/product` 3.0.5；`infra/authz` 3.0.5（包改名为 `authz/`）、`infra/audit` 3.0.3（包改名为 `audit/`）、`infra/iam-casdoor` 3.0.4；外壳 `be/go-infra` 3.0.25 编进 `mdm` 3.0.3/3.0.4、`infra/authz` 3.0.4、`infra/audit` 3.0.3、`infra/iam-casdoor` 3.0.3（之后只改了文档的版本没有再进外壳）。外壳 3.0.23 误带了 52MB 的构建产物，3.0.24 移除；用户同意保留历史、不改写。
+- **第 7 步完成**（2026-10-23，[step7-plan.md](step7-plan.md)、[7-01](experiment-records/7-01-trading-chain.md)）：交易链五个组件（`erp/inventory`、`erp/credit` 3.0.2，`erp/sales`、`erp/billing`、`infra/print` 3.0.3）单跑（D7-S）与进外壳（D7-H：`be/go-infra` 3.0.26、`be/go-core` 3.0.24、`be/py-render` 3.0.22）都符合剖面；种子数据、L3 交易链（be-acceptance `conformance/scenarios`）、负载驱动的业务链（`load -flow`）、R2b（文档结构实验，10 题全对）都已完成。等用户确认后进入下一步。
+- 第 7 步的经验（写种子与下游时照用）：组件写种子时引用[种子数据清单](../../docs/zh/03-seed-data.md)的“下游可以直接引用的数据”，缺的到上游种子里补；角色与授予照主数据的做法（be-sdk-go 的 `seed` 包），带上法人与部门的维度。待用户决定的事见下面“待用户决定”。测量一律在 performance 电源模式下、按小时算。
 - 测量期间不在机器上跑任何测试、编译或剖析：会干扰数字，也会抢端口（4-03 记了一次）。 每一轮记下电源模式；运行脚本切到 performance 并在结束时恢复。
 - 实验之后先做底层（权限、登录、冷热数据、事务、消息），再按 [rebuild-plan.md](rebuild-plan.md) 重建业务组件。
 
@@ -78,10 +79,12 @@
 
 - **组件仓库的布局与正式规则冲突**：[AI 导航的标准布局](../../docs/zh/01-conventions/05-ai-navigation.md#组件仓库的标准布局与代码地图)写的是 `contracts/`、`gen/`、`backend/module|cmd|internal`、根目录的 `migrations/`、`assembly.yaml`、`docs/design.md`；第 5、6 步的七个组件实际是 `contract/`（单独的 Go 模块，含 proto、事件 schema、OpenAPI 与生成代码）、以组件命名的包（`org/`、`partner/`……，外壳以 `org.Definition()` 引入）、包内的 `migrations/`（随包嵌入）、根目录 `main.go` 与 `cmd/seed`，没有 `assembly.yaml` 与 `docs/design.md`。建议按实际布局改规则（契约单独成模块是为了调用方只引入契约；迁移随包嵌入是为了外壳里每个成员带着自己的迁移），也可以按规则改七个组件。
 
+- **`be/go-core` 3.0.20 误带了 55 MB 的构建产物**（2026-10-23），3.0.21 移除，产物仍在历史里。上次 `be/go-infra` 3.0.23 的同类情况用户同意保留历史；这次是否同样处理待确认。
+
 ## 未推送、已知问题与外部往来
 
 - **未推送的提交**：父仓库 2026-10-20 按用户要求推送到 `9e58039`（第 5、6、6b 步与之后的知识库、BrickKit 往来），之后的提交是否推送等用户决定；以 `git log origin/main..main` 为准。子仓库（协议、SDK、验收、外壳、组件）的发布都已推送并从远端核对。
-- **发布说明是空的（2026-10-20 发现）**：第 5、6、6b 步的发布脚本直接打注释标签，说明只有“mdm/org 3.0.2”一句，没有照[开发流程与发布](../../docs/zh/01-conventions/10-development-workflow.md)用 `brickkit release` 写发布说明；`brickkit upgrade` 把标签说明当作发布说明显示，使用方看不到改了什么。已发布的标签不改（版本不可变）；第 7 步起用 `brickkit release --notes <文件>` 发布（使用方必须做什么在前，新增在后），Go 的 `v` 标签用同一份说明。
+- **发布说明是空的（2026-10-20 发现）**：第 5、6、6b 步的发布脚本直接打注释标签，说明只有“mdm/org 3.0.2”一句，没有照[开发流程与发布](../../docs/zh/01-conventions/10-development-workflow.md)用 `brickkit release` 写发布说明；`brickkit upgrade` 把标签说明当作发布说明显示，使用方看不到改了什么。已发布的标签不改（版本不可变）；第 7 步起用 `brickkit release --notes <文件>` 发布（使用方必须做什么在前，新增在后），Go 的 `v` 标签用同一份说明。**2026-10-23 又犯了一次**：第 7 步 3.0.1 起的交易链、打印与两个外壳的十几个版本都是手打的标签（会话压缩后漏看了这一条），说明只有一行版本号；同样不改，下一次发布起照做（已记进 AI 的记忆）。
 - **已知、暂不处理**：旧的发布、接入与验证工具的测试失败，工具随重建重新提供，届时一并处理：`infra/scripts/tests/test_ship_dryrun.sh`（旧的 `ship.sh` 还调用旧 `be-acceptance` 的命令，迁移后已不存在）；`test_config_fill.py` 中 `integrate.sh` 的 4 项（伪造的 `brickkit` 报 v1.4.0，被版本检查拒绝）与 `test_verify_deploy.py`（`verify-component.sh`）——2026-10-18 在改动之前的提交上核实同样失败。
 - **给 BrickKit 的收件箱** `brickkit-feedback/rebuild.md`：FRR-001 到 FRR-006、FRB-001 到 FRB-006 全部关闭（FRB-006 于 2026-10-18 在 v1.8.2 复测通过，升级后的部署与测量也通过）；FRB-007（升级把用户已移除、但旧外壳版本编进了的成员加回来）2026-10-18 新开、当天在 v1.8.3 复测通过并关闭；FRR-007（使用者移除过的成员因强依赖被升级加回来时提示一声）当天在 v1.8.4 实现、复测通过并关闭；2026-10-20 新开 FRR-008（依赖方的精确依赖没跟上时提醒两个版本会并存、报错点名依赖方；已在 v1.8.4 复现，脚本在 `experiment-data/6b/frr008/`）与 FRR-009（种子数据页补三条做法），当天在 v1.8.5 实现、复测通过并关闭；没有未回复的条目。
 - **知识库**（2026-10-20）：
