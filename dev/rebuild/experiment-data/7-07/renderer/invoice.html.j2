@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="zh"><head><meta charset="utf-8">
+<style>
+@font-face { font-family: Noto; src: url("fonts/NotoSansSC-Regular.otf"); }
+@font-face { font-family: Noto; font-weight: bold; src: url("fonts/NotoSansSC-Bold.otf"); }
+@page { size: A4; margin: 18mm 15mm; @bottom-right { content: counter(page) " / " counter(pages); font-size: 8pt; } }
+body { font-family: Noto; font-size: 9pt; }
+h1 { font-size: 16pt; text-align: center; margin: 0 0 6mm; }
+.copy { position: absolute; top: 0; right: 0; color: #c00; font-weight: bold; }
+.head { display: flex; justify-content: space-between; margin-bottom: 4mm; }
+table { width: 100%; border-collapse: collapse; }
+th, td { border: 0.5pt solid #444; padding: 1.5mm; }
+th { background: #eee; } td.n { text-align: right; }
+.totals td { font-weight: bold; }
+</style></head><body>
+{% if copy %}<div class="copy">副本 COPY</div>{% endif %}
+<h1>销售发票 Invoice</h1>
+<div class="head"><div>号码 {{ d.invoice.number }}<br>日期 {{ d.invoice.date }}<br>币种 {{ d.invoice.currency }}</div>
+<div>销售方 {{ d.seller.name }}<br>购买方 {{ d.buyer.name }}<br>税号 {{ d.buyer.tax_id }}</div></div>
+<table><thead><tr><th>#</th><th>代码</th><th>名称</th><th>数量</th><th>单位</th><th>单价</th><th>金额</th><th>税率</th><th>税额</th></tr></thead><tbody>
+{% for l in d.lines %}<tr><td>{{ l.no }}</td><td>{{ l.code }}</td><td>{{ l.name }}</td><td class="n">{{ l.quantity }}</td><td>{{ l.unit }}</td>
+<td class="n">{{ l.unit_price }}</td><td class="n">{{ l.net }}</td><td class="n">{{ l.tax_rate }}</td><td class="n">{{ l.tax }}</td></tr>
+{% endfor %}</tbody>
+<tfoot class="totals"><tr><td colspan="6">合计 Total</td><td class="n">{{ d.totals.net }}</td><td></td><td class="n">{{ d.totals.tax }}</td></tr>
+<tr><td colspan="6">价税合计 {{ d.totals.gross_in_words }}</td><td class="n" colspan="3">{{ d.totals.gross }}</td></tr></tfoot></table>
+</body></html>

@@ -102,7 +102,7 @@
 | 必需依赖 | 身份、授权（模板维护）；渲染的数据由调用方提供 |
 | 可选依赖与缺件 | 无 |
 | 范围 | 当前重建 |
-| 设计 | 重建中（实验第 7 步）：统一语言、拥有的数据、不变量、命令与查询、事件、依赖、实现状态与验证故事在组件仓库的 [docs/design.md](../../../components/infra/print/docs/design.md)；用法、部署与配置在组件做好后的 `BRICKKIT.md` |
+| 设计 | 已重建：统一语言、拥有的数据、不变量、命令与查询、事件、依赖、渲染引擎的实测、实现状态与验证故事在组件仓库的 [docs/design.md](../../../components/infra/print/docs/design.md)；用法、部署与配置在 [BRICKKIT.md](../../../components/infra/print/BRICKKIT.md) |
 
 ## infra/audit
 
