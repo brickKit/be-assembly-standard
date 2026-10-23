@@ -77,7 +77,7 @@
 
 ## 待用户决定
 
-- **组件仓库的布局与正式规则冲突**：[AI 导航的标准布局](../../docs/zh/01-conventions/05-ai-navigation.md#组件仓库的标准布局与代码地图)写的是 `contracts/`、`gen/`、`backend/module|cmd|internal`、根目录的 `migrations/`、`assembly.yaml`、`docs/design.md`；第 5、6 步的七个组件实际是 `contract/`（单独的 Go 模块，含 proto、事件 schema、OpenAPI 与生成代码）、以组件命名的包（`org/`、`partner/`……，外壳以 `org.Definition()` 引入）、包内的 `migrations/`（随包嵌入）、根目录 `main.go` 与 `cmd/seed`，没有 `assembly.yaml` 与 `docs/design.md`。建议按实际布局改规则（契约单独成模块是为了调用方只引入契约；迁移随包嵌入是为了外壳里每个成员带着自己的迁移），也可以按规则改七个组件。
+（目前没有。）
 
 ## 未推送、已知问题与外部往来
 

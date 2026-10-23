@@ -132,7 +132,28 @@ flowchart TD
 - **权限、资源与维度写在组件定义里**（SDK 的资源定义，[安全 09a](../06-protocols/security/09a-encoding-and-records.md)）；项目的注册表由工具从资源定义汇总，组件仓库里没有另一份项目专用的清单。
 - 一个包长到某一块有自己的规则与测试时，拆成子包，并在子包放局部的 `AGENTS.md`（[局部的 AI 说明](#局部的-ai-说明)）。
 
-入口、迁移与生成代码的约定见[组件实现约定](06-component-implementation.md#仓库布局与入口)；同一种语言的组件布局完全相同。Python 组件的布局随第一个 Python 组件确定。
+Python 组件（第一个是 `infra/print`）的布局同一套，只是语言的写法不同：
+
+```text
+<仓库>/
+├── component.yaml、BRICKKIT.md、AGENTS.md、CLAUDE.md、README.md、docs/、Dockerfile   同 Go
+├── pyproject.toml          分发名 <领域>-<名字>；依赖 be-sdk、本组件的契约包，都按 Git 标签（[tool.uv.sources]）
+├── uv.lock                 锁定的环境；外壳用自己的锁，按 override-dependencies 统一成一个 be-sdk
+├── contract/               同 Go 的 contract/（单独的 Go 模块照样生成），另有 python/：契约的 Python 包，
+│                           调用方以 subdirectory = "contract/python" 按 contract/v3.… 标签引入
+├── <领域>_<名字>/          组件的包（模块入口），用完整的 ID：同一个外壳的环境里所有成员的包平铺在一起
+│   ├── __init__.py         定义：ID、VERSION（从安装的包读，不写常量）、配置键、资源与操作、definition()
+│   ├── __main__.py         单独运行的入口，一行：launcher.main(definition())（python -m <包> serve|migrate）
+│   ├── module.py           路由与系统面的注册
+│   ├── <业务>.py           按业务分文件
+│   └── migrations/         数据库迁移，随包分发，NNNN_<名字>.up.sql
+├── tests/                  pytest；集成测试标 integration（make test-integration）
+└── Makefile                test、test-integration、lint（有种子时加 seed）
+```
+
+镜像按依赖的轮子选：有只发 glibc 轮子的依赖就用 Debian slim（`infra/print` 的 Typst），并装上 `wget`（平台的健康检查经 `/bin/sh` 与 `wget`）。
+
+入口、迁移与生成代码的约定见[组件实现约定](06-component-implementation.md#仓库布局与入口)；同一种语言的组件布局完全相同。
 
 组件 `AGENTS.md` 的“代码地图”一节固定有两张表：
 
