@@ -4,7 +4,7 @@
 
 > **怎样找东西**（先看这三行）
 > - **一个名字**（业务词“资格”“汇率”“业务日期”，组件 ID、事件、权限键）：业务词查[术语表](docs/zh/00-overview/07-glossary.md)，组件查[组件索引](docs/zh/00-overview/09-component-index.md)（边界卡、仓库文档、实现版本、谁依赖它、事件）；已重建的组件接着读它的 `AGENTS.md`，从代码地图下到文件。
-> - **一件事怎样做**：下面的“查找路由”；一步步的改动（加字段、加接口、改事件、调用别的组件、加表）先看[改动配方](docs/zh/01-conventions/11-change-recipes.md)；整条业务怎样走看[业务流程](docs/zh/08-flows/README.md)。
+> - **一件事怎样做**：下面的“查找路由”；任何改动按[改动的循环](docs/zh/01-conventions/10-development-workflow.md#改动的循环)做，这一类改动（加字段、加接口、改事件、调用别的组件、加表、新组件）每步要注意的在[改动配方](docs/zh/01-conventions/11-change-recipes.md)；整条业务怎样走看[业务流程](docs/zh/08-flows/README.md)。
 > - **一个现象**（报错、症状）：下面的“易错点”、`brickkit-troubleshoot` 技能、[运维手册](docs/zh/05-operations/README.md)。
 >
 > 全仓搜索用 `rg`（读根目录的 `.ignore`，跳过生成的契约代码与过程记录）。`COMPONENTS.md`（BrickKit 维护的组件表）是旧的 2.x 装配，新设计的组件以组件索引为准。
@@ -21,15 +21,15 @@
 
 每条一行，链接是完整规则；请求与某条约定冲突时，引用它向维护者提出。
 
-- **决定优先**：[决定记录](docs/zh/02-decisions/README.md)优先于规范，规范优先于单个组件的约定。
-- **开发流程**：七步循环；契约先于业务规则测试，测试先于实现，文档先于代码（[开发流程与发布](docs/zh/01-conventions/10-development-workflow.md)）。
+- **决定优先**：[决定记录](docs/zh/02-decisions/README.md)优先于规范，规范优先于单个组件的约定；BrickKit 技能写的是所有项目通用的做法，与本项目的规范不一致时以本项目为准（例如组件以组件索引为准，不以 `COMPONENTS.md`；版本按本项目的版本规则）。
+- **开发流程**：每次改动（新组件、新功能、修改、修缺陷）都走同一个循环：意图（文档）→ 考设计 → 契约 → 先写红的测试 → 实现 → 核对 → 发布，这次没有内容的步跳过；各类改动在每步要注意的在改动配方（[改动的循环](docs/zh/01-conventions/10-development-workflow.md#改动的循环)）。
 - **组件代码**：一个模块入口，一切经 SDK 的运行时，合并安全（[组件实现约定](docs/zh/01-conventions/06-component-implementation.md)）；每种语言一套锁定的技术栈（[组件协议与语言](docs/zh/04-foundations/07-component-protocol-and-languages.md)）。
 - **测试**：L1–L4、FE-1–FE-4；绝不为了让测试通过而改测试（[测试与验证](docs/zh/01-conventions/02-testing-and-validation.md#实现测试的分层与节奏)）。
 - **数据**：种子数据给人、测试数据给测试，两个物理库；依赖方缺能力时去源头补；凭据绝不进入部署（[种子与测试数据](docs/zh/01-conventions/07-seed-and-test-data.md)）。
-- **配置与注册表**：配置键大写下划线、只经 SDK 读取；密钥只写引用；端口、schema、权限键从注册表抄，身份列只追加（[协议 19](docs/zh/06-protocols/19-config-secrets-registries-release.md)）。
+- **配置与注册表**：配置键大写下划线、只经 SDK 读取；密钥只写引用；端口、schema 从注册表抄，权限键、资源与维度在组件定义里登记，身份只追加（[协议 19](docs/zh/06-protocols/19-config-secrets-registries-release.md)、[注册表的现状](registry/README.zh.md)）。
 - **权限**：每个操作在组件定义的资源定义里登记；看不见答 404（[授权选型](docs/zh/00-overview/guides/authorization.md)、[安全协议](docs/zh/06-protocols/security/README.md)）。
 - **跨组件**：经契约调用；业务写入与发件表同事务；事务内不发网络调用（[事务与消息](docs/zh/04-foundations/03-transactions-and-messaging.md)）。
-- **版本**：每次改动都升版本；从 `3.0.0` 起，`Y` 是新功能或从开发进入正式，`Z` 是修复；用过的版本号绝不再用（[版本](docs/zh/01-conventions/10-development-workflow.md#版本)）。
+- **版本**：每次改动都升版本，动手前先升；开发阶段（现在）每次只升最后一位，进入正式时升 `Y`；用过的版本号绝不再用（[版本](docs/zh/01-conventions/10-development-workflow.md#版本)）。
 - **提交与发布**：英文提交信息先写进文件再 `git commit -F`，带注释的标签，按依赖顺序发布；子模块指针只经 `git submodule` 改，与需要它的 `brickkit upgrade` 一起提交（[提交](docs/zh/01-conventions/10-development-workflow.md#提交)）。
 - **参考实现**：先自己设计，卡住才看参考，绝不照抄（[参考实现](docs/zh/01-conventions/08-reference-implementations.md)）。
 - **AI 友好与性能**：模式只用在帮助读懂的地方；越底层越要想性能，业务逻辑以看得懂优先；函数、文件与会话有上限（[AI 编码习惯](docs/zh/01-conventions/09-ai-coding.md)）。

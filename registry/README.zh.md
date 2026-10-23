@@ -13,6 +13,11 @@
 | `permissions.tsv` | 每个权限键：`key`、`title`、`type`、`owner_component`、`deprecated` | 只增不改；由 `be-ops permissions` 合并进来 |
 | `data-scopes.tsv` | 每个数据范围维度：`component`、`dimension`、`column`、`mode`、`tables` | 派生表，可随时重新生成 |
 
+## 现状
+
+- `ports.tsv` 与 `schemas.tsv` 是现行的：新组件的端口与 schema 照常先在这里追加。
+- `permissions.tsv` 与 `data-scopes.tsv` 还是 2.x 装配的（由旧的 `be-ops` 生成）。按新设计重建的组件，资源、操作、权限键与数据范围的维度写在组件定义里（[安全 09a](../docs/zh/06-protocols/security/09a-encoding-and-records.md)），以它为准；这两份等 `be-ops` 重写后从组件定义汇总，在那之前不要往里追加，也不要照着它们写新组件。
+
 ## 规则
 
 - **只增不改**（`ports.tsv`、`schemas.tsv`、`permissions.tsv`）：端口一挪，每个依赖方和每个托管这个组件的外壳都会坏；schema 一改名就是一次数据迁移；权限键一改名，所有分配过它的角色都会静默失去它。键的废弃靠填 `deprecated`，键名永不复用。

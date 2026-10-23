@@ -30,6 +30,8 @@ flowchart LR
 
 **成本这一支**：库存与财务之间没有事件；`erp/costing` 读库存流水算出成本，发布成本事实，财务过账（[协议 05b](../06-protocols/05b-inventory-costing.md)）。
 
+**打印这一支**：开出的账单由 `erp/billing` 调 `infra/print` 渲染成 PDF（可选依赖，缺时不能打印）；第一次渲染时账单存下模板版本与视图模型，之后重打用同一份并标为副本（[协议 10 的打印与渲染](../06-protocols/10-external-integration.md#打印与渲染)、[`erp/billing` 的卡](../07-components/erp-finance.md#erpbilling)）。
+
 **跨组件的衔接只有两种**：同步命令（第 2、3、4 步，带幂等键或分支身份，结果未知时按身份查询）与不可遗漏的增量事实（第 4–7 步之间，接收方去重，[协议 05 的共同规则](../06-protocols/05-billing-settlement-and-payment.md#共同规则不可遗漏的增量事实)）。
 
 ## 变体
@@ -41,7 +43,3 @@ flowchart LR
 | 款到发货 | 顺序变成：确认 → 收款（第 6 步，带订单参考形成预收）→ 销售向财务认领订单的放行额度、放行 → 交货（第 3 步）→ 出账与核销；收款先于交货 | [协议 05 的预收与款到发货](../06-protocols/05-billing-settlement-and-payment.md#预收与款到发货) |
 | 退货、折让、换货 | 销售的退货单 → 出账组件开红字 → 财务冲减或形成贷方余额 | [协议 05 的退货与贷项](../06-protocols/05-billing-settlement-and-payment.md#退货与贷项) |
 | 上线时未完成的订单 | 期初分支与期初应收占用 | [协议 16](../06-protocols/16-go-live-and-import.md) |
-
-## 实现状态
-
-这条链上的业务组件都还只有设计；哪些已经实现、是哪个版本，见[组件索引](../00-overview/09-component-index.md)。

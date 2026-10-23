@@ -15,8 +15,8 @@
 | [07-seed-and-test-data.md](07-seed-and-test-data.md) | 种子数据与测试数据：两条路径、覆盖更多场景、依赖方缺数据时、种子的归属与清除、凭据不进部署、测试数据的规则 |
 | [08-reference-implementations.md](08-reference-implementations.md) | 怎样参考成熟软件：三步法、许可、记录、每个组件看哪个项目、要绕开的弱点、几种做法都合理时 |
 | [09-ai-coding.md](09-ai-coding.md) | 代码怎样写才便于 AI 修改：何时用设计模式、已定的模式、长函数的注释、人要审什么、整体重写 |
-| [10-development-workflow.md](10-development-workflow.md) | 七步循环、动手之前的自问、提交、真机运行、版本与发布 |
-| [11-change-recipes.md](11-change-recipes.md) | 常见改动按步骤要守的规则：加字段、加接口、加或改事件、调用别的组件、加表、新建组件 |
+| [10-development-workflow.md](10-development-workflow.md) | 改动的循环（每次改动都走）、动手之前的自问、提交、真机运行、版本与发布 |
+| [11-change-recipes.md](11-change-recipes.md) | 各类改动在改动的循环每一步要注意什么：加字段、加接口、加或改事件、调用别的组件、加表、新建组件 |
 
 **按任务找**：
 
