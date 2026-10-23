@@ -80,7 +80,7 @@ be-assembly-standard/
 
 | Layer | File | Trait |
 |---|---|---|
-| Index | assembly repo root [`AGENTS.md`](../../../AGENTS.md) | **Thin, stable, loaded every session.** Holds only the routing table (to do X → read Y), the most-common mistakes, the locked tables, the current phase, and things not to propose |
+| Index | assembly repo root [`AGENTS.md`](../../../AGENTS.archived.md) | **Thin, stable, loaded every session.** Holds only the routing table (to do X → read Y), the most-common mistakes, the locked tables, the current phase, and things not to propose |
 | Leaf | `components/<scope>/<name>/AGENTS.md` | **Self-contained.** Covers only this one component, assumes the reader hasn't read any other |
 | Leaf | `shells/{go,python}/AGENTS.md` | The shell's four prohibitions + Iron Rules 2/5/6/**7** |
 

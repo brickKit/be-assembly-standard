@@ -1,4 +1,4 @@
-[English](AGENTS.md) · [中文](AGENTS.zh.md)
+[English](AGENTS.archived.md) · [中文](AGENTS.archived.zh.md)
 
 # be-assembly-standard
 

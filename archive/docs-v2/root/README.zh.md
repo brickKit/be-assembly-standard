@@ -24,12 +24,12 @@ brickkit down      # 用完停掉组件容器（数据保留）
 
 | 问题 | 去读 |
 |---|---|
-| 我是 AI（或要给 AI 交代任务）：这个项目是什么、规则是什么、去哪里找 | [AGENTS.zh.md](AGENTS.zh.md)（英文原文 [AGENTS.md](AGENTS.md)） |
+| 我是 AI（或要给 AI 交代任务）：这个项目是什么、规则是什么、去哪里找 | [AGENTS.zh.md](AGENTS.archived.zh.md)（英文原文 [AGENTS.md](AGENTS.archived.md)） |
 | 每个组件都遵守的规则：配置、流程、后端、前端、测试、数据、登记表 | [docs/zh/01-conventions/](docs/zh/01-conventions/README.md) |
 | 项目为什么是这个形状；哪些做法已经排除 | [docs/zh/02-decisions/](docs/zh/02-decisions/README.md) |
 | 有哪些演示数据；怎么登录 | [docs/zh/03-seed-data.md](docs/zh/03-seed-data.md) |
 | 部署：要准备什么、建哪些库和角色、哪些密钥 | 各组件 `BRICKKIT.md` 的 "Before you deploy" 一节；`.claude/skills/` 里的 `brickkit-deploy` 技能 |
-| 某个组件是做什么的、怎么改它 | [AGENTS.md](AGENTS.md) 末尾的组件表；再看 `components/<scope>/<name>/BRICKKIT.md` 和它的 `AGENTS.md` |
+| 某个组件是做什么的、怎么改它 | [AGENTS.md](AGENTS.archived.md) 末尾的组件表；再看 `components/<scope>/<name>/BRICKKIT.md` 和它的 `AGENTS.md` |
 | brickKit 本身：命令、参数、错误码 | `brickkit <命令> --help`；`.claude/skills/brickkit-*` 里的技能 |
 
 ## 仓库结构

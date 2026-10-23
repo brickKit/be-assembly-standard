@@ -24,12 +24,12 @@ brickkit down      # stop the component containers when you are done (data is ke
 
 | Question | Read |
 |---|---|
-| I'm an AI (or briefing one): what is this project, what are the rules, where do I look | [AGENTS.md](AGENTS.md) |
+| I'm an AI (or briefing one): what is this project, what are the rules, where do I look | [AGENTS.md](AGENTS.archived.md) |
 | The rules every component follows: configuration, workflow, backend, frontend, testing, data, registries | [docs/en/01-conventions/](docs/en/01-conventions/README.md) |
 | Why the project is shaped this way; what has been ruled out | [docs/en/02-decisions/](docs/en/02-decisions/README.md) |
 | What demo data exists; how to log in | [docs/en/03-seed-data.md](docs/en/03-seed-data.md) |
 | Deploying: what to prepare, which databases and roles to create, which secrets | each component's `BRICKKIT.md`, section "Before you deploy"; the `brickkit-deploy` skill in `.claude/skills/` |
-| What one component does, and how to change it | the component table at the end of [AGENTS.md](AGENTS.md); then `components/<scope>/<name>/BRICKKIT.md` and its `AGENTS.md` |
+| What one component does, and how to change it | the component table at the end of [AGENTS.md](AGENTS.archived.md); then `components/<scope>/<name>/BRICKKIT.md` and its `AGENTS.md` |
 | brickKit itself: commands, flags, error codes | `brickkit <command> --help`; the skills in `.claude/skills/brickkit-*` |
 
 ## Repository layout

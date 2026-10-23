@@ -1,8 +1,8 @@
-[English](AGENTS.md) · [中文](AGENTS.zh.md)
+[English](AGENTS.archived.md) · [中文](AGENTS.archived.zh.md)
 
 # be-assembly-standard
 
-本项目的 AI 指南：项目是什么、这里每个组件都遵守的规则、该去哪里找。组件表由 brickkit 维护，只在英文版 [AGENTS.md](AGENTS.md) 末尾。
+本项目的 AI 指南：项目是什么、这里每个组件都遵守的规则、该去哪里找。组件表由 brickkit 维护，只在英文版 [AGENTS.md](AGENTS.archived.md) 末尾。
 
 > **文档语言不等于对话语言。** 正式文档用英文写，是为了让 AI 读得高效。本项目的维护者只用中文交流，所以给他的每一条回复都用中文，不管正在讨论的文件、代码或上一条工具输出是什么语言。落笔第一个字之前就定下回复语言；写完再检查，已经证明靠不住。
 
@@ -79,7 +79,7 @@
 | 一个可能与已记录的决策冲突的改动；"为什么不用 React / Java / RLS / Deny 规则 / 配置中心……" | [docs/zh/02-decisions/](docs/zh/02-decisions/README.md)（提议前先读；决策与约定冲突时决策为准） |
 | 为什么用这个数据库 / 队列 / 事务模型 / id / 金额格式；替换某块基础设施；有哪些实现、怎么换 | [docs/zh/04-foundations/README.md](docs/zh/04-foundations/README.md)（先看端口表，再看那一块的文档） |
 | 上面某条一行约定的完整规则；上线、备份、轮换密钥、生产故障（运维文档，尚未编写：将放在 `docs/zh/05-operations/`） | 约定：[docs/zh/01-conventions/](docs/zh/01-conventions/)；决策：[docs/zh/02-decisions/](docs/zh/02-decisions/README.md)；运维：`docs/zh/05-operations/` 建好之前看 `brickkit-deploy` 技能 |
-| 某个组件是做什么的；改某个组件 | 英文版 [AGENTS.md](AGENTS.md) 末尾的组件表，再看 `components/<scope>/<name>/BRICKKIT.md`（它拥有什么）和它的 `AGENTS.md`（怎么改它） |
+| 某个组件是做什么的；改某个组件 | 英文版 [AGENTS.md](AGENTS.archived.md) 末尾的组件表，再看 `components/<scope>/<name>/BRICKKIT.md`（它拥有什么）和它的 `AGENTS.md`（怎么改它） |
 
 这里没有？看组件表，再看那个组件的 `AGENTS.md`。
 
