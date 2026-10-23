@@ -53,7 +53,7 @@
 | `erp/finance` | 总账、应收应付（含预收、预付、员工借款）、付款认领、核销、外币重估与期末暂估、维度目录与递延、会计期间；应付内部的供应商票据匹配 | 当前重建 | — | [erp-finance.md](../07-components/erp-finance.md#erpfinance) | — | `mdm/org`、`mdm/partner`、`mdm/currency`、身份（`infra/iam-*`）、`infra/authz` | `erp/consolidation` |
 | `erp/credit` | 信用政策、额度与信用占用 | 当前重建 | 3.0.0 | [erp-finance.md](../07-components/erp-finance.md#erpcredit) | [BRICKKIT](../../../components/erp/credit/BRICKKIT.md) · [AGENTS](../../../components/erp/credit/AGENTS.md) · [design](../../../components/erp/credit/docs/design.md) | `mdm/partner`、`mdm/org`、`mdm/currency`、身份（`infra/iam-*`）、`infra/authz` | — |
 | `erp/costing` | 存货计价与成本子账；暂估、到岸成本、工单成本与差异、退货冲回 | 当前重建 | — | [erp-finance.md](../07-components/erp-finance.md#erpcosting) | — | `erp/inventory`、`mdm/product`、`mdm/org`、`mdm/currency`、身份（`infra/iam-*`）、`infra/authz` | — |
-| `erp/billing` | 客户账单与商业发票 | 当前重建 | 设计中 | [erp-finance.md](../07-components/erp-finance.md#erpbilling) | [design](../../../components/erp/billing/docs/design.md) | `mdm/partner`、`mdm/org`、`mdm/currency`、身份（`infra/iam-*`）、`infra/authz` | — |
+| `erp/billing` | 客户账单与商业发票 | 当前重建 | 3.0.0 | [erp-finance.md](../07-components/erp-finance.md#erpbilling) | [BRICKKIT](../../../components/erp/billing/BRICKKIT.md) · [AGENTS](../../../components/erp/billing/AGENTS.md) · [design](../../../components/erp/billing/docs/design.md) | `mdm/partner`、`mdm/org`、`mdm/currency`、身份（`infra/iam-*`）、`infra/authz` | — |
 | `erp/payment` | 收付款业务与银行／渠道对账 | 当前重建 | — | [erp-finance.md](../07-components/erp-finance.md#erppayment) | — | `mdm/partner`、`mdm/org`、`mdm/currency`、身份（`infra/iam-*`）、`infra/authz` | — |
 | `erp/consolidation` | 集团结构、抵销、外币报表折算与合并报表（D72） | 远期 | — | [erp-finance.md](../07-components/erp-finance.md#erpconsolidation) | — | `erp/finance`、`mdm/org`、`mdm/currency`、身份（`infra/iam-*`）、`infra/authz` | — |
 | `erp/tax` | 税计算 | 远期 | — | [erp-finance.md](../07-components/erp-finance.md#erptax) | — | `mdm/org`、`mdm/partner`、`mdm/product`、身份（`infra/iam-*`）、`infra/authz` | — |
@@ -146,6 +146,8 @@
 | `erp.delivery.posted.v1` | `erp/sales` | — |
 | `erp.inventory_branch.changed.v1` | `erp/inventory` | — |
 | `erp.inventory_movement.recorded.v1` | `erp/inventory` | — |
+| `erp.invoice.changed.v1` | `erp/billing` | — |
+| `erp.invoice.issued.v1` | `erp/billing` | — |
 | `erp.price_list.changed.v1` | `erp/sales` | — |
 | `erp.price_list_item.changed.v1` | `erp/sales` | — |
 | `erp.quotation.changed.v1` | `erp/sales` | — |

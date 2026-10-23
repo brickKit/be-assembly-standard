@@ -56,7 +56,7 @@
 | 必需依赖 | `mdm/partner`、`mdm/org`、`mdm/currency`、身份、授权 |
 | 可选依赖与缺件 | `erp/sales`、`prj/project`、`erp/contract`：出账来源（向来源认领，协议 05），装配准入要求至少有一个（[组合准入规则](../00-overview/04-selection.md#组合准入规则)）；`erp/tax`：缺时税额由有权限的人录入并标为人工税额；`integration/einvoice-<地区>`：缺时不提交电子发票；打印：缺时不出 PDF |
 | 范围 | 当前重建（新身份，D48） |
-| 设计 | 重建中（实验第 7 步）：统一语言、拥有的数据、不变量、命令与查询、事件、依赖、实现状态与验证故事在组件仓库的 [docs/design.md](../../../components/erp/billing/docs/design.md)；草拟到正式化的顺序在 [docs/flows/billing.md](../../../components/erp/billing/docs/flows/billing.md)；用法、部署与配置在组件做好后的 `BRICKKIT.md` |
+| 设计 | 已重建：统一语言、拥有的数据、不变量、命令与查询、事件、依赖、实现状态与验证故事在组件仓库的 [docs/design.md](../../../components/erp/billing/docs/design.md)；草拟到正式化的顺序在 [docs/flows/billing.md](../../../components/erp/billing/docs/flows/billing.md)；用法、部署与配置在 [BRICKKIT.md](../../../components/erp/billing/BRICKKIT.md) |
 
 ## erp/payment
 
