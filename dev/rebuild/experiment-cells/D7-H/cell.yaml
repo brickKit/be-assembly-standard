@@ -1,0 +1,9 @@
+# Step 7 (T7.9): the shells as the experiment plans them ("组件与外壳的选择"): be-go-infra hosts the security members,
+# the master data and the Go probe; be-go-core the four trading members; be-py-render print and the Python probe.
+cell: D7-H
+shells:
+  be/go-infra@3.0.26: [infra/iam-casdoor, infra/authz, infra/audit, mdm/org, mdm/currency, mdm/partner, mdm/product,
+                       test/probe-go]
+  be/go-core@3.0.23: [erp/inventory, erp/credit, erp/sales, erp/billing]
+  be/py-render@3.0.21: [infra/print, test/probe-py]
+chain: [test/probe-go, test/probe-py]
