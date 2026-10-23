@@ -114,6 +114,8 @@
 - AI 导航的标准布局补上 Python 组件的布局（照 `infra/print`）；“组件仓库布局与规则冲突”那条待决定早已在 R1 解决，从交接文件删掉。
 - 不算小事、留到底层与重建阶段的：SDK 的列表按投影下推组织树维度；对“带业务身份的命令没标幂等”的提示；Python SDK 还缺的搜索、幂等键、后台工作项、金额与业务日期。
 - 要 BrickKit 回应的：FRB-008（健康检查的方法因镜像而异）。要知识库审查的：PR #29、#30。
+- **SDK 版本对齐**（R3 复考查出：规则是“同一个库在整个系统里只用一个版本”）：安全与主数据的 7 个组件从 be-sdk-go alpha.22–27 升到 alpha.32、be-protocol alpha.21（`infra/iam-casdoor`、`infra/authz` 3.0.6，`infra/audit` 3.0.4，`mdm/org` 3.0.5，`mdm/currency` 3.0.6，`mdm/partner`、`mdm/product` 3.0.7）；下游的精确依赖按一份计划跟上（`erp/inventory`、`erp/credit` 3.0.3，`erp/sales` 3.0.6，`erp/billing` 3.0.4）；外壳 `be/go-infra` 3.0.28、`be/go-core` 3.0.27。单元与集成测试全过；D7-H（18 分钟）与 D7-S（8 分钟）全流程通过：种子两遍不变、L3 6/6、剖面全部符合。主要依赖（grpc、pgx、gin、nats、protobuf）在 13 个 Go 模块里各一个版本，Python 两边都是 be-sdk 3.0.0a28。教训：先发 SDK 升级、后发依赖跟进，`mdm/partner`、`mdm/product` 多升了一次；一批改动先排一份计划（开发流程的“用工具传播”，传播工具要等 `be-ops` 重写）。
+- 文档结构 R2c、R3（[R2c](../routing-tests/results-2026-10-23-r2c.md)、[R3](../routing-tests/results-2026-10-23-r3.md)）：改动的循环、版本规则一张表（开发阶段只升最后一位，用户 2026-10-23 决定）、实现状态只写两处等通用规则；`erp/sales` 3.0.4、3.0.5（文档）、信用契约 `v3.0.0-alpha.2`（注释）。给 BrickKit 的 FRR-013（技能里的版本：先升再动手，升哪一位听项目）。
 
 ## 风险
 
