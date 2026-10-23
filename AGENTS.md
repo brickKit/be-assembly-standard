@@ -33,7 +33,7 @@
 - **提交与发布**：英文提交信息先写进文件再 `git commit -F`，带注释的标签，按依赖顺序发布；子模块指针只经 `git submodule` 改，与需要它的 `brickkit upgrade` 一起提交（[提交](docs/zh/01-conventions/10-development-workflow.md#提交)）。
 - **参考实现**：先自己设计，卡住才看参考，绝不照抄（[参考实现](docs/zh/01-conventions/08-reference-implementations.md)）。
 - **AI 友好与性能**：模式只用在帮助读懂的地方；越底层越要想性能，业务逻辑以看得懂优先；函数、文件与会话有上限（[AI 编码习惯](docs/zh/01-conventions/09-ai-coding.md)）。
-- **版本与选型**：新版本优点明显才换；选型先适配、再性能；优化不牺牲需求；同一个库全系统一个版本（[底层选择的原则](docs/zh/04-foundations/README.md#原则)）。
+- **版本与选型**：新版本优点明显才换；选型先适配、再性能；优化不牺牲需求；同一个库在整个系统里只用一个版本，升级时全部组件一起换（[底层选择的原则](docs/zh/04-foundations/README.md#原则)）。
 - **文档**：开发完成前只写中文（D67）；同一规则只写在一处；正式文档不链接 `dev/` 与 `archive/`；图表按情况选，意图类先改、事实类生成（[文档规则](docs/zh/01-conventions/03-documentation.md)、[图与表](docs/zh/01-conventions/04-diagrams-and-tables.md)）。
 - **容器默认关着**：`make up` 的基础资源可以常开；组件容器验证完就 `brickkit down`。
 
