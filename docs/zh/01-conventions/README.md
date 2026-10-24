@@ -9,7 +9,7 @@
 | [validation/authorization-matrix.md](validation/authorization-matrix.md) | 权限与授权的验收反例（PA01–PA39） |
 | [validation/data-and-consistency-matrix.md](validation/data-and-consistency-matrix.md) | 数据、事务与恢复的验收反例（DT01–DT30） |
 | [03-documentation.md](03-documentation.md) | 文档写给谁、放在哪个区域与哪一层、组件的文档、写法、拆分、语言（D67）、与代码一起维护、检查 |
-| [04-diagrams-and-tables.md](04-diagrams-and-tables.md) | 按问题选图与表；意图类与事实类；每层放什么；格式；状态迁移表、决策表与时序图的写法；怎样不过时、怎样变成测试；排查时给 AI 的运行时视图 |
+| [04-diagrams-and-tables.md](04-diagrams-and-tables.md) | 按问题选图与表；意图类与事实类；每层放什么；格式；图放在哪里；状态迁移表、决策表、流程的步骤与分支、模式的角色表的写法；怎样不过时、怎样变成测试；排查时给 AI 的运行时视图 |
 | [05-ai-navigation.md](05-ai-navigation.md) | 入口怎样路由；术语表；生成的索引；从决定到代码的追踪链；组件仓库的标准布局与代码地图；每次会话读多少；局部的 AI 说明；怎样检验导航 |
 | [06-component-implementation.md](06-component-implementation.md) | 后端组件的代码怎样写：仓库布局与入口、运行时是唯一入口、合并安全、健康检查与镜像、权限与资源、调用其他组件、数据库、事件与契约 |
 | [07-seed-and-test-data.md](07-seed-and-test-data.md) | 种子数据与测试数据：两条路径、覆盖更多场景、依赖方缺数据时、种子的归属与清除、凭据不进部署、测试数据的规则 |
