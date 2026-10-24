@@ -35,6 +35,8 @@ flowchart LR
     C --> F[erp/finance<br/>总账与过账]
 ```
 
+图中的流向：`erp/inventory` 把数量事实交给 `erp/costing`；采购价格、发票与费用事实交给 `erp/costing`；`erp/costing` 把成本事实交给 `erp/finance`（总账与过账）。
+
 成本与物理变动各有生命周期：到货后发票或运费补齐，可能改变成本而没有新的数量变动。成本记录关联来源、依据与调整历史，不靠改写数量流水表达；暂估与最终结果如实区分。同一范围与口径只有一个成本权威；不同的会计目的显式声明口径。库存按“产品 + 法人”分配计价序号，成本组件按序计算；关账时成本组件先以标记行读取库存与制造的高点并处理完，再封存（协议 05b、06）。延迟可以有界，结果不能悄悄遗漏；已过账与已关账的事实按更正协议处理。同时含库存与财务的组合必须含成本组件；只要粗略核算的小客户可以选成本组件的定期盘存策略（期末按盘点倒算销货成本），不由财务降级处理；不返回虚构的成本。
 
 **依据**：Odoo 19 的库存应用按物理移动维护实时估值，财务应用有自己的估值更新与结账（[官方说明](https://www.odoo.com/documentation/19.0/applications/finance/accounting/get_started/inventory_valuation.html)）；Microsoft Business Central 把数量记入 Item Ledger Entries、价值记入 Value Entries，价值再过入总账（[库存过账](https://learn.microsoft.com/en-us/dynamics365/business-central/design-details-inventory-posting)、[总账对账](https://learn.microsoft.com/en-us/dynamics365/business-central/design-details-reconciliation-with-the-general-ledger)）；Dynamics 365 SCM 的成本管理覆盖库存核算、制造核算与总账集成（[官方说明](https://learn.microsoft.com/en-us/dynamics365/supply-chain/cost-management/cost-management-home-page)）。它们支持“数量、价值、总账分别表达并保持关联”，不证明这些账表是独立部署的服务；本项目选择独立组件，依据是功能生命周期与独立选配、替换的目标。同一组件内用明确策略也是合理的另一设计，它少一些协调，牺牲成本能力的独立部署。
@@ -56,6 +58,8 @@ flowchart LR
     E --> R
     R -->|收付款事实| F[erp/finance<br/>核销与总账]
 ```
+
+图中的流向：`erp/payment` 调用银行或支付通道适配器，适配器得到外部的执行与查询结果，结果回到 `erp/payment`（不直接进财务）；`erp/payment` 再把收付款事实交给 `erp/finance` 核销与入总账。
 
 可以从线下收付登记开始，自动银行付款按明确的能力选配；钱包、完整的金融清算与集团资金管理另行设计。业务申请被保存不自动构成付款授权；执行资格、审批依据、新鲜度与审计照常适用。
 
@@ -81,6 +85,8 @@ flowchart LR
     R[erp/payment] -->|资金事实| F
 ```
 
+图中的流向：销售、项目或服务的来源事实交给 `erp/billing`；`erp/billing` 把正式出账事实交给 `erp/finance`（应收与总账）；`erp/payment` 把资金事实交给 `erp/finance`。
+
 可出账的额度由来源裁决：草稿认领额度，编号前先确认认领，正式化后只以新的单据更正（协议 05）。前端可以统一操作，后台如实表达草稿、正式出账、应收形成与过账、核销与资金进度。客户商业发票、法定税务票据与供应商原票据分别表达，同名“发票”不视为同一事实。
 
 **验收**：来源资格、并发与重复与超额、部分出账、来源修订与取消的竞争、正式化与应收形成之间的崩溃、补差与更正、重复与乱序事件、账务状态关联、对账与在途替换。
@@ -104,6 +110,8 @@ flowchart LR
     E --> X[外部响应与结果查询]
     X --> E
 ```
+
+图中的流向：业务单据与税务上下文交给 `erp/tax`，`erp/tax` 把依据、版本与结果交回业务单据；业务单据交给 `integration/einvoice-地区`，它向外部提交，外部响应与结果查询回到它。
 
 “不适用某项税”与“算不出税额”是不同的结果；票据已生成、已提交、外部已接受也不能混为“完成”。缺税计算时，出账只能由有权限的人逐张录入税额并标为人工税额，不能当作“不适用税”。税务时点、报价与正式出账的依据与差异、更正与撤销，按目标地区与交易设计，实现前查当地官方资料。分别选配要验证输入输出、规则与日期、生效与失效、金额与舍入、结果未知与查询、重复与乱序、变更与更正、恢复。地区一体的组件配置与验收集中，但局部替换牵动整体，是合理的另一方案。
 
