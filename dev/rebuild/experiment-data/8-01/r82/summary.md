@@ -10,6 +10,12 @@
 | D8-X | base | 0.271 | 4034 | 0.365 | 4139 | 52.2 |
 | D8-X | platform | 0.082 | 492 | 0.090 | 491 | 12.9 |
 
+| cell | components: process RSS, idle MiB | mix MiB |
+| --- | --- | --- |
+| D8-S | 738 | 725 |
+| D8-H | 382 | 382 |
+| D8-X | 516 | 499 |
+
 | cell | container | idle cores | idle MiB | mix cores | mix MiB |
 | --- | --- | --- | --- | --- | --- |
 | D8-S | erp-billing | 0.015 | 28 | 0.022 | 29 |

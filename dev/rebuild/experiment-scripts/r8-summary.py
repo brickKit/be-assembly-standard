@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Step 8 perf rounds: the tables of record 8-01 from each cell's run/idle.json and run/mix.json.
-Resources are the cgroup view (what the container costs, page cache included); parts: the component containers
+Resources are the cgroup view (what the container costs, page cache included), and for the components also the
+process view (resident memory, no page cache: steadier between passes); parts: the component containers
 (alone or shells), the base resources (PostgreSQL, NATS, object storage, Casdoor) and the platform (Docker).
 Usage: r8-summary.py <cell-dir>... (each holding run/idle.json and run/mix.json, or the archived idle.json and mix.json)"""
 import json
@@ -49,6 +50,15 @@ def main(dirs: list[str]) -> None:
         for k in ("components", "base", "platform"):
             per = pm[k][0] * mix["resources"]["elapsed"] / n * 1000
             print(f"| {mix['cell']} | {k} | {pi[k][0]:.3f} | {pi[k][1] / MIB:.0f} | {pm[k][0]:.3f} | {pm[k][1] / MIB:.0f} | {per:.1f} |")
+    print()
+    print("| cell | components: process RSS, idle MiB | mix MiB |")
+    print("| --- | --- | --- |")
+    for d in dirs:
+        run = at(d)
+        idle, mix = (json.loads((run / f).read_text()) for f in ("idle.json", "mix.json"))
+        rss = [sum(c["process"]["memory_median"] for k, c in x["resources"]["containers"].items() if k not in BASE) / MIB
+               for x in (idle, mix)]
+        print(f"| {mix['cell']} | {rss[0]:.0f} | {rss[1]:.0f} |")
     print()
     print("| cell | container | idle cores | idle MiB | mix cores | mix MiB |")
     print("| --- | --- | --- | --- | --- | --- |")
