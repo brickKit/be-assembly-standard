@@ -104,7 +104,7 @@
 | 外壳的成员清单、编进的成员与依赖锁不一致，或偏离客户基线 | 外壳启动即退出；或镜像跑的版本与项目以为的不同 | [外壳的风险](docs/zh/04-foundations/01-deployment-and-runtime.md#外壳的风险) |
 | 以为 `deploy.local.yaml` 会与 `deploy.yaml` 合并 | 改 `deploy.yaml` 不起作用 | [真机运行](docs/zh/01-conventions/10-development-workflow.md#真机运行) |
 | 在共享变量里手写授权或身份的版本化服务名 | 下次发布后受保护路由全部 503 或 403 | [协议 19 的配置](docs/zh/06-protocols/19-config-secrets-registries-release.md#配置)（写 `$endpoint:` 引用） |
-| Go 组件只打裸标签；主版本 2 起模块路径不带主版本 | 外壳构建报 `unknown revision` 或路径不符 | [版本与升级](docs/zh/01-conventions/01-engineering.md#版本与升级) |
+| Go 组件没写 `release.goModule: true`（只打了裸标签）；主版本 2 起模块路径不带主版本 | 外壳构建报 `unknown revision` 或路径不符 | [版本与升级](docs/zh/01-conventions/01-engineering.md#版本与升级) |
 | 删掉标签后用同一个版本号发新代码 | 取到同号的旧代码或 `SECURITY ERROR`；BrickKit 缓存给出旧清单 | [版本与升级](docs/zh/01-conventions/01-engineering.md#版本与升级) |
 | 改了代码不升版本，或原地改已发布的版本 | 构建跳过已有镜像，容器继续跑旧代码 | [版本](docs/zh/01-conventions/10-development-workflow.md#版本) |
 | 对有未提交或未推送改动的组件 `brickkit remove --force` | 连同改动删掉源码 | [发布](docs/zh/01-conventions/10-development-workflow.md#发布) |

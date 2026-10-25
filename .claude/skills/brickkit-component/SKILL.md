@@ -109,6 +109,8 @@ shell:
 
 写了 `shell` 块，这个组件就是外壳：它的进程里编进了这些成员的代码。版本必须精确，一个成员只列
 一个版本，而且要**和你真正编进去的代码一致**——项目里承载的成员版本跟这里不一样，`up` 会报错。
+Go 外壳按 Go 模块 import 成员（它的 `go.mod` 按 `shell.members` 的版本引用每一个，两边保持一致），Go 按 `v` 标签取，
+所以这样的成员都要写 `release: {goModule: true}`（见第 14 条）。
 外壳启动时读两个变量：
 
 - `BRICKKIT_SERVED_MEMBERS`：这次承载的成员的版本化服务名，逗号分隔。只初始化这些模块；空字符串表示
@@ -147,6 +149,7 @@ shell:
 | `component.yaml` | CLI | 依赖、配置项、端口、镜像；可选的 `metadata.repository` 是项目组件表（`COMPONENTS.md`）里显示的链接 |
 
 - 一个事实只写一处：依赖和配置项在 `component.yaml`，接口在契约文件，历史在 Git。文档讲它们说不清的部分，不再抄一遍。
+- 规则与流程写成文字与表（状态迁移、决策、带失败分支的编号步骤）。旁边可以放一张图给人看，但图里画的每一条关系都要写出来：你和下一个 AI 读的是源文本，不是渲染出来的图。
 - `BRICKKIT.md` **不放相对链接**：它在别的项目缓存里是单独读的。文件名用行内代码写。
 - 组件的任何文档都不链出组件目录（`../…`）——`AGENTS.md`、`README.md`、`docs/` 也一样：仓库是被单独克隆、单独读的（`DOC_LINK_NOT_PORTABLE`）。
 - 译本放在旁边——`BRICKKIT.zh.md`、`README.zh.md`、`docs/design.zh.md`——整个 `docs/` 双语时也可以每种语言一棵树：`docs/<主语言>/` 和 `docs/<语言>/` 相对路径一一对应，每一页在每棵树里都有（主语言是 `AGENTS.md` 维护段的 `lang=`）。原文为准；每个语言版本在开头链接其余每一份（`BRICKKIT*.md` 除外）；译本的 `##` 小节与原文一样多（维护段不算）。`AGENTS.md` 一般不翻译；给人工审查者的 `AGENTS.<语言>.md` 按普通译本查。读和写都只对着原文。
@@ -154,7 +157,7 @@ shell:
 - 外壳的 `外壳声明` 里的成员要与 `shell.members` 一致。
 - `docs/` 下的每个文件都要能从 `AGENTS.md` 或 `README.md` 走到——一条链接，或用反引号写出它的路径（代码地图里的一行），直接写或写在走得到的文档里；写出一个目录（`docs/decisions/`）就走到了它下面的全部（`DOC_UNREACHABLE`）。
 - 有自己规则的目录（迁移：只追加；契约：改了 proto 要重新生成）可以放一份局部的 `AGENTS.md`：只写这些规则，有帮助的话加一张 `代码地图`（路径相对这个目录），旁边再放一份写着 `@AGENTS.md` 的 `CLAUDE.md`。没有固定小节；不重复根目录的规则。lint 查它的链接、路径、占位词和 `CLAUDE.md`。归档的旧导读要是还叫 `AGENTS.md`，在那个目录里就还是现行的说明：归档时改名。
-- `brickkit lint` 都会查（警告；`--strict` 下算失败）：`DOC_FILE_MISSING`、`DOC_SECTION_MISSING`、`DOC_PATH_MISSING`（代码地图里的路径没了——第一张表第一列的每个行内代码都当路径查，`main.go`、`Dockerfile` 也算；别的格子里只有含 `/` 的才算；以 `/` 开头的是路由，比如 `/healthz`，从不当路径）、`DOC_LINK_BROKEN`、`DOC_LINK_NOT_PORTABLE`、`DOC_OUT_OF_STEP`（`component.yaml` 里有、文档没提的依赖、必填键、契约文件或外壳成员）、`DOC_PLACEHOLDER`、`DOC_TRANSLATION_DRIFT`、`DOC_UNREACHABLE`、`AGENTS_BLOCK_MISSING`、`CLAUDE_IMPORT_MISSING`。文档和代码在同一个提交里改：下一个 AI 读的就是你留下的。
+- `brickkit lint` 都会查（警告；`--strict` 下算失败）：`DOC_FILE_MISSING`、`DOC_SECTION_MISSING`、`DOC_PATH_MISSING`（代码地图里的路径没了——第一张表第一列的每个行内代码都当路径查，`main.go`、`Dockerfile` 也算；别的格子里只有含 `/` 的才算；以 `/` 开头的是路由，比如 `/healthz`，从不当路径）、`DOC_LINK_BROKEN`、`DOC_LINK_NOT_PORTABLE`、`DOC_OUT_OF_STEP`（`component.yaml` 里有、文档没提的依赖、必填键、契约文件或外壳成员）、`DOC_PLACEHOLDER`、`DOC_TRANSLATION_DRIFT`、`DOC_UNREACHABLE`、`AGENTS_BLOCK_MISSING`、`CLAUDE_IMPORT_MISSING`。文档和代码在同一个提交里改：下一个 AI 读的就是你留下的。助手找不找得到路 lint 看不出来；改过代码地图或 `BRICKKIT.md` 之后，开一个只加载项目的新会话问几道题——子代理带着你的上下文，不算（`brickkit docs 08-ai-guide/07-checking-docs`）。
 - 文档和代码一样是版本的一部分。朝新版本改——动手前先升 `metadata.version`（提哪一位按组件或项目 `AGENTS.md` 写的版本规则，没写按语义化版本），在项目里 `brickkit upgrade <id>@<新版本>`，测，再发布——发布前随便改，同一个版本想重建几次就重建几次。已经发布的版本不许原地改：把它当本地源的机器和从 tag 取它的机器会往项目的 `COMPONENTS.md` 写不同的行，来回改。
 
 **11. `deployment.resources` 只写 `requests`，`limits` 留给部署方。**
@@ -190,6 +193,12 @@ monorepo 子目录里的组件是 `<scope>-<name>/1.2.0`（使用方把这个仓
 仍然干净、当前提交没变，否则拒绝（`RELEASE_BLOCKED`）——tag 装的必须是检查过的内容。用 `gofmt -l`，
 不用 `gofmt -w`；检查留下的产物（构建输出、覆盖率报告）写进 `.gitignore`。`publish` 上传之前跑同样的检查。`--skip-checks` 跳过它们，
 输出里会写明——别拿它绕过一条没过的检查，按它说的改好。
+
+别的 Go 代码要 import 的组件——Go 外壳的成员——还要写 `release: {goModule: true}`。Go 只从名为 `v1.2.0` 的 tag
+读版本（模块在子目录里是 `<子目录>/v1.2.0`），平台只从 `1.2.0` 读；写了这个字段，`release` 在同一个提交上把两个都推上去，
+带同一份说明，一次原子推送。推之前先查 `go.mod`：主版本 2 起模块路径必须以 `/v<主版本>` 结尾，低于 2 不能带——tag 推出去
+收不回来，对不上就停止发布（`MANIFEST_INVALID`），`lint` 在你升版本号时就会警告。平台的 tag 已经在当前提交上的版本，
+再跑 `release` 只推送缺的 Go 的 tag。
 
 发版说明可写可不写，但使用方升级前读的就是它：`brickkit release --notes-file <文件>`（或
 `--notes "<文字>"`）把 Markdown 原样写进带注释的 tag，`brickkit upgrade` 动手之前列出跨过的每个
@@ -230,4 +239,4 @@ PEOPLE_BASIC_GRPC_ENDPOINT=http://people-basic-1-0-0:9090
 - 完整规范：<https://github.com/brickKit/brickKit> 根目录 `AGENTS.zh.md`
 - 别的组件的写法样例：你项目里 `.brickkit/manifests/` 下缓存的 `component.yaml` 与 `BRICKKIT.md`
 
-<!-- brickkit:skill version=v1.9.1 sum=sha256:b741d433ed82b313a16236e508d073d8cd7b08a029c4cfd5781c55f96ec71c8a -->
+<!-- brickkit:skill version=v1.10.0 sum=sha256:21209822760fd3f514e07c2de14c3372b8b1cafc5ed8e4aadfe37d8bd4df1eb0 -->
