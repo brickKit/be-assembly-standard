@@ -73,6 +73,42 @@
 - 关掉 VS Code 以外的程序（浏览器、聊天、同步盘），不要在机器上做别的事。
 - 保持 Claude Code 当前的权限模式：夜里要是有一个工具调用要你点同意，后面就停住了。
 
-## 8. 今晚之后
+## 8. 现状与接下来的顺序（2026-10-25 晚，交接）
 
-修授权重启后约一分钟不能写的缺陷（SDK 重新解析地址；授权核验与熔断的配合先问用户）→ 给全部组件发新版本 → LD、LP 补全、探针的底价与通信细分 → 第 10 步起的套件。
+**用户 2026-10-25 晚定的顺序**：先把发现的问题修掉；再把所有格小规模跑一遍，只验证能正常起来；然后再整夜测。今晚不再测。
+
+### 8.1 今晚做到哪里
+
+- 工具：`be-acceptance` `c5061d5`（采样的新口径：容器在 Docker 或 Podman 里都能找到、记住 cgroup 不再每秒 `inspect`；`memory.stat` 的 anon + shmem；按平台分开读；格的 `row`；P、K 两行）与 `c79b51a`（L 行：`cells/localrun.py`）。本仓库 `a79b7a77`（格与运行器）、`e7156af4`（`cell-chain.sh` 的 L 行、本计划的决定）。
+- 格：`experiment-cells/` 下 `D9-S`（参照）、`P9-S/H/X`、`K9-S/H/X`、`L9-S/H/X`，只有 `cell.yaml` 是手写的（由 D8 的三格复制，加 `row:`），其余由 `cells create` 生成。
+- 冒烟通过：**P9-S**（Podman：起格、安装认领、种子两遍、L3 18 项，采样读到每个容器与 Podman 的平台进程）、**K9-S**（minikube：同上，加 NodePort；采样读到每个 Pod 与节点）。
+- 整夜运行 22:58 开始、23:17 按用户要求停下（用户在用另一个 VS Code）：D9-S 的空库段做完、带种子的起格做完、基线进行中被停。**这些数作废**（机器不安静），原始输出在会话临时目录 `step9/night/`，不归档。
+- 机器上的准备：minikube profile `bek`（docker 驱动、Kubernetes v1.35.1、bridge CNI、`--cpus=no-limit --memory=no-limit`、`--ports` 把宿主机 18082–18605 映射到节点 30082–30605），现在是停着的，运行器在 K 行开始时启动、结束时停；`experiment-scripts/bin/kubectl` 是转给 `minikube -p bek kubectl --` 的小脚本（本机没装 kubectl）；Podman 里已载入 D8 的 12 个组件镜像（`docker save | podman load`，各行同一份镜像）；`systemd-inhibit --what=sleep:idle:handle-lid-switch` 以用户身份可用；交流电下空闲不休眠，合盖默认休眠。
+
+### 8.2 要修的问题（先做）
+
+| # | 问题 | 证据 | 今晚的绕法 | 正式修法（要做的） |
+| --- | --- | --- | --- | --- |
+| 1 | 授权组件换了地址之后（Docker 上重启即换 IP），其他组件约 55–65 秒不能写 | R8.2 的 D8-X 第一次起格（[8-01](experiment-records/8-01-d-row-chain.md) 第 6 节，`experiment-data/8-01/r82/D8-X-failed/`） | `cell-chain.sh` 的种子失败后等 70 秒再跑一次 | SDK（Go 与 Python）在连接失败时重新解析地址（grpc-go 的 `dns` 解析器两次解析至少隔 30 秒；Python grpc.aio 同类设置未查）；**授权核验该不该过熔断器、熔断 30 秒与写视图 5 秒怎样配合是协议 P4.11–P4.14 与 P8.10 的问题，改前问用户**；种子遇到 503 要不要重试一起看 |
+| 2 | Kubernetes 上授权组件永远不就绪：它经自己的 Service 向自己提交定义（`DefinitionService.Submit`），Service 只转给已就绪的 Pod，而它要提交成功才就绪；所有组件跟着不就绪，`brickkit up` 等 rollout 5 分钟超时 | K9-S 冒烟（授权与审计的日志：`dial tcp <授权的 ClusterIP>:9223: connect: connection refused`，“the definitions could not be submitted yet; the member stays not ready”） | `cell-chain.sh` 在 `brickkit up` 等待期间给授权组件的 Service 打补丁 `publishNotReadyAddresses: true`，打上后 12 个 Pod 全部就绪 | 授权组件提交自己的定义不该走网络（在进程内交给自己），或它的就绪不该等自己的提交；同一个外壳里的其他成员向授权提交，在 Kubernetes 上同样经 Service（外壳的 Pod 未就绪时同样卡住？要验证 K·H、K·X）。属于 SDK 与协议（P8 定义的提交、就绪的条件），改前把方案给用户看；BrickKit 是否要给这类 Service 一个选项，修完再判断 |
+
+修完以后：给 SDK、全部组件与三个外壳发新版本（按依赖顺序，`brickkit release --notes`，Go 组件加 `release.goModule: true`），各格 `cell.yaml` 的版本一起改（D8 的三格保留原版本，作第 8 步的历史）。今晚的 D9-S 参照因此要用新版本跑：各行今晚的结果彼此可比，与第 8 步的 D 行之间多了一个版本的差别（记录里写明）。绕法 1、2 修好后从 `cell-chain.sh` 去掉，并补回归：起格后马上重启授权组件再写；K 行不打补丁也能起。
+
+### 8.3 小规模验证（修完之后、整夜之前）
+
+每一格只验证能正常起来：用 `cell-chain.sh <格> <输出>`（起格、安装认领、种子两遍、L3），再用运行器短跑一遍完整流程确认每一段都走得通（`IDLE=30 WARMUP=10 SECONDS_=30`；基线仍要约 6 分钟）。要特别看：
+
+- P·H、P·X、K·H、K·X：外壳承载成员时的地址、NodePort 的选择器、授权补丁（若仍需要）对准成员的 Service；
+- L 行三格：从未跑过。`create` 按确切版本 `brickkit add …@版本 --repo` 克隆源码；`cells/localrun.py` 在后台起 `brickkit up` 会话并等每个进程的 `/healthz`（首次 `go run` 要编译）；安装认领时整个会话重启（`secure.py` 的 L 分支）；进程听自己的端口，宿主机 10000 + 端口由 `localrun forward` 转发（对应 Docker 的端口代理）；BrickKit 会把 `host.docker.internal` 改写成 `localhost` 给本机进程；成员在外壳进程里听自己的端口；Python 的打印组件由 `uv run` 起；
+- 负载段的新采样输出：`mix.json` 里的 `platforms`、`anon_median`、`units`；结果摘要与 D8-S 的比较那一步；
+- `r8-summary.py` 之类的汇总要能读新字段（L、K 两行的组件在 `units` 里，不在 `containers` 里）。
+
+### 8.4 之后
+
+整夜测量（第 4 节的顺序：D9-S、P 行、K 行、L 行；用户确认机器安静后开始）→ 记录 `9-01` → LD、LP 补全、探针的底价与通信细分 → 第 10 步起的套件。
+
+### 8.5 注意
+
+- 运行器与 `cell-chain.sh` 在跑的时候，改脚本要先写到新文件再整份替换（bash 边执行边读文件，原地改会让正在跑的那份读到一半新内容）；Python 的工具改在主工作树，运行用快照（`git worktree add <临时目录>/acc-<提交> <提交>`，`CONF=<它>/conformance`）。
+- 停运行器时 `pkill -f` 的模式不要写进同一条命令里会被匹配到的字符串（2026-10-25 这样把自己的 shell 也杀了）：先 `pgrep -af` 看进程号再 `kill`。
+- 第 8 步的 D 行平台 CPU：原来的采样每秒对每个容器 `docker inspect`，今晚 D9-S 空库段（作废前的读数）Docker 平台空闲 0.098 核，第 8 步同一格 0.105 核：这份负担约 0.007 核，很小；正式的比较等重测。
