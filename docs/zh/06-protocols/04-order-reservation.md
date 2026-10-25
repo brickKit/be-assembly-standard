@@ -119,45 +119,16 @@
 
 **只有进入 `confirmed` 之后，才能返回“已确认”。**
 
-```mermaid
-sequenceDiagram
-    participant U as 用户
-    participant S as erp/sales
-    participant I as erp/inventory
-    participant C as erp/credit
-    U->>S: 确认订单（幂等键）
-    S->>S: 本地事务：过程 reserving，订单进入确认中
-    par 预占
-        S->>I: 预占（分支 bi）
-        I-->>S: held
-    and
-        S->>C: 预占（分支 bc）
-        C-->>S: held / rejected / 响应丢失
-    end
-    alt 信用 rejected
-        S->>I: 取消 bi
-        S-->>U: 未确认（超额度），过程结束
-    else 信用响应丢失
-        S->>C: 查询 bc
-        C-->>S: held（不重复占用）
-    end
-    S->>S: 过程 committing
-    par 确认
-        S->>I: 确认 bi
-        I-->>S: committed
-    and
-        S->>C: 确认 bc
-        C-->>S: committed / expired
-    end
-    alt bc 已 expired（协调者曾崩溃超过暂存期限）
-        S->>I: 取消 bi
-        S-->>U: 未确认（处理超时），过程结束
-    else 全部 committed
-        S->>S: 本地事务：订单已确认，写审计与发件表
-        S-->>U: 已确认
-    end
-    Note over S,U: 同步预算用完或仍有未知：返回“处理中”与过程身份，后台按同一过程继续
-```
+一次确认的例子（库存分支 bi、信用分支 bc）：
+
+1. 用户带幂等键确认订单；`erp/sales` 在一个本地事务里建过程（`reserving`），订单进入确认中。
+2. 并行向 `erp/inventory` 预占 bi、向 `erp/credit` 预占 bc。库存答 `held`；信用可能答 `held`、`rejected`，或响应丢失：
+   - 信用 `rejected`：取消 bi，告诉用户“未确认（超额度）”，过程结束；
+   - 信用响应丢失：按分支身份查询 bc，答 `held`（不会重复占用）。
+3. 过程转 `committing`，并行确认 bi 与 bc：
+   - bc 已 `expired`（协调者曾崩溃，超过了暂存期限）：取消 bi，告诉用户“未确认（处理超时）”，过程结束；
+   - 全部 `committed`：一个本地事务里把订单标为已确认、写审计与发件表，告诉用户“已确认”。
+4. 任何一步同步预算用完或仍有结果未知：返回“处理中”与过程身份，后台按同一个过程继续。
 
 结论：订单只在全部分支都进入确认占用、且销售本地提交之后才算确认；中途任何失败都落到持久的过程状态上，由同一个过程恢复，不会留下“订单已确认、资源却没占”或“订单未确认、资源被占着”的结果（RS02、RS03、RS05、RS06）。
 

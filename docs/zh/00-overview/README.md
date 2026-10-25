@@ -31,6 +31,6 @@
 | [05-change-and-retirement.md](05-change-and-retirement.md) | 替换的四种路径、从候选到生效、失败恢复、组件的停用与退出 |
 | [06-roadmap.md](06-roadmap.md) | 三条范围线、开发的五步、设计与正式文档、问题反馈、项目完成后的整体总结 |
 | [07-glossary.md](07-glossary.md) | 跨组件的术语：业务叫法、定义、代码标识符、所属组件与所在文档 |
-| [08-system-views.md](08-system-views.md) | 系统上下文、一套部署里的容器、上下文地图、关键流程的时序图在哪里 |
+| [08-system-views.md](08-system-views.md) | 系统上下文、一套部署里的容器、上下文地图、关键流程的步骤与分支在哪里 |
 | [09-component-index.md](09-component-index.md) | 由工具生成：每个组件的边界卡、仓库文档、实现版本、双向的必需依赖；已重建组件的事件拓扑 |
 | [guides/](guides/README.md) | 各选择点的方案比较 |

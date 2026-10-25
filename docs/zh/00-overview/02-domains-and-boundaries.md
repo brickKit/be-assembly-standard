@@ -38,53 +38,34 @@ DDD 的战略设计用于边界与共同语言；战术模式按规则复杂度�
 
 CRM 与 ERP 之间没有同步调用，只经事件协作；库存与财务之间没有直接调用，同一个上游（例如销售）分别触发两者。组件之间的调用一律经契约，事件消费经投影（协议 02），对其他组件记录的引用经协议 07。
 
-```mermaid
-flowchart TB
-    subgraph MDM[主数据]
-      P[mdm/partner]; PR[mdm/product]; O[mdm/org]; E[mdm/employee]; C[mdm/currency]
-    end
-    subgraph TRADE[交易与库存]
-      S[erp/sales]; CT[erp/contract]; PU[erp/purchase]; I[erp/inventory]; W[erp/warehouse]
-    end
-    subgraph FIN[财务与结算]
-      F[erp/finance]; CR[erp/credit]; CO[erp/costing]; B[erp/billing]; PAY[erp/payment]; T[erp/tax]; BG[erp/budget]
-    end
-    S -->|预占| I
-    S -->|信用占用| CR
-    S -->|出账来源| B
-    CT -->|出账来源| B
-    PU -->|入库| I
-    PU -->|暂估单价| CO
-    PU -->|匹配依据| F
-    W -->|库存契约| I
-    I -->|数量事实| CO
-    CO -->|成本事实| F
-    F -->|票据单价确认| CO
-    B -->|应收| F
-    B -->|已出账| CR
-    B -->|算税| T
-    S -->|算税| T
-    PAY -->|收付款事实| F
-    F -->|应收结清与重开| CR
-    PAY -->|付款认领| F
-    S -->|预收放行认领| F
-    PU -->|预付申请| F
-    F -->|资产购置确认| AS
-    PU -->|预算占用| BG
-    F -.->|应付过账带预算分支| BG
-    CO -.->|代理库存参与关账| F
-    subgraph OTHER[人事、资产与项目]
-      EX[hrm/expense]; PY[hrm/payroll-*]; AS[erp/asset]; PJ[prj/project]
-    end
-    EX -->|会计事实| F
-    PY -->|会计事实| F
-    AS -->|会计事实| F
-    PJ -->|出账来源| B
-    TRADE --> MDM
-    FIN --> MDM
-```
+组件分四组：主数据（`mdm/partner`、`mdm/product`、`mdm/org`、`mdm/employee`、`mdm/currency`）；交易与库存（`erp/sales`、`erp/contract`、`erp/purchase`、`erp/inventory`、`erp/warehouse`）；财务与结算（`erp/finance`、`erp/credit`、`erp/costing`、`erp/billing`、`erp/payment`、`erp/tax`、`erp/budget`）；人事、资产与项目（`hrm/expense`、`hrm/payroll-*`、`erp/asset`、`prj/project`）。交易与库存、财务与结算两组都引用主数据。组之间与组之内的协作：
 
-图表示业务协作与事实流向，不是启动依赖。主数据之间：员工引用组织；伙伴的角色按法人开通，引用组织。
+| 从 | 到 | 协作 |
+| --- | --- | --- |
+| `erp/sales` | `erp/inventory` | 预占 |
+| `erp/sales` | `erp/credit` | 信用占用 |
+| `erp/sales` | `erp/billing` | 出账来源 |
+| `erp/sales` | `erp/tax` | 算税 |
+| `erp/sales` | `erp/finance` | 预收放行认领 |
+| `erp/contract`、`prj/project` | `erp/billing` | 出账来源 |
+| `erp/purchase` | `erp/inventory` | 入库 |
+| `erp/purchase` | `erp/costing` | 暂估单价 |
+| `erp/purchase` | `erp/finance` | 匹配依据；预付申请 |
+| `erp/purchase` | `erp/budget` | 预算占用 |
+| `erp/warehouse` | `erp/inventory` | 库存契约 |
+| `erp/inventory` | `erp/costing` | 数量事实 |
+| `erp/costing` | `erp/finance` | 成本事实；关账时代理库存参与关账 |
+| `erp/finance` | `erp/costing` | 票据单价确认 |
+| `erp/finance` | `erp/credit` | 应收结清与重开 |
+| `erp/finance` | `erp/asset` | 资产购置确认 |
+| `erp/finance` | `erp/budget` | 应付过账（带预算分支） |
+| `erp/billing` | `erp/finance` | 应收 |
+| `erp/billing` | `erp/credit` | 已出账 |
+| `erp/billing` | `erp/tax` | 算税 |
+| `erp/payment` | `erp/finance` | 收付款事实；付款认领 |
+| `hrm/expense`、`hrm/payroll-*`、`erp/asset` | `erp/finance` | 会计事实 |
+
+表里是业务协作与事实流向，不是启动依赖。主数据之间：员工引用组织；伙伴的角色按法人开通，引用组织。
 
 ## 边界结论
 
@@ -145,19 +126,10 @@ ERP 可以只装伙伴主数据及所需角色，CRM 按需加入；只做销售
 
 同一企业的客户、供应商角色共享基础身份，角色资料、权限与业务状态分别管理。CRM 销售关系、采购规则、信用与财务不并入伙伴主数据；共用身份不合并应收应付，也不自动开放另一角色的数据。
 
-```mermaid
-flowchart TB
-    P[业务伙伴基础身份] --> C[客户角色资料]
-    P --> S[供应商角色资料]
-    P --> L[正式业务联络资料]
-    C --> R[CRM 销售关系]
-    C --> E[销售与信用业务]
-    S --> Q[采购业务]
-    C --> F[财务的应收业务]
-    S --> G[财务的应付业务]
-```
+- 业务伙伴的基础身份之下，有客户角色资料、供应商角色资料与正式业务联络资料。
+- 客户角色资料被 CRM 销售关系、销售与信用业务、财务的应收业务引用；供应商角色资料被采购业务、财务的应付业务引用。
 
-图表示身份与角色的引用，不表示同步调用依赖。合并重复伙伴需要业务确认（安全 08 的业务确认 profile）。
+这些是身份与角色的引用，不是同步调用依赖。合并重复伙伴需要业务确认（安全 08 的业务确认 profile）。
 
 员工作为收款对象（报销、薪资发放）时，以自然人伙伴的员工往来角色出现：由员工组件经伙伴接口明确开通，收款账户是受限字段，财务与收付款仍只认伙伴一种往来对象（D69）。
 
@@ -174,12 +146,7 @@ flowchart TB
 
 库存核心负责数量、预占与物理变动，简单业务可以直接使用其基础操作。复杂仓库作业作为可选、可独立维护与替换的组件，拥有波次、拣货、复核、打包等任务与推进状态，通过库存契约执行数量变动。
 
-```mermaid
-flowchart LR
-    B[简单业务的基础操作] --> I[库存核心]
-    W[可选复杂仓储：任务与推进状态] -->|库存契约| I
-    I --> F[数量、预占与物理变动事实]
-```
+简单业务直接用库存核心的基础操作；可选的复杂仓储（任务与推进状态）经库存契约调用库存核心；数量、预占与物理变动的事实都由库存核心产生。
 
 仓储可以保存任务所需的引用与进度，但不成为另一份可以独立扣减余额的权威，库存事实的必要维度也不只留在任务系统；库存校验、原子变动与权限不能被绕过。任务完成与库存提交分别定义、经可靠协调对齐：库存已提交而应答丢失时，查询并恢复作业状态，不再次扣减；任务取消、预占失效与执行并发、部分完成、人工纠错与替换时的在途任务，按协议 04 的分支状态处理。外壳合并不提供共同事务。
 

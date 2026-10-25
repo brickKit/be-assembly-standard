@@ -88,38 +88,6 @@
 
    在请求仍可能落地时把“查不到”当作“没有执行”，是重复付款的来源（参考模型的“查不到即视为未执行”坏变体）。
 
-```mermaid
-sequenceDiagram
-    participant B as 业务组件（erp/payment）
-    participant A as 支付适配器
-    participant X as 外部支付
-    B->>A: 付款（业务参考号 r，参数）
-    A->>A: 本地事务：命令 prepared → sending（事务确认后才发出）
-    A->>X: 发送（r）
-    alt 读取超时或响应前断开
-        A->>A: unknown
-        A->>X: 按 r 查询
-        alt 查到
-            X-->>A: 状态
-            A->>A: 按外部状态推进
-        else 查询不可用
-            A->>A: 保持 unknown，退避；超过人工时限转 manual
-        else 查到“不存在”
-            alt 外部按 r 去重，或请求已过期，或已超过最长处理时间
-                A->>X: 以同一个 r 重发
-            else 请求仍可能落地
-                A->>A: 转 manual，不重发
-            end
-        end
-    else 外部受理
-        X-->>A: accepted
-    end
-    X-->>A: 回调（签名）
-    A->>A: 验签、去重、存原文；资金类终态先查询确认
-    A->>A: 终态 succeeded，同事务写一条结果事实（事实 ID = 命令 ID）
-    A-->>B: 结果事实（按事实 ID 幂等消费）
-```
-
 结论：外部可能不去重时，对外命令绝不在“请求仍可能落地”时重发；资金类终态只在查询或权威的签名回调确认后形成事实，每条命令只有一条事实（EI01–EI04、EI10、EI29）。
 
 ### 适配器的能力声明

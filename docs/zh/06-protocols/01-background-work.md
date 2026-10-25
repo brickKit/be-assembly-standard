@@ -136,38 +136,17 @@ RETURNING epoch, claim_db_epoch;
 
 ### 崩溃与接管的时序
 
-```mermaid
-sequenceDiagram
-    participant A as 工作者 A
-    participant DB as 组件库（work_item）
-    participant B as 工作者 B
-    participant X as 外部接口或对方组件
-    A->>DB: 认领，得到 epoch = e 与 claim_db_epoch = g
-    alt idempotent_external
-        A->>X: 调用（operation_id）
-    else non_idempotent_external
-        A->>DB: 本地事务：outcome_unknown = true（核对 e、g）
-        A->>X: 调用
-    end
-    Note over A: 崩溃、停顿或应答丢失
-    Note over DB: lease_until <= now()
-    B->>DB: 认领（接管）：原身份，epoch = e + 1
-    alt idempotent_external
-        B->>X: 按 operation_id 查询
-        alt 对方已有效果
-            B->>DB: 本地事务：标记 done（核对 e + 1）
-        else 对方没有效果
-            B->>X: 用同一个 operation_id 重发
-            B->>DB: 对方确认后标记 done
-        end
-    else non_idempotent_external 且 outcome_unknown 为真
-        B->>DB: 转 paused，发布暂停摘要，告警，不重发
-    end
-    A->>DB: 醒来后续租或提交（epoch = e）
-    DB-->>A: 条件不成立（0 行），拒绝；A 取消执行
-```
+1. 工作者 A 认领工作项，得到 `epoch = e` 与 `claim_db_epoch = g`。
+2. A 调用外部：
+   - `idempotent_external`：带 `operation_id` 调用；
+   - `non_idempotent_external`：先在本地事务里置 `outcome_unknown = true`（核对 e、g），再调用。
+3. A 崩溃、停顿或应答丢失。`lease_until <= now()` 之后，工作者 B 以原身份认领（接管），得到 `epoch = e + 1`。
+4. B 按作业种类继续：
+   - `idempotent_external`：按 `operation_id` 查询对方。对方已有效果，就在本地事务里标记 `done`（核对 e + 1）；对方没有效果，用同一个 `operation_id` 重发，对方确认后标记 `done`。
+   - `non_idempotent_external` 且 `outcome_unknown` 为真：转 `paused`，发布暂停摘要，告警，不重发。
+5. A 醒来后续租或提交（带 `epoch = e`）：条件不成立（0 行），被拒绝，A 取消执行。
 
-结论：接管者以原身份继续，靠 `operation_id` 查询或 `outcome_unknown` 暂停防止外部效果重复（JB04、JB05）；旧工作者的迟到提交被代次条件挡住（JB03）。数据库切换丢失了 B 的认领、新认领重用了同一代次时，A 手里的 `claim_db_epoch` 仍是旧纪元，核对同样失败（JB21）。`local` 作业没有图中的外部调用：效果与完成标记同事务，接管后重做不会重复（JB02）。
+结论：接管者以原身份继续，靠 `operation_id` 查询或 `outcome_unknown` 暂停防止外部效果重复（JB04、JB05）；旧工作者的迟到提交被代次条件挡住（JB03）。数据库切换丢失了 B 的认领、新认领重用了同一代次时，A 手里的 `claim_db_epoch` 仍是旧纪元，核对同样失败（JB21）。`local` 作业没有第 2 步的外部调用：效果与完成标记同事务，接管后重做不会重复（JB02）。
 
 ## 失败、退避与死信
 
