@@ -17,6 +17,8 @@ flowchart LR
     S --> X["关账<br/>erp/finance 协调"]
 ```
 
+图中的流向：申请与订单（`erp/purchase`）→ 收货入库（`erp/purchase` 向 `erp/inventory`）；收货的计价依据与入库流水交 `erp/costing` 暂估。订单与收货一起进入供应商票据与三单匹配（`erp/finance` 的应付）；票据单价确认交 `erp/costing` 做成本调整。匹配之后付款（`erp/payment` 向 `erp/finance` 认领）→ 核销（`erp/finance`）→ 关账（`erp/finance` 协调）。
+
 | # | 步骤 | 谁做 | 怎样接到下一步 | 规则在哪 |
 | --- | --- | --- | --- | --- |
 | 1 | 采购申请、订单、审批 | `erp/purchase` | 订单审批后发起收货（或等到货） | [`erp/purchase` 的卡](../07-components/erp-trade.md#erppurchase) |

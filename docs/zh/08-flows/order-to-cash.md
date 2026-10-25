@@ -17,6 +17,8 @@ flowchart LR
     S --> X["关账<br/>erp/finance 协调"]
 ```
 
+图中的流向：报价与订单（`erp/sales`）→ 确认与预占（`erp/sales` 向 `erp/inventory`、`erp/credit`）→ 交货与出库（`erp/sales` 向 `erp/inventory`）→ 出账（`erp/billing` 向 `erp/sales` 认领）→ 应收形成与信用转换（`erp/finance`、`erp/credit`）→ 收款（`erp/payment`）→ 核销（`erp/finance`）→ 关账（`erp/finance` 协调）。交货出库的库存流水另交成本（`erp/costing`），成本事实交 `erp/finance` 过账。
+
 | # | 步骤 | 谁做 | 怎样接到下一步 | 规则在哪 |
 | --- | --- | --- | --- | --- |
 | 1 | 报价、订单、计价 | `erp/sales`（报价可以由上游 `crm/opportunity` 的“请求报价”事件生成草稿） | 用户提交确认 | [`erp/sales` 的卡](../07-components/erp-trade.md#erpsales) |

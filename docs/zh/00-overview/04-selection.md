@@ -33,6 +33,8 @@ flowchart TB
     E --> EMP[mdm/employee]
 ```
 
+图中的关系：身份、授权、组织、任职四项协作能力里，IAM 适配入口单选一个（外部身份源可以按方案联邦），候选是 `infra/iam-casdoor`（当前重建）、`infra/iam-keycloak`（远期）、通用 OIDC／目录适配（远期，身份待登记）；授权成员单选一个（内部模型可以组合），候选是 `infra/authz`（当前重建）、`infra/authz-static`（远期）、`infra/authz-openfga`（远期）、策略引擎成员（评估中）；法人、部门、岗位由 `mdm/org` 协作提供，员工与任职由 `mdm/employee` 协作提供。
+
 IAM 成员之间是身份能力的替换候选，授权成员之间是授权能力的替换候选；IAM 与授权相互协作，不能互相替代。组织、任职与账号是三个不同的权威。身份产品自带的角色或权限功能，不等于本项目用它处理全部业务授权。一个客户通过一个选定的 IAM 适配入口承接身份；客户的多个身份源由具体方案联邦或适配。
 
 ## ERP 核心与扩展
@@ -56,6 +58,8 @@ flowchart TB
     BILL -->|按业务要求| EI[integration/einvoice-地区]
 ```
 
+图中的关系：伙伴、产品、组织、币种主数据之上，多选协作的业务能力，按所选业务检查依赖闭包：`erp/sales`、`erp/contract`（合同与订阅）、`erp/purchase`、`erp/inventory`、`erp/finance`、CRM 关系与商机，以及远期的制造、资产、质量、维护。`erp/inventory` 的协作扩展是 `erp/warehouse`（复杂仓储）、`erp/costing`（存货成本）、`erp/planning`（补货与计划）；`erp/finance` 的协作能力是 `erp/payment`（收付款）与 `erp/billing`（客户出账）；`erp/billing` 按业务要求再接 `erp/tax`（税计算）与 `integration/einvoice-地区`。
+
 此图表示业务责任与组合，不指定事实传播或调用方向。销售、库存、成本与财务承担不同责任，不因都与金额或货物有关就互为替代。复杂仓储补充库存作业，存货成本补充价值核算，两者都不取得库存数量的写权。各能力可以分别定制，或由满足边界的实现替换；内部算法策略不作为独立组件出售。
 
 ## 外部渠道
@@ -70,6 +74,8 @@ flowchart TB
     E[需要签署的业务] --> ES[多选并存：电子签通道<br/>按签署条件路由]
     ES -. 成员 .-> ED[DocuSign／PandaDoc／e签宝 远期]
 ```
+
+图中的关系：三类渠道都是多选并存。通知意图与用户偏好走 IM 通道，按收件人或业务路由，成员有 `im-dingtalk`（当前重建）与 `im-wechat-work`、`im-feishu`、`im-slack`、`im-teams`（远期）；`erp/payment` 的收付款业务走支付通道，按交易路由，成员有 Stripe、PayPal、支付宝、微信支付（远期）；需要签署的业务走电子签通道，按签署条件路由，成员有 DocuSign、PandaDoc、e签宝（远期）。
 
 多个渠道可以覆盖不同客户或收件人，但不保证各渠道的扩展能力相同。路由、凭据、回调、幂等与费用分别说明；收付款业务与支付通道相互协作，不互为替代。
 
