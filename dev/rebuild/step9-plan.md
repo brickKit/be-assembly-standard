@@ -33,6 +33,10 @@
 | 内存口径 | 采样加一种不含页缓存的读数：容器与 Pod 读 cgroup `memory.stat` 的 `anon`，本机进程读 PSS；仍保留原来的读数 | D 行发现 cgroup 读数大半是页缓存，比不了 |
 | 平台开销 | Docker：dockerd、containerd、shim、docker-proxy（同 D 行）；Podman：conmon、pasta、netavark、aardvark-dns、rootlessport；Kubernetes：minikube 节点容器减去全部组件 Pod（控制面、kubelet、CNI、kube-proxy）；本机：`go run` 包装进程与看护的 `brickkit up` | 各形态自己多出来的开销 |
 | 起格失败 | 种子遇到授权视图过期的 503（8-01 第 6 节的缺陷）时，等 70 秒再跑一次种子（种子可重复），记下重试 | 已知缺陷不该让一整格白跑；重试写进结果 |
+| K 行授权组件的死锁 | 起格时给授权组件的 Service 打补丁 `publishNotReadyAddresses: true`（AI 决定，2026-10-25 冒烟时发现）：授权组件经自己的 Service 提交自己的定义，Service 只转给已就绪的 Pod，而它要提交成功才就绪，永远起不来；只改部署、不改组件，正式修法测完再定 | 不补就测不了 K 行；补丁记进 9-01 |
+| K 行的入口 | 不用 Ingress；每个组件另加一个 NodePort Service，minikube 节点（profile `bek`，docker 驱动，不限 CPU 与内存，bridge CNI）把它发布在与其他行相同的宿主机端口 | 驱动、种子、场景的地址各行一样；这一跳对应 Docker 的端口代理 |
+| L 行的端口 | 进程听自己的端口（不写 `localPort`），格子把宿主机端口 10000 + 端口转给它（`cells/localrun.py`），对应 Docker 的端口代理；源码用 `brickkit add --repo` 按确切版本克隆 | 外壳的成员只能听自己的端口，各列统一这样做 |
+| 工具的快照 | 夜里的运行用 `be-acceptance` 某个提交的工作树（`CONF`），白天改工具不影响正在跑的格；脚本改动用整份替换写入 | 改正在跑的东西会让一格前后不一致 |
 | 防止休眠 | 整个运行包在 `systemd-inhibit`（休眠、空闲、合盖）里；电源模式全程 performance，每格开始记下 | 夜里不能停 |
 
 ## 4. 顺序与时间

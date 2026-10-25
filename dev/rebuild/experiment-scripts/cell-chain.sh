@@ -43,7 +43,7 @@ down_cells() {  # every experiment cell on every engine (projects brickkit-<cell
     for n in $(minikube -p bek kubectl -- get ns -o name 2>/dev/null | sed 's|namespace/||' | grep -E '^[dplk][0-9]-'); do
       minikube -p bek kubectl -- delete ns "$n" --wait=true; done
   fi
-  pkill -f "brickkit up" 2>/dev/null; true  # mode: local sessions of an earlier cell
+  pkill -INT -f "brickkit up" 2>/dev/null; pkill -f "cells.localrun forward" 2>/dev/null; true  # the L row's sessions
 }
 images() {  # the Docker-built images of every component in the cell into the row's engine (same images in every row)
   local img
@@ -58,7 +58,7 @@ echo "START $CELL power=$(powerprofilesctl get) $(date -Is)" >> "$OUT/status.log
 stage down-others down_cells
 stage create bash -c "cd $CONF && uv run python -m cells create $D && uv run python -m cells prepare $D"
 [ "$ROW" = P ] || [ "$ROW" = K ] && stage images images
-stage build bash -c "cd $D && brickkit build"
+[ "$ROW" = L ] || stage build bash -c "cd $D && brickkit build"  # the L row runs from source: no images
 if [ "$ROW" = K ]; then
   # K row: the authorization member submits its own definitions through its own Service, which only routes to ready
   # pods, and it is ready only after that submission: it never becomes ready (step 9 finding). The cell lets the
@@ -71,6 +71,11 @@ if [ "$ROW" = K ]; then
     wait $pid
   }
   stage up up_k
+elif [ "$ROW" = L ]; then
+  # L row: a mode: local session in the background (cells/localrun.py), and host port 10000 + port forwarded to each
+  # process's own port, as Docker's proxy does for a container
+  stage up bash -c "cd $CONF && uv run python -m cells.localrun up $D $OUT/logs/local-session.log"
+  (cd "$CONF" && setsid nohup uv run python -m cells.localrun forward "$D" > "$OUT/logs/forward.log" 2>&1 &)
 else
   stage up bash -c "cd $D && brickkit up"
 fi
