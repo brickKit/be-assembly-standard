@@ -1,7 +1,8 @@
 #!/bin/bash
 # Step 8: brings one business-chain cell up from nothing and checks it: create, prepare, build, up, secure, seed data
 # (twice: the second run must change nothing), the L3 scenarios. Stages write BEGIN/END lines to <out>/status.log, each
-# stage's output to its own log; the first failing stage stops the run. The cell stays up unless KEEP_UP=0.
+# stage's output to its own log; the first failing stage stops the run. The cell stays up unless KEEP_UP=0. SEED=0 stops
+# after secure: a deployment as installed, with its install claim but no seed data (and so no L3).
 # Usage: cell-chain.sh <cell name, e.g. D8-S> <output directory>
 set -u
 CELL=$1; OUT=$(realpath -m "$2"); R=/home/zhijie/Desktop/github/be-assembly-standard
@@ -37,8 +38,10 @@ stage create bash -c "cd $CONF && uv run python -m cells create $D && uv run pyt
 stage build bash -c "cd $D && brickkit build"
 stage up bash -c "cd $D && brickkit up"
 stage secure bash -c "cd $CONF && uv run python -m cells secure $D"
-stage seed-1 make -C "$R" seed-data
-stage seed-2 make -C "$R" seed-data
-stage scenarios bash -c "cd $CONF && uv run pytest -q scenarios"
+if [ "${SEED:-1}" != 0 ]; then
+  stage seed-1 make -C "$R" seed-data
+  stage seed-2 make -C "$R" seed-data
+  stage scenarios bash -c "cd $CONF && uv run pytest -q scenarios"
+fi
 [ "${KEEP_UP:-1}" = 0 ] && stage down bash -c "cd $D && brickkit down"
 echo "ALL-DONE $(date -Is)" >> "$OUT/status.log"

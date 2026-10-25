@@ -3,9 +3,10 @@
 # create, prepare, build, up, secure, seed twice, L3), build the baseline data, then
 #   correctness: the expectations and scope scenarios again, and the result digest once settled;
 #   perf:        the measured run — idle, warmup, the mixed load — with the sampler (cells chain);
+#   empty:       no seed and no baseline (SEED=0 in cell-chain.sh: installed and claimed only), then idle alone;
 # then take the cell down. Every stage writes BEGIN/END to <out>/status.log; a failing cell is recorded and the round
 # goes on with the next one. The power mode is recorded at the start of each cell (the user keeps it on performance).
-# Usage: round8.sh <correctness|perf> <out> <cell>... (e.g. round8.sh perf out D8-S D8-H D8-X)
+# Usage: round8.sh <correctness|perf|empty> <out> <cell>... (e.g. round8.sh perf out D8-S D8-H D8-X)
 set -u
 MODE=$1; OUT=$(realpath -m "$2"); shift 2
 R=/home/zhijie/Desktop/github/be-assembly-standard; CONF=$R/tools/be-acceptance/conformance
@@ -27,8 +28,13 @@ log "START $MODE rate=$RATE users=$USERS idle=$IDLE warmup=$WARMUP seconds=$SECO
 for CELL in "$@"; do
   D=$R/dev/rebuild/experiment-cells/$CELL; mkdir -p "$OUT/$CELL"
   log "CELL $CELL power=$(powerprofilesctl get)"
-  if ! stage "$CELL" bring-up env KEEP_UP=1 "$R/dev/rebuild/experiment-scripts/cell-chain.sh" "$CELL" "$OUT/$CELL/bring-up"; then
+  SEED=1; [ "$MODE" = empty ] && SEED=0
+  if ! stage "$CELL" bring-up env KEEP_UP=1 SEED=$SEED "$R/dev/rebuild/experiment-scripts/cell-chain.sh" "$CELL" "$OUT/$CELL/bring-up"; then
     log "CELL $CELL FAILED bring-up"; continue; fi
+  if [ "$MODE" = empty ]; then
+    stage "$CELL" idle bash -c "cd $CONF && uv run python -m cells chain $D $OUT/$CELL/run --idle $IDLE" || log "CELL $CELL FAILED idle"
+    stage "$CELL" down bash -c "cd $D && brickkit down"; continue
+  fi
   if ! stage "$CELL" baseline bash -c "cd $CONF && uv run python -m cells baseline $D $OUT/$CELL/world.json"; then
     log "CELL $CELL FAILED baseline"; (cd "$D" && brickkit down) >/dev/null 2>&1; continue; fi
   if [ "$MODE" = correctness ]; then
