@@ -388,6 +388,7 @@
 | 安全处置限制 | `HELD_BY_SECURITY_DISPOSITION` | 403 | 否 | — | 只出现在解释中：求值时与同一自然人被安全处置暂停的范围相交的段不生效；对外按无权表达（安全 08） |
 | 部署待恢复 | `RECOVERY_IN_PROGRESS` | 503 | 是 | 否 | 管理结构的放宽（管理员恢复除外；安全 08 的待恢复）；收紧照常；已有的记录不变，可以稍后重新提交 |
 | 成员切换中 | `MEMBER_SWITCH_IN_PROGRESS` | 503 | 是 | 否 | 授权成员切换窗口内的全部放宽（`widen` 与 `restore_*`，已有的记录不变），身份成员切换窗口内的放宽类账号变更（[安全 10](10-providers-and-member-switching.md)、[安全 11](11-identity-member-switching.md)）；身份切换中新成员接管之后，旧地址上的收紧代理失败（安全 11） |
+| 定义未到 | `DEFINITION_PENDING` | 503 | 是 | 否 | 变更引用的资源类型还没有已被接受的定义：组件刚启动，定义还在提交中（安全 08 的生效点）；同一个键稍后重新提交 |
 | 定义的属主不符 | `DEFINITION_OWNER_MISMATCH` | — | 否 | — | 只在系统面：提交的定义的 `authority`、资源类型或权限键在注册表中的属主不是提交者（EN21、EN23）；同时记录安全事件 |
 | 定义不合格 | `DEFINITION_INVALID` | — | 否 | — | 只在系统面：不符合 schema、字节不是规范形式、摘要不符，或违反约束一列的条件规则（例如 `restricted` 字段缺 `read_key`、写字段不在读字段中） |
 | 定义的版本冲突 | `DEFINITION_VERSION_CONFLICT` | — | 否 | — | 只在系统面：同一组件、同一版本已被接受的定义集合与这次的不同 |

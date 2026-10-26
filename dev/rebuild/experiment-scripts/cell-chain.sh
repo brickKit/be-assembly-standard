@@ -56,7 +56,8 @@ images() {  # the Docker-built images of every component in the cell into the ro
   local img
   for img in $(python3 -c 'import sys,yaml; [print(c["id"].replace("/","-")+":"+c["version"]) for c in yaml.safe_load(open(sys.argv[1]))["components"]]' "$D/brickkit.yaml"); do
     case $ROW in
-      P) docker save "$img" | podman load -q || return 1 ;;
+      # Podman resolves the short name to localhost/ first: the Docker-built image takes that name too
+      P) docker save "$img" | podman load -q && podman tag "docker.io/library/$img" "localhost/$img" || return 1 ;;
       K) minikube -p bek image load "$img" || return 1 ;;
     esac
   done
@@ -64,7 +65,15 @@ images() {  # the Docker-built images of every component in the cell into the ro
 echo "START $CELL power=$(powerprofilesctl get) $(date -Is)" >> "$OUT/status.log"
 stage down-others down_cells
 stage create bash -c "cd $CONF && uv run python -m cells create $D && uv run python -m cells prepare $D"
-[ "$ROW" = L ] || stage build bash -c "cd $D && brickkit build"  # the L row runs from source: no images
+build() {  # every row's images come from Docker (the same images in every row): the P row builds as a docker target
+  if [ "$ROW" = P ]; then
+    cp "$D/deploy.yaml" "$D/.deploy.yaml.p" && sed -i 's/^target: podman$/target: docker/' "$D/deploy.yaml"
+    (cd "$D" && brickkit build); local rc=$?
+    mv "$D/.deploy.yaml.p" "$D/deploy.yaml"; return $rc
+  fi
+  (cd "$D" && brickkit build)
+}
+[ "$ROW" = L ] || stage build build  # the L row runs from source: no images
 [ "$ROW" = P ] || [ "$ROW" = K ] && stage images images  # after the build: a shell's new version exists only then
 move_authz() {  # the container serving infra/authz (alone or in be/go-infra) restarts on another address of its network
   local eng=docker c net old new aliases a args=()

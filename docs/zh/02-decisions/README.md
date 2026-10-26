@@ -10,7 +10,7 @@
 | --- | --- |
 | [主数据与组织](01-master-data-and-organization.md) | D01、D04、D05、D06、D15、D20、D21、D22、D69 |
 | [业务组件边界](02-business-boundaries.md) | D02、D03、D16、D27、D44–D53、D68、D70–D73 |
-| [权限与身份](03-permissions-and-identity.md) | D07–D10、D29–D31、D35–D37、D57、D61、D62、D64、D76 |
+| [权限与身份](03-permissions-and-identity.md) | D07–D10、D29–D31、D35–D37、D57、D61、D62、D64、D76–D78 |
 | [审批与流程](04-approval-and-workflow.md) | D11、D18、D19、D23、D33、D38、D39、D60 |
 | [事务、数据、审计与恢复](05-transactions-data-and-recovery.md) | D12–D14、D26、D28、D65（已被取代）、D66 |
 | [前端与终端](06-frontend.md) | D17、D24、D34 |

@@ -98,7 +98,8 @@
 - `be-sdk-go` 3.0.0-alpha.33：就绪只看状态；`calls.Background()`；系统面连接用 `passthrough:///主机:端口`（每次建连接由拨号器解析），重连退避上限 5 秒；种子客户端 `seed.Client.Do` 对目录标为可重试的 503 等待重发（至多 90 秒）。`be-sdk-python` 3.0.0a29：前三项相同（通道选项 `grpc.dns_min_time_between_resolutions_ms` 1000、重连退避至多 5 秒）。两者的单元与集成测试通过（Go 的 `pgqueue` 有一条计时测试偶发超时，与改动无关，单独连跑 3 遍通过）。
 - 组件（单元与集成测试通过，都加了 `release.goModule: true`）：iam-casdoor 3.0.7、authz 3.0.7、audit 3.0.5、org 3.0.6、currency 3.0.7、partner 3.0.9、product 3.0.9、inventory 3.0.5、credit 3.0.5、sales 3.0.10、billing 3.0.8、print 3.0.4；外壳 go-infra 3.0.30、go-core 3.0.30、py-render 3.0.23。中间几个版本（partner/product 3.0.8、inventory/credit 3.0.4、sales 3.0.8–3.0.9、billing 3.0.6–3.0.7、外壳 3.0.29）只换了 SDK、组件清单里的确切依赖还指向旧版本，格里会混进两个版本，不要用。
 - 第 9 步十个格的 `cell.yaml` 改用这些版本（D8 的三格保留原版本）；各行今晚的结果彼此可比，与第 8 步的 D 行之间多了这一个版本的差别。
-- **连带变化：就绪不再表示定义已被接受**。成员起来时授权组件够不着（K8s 上外壳或授权 Pod 还没就绪、或授权组件正被重启），它照样就绪，定义在后台按 1、2、4…至多 30 秒重试；在此之前授予引用它的资源类型，授权组件答 400“resource type … is not defined”，而且这是**最终拒绝，绑定变更键**（安全 08；`effect.go` 的 `apply`）：同一个键再发只拿回这次拒绝。冒烟时 K9-X 的安装认领因此 6 次里失败 4 次（K9-X 的交易链与打印单独成 Pod，安装认领重启了外壳里的授权组件；授权组件的库里定义早已在，授予仍一直被拒，按变更键查出原因）。`cells/secure.py` 现在每次重发换一个变更键（至多 120 次、每秒一次）；K 行某一段失败时 `cell-chain.sh` 把每个 Pod 的日志存进 `logs/pods/`。**要用户定**：“未定义”在就绪不等定义之后是会自己消失的暂时状态，还该不该绑定变更键；不改的话，种子在部署刚起来时碰上一次，固定的变更键在这个部署里就永远是拒绝。种子客户端也要等这种答复（下次 SDK 发版）。
+- **连带变化：就绪不再表示定义已被接受**，冒烟时由 K9-X 暴露、已修（用户定，D77）。成员起来时授权组件够不着就照样就绪，定义在后台按 1、2、4…至多 30 秒重试；原来在此之前授予引用它的资源类型，授权组件答 400 `REQUEST_INVALID`，并按最终拒绝绑定变更键（安全 08），同一个键再发只拿回这次拒绝（K9-X 的安装认领 6 次里失败 4 次；授权组件的库里定义早已在，按变更键查出原因）。现在答 `DEFINITION_PENDING`（503，可重试，不占用变更键）：`be-protocol` 3.0.0-alpha.24、`be-sdk-go` 3.0.0-alpha.34、`be-sdk-python` 3.0.0a30、授权组件 3.0.8（集成测试：定义未到时同一个键答 503 两次，定义提交后同一个键生效）；种子客户端本来就等可重试的 503。安装认领（`cells/secure.py`）用固定的变更键，遇到 `DEFINITION_PENDING` 用同一个键重发；K 行某一段失败时 `cell-chain.sh` 把每个 Pod 的日志存进 `logs/pods/`。
+- **最终版本**（这一轮全部组件换到 alpha.34、确切依赖对齐）：iam-casdoor 3.0.8、authz 3.0.8、audit 3.0.6、org 3.0.7、currency 3.0.8、partner 3.0.10、product 3.0.10、inventory 3.0.6、credit 3.0.6、sales 3.0.11、billing 3.0.9、print 3.0.5；外壳 go-infra 3.0.31、go-core 3.0.31、py-render 3.0.24。第 9 步各格用这些版本；上面一条列出的较早版本不再使用。
 - `cell-chain.sh` 去掉两个绕法（种子失败后等 70 秒重跑、K 行给授权组件的 Service 打补丁），加回归 `MOVE=1`（D、P 行）：种子与 L3 之后把授权组件所在的容器换一个 IP 重启，重新健康后马上再跑 L3（L3 不重试）。D9-S 验证：172.24.0.15 → 172.24.0.117，5 秒后健康，L3 18 项 5.5 秒内全部通过（修复前约一分钟不能写）。
 
 ### 8.3 小规模验证：做法与结果
@@ -109,6 +110,8 @@
 - L 行三格：从未跑过。`create` 按确切版本 `brickkit add …@版本 --repo` 克隆源码；`cells/localrun.py` 在后台起 `brickkit up` 会话并等每个进程的 `/healthz`（首次 `go run` 要编译）；安装认领时整个会话重启（`secure.py` 的 L 分支）；进程听自己的端口，宿主机 10000 + 端口由 `localrun forward` 转发（对应 Docker 的端口代理）；BrickKit 会把 `host.docker.internal` 改写成 `localhost` 给本机进程；成员在外壳进程里听自己的端口；Python 的打印组件由 `uv run` 起；
 - 负载段的新采样输出：`mix.json` 里的 `platforms`、`anon_median`、`units`；结果摘要与 D8-S 的比较那一步；
 - `r8-summary.py` 之类的汇总要能读新字段（L、K 两行的组件在 `units` 里，不在 `containers` 里）。
+
+**最终版本的冒烟（2026-10-26 晚）**：十格全部通过；K9-X 用固定变更键连跑 3 遍，安装认领 25–28 秒。重跑时发现 P 行的 `brickkit build` 按部署目标用 Podman 构建，Podman 又优先用自己构建的 `localhost/` 镜像：P 行之前实际跑的是 Podman 构建的镜像，没做到“各行同一份 Docker 镜像”。`cell-chain.sh` 现在 P 行构建时临时把目标切到 Docker，载入后打成 `localhost/` 名；核对过 Podman 里的镜像 ID 就是 Docker 导出的配置摘要（`erp-billing:3.0.9` 为 `37b8…`，`be-go-infra:3.0.31` 为 `409e…`）。
 
 **2026-10-26 结果**（原始输出在会话临时目录 `smoke/`、`k9x-*/`、`short9/`，不归档：只验证能不能起来，不作测量）：
 
