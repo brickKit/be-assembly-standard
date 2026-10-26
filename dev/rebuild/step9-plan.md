@@ -123,6 +123,13 @@
 
 整夜测量（第 4 节的顺序：D9-S、P 行、K 行、L 行；用户确认机器安静后开始）→ 记录 `9-01` → LD、LP 补全、探针的底价与通信细分 → 第 10 步起的套件。
 
+**整夜测量怎样开跑**（2026-10-26 晚准备好，等用户下令；开跑前一句话确认机器安静：只开这一个 VS Code、接电源、不合盖）：
+
+1. 工具快照（运行中改工具不影响这一轮）：`git -C tools/be-acceptance worktree add <会话临时目录>/acc-1d880d5 1d880d5`（be-acceptance `v1.0.1` 之后的 `1d880d5`，含固定变更键的安装认领与 1800 秒的摘要上限）。
+2. 后台运行，配监视（每格结束、失败、摘要比较各报一行）：`CONF=<会话临时目录>/acc-1d880d5/conformance systemd-inhibit --what=sleep:idle:handle-lid-switch --why="step 9 overnight" dev/rebuild/experiment-scripts/runner9.sh <会话临时目录>/step9/night2 D9-S P9-S P9-H P9-X K9-S K9-H K9-X L9-S L9-H L9-X`。参数用缺省（空闲 600 秒、预热 300、负载 900、7 次每秒、20 用户）。
+3. 时长：每格约一小时（空库段约 12 分钟；带种子起格约 3 分钟、基线约 7 分钟、摘要 8–11 分钟、负载段 30 分钟），十格约 10 小时。电源模式开头已是 performance（运行器每格记下）。每天 12:30 的清理定时器见到运行器在跑会自己跳过。
+4. 跑完：`r9-summary.py <输出>/<格>…` 出表，原始数据归档进 `experiment-data/9-01/`，写记录 `9-01`（写明与第 8 步差一个版本、L 行 Docker 端口代理的成本、转发器不计入）。
+
 ### 8.5 注意
 
 - 运行器与 `cell-chain.sh` 在跑的时候，改脚本要先写到新文件再整份替换（bash 边执行边读文件，原地改会让正在跑的那份读到一半新内容）；Python 的工具改在主工作树，运行用快照（`git worktree add <临时目录>/acc-<提交> <提交>`，`CONF=<它>/conformance`）。
