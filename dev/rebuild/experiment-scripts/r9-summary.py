@@ -1,0 +1,81 @@
+#!/usr/bin/env python3
+"""Step 9: the tables of record 9-01 from each cell's runner9.sh output: empty/idle.json (no seed data, idle),
+run/idle.json and run/mix.json (seeded, idle and the 7/s mix). Every row's cost is split the same way:
+  components  D, P: the cell's containers; K: its pods (pod:*); L: its processes (proc:*)
+  base        PostgreSQL, NATS, object storage, Casdoor (Docker containers in every row)
+  platform    D: Docker's daemons; P: Podman's helpers (conmon, pasta, ...); K: the minikube node minus the cell's pods
+              (control plane, kubelet, CNI, kube-proxy); L: the go run / uv wrappers and the brickkit up session
+  docker      the Docker daemons that serve the base resources in the P, K and L rows (D: that is the platform)
+Memory: the cgroup's median with page cache (MiB) and without it (anon + shmem, "anon MiB"; processes: RssAnon +
+RssShmem). Usage: r9-summary.py <runner9 output>/<cell>..."""
+import json
+import pathlib
+import sys
+
+BASE = ("be-postgres", "be-nats", "be-rustfs", "be-seaweedfs", "be-casdoor")
+MIB = 1024 * 1024
+
+
+def part(figs: list[dict]) -> tuple[float, float, float | None]:
+    """cores, memory MiB and anon MiB; the platforms' readings are process RSS (no page cache), so no anon of their own"""
+    anon = sum(f["anon_median"] for f in figs if "anon_median" in f) / MIB if any("anon_median" in f for f in figs) else None
+    return sum(f["cores"] for f in figs), sum(f["memory_median"] for f in figs) / MIB, anon
+
+
+def parts(res: dict, row: str) -> dict[str, tuple[float, float, float]]:
+    containers, units, platforms = res["containers"], res.get("units") or {}, res.get("platforms") or {}
+    out = {"base": part([c["cgroup"] for n, c in containers.items() if n in BASE])}
+    if row in ("D", "P"):
+        out["components"] = part([c["cgroup"] for n, c in containers.items() if n not in BASE])
+    else:
+        out["components"] = part([u for n, u in units.items() if n.startswith(("pod:", "proc:"))])
+    if row == "D":
+        out["platform"] = part([platforms["docker"]])
+    elif row == "P":
+        out["platform"], out["docker"] = part([platforms["podman"]]), part([platforms["docker"]])
+    elif row == "K":
+        node, pods = part([units["minikube-node"]]), out["components"]
+        out["platform"] = (node[0] - pods[0], node[1] - pods[1], node[2] - pods[2])
+        out["docker"] = part([platforms["docker"]])
+    else:
+        out["platform"], out["docker"] = part([units["local-platform"]]), part([platforms["docker"]])
+    return out
+
+
+def row_of(cell: str) -> str:
+    return cell[0]
+
+
+def main(dirs: list[str]) -> None:
+    print("| cell | segment | part | cores | MiB | anon MiB | CPU s per 1000 requests |")
+    print("| --- | --- | --- | --- | --- | --- | --- |")
+    for d in dirs:
+        d = pathlib.Path(d)
+        for seg, f in (("empty idle", d / "empty" / "idle.json"), ("seeded idle", d / "run" / "idle.json"),
+                       ("mix", d / "run" / "mix.json")):
+            if not f.exists():
+                print(f"| {d.name} | {seg} | (missing) | | | | |")
+                continue
+            x = json.loads(f.read_text())
+            res = x["resources"]
+            for k, (cores, mem, anon) in parts(res, row_of(x["cell"])).items():
+                per = f"{cores * res['elapsed'] / res['requests'] * 1000:.1f}" if seg == "mix" and res["requests"] else ""
+                a = "—" if anon is None else f"{anon:.0f}"
+                print(f"| {x['cell']} | {seg} | {k} | {cores:.3f} | {mem:.0f} | {a} | {per} |")
+    print()
+    print("| cell | sent / ok | p50 | p95 | p99 | max | list p95 | order p95 | confirm p95 | deliver p95 | bill p95 | issue to completed p50 / p95 / max |")
+    print("| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |")
+    for d in dirs:
+        f = pathlib.Path(d) / "run" / "mix.json"
+        if not f.exists():
+            continue
+        mix = json.loads(f.read_text())
+        dr, ops, c = mix["driver"], mix["driver"]["mix"]["ops"], mix["completion"]["issue_to_completed_ms"]
+        lat = dr["latency_ms"]
+        row = " | ".join(f"{ops[o]['latency_ms']['P95']:.1f}" for o in ("list", "order", "confirm", "deliver", "bill"))
+        print(f"| {mix['cell']} | {dr['sent']} / {dr['ok']} | {lat['P50']:.1f} | {lat['P95']:.1f} | {lat['P99']:.1f} | "
+              f"{lat['Max']:.1f} | {row} | {c['P50']} / {c['P95']} / {c['Max']} |")
+
+
+if __name__ == "__main__":
+    main(sys.argv[1:])
