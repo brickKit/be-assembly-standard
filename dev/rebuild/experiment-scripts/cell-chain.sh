@@ -33,7 +33,13 @@ stage() {  # stage <name> <command...>; stops the run on failure
   echo "STAGE $I $name BEGIN $(date -Is)" >> "$OUT/status.log"
   ( "$@" ) > "$OUT/logs/$I-$name.log" 2>&1; local rc=$?
   echo "STAGE $I $name END exit=$rc secs=$(( $(date +%s) - t0 ))" >> "$OUT/status.log"
-  if [ $rc -ne 0 ]; then echo "FAILED $name $(date -Is)" >> "$OUT/status.log"; exit $rc; fi
+  if [ $rc -ne 0 ]; then echo "FAILED $name $(date -Is)" >> "$OUT/status.log"; pod_logs; exit $rc; fi
+}
+pod_logs() {  # K row: every pod's log of the cell, kept beside the stage logs when a stage fails
+  [ "$ROW" = K ] || return 0
+  local ns p; ns=$(echo "$CELL" | tr 'A-Z' 'a-z'); mkdir -p "$OUT/logs/pods"
+  for p in $(kubectl --context bek -n "$ns" get pods -o name 2>/dev/null); do
+    kubectl --context bek -n "$ns" logs "$p" --all-containers > "$OUT/logs/pods/${p#pod/}.log" 2>&1; done
 }
 down_cells() {  # every experiment cell on every engine (projects brickkit-<cell>, namespaces <cell> in minikube)
   for p in $(docker ps -a --format '{{.Label "com.docker.compose.project"}}' | grep -E '^brickkit-[dplk][0-9]' | sort -u); do
@@ -58,8 +64,8 @@ images() {  # the Docker-built images of every component in the cell into the ro
 echo "START $CELL power=$(powerprofilesctl get) $(date -Is)" >> "$OUT/status.log"
 stage down-others down_cells
 stage create bash -c "cd $CONF && uv run python -m cells create $D && uv run python -m cells prepare $D"
-[ "$ROW" = P ] || [ "$ROW" = K ] && stage images images
 [ "$ROW" = L ] || stage build bash -c "cd $D && brickkit build"  # the L row runs from source: no images
+[ "$ROW" = P ] || [ "$ROW" = K ] && stage images images  # after the build: a shell's new version exists only then
 move_authz() {  # the container serving infra/authz (alone or in be/go-infra) restarts on another address of its network
   local eng=docker c net old new aliases a args=()
   [ "$ROW" = P ] && eng=podman
