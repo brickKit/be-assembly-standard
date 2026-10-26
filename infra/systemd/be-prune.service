@@ -1,0 +1,11 @@
+# Frees disk space taken by images and build cache this project can rebuild (infra/scripts/prune-images.py).
+# Installed by `make prune-timer`; the script skips the run while a cell, a runner or a build is active.
+[Unit]
+Description=be-assembly-standard: prune old images and build cache
+
+[Service]
+Type=oneshot
+WorkingDirectory=%h/Desktop/github/be-assembly-standard
+ExecStart=/usr/bin/python3 -I infra/scripts/prune-images.py --apply
+Nice=19
+IOSchedulingClass=idle

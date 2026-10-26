@@ -23,6 +23,9 @@
 #
 # 外壳（shell/be/<name>/）和组件一样是独立仓库、登记为 submodule，由上面同一个
 # 循环检查：tag 在外壳自己的仓库里，是裸 `<版本>`（如 1.0.0），没有 v 前缀 tag。
+#
+# 有意冻结、还没有发布过的仓库不查（重建计划定的“不动、实验后再定”）；要动它时从这里删掉，发布时照常打 tag。
+FROZEN=(shell/be/go-backoffice)
 set -uo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 cd "$ROOT"
@@ -46,6 +49,10 @@ fi
 
 bad=0
 for p in "${paths[@]}"; do
+  if [[ " ${FROZEN[*]} " == *" $p "* ]]; then
+    echo "- $p：冻结中（重建计划：不动、实验后再定），不查"
+    continue
+  fi
   if [[ ! -d "$p/.git" && ! -f "$p/.git" ]]; then
     echo "⚠ $p 尚未 checkout（submodule init 未跑），跳过"
     continue

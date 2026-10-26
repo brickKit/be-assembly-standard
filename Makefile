@@ -88,6 +88,21 @@ docs-index:  ## Regenerate the component index (docs/zh/00-overview/09-component
 docs-index-check:  ## The component index is up to date
 	@python3 infra/scripts/component-index.py --check
 
+prune:  ## 列出可以删的旧镜像与构建缓存（本项目能重新构建的；不动卷与别人的镜像）
+	@python3 -I $(S)/prune-images.py
+.PHONY: prune
+
+prune-apply:  ## 删除 make prune 列出的（有格、运行器或构建在跑时自动跳过）
+	@python3 -I $(S)/prune-images.py --apply
+.PHONY: prune-apply
+
+prune-timer:  ## 安装并启用每天的清理定时器（systemd 用户单元 be-prune，见 infra/systemd/）
+	@mkdir -p $(HOME)/.config/systemd/user
+	@ln -sf $(CURDIR)/infra/systemd/be-prune.service $(CURDIR)/infra/systemd/be-prune.timer $(HOME)/.config/systemd/user/
+	@systemctl --user daemon-reload && systemctl --user enable --now be-prune.timer
+	@systemctl --user list-timers be-prune.timer --no-pager
+.PHONY: prune-timer
+
 infra-images:  ## 基础资源的镜像都写确切版本与摘要，infra/resources.tsv 与 compose 一致
 	@python3 -I infra/scripts/infra-images.py
 
