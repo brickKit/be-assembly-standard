@@ -5,8 +5,9 @@
 # after secure: a deployment as installed, with its install claim but no seed data (and so no L3).
 # The cell's row (cell.yaml) picks the engine: P loads the Docker-built images into Podman first (the same images in
 # every row), K into the minikube node (cells/kube.py also adds the NodePort Services). CONF may point at a snapshot of
-# the conformance tools, so that editing them does not change a run in progress. A seed run that fails is retried
-# once after 70 s (the authorization view after the shell restart: 8-01 section 6), and the retry is recorded.
+# the conformance tools, so that editing them does not change a run in progress. MOVE=1 (D and P rows) adds the
+# regression of 8-01 section 6 after the seeds: the authorization member restarts on another IP address and the L3
+# scenarios, which never retry, run as soon as it is ready again.
 # Usage: cell-chain.sh <cell name, e.g. D8-S> <output directory>
 set -u
 CELL=$1; OUT=$(realpath -m "$2"); R=/home/zhijie/Desktop/github/be-assembly-standard
@@ -59,19 +60,25 @@ stage down-others down_cells
 stage create bash -c "cd $CONF && uv run python -m cells create $D && uv run python -m cells prepare $D"
 [ "$ROW" = P ] || [ "$ROW" = K ] && stage images images
 [ "$ROW" = L ] || stage build bash -c "cd $D && brickkit build"  # the L row runs from source: no images
-if [ "$ROW" = K ]; then
-  # K row: the authorization member submits its own definitions through its own Service, which only routes to ready
-  # pods, and it is ready only after that submission: it never becomes ready (step 9 finding). The cell lets the
-  # Service route to the pod before it is ready (publishNotReadyAddresses) while `brickkit up` waits; recorded in 9-01.
-  authz_svc() { kubectl --context bek -n "$(echo "$CELL" | tr 'A-Z' 'a-z')" get svc -o name | grep '/infra-authz-'; }
-  up_k() {
-    (cd "$D" && brickkit up) & local pid=$! s=""
-    for _ in $(seq 120); do s=$(authz_svc) && [ -n "$s" ] && break; sleep 2; done
-    [ -n "$s" ] && kubectl --context bek -n "$(echo "$CELL" | tr 'A-Z' 'a-z')" patch "$s" -p '{"spec":{"publishNotReadyAddresses":true}}'
-    wait $pid
-  }
-  stage up up_k
-elif [ "$ROW" = L ]; then
+move_authz() {  # the container serving infra/authz (alone or in be/go-infra) restarts on another address of its network
+  local eng=docker c net old new aliases a args=()
+  [ "$ROW" = P ] && eng=podman
+  c=$($eng ps --format '{{.Names}}' | grep -iE "^brickkit-$CELL[-_].*(infra-authz|be-go-infra)" | head -1)
+  [ -n "$c" ] || { echo "no authorization container in $CELL"; return 1; }
+  net=$($eng inspect -f '{{range $k, $v := .NetworkSettings.Networks}}{{$k}}{{"\n"}}{{end}}' "$c" | head -1)
+  old=$($eng inspect -f "{{(index .NetworkSettings.Networks \"$net\").IPAddress}}" "$c")
+  aliases=$($eng inspect -f "{{range (index .NetworkSettings.Networks \"$net\").Aliases}}{{.}} {{end}}" "$c")
+  new=${old%.*}.$(( (${old##*.} + 100) % 250 + 2 ))
+  for a in $aliases; do args+=(--alias "$a"); done
+  echo "moving $c on $net from $old to $new (aliases: $aliases)"
+  $eng stop "$c" && $eng network disconnect "$net" "$c" && $eng network connect --ip "$new" "${args[@]}" "$net" "$c" \
+    && $eng start "$c" || return 1
+  local t0; t0=$(date +%s)
+  until [ "$($eng inspect -f '{{.State.Health.Status}}' "$c")" = healthy ]; do
+    [ $(( $(date +%s) - t0 )) -gt 120 ] && { echo "not healthy after 120 s"; return 1; }; sleep 1; done
+  echo "healthy again after $(( $(date +%s) - t0 )) s at $($eng inspect -f "{{(index .NetworkSettings.Networks \"$net\").IPAddress}}" "$c")"
+}
+if [ "$ROW" = L ]; then
   # L row: a mode: local session in the background (cells/localrun.py), and host port 10000 + port forwarded to each
   # process's own port, as Docker's proxy does for a container
   stage up bash -c "cd $CONF && uv run python -m cells.localrun up $D $OUT/logs/local-session.log"
@@ -82,9 +89,13 @@ fi
 [ "$ROW" = K ] && stage nodeports bash -c "cd $CONF && uv run python -c 'import sys; from cells.spec import Cell; from cells.units import nodeports; print(nodeports(Cell.load(sys.argv[1])))' $D"
 stage secure bash -c "cd $CONF && uv run python -m cells secure $D"
 if [ "${SEED:-1}" != 0 ]; then
-  stage seed-1 bash -c "make -C $R seed-data || { echo 'RETRY seed after 70 s'; sleep 70; make -C $R seed-data; }"
+  stage seed-1 make -C "$R" seed-data
   stage seed-2 make -C "$R" seed-data
   stage scenarios bash -c "cd $CONF && uv run pytest -q scenarios"
+  if [ "${MOVE:-0}" = 1 ] && { [ "$ROW" = D ] || [ "$ROW" = P ]; }; then
+    stage move-authz move_authz
+    stage scenarios-after-move bash -c "cd $CONF && uv run pytest -q scenarios"
+  fi
 fi
 [ "${KEEP_UP:-1}" = 0 ] && stage down bash -c "cd $D && brickkit down"
 echo "ALL-DONE $(date -Is)" >> "$OUT/status.log"

@@ -32,8 +32,8 @@
 | 遍数 | 每格一遍 | D 行两遍相差在 6.5% 以内（8-01 的 5.5）；同一行的格之间差别小于 10% 的写“看不出差别” |
 | 内存口径 | 采样加一种不含页缓存的读数：容器与 Pod 读 cgroup `memory.stat` 的 `anon`，本机进程读 PSS；仍保留原来的读数 | D 行发现 cgroup 读数大半是页缓存，比不了 |
 | 平台开销 | Docker：dockerd、containerd、shim、docker-proxy（同 D 行）；Podman：conmon、pasta、netavark、aardvark-dns、rootlessport；Kubernetes：minikube 节点容器减去全部组件 Pod（控制面、kubelet、CNI、kube-proxy）；本机：`go run` 包装进程与看护的 `brickkit up` | 各形态自己多出来的开销 |
-| 起格失败 | 种子遇到授权视图过期的 503（8-01 第 6 节的缺陷）时，等 70 秒再跑一次种子（种子可重复），记下重试 | 已知缺陷不该让一整格白跑；重试写进结果 |
-| K 行授权组件的死锁 | 起格时给授权组件的 Service 打补丁 `publishNotReadyAddresses: true`（AI 决定，2026-10-25 冒烟时发现）：授权组件经自己的 Service 提交自己的定义，Service 只转给已就绪的 Pod，而它要提交成功才就绪，永远起不来；只改部署、不改组件，正式修法测完再定 | 不补就测不了 K 行；补丁记进 9-01 |
+| 起格失败 | ~~种子失败后等 70 秒再跑一次~~：2026-10-26 缺陷已修（8.2），绕法去掉；种子客户端自己等可重试的 503 | 已知缺陷不该让一整格白跑 |
+| K 行授权组件的死锁 | ~~起格时给授权组件的 Service 打补丁 `publishNotReadyAddresses: true`~~（2026-10-25 冒烟时的临时做法）：2026-10-26 改为就绪不等定义（P8.24，用户定），补丁去掉 | K 行不打补丁也能起 |
 | K 行的入口 | 不用 Ingress；每个组件另加一个 NodePort Service，minikube 节点（profile `bek`，docker 驱动，不限 CPU 与内存，bridge CNI）把它发布在与其他行相同的宿主机端口 | 驱动、种子、场景的地址各行一样；这一跳对应 Docker 的端口代理 |
 | L 行的端口 | 进程听自己的端口（不写 `localPort`），格子把宿主机端口 10000 + 端口转给它（`cells/localrun.py`），对应 Docker 的端口代理；源码用 `brickkit add --repo` 按确切版本克隆 | 外壳的成员只能听自己的端口，各列统一这样做 |
 | 工具的快照 | 夜里的运行用 `be-acceptance` 某个提交的工作树（`CONF`），白天改工具不影响正在跑的格；脚本改动用整份替换写入 | 改正在跑的东西会让一格前后不一致 |
@@ -92,13 +92,19 @@
 | 1 | 授权组件换了地址之后（Docker 上重启即换 IP），其他组件约 55–65 秒不能写 | R8.2 的 D8-X 第一次起格（[8-01](experiment-records/8-01-d-row-chain.md) 第 6 节，`experiment-data/8-01/r82/D8-X-failed/`） | `cell-chain.sh` 的种子失败后等 70 秒再跑一次 | SDK（Go 与 Python）在连接失败时重新解析地址（grpc-go 的 `dns` 解析器两次解析至少隔 30 秒；Python grpc.aio 同类设置未查）；**授权核验该不该过熔断器、熔断 30 秒与写视图 5 秒怎样配合是协议 P4.11–P4.14 与 P8.10 的问题，改前问用户**；种子遇到 503 要不要重试一起看 |
 | 2 | Kubernetes 上授权组件永远不就绪：它经自己的 Service 向自己提交定义（`DefinitionService.Submit`），Service 只转给已就绪的 Pod，而它要提交成功才就绪；所有组件跟着不就绪，`brickkit up` 等 rollout 5 分钟超时 | K9-S 冒烟（授权与审计的日志：`dial tcp <授权的 ClusterIP>:9223: connect: connection refused`，“the definitions could not be submitted yet; the member stays not ready”） | `cell-chain.sh` 在 `brickkit up` 等待期间给授权组件的 Service 打补丁 `publishNotReadyAddresses: true`，打上后 12 个 Pod 全部就绪 | 授权组件提交自己的定义不该走网络（在进程内交给自己），或它的就绪不该等自己的提交；同一个外壳里的其他成员向授权提交，在 Kubernetes 上同样经 Service（外壳的 Pod 未就绪时同样卡住？要验证 K·H、K·X）。属于 SDK 与协议（P8 定义的提交、就绪的条件），改前把方案给用户看；BrickKit 是否要给这类 Service 一个选项，修完再判断 |
 
-修完以后：给 SDK、全部组件与三个外壳发新版本（按依赖顺序，`brickkit release --notes`，Go 组件加 `release.goModule: true`），各格 `cell.yaml` 的版本一起改（D8 的三格保留原版本，作第 8 步的历史）。今晚的 D9-S 参照因此要用新版本跑：各行今晚的结果彼此可比，与第 8 步的 D 行之间多了一个版本的差别（记录里写明）。绕法 1、2 修好后从 `cell-chain.sh` 去掉，并补回归：起格后马上重启授权组件再写；K 行不打补丁也能起。
+**2026-10-26 已修**（用户定：就绪不等定义；SDK 自己的后台核验与提交不经熔断器）：
+
+- 协议 `be-protocol` 3.0.0-alpha.23：P8.24（启动时提交定义，先试一次、再在后台以 1 秒起加倍到 30 秒重试，被拒也重试；**就绪不等提交被接受**，被接受之前受保护的请求答 `AUTHORIZATION_VIEW_EXPIRED`，被接受时写 `definitions_accepted`）、P4.27（视图核验与定义提交不计入、也不受熔断）、P4.28（连接失败后下一次连接重新解析主机名，结果至多沿用 10 秒）。alpha.22 写成了“被拒不再重试”，与两个 SDK 不符，alpha.23 更正。
+- `be-sdk-go` 3.0.0-alpha.33：就绪只看状态；`calls.Background()`；系统面连接用 `passthrough:///主机:端口`（每次建连接由拨号器解析），重连退避上限 5 秒；种子客户端 `seed.Client.Do` 对目录标为可重试的 503 等待重发（至多 90 秒）。`be-sdk-python` 3.0.0a29：前三项相同（通道选项 `grpc.dns_min_time_between_resolutions_ms` 1000、重连退避至多 5 秒）。两者的单元与集成测试通过（Go 的 `pgqueue` 有一条计时测试偶发超时，与改动无关，单独连跑 3 遍通过）。
+- 组件（单元与集成测试通过，都加了 `release.goModule: true`）：iam-casdoor 3.0.7、authz 3.0.7、audit 3.0.5、org 3.0.6、currency 3.0.7、partner 3.0.9、product 3.0.9、inventory 3.0.5、credit 3.0.5、sales 3.0.10、billing 3.0.8、print 3.0.4；外壳 go-infra 3.0.30、go-core 3.0.30、py-render 3.0.23。中间几个版本（partner/product 3.0.8、inventory/credit 3.0.4、sales 3.0.8–3.0.9、billing 3.0.6–3.0.7、外壳 3.0.29）只换了 SDK、组件清单里的确切依赖还指向旧版本，格里会混进两个版本，不要用。
+- 第 9 步十个格的 `cell.yaml` 改用这些版本（D8 的三格保留原版本）；各行今晚的结果彼此可比，与第 8 步的 D 行之间多了这一个版本的差别。
+- `cell-chain.sh` 去掉两个绕法（种子失败后等 70 秒重跑、K 行给授权组件的 Service 打补丁），加回归 `MOVE=1`（D、P 行）：种子与 L3 之后把授权组件所在的容器换一个 IP 重启，重新健康后马上再跑 L3（L3 不重试）。D9-S 验证：172.24.0.15 → 172.24.0.117，5 秒后健康，L3 18 项 5.5 秒内全部通过（修复前约一分钟不能写）。
 
 ### 8.3 小规模验证（修完之后、整夜之前）
 
 每一格只验证能正常起来：用 `cell-chain.sh <格> <输出>`（起格、安装认领、种子两遍、L3），再用运行器短跑一遍完整流程确认每一段都走得通（`IDLE=30 WARMUP=10 SECONDS_=30`；基线仍要约 6 分钟）。要特别看：
 
-- P·H、P·X、K·H、K·X：外壳承载成员时的地址、NodePort 的选择器、授权补丁（若仍需要）对准成员的 Service；
+- P·H、P·X、K·H、K·X：外壳承载成员时的地址、NodePort 的选择器；K·H、K·X 的外壳成员不打补丁也能就绪（P8.24）；
 - L 行三格：从未跑过。`create` 按确切版本 `brickkit add …@版本 --repo` 克隆源码；`cells/localrun.py` 在后台起 `brickkit up` 会话并等每个进程的 `/healthz`（首次 `go run` 要编译）；安装认领时整个会话重启（`secure.py` 的 L 分支）；进程听自己的端口，宿主机 10000 + 端口由 `localrun forward` 转发（对应 Docker 的端口代理）；BrickKit 会把 `host.docker.internal` 改写成 `localhost` 给本机进程；成员在外壳进程里听自己的端口；Python 的打印组件由 `uv run` 起；
 - 负载段的新采样输出：`mix.json` 里的 `platforms`、`anon_median`、`units`；结果摘要与 D8-S 的比较那一步；
 - `r8-summary.py` 之类的汇总要能读新字段（L、K 两行的组件在 `units` 里，不在 `containers` 里）。
