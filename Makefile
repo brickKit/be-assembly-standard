@@ -111,7 +111,7 @@ security-schemas:  ## The security records' JSON Schemas in be-protocol are exac
 
 design-models:  ## Run every reference model in be-acceptance (about 15 minutes)
 	@$(MAKE) -C tools/be-acceptance models
-.PHONY: registry-check docs-boundary docs-diagrams docs-mirror docs-links docs-ids docs-closure docs-index docs-index-check infra-images security-schemas design-models
+.PHONY: pin-check registry-check docs-boundary docs-diagrams docs-mirror docs-links docs-ids docs-closure docs-index docs-index-check infra-images security-schemas design-models
 
 ##@ 校验
 lint:  ## brickKit 自身的三层 + 文档检查（严格模式）
@@ -189,8 +189,11 @@ gates: docs-boundary docs-diagrams docs-mirror docs-links docs-ids docs-closure 
 	@brickkit up --dry-run
 .PHONY: gates
 
-version-check:  ## 扫全部 submodule（组件、外壳、工具仓库）：HEAD 是否领先最新 tag（兼容 2.0.0 与 v2.0.0 双 tag）
+version-check: pin-check  ## 扫全部 submodule（组件、外壳、工具仓库）：HEAD 是否领先最新 tag（兼容 2.0.0 与 v2.0.0 双 tag）；并查精确依赖
 	@bash infra/scripts/version-check.sh
+
+pin-check:  ## 组件的精确依赖、外壳的成员与 go.mod 都指向被引用组件的当前版本（3.x）
+	@python3 infra/scripts/pin-check.py
 .PHONY: version-check
 
 # bump-version (version propagation across dependants and shells) lived in the 0.x be-acceptance;
