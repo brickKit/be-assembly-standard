@@ -13,7 +13,7 @@
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | `infra/iam-casdoor` | 身份认证适配（Casdoor） | 当前重建 | 3.0.9 | [infra.md](../07-components/infra.md#infraiam-casdoor) | [BRICKKIT](../../../components/infra/iam-casdoor/BRICKKIT.md) · [AGENTS](../../../components/infra/iam-casdoor/AGENTS.md) · [design](../../../components/infra/iam-casdoor/docs/design.md) | — | 身份族的全部 51 个使用者（见边界卡） |
 | `infra/iam-keycloak` | 身份认证适配（Keycloak） | 远期 | — | [infra.md](../07-components/infra.md#infraiam-keycloak) | — | — | 身份族的全部 51 个使用者（见边界卡） |
-| `infra/authz` | 授权：权限目录、授予、视图与核验 | 当前重建 | 3.0.9 | [infra.md](../07-components/infra.md#infraauthz) | [BRICKKIT](../../../components/infra/authz/BRICKKIT.md) · [AGENTS](../../../components/infra/authz/AGENTS.md) · [design](../../../components/infra/authz/docs/design.md) | 身份（`infra/iam-*`） | 46 个组件（几乎全部业务组件，见各边界卡） |
+| `infra/authz` | 授权：权限目录、授予、视图与核验 | 当前重建 | 3.0.10 | [infra.md](../07-components/infra.md#infraauthz) | [BRICKKIT](../../../components/infra/authz/BRICKKIT.md) · [AGENTS](../../../components/infra/authz/AGENTS.md) · [design](../../../components/infra/authz/docs/design.md) | 身份（`infra/iam-*`） | 46 个组件（几乎全部业务组件，见各边界卡） |
 | `infra/authz-static` | 授权的静态配置成员 | 远期 | — | — | — | — | — |
 | `infra/authz-openfga` | 授权的关系图成员（OpenFGA） | 远期 | — | — | — | — | — |
 | `infra/workflow` | 统一待办（不含流程引擎） | 当前重建 | — | [infra.md](../07-components/infra.md#infraworkflow) | — | 身份（`infra/iam-*`）、`infra/authz` | — |
@@ -125,7 +125,7 @@
 | 外壳 | 版本 | 编进的成员 | 文档 |
 | --- | --- | --- | --- |
 | `be/go-core` | 3.0.32 | `test/probe-go@3.2.19`、`test/probe-go2@3.2.19`、`test/probe-go3@3.2.19`、`test/probe-go4@3.2.19`、`erp/inventory@3.0.7`、`erp/credit@3.0.7`、`erp/sales@3.0.12`、`erp/billing@3.0.10` | [BRICKKIT](../../../shell/be/go-core/BRICKKIT.md) · [AGENTS](../../../shell/be/go-core/AGENTS.md) |
-| `be/go-infra` | 3.0.32 | `test/probe-go@3.2.19`、`test/probe-go2@3.2.19`、`test/probe-go3@3.2.19`、`test/probe-go4@3.2.19`、`infra/iam-casdoor@3.0.9`、`infra/authz@3.0.9`、`infra/audit@3.0.7`、`mdm/org@3.0.8`、`mdm/currency@3.0.9`、`mdm/partner@3.0.11`、`mdm/product@3.0.11` | [BRICKKIT](../../../shell/be/go-infra/BRICKKIT.md) · [AGENTS](../../../shell/be/go-infra/AGENTS.md) |
+| `be/go-infra` | 3.0.33 | `test/probe-go@3.2.19`、`test/probe-go2@3.2.19`、`test/probe-go3@3.2.19`、`test/probe-go4@3.2.19`、`infra/iam-casdoor@3.0.9`、`infra/authz@3.0.10`、`infra/audit@3.0.7`、`mdm/org@3.0.8`、`mdm/currency@3.0.9`、`mdm/partner@3.0.11`、`mdm/product@3.0.11` | [BRICKKIT](../../../shell/be/go-infra/BRICKKIT.md) · [AGENTS](../../../shell/be/go-infra/AGENTS.md) |
 | `be/py-render` | 3.0.25 | `test/probe-py@3.2.19`、`test/probe-py2@3.2.19`、`infra/print@3.0.6` | [BRICKKIT](../../../shell/be/py-render/BRICKKIT.md) · [AGENTS](../../../shell/be/py-render/AGENTS.md) |
 
 ## 事件
