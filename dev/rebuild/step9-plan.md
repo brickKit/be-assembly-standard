@@ -149,6 +149,20 @@
 2. 后台运行，监视按 `f-longrun`：`CONF=<会话临时目录>/acc-v104/conformance systemd-inhibit --what=sleep:idle:handle-lid-switch --why="step 9 second night" dev/rebuild/experiment-scripts/night9b.sh <会话临时目录>/step9/night3`。监视读 `night.log`、`chain/status.log`、`probes/status.log`，每满 5 分钟一行进度。
 3. 跑完：业务链用 `r9-summary.py` 出表（LD、LP 的平台分容器引擎与本机包装两份），探针用 `python -m cells tables <out>/probes` 出表；原始数据归档进 `experiment-data/9-01/r93/`；写进 9-01，探针另写记录 9-02。
 
+### 8.7 探针的重测（第二夜之后，等用户下令）
+
+第二夜的 L9-probe-S 起格失败：probe-go2、go3、go4 的本机命令是 `go run ../go`，变体目录里没有 Go 模块，`go` 拒绝（探针自己的缺陷）。修成 `go -C ../go run .`（探针 3.2.20，模块标签 `probes/go/v3.2.20`），外壳 go-core 3.0.33、go-infra 3.0.34 编进新探针，第 9 步的格换到这些版本；短参数冒烟通过（四条边各 250 次全部成功）。
+
+对比的原则（用户 2026-10-28 定）：每一层的对比在同一批里、有参照就行，不追求跨批统一，也不用锚点换算跨批的漂移；跨层的对比（单跑对外壳）要的话另做一批专门量；记录里写明每个对比来自哪一批。原计划拿第 4 步 D 行 200/s 一档作参照，那是另一批（10-19、旧版本），第二夜的探针又缺 L9-probe-S、没有 D 行，所以重测成完整的一批：
+
+| 层 | 格（每层按 D、P、K、L 挨着跑） | 时长 |
+| --- | --- | --- |
+| 底价 | 四行各 7 个底价格（空闲 5 分钟） | 约 2.5 小时 |
+| S 列 | D9-probe-S、P9-probe-S、K9-probe-S、L9-probe-S | 约 70 分钟 |
+| H2 列 | 四行的 H2 | 约 90 分钟 |
+
+D 行用新建的 `D9-probe-*`（版本与其余各行相同）。参数同第二夜（`night9c.sh`，约 5.5 小时，集群在 K 行的格前起、其余格前停）。开跑同 8.6 的第 1、2 步（工具快照取 `be-acceptance` v1.0.5），输出归档进 `experiment-data/9-01/r94/`，写成记录 9-02；第二夜的探针（r93）留作原始数据，不与这一批混在一张表里。
+
 ### 8.5 注意
 
 - 运行器与 `cell-chain.sh` 在跑的时候，改脚本要先写到新文件再整份替换（bash 边执行边读文件，原地改会让正在跑的那份读到一半新内容）；Python 的工具改在主工作树，运行用快照（`git worktree add <临时目录>/acc-<提交> <提交>`，`CONF=<它>/conformance`）。

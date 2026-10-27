@@ -1,12 +1,12 @@
 | 格 | 进程 | 常驻内存 MiB | cgroup 内存 MiB | 空闲 CPU 核 |
 | --- | --- | --- | --- | --- |
-| K9-probe-base-go | `pod:test-probe-go-3-2-19` | 13.9 | — | 0.010 |
-| K9-probe-base-goshell-1 | `pod:be-go-core-3-0-32` | 12.5 | — | 0.010 |
-| K9-probe-base-goshell-2 | `pod:be-go-core-3-0-32` | 14.2 | — | 0.018 |
-| K9-probe-base-goshell-4 | `pod:be-go-core-3-0-32` | 17.5 | — | 0.032 |
-| K9-probe-base-py | `pod:test-probe-py-3-2-19` | 89.0 | — | 0.016 |
-| K9-probe-base-pyshell-1 | `pod:be-py-render-3-0-25` | 117.3 | — | 0.013 |
-| K9-probe-base-pyshell-2 | `pod:be-py-render-3-0-25` | 93.9 | — | 0.020 |
+| K9-probe-base-go | `pod:test-probe-go-3-2-19` | — | 13.9 | 0.010 |
+| K9-probe-base-goshell-1 | `pod:be-go-core-3-0-32` | — | 12.5 | 0.010 |
+| K9-probe-base-goshell-2 | `pod:be-go-core-3-0-32` | — | 14.2 | 0.018 |
+| K9-probe-base-goshell-4 | `pod:be-go-core-3-0-32` | — | 17.5 | 0.032 |
+| K9-probe-base-py | `pod:test-probe-py-3-2-19` | — | 89.0 | 0.016 |
+| K9-probe-base-pyshell-1 | `pod:be-py-render-3-0-25` | — | 117.3 | 0.013 |
+| K9-probe-base-pyshell-2 | `pod:be-py-render-3-0-25` | — | 93.9 | 0.020 |
 | L9-probe-base-go | `proc:test/probe-go` | 35.9 | — | 0.010 |
 | L9-probe-base-goshell-1 | `proc:be/go-core` | 37.5 | — | 0.010 |
 | L9-probe-base-goshell-2 | `proc:be/go-core` | 36.8 | — | 0.017 |
@@ -22,7 +22,7 @@
 | P9-probe-base-pyshell-1 | `brickkit-p9-probe-base-pyshell-1-be-py-render-3-0-25-1` | 110.1 | 101.2 | 0.014 |
 | P9-probe-base-pyshell-2 | `brickkit-p9-probe-base-pyshell-2-be-py-render-3-0-25-1` | 111.0 | 94.1 | 0.019 |
 
-| 外壳 | 承载 | 常驻内存 MiB | 比上一档每多一个成员 MiB |
+| 外壳 | 承载 | 内存 MiB（常驻；K 行是 Pod 的 cgroup） | 比上一档每多一个成员 MiB |
 | --- | --- | --- | --- |
 | K9-probe goshell | 1 | 12.5 | — |
 | K9-probe goshell | 2 | 14.2 | 1.8 |
