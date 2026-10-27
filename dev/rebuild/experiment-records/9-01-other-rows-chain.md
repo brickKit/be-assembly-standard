@@ -139,21 +139,23 @@
 
 原始数据：`experiment-data/9-01/r91/`（运行器的 `status.log`；`summary.md` 由 `experiment-scripts/r9-summary.py` 生成；每格的 `empty-idle.json`、`idle.json`、`mix.json`、`digest.json`、`compare.log`、基线、场景与负载段的输出、两次起格的阶段时间）。
 
-## 6. 发现与待细分
+## 6. 发现
 
 - **L 行 p50 多约 2 毫秒、Docker 的 CPU 高**：L 行负载经 `cells.localrun forward`（测量工具，宿主机 10000 + 端口转给进程）到达组件，组件经 `localhost` 连基础资源时走 `docker-proxy`；两段都是用户态转发。转发器是测量工具，开销不计入任何一项（D 行对应的 Docker 端口代理计入平台）。部署时本机进程直接连数据库，没有这两段；要量本机形态的真实延迟，需要基础资源不在 Docker 里或经网桥地址连接（套件 B 的“集群外”一类）。
-- **K 行服务节点的 Docker 多约 750 MiB：查清了**（2026-10-27，起节点不起格，按进程与 cgroup 分开读）。宿主机上 minikube 发布端口的 `docker-proxy` 从 16 个变成 63 个，常驻 57 → 307 MiB（约 250 MiB，是 K 形态真实的开销）；节点里面的容器运行时（dockerd 99、containerd 52、14 个 shim 146 MiB，起格后每个 Pod 再多 shim）进程名与宿主机相同，被采样重复计算。修法：采样只算宿主机自己的 cgroup 里的进程（`be-acceptance` `conformance/measure/readings.py` 的 `PLATFORMS`），K 行要用修好的采样重测才有可用的合计。
-- **摘要稳定慢：查清了，是 SDK 审计转运的缺陷**。每格一直在变的都只有审计记录条数，后段每 10 秒多 1,000 条，四行都是约每秒 95–100 条（D9-S 94、P9-S 99、L9-S 99）；P 行慢只因为基线结束时积压更多（约 5.5 万条，D、K 约 2.8 万）。原因：两种 SDK 的转运每 5 秒一次，每次只给 500 条编号（`be-sdk-go` `audit/transfer.go` 的 `Number`、`be-sdk-python` `besdk/audit.py` 的 `number`，`LIMIT` 用 `Batch`），发送循环只发已编号的，所以每个组件每秒最多转运 100 条；协议 P8.21 要求“每批 500，每 5 秒，积压时连续”，实现没有做到“积压时连续”，一致性检查 CK-AU-03 也没有查出。对业务结果没有影响，积压只是转运得慢。
-- **L9-X 停格后留下了转发器**：运行器停格时只停 `brickkit up`，L 行的 `cells.localrun forward` 一直占着宿主机 18082–18605，第二天 minikube 节点绑定端口失败、起不来（节点容器随之与网络断开，接回网络后正常）。修法：运行器按进程号停转发器。
+- **K 行服务节点的 Docker 多约 750 MiB：一半是真实开销，一半是采样重复计算**（2026-10-27，起节点不起格，按进程与 cgroup 分开读）。宿主机上 minikube 发布端口的 `docker-proxy` 从 16 个变成 63 个，常驻 57 → 307 MiB（约 250 MiB，是 K 形态真实的开销）；节点里面的容器运行时（dockerd 99、containerd 52、14 个 shim 146 MiB，起格后每个 Pod 再多 shim）进程名与宿主机相同，被采样按进程名重复计算。K 行要用修好的采样重测才有可用的合计。
+- **摘要稳定慢：SDK 审计转运的缺陷**。每格一直在变的都只有审计记录条数，后段每 10 秒多 1,000 条，四行都是约每秒 95–100 条（D9-S 94、P9-S 99、L9-S 99）；P 行慢只因为基线结束时积压更多（约 5.5 万条，D、K 约 2.8 万）。原因：两种 SDK 的转运每 5 秒一次，每次只给 500 条编号（`be-sdk-go` `audit/transfer.go` 的 `Number`、`be-sdk-python` `besdk/audit.py` 的 `number`，`LIMIT` 用 `Batch`），发送循环只发已编号的，所以每个组件每秒最多转运 100 条；协议 P8.21 要求“每批 500，每 5 秒，积压时连续”，实现没有做到“积压时连续”，一致性检查 CK-AU-03 也没有查出。对业务结果没有影响，积压只是转运得慢。
+- **L9-X 停格后留下了转发器**：运行器停格时只停 `brickkit up`，L 行的 `cells.localrun forward` 一直占着宿主机 18082–18605，第二天 minikube 节点绑定端口失败、起不来（节点容器随之与网络断开，接回网络后正常）。
 - **每格一遍**：差别在 10% 以内的写“看不出差别”（计划第 3 节）；X 列在 K、L 行的组件 CPU 少 6–8%，需要第二遍才能定。
 
-## 7. 接下来
+## 7. 修复与验证（2026-10-27）
 
-- 第 6 节查出的三处已修（2026-10-27）：
-  - SDK 审计转运积压时连续：`be-sdk-go` 3.0.0-alpha.35（`Drain`）、`be-sdk-python` 3.0.0a31（`drain`），各加一条积压 1,234 条一次转完的测试（CK-AU-03）；全部组件与外壳换上新 SDK：iam-casdoor 3.0.9、authz 3.0.9、audit 3.0.7、org 3.0.8、currency 3.0.9、partner 3.0.11、product 3.0.11、inventory 3.0.7、credit 3.0.7、sales 3.0.12、billing 3.0.10、print 3.0.6；外壳 go-infra 3.0.32、go-core 3.0.32、py-render 3.0.25（精确依赖一次对齐）。第 9 步十个格的 `cell.yaml` 改用这些版本。
-  - 采样只算宿主机自己的平台进程：`be-acceptance` v1.0.2（`measure/readings.py` 的 `on_host`）。
-  - 运行器停格时按进程组停转发器：转发器经 `setsid` 起，`setsid` 之后的 shell 把自己的进程号（进程组组长）写进 `$XDG_RUNTIME_DIR/be-cell-forward-<格>.pid` 再 `exec` 成转发器；`runner9.sh` 与 `cell-chain.sh` 停格时先按它停整个进程组。两处坑：`setsid` 已是组长时会先 fork，`$!` 记下的是随即退出的父进程；本机模式的 `brickkit down` 会清掉格的 `.brickkit/`，进程号文件不能放在那里。两条停格路径都验证过（停后没有转发器、端口全部释放）。
-  - 验证（短参数的运行器，2026-10-27）：D9-S、L9-S 全部通过，结果摘要与 D8-S 相同；基线之后摘要 20 秒稳定（整夜那一轮 344、496 秒）。
+- **审计转运积压时连续**：`be-sdk-go` 3.0.0-alpha.35（`Drain`）、`be-sdk-python` 3.0.0a31（`drain`）每次运行编号与发送交替，直到积压不足一批；各加一条积压 1,234 条一次转完的测试（CK-AU-03）。全部组件与外壳换上新 SDK，精确依赖一次对齐：iam-casdoor 3.0.9、authz 3.0.9、audit 3.0.7、org 3.0.8、currency 3.0.9、partner 3.0.11、product 3.0.11、inventory 3.0.7、credit 3.0.7、sales 3.0.12、billing 3.0.10、print 3.0.6；外壳 go-infra 3.0.32、go-core 3.0.32、py-render 3.0.25。第 9 步十个格的 `cell.yaml` 改用这些版本。
+- **采样只算宿主机自己的平台进程**：`be-acceptance` v1.0.2，`measure/readings.py` 的 `on_host`：cgroup 在容器里（`docker-<id>.scope`、`libpod-<id>.scope`、`kubepods`）的进程留给那个容器，不再算进平台；Podman 的 `conmon`（`libpod-conmon-<id>.scope`）仍在宿主机。
+- **停格时按进程组停转发器**：转发器经 `setsid` 起，`setsid` 之后的 shell 把自己的进程号（进程组组长）写进 `$XDG_RUNTIME_DIR/be-cell-forward-<格>.pid` 再 `exec` 成转发器；`runner9.sh` 与 `cell-chain.sh` 停格时先按它停整个进程组。两处坑：`setsid` 已是组长时会先 fork，`$!` 记下的是随即退出的父进程；本机模式的 `brickkit down` 会清掉格的 `.brickkit/`，进程号文件不能放在那里。两条停格路径都验证过（停后没有转发器、端口全部释放）。
+- **验证**（短参数的运行器）：D9-S、L9-S 全部通过，结果摘要与 D8-S 相同；基线之后摘要 20 秒稳定（整夜那一轮 344、496 秒）。
+
+## 8. 接下来
+
 - 用修好的采样重测 K 行（等用户下令、机器安静）。
 - LD、LP 两行的 S 列（混合形态）；探针的进程底价与通信细分。
 - 实测结果交给 kb知识库（运行形态与外壳的开销）。
