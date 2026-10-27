@@ -42,15 +42,15 @@ pod_logs() {  # K row: every pod's log of the cell, kept beside the stage logs w
     kubectl --context bek -n "$ns" logs "$p" --all-containers > "$OUT/logs/pods/${p#pod/}.log" 2>&1; done
 }
 down_cells() {  # every experiment cell on every engine (projects brickkit-<cell>, namespaces <cell> in minikube)
-  for p in $(docker ps -a --format '{{.Label "com.docker.compose.project"}}' | grep -E '^brickkit-[dplk][0-9]' | sort -u); do
+  for p in $(docker ps -a --format '{{.Label "com.docker.compose.project"}}' | grep -E '^brickkit-[dplk]{1,2}[0-9]' | sort -u); do
     docker compose -p "$p" down --remove-orphans; done
-  for p in $(podman ps -a --format '{{index .Labels "com.docker.compose.project"}}' 2>/dev/null | grep -E '^brickkit-[dplk][0-9]' | sort -u); do
+  for p in $(podman ps -a --format '{{index .Labels "com.docker.compose.project"}}' 2>/dev/null | grep -E '^brickkit-[dplk]{1,2}[0-9]' | sort -u); do
     podman compose -p "$p" down --remove-orphans; done
   if minikube -p bek status >/dev/null 2>&1; then
-    for n in $(minikube -p bek kubectl -- get ns -o name 2>/dev/null | sed 's|namespace/||' | grep -E '^[dplk][0-9]-'); do
+    for n in $(minikube -p bek kubectl -- get ns -o name 2>/dev/null | sed 's|namespace/||' | grep -E '^[dplk]{1,2}[0-9]-'); do
       minikube -p bek kubectl -- delete ns "$n" --wait=true; done
   fi
-  pkill -INT -f "brickkit up" 2>/dev/null  # the L row's sessions
+  (cd "$CONF" && uv run python -m cells.localrun down "$D") 2>/dev/null  # the L, LD, LP rows' sessions, by PID
   for f in "${XDG_RUNTIME_DIR:-/tmp}"/be-cell-forward-*.pid; do stop_forward "$f"; done; true
 }
 # the L row's port forwarder: its process group leader's PID, outside the cell (brickkit down clears .brickkit/)
@@ -59,12 +59,15 @@ stop_forward() {  # stop_forward <pid file>: the L row's port forwarder, by its 
   [ -f "$1" ] || return 0
   kill -- -"$(cat "$1")" 2>/dev/null; rm -f "$1"
 }
-images() {  # the Docker-built images of every component in the cell into the row's engine (same images in every row)
+images() {  # the Docker-built images of every component in the cell into the row's engine (same images in every row);
+  # what runs on this machine (cell.yaml local:) has no image
   local img
-  for img in $(python3 -c 'import sys,yaml; [print(c["id"].replace("/","-")+":"+c["version"]) for c in yaml.safe_load(open(sys.argv[1]))["components"]]' "$D/brickkit.yaml"); do
+  for img in $(python3 -c 'import sys,yaml
+local = {x.split("@")[0] for x in yaml.safe_load(open(sys.argv[2])).get("local") or []}
+[print(c["id"].replace("/","-")+":"+c["version"]) for c in yaml.safe_load(open(sys.argv[1]))["components"] if c["id"] not in local]' "$D/brickkit.yaml" "$D/cell.yaml"); do
     case $ROW in
       # Podman resolves the short name to localhost/ first: the Docker-built image takes that name too
-      P) docker save "$img" | podman load -q && podman tag "docker.io/library/$img" "localhost/$img" || return 1 ;;
+      P|LP) docker save "$img" | podman load -q && podman tag "docker.io/library/$img" "localhost/$img" || return 1 ;;
       K) minikube -p bek image load "$img" || return 1 ;;
     esac
   done
@@ -72,8 +75,8 @@ images() {  # the Docker-built images of every component in the cell into the ro
 echo "START $CELL power=$(powerprofilesctl get) $(date -Is)" >> "$OUT/status.log"
 stage down-others down_cells
 stage create bash -c "cd $CONF && uv run python -m cells create $D && uv run python -m cells prepare $D"
-build() {  # every row's images come from Docker (the same images in every row): the P row builds as a docker target
-  if [ "$ROW" = P ]; then
+build() {  # every row's images come from Docker (the same images in every row): P and LP build as a docker target
+  if [ "$ROW" = P ] || [ "$ROW" = LP ]; then
     cp "$D/deploy.yaml" "$D/.deploy.yaml.p" && sed -i 's/^target: podman$/target: docker/' "$D/deploy.yaml"
     (cd "$D" && brickkit build); local rc=$?
     mv "$D/.deploy.yaml.p" "$D/deploy.yaml"; return $rc
@@ -81,7 +84,7 @@ build() {  # every row's images come from Docker (the same images in every row):
   (cd "$D" && brickkit build)
 }
 [ "$ROW" = L ] || stage build build  # the L row runs from source: no images
-[ "$ROW" = P ] || [ "$ROW" = K ] && stage images images  # after the build: a shell's new version exists only then
+case $ROW in P|LP|K) stage images images ;; esac  # after the build: a shell's new version exists only then
 move_authz() {  # the container serving infra/authz (alone or in be/go-infra) restarts on another address of its network
   local eng=docker c net old new aliases a args=()
   [ "$ROW" = P ] && eng=podman
@@ -100,9 +103,9 @@ move_authz() {  # the container serving infra/authz (alone or in be/go-infra) re
     [ $(( $(date +%s) - t0 )) -gt 120 ] && { echo "not healthy after 120 s"; return 1; }; sleep 1; done
   echo "healthy again after $(( $(date +%s) - t0 )) s at $($eng inspect -f "{{(index .NetworkSettings.Networks \"$net\").IPAddress}}" "$c")"
 }
-if [ "$ROW" = L ]; then
-  # L row: a mode: local session in the background (cells/localrun.py), and host port 10000 + port forwarded to each
-  # process's own port, as Docker's proxy does for a container
+if [ "$ROW" = L ] || [ "$ROW" = LD ] || [ "$ROW" = LP ]; then
+  # L, LD, LP rows: a mode: local session in the background (cells/localrun.py; it starts the containers too), and
+  # host port 10000 + port forwarded to each process's own port, as Docker's proxy does for a container
   stage up bash -c "cd $CONF && uv run python -m cells.localrun up $D $OUT/logs/local-session.log"
   # the shell after setsid writes its own PID (the group leader; setsid may fork first) and becomes the forwarder
   (cd "$CONF" && setsid bash -c 'echo $$ > "$1"; exec uv run python -m cells.localrun forward "$2"' _ \
@@ -121,5 +124,7 @@ if [ "${SEED:-1}" != 0 ]; then
     stage scenarios-after-move bash -c "cd $CONF && uv run pytest -q scenarios"
   fi
 fi
-[ "${KEEP_UP:-1}" = 0 ] && { stage down bash -c "cd $D && brickkit down"; stop_forward "$(forward_pid "$D")"; }
+# brickkit down does not reach a mode: local session's processes: cells/localrun.py stops the session by its PID
+[ "${KEEP_UP:-1}" = 0 ] && { stage down bash -c "cd $D && brickkit down && cd $CONF && uv run python -m cells.localrun down $D"
+  stop_forward "$(forward_pid "$D")"; }
 echo "ALL-DONE $(date -Is)" >> "$OUT/status.log"

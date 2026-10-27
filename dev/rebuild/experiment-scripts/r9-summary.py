@@ -1,15 +1,18 @@
 #!/usr/bin/env python3
 """Step 9: the tables of record 9-01 from each cell's runner9.sh output: empty/idle.json (no seed data, idle),
 run/idle.json and run/mix.json (seeded, idle and the 7/s mix). Every row's cost is split the same way:
-  components  D, P: the cell's containers; K: its pods (pod:*); L: its processes (proc:*)
+  components  D, P: the cell's containers; K: its pods (pod:*); L: its processes (proc:*); LD, LP: both
   base        PostgreSQL, NATS, object storage, Casdoor (Docker containers in every row)
   platform    D: Docker's daemons; P: Podman's helpers (conmon, pasta, ...); K: the minikube node minus the cell's pods
-              (control plane, kubelet, CNI, kube-proxy); L: the go run / uv wrappers and the brickkit up session
-  docker      the Docker daemons that serve the base resources in the P, K and L rows (D: that is the platform)
+              (control plane, kubelet, CNI, kube-proxy); L: the go run / uv wrappers and the brickkit up session;
+              LD: Docker's daemons, LP: Podman's helpers
+  local       LD, LP: the go run / uv wrappers and the brickkit up session of the processes on this machine
+  docker      the Docker daemons that serve the base resources in the P, K, L and LP rows (D, LD: that is the platform)
 Memory: the cgroup's median with page cache (MiB) and without it (anon + shmem, "anon MiB"; processes: RssAnon +
 RssShmem). Usage: r9-summary.py <runner9 output>/<cell>..."""
 import json
 import pathlib
+import re
 import sys
 
 BASE = ("be-postgres", "be-nats", "be-rustfs", "be-seaweedfs", "be-casdoor")
@@ -24,26 +27,28 @@ def part(figs: list[dict]) -> tuple[float, float, float | None]:
 
 def parts(res: dict, row: str) -> dict[str, tuple[float, float, float]]:
     containers, units, platforms = res["containers"], res.get("units") or {}, res.get("platforms") or {}
-    out = {"base": part([c["cgroup"] for n, c in containers.items() if n in BASE])}
-    if row in ("D", "P"):
-        out["components"] = part([c["cgroup"] for n, c in containers.items() if n not in BASE])
-    else:
-        out["components"] = part([u for n, u in units.items() if n.startswith(("pod:", "proc:"))])
-    if row == "D":
+    out = {"base": part([c["cgroup"] for n, c in containers.items() if n in BASE]),
+           "components": part([c["cgroup"] for n, c in containers.items() if n not in BASE]
+                              + [u for n, u in units.items() if n.startswith(("pod:", "proc:"))])}
+    if row in ("D", "LD"):
         out["platform"] = part([platforms["docker"]])
-    elif row == "P":
-        out["platform"], out["docker"] = part([platforms["podman"]]), part([platforms["docker"]])
+    elif row in ("P", "LP"):
+        out["platform"] = part([platforms["podman"]])
     elif row == "K":
         node, pods = part([units["minikube-node"]]), out["components"]
         out["platform"] = (node[0] - pods[0], node[1] - pods[1], node[2] - pods[2])
-        out["docker"] = part([platforms["docker"]])
     else:
-        out["platform"], out["docker"] = part([units["local-platform"]]), part([platforms["docker"]])
+        out["platform"] = part([units["local-platform"]])
+    if row in ("LD", "LP"):
+        out["local"] = part([units["local-platform"]])
+    if row not in ("D", "LD"):
+        out["docker"] = part([platforms["docker"]])
     return out
 
 
 def row_of(cell: str) -> str:
-    return cell[0]
+    """The row is the letters before the step number: D9-S is D, LD9-S is LD."""
+    return re.match(r"[A-Z]+", cell).group(0)
 
 
 def main(dirs: list[str]) -> None:

@@ -31,7 +31,8 @@ down() {  # down <cell dir>: the cell's own down, then whatever an engine still 
   local f="${XDG_RUNTIME_DIR:-/tmp}/be-cell-forward-$(basename "$1").pid"
   [ -f "$f" ] && { kill -- -"$(cat "$f")" 2>/dev/null; rm -f "$f"; }
   (cd "$1" && brickkit down) || true
-  pkill -f "brickkit up" 2>/dev/null || true
+  # a mode: local session (L, LD, LP), which brickkit down does not reach: stopped by its PID (cells/localrun.py)
+  (cd "$CONF" && uv run python -m cells.localrun down "$1") || true
 }
 export PATH=$R/dev/rebuild/experiment-scripts/bin:$PATH  # kubectl for the K row
 cluster() {  # cluster <on|off>: the minikube node (profile bek) runs only during the K row's cells
