@@ -123,10 +123,12 @@
 
 整夜测量（第 4 节的顺序：D9-S、P 行、K 行、L 行；用户确认机器安静后开始）→ 记录 `9-01` → LD、LP 补全、探针的底价与通信细分 → 第 10 步起的套件。
 
+**整夜测量已完成**（2026-10-26 23:42 到 10-27 09:29）：十格全部通过、结果摘要都与 D8-S 相同；结果在 [9-01](experiment-records/9-01-other-rows-chain.md)，原始数据在 `experiment-data/9-01/r91/`。
+
 **整夜测量怎样开跑**（2026-10-26 晚准备好，等用户下令；开跑前一句话确认机器安静：只开这一个 VS Code、接电源、不合盖）：
 
 1. 工具快照（运行中改工具不影响这一轮）：`git -C tools/be-acceptance worktree add <会话临时目录>/acc-1d880d5 1d880d5`（be-acceptance `v1.0.1` 之后的 `1d880d5`，含固定变更键的安装认领与 1800 秒的摘要上限）。
-2. 后台运行，配监视（每格结束、失败、摘要比较各报一行）：`CONF=<会话临时目录>/acc-1d880d5/conformance systemd-inhibit --what=sleep:idle:handle-lid-switch --why="step 9 overnight" dev/rebuild/experiment-scripts/runner9.sh <会话临时目录>/step9/night2 D9-S P9-S P9-H P9-X K9-S K9-H K9-X L9-S L9-H L9-X`。参数用缺省（空闲 600 秒、预热 300、负载 900、7 次每秒、20 用户）。
+2. 后台运行，监视按 `f-longrun` 技能写（它的 `watch.sh`：每 30 秒检查，每满 5 分钟一行进度，出问题与结束时各一行；检查失败标记、摘要不一致、运行器进程消失、45 分钟无进展、电源模式与交流电）：`CONF=<会话临时目录>/acc-1d880d5/conformance systemd-inhibit --what=sleep:idle:handle-lid-switch --why="step 9 overnight" dev/rebuild/experiment-scripts/runner9.sh <会话临时目录>/step9/night2 D9-S P9-S P9-H P9-X K9-S K9-H K9-X L9-S L9-H L9-X`。参数用缺省（空闲 600 秒、预热 300、负载 900、7 次每秒、20 用户）。
 3. 时长：每格约一小时（空库段约 12 分钟；带种子起格约 3 分钟、基线约 7 分钟、摘要 8–11 分钟、负载段 30 分钟），十格约 10 小时。电源模式开头已是 performance（运行器每格记下）。每天 12:30 的清理定时器见到运行器在跑会自己跳过。
 4. 跑完：`r9-summary.py <输出>/<格>…` 出表，原始数据归档进 `experiment-data/9-01/`，写记录 `9-01`（写明与第 8 步差一个版本、L 行 Docker 端口代理的成本、转发器不计入）。
 
