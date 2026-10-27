@@ -50,7 +50,14 @@ down_cells() {  # every experiment cell on every engine (projects brickkit-<cell
     for n in $(minikube -p bek kubectl -- get ns -o name 2>/dev/null | sed 's|namespace/||' | grep -E '^[dplk][0-9]-'); do
       minikube -p bek kubectl -- delete ns "$n" --wait=true; done
   fi
-  pkill -INT -f "brickkit up" 2>/dev/null; pkill -f "cells.localrun forward" 2>/dev/null; true  # the L row's sessions
+  pkill -INT -f "brickkit up" 2>/dev/null  # the L row's sessions
+  for f in "${XDG_RUNTIME_DIR:-/tmp}"/be-cell-forward-*.pid; do stop_forward "$f"; done; true
+}
+# the L row's port forwarder: its process group leader's PID, outside the cell (brickkit down clears .brickkit/)
+forward_pid() { echo "${XDG_RUNTIME_DIR:-/tmp}/be-cell-forward-$(basename "$1").pid"; }
+stop_forward() {  # stop_forward <pid file>: the L row's port forwarder, by its process group (setsid made it the leader)
+  [ -f "$1" ] || return 0
+  kill -- -"$(cat "$1")" 2>/dev/null; rm -f "$1"
 }
 images() {  # the Docker-built images of every component in the cell into the row's engine (same images in every row)
   local img
@@ -97,7 +104,9 @@ if [ "$ROW" = L ]; then
   # L row: a mode: local session in the background (cells/localrun.py), and host port 10000 + port forwarded to each
   # process's own port, as Docker's proxy does for a container
   stage up bash -c "cd $CONF && uv run python -m cells.localrun up $D $OUT/logs/local-session.log"
-  (cd "$CONF" && setsid nohup uv run python -m cells.localrun forward "$D" > "$OUT/logs/forward.log" 2>&1 &)
+  # the shell after setsid writes its own PID (the group leader; setsid may fork first) and becomes the forwarder
+  (cd "$CONF" && setsid bash -c 'echo $$ > "$1"; exec uv run python -m cells.localrun forward "$2"' _ \
+    "$(forward_pid "$D")" "$D" < /dev/null > "$OUT/logs/forward.log" 2>&1 &)
 else
   stage up bash -c "cd $D && brickkit up"
 fi
@@ -112,5 +121,5 @@ if [ "${SEED:-1}" != 0 ]; then
     stage scenarios-after-move bash -c "cd $CONF && uv run pytest -q scenarios"
   fi
 fi
-[ "${KEEP_UP:-1}" = 0 ] && stage down bash -c "cd $D && brickkit down"
+[ "${KEEP_UP:-1}" = 0 ] && { stage down bash -c "cd $D && brickkit down"; stop_forward "$(forward_pid "$D")"; }
 echo "ALL-DONE $(date -Is)" >> "$OUT/status.log"

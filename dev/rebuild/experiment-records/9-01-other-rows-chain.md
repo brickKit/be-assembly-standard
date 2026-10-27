@@ -149,6 +149,11 @@
 
 ## 7. 接下来
 
-- 修第 6 节查出的三处：SDK 审计转运积压时连续（两种 SDK，补一致性检查）；采样只算宿主机的平台进程；运行器停格时停转发器。之后用修好的采样重测 K 行。
+- 第 6 节查出的三处已修（2026-10-27）：
+  - SDK 审计转运积压时连续：`be-sdk-go` 3.0.0-alpha.35（`Drain`）、`be-sdk-python` 3.0.0a31（`drain`），各加一条积压 1,234 条一次转完的测试（CK-AU-03）；全部组件与外壳换上新 SDK：iam-casdoor 3.0.9、authz 3.0.9、audit 3.0.7、org 3.0.8、currency 3.0.9、partner 3.0.11、product 3.0.11、inventory 3.0.7、credit 3.0.7、sales 3.0.12、billing 3.0.10、print 3.0.6；外壳 go-infra 3.0.32、go-core 3.0.32、py-render 3.0.25（精确依赖一次对齐）。第 9 步十个格的 `cell.yaml` 改用这些版本。
+  - 采样只算宿主机自己的平台进程：`be-acceptance` v1.0.2（`measure/readings.py` 的 `on_host`）。
+  - 运行器停格时按进程组停转发器：转发器经 `setsid` 起，`setsid` 之后的 shell 把自己的进程号（进程组组长）写进 `$XDG_RUNTIME_DIR/be-cell-forward-<格>.pid` 再 `exec` 成转发器；`runner9.sh` 与 `cell-chain.sh` 停格时先按它停整个进程组。两处坑：`setsid` 已是组长时会先 fork，`$!` 记下的是随即退出的父进程；本机模式的 `brickkit down` 会清掉格的 `.brickkit/`，进程号文件不能放在那里。两条停格路径都验证过（停后没有转发器、端口全部释放）。
+  - 验证（短参数的运行器，2026-10-27）：D9-S、L9-S 全部通过，结果摘要与 D8-S 相同；基线之后摘要 20 秒稳定（整夜那一轮 344、496 秒）。
+- 用修好的采样重测 K 行（等用户下令、机器安静）。
 - LD、LP 两行的 S 列（混合形态）；探针的进程底价与通信细分。
 - 实测结果交给 kb知识库（运行形态与外壳的开销）。

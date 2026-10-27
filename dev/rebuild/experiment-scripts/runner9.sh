@@ -26,6 +26,10 @@ stage() {  # stage <cell> <name> <command...>; returns the command's status
   return $rc
 }
 down() {  # down <cell dir>: the cell's own down, then whatever an engine still holds
+  # the L row's port forwarder first: cell-chain.sh starts it as its own process group and keeps the leader's PID
+  # outside the cell, since brickkit down clears .brickkit/
+  local f="${XDG_RUNTIME_DIR:-/tmp}/be-cell-forward-$(basename "$1").pid"
+  [ -f "$f" ] && { kill -- -"$(cat "$f")" 2>/dev/null; rm -f "$f"; }
   (cd "$1" && brickkit down) || true
   pkill -f "brickkit up" 2>/dev/null || true
 }
