@@ -132,6 +132,23 @@
 3. 时长：每格约一小时（空库段约 12 分钟；带种子起格约 3 分钟、基线约 7 分钟、摘要 8–11 分钟、负载段 30 分钟），十格约 10 小时。电源模式开头已是 performance（运行器每格记下）。每天 12:30 的清理定时器见到运行器在跑会自己跳过。
 4. 跑完：`r9-summary.py <输出>/<格>…` 出表，原始数据归档进 `experiment-data/9-01/`，写记录 `9-01`（写明与第 8 步差一个版本、L 行 Docker 端口代理的成本、转发器不计入）。
 
+### 8.6 第二夜：LD、LP 与探针（2026-10-27 晚，等用户下令）
+
+用户定：第 9 步剩下的测量放到晚上一次跑。开跑前一句话确认机器安静（只开这一个 VS Code、接电源、不合盖）。
+
+| 段 | 内容 | 时长 |
+| --- | --- | --- |
+| 业务链 | `runner9.sh`：LD9-S、LP9-S（销售与库存在本机，其余在 Docker 或 Podman），P9-S 作同一版本的参照（R9.1 的 P9-S 是旧 SDK）；流程与参数同 R9.1 | 约 3 小时 |
+| 探针（缩减） | `probe9.sh`：P、K、L 三行各 7 个底价格（空闲 5 分钟）与 S、H2 两个通信格（操作 echo-1k-grpc、echo-1k-http、write、relay，200/s，预热 10 秒、测 30 秒）；每格一遍 | 约 4.5 小时 |
+
+缩减的理由（AI 定，用户同意放到晚上）：业务链已表明四种形态每千次请求的总 CPU 只差 1–8%（9-01），探针这一轮确认每一跳是否也差不多，不需要第 4 步 D 行的全量（50、200、加压三档，9 种操作，四列，各三遍）；结果只与 D 行 200/s 一档对照。H1、X 列与其余操作要用时再补。
+
+怎样开跑：
+
+1. 工具快照：`git -C tools/be-acceptance worktree add <会话临时目录>/acc-v104 v1.0.4`。
+2. 后台运行，监视按 `f-longrun`：`CONF=<会话临时目录>/acc-v104/conformance systemd-inhibit --what=sleep:idle:handle-lid-switch --why="step 9 second night" dev/rebuild/experiment-scripts/night9b.sh <会话临时目录>/step9/night3`。监视读 `night.log`、`chain/status.log`、`probes/status.log`，每满 5 分钟一行进度。
+3. 跑完：业务链用 `r9-summary.py` 出表（LD、LP 的平台分容器引擎与本机包装两份），探针用 `python -m cells tables <out>/probes` 出表；原始数据归档进 `experiment-data/9-01/r93/`；写进 9-01，探针另写记录 9-02。
+
 ### 8.5 注意
 
 - 运行器与 `cell-chain.sh` 在跑的时候，改脚本要先写到新文件再整份替换（bash 边执行边读文件，原地改会让正在跑的那份读到一半新内容）；Python 的工具改在主工作树，运行用快照（`git worktree add <临时目录>/acc-<提交> <提交>`，`CONF=<它>/conformance`）。
