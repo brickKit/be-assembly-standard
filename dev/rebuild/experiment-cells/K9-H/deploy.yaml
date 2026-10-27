@@ -1,0 +1,26 @@
+# deploy.yaml — cell K9-H; written by be-acceptance/conformance/cells/create.py from cell.yaml
+target: k8s
+k8s:
+  context: bek
+  namespace: k9-h
+  createNamespace: true
+
+components:
+  - id: be/go-infra
+    members:
+      - id: infra/iam-casdoor
+      - id: infra/authz
+      - id: infra/audit
+      - id: mdm/org
+      - id: mdm/currency
+      - id: mdm/partner
+      - id: mdm/product
+  - id: be/go-core
+    members:
+      - id: erp/inventory
+      - id: erp/credit
+      - id: erp/sales
+      - id: erp/billing
+  - id: be/py-render
+    members:
+      - id: infra/print

@@ -1,0 +1,23 @@
+<!-- brickkit:components lang=en -->
+<!-- maintained by brickkit (init, add, remove, upgrade, skills update) from brickkit.yaml and each component's component.yaml: the whole file is rewritten -->
+# Components
+
+Every component this project uses, at the version `brickkit.yaml` pins. Where each one's documentation and contracts are: the end of `AGENTS.md`.
+
+| Component | Version | What it does | Docs | Home |
+|---|---|---|---|---|
+| be/go-core | 3.0.32 | The trading shell: one Go process hosting the members compiled in (be-sdk-go's shell launcher) | BRICKKIT.md | https://github.com/brickKit/be-go-core |
+| be/go-infra | 3.0.32 | The infrastructure shell: one Go process hosting the members compiled in (be-sdk-go's shell launcher) | BRICKKIT.md | https://github.com/brickKit/be-go-infra |
+| be/py-render | 3.0.25 | The Python render shell: one Python process hosting the members installed (be-sdk-python's shell launcher) | BRICKKIT.md | https://github.com/brickKit/be-py-render |
+| erp/billing | 3.0.10 | Customer invoices: drafts that claim the billable ledger of erp/sales (protocol 05), numbering continuous per legal entity and year, the invoiced fact for finance and credit, and the print snapshot that keeps every reprint the same | BRICKKIT.md | https://github.com/brickKit/erp-billing |
+| erp/credit | 3.0.7 | Credit policies and limits by partner, legal entity and currency, order exposure, and the participant side of protocol 04's credit reservation branches; a customer outside credit control is a limit without an amount | BRICKKIT.md | https://github.com/brickKit/erp-credit |
+| erp/inventory | 3.0.7 | Warehouses, stock movements (the only writer) with the inventory and valuation sequences, positions with on hand, reserved and available, batches and serial numbers; the participant side of protocol 04's reservation branches and the issue that consumes them | BRICKKIT.md | https://github.com/brickKit/erp-inventory |
+| erp/sales | 3.0.12 | Quotations, sales orders with goods and service lines, price lists; the order's confirmation as protocol 04's coordinator over the stock and credit reservations, deliveries through the inventory, and the billable ledger erp/billing claims from (protocol 05) | BRICKKIT.md | https://github.com/brickKit/erp-sales |
+| infra/audit | 3.0.7 | The audit component: every component's audit records taken over the system surface, idempotently by source and ID, with receipts, the backed-up watermark and the query; the evidence store comes with protocol 15 | BRICKKIT.md | https://github.com/brickKit/infra-audit |
+| infra/authz | 3.0.9 | The authorization member: definitions submitted by every component, security records changed only at the effect point (containment within the grantor's limit, the last admin), and views verified from the committed records | BRICKKIT.md | https://github.com/brickKit/infra-authz |
+| infra/iam-casdoor | 3.0.9 | The identity member in front of Casdoor: browser login with PKCE and a server-side session, short access tokens it signs for the platform principal, its public keys; a development-only password exchange (A101) | BRICKKIT.md | https://github.com/brickKit/infra-iam-casdoor |
+| infra/print | 3.0.6 | A pure renderer: a template version plus the caller's view model become a deterministic PDF (Typst in isolated worker processes with time, memory and output limits); templates and their versions, preview | BRICKKIT.md | https://github.com/brickKit/infra-print |
+| mdm/currency | 3.0.9 | Currencies (ISO 4217, minor unit, rounding, cash unit), rate types and daily exchange rates; the effective rate on a date for documents to snapshot; full-state events and the source methods of protocol 02 | BRICKKIT.md | https://github.com/brickKit/mdm-currency |
+| mdm/org | 3.0.8 | Legal entities (time zone, base currency, fiscal year start) and the organization units below them, whose paths are authorization's org-tree facts; full-state events and the source methods of protocol 02 | BRICKKIT.md | https://github.com/brickKit/mdm-org |
+| mdm/partner | 3.0.11 | Business partners (organizations and persons) with their formal contacts and addresses, their customer roles by legal entity, the eligibility a new document needs and the batch resolution of protocol 07; full-state events and the source methods of protocol 02 | BRICKKIT.md | https://github.com/brickKit/mdm-partner |
+| mdm/product | 3.0.11 | Products (stock, service, non-stock), categories, the unit catalog and product conversions, tracking policy, availability for sale and purchase by legal entity; eligibility, batch resolution and unit conversion; full-state events and the source methods of protocol 02 | BRICKKIT.md | https://github.com/brickKit/mdm-product |

@@ -1,0 +1,25 @@
+# deploy.yaml — cell L9-H; written by be-acceptance/conformance/cells/create.py from cell.yaml
+target: docker
+
+components:
+  - id: be/go-infra
+    mode: local
+    members:
+      - id: infra/iam-casdoor
+      - id: infra/authz
+      - id: infra/audit
+      - id: mdm/org
+      - id: mdm/currency
+      - id: mdm/partner
+      - id: mdm/product
+  - id: be/go-core
+    mode: local
+    members:
+      - id: erp/inventory
+      - id: erp/credit
+      - id: erp/sales
+      - id: erp/billing
+  - id: be/py-render
+    mode: local
+    members:
+      - id: infra/print

@@ -1,0 +1,60 @@
+# brickkit.yaml — what this project is made of: its sources and the exact component versions.
+# Shared and reviewed like code: commit it.
+project: k9-h
+
+# Install sources, tried in declaration order
+sources:
+  - name: local-dev
+    type: local
+    path: ./components # brickkit init already created this directory
+  - name: local-shells
+    type: local
+    path: ./shell # shells (kind: shell) are project code: brickkit new --shell writes here
+  - name: acceptance # the probes (one repository, tags test-probe-<variant>/<version>)
+    type: git
+    repo: https://github.com/brickKit/be-acceptance
+  - name: brickkit-github # one component per repository (the shells): be/go-core -> be-go-core
+    type: git
+    baseUrl: https://github.com/brickKit/
+# More sources: uncomment and fill in the address
+# - name: company-git
+#   type: git
+#   baseUrl: https://git.example.com/components/
+# - name: market
+#   type: market
+#   url: https://market.example.com/api/v1
+
+components:
+  - id: be/go-core
+    version: 3.0.32
+    kind: shell
+  - id: be/go-infra
+    version: 3.0.32
+    kind: shell
+  - id: be/py-render
+    version: 3.0.25
+    kind: shell
+  - id: erp/billing
+    version: 3.0.10
+  - id: erp/credit
+    version: 3.0.7
+  - id: erp/inventory
+    version: 3.0.7
+  - id: erp/sales
+    version: 3.0.12
+  - id: infra/audit
+    version: 3.0.7
+  - id: infra/authz
+    version: 3.0.9
+  - id: infra/iam-casdoor
+    version: 3.0.9
+  - id: infra/print
+    version: 3.0.6
+  - id: mdm/currency
+    version: 3.0.9
+  - id: mdm/org
+    version: 3.0.8
+  - id: mdm/partner
+    version: 3.0.11
+  - id: mdm/product
+    version: 3.0.11
