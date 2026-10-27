@@ -1,0 +1,45 @@
+🚀 Starting project l9-probe-s (target: docker)
+📋 Component state calculation:
+   ✅ test/probe-go@3.2.19   starting (mode: local)
+   ✅ test/probe-go2@3.2.19  starting (mode: local)
+   ✅ test/probe-py@3.2.19   starting (mode: local)
+   ✅ test/probe-py2@3.2.19  starting (mode: local)
+
+📋 Start order (topological sort):
+   1. test-probe-go-3-2-19   no dependencies
+   2. test-probe-go2-3-2-19  no dependencies
+   3. test-probe-py-3-2-19   no dependencies
+   4. test-probe-py2-3-2-19  no dependencies
+
+Can start on their own: test-probe-go-3-2-19, test-probe-go2-3-2-19, test-probe-py-3-2-19, test-probe-py2-3-2-19 (no dependencies)
+📄 Generated: .brickkit/generated/compose.yaml
+
+🔧 Database migrations that run before startup (on failure that component won't start):
+   test/probe-go@3.2.19  go run . migrate
+   test/probe-go2@3.2.19  go run ../go migrate
+   test/probe-py@3.2.19  uv run python -m probe_py migrate
+   test/probe-py2@3.2.19  uv run --project ../py python -m probe_py migrate
+
+Starting 4 local component(s) — press Ctrl+C to stop
+test-probe-go-3-2-19-migration  running the migration from source: go run . migrate
+test-probe-go-3-2-19-migration  | {"time":"2026-10-27T22:54:23.943Z","level":"INFO","msg":"migrations applied","component":"test/probe-go","version":"3.2.19","set":"be-sdk","schema_version":9}
+test-probe-go-3-2-19-migration  | {"time":"2026-10-27T22:54:23.971Z","level":"INFO","msg":"migrations applied","component":"test/probe-go","version":"3.2.19","set":"test/probe-go","schema_version":1}
+test-probe-go-3-2-19-migration  | {"time":"2026-10-27T22:54:23.971Z","level":"INFO","msg":"migrate done","component":"test/probe-go","version":"3.2.19"}
+test-probe-go-3-2-19-migration  migration finished
+test-probe-go-3-2-19            | {"time":"2026-10-27T22:54:24.082Z","level":"WARN","msg":"AUDIT_GRPC_URL is not set: audit records stay in the local table until it is","component":"test/probe-go","version":"3.2.19"}
+test-probe-go-3-2-19            | {"time":"2026-10-27T22:54:24.099Z","level":"INFO","msg":"ready","component":"test/probe-go","version":"3.2.19","event":"ready","protocol":"3.0.0-alpha.19","sdk":"3.0.0-alpha.23","startup_ms":18}
+test-probe-go-3-2-19  listening on port 8600
+test-probe-go2-3-2-19-migration  running the migration from source: go run ../go migrate
+test-probe-go2-3-2-19-migration | go: cannot find main module, but found .git/config in /home/zhijie/Desktop/github/be-assembly-standard/dev/rebuild/experiment-cells/L9-probe-S/components/test/probe-go2
+test-probe-go2-3-2-19-migration | 	to create a module there, run:
+test-probe-go2-3-2-19-migration | 	cd ../.. && go mod init
+test-probe-go-3-2-19            | {"time":"2026-10-27T22:54:24.182Z","level":"INFO","msg":"stopping","component":"test/probe-go","version":"3.2.19","event":"stopping"}
+test-probe-go-3-2-19            | {"time":"2026-10-27T22:54:26.182Z","level":"INFO","msg":"stopped","component":"test/probe-go","version":"3.2.19","event":"stopped","exit_code":0}
+❌ Error: database migration failed
+   Component: test/probe-go2@3.2.19
+   Command: go run ../go migrate
+   Reason: exit code 1
+   Suggestions:
+   1. The migration failed, so its process wasn't started and the session ended; its output is above, prefixed with test-probe-go2-3-2-19-migration
+   2. Fix it and run brickkit up again: the migration runs once more before the process
+{"time":"2026-10-27T23:54:26.183879956+01:00","level":"ERROR","message":"Command failed","command":"brickkit up","elapsed_ms":3441,"error_code":"MIGRATION_FAILED","error":"MIGRATION_FAILED: Error: database migration failed; Component=test/probe-go2@3.2.19; Command=go run ../go migrate; Reason=exit code 1","exit_code":1}
