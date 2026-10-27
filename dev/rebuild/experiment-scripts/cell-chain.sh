@@ -114,7 +114,8 @@ else
   stage up bash -c "cd $D && brickkit up"
 fi
 [ "$ROW" = K ] && stage nodeports bash -c "cd $CONF && uv run python -c 'import sys; from cells.spec import Cell; from cells.units import nodeports; print(nodeports(Cell.load(sys.argv[1])))' $D"
-stage secure bash -c "cd $CONF && uv run python -m cells secure $D"
+# the install claim only where the security members run (a probe cell has none)
+grep -q 'infra/iam-casdoor' "$D/cell.yaml" && stage secure bash -c "cd $CONF && uv run python -m cells secure $D"
 if [ "${SEED:-1}" != 0 ]; then
   stage seed-1 make -C "$R" seed-data
   stage seed-2 make -C "$R" seed-data

@@ -37,7 +37,9 @@ down() {  # down <cell dir>: the cell's own down, then whatever an engine still 
 export PATH=$R/dev/rebuild/experiment-scripts/bin:$PATH  # kubectl for the K row
 cluster() {  # cluster <on|off>: the minikube node (profile bek) runs only during the K row's cells
   local up=0; minikube -p bek status >/dev/null 2>&1 && up=1
-  if [ "$1" = on ] && [ $up = 0 ]; then log "CLUSTER start"; minikube -p bek start >> "$OUT/cluster.log" 2>&1 || log "CLUSTER start FAILED"; fi
+  # started, and ready only once a pod resolves the base resources' host (cluster-on.sh)
+  if [ "$1" = on ] && [ $up = 0 ]; then log "CLUSTER start"; "$R/dev/rebuild/experiment-scripts/cluster-on.sh" "$OUT/cluster.log" \
+    >> "$OUT/cluster.log" 2>&1 || log "CLUSTER start FAILED"; fi
   if [ "$1" = off ] && [ $up = 1 ]; then log "CLUSTER stop"; minikube -p bek stop >> "$OUT/cluster.log" 2>&1; fi
 }
 log "START rate=$RATE users=$USERS idle=$IDLE warmup=$WARMUP seconds=$SECONDS_ conf=$CONF"
