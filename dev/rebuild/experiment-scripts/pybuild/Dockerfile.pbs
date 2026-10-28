@@ -1,0 +1,21 @@
+# Variant pbs: python-build-standalone 3.15.0 (what uv installs on the host: Clang, PGO, full LTO, BOLT, mimalloc, the
+# tail-call interpreter) on Debian trixie slim; the interpreter lives at the same path in both stages.
+FROM debian:trixie-slim AS build
+COPY --from=ghcr.io/astral-sh/uv:0.13.1 /uv /bin/uv
+RUN apt-get update && apt-get install -y --no-install-recommends git ca-certificates && rm -rf /var/lib/apt/lists/*
+ENV UV_PYTHON_INSTALL_DIR=/opt/python UV_PYTHON_PREFERENCE=only-managed
+RUN uv python install 3.15.0
+WORKDIR /app
+COPY pyproject.toml uv.lock ./
+RUN uv sync --frozen --no-dev --no-install-project --python 3.15.0
+COPY . .
+RUN uv sync --frozen --no-dev --no-editable --python 3.15.0
+
+FROM debian:trixie-slim
+RUN apt-get update && apt-get install -y --no-install-recommends wget && rm -rf /var/lib/apt/lists/*
+COPY --from=build /opt/python /opt/python
+COPY --from=build /app/.venv /app/.venv
+# the port the image declares, as the probes' own images do (8601 test/probe-py, 8605 test/probe-py2)
+ARG PORT=8601
+ENV PATH=/app/.venv/bin:$PATH PORT=$PORT
+ENTRYPOINT ["python", "-m", "probe_py"]

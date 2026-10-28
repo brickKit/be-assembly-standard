@@ -102,3 +102,12 @@ B2 的两格冒烟与第一批的六格都比 D8-S 的结果摘要多 16 条审�
 - 格：K9-X-cb（`base: cluster`，v1.0.8：组件连 `base.be-base.svc.cluster.local`，采样把 be-base 的 Pod 记作 `base:*`，`r9-summary.py` 把它们算进基础资源、从集群平台里减去）；`cell-chain.sh`、`runner9.sh` 对这样的格改用新端口、到集群里读 Casdoor 的客户端密钥；`KEEP_CLUSTER=1` 让运行器结束时不停节点。
 - 一晚：K9-X（基础资源在 Docker）→ 导出、停 Docker 的基础资源、起集群里的 → K9-X-cb（摘要与 K9-X 比）→ 换回；出错也换回（`trap`）。
 - 冒烟（16:5x–17:09，短参数）：四个基础资源在集群里起来，Casdoor 的账号与密钥导入后可用；K9-X-cb 起格、基线、场景、摘要、负载全过（210 次全部成功），`base:*` 四个 Pod 都采到；之后 Docker 的基础资源回来、节点停。空库空闲段失败，查出 v1.0.7 的缺陷：minikube 节点的 systemd 在 `init.scope` 里，按进程取 cgroup 找不到节点下的 Pod（所有 K 行的格都会这样）；v1.0.8 改为往上取到容器自己的 scope，有测试。
+
+### 5.5 容器里的 Python 构建（2026-10-28 加，AI 定）
+
+9-02 里本机进程的 Python 每一跳少约 20% CPU，查出是解释器的构建不同：探针镜像用官方 `python:3.15.0-alpine`（musl、GCC 15.2，只开 LTO，没有 PGO），本机是 uv 装的 python-build-standalone（Clang 23.1，PGO、完整 LTO、BOLT、mimalloc、tail-call 解释器）。生产的 Python 组件（`infra/print`、`be/py-render`）用的是官方 `python:3.15.0-slim-trixie`（glibc、GCC 14.2，PGO 与 LTO），所以要回答的是：镜像里换成 python-build-standalone，比现在的 slim 省多少，值不值得改锁定的技术栈。
+
+- 变体（`experiment-scripts/pybuild/`，`build.sh` 从同一份探针源码构建，每个变体按端口出两个镜像）：alpine（198 MB）、slim（302 MB）、pbs（Debian trixie slim 上装 python-build-standalone 3.15.0，397 MB）。
+- 一批（`run.sh`，约 50 分钟）：格 D9-probe-pyonly（两个 Python 探针互相调用），变体按 alpine、slim、pbs、pbs、slim、alpine 各跑两遍（对称排，批内的漂移看得出）；每遍空闲 2 分钟，再四种操作 200 次/秒。每遍之前把 `test-probe-py:3.2.19`、`test-probe-py2:3.2.19` 标到这个变体（只在本机，原镜像留作 `:3.2.19-orig`，结束时标回，出错也标回）。
+- 冒烟（17:43–17:46，短参数）：三个变体都起格、两条边各 250 次全部成功，原镜像已标回。第一次冒烟失败是变体镜像没写 `ENV PORT`（探针镜像自己写了，平台没注入），已补。
+- 等维护者下令与机器安静；结果写记录、交 kb，改不改技术栈作为提议给维护者定。

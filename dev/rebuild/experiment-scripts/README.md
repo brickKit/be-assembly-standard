@@ -39,3 +39,4 @@
 | `night10c.sh`、`cap/` | B3、B4：整套放进限内存的 slice（`setup.sh`、`revert.sh` 由维护者以 root 执行；`limit.sh` 设上限，`sample.sh` 采 slice） |
 | `night10d.sh`、`rootful/` | B6：有根 Podman（`setup.sh`、`revert.sh` 由维护者以 root 执行） |
 | `night10e.sh`、`base-cluster/` | B7：基础资源放进集群（`base.yaml`、`casdoor.yaml`，`base-cluster.sh` 导出 Casdoor、起停集群里的基础资源与 Docker 里的） |
+| `pybuild/` | 容器里的 Python 构建：三个变体的 Dockerfile、`build.sh`、`run.sh`（step10-plan 5.5） |
