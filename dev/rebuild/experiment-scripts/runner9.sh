@@ -11,6 +11,8 @@
 # be-cap.slice, cap/setup.sh); CAP_RESET=1 lifts the limit for the cells without one, samples the slice for the whole
 # cell (cap/sample.sh, <out>/<cell>/cap.tsv) and records every container's state before each down (containers.txt).
 # B6: a cell whose cell.yaml has `podman: rootful` reaches rootful Podman (CONTAINER_HOST, rootful/setup.sh).
+# B7: a cell with `base: cluster` reaches the base resources on the cluster's host ports (base-cluster/); KEEP_CLUSTER=1
+# leaves the minikube node running at the end, for the caller to take the base resources down first.
 # Usage: runner9.sh <out> <cell>...
 set -u
 OUT=$(realpath -m "$1"); shift
@@ -61,6 +63,9 @@ for CELL in "$@"; do
   ROW=$(sed -n 's/^row: *//p' "$D/cell.yaml"); [ "$ROW" = K ] && cluster on || cluster off
   log "CELL $CELL power=$(powerprofilesctl get)"
   [ -n "${SPID:-}" ] && kill "$SPID" 2>/dev/null; SPID=
+  if grep -q '^base: *cluster' "$D/cell.yaml"; then PGP=15432 NP=14222; else PGP=5432 NP=4222; fi
+  BE_ACC_NATS_URL=nats://localhost:$NP
+  BE_ACC_PG_ADMIN="postgres://postgres:$(envval POSTGRES_PASSWORD)@localhost:$PGP/postgres?sslmode=disable"
   if grep -q '^podman: *rootful' "$D/cell.yaml"; then export CONTAINER_HOST=unix:///run/podman/podman.sock; else unset CONTAINER_HOST; fi
   CAP=$(sed -n 's/^memory_cap: *//p' "$D/cell.yaml")
   if [ -n "$CAP" ] || [ -n "${CAP_RESET:-}" ]; then
@@ -101,5 +106,5 @@ for CELL in "$@"; do
   stage "$CELL" down down "$D"
 done
 [ -n "${SPID:-}" ] && kill "$SPID" 2>/dev/null
-cluster off
+[ -n "${KEEP_CLUSTER:-}" ] || cluster off
 log "ALL-DONE"

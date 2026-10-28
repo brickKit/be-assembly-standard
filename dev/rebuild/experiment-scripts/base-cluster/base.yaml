@@ -1,0 +1,111 @@
+# Step 10, B7 (step10-plan.md 5.4): the base resources inside the K row's cluster, namespace be-base, the same images,
+# versions and settings as infra/docker-compose.infra.yml. Data in emptyDir: fresh at every bring-up (base-cluster.sh
+# restores Casdoor's schema). Every pod carries be-base: "true"; the Service base routes each port by its name to the
+# one pod that declares it, so a cell's components reach all four at base.be-base.svc.cluster.local (cells/spec.py,
+# base: cluster); base-np publishes them on node ports 31432, 31422, 31900, 31800, which the node maps to host ports
+# 15432, 14222, 19000, 18000 (cluster-create.sh) for the tools. The secret be-base-env and the config map be-base-conf
+# come from base-cluster.sh (.env, infra/). Casdoor is applied separately, once its schema is restored.
+apiVersion: v1
+kind: Service
+metadata: {name: base, namespace: be-base}
+spec:
+  selector: {be-base: "true"}
+  ports:
+    - {name: pg, port: 5432, targetPort: pg}
+    - {name: nats, port: 4222, targetPort: nats}
+    - {name: s3, port: 9000, targetPort: s3}
+    - {name: casdoor, port: 8000, targetPort: casdoor}
+---
+apiVersion: v1
+kind: Service
+metadata: {name: base-np, namespace: be-base}
+spec:
+  type: NodePort
+  selector: {be-base: "true"}
+  ports:
+    - {name: pg, port: 5432, targetPort: pg, nodePort: 31432}
+    - {name: nats, port: 4222, targetPort: nats, nodePort: 31422}
+    - {name: s3, port: 9000, targetPort: s3, nodePort: 31900}
+    - {name: casdoor, port: 8000, targetPort: casdoor, nodePort: 31800}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata: {name: be-postgres, namespace: be-base}
+spec:
+  replicas: 1
+  selector: {matchLabels: {app: be-postgres}}
+  template:
+    metadata: {labels: {app: be-postgres, be-base: "true"}}
+    spec:
+      containers:
+        - name: postgres
+          image: postgres:16.15-alpine
+          imagePullPolicy: Never
+          args: ["postgres", "-c", "max_connections=300", "-c", "shared_preload_libraries=pg_stat_statements",
+                 "-c", "idle_in_transaction_session_timeout=60s"]
+          env:
+            - {name: POSTGRES_DB, value: postgres}
+            - name: POSTGRES_PASSWORD
+              valueFrom: {secretKeyRef: {name: be-base-env, key: POSTGRES_PASSWORD}}
+          ports: [{name: pg, containerPort: 5432}]
+          readinessProbe:
+            exec: {command: ["pg_isready", "-h", "localhost", "-p", "5432", "-U", "postgres"]}
+            periodSeconds: 5
+          volumeMounts:
+            - {name: data, mountPath: /var/lib/postgresql/data}
+            - {name: init, mountPath: /docker-entrypoint-initdb.d, readOnly: true}
+      volumes:
+        - {name: data, emptyDir: {}}
+        - name: init
+          configMap: {name: be-base-conf, items: [{key: 00-init.sql, path: 00-init.sql}]}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata: {name: be-nats, namespace: be-base}
+spec:
+  replicas: 1
+  selector: {matchLabels: {app: be-nats}}
+  template:
+    metadata: {labels: {app: be-nats, be-base: "true"}}
+    spec:
+      containers:
+        - name: nats
+          image: nats:2.10.29-alpine
+          imagePullPolicy: Never
+          args: ["-c", "/etc/nats/nats.conf", "--jetstream", "--store_dir", "/data", "--http_port", "8222"]
+          ports: [{name: nats, containerPort: 4222}]
+          readinessProbe:
+            httpGet: {path: /healthz, port: 8222}
+            periodSeconds: 5
+          volumeMounts:
+            - {name: data, mountPath: /data}
+            - {name: conf, mountPath: /etc/nats, readOnly: true}
+      volumes:
+        - {name: data, emptyDir: {}}
+        - name: conf
+          configMap: {name: be-base-conf, items: [{key: nats.conf, path: nats.conf}]}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata: {name: be-rustfs, namespace: be-base}
+spec:
+  replicas: 1
+  selector: {matchLabels: {app: be-rustfs}}
+  template:
+    metadata: {labels: {app: be-rustfs, be-base: "true"}}
+    spec:
+      containers:
+        - name: rustfs
+          image: rustfs/rustfs:1.0.0-beta.12
+          imagePullPolicy: Never
+          env:
+            - name: RUSTFS_ACCESS_KEY
+              valueFrom: {secretKeyRef: {name: be-base-env, key: STORAGE_ACCESS_KEY}}
+            - name: RUSTFS_SECRET_KEY
+              valueFrom: {secretKeyRef: {name: be-base-env, key: STORAGE_SECRET_KEY}}
+          ports: [{name: s3, containerPort: 9000}]
+          readinessProbe:
+            httpGet: {path: /health/live, port: 9000}
+            periodSeconds: 5
+          volumeMounts: [{name: data, mountPath: /data}]
+      volumes: [{name: data, emptyDir: {}}]

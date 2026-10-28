@@ -2,9 +2,11 @@
 """Step 9: the tables of record 9-01 from each cell's runner9.sh output: empty/idle.json (no seed data, idle),
 run/idle.json and run/mix.json (seeded, idle and the 7/s mix). Every row's cost is split the same way:
   components  D, P: the cell's containers; K: its pods (pod:*); L: its processes (proc:*); LD, LP: both
-  base        PostgreSQL, NATS, object storage, Casdoor (Docker containers in every row)
+  base        PostgreSQL, NATS, object storage, Casdoor: Docker containers in every row, or the K row's pods in
+              namespace be-base when the cell has `base: cluster` (base:*, step 10 B7)
   platform    D: Docker's daemons; P: Podman's helpers (conmon, pasta, ...); K: the minikube node minus the cell's pods
-              (control plane, kubelet, CNI, kube-proxy); L: the go run / uv wrappers and the brickkit up session;
+              and the base pods (control plane, kubelet, CNI, kube-proxy); L: the go run / uv wrappers and the brickkit
+              up session;
               LD: Docker's daemons, LP: Podman's helpers
   local       LD, LP: the go run / uv wrappers and the brickkit up session of the processes on this machine
   docker      the Docker daemons that serve the base resources in the P, K, L and LP rows (D, LD: that is the platform)
@@ -27,7 +29,8 @@ def part(figs: list[dict]) -> tuple[float, float, float | None]:
 
 def parts(res: dict, row: str) -> dict[str, tuple[float, float, float]]:
     containers, units, platforms = res["containers"], res.get("units") or {}, res.get("platforms") or {}
-    out = {"base": part([c["cgroup"] for n, c in containers.items() if n in BASE]),
+    out = {"base": part([c["cgroup"] for n, c in containers.items() if n in BASE]
+                        + [u for n, u in units.items() if n.startswith("base:")]),
            "components": part([c["cgroup"] for n, c in containers.items() if n not in BASE]
                               + [u for n, u in units.items() if n.startswith(("pod:", "proc:"))])}
     if row in ("D", "LD"):
@@ -36,7 +39,9 @@ def parts(res: dict, row: str) -> dict[str, tuple[float, float, float]]:
         out["platform"] = part([platforms["podman"]])
     elif row == "K":
         node, pods = part([units["minikube-node"]]), out["components"]
-        out["platform"] = (node[0] - pods[0], node[1] - pods[1], node[2] - pods[2])
+        bp = part([u for n, u in units.items() if n.startswith("base:")]) if any(n.startswith("base:") for n in units) \
+            else (0.0, 0.0, 0.0)
+        out["platform"] = (node[0] - pods[0] - bp[0], node[1] - pods[1] - bp[1], node[2] - pods[2] - bp[2])
     else:
         out["platform"] = part([units["local-platform"]])
     if row in ("LD", "LP"):
@@ -51,13 +56,19 @@ def row_of(cell: str) -> str:
     return re.match(r"[A-Z]+", cell).group(0)
 
 
+def seg_file(d: pathlib.Path, runner: str, archived: str) -> pathlib.Path:
+    """A segment's file in the runner's output (empty/idle.json, run/idle.json, run/mix.json) or as the experiment
+    data archives it, flat in the cell's directory (empty-idle.json, idle.json, mix.json)."""
+    return d / runner if (d / runner).exists() else d / archived
+
+
 def main(dirs: list[str]) -> None:
     print("| cell | segment | part | cores | MiB | anon MiB | CPU s per 1000 requests |")
     print("| --- | --- | --- | --- | --- | --- | --- |")
     for d in dirs:
         d = pathlib.Path(d)
-        for seg, f in (("empty idle", d / "empty" / "idle.json"), ("seeded idle", d / "run" / "idle.json"),
-                       ("mix", d / "run" / "mix.json")):
+        for seg, f in (("empty idle", seg_file(d, "empty/idle.json", "empty-idle.json")),
+                       ("seeded idle", seg_file(d, "run/idle.json", "idle.json")), ("mix", seg_file(d, "run/mix.json", "mix.json"))):
             if not f.exists():
                 print(f"| {d.name} | {seg} | (missing) | | | | |")
                 continue
@@ -71,7 +82,7 @@ def main(dirs: list[str]) -> None:
     print("| cell | sent / ok | p50 | p95 | p99 | max | list p95 | order p95 | confirm p95 | deliver p95 | bill p95 | issue to completed p50 / p95 / max |")
     print("| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |")
     for d in dirs:
-        f = pathlib.Path(d) / "run" / "mix.json"
+        f = seg_file(pathlib.Path(d), "run/mix.json", "mix.json")
         if not f.exists():
             continue
         mix = json.loads(f.read_text())

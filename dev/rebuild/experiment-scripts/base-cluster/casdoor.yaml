@@ -1,0 +1,28 @@
+# Step 10, B7: Casdoor in the cluster (base.yaml), applied by base-cluster.sh once its schema has been restored into
+# the cluster's PostgreSQL (Casdoor creates missing tables at start, and would otherwise start empty). Same image and
+# app.conf as infra/; the DSN (host: the Service base) comes from the secret be-base-env.
+apiVersion: apps/v1
+kind: Deployment
+metadata: {name: be-casdoor, namespace: be-base}
+spec:
+  replicas: 1
+  selector: {matchLabels: {app: be-casdoor}}
+  template:
+    metadata: {labels: {app: be-casdoor, be-base: "true"}}
+    spec:
+      containers:
+        - name: casdoor
+          image: casbin/casdoor:4.1.0
+          imagePullPolicy: Never
+          env:
+            - {name: RUNNING_IN_DOCKER, value: "true"}
+            - name: CASDOOR_DSN
+              valueFrom: {secretKeyRef: {name: be-base-env, key: CASDOOR_DSN}}
+          ports: [{name: casdoor, containerPort: 8000}]
+          readinessProbe:
+            httpGet: {path: /api/health, port: 8000}
+            periodSeconds: 10
+          volumeMounts: [{name: conf, mountPath: /conf}]
+      volumes:
+        - name: conf
+          configMap: {name: be-base-conf, items: [{key: app.conf, path: app.conf}]}
