@@ -10,6 +10,7 @@
 # a cell whose cell.yaml has `memory_cap: 4G|6G` runs under that limit (cap/limit.sh: every Docker container is in
 # be-cap.slice, cap/setup.sh); CAP_RESET=1 lifts the limit for the cells without one, samples the slice for the whole
 # cell (cap/sample.sh, <out>/<cell>/cap.tsv) and records every container's state before each down (containers.txt).
+# B6: a cell whose cell.yaml has `podman: rootful` reaches rootful Podman (CONTAINER_HOST, rootful/setup.sh).
 # Usage: runner9.sh <out> <cell>...
 set -u
 OUT=$(realpath -m "$1"); shift
@@ -60,6 +61,7 @@ for CELL in "$@"; do
   ROW=$(sed -n 's/^row: *//p' "$D/cell.yaml"); [ "$ROW" = K ] && cluster on || cluster off
   log "CELL $CELL power=$(powerprofilesctl get)"
   [ -n "${SPID:-}" ] && kill "$SPID" 2>/dev/null; SPID=
+  if grep -q '^podman: *rootful' "$D/cell.yaml"; then export CONTAINER_HOST=unix:///run/podman/podman.sock; else unset CONTAINER_HOST; fi
   CAP=$(sed -n 's/^memory_cap: *//p' "$D/cell.yaml")
   if [ -n "$CAP" ] || [ -n "${CAP_RESET:-}" ]; then
     "$R/dev/rebuild/experiment-scripts/cap/limit.sh" "${CAP:-none}" >> "$OUT/$CELL/cap.log" 2>&1 \

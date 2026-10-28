@@ -72,4 +72,8 @@ B2 的两格冒烟与第一批的六格都比 D8-S 的结果摘要多 16 条审�
   - `experiment-scripts/cap/`：`setup.sh`（root，维护者执行一次：Docker 的 `cgroup-parent` 改成 `be-cap.slice`、装 slice、`/etc/sudoers.d/be-cap` 只许免密执行 `limit.sh` 的三条固定命令、重启 Docker）、`revert.sh`（root，全部还原）、`limit.sh <4G|6G|none>`（slice 的上限 = 预算减去 Docker 自己约 0.7 GiB：3300M、5300M；交换 1G）、`sample.sh`（每 5 秒记 slice 的内存、交换、`memory.events`、内存压力）。
   - 格：D9-H-m6、D9-S-m6、D9-H-m4、D9-S-m4（cell.yaml 写 `memory_cap`）；`runner9.sh` 在 `CAP_RESET=1` 时每格设上限、整格采样、停格前记下每个容器的状态与退出码。
   - 一晚：`night10c.sh`（约 5.5 小时）：不限的 D9-H、D9-S 作参照，再 6 GiB、4 GiB 各两格；开跑前检查基础资源确实在 slice 里、上限能免密设置。B3、B4 做完后维护者执行 `revert.sh`。
-- B6：第 4 节已定（停 Docker 的那一晚）；要的工具：基础资源在有根 Podman 下起停的脚本，未写。
+- B6：工具已写好（2026-10-28），等维护者执行一次设置后冒烟。做法改了（AI 定）：**不停 Docker**。第 0 步（0-11）证实有根 Podman 不通只因 Docker 把 FORWARD 默认设为丢弃，在 `DOCKER-USER` 里放行 Podman 的网桥即可；这样基础资源留在 Docker、与无根的 P 行一样，对比只差有根与无根一处，也不用停掉本机的 Docker（第 4 节的同意仍在，用不上）。
+  - `experiment-scripts/rootful/`：`setup.sh`（root，维护者执行一次：root 的 `podman.socket` 组改为 docker 并启用，`DOCKER-USER` 加两条 `podman+` 的放行）、`revert.sh`（root：清掉有根 Podman 里的容器、网络与镜像，停用 socket、删覆盖与两条规则）。
+  - 格：P9-S-root、P9-H-root（cell.yaml 写 `podman: rootful`）；`runner9.sh` 对这样的格设 `CONTAINER_HOST=unix:///run/podman/podman.sock`（podman 因此走有根的服务）。
+  - 一晚：`night10d.sh`（约 3.7 小时）：P9-S、P9-S-root、P9-H、P9-H-root；开跑前检查有根 Podman 能连上。冒烟时要看：`docker save | podman load` 经远端能否导入、`podman compose` 是否跟着 `CONTAINER_HOST`、采样能否经远端的 `podman inspect` 找到容器。
+- 测量工具：`be-acceptance` v1.0.7 修了采样把 Docker 容器的 cgroup 写死在 `system.slice` 下（B3、B4 的容器在 `be-cap.slice` 里，否则全读不到）；B3、B4、B5、B6 的快照取 v1.0.7。
