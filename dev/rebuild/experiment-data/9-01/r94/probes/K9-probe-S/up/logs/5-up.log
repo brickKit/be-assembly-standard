@@ -1,0 +1,32 @@
+🚀 Starting project k9-probe-s (target: k8s)
+☸️  Target cluster: bek
+📋 Component state calculation:
+   ✅ test/probe-go@3.2.20   starting (test/probe-py2 needs it)
+   ✅ test/probe-go2@3.2.20  starting (test/probe-go needs it)
+   ✅ test/probe-py@3.2.19   starting (test/probe-go2 needs it)
+   ✅ test/probe-py2@3.2.19  starting (test/probe-py needs it)
+
+📋 Start order (topological sort):
+   1. test-probe-go-3-2-20   no dependencies
+   2. test-probe-go2-3-2-20  no dependencies
+   3. test-probe-py-3-2-19   no dependencies
+   4. test-probe-py2-3-2-19  no dependencies
+
+Can start on their own: test-probe-go-3-2-20, test-probe-go2-3-2-20, test-probe-py-3-2-19, test-probe-py2-3-2-19 (no dependencies)
+📄 Generated 14 manifests: .brickkit/generated/k8s/
+   Namespace: k9-probe-s
+
+🔧 Database migrations that run before startup (on failure that component won't start):
+   test/probe-go@3.2.20  /probe-go migrate
+   test/probe-go2@3.2.20  /probe-go migrate
+   test/probe-py@3.2.19  python -m probe_py migrate
+   test/probe-py2@3.2.19  python -m probe_py migrate
+
+☸️  Deploying to Kubernetes (namespace k9-probe-s)...
+   Database migrations run first; the main service starts only after they finish
+❌ Error: kubectl failed to run
+   Command: kubectl --context bek -n k9-probe-s rollout status deployment/test-probe-go2-3-2-20 --timeout=5m
+   Output: error: timed out waiting for the condition
+      Waiting for deployment "test-probe-go2-3-2-20" rollout to finish: 0 of 1 updated replicas are available...
+   Suggestion: The output above is kubectl's own error: check which cluster you're pointed at (kubectl config current-context) and your access to it
+{"time":"2026-10-28T03:43:24.443269115+01:00","level":"ERROR","message":"Command failed","command":"brickkit up","elapsed_ms":312974,"error_code":"ENGINE_FAILED","error":"ENGINE_FAILED: Error: kubectl failed to run; Command=kubectl --context bek -n k9-probe-s rollout status deployment/test-probe-go2-3-2-20 --timeout=5m; Output=error: timed out waiting for the condition / Waiting for deployment \"test-probe-go2-3-2-20\" rollout to finish: 0 of 1 updated replicas are available...","exit_code":1}

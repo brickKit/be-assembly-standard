@@ -6,11 +6,11 @@ Every component this project uses, at the version `brickkit.yaml` pins. Where ea
 
 | Component | Version | What it does | Docs | Home |
 |---|---|---|---|---|
-| be/go-core | 3.0.32 | The trading shell: one Go process hosting the members compiled in (be-sdk-go's shell launcher) | BRICKKIT.md | https://github.com/brickKit/be-go-core |
-| be/go-infra | 3.0.33 | The infrastructure shell: one Go process hosting the members compiled in (be-sdk-go's shell launcher) | BRICKKIT.md | https://github.com/brickKit/be-go-infra |
+| be/go-core | 3.0.33 | The trading shell: one Go process hosting the members compiled in (be-sdk-go's shell launcher) | BRICKKIT.md | https://github.com/brickKit/be-go-core |
+| be/go-infra | 3.0.34 | The infrastructure shell: one Go process hosting the members compiled in (be-sdk-go's shell launcher) | BRICKKIT.md | https://github.com/brickKit/be-go-infra |
 | be/py-render | 3.0.25 | The Python render shell: one Python process hosting the members installed (be-sdk-python's shell launcher) | BRICKKIT.md | https://github.com/brickKit/be-py-render |
-| test/probe-go | 3.2.19 | The acceptance suite's Go probe: communication only (echo, CPU work, a write with its event, relay), for measuring paths | BRICKKIT.md | https://github.com/brickKit/be-acceptance |
-| test/probe-go2 | 3.2.19 | A variant of test/probe-go: the same code under its own component ID, ports and event stream | BRICKKIT.md | https://github.com/brickKit/be-acceptance |
-| test/probe-go3 | 3.2.19 | A variant of test/probe-go: the same code under its own component ID, ports and event stream | BRICKKIT.md | https://github.com/brickKit/be-acceptance |
+| test/probe-go | 3.2.20 | The acceptance suite's Go probe: communication only (echo, CPU work, a write with its event, relay), for measuring paths | BRICKKIT.md | https://github.com/brickKit/be-acceptance |
+| test/probe-go2 | 3.2.20 | A variant of test/probe-go: the same code under its own component ID, ports and event stream | BRICKKIT.md | https://github.com/brickKit/be-acceptance |
+| test/probe-go3 | 3.2.20 | A variant of test/probe-go: the same code under its own component ID, ports and event stream | BRICKKIT.md | https://github.com/brickKit/be-acceptance |
 | test/probe-py | 3.2.19 | The acceptance suite's Python probe: the same contract as the Go probe, for measuring paths | BRICKKIT.md | https://github.com/brickKit/be-acceptance |
 | test/probe-py2 | 3.2.19 | A variant of test/probe-py: the same code under its own component ID, ports and event stream | BRICKKIT.md | https://github.com/brickKit/be-acceptance |

@@ -6,4 +6,4 @@ Every component this project uses, at the version `brickkit.yaml` pins. Where ea
 
 | Component | Version | What it does | Docs | Home |
 |---|---|---|---|---|
-| test/probe-go | 3.2.19 | The acceptance suite's Go probe: communication only (echo, CPU work, a write with its event, relay), for measuring paths | BRICKKIT.md | https://github.com/brickKit/be-acceptance |
+| test/probe-go | 3.2.20 | The acceptance suite's Go probe: communication only (echo, CPU work, a write with its event, relay), for measuring paths | BRICKKIT.md | https://github.com/brickKit/be-acceptance |

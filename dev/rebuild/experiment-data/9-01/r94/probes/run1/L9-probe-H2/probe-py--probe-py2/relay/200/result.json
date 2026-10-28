@@ -1,0 +1,245 @@
+{
+  "cell": "L9-probe-H2",
+  "caller": "test/probe-py",
+  "callee": "test/probe-py2",
+  "op": "relay",
+  "load": "200",
+  "flags": [
+    "-op",
+    "write",
+    "-bytes",
+    "100",
+    "-relay",
+    "-rate",
+    "200",
+    "-warmup",
+    "10s",
+    "-duration",
+    "30s",
+    "-step-time",
+    "10s"
+  ],
+  "before": {
+    "settled": true,
+    "waited": 3.0334566950041335
+  },
+  "containers": {
+    "proc:be/py-render": [
+      "test/probe-py",
+      "test/probe-py2"
+    ]
+  },
+  "resources": {
+    "elapsed": 29.99612982600229,
+    "requests": 6000,
+    "containers": {
+      "be-postgres": {
+        "process": {
+          "memory_median": 2652065792.0,
+          "memory_peak": 2737557504,
+          "cpu_seconds": 20.44999999999709,
+          "cores": 0.681754616966283,
+          "cpu_seconds_per_1000": 3.4083333333328483
+        },
+        "cgroup": {
+          "memory_median": 674516992.0,
+          "memory_peak": 679276544,
+          "cpu_seconds": 20.594428000003973,
+          "cores": 0.6865695047816334,
+          "anon_median": 243632128.0,
+          "anon_peak": 244101120,
+          "cpu_seconds_per_1000": 3.4324046666673285
+        }
+      },
+      "be-nats": {
+        "process": {
+          "memory_median": 59641856.0,
+          "memory_peak": 65568768,
+          "cpu_seconds": 2.5900000000001455,
+          "cores": 0.0863444722710525,
+          "cpu_seconds_per_1000": 0.4316666666666909
+        },
+        "cgroup": {
+          "memory_median": 123686912.0,
+          "memory_peak": 129929216,
+          "cpu_seconds": 2.71756699999969,
+          "cores": 0.09059725423791018,
+          "anon_median": 52543488.0,
+          "anon_peak": 58466304,
+          "cpu_seconds_per_1000": 0.4529278333332817
+        }
+      },
+      "be-rustfs": {
+        "process": {
+          "memory_median": 340967424.0,
+          "memory_peak": 340975616,
+          "cpu_seconds": 0.0,
+          "cores": 0.0,
+          "cpu_seconds_per_1000": 0.0
+        },
+        "cgroup": {
+          "memory_median": 877129728.0,
+          "memory_peak": 882180096,
+          "cpu_seconds": 0.13513300000022355,
+          "cores": 0.004505014506340843,
+          "anon_median": 327278592.0,
+          "anon_peak": 330960896,
+          "cpu_seconds_per_1000": 0.022522166666703924
+        }
+      }
+    },
+    "platform": {
+      "memory_median": 490151936.0,
+      "memory_peak": 492064768,
+      "cpu_seconds": 10.889999999999418,
+      "cores": 0.3630468351473586,
+      "cpu_seconds_per_1000": 1.8149999999999031
+    },
+    "platforms": {
+      "docker": {
+        "memory_median": 490151936.0,
+        "memory_peak": 492064768,
+        "cpu_seconds": 10.889999999999418,
+        "cores": 0.3630468351473586,
+        "cpu_seconds_per_1000": 1.8149999999999031
+      },
+      "podman": {
+        "memory_median": 12288.0,
+        "memory_peak": 12288,
+        "cpu_seconds": 0.0,
+        "cores": 0.0,
+        "cpu_seconds_per_1000": 0.0
+      }
+    },
+    "units": {
+      "proc:be/go-core": {
+        "memory_median": 47783936.0,
+        "memory_peak": 48136192,
+        "cpu_seconds": 2.6300000000000097,
+        "cores": 0.0876779776343074,
+        "anon_median": 45944832.0,
+        "anon_peak": 46297088,
+        "cpu_seconds_per_1000": 0.43833333333333496
+      },
+      "proc:be/go-infra": {
+        "memory_median": 44953600.0,
+        "memory_peak": 44998656,
+        "cpu_seconds": 0.25,
+        "cores": 0.008334408520371395,
+        "anon_median": 43114496.0,
+        "anon_peak": 43159552,
+        "cpu_seconds_per_1000": 0.041666666666666664
+      },
+      "proc:be/py-render": {
+        "memory_median": 120551424.0,
+        "memory_peak": 122482688,
+        "cpu_seconds": 26.549999999999983,
+        "cores": 0.8851141848634415,
+        "anon_median": 73537536.0,
+        "anon_peak": 75468800,
+        "cpu_seconds_per_1000": 4.424999999999997
+      },
+      "local-platform": {
+        "memory_median": 138792960.0,
+        "memory_peak": 139186176,
+        "cpu_seconds": 0.5199999999999996,
+        "cores": 0.017335569722372487,
+        "anon_median": 67530752.0,
+        "anon_peak": 67923968,
+        "cpu_seconds_per_1000": 0.0866666666666666
+      }
+    },
+    "db_connections": {
+      "postgres": {
+        "median": 5.0,
+        "peak": 5
+      },
+      "shell_go_core": {
+        "median": 9.0,
+        "peak": 9
+      },
+      "shell_go_infra": {
+        "median": 6.0,
+        "peak": 6
+      },
+      "shell_py_render": {
+        "median": 6.0,
+        "peak": 6
+      }
+    }
+  },
+  "driver": {
+    "target": "http://127.0.0.1:18601",
+    "op": {
+      "Kind": "write",
+      "Surface": "grpc",
+      "Inner": "echo",
+      "Bytes": 100,
+      "MS": 10,
+      "Relay": true
+    },
+    "rate": 200,
+    "seconds": 30,
+    "sent": 6000,
+    "ok": 6000,
+    "errors": {},
+    "error_rate": 0,
+    "throughput": 200,
+    "latency_ms": {
+      "P50": 3.168,
+      "P90": 3.914,
+      "P95": 4.146,
+      "P99": 4.906,
+      "Max": 13.722
+    },
+    "service_ms": {
+      "P50": 2.591,
+      "P90": 3.228,
+      "P95": 3.446,
+      "P99": 4.117,
+      "Max": 13.363
+    },
+    "driver_overloaded": 0
+  },
+  "completion": {
+    "writes": 6000,
+    "missing": 0,
+    "published": {
+      "n": 6000,
+      "p50_ms": 6.006,
+      "p95_ms": 16.011,
+      "p99_ms": 22.703,
+      "max_ms": 65.27900000000001
+    },
+    "received": {
+      "n": 6000,
+      "p50_ms": 6.426,
+      "p95_ms": 16.673000000000002,
+      "p99_ms": 22.865,
+      "max_ms": 64.946
+    },
+    "relayed": {
+      "n": 6000,
+      "p50_ms": 10.511,
+      "p95_ms": 22.653,
+      "p99_ms": 29.973,
+      "max_ms": 68.458
+    }
+  },
+  "backlog": {
+    "test.probe_py": {
+      "test_probe_py2_peer": {
+        "pending": 0,
+        "ack_pending": 0,
+        "oldest_age": 0.0
+      }
+    },
+    "test.probe_py2": {
+      "test_probe_go_peer": {
+        "pending": 0,
+        "ack_pending": 0,
+        "oldest_age": 0.0
+      }
+    }
+  }
+}

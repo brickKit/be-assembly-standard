@@ -1,0 +1,29 @@
+🚀 Starting project p9-probe-s (target: podman)
+📋 Component state calculation:
+   ✅ test/probe-go@3.2.20   starting (test/probe-py2 needs it)
+   ✅ test/probe-go2@3.2.20  starting (test/probe-go needs it)
+   ✅ test/probe-py@3.2.19   starting (test/probe-go2 needs it)
+   ✅ test/probe-py2@3.2.19  starting (test/probe-py needs it)
+
+📋 Start order (topological sort):
+   1. test-probe-go-3-2-20   no dependencies
+   2. test-probe-go2-3-2-20  no dependencies
+   3. test-probe-py-3-2-19   no dependencies
+   4. test-probe-py2-3-2-19  no dependencies
+
+Can start on their own: test-probe-go-3-2-20, test-probe-go2-3-2-20, test-probe-py-3-2-19, test-probe-py2-3-2-19 (no dependencies)
+📄 Generated: .brickkit/generated/compose.yaml
+
+🔧 Database migrations that run before startup (on failure that component won't start):
+   test/probe-go@3.2.20  /probe-go migrate
+   test/probe-go2@3.2.20  /probe-go migrate
+   test/probe-py@3.2.19  python -m probe_py migrate
+   test/probe-py2@3.2.19  python -m probe_py migrate
+
+🐳 Starting (podman)...
+❌ Error: podman failed to run
+   Command: podman compose --project-directory . -p brickkit-p9-probe-s -f .brickkit/generated/compose.yaml up -d --wait --remove-orphans test-probe-go-3-2-20 test-probe-go2-3-2-20 test-probe-py-3-2-19 test-probe-py2-3-2-19
+   Output: Container brickkit-p9-probe-s-test-probe-py2-3-2-19-migration-1 Exited
+      container brickkit-p9-probe-s-test-probe-go2-3-2-20-1 exited (78)
+      Error: executing /usr/libexec/docker/cli-plugins/docker-compose --project-directory . -p brickkit-p9-probe-s -f .brickkit/generated/compose.yaml up -d --wait --remove-orphans test-probe-go-3-2-20 test-probe-go2-3-2-20 test-probe-py-3-2-19 test-probe-py2-3-2-19: exit status 1
+{"time":"2026-10-28T03:37:03.794162613+01:00","level":"ERROR","message":"Command failed","command":"brickkit up","elapsed_ms":6680,"error_code":"ENGINE_FAILED","error":"ENGINE_FAILED: Error: podman failed to run; Command=podman compose --project-directory /home/zhijie/Desktop/github/be-assembly-standard/dev/rebuild/experiment-cells/P9-probe-S -p brickkit-p9-probe-s -f /home/zhijie/Desktop/github/be-assembly-standard/dev/rebuild/experiment-cells/P9-probe-S/.brickkit/generated/compose.yaml up -d --wait --remove-orphans test-probe-go-3-2-20 test-probe-go2-3-2-20 test-probe-py-3-2-19 test-probe-py2-3-2-19; Output=Container brickkit-p9-probe-s-test-probe-py2-3-2-19-migration-1 Exited / container brickkit-p9-probe-s-test-probe-go2-3-2-20-1 exited (78) / Error: executing /usr/libexec/docker/cli-plugins/docker-compose --project-directory /home/zhijie/Desktop/github/be-assembly-standard/dev/rebuild/experiment-cells/P9-probe-S -p brickkit-p9-probe-s -f /home/zhijie/Desktop/github/be-assembly-standard/dev/rebuild/experiment-cells/P9-probe-S/.brickkit/generated/compose.yaml up -d --wait --remove-orphans test-probe-go-3-2-20 test-probe-go2-3-2-20 test-probe-py-3-2-19 test-probe-py2-3-2-19: exit status 1","exit_code":1}

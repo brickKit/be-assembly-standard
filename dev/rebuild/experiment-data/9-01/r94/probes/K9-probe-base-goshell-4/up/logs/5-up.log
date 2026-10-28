@@ -1,0 +1,30 @@
+🚀 Starting project k9-probe-base-goshell-4 (target: k8s)
+☸️  Target cluster: bek
+📋 Component state calculation:
+   ✅ be/go-core@3.0.33      starting (top-level)
+   ✅ test/probe-go@3.2.20   starting (top-level)
+   ✅ test/probe-go2@3.2.20  starting (top-level)
+   ✅ test/probe-go3@3.2.20  starting (top-level)
+   ✅ test/probe-go4@3.2.20  starting (top-level)
+
+📋 Start order (topological sort):
+   1. be-go-core-3-0-33  no dependencies  (hosts test/probe-go@3.2.20, test/probe-go2@3.2.20, test/probe-go3@3.2.20, test/probe-go4@3.2.20)
+
+Can start on their own: be-go-core-3-0-33 (no dependencies)
+📄 Generated 12 manifests: .brickkit/generated/k8s/
+   Namespace: k9-probe-base-goshell-4
+
+🔧 Database migrations that run before startup (on failure that component won't start):
+   test/probe-go@3.2.20  /probe-go migrate
+   test/probe-go2@3.2.20  /probe-go migrate
+   test/probe-go3@3.2.20  /probe-go migrate
+   test/probe-go4@3.2.20  /probe-go migrate
+
+☸️  Deploying to Kubernetes (namespace k9-probe-base-goshell-4)...
+   Database migrations run first; the main service starts only after they finish
+   be-go-core-3-0-33            running (healthy)
+✅ All components started (1)
+
+💡 View the status: brickkit status
+   View the logs: kubectl logs deployment/<service-name> -n k9-probe-base-goshell-4
+   View the Pods: kubectl get pods -n k9-probe-base-goshell-4
