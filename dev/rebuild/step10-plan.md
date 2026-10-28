@@ -39,7 +39,7 @@
 
 ## 4. 要维护者定的
 
-1. **B3、B4 的“整套内存上限”怎样做**。推荐：一台 4 GiB、6 GiB 内存的虚拟机，整套（组件、基础资源、平台）都在里面，最接近“小公司一台服务器”。备选：在本机给每个容器设内存上限，按比例分配（更快，但量不到平台与页缓存争内存的情形）。
+1. **B3、B4 的“整套内存上限”怎样做**：已定（用户 2026-10-28：不用虚拟机）。Docker 的全部容器（组件与基础资源）放进一个 systemd slice（`be-cap.slice`），给它设 `MemoryMax`：容器的页缓存记在各自的 cgroup 上，也在上限之内，所以量得到进程与页缓存争内存。Docker 自己（dockerd、containerd，约 0.5–0.7 GiB）不在 slice 里，上限取 4 GiB、6 GiB 减去它实测的用量。允许 1 GiB 交换（`MemorySwapMax=1G`，AI 定：小服务器通常有交换，“开始频繁交换”也是要看的一种坏法）。要维护者用 sudo 做一次：`/etc/docker/daemon.json` 加 `"cgroup-parent": "be-cap.slice"`、建 slice、重启 Docker（基础资源跟着重启）；测完改回。本机：cgroup v2，Docker 的 cgroup 驱动是 systemd（2026-10-28 核对）。
 2. **B6 期间要停 Docker**（有根 Podman 与 Docker 冲突）：那一晚本机的 Docker 与基础资源都停着。
 
 ## 5. 进度
