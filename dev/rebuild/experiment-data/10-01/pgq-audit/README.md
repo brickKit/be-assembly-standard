@@ -10,5 +10,6 @@ by actor (`user` for a person, else the component's system identity), operation 
     from (select convert_from(record,'UTF8')::jsonb r from infra_audit.audit_record) x
     where (r->>'occurred_at')::timestamptz < '<chain stage start, UTC>' group by 1,2,3 order by 1,2,3
 
-(D9-S-pgq's file keeps the person's principal instead of `user` and a category column.) A JetStream cell's breakdown
-for comparison is still to be taken (step10-plan 5.2).
+(D9-S-pgq's file keeps the person's principal instead of `user` and a category column.) Explained (step10-plan 5.2): the
+currency seed writes 16 rates per weekday of the last 60 days; 10-28 has 43 weekdays in that window, the day D8-S's
+reference was made (10-25) 42. D9-S (JetStream) in the B1+B2 batch has the same 112265.
