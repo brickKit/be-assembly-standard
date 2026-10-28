@@ -1,0 +1,31 @@
+🚀 Starting project p9-probe-s (target: podman)
+📋 Component state calculation:
+   ✅ test/probe-go@3.2.21   starting (test/probe-py2 needs it)
+   ✅ test/probe-go2@3.2.21  starting (test/probe-go needs it)
+   ✅ test/probe-py@3.2.19   starting (test/probe-go2 needs it)
+   ✅ test/probe-py2@3.2.19  starting (test/probe-py needs it)
+
+📋 Start order (topological sort):
+   1. test-probe-go-3-2-21   no dependencies
+   2. test-probe-go2-3-2-21  no dependencies
+   3. test-probe-py-3-2-19   no dependencies
+   4. test-probe-py2-3-2-19  no dependencies
+
+Can start on their own: test-probe-go-3-2-21, test-probe-go2-3-2-21, test-probe-py-3-2-19, test-probe-py2-3-2-19 (no dependencies)
+📄 Generated: .brickkit/generated/compose.yaml
+
+🔧 Database migrations that run before startup (on failure that component won't start):
+   test/probe-go@3.2.21  /probe-go migrate
+   test/probe-go2@3.2.21  /probe-go migrate
+   test/probe-py@3.2.19  python -m probe_py migrate
+   test/probe-py2@3.2.19  python -m probe_py migrate
+
+🐳 Starting (podman)...
+   test-probe-go-3-2-21         running (healthy)
+   test-probe-go2-3-2-21        running (healthy)
+   test-probe-py-3-2-19         running (healthy)
+   test-probe-py2-3-2-19        running (healthy)
+✅ All components started (4)
+
+💡 View the status: brickkit status
+   View the logs: podman compose -p brickkit-p9-probe-s logs -f

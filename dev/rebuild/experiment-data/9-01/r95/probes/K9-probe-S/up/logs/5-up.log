@@ -1,0 +1,35 @@
+🚀 Starting project k9-probe-s (target: k8s)
+☸️  Target cluster: bek
+📋 Component state calculation:
+   ✅ test/probe-go@3.2.21   starting (test/probe-py2 needs it)
+   ✅ test/probe-go2@3.2.21  starting (test/probe-go needs it)
+   ✅ test/probe-py@3.2.19   starting (test/probe-go2 needs it)
+   ✅ test/probe-py2@3.2.19  starting (test/probe-py needs it)
+
+📋 Start order (topological sort):
+   1. test-probe-go-3-2-21   no dependencies
+   2. test-probe-go2-3-2-21  no dependencies
+   3. test-probe-py-3-2-19   no dependencies
+   4. test-probe-py2-3-2-19  no dependencies
+
+Can start on their own: test-probe-go-3-2-21, test-probe-go2-3-2-21, test-probe-py-3-2-19, test-probe-py2-3-2-19 (no dependencies)
+📄 Generated 14 manifests: .brickkit/generated/k8s/
+   Namespace: k9-probe-s
+
+🔧 Database migrations that run before startup (on failure that component won't start):
+   test/probe-go@3.2.21  /probe-go migrate
+   test/probe-go2@3.2.21  /probe-go migrate
+   test/probe-py@3.2.19  python -m probe_py migrate
+   test/probe-py2@3.2.19  python -m probe_py migrate
+
+☸️  Deploying to Kubernetes (namespace k9-probe-s)...
+   Database migrations run first; the main service starts only after they finish
+   test-probe-go-3-2-21         running (healthy)
+   test-probe-go2-3-2-21        running (healthy)
+   test-probe-py-3-2-19         running (healthy)
+   test-probe-py2-3-2-19        running (healthy)
+✅ All components started (4)
+
+💡 View the status: brickkit status
+   View the logs: kubectl logs deployment/<service-name> -n k9-probe-s
+   View the Pods: kubectl get pods -n k9-probe-s
