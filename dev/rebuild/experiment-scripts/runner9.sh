@@ -6,12 +6,16 @@
 # Every stage writes BEGIN/END to <out>/status.log; a failing stage is recorded and the cell goes on where it can (a
 # failed bring-up skips the rest of that segment). The power mode is recorded per cell. CONF points at a snapshot of
 # the conformance tools (cell-chain.sh). Run it under systemd-inhibit so the machine does not sleep.
+# Step 10 options (step10-plan.md): RATE2 (and USERS2) adds a second mix on the same cell after the first; REF=first
+# makes the batch's first cell's digest the reference (cells whose baseline differs from D8-S's).
 # Usage: runner9.sh <out> <cell>...
 set -u
 OUT=$(realpath -m "$1"); shift
 R=/home/zhijie/Desktop/github/be-assembly-standard; CONF=${CONF:-$R/tools/be-acceptance/conformance}; export CONF
 IDLE=${IDLE:-600}; WARMUP=${WARMUP:-300}; SECONDS_=${SECONDS_:-900}; RATE=${RATE:-7}; USERS=${USERS:-20}
-REF=$R/dev/rebuild/experiment-data/8-01/r81/D8-S/digest.json
+# the result digest every cell must match: D8-S's (R8.1); REF=first: the batch's first cell's own, for cells whose data
+# differs from D8-S's (step 10, B5: baseline_scale 2)
+REF=${REF:-$R/dev/rebuild/experiment-data/8-01/r81/D8-S/digest.json}; REF_NAME=D8-S
 mkdir -p "$OUT"; echo $$ > "$OUT/runner.pid"
 envval() { grep "^$1=" "$R/.env" | cut -d= -f2- | tr -d "\"'"; }
 export BE_ACC_IAM_TEST_PASSWORD; BE_ACC_IAM_TEST_PASSWORD=$(envval IAM_TEST_PASSWORD)
@@ -33,6 +37,7 @@ down() {  # down <cell dir>: the cell's own down, then whatever an engine still 
   (cd "$1" && brickkit down) || true
   # a mode: local session (L, LD, LP), which brickkit down does not reach: stopped by its PID (cells/localrun.py)
   (cd "$CONF" && uv run python -m cells.localrun down "$1") || true
+  docker rm -f be-pgbouncer >/dev/null 2>&1 || true  # a pooler cell's PgBouncer (cell-chain.sh starts it)
 }
 export PATH=$R/dev/rebuild/experiment-scripts/bin:$PATH  # kubectl for the K row
 cluster() {  # cluster <on|off>: the minikube node (profile bek) runs only during the K row's cells
@@ -42,7 +47,7 @@ cluster() {  # cluster <on|off>: the minikube node (profile bek) runs only durin
     >> "$OUT/cluster.log" 2>&1 || log "CLUSTER start FAILED"; fi
   if [ "$1" = off ] && [ $up = 1 ]; then log "CLUSTER stop"; minikube -p bek stop >> "$OUT/cluster.log" 2>&1; fi
 }
-log "START rate=$RATE users=$USERS idle=$IDLE warmup=$WARMUP seconds=$SECONDS_ conf=$CONF"
+log "START rate=$RATE users=$USERS rate2=${RATE2:-} users2=${USERS2:-} ref=$REF idle=$IDLE warmup=$WARMUP seconds=$SECONDS_ conf=$CONF"
 for CELL in "$@"; do
   D=$R/dev/rebuild/experiment-cells/$CELL; mkdir -p "$OUT/$CELL"
   ROW=$(sed -n 's/^row: *//p' "$D/cell.yaml"); [ "$ROW" = K ] && cluster on || cluster off
@@ -63,13 +68,20 @@ for CELL in "$@"; do
   stage "$CELL" scenarios bash -c "cd $CONF && BE_ACC_CELL=$D uv run pytest -q scenarios/test_expectations.py scenarios/test_scope.py" \
     || log "CELL $CELL FAILED scenarios"
   if stage "$CELL" digest bash -c "cd $CONF && uv run python -m cells digest $D $OUT/$CELL/digest.json"; then
-    stage "$CELL" compare bash -c "cd $CONF && uv run python -m cells compare $REF $OUT/$CELL/digest.json" \
-      && log "CELL $CELL DIGEST same as D8-S" || log "CELL $CELL DIGEST DIFFERS from D8-S (compare.log)"
+    if [ "$REF" = first ]; then REF=$OUT/$CELL/digest.json; REF_NAME=$CELL; log "CELL $CELL DIGEST is the reference"
+    else
+      stage "$CELL" compare bash -c "cd $CONF && uv run python -m cells compare $REF $OUT/$CELL/digest.json" \
+        && log "CELL $CELL DIGEST same as $REF_NAME" || log "CELL $CELL DIGEST DIFFERS from $REF_NAME (compare.log)"
+    fi
   else
     log "CELL $CELL FAILED digest"
   fi
   stage "$CELL" chain bash -c "cd $CONF && uv run python -m cells chain $D $OUT/$CELL/run --world $OUT/$CELL/world.json \
     --rate $RATE --users $USERS --idle $IDLE --warmup $WARMUP --seconds $SECONDS_" || log "CELL $CELL FAILED chain"
+  # a second mix on the same cell and data when RATE2 is set (step 10, B5: twice the load): warmup and window as the first
+  [ -n "${RATE2:-}" ] && { stage "$CELL" chain-2 bash -c "cd $CONF && uv run python -m cells chain $D $OUT/$CELL/run-2 \
+    --world $OUT/$CELL/world.json --rate $RATE2 --users ${USERS2:-$USERS} --idle 0 --warmup $WARMUP --seconds $SECONDS_" \
+    || log "CELL $CELL FAILED chain-2"; }
   stage "$CELL" down down "$D"
 done
 cluster off

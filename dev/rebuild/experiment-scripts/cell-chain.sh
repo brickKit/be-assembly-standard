@@ -51,7 +51,19 @@ down_cells() {  # every experiment cell on every engine (projects brickkit-<cell
       minikube -p bek kubectl -- delete ns "$n" --wait=true; done
   fi
   (cd "$CONF" && uv run python -m cells.localrun down "$D") 2>/dev/null  # the L, LD, LP rows' sessions, by PID
-  for f in "${XDG_RUNTIME_DIR:-/tmp}"/be-cell-forward-*.pid; do stop_forward "$f"; done; true
+  for f in "${XDG_RUNTIME_DIR:-/tmp}"/be-cell-forward-*.pid; do stop_forward "$f"; done
+  docker rm -f be-pgbouncer >/dev/null 2>&1; true  # a pooler cell's PgBouncer
+}
+# a cell with `pooler: pgbouncer` (step 10, B1): PgBouncer on the base resources' network, host port 6432, with the
+# configuration cells prepare wrote (transaction mode); the components' running connections go through it
+PGBOUNCER=edoburu/pgbouncer@sha256:9c78945868a6a142c7fc40ccd843bbe5a606df163c7ffce4de70e0d628d696a2  # PgBouncer 1.26.0
+pooler() {
+  docker run -d --name be-pgbouncer --network be-net -p 6432:6432 -v "$D/.secrets/pgbouncer:/etc/pgbouncer:ro" "$PGBOUNCER" \
+    || return 1
+  local t0; t0=$(date +%s)
+  until bash -c '</dev/tcp/127.0.0.1/6432' 2>/dev/null; do
+    [ $(( $(date +%s) - t0 )) -gt 30 ] && { docker logs be-pgbouncer; return 1; }; sleep 1; done
+  docker exec be-pgbouncer pgbouncer --version
 }
 # the L row's port forwarder: its process group leader's PID, outside the cell (brickkit down clears .brickkit/)
 forward_pid() { echo "${XDG_RUNTIME_DIR:-/tmp}/be-cell-forward-$(basename "$1").pid"; }
@@ -75,6 +87,7 @@ local = {x.split("@")[0] for x in yaml.safe_load(open(sys.argv[2])).get("local")
 echo "START $CELL power=$(powerprofilesctl get) $(date -Is)" >> "$OUT/status.log"
 stage down-others down_cells
 stage create bash -c "cd $CONF && uv run python -m cells create $D && uv run python -m cells prepare $D"
+grep -q '^pooler: *pgbouncer' "$D/cell.yaml" && stage pooler pooler
 build() {  # every row's images come from Docker (the same images in every row): P and LP build as a docker target
   if [ "$ROW" = P ] || [ "$ROW" = LP ]; then
     cp "$D/deploy.yaml" "$D/.deploy.yaml.p" && sed -i 's/^target: podman$/target: docker/' "$D/deploy.yaml"
@@ -127,5 +140,5 @@ if [ "${SEED:-1}" != 0 ]; then
 fi
 # brickkit down does not reach a mode: local session's processes: cells/localrun.py stops the session by its PID
 [ "${KEEP_UP:-1}" = 0 ] && { stage down bash -c "cd $D && brickkit down && cd $CONF && uv run python -m cells.localrun down $D"
-  stop_forward "$(forward_pid "$D")"; }
+  stop_forward "$(forward_pid "$D")"; docker rm -f be-pgbouncer >/dev/null 2>&1; }
 echo "ALL-DONE $(date -Is)" >> "$OUT/status.log"

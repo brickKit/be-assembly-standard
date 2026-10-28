@@ -15,7 +15,7 @@ import pathlib
 import re
 import sys
 
-BASE = ("be-postgres", "be-nats", "be-rustfs", "be-seaweedfs", "be-casdoor")
+BASE = ("be-postgres", "be-nats", "be-rustfs", "be-seaweedfs", "be-casdoor", "be-pgbouncer")
 MIB = 1024 * 1024
 
 
