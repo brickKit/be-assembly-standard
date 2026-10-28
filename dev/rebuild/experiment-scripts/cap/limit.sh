@@ -12,4 +12,6 @@ case ${1:?usage: limit.sh <4G|6G|none>} in
   none) sudo -n $S set-property --runtime be-cap.slice MemoryMax=infinity MemorySwapMax=infinity ;;
   *) echo "unknown cap $1"; exit 1 ;;
 esac
-echo "be-cap.slice memory.max=$(cat /sys/fs/cgroup/be-cap.slice/memory.max) swap.max=$(cat /sys/fs/cgroup/be-cap.slice/memory.swap.max)"
+# the slice's cgroup from systemd: a dash in a slice name is a level, so be-cap.slice lives under be.slice
+G=/sys/fs/cgroup$($S show be-cap.slice -p ControlGroup --value)
+echo "be-cap.slice ($G) memory.max=$(cat "$G/memory.max") swap.max=$(cat "$G/memory.swap.max")"

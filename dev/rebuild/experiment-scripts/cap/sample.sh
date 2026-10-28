@@ -2,9 +2,10 @@
 # Every INTERVAL seconds (5), one line of a cgroup's memory state, until killed: time, memory.current, swap.current,
 # the memory.events counters (high, max, oom, oom_kill) and memory.pressure (some and full, avg10). Reads only the
 # cgroup v2 files, no root needed.
-# Usage: sample.sh <out.tsv> [cgroup directory, default /sys/fs/cgroup/be-cap.slice]
+# Usage: sample.sh <out.tsv> [cgroup directory, default be-cap.slice's, which systemd puts under be.slice]
 set -u
-OUT=$1; G=${2:-/sys/fs/cgroup/be-cap.slice}; I=${INTERVAL:-5}
+OUT=$1; G=${2:-/sys/fs/cgroup$(systemctl show be-cap.slice -p ControlGroup --value)}; I=${INTERVAL:-5}
+[ -f "$G/memory.current" ] || { echo "no cgroup at $G (is be-cap.slice active? cap/setup.sh)" >&2; exit 1; }
 echo -e "time\tcurrent_mib\tswap_mib\thigh\tmax\toom\toom_kill\tsome_avg10\tfull_avg10" > "$OUT"
 while true; do
   ev() { awk -v k="$1" '$1 == k {print $2}' "$G/memory.events"; }
