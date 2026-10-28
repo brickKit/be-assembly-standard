@@ -15,7 +15,6 @@ FROM debian:trixie-slim
 RUN apt-get update && apt-get install -y --no-install-recommends wget && rm -rf /var/lib/apt/lists/*
 COPY --from=build /opt/python /opt/python
 COPY --from=build /app/.venv /app/.venv
-# the port the image declares, as the probes' own images do (8601 test/probe-py, 8605 test/probe-py2)
-ARG PORT=8601
-ENV PATH=/app/.venv/bin:$PATH PORT=$PORT
+# no PORT: BrickKit sets it to the manifest's port (CLI 1.10.1+, FRB-009)
+ENV PATH=/app/.venv/bin:$PATH
 ENTRYPOINT ["python", "-m", "probe_py"]
