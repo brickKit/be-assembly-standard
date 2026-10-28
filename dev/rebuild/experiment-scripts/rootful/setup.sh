@@ -18,8 +18,10 @@ DirectoryMode=0755
 EOF
 systemctl daemon-reload
 systemctl enable --now podman.socket
+# DirectoryMode applies only when systemd creates /run/podman; an existing one stays 0700: let the group through
+chmod 0711 /run/podman
 for d in -i -o; do
   iptables -C DOCKER-USER $d podman+ -j ACCEPT 2>/dev/null || iptables -I DOCKER-USER $d podman+ -j ACCEPT
 done
-echo "socket: $(ls -l /run/podman/podman.sock)"
+echo "socket: $(ls -ld /run/podman) / $(ls -l /run/podman/podman.sock)"
 echo "DOCKER-USER:"; iptables -S DOCKER-USER
