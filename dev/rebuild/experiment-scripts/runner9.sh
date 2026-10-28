@@ -2,20 +2,20 @@
 # Step 9 (step9-plan.md): every cell given, in order, unattended. Per cell:
 #   empty: brought up without seed data (SEED=0: installed and claimed only), idle 10 min, down;
 #   full:  brought up with seed data (twice) and L3, the baseline data, the expectation and scope scenarios, the result
-#          digest compared with D8-S's (R8.1), then idle 10 min, warmup 5 min and the 7/s mix for 15 min, down.
+#          digest compared within the batch (REF below), then idle 10 min, warmup 5 min and the 7/s mix for 15 min, down.
 # Every stage writes BEGIN/END to <out>/status.log; a failing stage is recorded and the cell goes on where it can (a
 # failed bring-up skips the rest of that segment). The power mode is recorded per cell. CONF points at a snapshot of
 # the conformance tools (cell-chain.sh). Run it under systemd-inhibit so the machine does not sleep.
-# Step 10 options (step10-plan.md): RATE2 (and USERS2) adds a second mix on the same cell after the first; REF=first
-# makes the batch's first cell's digest the reference (cells whose baseline differs from D8-S's).
+# Step 10 option (step10-plan.md): RATE2 (and USERS2) adds a second mix on the same cell after the first.
 # Usage: runner9.sh <out> <cell>...
 set -u
 OUT=$(realpath -m "$1"); shift
 R=/home/zhijie/Desktop/github/be-assembly-standard; CONF=${CONF:-$R/tools/be-acceptance/conformance}; export CONF
 IDLE=${IDLE:-600}; WARMUP=${WARMUP:-300}; SECONDS_=${SECONDS_:-900}; RATE=${RATE:-7}; USERS=${USERS:-20}
-# the result digest every cell must match: D8-S's (R8.1); REF=first: the batch's first cell's own, for cells whose data
-# differs from D8-S's (step 10, B5: baseline_scale 2)
-REF=${REF:-$R/dev/rebuild/experiment-data/8-01/r81/D8-S/digest.json}; REF_NAME=D8-S
+# the result digest every cell must match: by default the batch's first cell's own (REF=first), so cells are compared
+# within one batch; a fixed reference made on another day can differ, since the seeds are relative to today (the
+# currency seed's rates on the weekdays of the last 60 days: step10-plan 5.3). REF=<digest.json> compares with that file.
+REF=${REF:-first}; REF_NAME=$(basename "$(dirname "$REF")")
 mkdir -p "$OUT"; echo $$ > "$OUT/runner.pid"
 envval() { grep "^$1=" "$R/.env" | cut -d= -f2- | tr -d "\"'"; }
 export BE_ACC_IAM_TEST_PASSWORD; BE_ACC_IAM_TEST_PASSWORD=$(envval IAM_TEST_PASSWORD)

@@ -35,7 +35,7 @@
 - 测量期间不在机器上跑任何测试、编译或剖析：会干扰数字，也会抢端口（4-03 记了一次）。 每一轮记下电源模式；运行脚本切到 performance 并在结束时恢复。
 - 实验之后先做底层（权限、登录、冷热数据、事务、消息），再按 [rebuild-plan.md](rebuild-plan.md) 重建业务组件。
 
-- **第 10 步（套件 B）进行中**（[step10-plan.md](step10-plan.md) 第 5 节）：B1、B2 一批 2026-10-28 07:08–12:13 跑完、六格全过，记录 [10-01](experiment-records/10-01-pooler-and-pgqueue.md)：PgBouncer 不省组件、只省 PostgreSQL 约 200 MiB 而合计多 9%（外壳省的是组件进程与平台）；PostgreSQL 队列与 NATS 看不出差别。结果摘要比 D8-S 多 16 条审计记录是货币种子“最近 60 天的工作日”随日期变，不是缺陷（5.3；以后与同一批第一格比，`REF=first`）。剩下：B5（`night10b.sh`，工具在 `be-acceptance` v1.0.6，另一晚）；B7 未开始；B3、B4（整套放进限内存的 slice，不用虚拟机）与 B6（那一晚停 Docker）的做法已定（2026-10-28），工具未写。
+- **第 10 步（套件 B）进行中**（[step10-plan.md](step10-plan.md) 第 5 节）：B1、B2 一批 2026-10-28 07:08–12:13 跑完、六格全过，记录 [10-01](experiment-records/10-01-pooler-and-pgqueue.md)：PgBouncer 不省组件、只省 PostgreSQL 约 200 MiB 而合计多 9%（外壳省的是组件进程与平台）；PostgreSQL 队列与 NATS 看不出差别。结果摘要比 D8-S 多 16 条审计记录是货币种子“最近 60 天的工作日”随日期变，不是缺陷（5.3；运行器已改为默认与同一批第一格比）。剩下：B5（`night10b.sh`，工具在 `be-acceptance` v1.0.6，另一晚）；B7 未开始；B3、B4（整套放进限内存的 slice，不用虚拟机）与 B6（那一晚停 Docker）的做法已定（2026-10-28），工具未写。
 - **文档里的图（2026-10-24 交办，2026-10-25 完成）**：开发文档不放图（34 张换成步骤与表），客户读的 19 张图后补全关系，组件的 3 张随 `erp/sales` 3.0.7、`erp/billing` 3.0.5 发布；`make docs-diagrams` 进 `make gates`。经过与留下的事见 [diagrams-plan.md](diagrams-plan.md) 的“结果”。
 
 ## 推进方式与停点
