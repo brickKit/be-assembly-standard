@@ -64,21 +64,41 @@ B2 的两格冒烟与第一批的六格都比 D8-S 的结果摘要多 16 条审�
 
 已改（用户 2026-10-28 同意）：运行器默认与同一批的第一格比（`REF=first`；要和某个文件比时 `REF=<digest.json>`），符合“对比只在同一批里做”，也不再受日期影响。种子保持“相对今天”（演示数据要的是最近的汇率），不改。
 
-### 5.4 剩下的
+### 5.4 剩下的测量（工具都已冒烟通过，等维护者下令与机器安静）
 
-- B5：`night10b.sh`（约 5.5 小时，另一晚，等用户下令与机器安静）。D9-S-x2 冒烟通过（2026-10-28 12:15–12:35，短参数）：两倍基线 766 秒（4,000 个产品、4 万张订单，0 失败），摘要设为同批参照，7 次/秒 210 次、14 次/秒 420 次全部成功；D9-X-x2 只是 D9-X 加倍数据，没有另外冒烟。
-- B7：工具已写好、冒烟通过（2026-10-28，维护者同意删除重建 `bek`）。
-  - 集群：`cluster-create.sh` 重建 `bek`（参数同第 9 步），另把宿主机 15432、14222、19000、18000 映射到节点 31432、31422、31900、31800：节点每次启动都绑定全部端口，而 Docker 的基础资源占着 5432 等，所以用另一组端口。
-  - 基础资源：`base-cluster/base.yaml`（PostgreSQL、NATS、RustFS，命名空间 be-base，与 compose 同镜像同配置，数据在 emptyDir；一个 Service `base` 按端口名分到各 Pod，另一个 NodePort）、`casdoor.yaml`；`base-cluster.sh` 的 `dump`（从 Docker 的 PostgreSQL 导出 Casdoor 的 schema）、`up`（导入镜像、密钥与配置、起三个、导入 Casdoor、起 Casdoor、核对宿主机端口）、`down`、`docker-stop`、`docker-start`。
-  - 格：K9-X-cb（`base: cluster`，`be-acceptance` v1.0.8：组件连 `base.be-base.svc.cluster.local`，采样把 be-base 的 Pod 记作 `base:*`，`r9-summary.py` 把它们算进基础资源、从集群平台里减去）；`cell-chain.sh`、`runner9.sh` 对这样的格改用新端口、到集群里读 Casdoor 的客户端密钥；`KEEP_CLUSTER=1` 让运行器结束时不停节点。
-  - 一晚：`night10e.sh`（约 2 小时）：K9-X（基础资源在 Docker）→ 导出、停 Docker 的基础资源、起集群里的 → K9-X-cb（摘要与 K9-X 比）→ 换回；出错也换回（`trap`）。
-  - 冒烟（16:5x–17:09，短参数）：四个基础资源在集群里起来，Casdoor 的账号与密钥导入后可用；K9-X-cb 起格、基线、场景、摘要、负载全过（210 次全部成功），`base:*` 四个 Pod 都采到；之后 Docker 的基础资源回来、节点停。空库空闲段失败，查出 v1.0.7 的缺陷：minikube 节点的 systemd 在 `init.scope` 里，按进程取 cgroup 找不到节点下的 Pod（所有 K 行的格都会这样）；v1.0.8 改为往上取到容器自己的 scope，有测试。
-- B3、B4：工具已写好（2026-10-28）；维护者已执行 `cap/setup.sh`（两次，中间还原过一次，两个脚本都验证过），上限能免密设置。D9-H-m4 冒烟通过（13:47–13:59，短参数）：整套在 3300M 里走完起格、基线、摘要与负载；峰值碰到上限（3299 MiB），交换最多 22 MiB，`memory.events` 的 max 3542 次（回收页缓存），没有 OOM，内存压力 0；负载 210 次全部成功，7 个容器都采到（v1.0.7 的修复生效）；格完上限自动回到不限。
-  - `experiment-scripts/cap/`：`setup.sh`（root，维护者执行一次：Docker 的 `cgroup-parent` 改成 `be-cap.slice`、装 slice、`/etc/sudoers.d/be-cap` 只许免密执行 `limit.sh` 的三条固定命令、重启 Docker）、`revert.sh`（root，全部还原）、`limit.sh <4G|6G|none>`（slice 的上限 = 预算减去 Docker 自己约 0.7 GiB：3300M、5300M；交换 1G）、`sample.sh`（每 5 秒记 slice 的内存、交换、`memory.events`、内存压力）。
-  - 格：D9-H-m6、D9-S-m6、D9-H-m4、D9-S-m4（cell.yaml 写 `memory_cap`）；`runner9.sh` 在 `CAP_RESET=1` 时每格设上限、整格采样、停格前记下每个容器的状态与退出码。
-  - 一晚：`night10c.sh`（约 5.5 小时）：不限的 D9-H、D9-S 作参照，再 6 GiB、4 GiB 各两格；开跑前检查基础资源确实在 slice 里、上限能免密设置。B3、B4 做完后维护者执行 `revert.sh`。
-- B6：工具已写好（2026-10-28）；维护者已执行 `rootful/setup.sh`（第一次 `/run/podman` 仍是 0700、连不上，脚本补了 `chmod 0711` 后再执行）。P9-S-root 冒烟通过（14:04–14:17，短参数）：镜像经远端的 `podman load` 导入、`podman compose` 跟着 `CONTAINER_HOST` 起在有根 Podman 里（无根里没有它的容器）、各段全过，负载 210 次全部成功，16 个容器与 Podman 的平台进程都采到，停格后有根 Podman 里无残留。做法改了（AI 定）：**不停 Docker**。第 0 步（0-11）证实有根 Podman 不通只因 Docker 把 FORWARD 默认设为丢弃，在 `DOCKER-USER` 里放行 Podman 的网桥即可；这样基础资源留在 Docker、与无根的 P 行一样，对比只差有根与无根一处，也不用停掉本机的 Docker（第 4 节的同意仍在，用不上）。
-  - `experiment-scripts/rootful/`：`setup.sh`（root，维护者执行一次：root 的 `podman.socket` 组改为 docker 并启用，`DOCKER-USER` 加两条 `podman+` 的放行）、`revert.sh`（root：清掉有根 Podman 里的容器、网络与镜像，停用 socket、删覆盖与两条规则）。
-  - 格：P9-S-root、P9-H-root（cell.yaml 写 `podman: rootful`）；`runner9.sh` 对这样的格设 `CONTAINER_HOST=unix:///run/podman/podman.sock`（podman 因此走有根的服务）。
-  - 一晚：`night10d.sh`（约 3.7 小时）：P9-S、P9-S-root、P9-H、P9-H-root；开跑前检查有根 Podman 能连上。冒烟时要看：`docker save | podman load` 经远端能否导入、`podman compose` 是否跟着 `CONTAINER_HOST`、采样能否经远端的 `podman inspect` 找到容器。
-- 测量工具：`be-acceptance` v1.0.7 修了采样把 Docker 容器的 cgroup 写死在 `system.slice` 下（B3、B4 的容器在 `be-cap.slice` 里，否则全读不到）；**第 10 步全部测量的快照取 v1.0.8**（v1.0.7 让 K 行读不到 Pod）。
+| 项 | 一晚的脚本 | 时长 | 本机要先有的设置 | 冒烟 |
+| --- | --- | --- | --- | --- |
+| B3、B4 | `night10c.sh` | 约 5.5 小时 | `cap/setup.sh`（已执行，平时不限） | D9-H-m4 通过 |
+| B5 | `night10b.sh` | 约 5.5 小时 | 无 | D9-S-x2 通过 |
+| B6 | `night10d.sh` | 约 3.7 小时 | `rootful/setup.sh`（已执行） | P9-S-root 通过 |
+| B7 | `night10e.sh` | 约 2 小时 | 重建的 `bek`（已重建） | K9-X-cb 通过 |
+
+每晚的快照取 `be-acceptance` **v1.0.8**：v1.0.7 修了采样把 Docker 容器的 cgroup 写死在 `system.slice` 下（B3、B4 的容器在 `be-cap.slice` 里，否则全读不到），却让 K 行读不到 Pod，v1.0.8 修好。B3、B4、B6 测完后，维护者用 `cap/revert.sh`、`rootful/revert.sh` 还原本机的设置。
+
+**B3、B4：整套放进限内存的 slice**（第 4 节 1）
+
+- 工具（`experiment-scripts/cap/`）：`setup.sh`（root，维护者执行一次：Docker 的 `cgroup-parent` 改成 `be-cap.slice`、装 slice、`/etc/sudoers.d/be-cap` 只许免密执行 `limit.sh` 的三条固定命令、重启 Docker）、`revert.sh`（root，全部还原，并停掉空了的 slice）、`limit.sh <4G|6G|none>`（slice 的上限 = 预算减去 Docker 自己约 0.7 GiB：3300M、5300M；交换 1G）、`sample.sh`（每 5 秒记 slice 的内存、交换、`memory.events`、内存压力；slice 的路径向 systemd 查，它在 `be.slice` 下）。
+- 格：D9-H-m6、D9-S-m6、D9-H-m4、D9-S-m4（cell.yaml 写 `memory_cap`）；`runner9.sh` 在 `CAP_RESET=1` 时每格设上限、整格采样、停格前记下每个容器的状态与退出码。
+- 一晚：不限的 D9-H、D9-S 作参照，再 6 GiB、4 GiB 各两格；开跑前检查基础资源确实在 slice 里、上限能免密设置。
+- 冒烟：维护者执行了 `setup.sh`（两次，中间还原过一次，两个脚本都验证过）。D9-H-m4（13:47–13:59，短参数）：整套在 3300M 里走完起格、基线、摘要与负载；峰值碰到上限（3299 MiB），交换最多 22 MiB，`memory.events` 的 max 3542 次（回收页缓存），没有 OOM，内存压力 0；负载 210 次全部成功，7 个容器都采到；格完上限自动回到不限。
+
+**B5：负载与数据加倍**（5.1）
+
+- 一晚：`night10b.sh`。
+- 冒烟：D9-S-x2（12:15–12:35，短参数）：两倍基线 766 秒（4,000 个产品、4 万张订单，0 失败），摘要设为同批参照，7 次/秒 210 次、14 次/秒 420 次全部成功；D9-X-x2 只是 D9-X 加倍数据，没有另外冒烟。
+
+**B6：有根 Podman**（第 4 节 2）
+
+- 做法改了（AI 定）：**不停 Docker**。第 0 步（0-11）证实有根 Podman 不通只因 Docker 把 FORWARD 默认设为丢弃，在 `DOCKER-USER` 里放行 Podman 的网桥即可；这样基础资源留在 Docker、与无根的 P 行一样，对比只差有根与无根一处，也不用停掉本机的 Docker（第 4 节的同意仍在，用不上）。
+- 工具（`experiment-scripts/rootful/`）：`setup.sh`（root，维护者执行一次：root 的 `podman.socket` 组改为 docker 并启用、`/run/podman` 设为 0711、`DOCKER-USER` 加两条 `podman+` 的放行）、`revert.sh`（root：清掉有根 Podman 里的容器、网络与镜像，停用 socket、目录回 0700、删覆盖与两条规则）。
+- 格：P9-S-root、P9-H-root（cell.yaml 写 `podman: rootful`）；`runner9.sh` 对这样的格设 `CONTAINER_HOST=unix:///run/podman/podman.sock`（podman 因此走有根的服务）。
+- 一晚：P9-S、P9-S-root、P9-H、P9-H-root；开跑前检查有根 Podman 能连上。
+- 冒烟：维护者执行了 `setup.sh`（第一次 `/run/podman` 仍是 0700、连不上，脚本补了 `chmod 0711` 后再执行）。P9-S-root（14:04–14:17，短参数）：镜像经远端的 `podman load` 导入、`podman compose` 跟着 `CONTAINER_HOST` 起在有根 Podman 里（无根里没有它的容器）、各段全过，负载 210 次全部成功，16 个容器与 Podman 的平台进程都采到，停格后有根 Podman 里无残留。
+
+**B7：基础资源放进集群**（维护者同意删除重建 `bek`）
+
+- 集群：`cluster-create.sh` 重建 `bek`（参数同第 9 步），另把宿主机 15432、14222、19000、18000 映射到节点 31432、31422、31900、31800：节点每次启动都绑定全部端口，而 Docker 的基础资源占着 5432 等，所以用另一组端口。
+- 基础资源：`base-cluster/base.yaml`（PostgreSQL、NATS、RustFS，命名空间 be-base，与 compose 同镜像同配置，数据在 emptyDir；一个 Service `base` 按端口名分到各 Pod，另一个 NodePort）、`casdoor.yaml`；`base-cluster.sh` 的 `dump`（从 Docker 的 PostgreSQL 导出 Casdoor 的 schema）、`up`（导入镜像、密钥与配置、起三个、导入 Casdoor、起 Casdoor、核对宿主机端口）、`down`、`docker-stop`、`docker-start`。
+- 格：K9-X-cb（`base: cluster`，v1.0.8：组件连 `base.be-base.svc.cluster.local`，采样把 be-base 的 Pod 记作 `base:*`，`r9-summary.py` 把它们算进基础资源、从集群平台里减去）；`cell-chain.sh`、`runner9.sh` 对这样的格改用新端口、到集群里读 Casdoor 的客户端密钥；`KEEP_CLUSTER=1` 让运行器结束时不停节点。
+- 一晚：K9-X（基础资源在 Docker）→ 导出、停 Docker 的基础资源、起集群里的 → K9-X-cb（摘要与 K9-X 比）→ 换回；出错也换回（`trap`）。
+- 冒烟（16:5x–17:09，短参数）：四个基础资源在集群里起来，Casdoor 的账号与密钥导入后可用；K9-X-cb 起格、基线、场景、摘要、负载全过（210 次全部成功），`base:*` 四个 Pod 都采到；之后 Docker 的基础资源回来、节点停。空库空闲段失败，查出 v1.0.7 的缺陷：minikube 节点的 systemd 在 `init.scope` 里，按进程取 cgroup 找不到节点下的 Pod（所有 K 行的格都会这样）；v1.0.8 改为往上取到容器自己的 scope，有测试。
