@@ -6,7 +6,10 @@
 # Every stage writes BEGIN/END to <out>/status.log; a failing stage is recorded and the cell goes on where it can (a
 # failed bring-up skips the rest of that segment). The power mode is recorded per cell. CONF points at a snapshot of
 # the conformance tools (cell-chain.sh). Run it under systemd-inhibit so the machine does not sleep.
-# Step 10 option (step10-plan.md): RATE2 (and USERS2) adds a second mix on the same cell after the first.
+# Step 10 options (step10-plan.md): RATE2 (and USERS2) adds a second mix on the same cell after the first. B3, B4:
+# a cell whose cell.yaml has `memory_cap: 4G|6G` runs under that limit (cap/limit.sh: every Docker container is in
+# be-cap.slice, cap/setup.sh); CAP_RESET=1 lifts the limit for the cells without one, samples the slice for the whole
+# cell (cap/sample.sh, <out>/<cell>/cap.tsv) and records every container's state before each down (containers.txt).
 # Usage: runner9.sh <out> <cell>...
 set -u
 OUT=$(realpath -m "$1"); shift
@@ -37,6 +40,10 @@ down() {  # down <cell dir>: the cell's own down, then whatever an engine still 
   (cd "$1" && brickkit down) || true
   # a mode: local session (L, LD, LP), which brickkit down does not reach: stopped by its PID (cells/localrun.py)
   (cd "$CONF" && uv run python -m cells.localrun down "$1") || true
+  # B3, B4: which containers the memory limit killed or restarted, before they go
+  [ -n "${CAP_RESET:-}" ] && { echo "== $(date -Is)"; docker inspect --format \
+    '{{.Name}} status={{.State.Status}} exit={{.State.ExitCode}} oom={{.State.OOMKilled}} restarts={{.RestartCount}}' \
+    $(docker ps -aq); } >> "$OUT/$(basename "$1")/containers.txt" 2>&1
   docker rm -f be-pgbouncer >/dev/null 2>&1 || true  # a pooler cell's PgBouncer (cell-chain.sh starts it)
 }
 export PATH=$R/dev/rebuild/experiment-scripts/bin:$PATH  # kubectl for the K row
@@ -52,6 +59,13 @@ for CELL in "$@"; do
   D=$R/dev/rebuild/experiment-cells/$CELL; mkdir -p "$OUT/$CELL"
   ROW=$(sed -n 's/^row: *//p' "$D/cell.yaml"); [ "$ROW" = K ] && cluster on || cluster off
   log "CELL $CELL power=$(powerprofilesctl get)"
+  [ -n "${SPID:-}" ] && kill "$SPID" 2>/dev/null; SPID=
+  CAP=$(sed -n 's/^memory_cap: *//p' "$D/cell.yaml")
+  if [ -n "$CAP" ] || [ -n "${CAP_RESET:-}" ]; then
+    "$R/dev/rebuild/experiment-scripts/cap/limit.sh" "${CAP:-none}" >> "$OUT/$CELL/cap.log" 2>&1 \
+      && log "CELL $CELL cap=${CAP:-none}" || log "CELL $CELL FAILED cap"
+    "$R/dev/rebuild/experiment-scripts/cap/sample.sh" "$OUT/$CELL/cap.tsv" & SPID=$!
+  fi
   # empty
   if stage "$CELL" empty-up env KEEP_UP=1 SEED=0 "$R/dev/rebuild/experiment-scripts/cell-chain.sh" "$CELL" "$OUT/$CELL/empty-up"; then
     stage "$CELL" empty-idle bash -c "cd $CONF && uv run python -m cells chain $D $OUT/$CELL/empty --idle $IDLE" \
@@ -84,5 +98,6 @@ for CELL in "$@"; do
     || log "CELL $CELL FAILED chain-2"; }
   stage "$CELL" down down "$D"
 done
+[ -n "${SPID:-}" ] && kill "$SPID" 2>/dev/null
 cluster off
 log "ALL-DONE"

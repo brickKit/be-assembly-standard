@@ -68,4 +68,8 @@ B2 的两格冒烟与第一批的六格都比 D8-S 的结果摘要多 16 条审�
 
 - B5：`night10b.sh`（约 5.5 小时，另一晚，等用户下令与机器安静）。D9-S-x2 冒烟通过（2026-10-28 12:15–12:35，短参数）：两倍基线 766 秒（4,000 个产品、4 万张订单，0 失败），摘要设为同批参照，7 次/秒 210 次、14 次/秒 420 次全部成功；D9-X-x2 只是 D9-X 加倍数据，没有另外冒烟。
 - B7：基础资源的集群清单，未开始。
-- B3、B4、B6：第 4 节的两项都已定（2026-10-28）；要的工具：B3、B4 的 slice 与在里面起格的步骤（含维护者的一次 sudo），B6 的基础资源在有根 Podman 下起停的脚本。
+- B3、B4：工具已写好（2026-10-28），等维护者执行一次设置后冒烟。
+  - `experiment-scripts/cap/`：`setup.sh`（root，维护者执行一次：Docker 的 `cgroup-parent` 改成 `be-cap.slice`、装 slice、`/etc/sudoers.d/be-cap` 只许免密执行 `limit.sh` 的三条固定命令、重启 Docker）、`revert.sh`（root，全部还原）、`limit.sh <4G|6G|none>`（slice 的上限 = 预算减去 Docker 自己约 0.7 GiB：3300M、5300M；交换 1G）、`sample.sh`（每 5 秒记 slice 的内存、交换、`memory.events`、内存压力）。
+  - 格：D9-H-m6、D9-S-m6、D9-H-m4、D9-S-m4（cell.yaml 写 `memory_cap`）；`runner9.sh` 在 `CAP_RESET=1` 时每格设上限、整格采样、停格前记下每个容器的状态与退出码。
+  - 一晚：`night10c.sh`（约 5.5 小时）：不限的 D9-H、D9-S 作参照，再 6 GiB、4 GiB 各两格；开跑前检查基础资源确实在 slice 里、上限能免密设置。B3、B4 做完后维护者执行 `revert.sh`。
+- B6：第 4 节已定（停 Docker 的那一晚）；要的工具：基础资源在有根 Podman 下起停的脚本，未写。
