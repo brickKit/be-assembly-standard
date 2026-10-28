@@ -67,8 +67,13 @@ B2 的两格冒烟与第一批的六格都比 D8-S 的结果摘要多 16 条审�
 ### 5.4 剩下的
 
 - B5：`night10b.sh`（约 5.5 小时，另一晚，等用户下令与机器安静）。D9-S-x2 冒烟通过（2026-10-28 12:15–12:35，短参数）：两倍基线 766 秒（4,000 个产品、4 万张订单，0 失败），摘要设为同批参照，7 次/秒 210 次、14 次/秒 420 次全部成功；D9-X-x2 只是 D9-X 加倍数据，没有另外冒烟。
-- B7：基础资源的集群清单，未开始。
-- B3、B4：工具已写好（2026-10-28），等维护者执行一次设置后冒烟。
+- B7：设计（AI 定，2026-10-28），未动手：
+  - 基础资源（PostgreSQL、NATS、RustFS、Casdoor）装进 minikube 的一个命名空间，组件经集群内的服务名连接（格写 `base: cluster`，`cells/spec.py` 的 `base_host` 随之变）；版本与配置同 `infra/docker-compose.infra.yml`。
+  - 工具与负载照旧经宿主机的 5432、4222、9000、8000 连接：集群发布的宿主机端口在建集群时定死，要带上这四个端口重建 `bek`（**删除重建集群，动手前问维护者**）。
+  - 那一晚先停 Docker 里的基础资源（端口与采样都按名字，否则会算进读数），完后再起；Casdoor 的应用、客户端密钥与测试账号从 Docker 的 PostgreSQL 导出（`brickkit_db` 的 `casdoor` schema）导入集群里的 PostgreSQL；对象存储用同一对密钥。
+  - 采样：基础资源的 Pod 记作基础资源，集群的平台（节点减去 Pod）不含它们；`be-acceptance` 要改（K 行的单元按命名空间分）。
+  - 一格（K9-X 加 `base: cluster`）对照同一批里基础资源在集群外的 K9-X，约 2 小时（含起停基础资源）。
+- B3、B4：工具已写好（2026-10-28）；维护者已执行 `cap/setup.sh`（两次，中间还原过一次，两个脚本都验证过），上限能免密设置。D9-H-m4 冒烟通过（13:47–13:59，短参数）：整套在 3300M 里走完起格、基线、摘要与负载；峰值碰到上限（3299 MiB），交换最多 22 MiB，`memory.events` 的 max 3542 次（回收页缓存），没有 OOM，内存压力 0；负载 210 次全部成功，7 个容器都采到（v1.0.7 的修复生效）；格完上限自动回到不限。
   - `experiment-scripts/cap/`：`setup.sh`（root，维护者执行一次：Docker 的 `cgroup-parent` 改成 `be-cap.slice`、装 slice、`/etc/sudoers.d/be-cap` 只许免密执行 `limit.sh` 的三条固定命令、重启 Docker）、`revert.sh`（root，全部还原）、`limit.sh <4G|6G|none>`（slice 的上限 = 预算减去 Docker 自己约 0.7 GiB：3300M、5300M；交换 1G）、`sample.sh`（每 5 秒记 slice 的内存、交换、`memory.events`、内存压力）。
   - 格：D9-H-m6、D9-S-m6、D9-H-m4、D9-S-m4（cell.yaml 写 `memory_cap`）；`runner9.sh` 在 `CAP_RESET=1` 时每格设上限、整格采样、停格前记下每个容器的状态与退出码。
   - 一晚：`night10c.sh`（约 5.5 小时）：不限的 D9-H、D9-S 作参照，再 6 GiB、4 GiB 各两格；开跑前检查基础资源确实在 slice 里、上限能免密设置。B3、B4 做完后维护者执行 `revert.sh`。
