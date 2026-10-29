@@ -27,7 +27,7 @@
 | --- | --- | --- | --- |
 | b34 | 2026-10-29 03:41–08:46 | D9-H、D9-S（不限）、D9-H-m6、D9-S-m6、D9-H-m4、D9-S-m4 依次（`night10c.sh` → `runner9.sh`，`CAP_RESET=1`）；每格：设上限、整格每 5 秒采样 slice（`cap/sample.sh`）、空库起格与空闲 10 分钟、带种子起格（两遍与 L3）、基线（2 万张订单）、场景、结果摘要、空闲 10 分钟、预热 5 分钟、7 次/秒 20 个用户测 15 分钟、停格前记下每个容器的状态 | performance，接电源，全程未变 |
 
-开跑前检查过：基础资源在 `be-cap.slice` 里，上限能免密设置；结束时上限回到不限。机器上没有别的工作（无远程会话，系统日志里只有 `limit.sh` 的 sudo；GNOME 文件索引 02:56 起停着）。
+开跑前检查过：基础资源在 `be-cap.slice` 里，上限能免密设置；结束时上限回到不限。机器上没有别的工作（系统日志里只有 `limit.sh` 的 sudo 与一次 13 秒的远程会话：08:23:09–08:23:22，落在 D9-S-m4 的 7 次/秒窗口里，只占宿主机的 CPU，见 `notes.txt`；GNOME 文件索引 02:56 起停着）。
 
 每格 slice 的第一个采样在设上限的同一刻取，带着上一格留下的页缓存（D9-H-m4 第一个样本 4 415 MiB），5 秒后回收到上限以内；表里的峰值去掉了每格的前两个样本。
 
@@ -48,4 +48,4 @@
 
 ## 5. 原始数据
 
-`experiment-data/10-05/night10c/`：`night.log`；`b34/status.log`；每格的 `cap.log`（设的上限）、`cap.tsv`（每 5 秒：slice 的内存、交换、`memory.events` 的 high、max、oom、oom_kill，内存压力 some 与 full 的 10 秒均值）、`containers.txt`（停格前每个容器的状态、退出码、是否 OOM、重启次数）、起格日志、`empty/idle.json`、`run/`（`idle.json`、`mix.json`、`driver.json`）、`digest.json`、`compare.log`；`b34/summary.md`（`r9-summary.py`）、`b34/breakdown.txt`（`breakdown.py --mem`，每个容器的核数、每千次 CPU、内存与 `anon`）。表里的峰值由 `cap.tsv` 去掉前两个样本后取最大值；`memory.events` 是 slice 一直累加的计数，“这一格里触发上限的次数”是这一格最后一个样本减第一个样本。
+`experiment-data/10-05/night10c/`：`night.log`、`notes.txt`；`b34/status.log`；每格的 `cap.log`（设的上限）、`cap.tsv`（每 5 秒：slice 的内存、交换、`memory.events` 的 high、max、oom、oom_kill，内存压力 some 与 full 的 10 秒均值）、`containers.txt`（停格前每个容器的状态、退出码、是否 OOM、重启次数）、起格日志、`empty/idle.json`、`run/`（`idle.json`、`mix.json`、`driver.json`）、`digest.json`、`compare.log`；`b34/summary.md`（`r9-summary.py`）、`b34/breakdown.txt`（`breakdown.py --mem`，每个容器的核数、每千次 CPU、内存与 `anon`）。表里的峰值由 `cap.tsv` 去掉前两个样本后取最大值；`memory.events` 是 slice 一直累加的计数，“这一格里触发上限的次数”是这一格最后一个样本减第一个样本。

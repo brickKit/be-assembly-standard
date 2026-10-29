@@ -11,7 +11,10 @@ import sys
 MEM = "--mem" in sys.argv
 for d in map(pathlib.Path, [a for a in sys.argv[1:] if a != "--mem"]):
     print(f"== {d.name}")
-    for seg, f in (("empty idle", "empty/idle.json"), ("seeded idle", "run/idle.json"), ("mix", "run/mix.json")):
+    for seg, f in (("empty idle", "empty/idle.json"), ("seeded idle", "run/idle.json"), ("mix", "run/mix.json"),
+                   ("mix 2", "run-2/mix.json")):
+        if seg == "mix 2" and not (d / f).exists():  # the second mix only when the runner had RATE2 (step 10, B5)
+            continue
         r = json.loads((d / f).read_text())["resources"]
         for name, c in sorted(r["containers"].items()):
             g = c["cgroup"]

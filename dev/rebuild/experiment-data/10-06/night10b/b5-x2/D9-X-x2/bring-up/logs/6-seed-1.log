@@ -1,0 +1,211 @@
+make: Entering directory '/home/zhijie/Desktop/github/be-assembly-standard'
+make[1]: Entering directory '/home/zhijie/Desktop/github/be-assembly-standard/components/infra/authz'
+make -C ../iam-casdoor seed   # the identity member's seed accounts first; skipped when Casdoor is not reachable
+make[2]: Entering directory '/home/zhijie/Desktop/github/be-assembly-standard/components/infra/iam-casdoor'
+python3 -I scripts/dev_setup.py --users-only
+dev_setup: CASDOOR_URL is not set: the test accounts are not created (skipped)
+make[2]: Leaving directory '/home/zhijie/Desktop/github/be-assembly-standard/components/infra/iam-casdoor'
+go run ./cmd/seed
+seed infra/authz: the unit admin test.unit.admin.cn reads and changes security records
+make[1]: Leaving directory '/home/zhijie/Desktop/github/be-assembly-standard/components/infra/authz'
+make[1]: Entering directory '/home/zhijie/Desktop/github/be-assembly-standard/components/mdm/org'
+go run ./cmd/seed
+seed mdm/org: 5 legal entities, 95 units; roles maintain and read, 1 revoked, 1 ended (2026-10-29T12:38:39+01:00)
+make[1]: Leaving directory '/home/zhijie/Desktop/github/be-assembly-standard/components/mdm/org'
+make[1]: Entering directory '/home/zhijie/Desktop/github/be-assembly-standard/components/mdm/currency'
+go run ./cmd/seed
+seed mdm/currency: 2 rate types, 713 rates (8 pairs both ways), CHF cash 0.05, VES off; roles maintain, rates, read
+make[1]: Leaving directory '/home/zhijie/Desktop/github/be-assembly-standard/components/mdm/currency'
+make[1]: Entering directory '/home/zhijie/Desktop/github/be-assembly-standard/components/mdm/partner'
+make -C ../org seed   # the declared dependency first (seed and test data conventions)
+make[2]: Entering directory '/home/zhijie/Desktop/github/be-assembly-standard/components/mdm/org'
+go run ./cmd/seed
+seed mdm/org: 5 legal entities, 95 units; roles maintain and read, 1 revoked, 1 ended (2026-10-29T12:38:43+01:00)
+make[2]: Leaving directory '/home/zhijie/Desktop/github/be-assembly-standard/components/mdm/org'
+go run ./cmd/seed
+seed mdm/partner: 209 partners (181 organizations, 25 persons, 3 negative), 311 customer roles in CN01, ES01, US01 and the suspended HK01, 3 negative roles, 1 merge candidate; unit 中国区客户 with its admin
+make[1]: Leaving directory '/home/zhijie/Desktop/github/be-assembly-standard/components/mdm/partner'
+make[1]: Entering directory '/home/zhijie/Desktop/github/be-assembly-standard/components/mdm/product'
+make -C ../org seed   # the declared dependency first (seed and test data conventions)
+make[2]: Entering directory '/home/zhijie/Desktop/github/be-assembly-standard/components/mdm/org'
+go run ./cmd/seed
+seed mdm/org: 5 legal entities, 95 units; roles maintain and read, 1 revoked, 1 ended (2026-10-29T12:38:46+01:00)
+make[2]: Leaving directory '/home/zhijie/Desktop/github/be-assembly-standard/components/mdm/org'
+go run ./cmd/seed
+seed mdm/product: 12 categories, 146 products, 366 availabilities (10 in the suspended HK01), 1 suspended, 1 retired; roles maintain, read
+make[1]: Leaving directory '/home/zhijie/Desktop/github/be-assembly-standard/components/mdm/product'
+make[1]: Entering directory '/home/zhijie/Desktop/github/be-assembly-standard/components/erp/inventory'
+make -C ../../mdm/product seed   # the declared dependencies first; the rest come through them (seed and test data conventions)
+make[2]: Entering directory '/home/zhijie/Desktop/github/be-assembly-standard/components/mdm/product'
+make -C ../org seed   # the declared dependency first (seed and test data conventions)
+make[3]: Entering directory '/home/zhijie/Desktop/github/be-assembly-standard/components/mdm/org'
+go run ./cmd/seed
+seed mdm/org: 5 legal entities, 95 units; roles maintain and read, 1 revoked, 1 ended (2026-10-29T12:38:49+01:00)
+make[3]: Leaving directory '/home/zhijie/Desktop/github/be-assembly-standard/components/mdm/org'
+go run ./cmd/seed
+seed mdm/product: 12 categories, 146 products, 366 availabilities (10 in the suspended HK01), 1 suspended, 1 retired; roles maintain, read
+make[2]: Leaving directory '/home/zhijie/Desktop/github/be-assembly-standard/components/mdm/product'
+go run ./cmd/seed
+seed erp/inventory: 5 warehouses made, 559 receipt lines
+make[1]: Leaving directory '/home/zhijie/Desktop/github/be-assembly-standard/components/erp/inventory'
+make[1]: Entering directory '/home/zhijie/Desktop/github/be-assembly-standard/components/erp/credit'
+make -C ../../mdm/currency seed   # the declared dependencies first; the rest come through them (seed and test data conventions)
+make[2]: Entering directory '/home/zhijie/Desktop/github/be-assembly-standard/components/mdm/currency'
+go run ./cmd/seed
+seed mdm/currency: 2 rate types, 713 rates (8 pairs both ways), CHF cash 0.05, VES off; roles maintain, rates, read
+make[2]: Leaving directory '/home/zhijie/Desktop/github/be-assembly-standard/components/mdm/currency'
+make -C ../../mdm/partner seed
+make[2]: Entering directory '/home/zhijie/Desktop/github/be-assembly-standard/components/mdm/partner'
+make -C ../org seed   # the declared dependency first (seed and test data conventions)
+make[3]: Entering directory '/home/zhijie/Desktop/github/be-assembly-standard/components/mdm/org'
+go run ./cmd/seed
+seed mdm/org: 5 legal entities, 95 units; roles maintain and read, 1 revoked, 1 ended (2026-10-29T12:38:55+01:00)
+make[3]: Leaving directory '/home/zhijie/Desktop/github/be-assembly-standard/components/mdm/org'
+go run ./cmd/seed
+seed mdm/partner: 209 partners (181 organizations, 25 persons, 3 negative), 311 customer roles in CN01, ES01, US01 and the suspended HK01, 3 negative roles, 1 merge candidate; unit 中国区客户 with its admin
+make[2]: Leaving directory '/home/zhijie/Desktop/github/be-assembly-standard/components/mdm/partner'
+go run ./cmd/seed
+seed erp/credit: 300 customer roles, 240 limits made
+make[1]: Leaving directory '/home/zhijie/Desktop/github/be-assembly-standard/components/erp/credit'
+make[1]: Entering directory '/home/zhijie/Desktop/github/be-assembly-standard/components/erp/sales'
+make -C ../../mdm/currency seed   # the declared dependencies first; the rest come through them (seed and test data conventions)
+make[2]: Entering directory '/home/zhijie/Desktop/github/be-assembly-standard/components/mdm/currency'
+go run ./cmd/seed
+seed mdm/currency: 2 rate types, 713 rates (8 pairs both ways), CHF cash 0.05, VES off; roles maintain, rates, read
+make[2]: Leaving directory '/home/zhijie/Desktop/github/be-assembly-standard/components/mdm/currency'
+make -C ../../mdm/partner seed
+make[2]: Entering directory '/home/zhijie/Desktop/github/be-assembly-standard/components/mdm/partner'
+make -C ../org seed   # the declared dependency first (seed and test data conventions)
+make[3]: Entering directory '/home/zhijie/Desktop/github/be-assembly-standard/components/mdm/org'
+go run ./cmd/seed
+seed mdm/org: 5 legal entities, 95 units; roles maintain and read, 1 revoked, 1 ended (2026-10-29T12:39:01+01:00)
+make[3]: Leaving directory '/home/zhijie/Desktop/github/be-assembly-standard/components/mdm/org'
+go run ./cmd/seed
+seed mdm/partner: 209 partners (181 organizations, 25 persons, 3 negative), 311 customer roles in CN01, ES01, US01 and the suspended HK01, 3 negative roles, 1 merge candidate; unit 中国区客户 with its admin
+make[2]: Leaving directory '/home/zhijie/Desktop/github/be-assembly-standard/components/mdm/partner'
+make -C ../../mdm/product seed
+make[2]: Entering directory '/home/zhijie/Desktop/github/be-assembly-standard/components/mdm/product'
+make -C ../org seed   # the declared dependency first (seed and test data conventions)
+make[3]: Entering directory '/home/zhijie/Desktop/github/be-assembly-standard/components/mdm/org'
+go run ./cmd/seed
+seed mdm/org: 5 legal entities, 95 units; roles maintain and read, 1 revoked, 1 ended (2026-10-29T12:39:04+01:00)
+make[3]: Leaving directory '/home/zhijie/Desktop/github/be-assembly-standard/components/mdm/org'
+go run ./cmd/seed
+seed mdm/product: 12 categories, 146 products, 366 availabilities (10 in the suspended HK01), 1 suspended, 1 retired; roles maintain, read
+make[2]: Leaving directory '/home/zhijie/Desktop/github/be-assembly-standard/components/mdm/product'
+make -C ../inventory seed
+make[2]: Entering directory '/home/zhijie/Desktop/github/be-assembly-standard/components/erp/inventory'
+make -C ../../mdm/product seed   # the declared dependencies first; the rest come through them (seed and test data conventions)
+make[3]: Entering directory '/home/zhijie/Desktop/github/be-assembly-standard/components/mdm/product'
+make -C ../org seed   # the declared dependency first (seed and test data conventions)
+make[4]: Entering directory '/home/zhijie/Desktop/github/be-assembly-standard/components/mdm/org'
+go run ./cmd/seed
+seed mdm/org: 5 legal entities, 95 units; roles maintain and read, 1 revoked, 1 ended (2026-10-29T12:39:07+01:00)
+make[4]: Leaving directory '/home/zhijie/Desktop/github/be-assembly-standard/components/mdm/org'
+go run ./cmd/seed
+seed mdm/product: 12 categories, 146 products, 366 availabilities (10 in the suspended HK01), 1 suspended, 1 retired; roles maintain, read
+make[3]: Leaving directory '/home/zhijie/Desktop/github/be-assembly-standard/components/mdm/product'
+go run ./cmd/seed
+seed erp/inventory: 0 warehouses made, 0 receipt lines
+make[2]: Leaving directory '/home/zhijie/Desktop/github/be-assembly-standard/components/erp/inventory'
+make -C ../credit seed
+make[2]: Entering directory '/home/zhijie/Desktop/github/be-assembly-standard/components/erp/credit'
+make -C ../../mdm/currency seed   # the declared dependencies first; the rest come through them (seed and test data conventions)
+make[3]: Entering directory '/home/zhijie/Desktop/github/be-assembly-standard/components/mdm/currency'
+go run ./cmd/seed
+seed mdm/currency: 2 rate types, 713 rates (8 pairs both ways), CHF cash 0.05, VES off; roles maintain, rates, read
+make[3]: Leaving directory '/home/zhijie/Desktop/github/be-assembly-standard/components/mdm/currency'
+make -C ../../mdm/partner seed
+make[3]: Entering directory '/home/zhijie/Desktop/github/be-assembly-standard/components/mdm/partner'
+make -C ../org seed   # the declared dependency first (seed and test data conventions)
+make[4]: Entering directory '/home/zhijie/Desktop/github/be-assembly-standard/components/mdm/org'
+go run ./cmd/seed
+seed mdm/org: 5 legal entities, 95 units; roles maintain and read, 1 revoked, 1 ended (2026-10-29T12:39:12+01:00)
+make[4]: Leaving directory '/home/zhijie/Desktop/github/be-assembly-standard/components/mdm/org'
+go run ./cmd/seed
+seed mdm/partner: 209 partners (181 organizations, 25 persons, 3 negative), 311 customer roles in CN01, ES01, US01 and the suspended HK01, 3 negative roles, 1 merge candidate; unit 中国区客户 with its admin
+make[3]: Leaving directory '/home/zhijie/Desktop/github/be-assembly-standard/components/mdm/partner'
+go run ./cmd/seed
+seed erp/credit: 300 customer roles, 0 limits made
+make[2]: Leaving directory '/home/zhijie/Desktop/github/be-assembly-standard/components/erp/credit'
+go run ./cmd/seed
+seed erp/sales: 5 price lists
+seed erp/sales: CN01: 160 orders
+seed erp/sales: ES01: 30 orders
+seed erp/sales: US01: 20 orders
+make[1]: Leaving directory '/home/zhijie/Desktop/github/be-assembly-standard/components/erp/sales'
+make[1]: Entering directory '/home/zhijie/Desktop/github/be-assembly-standard/components/erp/billing'
+make -C ../sales seed   # the declared dependencies first; the rest come through them (seed and test data conventions)
+make[2]: Entering directory '/home/zhijie/Desktop/github/be-assembly-standard/components/erp/sales'
+make -C ../../mdm/currency seed   # the declared dependencies first; the rest come through them (seed and test data conventions)
+make[3]: Entering directory '/home/zhijie/Desktop/github/be-assembly-standard/components/mdm/currency'
+go run ./cmd/seed
+seed mdm/currency: 2 rate types, 713 rates (8 pairs both ways), CHF cash 0.05, VES off; roles maintain, rates, read
+make[3]: Leaving directory '/home/zhijie/Desktop/github/be-assembly-standard/components/mdm/currency'
+make -C ../../mdm/partner seed
+make[3]: Entering directory '/home/zhijie/Desktop/github/be-assembly-standard/components/mdm/partner'
+make -C ../org seed   # the declared dependency first (seed and test data conventions)
+make[4]: Entering directory '/home/zhijie/Desktop/github/be-assembly-standard/components/mdm/org'
+go run ./cmd/seed
+seed mdm/org: 5 legal entities, 95 units; roles maintain and read, 1 revoked, 1 ended (2026-10-29T12:39:26+01:00)
+make[4]: Leaving directory '/home/zhijie/Desktop/github/be-assembly-standard/components/mdm/org'
+go run ./cmd/seed
+seed mdm/partner: 209 partners (181 organizations, 25 persons, 3 negative), 311 customer roles in CN01, ES01, US01 and the suspended HK01, 3 negative roles, 1 merge candidate; unit 中国区客户 with its admin
+make[3]: Leaving directory '/home/zhijie/Desktop/github/be-assembly-standard/components/mdm/partner'
+make -C ../../mdm/product seed
+make[3]: Entering directory '/home/zhijie/Desktop/github/be-assembly-standard/components/mdm/product'
+make -C ../org seed   # the declared dependency first (seed and test data conventions)
+make[4]: Entering directory '/home/zhijie/Desktop/github/be-assembly-standard/components/mdm/org'
+go run ./cmd/seed
+seed mdm/org: 5 legal entities, 95 units; roles maintain and read, 1 revoked, 1 ended (2026-10-29T12:39:29+01:00)
+make[4]: Leaving directory '/home/zhijie/Desktop/github/be-assembly-standard/components/mdm/org'
+go run ./cmd/seed
+seed mdm/product: 12 categories, 146 products, 366 availabilities (10 in the suspended HK01), 1 suspended, 1 retired; roles maintain, read
+make[3]: Leaving directory '/home/zhijie/Desktop/github/be-assembly-standard/components/mdm/product'
+make -C ../inventory seed
+make[3]: Entering directory '/home/zhijie/Desktop/github/be-assembly-standard/components/erp/inventory'
+make -C ../../mdm/product seed   # the declared dependencies first; the rest come through them (seed and test data conventions)
+make[4]: Entering directory '/home/zhijie/Desktop/github/be-assembly-standard/components/mdm/product'
+make -C ../org seed   # the declared dependency first (seed and test data conventions)
+make[5]: Entering directory '/home/zhijie/Desktop/github/be-assembly-standard/components/mdm/org'
+go run ./cmd/seed
+seed mdm/org: 5 legal entities, 95 units; roles maintain and read, 1 revoked, 1 ended (2026-10-29T12:39:32+01:00)
+make[5]: Leaving directory '/home/zhijie/Desktop/github/be-assembly-standard/components/mdm/org'
+go run ./cmd/seed
+seed mdm/product: 12 categories, 146 products, 366 availabilities (10 in the suspended HK01), 1 suspended, 1 retired; roles maintain, read
+make[4]: Leaving directory '/home/zhijie/Desktop/github/be-assembly-standard/components/mdm/product'
+go run ./cmd/seed
+seed erp/inventory: 0 warehouses made, 0 receipt lines
+make[3]: Leaving directory '/home/zhijie/Desktop/github/be-assembly-standard/components/erp/inventory'
+make -C ../credit seed
+make[3]: Entering directory '/home/zhijie/Desktop/github/be-assembly-standard/components/erp/credit'
+make -C ../../mdm/currency seed   # the declared dependencies first; the rest come through them (seed and test data conventions)
+make[4]: Entering directory '/home/zhijie/Desktop/github/be-assembly-standard/components/mdm/currency'
+go run ./cmd/seed
+seed mdm/currency: 2 rate types, 713 rates (8 pairs both ways), CHF cash 0.05, VES off; roles maintain, rates, read
+make[4]: Leaving directory '/home/zhijie/Desktop/github/be-assembly-standard/components/mdm/currency'
+make -C ../../mdm/partner seed
+make[4]: Entering directory '/home/zhijie/Desktop/github/be-assembly-standard/components/mdm/partner'
+make -C ../org seed   # the declared dependency first (seed and test data conventions)
+make[5]: Entering directory '/home/zhijie/Desktop/github/be-assembly-standard/components/mdm/org'
+go run ./cmd/seed
+seed mdm/org: 5 legal entities, 95 units; roles maintain and read, 1 revoked, 1 ended (2026-10-29T12:39:36+01:00)
+make[5]: Leaving directory '/home/zhijie/Desktop/github/be-assembly-standard/components/mdm/org'
+go run ./cmd/seed
+seed mdm/partner: 209 partners (181 organizations, 25 persons, 3 negative), 311 customer roles in CN01, ES01, US01 and the suspended HK01, 3 negative roles, 1 merge candidate; unit 中国区客户 with its admin
+make[4]: Leaving directory '/home/zhijie/Desktop/github/be-assembly-standard/components/mdm/partner'
+go run ./cmd/seed
+seed erp/credit: 300 customer roles, 0 limits made
+make[3]: Leaving directory '/home/zhijie/Desktop/github/be-assembly-standard/components/erp/credit'
+go run ./cmd/seed
+seed erp/sales: 5 price lists
+seed erp/sales: CN01 has orders already; quotations and orders are not seeded again
+seed erp/sales: ES01 has orders already; quotations and orders are not seeded again
+seed erp/sales: US01 has orders already; quotations and orders are not seeded again
+make[2]: Leaving directory '/home/zhijie/Desktop/github/be-assembly-standard/components/erp/sales'
+go run ./cmd/seed
+seed erp/billing: CN01: 56 orders to bill, 33 invoices issued
+seed erp/billing: ES01: 11 orders to bill, 6 invoices issued
+seed erp/billing: US01: 7 orders to bill, 3 invoices issued
+make[1]: Leaving directory '/home/zhijie/Desktop/github/be-assembly-standard/components/erp/billing'
+make: Leaving directory '/home/zhijie/Desktop/github/be-assembly-standard'

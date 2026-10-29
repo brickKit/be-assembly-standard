@@ -68,28 +68,31 @@ def main(dirs: list[str]) -> None:
     for d in dirs:
         d = pathlib.Path(d)
         for seg, f in (("empty idle", seg_file(d, "empty/idle.json", "empty-idle.json")),
-                       ("seeded idle", seg_file(d, "run/idle.json", "idle.json")), ("mix", seg_file(d, "run/mix.json", "mix.json"))):
+                       ("seeded idle", seg_file(d, "run/idle.json", "idle.json")), ("mix", seg_file(d, "run/mix.json", "mix.json")),
+                       ("mix 2", d / "run-2" / "mix.json")):
+            if seg == "mix 2" and not f.exists():  # the second mix only when the runner had RATE2 (step 10, B5)
+                continue
             if not f.exists():
                 print(f"| {d.name} | {seg} | (missing) | | | | |")
                 continue
             x = json.loads(f.read_text())
             res = x["resources"]
             for k, (cores, mem, anon) in parts(res, row_of(x["cell"])).items():
-                per = f"{cores * res['elapsed'] / res['requests'] * 1000:.1f}" if seg == "mix" and res["requests"] else ""
+                per = f"{cores * res['elapsed'] / res['requests'] * 1000:.1f}" if seg.startswith("mix") and res["requests"] else ""
                 a = "—" if anon is None else f"{anon:.0f}"
                 print(f"| {x['cell']} | {seg} | {k} | {cores:.3f} | {mem:.0f} | {a} | {per} |")
     print()
     print("| cell | sent / ok | p50 | p95 | p99 | max | list p95 | order p95 | confirm p95 | deliver p95 | bill p95 | issue to completed p50 / p95 / max |")
     print("| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |")
-    for d in dirs:
-        f = seg_file(pathlib.Path(d), "run/mix.json", "mix.json")
+    for f, label in [(x, s) for d in dirs for x, s in ((seg_file(pathlib.Path(d), "run/mix.json", "mix.json"), ""),
+                                                       (pathlib.Path(d) / "run-2" / "mix.json", " (mix 2)"))]:
         if not f.exists():
             continue
         mix = json.loads(f.read_text())
         dr, ops, c = mix["driver"], mix["driver"]["mix"]["ops"], mix["completion"]["issue_to_completed_ms"]
         lat = dr["latency_ms"]
         row = " | ".join(f"{ops[o]['latency_ms']['P95']:.1f}" for o in ("list", "order", "confirm", "deliver", "bill"))
-        print(f"| {mix['cell']} | {dr['sent']} / {dr['ok']} | {lat['P50']:.1f} | {lat['P95']:.1f} | {lat['P99']:.1f} | "
+        print(f"| {mix['cell']}{label} | {dr['sent']} / {dr['ok']} | {lat['P50']:.1f} | {lat['P95']:.1f} | {lat['P99']:.1f} | "
               f"{lat['Max']:.1f} | {row} | {c['P50']} / {c['P95']} / {c['Max']} |")
 
 

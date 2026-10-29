@@ -34,3 +34,4 @@
 | 10-03 | 发件转发器只轮询有行的分区（P6.32）改前改后的 CPU（同一批） | D9-S-sdk35、D9-S | 2026-10-29 | 空闲时 PostgreSQL 少 36–48%、组件少 31–35%；7 次/秒每千次合计 102.2 → 84.9 秒（少 17%）；延迟、提交后的唤醒、结果摘要都不变 | [10-03-outbox-idle-poll.md](10-03-outbox-idle-poll.md) |
 | 10-04 | 容器里的 Python 构建：官方 alpine、官方 slim、python-build-standalone（同一批，对称排两遍） | D9-probe-pyonly | 2026-10-29 | pbs 比 slim 只少 2–5% CPU，alpine 比 slim 多 19–28%；建议生产继续用 slim；alpine 的探针让容器里 Python 的数字偏高约两成 | [10-04-python-builds.md](10-04-python-builds.md) |
 | 10-05 | 整套放进 6 GiB、4 GiB 内存（B3、B4，systemd slice 限内存，同一批） | D9-H、D9-S、D9-H-m6、D9-S-m6、D9-H-m4、D9-S-m4 | 2026-10-29 | 4 GiB 放得下、什么也没坏：让出的只是页缓存（PostgreSQL 3.0–3.3 → 1.6–1.9 GiB，NATS 0.7 → 0.1 GiB），无 OOM，延迟与 CPU 不变；坏点要更低的上限才找得到 | [10-05-memory-cap.md](10-05-memory-cap.md) |
+| 10-06 | 负载加倍与数据加倍（B5，7 → 14 次/秒同一格；一倍对两倍基线同一晚） | D9-S、D9-X、D9-S-x2、D9-X-x2 | 2026-10-29 | 负载加倍核数只多约一半、每千次少约四分之一（底价摊薄，组件边际每千次约 15 秒）；数据加倍服务不变、数据库多 10–15%；延迟都不变 | [10-06-load-and-data-x2.md](10-06-load-and-data-x2.md) |
