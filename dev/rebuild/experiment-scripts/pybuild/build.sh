@@ -2,6 +2,8 @@
 # Builds the three variants of the Python probe from the same source (be-acceptance probes/py) as pyvar-<variant>:1,
 # one image for both test/probe-py and test/probe-py2 (no PORT in the image: BrickKit gives each its manifest's port),
 # and prints each one's interpreter build (version and configure flags).
+# Record 10-04 ran on the probe at 3.2.19 (D9-probe-pyonly pins it, run.sh tags test-probe-py:3.2.19): to repeat it,
+# check probes/py out at the tag test-probe-py/3.2.19 first (3.2.20 refuses to start as 3.2.19).
 # Usage: build.sh [variant...]   (default: alpine slim pbs)
 set -eu
 H=$(cd "$(dirname "$0")" && pwd); SRC=/home/zhijie/Desktop/github/be-assembly-standard/tools/be-acceptance/probes/py
