@@ -1,0 +1,78 @@
+🚀 Starting project d9-h (target: docker)
+📋 Component state calculation:
+   ✅ be/go-core@3.0.36         starting (top-level)
+   ✅ be/go-infra@3.0.36        starting (top-level)
+   ✅ be/py-render@3.0.26       starting (top-level)
+   ✅ mdm/currency@3.0.10       starting (erp/billing needs it)
+   ✅ mdm/org@3.0.9             starting (erp/billing needs it)
+   ✅ mdm/partner@3.0.12        starting (erp/billing needs it)
+   ✅ mdm/product@3.0.12        starting (erp/inventory needs it)
+   ✅ erp/credit@3.0.8          starting (erp/sales needs it)
+   ✅ erp/inventory@3.0.8       starting (erp/sales needs it)
+   ✅ erp/sales@3.0.13          starting (erp/billing needs it)
+   ✅ infra/print@3.0.7         starting (erp/billing needs it)
+   ✅ erp/billing@3.0.12        starting (top-level)
+   ✅ infra/audit@3.0.8         starting (erp/billing needs it)
+   ✅ infra/authz@3.0.11        starting (erp/billing needs it)
+   ✅ infra/iam-casdoor@3.0.10  starting (erp/billing needs it)
+
+⚠️ Files under config/ may contain plaintext secrets
+   Config items: infra/iam-casdoor@3.0.10 → IAM_TOKEN_ISSUER ($var:IAM_ISSUER)
+   Why it matters: config/*.yaml and config/vars.yaml are meant to be committed to Git, so a secret written there goes into version control with it and can't be removed from the history
+   Suggestions:
+   1. Change it to a reference such as ${MY_TOKEN} (real value in .env) or file://.secrets/token
+   2. .env must be listed in .gitignore
+   3. Items that declare secret: true are ones the component author identified as credentials; the ones that merely have a suspicious name are judged by name only, not by value, so you can ignore them if they really aren't secrets
+📋 Start order (topological sort):
+   1. be-go-infra-3-0-36   no dependencies  (hosts mdm/currency@3.0.10, mdm/org@3.0.9, mdm/partner@3.0.12, mdm/product@3.0.12, infra/audit@3.0.8, infra/authz@3.0.11, infra/iam-casdoor@3.0.10)
+   2. be-go-core-3-0-36    ← depends on 1  (hosts erp/credit@3.0.8, erp/inventory@3.0.8, erp/sales@3.0.13, erp/billing@3.0.12)
+   3. be-py-render-3-0-26  no dependencies  (hosts infra/print@3.0.7)
+
+Can start on their own: be-go-infra-3-0-36, be-py-render-3-0-26 (no dependencies)
+Only referenced by optional dependencies (turning them off affects no one: mode: disable): erp/credit, erp/inventory, erp/sales, infra/print
+Longest dependency chain (2 levels): be-go-infra-3-0-36 → be-go-core-3-0-36
+   Components not on this chain start in parallel with it
+
+Dependency graph:
+   erp/sales@3.0.13 → mdm/currency@3.0.10
+                    → mdm/org@3.0.9
+                    → mdm/partner@3.0.12
+                    → mdm/product@3.0.12
+                    → erp/credit@3.0.8 (optional)
+                    → erp/inventory@3.0.8 (optional)
+   erp/inventory@3.0.8 → mdm/org@3.0.9
+                       → mdm/product@3.0.12
+   mdm/product@3.0.12 → mdm/org@3.0.9
+   erp/credit@3.0.8 → mdm/currency@3.0.10
+                    → mdm/org@3.0.9
+                    → mdm/partner@3.0.12
+   erp/billing@3.0.12 → mdm/currency@3.0.10
+                      → mdm/org@3.0.9
+                      → mdm/partner@3.0.12
+                      → erp/sales@3.0.13 (optional)
+                      → infra/print@3.0.7 (optional)
+   mdm/partner@3.0.12 → mdm/org@3.0.9
+📄 Generated: .brickkit/generated/compose.yaml
+
+🔧 Database migrations that run before startup (on failure that component won't start):
+   infra/audit@3.0.8  /infra-audit migrate
+   infra/authz@3.0.11  /infra-authz migrate
+   infra/iam-casdoor@3.0.10  /infra-iam-casdoor migrate
+   infra/print@3.0.7  python -m infra_print migrate
+   mdm/currency@3.0.10  /mdm-currency migrate
+   mdm/org@3.0.9  /mdm-org migrate
+   mdm/partner@3.0.12  /mdm-partner migrate
+   erp/billing@3.0.12  /erp-billing migrate
+   erp/credit@3.0.8  /erp-credit migrate
+   mdm/product@3.0.12  /mdm-product migrate
+   erp/inventory@3.0.8  /erp-inventory migrate
+   erp/sales@3.0.13  /erp-sales migrate
+
+🐳 Starting (docker)...
+   be-go-core-3-0-36            running (healthy)
+   be-go-infra-3-0-36           running (healthy)
+   be-py-render-3-0-26          running (healthy)
+✅ All components started (3)
+
+💡 View the status: brickkit status
+   View the logs: docker compose -p brickkit-d9-h logs -f
