@@ -21,7 +21,7 @@
 | | 合计 | 102.2 | 84.9 | −17% |
 
 - 改动碰不到的部分在这一批里不变：平台（Docker 的守护进程）空闲都是 0.104 核、负载都是 16.2 秒，NATS、Casdoor 的读数也相同，所以这一批前后两格的条件一致。差别（19–48%）远大于 D 行两遍之间的波动（组件每千次 6.5%，[9-01](9-01-other-rows-chain.md)）。
-- 每个组件的 CPU 都少了：负载时空闲成分大的组件少得多（`mdm/currency` 14.5 → 8.7 秒、`mdm/partner` 16.0 → 10.7、`erp/billing` 19.3 → 14.2），业务最重的 `erp/sales` 60.5 → 55.7；`infra/iam-casdoor` 不发事件，4.4 对 4.4。
+- 发事件的组件 CPU 都少了（负载时每千次 CPU 秒）：流量小、空转占比大的少得多（`mdm/currency` 2.3 → 1.4、`mdm/partner` 2.5 → 1.7、`erp/billing` 3.1 → 2.2），业务最重的 `erp/sales` 9.6 → 8.8；`infra/iam-casdoor` 不发事件，0.7 对 0.7。
 - 延迟看不出差别：p50 22.7 对 23.1 毫秒，p95 50.2 对 52.3（在 D 行两遍的 3.4 毫秒以内）；开具到订单完成 p50 都是 3.6 毫秒、p95 4.6 对 4.5，提交后的唤醒（P6.29）照常。
 - 正确性：两格 6 300 次请求全部成功，315 张订单全部完成；结果摘要相同。
 - 组件的内存：不含页缓存的部分相同（负载时 378 对 377 MiB）。含页缓存的合计改后多约 100 MiB，每个容器多 6–9 MiB、全是页缓存：页缓存记在最先读到那个文件的 cgroup 上，与进程自己的内存无关，不比较。
@@ -56,4 +56,4 @@
 
 ## 5. 原始数据
 
-`experiment-data/10-03/night10f/`：`night.log`；`p632/status.log`；每格的起格日志、`empty/idle.json`、`run/`（`idle.json`、`mix.json`、`driver.json`）、`digest.json`、`compare.log`、基线与场景的输出；`p632/summary.md` 由 `r9-summary.py` 生成；PostgreSQL 与各组件的分项取自 `*.json` 的 `resources.containers.<容器>.cgroup`（`cores`、`cpu_seconds_per_1000`、`memory_median`、`anon_median`）。失败的第一次在 `night10f-try1/`（`STOPPED.txt` 写了原因）。计划 5.8 的语句计数（改前 99 101 条、改后 38 046 条，各 60 秒，即每秒 1 652 与 634 条）在 `experiment-data/10-03/idle-statements/`（`before/`、`after/` 的 `by-role.txt`，`totals.txt`），命令是 `experiment-scripts/idle-statements.sh`。
+`experiment-data/10-03/night10f/`：`night.log`；`p632/status.log`；每格的起格日志、`empty/idle.json`、`run/`（`idle.json`、`mix.json`、`driver.json`）、`digest.json`、`compare.log`、基线与场景的输出；`p632/summary.md` 由 `r9-summary.py` 生成；PostgreSQL 与各组件的分项在 `p632/breakdown.txt`（`experiment-scripts/breakdown-p632.py`，取自 `*.json` 的 `resources.containers.<容器>.cgroup`）。失败的第一次在 `night10f-try1/`（`STOPPED.txt` 写了原因）。计划 5.8 的语句计数（改前 99 101 条、改后 38 046 条，各 60 秒，即每秒 1 652 与 634 条）在 `experiment-data/10-03/idle-statements/`（`before/`、`after/` 的 `by-role.txt`，`totals.txt`），命令是 `experiment-scripts/idle-statements.sh`。
