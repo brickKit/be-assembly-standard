@@ -22,6 +22,7 @@
 | [step6-plan.md](step6-plan.md) | 实验第 6 步（主数据四个）的计划、决定与进度（2026-10-20 起草） |
 | [step7-plan.md](step7-plan.md) | 实验第 7 步（销售、库存、信用、出账、打印）的范围、决定、任务与进度；同时是文档结构实验的 R2（2026-10-22 起） |
 | [step10-plan.md](step10-plan.md) | 实验第 10 步（套件 B，附加对照）的计划：B1–B7 怎样搭、缺的工具、时长、要维护者定的两件事（2026-10-27 起草） |
+| [step11-plan.md](step11-plan.md) | 实验第 11 步（套件 C，故障与运维）的计划：从外部注入故障（容器、基础资源、数据库里临时的触发器）、每次之后的不变量、缺的工具、时长（2026-10-29 起草） |
 | [doc-structure-plan.md](doc-structure-plan.md) | 文档结构实验（2026-10-22 起）：内容类型 × 层、初步结构、给 BrickKit 的 FRR-010–012、R0–R3 的轮次；题库在 `dev/routing-tests/structure-questions.md` |
 
 ## 现在在哪里
