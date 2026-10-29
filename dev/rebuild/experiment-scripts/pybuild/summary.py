@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """The tables of the Python build comparison from run.sh's output: per pass (<n>-<variant>/run1/D9-probe-pyonly),
 the two probes' CPU seconds per 1000 requests (cgroup, caller + callee) and latency per operation, both directions
-added; then per variant the mean of its two passes and the spread between them (the batch's fluctuation).
+added; then per variant the mean of its two passes and the spread between them (the batch's fluctuation), and the mean p50.
 Usage: summary.py <run.sh out>"""
 import json
 import pathlib
@@ -57,3 +57,10 @@ for v in ["slim", "alpine", "pbs"]:
     base = base or total
     print(f"| {v} | " + " | ".join(cells) + f" | {(total / base - 1) * 100:+.1f}% | "
           f"{statistics.mean(r['idle_anon'] for r in rs):.1f} |")
+
+print()
+print("| variant | " + " | ".join(f"{o} p50 ms" for o in OPS) + " |")
+print("| --- " * (len(OPS) + 1) + "|")
+for v in ["slim", "alpine", "pbs"]:
+    rs = [r for r in passes if r["variant"] == v]
+    print(f"| {v} | " + " | ".join(f"{statistics.mean(r[o][1] for r in rs):.3f}" for o in OPS) + " |")
