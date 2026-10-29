@@ -150,7 +150,7 @@ Python 组件（第一个是 `infra/print`）的布局同一套，只是语言�
 └── Makefile                test、test-integration、lint（有种子时加 seed）
 ```
 
-镜像按依赖的轮子选：有只发 glibc 轮子的依赖就用 Debian slim（`infra/print` 的 Typst），并装上 `wget`（平台的健康检查经 `/bin/sh` 与 `wget`）。
+基础镜像按情况选，不固定某一个，选时看这几点：依赖里有只发 glibc 轮子的就只能用 Debian slim（`infra/print` 的 Typst）；同样的服务在官方 alpine 镜像里每个请求的 CPU 多约两成（它的 CPython 没开 PGO，slim 开了），在意 CPU 时用 slim；alpine 小约 100 MB；换别的构建（例如 python-build-standalone）先实测，比 slim 只再省几个百分点时不值得多一步构建。不管选哪个都装上 `wget`（平台的健康检查经 `/bin/sh` 与 `wget`）。
 
 入口、迁移与生成代码的约定见[组件实现约定](06-component-implementation.md#仓库布局与入口)；同一种语言的组件布局完全相同。
 
