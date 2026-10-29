@@ -48,7 +48,7 @@
     - kb：PR #40 追加了记录 10 的带日期一组、新记录 29（容器里的 CPython 构建）、记录 27 的“限内存时”与“负载加倍、数据加倍时”两组、记录 26 的“有根与无根 Podman”一组，2026-10-29。
   - **测量全部完成**（2026-10-29 18:57）。之后：B7 补进 kb 记录 26；Python 探针镜像改 slim（维护者已同意）；实验报告第三部分。
   - **后续要查**：Casdoor 的库导出有 557 MB（night10e 切换前导出，已移出仓库），大得反常，推测是多轮测试积下的令牌与记录，要看是哪张表、要不要定期清理。
-  - **本机的系统设置现在改着**：维护者执行了 `cap/setup.sh`（Docker 的全部容器在 `be-cap.slice`，平时不限）与 `rootful/setup.sh`（root 的 `podman.socket` 对 docker 组开放、`DOCKER-USER` 放行 `podman+`）；B3、B4、B6 已测完，测量已全部结束，可以用各自的 `revert.sh` 还原（维护者执行，要 sudo；`cap/revert.sh` 会重启 Docker）（维护者 2026-10-29 定不加 3 GiB、2 GiB 两档）。GNOME 的文件索引（`localsearch-3`）2026-10-29 02:56–18:58 为测量停过：它递归索引整个 `$HOME`，包括 Docker 存储所在的 `/home/zhijie/data`，测量时一直忙；维护者同意把 `/home/zhijie/data` 加进它的忽略列表（`gsettings` 的 `org.freedesktop.Tracker3.Miner.Files ignored-directories`），已加，索引已恢复运行。
+  - **本机的系统设置已还原**（维护者 2026-10-29 晚执行了 `cap/revert.sh` 与 `rootful/revert.sh`：Docker 的 `cgroup-parent` 去掉、`be-cap.slice` 停了，基础资源回到 `system.slice`；root 的 `podman.socket` 停用、`DOCKER-USER` 清空）。GNOME 的文件索引（`localsearch-3`）2026-10-29 02:56–18:58 为测量停过：它递归索引整个 `$HOME`，包括 Docker 存储所在的 `/home/zhijie/data`；维护者同意把 `/home/zhijie/data` 加进它的忽略列表（`gsettings` 的 `org.freedesktop.Tracker3.Miner.Files ignored-directories`），已加，索引已恢复运行。以后再要限内存或有根 Podman，重新执行对应的 `setup.sh`。
 - **文档里的图（2026-10-24 交办，2026-10-25 完成）**：开发文档不放图（34 张换成步骤与表），客户读的 19 张图后补全关系，组件的 3 张随 `erp/sales` 3.0.7、`erp/billing` 3.0.5 发布；`make docs-diagrams` 进 `make gates`。经过与留下的事见 [diagrams-plan.md](diagrams-plan.md) 的“结果”。
 
 ## 推进方式与停点
