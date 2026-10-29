@@ -40,12 +40,12 @@
     - B1、B2（2026-10-28 07:08–12:13，六格全过）→ [10-01](experiment-records/10-01-pooler-and-pgqueue.md)：PgBouncer 不省组件、只省 PostgreSQL 约 200 MiB 而合计多 9%（外壳省的是组件进程与平台）；PostgreSQL 队列与 NATS 看不出差别。结果摘要比 D8-S 多 16 条审计记录是货币种子“最近 60 天的工作日”随日期变，不是缺陷（5.3；运行器已改为默认与同一批第一格比）。
     - 外壳格 PostgreSQL 的内存 → [10-02](experiment-records/10-02-postgres-backend-memory.md)。
     - P6.32（空闲时发件转发器对空分区做编号事务；`be-protocol` alpha.27——alpha.26 不能用、`be-sdk-go` alpha.36、`be-sdk-python` a32，12 个组件与 3 个外壳连锁发布）：`night10f.sh` 2026-10-29 01:08–02:50 → [10-03](experiment-records/10-03-outbox-idle-poll.md)：空闲时 PostgreSQL 少 36–48%、组件少 31–35%，7 次/秒每千次整套少 17%，延迟与结果不变。
-    - 容器里的 Python 构建：`pybuild/run.sh` 2026-10-29 02:50–03:41 → [10-04](experiment-records/10-04-python-builds.md)：pbs 比 slim 只少 2–5%，alpine 比 slim 多 19–28%。**待维护者定**：生产继续用 slim（AI 建议不换）；Python 探针镜像要不要从 alpine 改成 slim，让探针的数字贴近生产。
-    - B3、B4：`night10c.sh` 2026-10-29 03:41–08:46，六格全过 → [10-05](experiment-records/10-05-memory-cap.md)：4 GiB 放得下、什么也没坏，让出的只是页缓存，延迟与 CPU 不变；坏点要更低的上限（3 GiB、2 GiB）才找得到。
+    - 容器里的 Python 构建：`pybuild/run.sh` 2026-10-29 02:50–03:41 → [10-04](experiment-records/10-04-python-builds.md)：pbs 比 slim 只少 2–5%，alpine 比 slim 多 19–28%。生产继续用 slim（AI 建议不换）；维护者 2026-10-29 同意 Python 探针镜像从 alpine 改成 slim（让探针的数字贴近生产）：测量全部跑完后做（改 Dockerfile、升版本、发布、构建、核对），之后的探针数字与 alpine 时的不跨批比。
+    - B3、B4：`night10c.sh` 2026-10-29 03:41–08:46，六格全过 → [10-05](experiment-records/10-05-memory-cap.md)：4 GiB 放得下、什么也没坏，让出的只是页缓存，延迟与 CPU 不变；坏点要更低的上限才找得到（维护者定不再加档）。
     - kb：PR #40 追加了记录 10 的带日期一组、新记录 29（容器里的 CPython 构建）与记录 27 的“限内存时”一组，2026-10-29。
   - **在跑**：`night10b.sh`（B5，负载与数据加倍，四格，约 5.5 h），2026-10-29 08:47 起，输出 `experiment-data/10-06/night10b/`。
   - **还要跑**（工具都在 2026-10-28 冒烟通过，`bek` 已按维护者同意重建；依次跑，每项开始前确认上一项的进程、容器与端口都清理了）：`night10d.sh`（B6 有根 Podman、不停 Docker，约 3.7 h）、`night10e.sh`（B7 基础资源放进集群，约 2 h，自己起停 `bek`）；结果补进 kb 记录 26、27；最后写实验报告第三部分。
-  - **本机的系统设置现在改着**：维护者执行了 `cap/setup.sh`（Docker 的全部容器在 `be-cap.slice`，平时不限）与 `rootful/setup.sh`（root 的 `podman.socket` 对 docker 组开放、`DOCKER-USER` 放行 `podman+`）；B3、B4、B6 测完后用各自的 `revert.sh` 还原（B3、B4 已测完，`cap/revert.sh` 等维护者定要不要加 3 GiB、2 GiB 两档之后再执行）。GNOME 的文件索引（`systemctl --user stop localsearch-3.service`）2026-10-29 02:56 为测量停掉，它递归索引整个 `$HOME`，包括 Docker 存储所在的 `/home/zhijie/data`，测量时一直忙；测完用 `systemctl --user start localsearch-3.service` 恢复；要不要把 `/home/zhijie/data` 排除出索引由维护者定。
+  - **本机的系统设置现在改着**：维护者执行了 `cap/setup.sh`（Docker 的全部容器在 `be-cap.slice`，平时不限）与 `rootful/setup.sh`（root 的 `podman.socket` 对 docker 组开放、`DOCKER-USER` 放行 `podman+`）；B3、B4、B6 测完后用各自的 `revert.sh` 还原（B3、B4 已测完，维护者 2026-10-29 定不加 3 GiB、2 GiB 两档；`cap/revert.sh` 会重启 Docker，等全部测量跑完再由维护者执行）。GNOME 的文件索引（`systemctl --user stop localsearch-3.service`）2026-10-29 02:56 为测量停掉，它递归索引整个 `$HOME`，包括 Docker 存储所在的 `/home/zhijie/data`，测量时一直忙；维护者 2026-10-29 同意把 `/home/zhijie/data` 加进它的忽略列表（`gsettings` 的 `org.freedesktop.Tracker3.Miner.Files ignored-directories`，已加）；测完用 `systemctl --user start localsearch-3.service` 恢复。
 - **文档里的图（2026-10-24 交办，2026-10-25 完成）**：开发文档不放图（34 张换成步骤与表），客户读的 19 张图后补全关系，组件的 3 张随 `erp/sales` 3.0.7、`erp/billing` 3.0.5 发布；`make docs-diagrams` 进 `make gates`。经过与留下的事见 [diagrams-plan.md](diagrams-plan.md) 的“结果”。
 
 ## 推进方式与停点
@@ -54,9 +54,7 @@
 
 ## 待用户决定
 
-- Python 的构建（[10-04](experiment-records/10-04-python-builds.md)）：生产继续用官方 slim 镜像（AI 建议，pbs 只省 2–5%）；Python 探针镜像要不要从 alpine 改成 slim。
-- B3、B4 要不要加 3 GiB、2 GiB 两档找坏点（[10-05](experiment-records/10-05-memory-cap.md)；要改 `/etc/sudoers.d/be-cap` 让 `limit.sh` 能设这两档），之后再执行 `cap/revert.sh`。
-- GNOME 文件索引要不要排除 `/home/zhijie/data`（见上面第 10 步的“本机的系统设置”）。
+（目前没有。）
 
 ## 未推送、已知问题与外部往来
 
