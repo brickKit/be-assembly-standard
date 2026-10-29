@@ -1,0 +1,15 @@
+1084|/* mdm/org */ INSERT INTO be_outbox_partition (stream, partition) VALUES ($1, $2) ON CONFLICT DO NOTHING
+1058|/* mdm/org */ SELECT generation, timeline FROM be_current_db_epoch()
+1052|/* mdm/product */ INSERT INTO be_outbox_partition (stream, partition) VALUES ($1, $2) ON CONFLICT DO NOTHING
+1052|/* mdm/partner */ INSERT INTO be_outbox_partition (stream, partition) VALUES ($1, $2) ON CONFLICT DO NOTHING
+1052|/* mdm/currency */ INSERT INTO be_outbox_partition (stream, partition) VALUES ($1, $2) ON CONFLICT DO NOTHING
+1051|/* erp/inventory */ SELECT generation, timeline FROM be_current_db_epoch()
+1032|/* mdm/org */ WITH picked AS ( SELECT ord, row_number() OVER (ORDER BY ord) AS rn FROM ( SELECT ord FROM be_outbox WHERE stream = $1 AND partition = $
+1032|/* mdm/org */ SELECT ord, event_id::text, type, occurred_at, record_id, version, projection, coalesce(legal_entity, ''), subjects, coalesce(causation:
+1032|/* mdm/org */ UPDATE be_outbox_partition SET last_seq = $3, epoch_generation = $4, epoch_timeline = $5 WHERE stream = $1 AND partition = $2
+1032|/* mdm/org */ SELECT epoch_generation, epoch_timeline, last_seq FROM be_outbox_partition WHERE stream = $1 AND partition = $2 FOR UPDATE
+1026|/* mdm/partner */ SELECT generation, timeline FROM be_current_db_epoch()
+1026|/* mdm/currency */ SELECT generation, timeline FROM be_current_db_epoch()
+1026|/* mdm/product */ SELECT generation, timeline FROM be_current_db_epoch()
+1012|/* erp/credit */ INSERT INTO be_outbox_partition (stream, partition) VALUES ($1, $2) ON CONFLICT DO NOTHING
+1012|/* erp/sales */ INSERT INTO be_outbox_partition (stream, partition) VALUES ($1, $2) ON CONFLICT DO NOTHING
