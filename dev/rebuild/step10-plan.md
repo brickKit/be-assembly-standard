@@ -98,6 +98,7 @@ B2 的两格冒烟与第一批的六格都比 D8-S 的结果摘要多 16 条审�
 - 格：P9-S-root、P9-H-root（cell.yaml 写 `podman: rootful`）；`runner9.sh` 对这样的格设 `CONTAINER_HOST=unix:///run/podman/podman.sock`（podman 因此走有根的服务）。
 - 一晚：P9-S、P9-S-root、P9-H、P9-H-root；开跑前检查有根 Podman 能连上。
 - 冒烟：维护者执行了 `setup.sh`（第一次 `/run/podman` 仍是 0700、连不上，脚本补了 `chmod 0711` 后再执行）。P9-S-root（14:04–14:17，短参数）：镜像经远端的 `podman load` 导入、`podman compose` 跟着 `CONTAINER_HOST` 起在有根 Podman 里（无根里没有它的容器）、各段全过，负载 210 次全部成功，16 个容器与 Podman 的平台进程都采到，停格后有根 Podman 里无残留。
+- 结果：2026-10-29 13:44–17:10 四格全过，写进记录 [10-07](experiment-records/10-07-rootful-podman.md)：有根时 Podman 自己的开销降到约五分之一，整套每千次少 9–10%，p50 低 1.4 ms；组件与数据库多 3–9%。
 
 **B7：基础资源放进集群**（维护者同意删除重建 `bek`）
 

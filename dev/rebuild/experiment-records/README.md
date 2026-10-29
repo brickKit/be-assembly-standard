@@ -35,3 +35,4 @@
 | 10-04 | 容器里的 Python 构建：官方 alpine、官方 slim、python-build-standalone（同一批，对称排两遍） | D9-probe-pyonly | 2026-10-29 | pbs 比 slim 只少 2–5% CPU，alpine 比 slim 多 19–28%；建议生产继续用 slim；alpine 的探针让容器里 Python 的数字偏高约两成 | [10-04-python-builds.md](10-04-python-builds.md) |
 | 10-05 | 整套放进 6 GiB、4 GiB 内存（B3、B4，systemd slice 限内存，同一批） | D9-H、D9-S、D9-H-m6、D9-S-m6、D9-H-m4、D9-S-m4 | 2026-10-29 | 4 GiB 放得下、什么也没坏：让出的只是页缓存（PostgreSQL 3.0–3.3 → 1.6–1.9 GiB，NATS 0.7 → 0.1 GiB），无 OOM，延迟与 CPU 不变；坏点要更低的上限才找得到 | [10-05-memory-cap.md](10-05-memory-cap.md) |
 | 10-06 | 负载加倍与数据加倍（B5，7 → 14 次/秒同一格；一倍对两倍基线同一晚） | D9-S、D9-X、D9-S-x2、D9-X-x2 | 2026-10-29 | 负载加倍核数只多约一半、每千次少约四分之一（底价摊薄，组件边际每千次约 15 秒）；数据加倍服务不变、数据库多 10–15%；延迟都不变 | [10-06-load-and-data-x2.md](10-06-load-and-data-x2.md) |
+| 10-07 | 有根与无根 Podman（B6，同一批） | P9-S、P9-S-root、P9-H、P9-H-root | 2026-10-29 | 有根时 Podman 自己每千次 13 → 2.4–2.9 秒，整套少 9–10%，p50 低 1.4 ms；组件与数据库多 3–9%（网络处理挪进内核、记在容器上），净省约 8 秒 | [10-07-rootful-podman.md](10-07-rootful-podman.md) |
