@@ -110,7 +110,7 @@ B2 的两格冒烟与第一批的六格都比 D8-S 的结果摘要多 16 条审�
 - 变体（`experiment-scripts/pybuild/`，`build.sh` 从同一份探针源码构建，每个变体按端口出两个镜像）：alpine（198 MB）、slim（302 MB）、pbs（Debian trixie slim 上装 python-build-standalone 3.15.0，397 MB）。
 - 一批（`run.sh`，约 50 分钟）：格 D9-probe-pyonly（两个 Python 探针互相调用），变体按 alpine、slim、pbs、pbs、slim、alpine 各跑两遍（对称排，批内的漂移看得出）；每遍空闲 2 分钟，再四种操作 200 次/秒。每遍之前把 `test-probe-py:3.2.19`、`test-probe-py2:3.2.19` 标到这个变体（只在本机，原镜像留作 `:3.2.19-orig`，结束时标回，出错也标回）。
 - 冒烟（17:43–17:46，短参数）：三个变体都起格、两条边各 250 次全部成功，原镜像已标回。第一次冒烟失败是变体镜像没写 `ENV PORT`（探针镜像自己写了，平台没注入），已补。
-- 等维护者下令与机器安静；结果写记录、交 kb，改不改技术栈作为提议给维护者定。
+- 结果：2026-10-29 02:50–03:41 跑完，写进记录 [10-04](experiment-records/10-04-python-builds.md)：pbs 比 slim 只少 2–5% CPU，alpine 比 slim 多 19–28%；建议生产继续用 slim（待维护者定），探针镜像是否改用 slim 一起提给维护者。
 
 ### 5.6 外壳格里 PostgreSQL 的内存（2026-10-28，已查清）
 
