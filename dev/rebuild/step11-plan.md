@@ -28,7 +28,7 @@ D、K 两行各三格：D9-S、D9-H、D9-X、K9-S、K9-H、K9-X（第 9 步的�
 
 | 要的时机 | 办法 |
 | --- | --- |
-| 进程在任意时刻崩溃 | `docker kill -s KILL <容器>`（compose 的 `restart: unless-stopped` 会拉起）；K 行在 Pod 里 `kill -9 1`（由 kubelet 重启），并另做一次删 Pod |
+| 进程在任意时刻崩溃 | 在容器里给主进程发 SIGABRT（`docker exec <容器> kill -ABRT 1`，K 行 `kubectl exec`）：Go 运行时立即中止、退出码 2，进程自己死掉，compose 的 `restart: unless-stopped` 与 kubelet 照常拉起。不用 `docker kill`：Docker 把它当作手动停止，不再拉起（冒烟时实测）；容器里发 SIGKILL 到不了 PID 1 |
 | 在一步的中间崩溃（RS05、RS06、BL04） | 在格的数据库里临时装一个只给测试用的触发器，让那一步的事务停在提交之前（`pg_sleep`），趁这时杀掉进程；进程死了连接就断，那个事务回滚。查完就删掉触发器。原理：销售推进一步时在一个事务里锁过程行、写分支的应答与下一状态（`erp/sales` 的 `advance.go`，`step`），触发器挂在这些行的 `UPDATE` 上，就能精确地停在“参与方已经提交、销售还没提交”的那一刻 |
 | 依赖中断 | `docker stop`／`start` 基础资源（`be-nats`、`be-postgres`）；授权组件单跑时停它的容器，外壳里的授权跟着 `be/go-infra` 一起停（这一点写进结果：外壳把授权与主数据绑在了一起） |
 
@@ -66,12 +66,12 @@ D、K 两行各三格：D9-S、D9-H、D9-X、K9-S、K9-H、K9-X（第 9 步的�
 
 | 工具 | 内容 | 放在哪里 |
 | --- | --- | --- |
-| 故障注入 `fault.sh` | 杀容器或 Pod、停起基础资源；装、删触发器（按 schema 与表，SQL 写在脚本里）；等到触发器停住了再杀（查 `pg_stat_activity` 里等 `pg_sleep` 的那条连接） | `experiment-scripts/faults/` |
+| 故障注入 | 让进程崩溃、停起组件与基础资源；装、删只针对测试订单的触发器，等它停住了再杀，结束卡住的连接后删掉（`DROP TRIGGER` 要等那条事务的锁，所以先结束、再删、重试） | `be-acceptance` 的 `conformance/cells/faults.py`；各故障的测试在 `conformance/faults/test_faults.py`（复用 L3 场景的账号与种子），每个测完把计时追加到 `faults.jsonl` |
 | 不变量检查 | 第 4 节的检查，读格的数据库，输出 JSON，违反时列出单据 | `be-acceptance` 的 `conformance/cells`（`python -m cells invariants <格>`），配单元测试 |
 | 负载驱动的时间序列 | 现在的驱动只有整段的汇总；要按秒记成功、失败与延迟，才看得出故障从哪一秒开始、到哪一秒恢复 | `be-acceptance` 的 `load/`（加 `-series <文件>`），配测试 |
-| 出账与打印的一阵 | 在负载之外并发开具 N 张账单并打印 | `load/` 的 `-flow bill` 已有一张一张的做法，加并发与张数参数 |
-| 运行器 | 每格：起格、开后台负载、按顺序注入故障、每次之后检查不变量、停格 | `experiment-scripts/runner11.sh` |
-| `erp/inventory` 3.0.9 与 `be/go-core` 新版 | R4 用 | 组件仓库，照常发布 |
+| 出账与打印的一阵 | 在负载之外并发开具账单并打印 | `load/` 加 `-flow print`（下单、确认、交货、草拟、开具、打印），开环固定速率，由 `ops11.sh burst` 起 |
+| 运行器 | 每格：起格、开后台负载、按顺序注入故障、每次之后检查不变量、停格 | `experiment-scripts/runner11.sh`（R1、R2）；R3–R5 的动作在 `experiment-scripts/ops11.sh`（`burst`、`upgrade`、`split`、`conns`） |
+| `erp/inventory` 3.0.9 与 `be/go-core` 3.0.37 | R4 用 | 已发布（2026-10-30）；外壳的 Dockerfile 也删了 `ENV PORT` |
 
 ## 6. 时长
 
@@ -94,3 +94,9 @@ D、K 两行各三格：D9-S、D9-H、D9-X、K9-S、K9-H、K9-X（第 9 步的�
 ## 9. 进度
 
 - 2026-10-29：计划起草。
+- 2026-10-30：工具做好（`be-acceptance`：`load -series`、`load -flow print`、`cells invariants`、`cells/faults.py`、`faults/`；脚本 `runner11.sh`、`ops11.sh`），`erp/inventory` 3.0.9、`be/go-core` 3.0.37 已发布。不变量在第 10 步留下的 LP9-X 数据上全部成立。D9-S 上冒烟（无背景负载）：
+  - RS06：销售崩溃后 5.5 秒拉起，订单确认，两边各一份占用；
+  - BL04：出账崩溃后 30.6 秒正式化续上，订单完成；
+  - 销售、库存、出账任意时刻崩溃：各 5.4–5.5 秒拉起；
+  - 消息系统停 2 分钟：确认照常；数据库重启：1.3 秒后恢复应答；
+  - 授权停：写操作照常 31.8 秒后被拒（503 `AUTHORIZATION_VIEW_EXPIRED`），授权回来 3 秒后销售恢复放行；但 `mdm/org` 那时还在拒（各组件取视图的节奏不同），紧接着的测试因此失败。运行器每次故障后等不变量、再等一分钟，能覆盖这段时间差；结果要写进记录。
