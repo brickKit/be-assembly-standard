@@ -48,7 +48,12 @@ build() {  # as cell-chain.sh: every row's images come from Docker, then into Po
     esac
   done
 }
-up() { (cd "$D" && brickkit up); }
+up() {  # on Kubernetes the driver reaches each component through a NodePort Service the cell tools add (cells/kube.py,
+  # as cell-chain.sh does after its up): they select pods by name, so they are made again for the new topology
+  (cd "$D" && brickkit up) || return 1
+  [ "$ROW" = K ] || return 0
+  (cd "$CONF" && uv run python -c 'import sys; from cells.spec import Cell; from cells.units import nodeports; print(nodeports(Cell.load(sys.argv[1])))' "$D")
+}
 healthy() {  # every container or pod of the cell healthy again (at most 300 s)
   local t0; t0=$(date +%s)
   while [ $(( $(date +%s) - t0 )) -lt 300 ]; do
@@ -127,6 +132,9 @@ before = {c["id"] for c in yaml.safe_load(open(sys.argv[1]))["components"]} | {"
 print(" ".join(sorted({c["id"] for c in yaml.safe_load(open(sys.argv[2]))["components"]} - before)))' "$OUT/brickkit-before.yaml" "$D/brickkit.yaml"); do
         (cd "$D" && brickkit remove "$extra" < /dev/null) || return 1
       done
+      # the shell's own login role, holding the members' runtime roles, and its config: a shell new to the project
+      # (the X cell) has neither, and would refuse to start (exit 78)
+      (cd "$CONF" && uv run python -m cells join-shell "$D" be/go-core erp/inventory erp/credit erp/sales erp/billing)
     }
     if grep -q 'be/go-core' "$D/cell.yaml"; then WAYS="out in"; else WAYS="in out"; fi
     for WAY in $WAYS; do

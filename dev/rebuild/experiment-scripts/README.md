@@ -40,3 +40,11 @@
 | `night10d.sh`、`rootful/` | B6：有根 Podman（`setup.sh`、`revert.sh` 由维护者以 root 执行） |
 | `night10e.sh`、`base-cluster/` | B7：基础资源放进集群（`base.yaml`、`casdoor.yaml`，`base-cluster.sh` 导出 Casdoor、起停集群里的基础资源与 Docker 里的） |
 | `pybuild/` | 容器里的 Python 构建：三个变体的 Dockerfile、`build.sh`、`run.sh`（step10-plan 5.5） |
+
+## 第 11 步：套件 C
+
+| 脚本 | 做什么 |
+| --- | --- |
+| `runner11.sh` | 一批格依次跑完套件 C：起格与基线、整格的背景负载（`load -series`）、按顺序注入故障（`be-acceptance` 的 `conformance/faults/`，以及 `ops11.sh` 的 R3–R5）、每次之后的不变量（`cells invariants`）、停格；`FAULTS` 选故障 |
+| `ops11.sh` | 在运行着的格上做运维动作：`burst`（R3，一阵出账与打印）、`upgrade`（R4，库存 3.0.9 连同依赖它的销售、出账；外壳格升 `be/go-core` 3.0.38）、`split`（R5，外壳拆回单跑再合回）、`conns`（连接按角色与库） |
+| `night11.sh` | D、K 两行的 S、H、X 六格，每行一批，约 7.5 小时 |
