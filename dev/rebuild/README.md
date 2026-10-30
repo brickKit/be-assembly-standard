@@ -36,7 +36,7 @@
 - 测量期间不在机器上跑任何测试、编译或剖析：会干扰数字，也会抢端口（4-03 记了一次）。 每一轮记下电源模式；运行脚本切到 performance 并在结束时恢复。
 - 实验之后先做底层（权限、登录、冷热数据、事务、消息），再按 [rebuild-plan.md](rebuild-plan.md) 重建业务组件。
 
-- **第 10 步（套件 B）进行中**（[step10-plan.md](step10-plan.md) 第 5 节）。各晚的测量取 `be-acceptance` **整个仓库**的快照（只拷 `conformance/` 会缺负载驱动的源码 `load/`，2026-10-29 第一次 night10f 因此失败；B1–B7 用 v1.0.8，之后用 v1.0.9），经 `experiment-scripts/night-wrap.sh` 启动（快照、电源模式、残留检查与启动命令写在它的开头）；维护者 2026-10-29 凌晨授权“能测就一直测下去，遇到问题就修”。
+- **第 10 步（套件 B）完成**（2026-10-30）（[step10-plan.md](step10-plan.md) 第 5 节）。各晚的测量取 `be-acceptance` **整个仓库**的快照（只拷 `conformance/` 会缺负载驱动的源码 `load/`，2026-10-29 第一次 night10f 因此失败；B1–B7 用 v1.0.8，之后用 v1.0.9），经 `experiment-scripts/night-wrap.sh` 启动（快照、电源模式、残留检查与启动命令写在它的开头）；维护者 2026-10-29 凌晨授权“能测就一直测下去，遇到问题就修”。
   - **已完成**：
     - B1、B2（2026-10-28 07:08–12:13，六格全过）→ [10-01](experiment-records/10-01-pooler-and-pgqueue.md)：PgBouncer 不省组件、只省 PostgreSQL 约 200 MiB 而合计多 9%（外壳省的是组件进程与平台）；PostgreSQL 队列与 NATS 看不出差别。结果摘要比 D8-S 多 16 条审计记录是货币种子“最近 60 天的工作日”随日期变，不是缺陷（5.3；运行器已改为默认与同一批第一格比）。
     - 外壳格 PostgreSQL 的内存 → [10-02](experiment-records/10-02-postgres-backend-memory.md)。
@@ -48,7 +48,7 @@
     - B7：`night10e.sh` 2026-10-29 17:10–18:57，两格全过 → [10-08](experiment-records/10-08-base-in-cluster.md)：集群内整套每千次少约 9%、延迟不变，但大半来自集群里的基础资源是新起的，真正因位置省的约 2–5%；集群内一格全程有远程会话。
     - kb：PR #40 追加了记录 10 的带日期一组、新记录 29（容器里的 CPython 构建）、记录 27 的“限内存时”与“负载加倍、数据加倍时”两组、记录 26 的“有根与无根 Podman”一组，2026-10-29。
   - **B1–B7 测完**（2026-10-29 18:57），kb 已补齐（PR #40，等审查），Python 探针已改 slim。
-  - **LD、LP 的 H、X 列：测完**（`night10g.sh` 2026-10-30 01:38–08:33，八格全过）→ [10-10](experiment-records/10-10-ld-lp-shell-columns.md)：外壳省组件 CPU 约 20%、内存约 36%，混合约 11–13%、22%，与纯容器的行一样；本机进程这种形态本身整套只多 2–4%（多的是 Docker 为本机进程转发数据库流量），p50 多约 2.5 ms（测量的转发）。途中 FRB-010（BrickKit v1.10.2 修好，`experiment-data/10-09/frb010/`）。套件 A 的 18 格至此齐全。kb 记录 26 已补一组（knowledge-base PR #44，等审查；PR #40、#41 已于 2026-10-29 合并）。**下一步**：实验报告第一、二部分补上 10-03 到 10-10，第三部分逐个模式介绍（18 节，套件 C–E 的内容标“第 11–13 步”）；然后照 [step11-plan.md](step11-plan.md) 做套件 C 的工具，冒烟后等维护者下令。
+  - **LD、LP 的 H、X 列：测完**（`night10g.sh` 2026-10-30 01:38–08:33，八格全过）→ [10-10](experiment-records/10-10-ld-lp-shell-columns.md)：外壳省组件 CPU 约 20%、内存约 36%，混合约 11–13%、22%，与纯容器的行一样；本机进程这种形态本身整套只多 2–4%（多的是 Docker 为本机进程转发数据库流量），p50 多约 2.5 ms（测量的转发）。途中 FRB-010（BrickKit v1.10.2 修好，`experiment-data/10-09/frb010/`）。套件 A 的 18 格至此齐全。kb 记录 26 已补一组（knowledge-base PR #44，等审查；PR #40、#41 已于 2026-10-29 合并）。实验报告已更新（2026-10-30）：第一、二部分补上 10-03 到 10-10，第三部分按 6 种形态写（每种形态一节，三种拓扑合在一张表里，避免同样的部署步骤写 18 遍），套件 C–E 标“第 11–13 步”。**第 10 步完成，等维护者确认后进第 11 步**：照 [step11-plan.md](step11-plan.md) 做套件 C 的工具，冒烟后等维护者下令测量。
   - **后续要查**：Casdoor 的库导出有 557 MB（night10e 切换前导出，已移出仓库），大得反常，推测是多轮测试积下的令牌与记录，要看是哪张表、要不要定期清理。
   - **本机的系统设置已还原**（维护者 2026-10-29 晚执行了 `cap/revert.sh` 与 `rootful/revert.sh`：Docker 的 `cgroup-parent` 去掉、`be-cap.slice` 停了，基础资源回到 `system.slice`；root 的 `podman.socket` 停用、`DOCKER-USER` 清空）。GNOME 的文件索引（`localsearch-3`）2026-10-29 02:56–18:58 为测量停过：它递归索引整个 `$HOME`，包括 Docker 存储所在的 `/home/zhijie/data`；维护者同意把 `/home/zhijie/data` 加进它的忽略列表（`gsettings` 的 `org.freedesktop.Tracker3.Miner.Files ignored-directories`），已加，索引已恢复运行。以后再要限内存或有根 Podman，重新执行对应的 `setup.sh`。
 - **文档里的图（2026-10-24 交办，2026-10-25 完成）**：开发文档不放图（34 张换成步骤与表），客户读的 19 张图后补全关系，组件的 3 张随 `erp/sales` 3.0.7、`erp/billing` 3.0.5 发布；`make docs-diagrams` 进 `make gates`。经过与留下的事见 [diagrams-plan.md](diagrams-plan.md) 的“结果”。
