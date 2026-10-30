@@ -12,7 +12,7 @@
 | [业务组件边界](02-business-boundaries.md) | D02、D03、D16、D27、D44–D53、D68、D70–D73 |
 | [权限与身份](03-permissions-and-identity.md) | D07–D10、D29–D31、D35–D37、D57、D61、D62、D64、D76–D78 |
 | [审批与流程](04-approval-and-workflow.md) | D11、D18、D19、D23、D33、D38、D39、D60 |
-| [事务、数据、审计与恢复](05-transactions-data-and-recovery.md) | D12–D14、D26、D28、D65（已被取代）、D66 |
+| [事务、数据、审计与恢复](05-transactions-data-and-recovery.md) | D12–D14、D26、D28、D65（已被取代）、D66、D79 |
 | [前端与终端](06-frontend.md) | D17、D24、D34 |
 | [部署、交付与维护](07-deployment-and-delivery.md) | D25、D32、D40–D43、D54、D55、D58、D63、D75 |
 | [文档与设计推进方式](08-documentation-and-process.md) | D56、D59、D67、D74 |
