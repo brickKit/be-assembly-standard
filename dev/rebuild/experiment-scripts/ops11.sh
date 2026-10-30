@@ -137,6 +137,7 @@ print(" ".join(sorted({c["id"] for c in yaml.safe_load(open(sys.argv[2]))["compo
       (cd "$CONF" && uv run python -m cells join-shell "$D" be/go-core erp/inventory erp/credit erp/sales erp/billing)
     }
     if grep -q 'be/go-core' "$D/cell.yaml"; then WAYS="out in"; else WAYS="in out"; fi
+    BAD=0  # the scenarios failing either way fails the action (the next way still runs)
     for WAY in $WAYS; do
       say "SPLIT $WAY ($SHELL_REF)"; timed "move-$WAY" "${WAY}_way" || exit 1
       units > "$OUT/units-before-$WAY.txt"
@@ -145,8 +146,9 @@ print(" ".join(sorted({c["id"] for c in yaml.safe_load(open(sys.argv[2]))["compo
       timed "healthy-$WAY" healthy || exit 1
       units > "$OUT/units-after-$WAY.txt"
       "$0" conns "$CELL" > "$OUT/conns-$WAY.txt"
-      timed "scenarios-$WAY" scenarios || say "SPLIT $WAY scenarios FAILED"
+      timed "scenarios-$WAY" scenarios || { say "SPLIT $WAY scenarios FAILED"; BAD=1; }
     done
+    exit $BAD
     ;;
   conns)
     # by role, database and application name: the base resources are reached through the host's gateway, so the client

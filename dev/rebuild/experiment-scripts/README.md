@@ -46,5 +46,6 @@
 | 脚本 | 做什么 |
 | --- | --- |
 | `runner11.sh` | 一批格依次跑完套件 C：起格与基线、整格的背景负载（`load -series`）、按顺序注入故障（`be-acceptance` 的 `conformance/faults/`，以及 `ops11.sh` 的 R3–R5）、每次之后的不变量（`cells invariants`）、停格；`FAULTS` 选故障 |
-| `ops11.sh` | 在运行着的格上做运维动作：`burst`（R3，一阵出账与打印）、`upgrade`（R4，库存 3.0.9 连同依赖它的销售、出账；外壳格升 `be/go-core` 3.0.38）、`split`（R5，外壳拆回单跑再合回）、`conns`（连接按角色与库） |
+| `ops11.sh` | 在运行着的格上做运维动作：`burst`（R3，一阵出账与打印）、`upgrade`（R4，库存 3.0.9 连同依赖它的销售、出账；外壳格升 `be/go-core` 3.0.38）、`split`（R5，外壳拆回单跑再合回；任一方向的 L3 场景失败，这一项就失败）、`conns`（连接按角色与库） |
 | `night11.sh` | D、K 两行的 S、H、X 六格，每行一批，约 7.5 小时 |
+| `summary11.py` | 把 `runner11.sh` 的输出汇总成一份 Markdown：每格每项的结果、不变量、测试记下的计时、这一项期间背景负载失败的请求与 `processing` 的秒数（不计与故障无关的 `list.order` 404） |

@@ -1,0 +1,775 @@
+2026-10-31T00:04:15+01:00 SPLIT out (be/go-core@3.0.36)
+➖ Removed be/go-core@3.0.36
+🗄️  Config archived: config/be-go-core.yaml → config/.archive/be-go-core@3.0.36.yaml
+📝 Written: brickkit.yaml, deploy.yaml
+2026-10-31T00:04:15+01:00 STEP move-out exit=0 secs=0.1
+⏭️  be/go-infra@3.0.36: image be-go-infra:3.0.36 already exists, skipped (--force rebuilds)
+⏭️  be/py-render@3.0.26: image be-py-render:3.0.26 already exists, skipped (--force rebuilds)
+⏭️  mdm/currency@3.0.10: image mdm-currency:3.0.10 already exists, skipped (--force rebuilds)
+⏭️  mdm/org@3.0.9: image mdm-org:3.0.9 already exists, skipped (--force rebuilds)
+⏭️  mdm/partner@3.0.12: image mdm-partner:3.0.12 already exists, skipped (--force rebuilds)
+⏭️  mdm/product@3.0.12: image mdm-product:3.0.12 already exists, skipped (--force rebuilds)
+⏭️  erp/credit@3.0.8: image erp-credit:3.0.8 already exists, skipped (--force rebuilds)
+⏭️  erp/inventory@3.0.8: image erp-inventory:3.0.8 already exists, skipped (--force rebuilds)
+⏭️  erp/sales@3.0.13: image erp-sales:3.0.13 already exists, skipped (--force rebuilds)
+⏭️  infra/print@3.0.7: image infra-print:3.0.7 already exists, skipped (--force rebuilds)
+⏭️  erp/billing@3.0.12: image erp-billing:3.0.12 already exists, skipped (--force rebuilds)
+⏭️  infra/audit@3.0.8: image infra-audit:3.0.8 already exists, skipped (--force rebuilds)
+⏭️  infra/authz@3.0.11: image infra-authz:3.0.11 already exists, skipped (--force rebuilds)
+⏭️  infra/iam-casdoor@3.0.10: image infra-iam-casdoor:3.0.10 already exists, skipped (--force rebuilds)
+2026-10-31T00:04:39+01:00 STEP build-out exit=0 secs=24.4
+🚀 Starting project k9-h (target: k8s)
+☸️  Target cluster: bek
+📋 Component state calculation:
+   ✅ be/go-infra@3.0.36        starting (top-level)
+   ✅ be/py-render@3.0.26       starting (top-level)
+   ✅ mdm/currency@3.0.10       starting (erp/billing needs it)
+   ✅ mdm/org@3.0.9             starting (erp/billing needs it)
+   ✅ mdm/partner@3.0.12        starting (erp/billing needs it)
+   ✅ mdm/product@3.0.12        starting (erp/inventory needs it)
+   ✅ erp/credit@3.0.8          starting (erp/sales needs it)
+   ✅ erp/inventory@3.0.8       starting (erp/sales needs it)
+   ✅ erp/sales@3.0.13          starting (erp/billing needs it)
+   ✅ infra/print@3.0.7         starting (erp/billing needs it)
+   ✅ erp/billing@3.0.12        starting (top-level)
+   ✅ infra/audit@3.0.8         starting (erp/billing needs it)
+   ✅ infra/authz@3.0.11        starting (erp/billing needs it)
+   ✅ infra/iam-casdoor@3.0.10  starting (erp/billing needs it)
+
+⚠️ Files under config/ may contain plaintext secrets
+   Config items: infra/iam-casdoor@3.0.10 → IAM_TOKEN_ISSUER ($var:IAM_ISSUER)
+   Why it matters: config/*.yaml and config/vars.yaml are meant to be committed to Git, so a secret written there goes into version control with it and can't be removed from the history
+   Suggestions:
+   1. Change it to a reference such as ${MY_TOKEN} (real value in .env) or file://.secrets/token
+   2. .env must be listed in .gitignore
+   3. Items that declare secret: true are ones the component author identified as credentials; the ones that merely have a suspicious name are judged by name only, not by value, so you can ignore them if they really aren't secrets
+📋 Start order (topological sort):
+   1. be-go-infra-3-0-36   no dependencies  (hosts mdm/currency@3.0.10, mdm/org@3.0.9, mdm/partner@3.0.12, mdm/product@3.0.12, infra/audit@3.0.8, infra/authz@3.0.11, infra/iam-casdoor@3.0.10)
+   2. be-py-render-3-0-26  no dependencies  (hosts infra/print@3.0.7)
+   3. erp-billing-3-0-12   ← depends on 1
+   4. erp-credit-3-0-8     ← depends on 1
+   5. erp-inventory-3-0-8  ← depends on 1
+   6. erp-sales-3-0-13     ← depends on 1
+
+Can start on their own: be-go-infra-3-0-36, be-py-render-3-0-26 (no dependencies)
+Only referenced by optional dependencies (turning them off affects no one: mode: disable): erp/credit, erp/inventory, erp/sales, infra/print
+Longest dependency chain (2 levels): be-go-infra-3-0-36 → erp-billing-3-0-12
+   Components not on this chain start in parallel with it
+
+Dependency graph:
+   erp/sales@3.0.13 → mdm/currency@3.0.10
+                    → mdm/org@3.0.9
+                    → mdm/partner@3.0.12
+                    → mdm/product@3.0.12
+                    → erp/credit@3.0.8 (optional)
+                    → erp/inventory@3.0.8 (optional)
+   erp/inventory@3.0.8 → mdm/org@3.0.9
+                       → mdm/product@3.0.12
+   mdm/product@3.0.12 → mdm/org@3.0.9
+   erp/credit@3.0.8 → mdm/currency@3.0.10
+                    → mdm/org@3.0.9
+                    → mdm/partner@3.0.12
+   erp/billing@3.0.12 → mdm/currency@3.0.10
+                      → mdm/org@3.0.9
+                      → mdm/partner@3.0.12
+                      → erp/sales@3.0.13 (optional)
+                      → infra/print@3.0.7 (optional)
+   mdm/partner@3.0.12 → mdm/org@3.0.9
+📄 Generated 34 manifests: .brickkit/generated/k8s/
+   Namespace: k9-h
+
+🔧 Database migrations that run before startup (on failure that component won't start):
+   infra/audit@3.0.8  /infra-audit migrate
+   infra/authz@3.0.11  /infra-authz migrate
+   infra/iam-casdoor@3.0.10  /infra-iam-casdoor migrate
+   infra/print@3.0.7  python -m infra_print migrate
+   mdm/currency@3.0.10  /mdm-currency migrate
+   mdm/org@3.0.9  /mdm-org migrate
+   mdm/partner@3.0.12  /mdm-partner migrate
+   erp/billing@3.0.12  /erp-billing migrate
+   erp/credit@3.0.8  /erp-credit migrate
+   mdm/product@3.0.12  /mdm-product migrate
+   erp/inventory@3.0.8  /erp-inventory migrate
+   erp/sales@3.0.13  /erp-sales migrate
+
+☸️  Deploying to Kubernetes (namespace k9-h)...
+   Database migrations run first; the main service starts only after they finish
+
+🧹 Cleaned up leftovers from an old version (3 items):
+   - deployment.apps/be-go-core-3-0-36
+   - service/be-go-core-3-0-36
+   - secret/be-go-core-3-0-36-config-secret
+   They carry this project's labels but are not part of this deployment
+   be-go-infra-3-0-36           running (healthy)
+   be-py-render-3-0-26          running (healthy)
+   erp-billing-3-0-12           running (healthy)
+   erp-credit-3-0-8             running (healthy)
+   erp-inventory-3-0-8          running (healthy)
+   erp-sales-3-0-13             running (healthy)
+✅ All components started (6)
+
+💡 View the status: brickkit status
+   View the logs: kubectl logs deployment/<service-name> -n k9-h
+   View the Pods: kubectl get pods -n k9-h
+['np-infra-iam-casdoor:30200', 'np-infra-authz:30223', 'np-infra-audit:30206', 'np-mdm-org:30083', 'np-mdm-currency:30226', 'np-mdm-partner:30225', 'np-mdm-product:30082', 'np-erp-inventory:30086', 'np-erp-credit:30088', 'np-erp-sales:30084', 'np-erp-billing:30089', 'np-infra-print:30400', 'np-be-go-infra:30224', 'np-be-py-render:30402']
+2026-10-31T00:04:58+01:00 STEP up-out exit=0 secs=18.2
+2026-10-31T00:04:58+01:00 STEP healthy-out exit=0 secs=0.1
+F.FFFFF....FFFFFF.                                                       [100%]
+=================================== FAILURES ===================================
+_________________ test_rs01_two_orders_race_for_the_last_unit __________________
+
+bob = User(name='test.bob', cell=Cell(dir=PosixPath('/home/zhijie/Desktop/github/be-assembly-standard/dev/rebuild/experiment...BCjgKgvrep7UDFEOxQ8Bg', principal='01a18f02-6f53-7c0d-8acf-d60e21488246', http=<httpx.Client object at 0x748ec183f750>)
+world = World(le='01a18f02-e502-73aa-98b7-b0fe04b268da', shanghai='01a18f03-192a-760f-b609-48ee0905e467', beijing='01a18f03-1a...-238392019be9', 'CS-POST': '01a18f02-e5ab-7c63-9c07-6a5e3d45da2b', 'PROJ-OLD': '01a18f02-e5ad-7753-b9ce-d598bb331086'})
+
+    def test_rs01_two_orders_race_for_the_last_unit(bob, world):
+        """RS01: Beijing holds one tin; two orders for it confirm at once — one holds it, the other is refused for stock."""
+        on_hand, reserved = position(bob, world, world.beijing, world.tin["id"])
+        free = on_hand - reserved
+        assert free >= 1, f"Beijing has {free} tins free: the seed keeps one"
+        orders = [order(bob, world, world.large, [goods(world, int(free), world.beijing, world.tin)]) for _ in range(2)]
+        with ThreadPoolExecutor(2) as pool:
+            answers = list(pool.map(lambda o: confirm(bob, o["id"]), orders))
+        outcomes = sorted((a["outcome"], a.get("reason") or "") for a in answers)
+>       assert outcomes == [("confirmed", ""), ("rejected", "insufficient_stock")], answers
+E       AssertionError: [{'outcome': 'processing', 'confirmation_id': '01a18f0f-2da7-7aec-85fc-ccaceb1a42f8', 'reason': None, 'order': {'id': ...tner_id': '01a18f02-f6f8-7eb7-a5db-927f963da211', 'name': '「本地测试」北京演示食品有限公司 17', 'tax_id': '91310000SEED0017X'}, ...}}]
+E       assert [('processing...cessing', '')] == [('confirmed'...cient_stock')]
+E         
+E         At index 0 diff: ('processing', '') != ('confirmed', '')
+E         Use -v to get more diff
+
+scenarios/test_expectations.py:30: AssertionError
+_____________________ test_rs08_the_same_key_confirms_once _____________________
+
+bob = User(name='test.bob', cell=Cell(dir=PosixPath('/home/zhijie/Desktop/github/be-assembly-standard/dev/rebuild/experiment...BCjgKgvrep7UDFEOxQ8Bg', principal='01a18f02-6f53-7c0d-8acf-d60e21488246', http=<httpx.Client object at 0x748ec183f750>)
+world = World(le='01a18f02-e502-73aa-98b7-b0fe04b268da', shanghai='01a18f03-192a-760f-b609-48ee0905e467', beijing='01a18f03-1a...-238392019be9', 'CS-POST': '01a18f02-e5ab-7c63-9c07-6a5e3d45da2b', 'PROJ-OLD': '01a18f02-e5ad-7753-b9ce-d598bb331086'})
+
+    def test_rs08_the_same_key_confirms_once(bob, world):
+        """RS08: confirming again with the same idempotency key answers the same process and holds the stock once."""
+        on_hand, reserved = position(bob, world, world.shanghai, world.goods["id"])
+        o = order(bob, world, world.large, [goods(world, 2)])
+        key = f"l3:{uuid.uuid4()}"
+        first, again = confirm(bob, o["id"], key), confirm(bob, o["id"], key)
+>       assert first["outcome"] == again["outcome"] == "confirmed", (first, again)
+E       AssertionError: ({'outcome': 'processing', 'confirmation_id': '01a18f0f-2dee-76c2-a037-6acef2af3178', 'reason': None, 'order': {'id': ...tner_id': '01a18f02-f6f8-7eb7-a5db-927f963da211', 'name': '「本地测试」北京演示食品有限公司 17', 'tax_id': '91310000SEED0017X'}, ...}})
+E       assert 'processing' == 'confirmed'
+E         
+E         - confirmed
+E         + processing
+
+scenarios/test_expectations.py:47: AssertionError
+___________ test_rs16_opposite_line_orders_confirm_without_deadlock ____________
+
+bob = User(name='test.bob', cell=Cell(dir=PosixPath('/home/zhijie/Desktop/github/be-assembly-standard/dev/rebuild/experiment...BCjgKgvrep7UDFEOxQ8Bg', principal='01a18f02-6f53-7c0d-8acf-d60e21488246', http=<httpx.Client object at 0x748ec183f750>)
+world = World(le='01a18f02-e502-73aa-98b7-b0fe04b268da', shanghai='01a18f03-192a-760f-b609-48ee0905e467', beijing='01a18f03-1a...-238392019be9', 'CS-POST': '01a18f02-e5ab-7c63-9c07-6a5e3d45da2b', 'PROJ-OLD': '01a18f02-e5ad-7753-b9ce-d598bb331086'})
+second_goods = {'id': '01a18f03-05d3-7225-a8e6-674d43954072', 'code': 'TW-00', 'kind': 'stock', 'stocked': True, ...}
+
+    def test_rs16_opposite_line_orders_confirm_without_deadlock(bob, world, second_goods):
+        """RS16: orders with the same two products in opposite order confirm at the same time, ten pairs: every one is
+        confirmed, none waits on the other (a fixed lock order)."""
+        a, b = world.goods, second_goods
+        pairs = [(order(bob, world, world.large, [goods(world, 1, product=a), goods(world, 1, product=b)]),
+                  order(bob, world, world.large, [goods(world, 1, product=b), goods(world, 1, product=a)])) for _ in range(10)]
+        flat = [o for p in pairs for o in p]
+        with ThreadPoolExecutor(len(flat)) as pool:
+            answers = list(pool.map(lambda o: confirm(bob, o["id"]), flat))
+>       assert [x["outcome"] for x in answers] == ["confirmed"] * len(flat), [x.get("reason") for x in answers]
+E       AssertionError: [None, None, None, None, None, None, ...]
+E       assert ['processing'...cessing', ...] == ['confirmed',...nfirmed', ...]
+E         
+E         At index 0 diff: 'processing' != 'confirmed'
+E         Use -v to get more diff
+
+scenarios/test_expectations.py:63: AssertionError
+_______ test_rs19_the_delivery_consumes_its_branch_in_the_same_movement ________
+
+bob = User(name='test.bob', cell=Cell(dir=PosixPath('/home/zhijie/Desktop/github/be-assembly-standard/dev/rebuild/experiment...BCjgKgvrep7UDFEOxQ8Bg', principal='01a18f02-6f53-7c0d-8acf-d60e21488246', http=<httpx.Client object at 0x748ec183f750>)
+world = World(le='01a18f02-e502-73aa-98b7-b0fe04b268da', shanghai='01a18f03-192a-760f-b609-48ee0905e467', beijing='01a18f03-1a...-238392019be9', 'CS-POST': '01a18f02-e5ab-7c63-9c07-6a5e3d45da2b', 'PROJ-OLD': '01a18f02-e5ad-7753-b9ce-d598bb331086'})
+
+    def test_rs19_the_delivery_consumes_its_branch_in_the_same_movement(bob, world):
+        """RS19: the delivery's stock issue and the branch's consumption are one movement, which names the branch."""
+        on_hand, reserved = position(bob, world, world.shanghai, world.goods["id"])
+        o = order(bob, world, world.large, [goods(world, 2)])
+        ans = confirm(bob, o["id"])
+>       assert ans["outcome"] == "confirmed", ans
+E       AssertionError: {'outcome': 'processing', 'confirmation_id': '01a18f0f-2fda-79a5-a096-de6d2a50874b', 'reason': None, 'order': {'id': '...rtner_id': '01a18f02-f6f8-7eb7-a5db-927f963da211', 'name': '「本地测试」北京演示食品有限公司 17', 'tax_id': '91310000SEED0017X'}, ...}}
+E       assert 'processing' == 'confirmed'
+E         
+E         - confirmed
+E         + processing
+
+scenarios/test_expectations.py:73: AssertionError
+_____________ test_bl01_two_drafts_race_for_the_same_billable_line _____________
+
+bob = User(name='test.bob', cell=Cell(dir=PosixPath('/home/zhijie/Desktop/github/be-assembly-standard/dev/rebuild/experiment...BCjgKgvrep7UDFEOxQ8Bg', principal='01a18f02-6f53-7c0d-8acf-d60e21488246', http=<httpx.Client object at 0x748ec183f750>)
+world = World(le='01a18f02-e502-73aa-98b7-b0fe04b268da', shanghai='01a18f03-192a-760f-b609-48ee0905e467', beijing='01a18f03-1a...-238392019be9', 'CS-POST': '01a18f02-e5ab-7c63-9c07-6a5e3d45da2b', 'PROJ-OLD': '01a18f02-e5ad-7753-b9ce-d598bb331086'})
+
+    def test_bl01_two_drafts_race_for_the_same_billable_line(bob, world):
+        """BL01: two drafts for the same order at once: one claims what is left, the other finds nothing to claim."""
+        o = order(bob, world, world.large, [goods(world, 1)])
+        ans = confirm(bob, o["id"])
+        line = ans["order"]["lines"][0]
+>       bob.post("erp/sales", "/api/sales/deliveries", {"order_id": o["id"], "lines": [{"order_line_id": line["id"], "quantity": "1"}]})
+
+scenarios/test_expectations.py:87: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+scenarios/conftest.py:47: in post
+    return self.ok(self.call("POST", component, path, body))
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+r = <Response [409 Conflict]>
+
+    @staticmethod
+    def ok(r: httpx.Response) -> dict:
+        if r.status_code != 200:
+>           raise Refused(f"{r.request.method} {r.request.url.path}: {r.status_code} {r.text[:300]}")
+E           conftest.Refused: POST /api/sales/deliveries: 409 {"type":"urn:be:erp/sales:STATE_CONFLICT","title":"The record's state does not allow this","status":409,"detail":"only a confirmed order is delivered; this one is confirming","reason":"STATE_CONFLICT","domain":"erp/sales","trace_id":"71a8fe55ad3ffc39dfb84172393ecfa9"}
+
+scenarios/conftest.py:52: Refused
+_________________ test_bl02_the_same_draft_retried_claims_once _________________
+
+bob = User(name='test.bob', cell=Cell(dir=PosixPath('/home/zhijie/Desktop/github/be-assembly-standard/dev/rebuild/experiment...BCjgKgvrep7UDFEOxQ8Bg', principal='01a18f02-6f53-7c0d-8acf-d60e21488246', http=<httpx.Client object at 0x748ec183f750>)
+world = World(le='01a18f02-e502-73aa-98b7-b0fe04b268da', shanghai='01a18f03-192a-760f-b609-48ee0905e467', beijing='01a18f03-1a...-238392019be9', 'CS-POST': '01a18f02-e5ab-7c63-9c07-6a5e3d45da2b', 'PROJ-OLD': '01a18f02-e5ad-7753-b9ce-d598bb331086'})
+
+    def test_bl02_the_same_draft_retried_claims_once(bob, world):
+        """BL02: drafting again with the same idempotency key answers the same invoice and claims nothing more."""
+        o = order(bob, world, world.large, [goods(world, 1)])
+        ans = confirm(bob, o["id"])
+        line = ans["order"]["lines"][0]
+>       bob.post("erp/sales", "/api/sales/deliveries", {"order_id": o["id"], "lines": [{"order_line_id": line["id"], "quantity": "1"}]})
+
+scenarios/test_expectations.py:99: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+scenarios/conftest.py:47: in post
+    return self.ok(self.call("POST", component, path, body))
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+r = <Response [409 Conflict]>
+
+    @staticmethod
+    def ok(r: httpx.Response) -> dict:
+        if r.status_code != 200:
+>           raise Refused(f"{r.request.method} {r.request.url.path}: {r.status_code} {r.text[:300]}")
+E           conftest.Refused: POST /api/sales/deliveries: 409 {"type":"urn:be:erp/sales:STATE_CONFLICT","title":"The record's state does not allow this","status":409,"detail":"only a confirmed order is delivered; this one is confirming","reason":"STATE_CONFLICT","domain":"erp/sales","trace_id":"f6d8535c63c49f6315224a70466cabd5"}
+
+scenarios/conftest.py:52: Refused
+__________________ test_only_the_billing_role_issues_invoices __________________
+
+login = <function login.<locals>.get at 0x748ec187bcc0>
+bob = User(name='test.bob', cell=Cell(dir=PosixPath('/home/zhijie/Desktop/github/be-assembly-standard/dev/rebuild/experiment...BCjgKgvrep7UDFEOxQ8Bg', principal='01a18f02-6f53-7c0d-8acf-d60e21488246', http=<httpx.Client object at 0x748ec183f750>)
+world = World(le='01a18f02-e502-73aa-98b7-b0fe04b268da', shanghai='01a18f03-192a-760f-b609-48ee0905e467', beijing='01a18f03-1a...-238392019be9', 'CS-POST': '01a18f02-e5ab-7c63-9c07-6a5e3d45da2b', 'PROJ-OLD': '01a18f02-e5ad-7753-b9ce-d598bb331086'})
+
+    def test_only_the_billing_role_issues_invoices(login, bob, world):
+        o = order(bob, world, world.large, [goods(world, 1)])
+>       assert bob.post("erp/sales", f"/api/sales/orders/{o['id']}/confirm")["outcome"] == "confirmed"
+E       AssertionError: assert 'processing' == 'confirmed'
+E         
+E         - confirmed
+E         + processing
+
+scenarios/test_scope.py:53: AssertionError
+__________ test_sales_inventory_credit_billing_print_order_to_invoice __________
+
+bob = User(name='test.bob', cell=Cell(dir=PosixPath('/home/zhijie/Desktop/github/be-assembly-standard/dev/rebuild/experiment...BCjgKgvrep7UDFEOxQ8Bg', principal='01a18f02-6f53-7c0d-8acf-d60e21488246', http=<httpx.Client object at 0x748ec183f750>)
+world = World(le='01a18f02-e502-73aa-98b7-b0fe04b268da', shanghai='01a18f03-192a-760f-b609-48ee0905e467', beijing='01a18f03-1a...-238392019be9', 'CS-POST': '01a18f02-e5ab-7c63-9c07-6a5e3d45da2b', 'PROJ-OLD': '01a18f02-e5ad-7753-b9ce-d598bb331086'})
+
+    def test_sales_inventory_credit_billing_print_order_to_invoice(bob, world):
+        """An order goes from confirmation to a printed invoice: the holds are taken, the delivery issues the stock, the
+        invoice claims the billable amount, and the order completes once billing formalizes."""
+        on_hand, reserved = position(bob, world, world.shanghai, world.goods["id"])
+        exposed = exposure(bob, world, world.large)
+    
+        o = order(bob, world, world.large, [goods(world, 3), service(world, 1)])
+        ans = bob.post("erp/sales", f"/api/sales/orders/{o['id']}/confirm")
+>       assert ans["outcome"] == "confirmed", ans
+E       AssertionError: {'outcome': 'processing', 'confirmation_id': '01a18f0f-31c2-784b-8d77-a93203fd93ca', 'reason': None, 'order': {'id': '...rtner_id': '01a18f02-f6f8-7eb7-a5db-927f963da211', 'name': '「本地测试」北京演示食品有限公司 17', 'tax_id': '91310000SEED0017X'}, ...}}
+E       assert 'processing' == 'confirmed'
+E         
+E         - confirmed
+E         + processing
+
+scenarios/test_trading_chain.py:49: AssertionError
+____________ test_sales_credit_refusal_releases_the_inventory_hold _____________
+
+bob = User(name='test.bob', cell=Cell(dir=PosixPath('/home/zhijie/Desktop/github/be-assembly-standard/dev/rebuild/experiment...BCjgKgvrep7UDFEOxQ8Bg', principal='01a18f02-6f53-7c0d-8acf-d60e21488246', http=<httpx.Client object at 0x748ec183f750>)
+world = World(le='01a18f02-e502-73aa-98b7-b0fe04b268da', shanghai='01a18f03-192a-760f-b609-48ee0905e467', beijing='01a18f03-1a...-238392019be9', 'CS-POST': '01a18f02-e5ab-7c63-9c07-6a5e3d45da2b', 'PROJ-OLD': '01a18f02-e5ad-7753-b9ce-d598bb331086'})
+
+    def test_sales_credit_refusal_releases_the_inventory_hold(bob, world):
+        """Credit refuses an order over a 20,000 limit; the stock inventory held for it is released."""
+        on_hand, reserved = position(bob, world, world.shanghai, world.goods["id"])
+        o = order(bob, world, world.small, [goods(world, 2), service(world, 10000)])
+        ans = bob.post("erp/sales", f"/api/sales/orders/{o['id']}/confirm")
+>       assert (ans["outcome"], ans["reason"], ans["order"]["state"]) == ("rejected", "over_limit", "draft"), ans
+E       AssertionError: {'outcome': 'processing', 'confirmation_id': '01a18f0f-31e2-787f-a23d-95437a4eabf1', 'reason': None, 'order': {'id': '...rtner_id': '01a18f02-f6ee-7286-a904-6516edd75692', 'name': '「本地测试」武汉演示科技有限公司 14', 'tax_id': '91310000SEED0014X'}, ...}}
+E       assert ('processing'... 'confirming') == ('rejected', ...mit', 'draft')
+E         
+E         At index 0 diff: 'processing' != 'rejected'
+E         Use -v to get more diff
+
+scenarios/test_trading_chain.py:78: AssertionError
+____________ test_sales_inventory_refusal_releases_the_credit_hold _____________
+
+bob = User(name='test.bob', cell=Cell(dir=PosixPath('/home/zhijie/Desktop/github/be-assembly-standard/dev/rebuild/experiment...BCjgKgvrep7UDFEOxQ8Bg', principal='01a18f02-6f53-7c0d-8acf-d60e21488246', http=<httpx.Client object at 0x748ec183f750>)
+world = World(le='01a18f02-e502-73aa-98b7-b0fe04b268da', shanghai='01a18f03-192a-760f-b609-48ee0905e467', beijing='01a18f03-1a...-238392019be9', 'CS-POST': '01a18f02-e5ab-7c63-9c07-6a5e3d45da2b', 'PROJ-OLD': '01a18f02-e5ad-7753-b9ce-d598bb331086'})
+
+    def test_sales_inventory_refusal_releases_the_credit_hold(bob, world):
+        """Inventory refuses two tins from Beijing, which has one; the credit held for the order is released."""
+        exposed = exposure(bob, world, world.large)
+        o = order(bob, world, world.large, [goods(world, 2, world.beijing, world.tin)])
+        ans = bob.post("erp/sales", f"/api/sales/orders/{o['id']}/confirm")
+>       assert (ans["outcome"], ans["reason"], ans["order"]["state"]) == ("rejected", "insufficient_stock", "draft"), ans
+E       AssertionError: {'outcome': 'processing', 'confirmation_id': '01a18f0f-3203-713d-8f4a-cfc4e18fcfa7', 'reason': None, 'order': {'id': '...rtner_id': '01a18f02-f6f8-7eb7-a5db-927f963da211', 'name': '「本地测试」北京演示食品有限公司 17', 'tax_id': '91310000SEED0017X'}, ...}}
+E       assert ('processing'... 'confirming') == ('rejected', ...ock', 'draft')
+E         
+E         At index 0 diff: 'processing' != 'rejected'
+E         Use -v to get more diff
+
+scenarios/test_trading_chain.py:87: AssertionError
+_______________ test_sales_cancel_releases_inventory_and_credit ________________
+
+bob = User(name='test.bob', cell=Cell(dir=PosixPath('/home/zhijie/Desktop/github/be-assembly-standard/dev/rebuild/experiment...BCjgKgvrep7UDFEOxQ8Bg', principal='01a18f02-6f53-7c0d-8acf-d60e21488246', http=<httpx.Client object at 0x748ec183f750>)
+world = World(le='01a18f02-e502-73aa-98b7-b0fe04b268da', shanghai='01a18f03-192a-760f-b609-48ee0905e467', beijing='01a18f03-1a...-238392019be9', 'CS-POST': '01a18f02-e5ab-7c63-9c07-6a5e3d45da2b', 'PROJ-OLD': '01a18f02-e5ad-7753-b9ce-d598bb331086'})
+
+    def test_sales_cancel_releases_inventory_and_credit(bob, world):
+        """Cancelling a confirmed order releases both holds."""
+        on_hand, reserved = position(bob, world, world.shanghai, world.goods["id"])
+        exposed = exposure(bob, world, world.large)
+        o = order(bob, world, world.large, [goods(world, 2)])
+>       assert bob.post("erp/sales", f"/api/sales/orders/{o['id']}/confirm")["outcome"] == "confirmed"
+E       AssertionError: assert 'processing' == 'confirmed'
+E         
+E         - confirmed
+E         + processing
+
+scenarios/test_trading_chain.py:96: AssertionError
+_______________ test_billing_claim_and_void_against_sales_ledger _______________
+
+bob = User(name='test.bob', cell=Cell(dir=PosixPath('/home/zhijie/Desktop/github/be-assembly-standard/dev/rebuild/experiment...BCjgKgvrep7UDFEOxQ8Bg', principal='01a18f02-6f53-7c0d-8acf-d60e21488246', http=<httpx.Client object at 0x748ec183f750>)
+world = World(le='01a18f02-e502-73aa-98b7-b0fe04b268da', shanghai='01a18f03-192a-760f-b609-48ee0905e467', beijing='01a18f03-1a...-238392019be9', 'CS-POST': '01a18f02-e5ab-7c63-9c07-6a5e3d45da2b', 'PROJ-OLD': '01a18f02-e5ad-7753-b9ce-d598bb331086'})
+
+    def test_billing_claim_and_void_against_sales_ledger(bob, world):
+        """A draft invoice claims what is left to bill at sales, so a second draft finds nothing; voiding the first releases
+        the claim and the order can be drafted again."""
+        o = order(bob, world, world.large, [service(world, 2)])
+>       assert bob.post("erp/sales", f"/api/sales/orders/{o['id']}/confirm")["outcome"] == "confirmed"
+E       AssertionError: assert 'processing' == 'confirmed'
+E         
+E         - confirmed
+E         + processing
+
+scenarios/test_trading_chain.py:106: AssertionError
+=========================== short test summary info ============================
+FAILED scenarios/test_expectations.py::test_rs01_two_orders_race_for_the_last_unit
+FAILED scenarios/test_expectations.py::test_rs08_the_same_key_confirms_once
+FAILED scenarios/test_expectations.py::test_rs16_opposite_line_orders_confirm_without_deadlock
+FAILED scenarios/test_expectations.py::test_rs19_the_delivery_consumes_its_branch_in_the_same_movement
+FAILED scenarios/test_expectations.py::test_bl01_two_drafts_race_for_the_same_billable_line
+FAILED scenarios/test_expectations.py::test_bl02_the_same_draft_retried_claims_once
+FAILED scenarios/test_scope.py::test_only_the_billing_role_issues_invoices - ...
+FAILED scenarios/test_trading_chain.py::test_sales_inventory_credit_billing_print_order_to_invoice
+FAILED scenarios/test_trading_chain.py::test_sales_credit_refusal_releases_the_inventory_hold
+FAILED scenarios/test_trading_chain.py::test_sales_inventory_refusal_releases_the_credit_hold
+FAILED scenarios/test_trading_chain.py::test_sales_cancel_releases_inventory_and_credit
+FAILED scenarios/test_trading_chain.py::test_billing_claim_and_void_against_sales_ledger
+12 failed, 6 passed in 2.06s
+2026-10-31T00:05:01+01:00 STEP scenarios-out exit=1 secs=2.6
+2026-10-31T00:05:01+01:00 SPLIT out scenarios FAILED
+2026-10-31T00:05:01+01:00 SPLIT in (be/go-core@3.0.36)
+➕ Adding be/go-core@3.0.36
+   ✅ be/go-core@3.0.36
+   ✅ test/probe-go@3.2.21 (in shell be/go-core)
+   ✅ test/probe-go2@3.2.21 (in shell be/go-core)
+   ✅ test/probe-go3@3.2.21 (in shell be/go-core)
+   ✅ test/probe-go4@3.2.21 (in shell be/go-core)
+   🔗 erp/billing moved into shell be/go-core
+   🔗 erp/credit moved into shell be/go-core
+   🔗 erp/inventory moved into shell be/go-core
+   🔗 erp/sales moved into shell be/go-core
+📝 Written: brickkit.yaml, deploy.yaml
+♻️  config/be-go-core.yaml restored from the archive (config/.archive/be-go-core@3.0.36.yaml, migrated to this version)
+📝 config/be-go-core.yaml
+   Kept as written: PG_SHELL_PASSWORD, PG_SHELL_USER
+♻️  config/test-probe-go.yaml restored from the archive (config/.archive/test-probe-go@3.2.21.yaml, migrated to this version)
+📝 config/test-probe-go.yaml
+♻️  config/test-probe-go2.yaml restored from the archive (config/.archive/test-probe-go2@3.2.21.yaml, migrated to this version)
+📝 config/test-probe-go2.yaml
+♻️  config/test-probe-go3.yaml restored from the archive (config/.archive/test-probe-go3@3.2.21.yaml, migrated to this version)
+📝 config/test-probe-go3.yaml
+♻️  config/test-probe-go4.yaml restored from the archive (config/.archive/test-probe-go4@3.2.21.yaml, migrated to this version)
+📝 config/test-probe-go4.yaml
+➖ Removed test/probe-go@3.2.21
+🗄️  Config archived: config/test-probe-go.yaml → config/.archive/test-probe-go@3.2.21.yaml
+📝 Written: brickkit.yaml, deploy.yaml
+➖ Removed test/probe-go2@3.2.21
+🗄️  Config archived: config/test-probe-go2.yaml → config/.archive/test-probe-go2@3.2.21.yaml
+📝 Written: brickkit.yaml, deploy.yaml
+➖ Removed test/probe-go3@3.2.21
+🗄️  Config archived: config/test-probe-go3.yaml → config/.archive/test-probe-go3@3.2.21.yaml
+📝 Written: brickkit.yaml, deploy.yaml
+➖ Removed test/probe-go4@3.2.21
+🗄️  Config archived: config/test-probe-go4.yaml → config/.archive/test-probe-go4@3.2.21.yaml
+📝 Written: brickkit.yaml, deploy.yaml
+be/go-core in /home/zhijie/Desktop/github/be-assembly-standard/dev/rebuild/experiment-cells/K9-H: login role shell_go_core holds erp/inventory, erp/credit, erp/sales, erp/billing
+2026-10-31T00:05:02+01:00 STEP move-in exit=0 secs=1.7
+⏭️  be/go-core@3.0.36: image be-go-core:3.0.36 already exists, skipped (--force rebuilds)
+⏭️  be/go-infra@3.0.36: image be-go-infra:3.0.36 already exists, skipped (--force rebuilds)
+⏭️  be/py-render@3.0.26: image be-py-render:3.0.26 already exists, skipped (--force rebuilds)
+⏭️  mdm/currency@3.0.10: image mdm-currency:3.0.10 already exists, skipped (--force rebuilds)
+⏭️  mdm/org@3.0.9: image mdm-org:3.0.9 already exists, skipped (--force rebuilds)
+⏭️  mdm/partner@3.0.12: image mdm-partner:3.0.12 already exists, skipped (--force rebuilds)
+⏭️  mdm/product@3.0.12: image mdm-product:3.0.12 already exists, skipped (--force rebuilds)
+⏭️  erp/credit@3.0.8: image erp-credit:3.0.8 already exists, skipped (--force rebuilds)
+⏭️  erp/inventory@3.0.8: image erp-inventory:3.0.8 already exists, skipped (--force rebuilds)
+⏭️  erp/sales@3.0.13: image erp-sales:3.0.13 already exists, skipped (--force rebuilds)
+⏭️  infra/print@3.0.7: image infra-print:3.0.7 already exists, skipped (--force rebuilds)
+⏭️  erp/billing@3.0.12: image erp-billing:3.0.12 already exists, skipped (--force rebuilds)
+⏭️  infra/audit@3.0.8: image infra-audit:3.0.8 already exists, skipped (--force rebuilds)
+⏭️  infra/authz@3.0.11: image infra-authz:3.0.11 already exists, skipped (--force rebuilds)
+⏭️  infra/iam-casdoor@3.0.10: image infra-iam-casdoor:3.0.10 already exists, skipped (--force rebuilds)
+2026-10-31T00:05:28+01:00 STEP build-in exit=0 secs=26.1
+🚀 Starting project k9-h (target: k8s)
+☸️  Target cluster: bek
+📋 Component state calculation:
+   ✅ be/go-core@3.0.36         starting (top-level)
+   ✅ be/go-infra@3.0.36        starting (top-level)
+   ✅ be/py-render@3.0.26       starting (top-level)
+   ✅ mdm/currency@3.0.10       starting (erp/billing needs it)
+   ✅ mdm/org@3.0.9             starting (erp/billing needs it)
+   ✅ mdm/partner@3.0.12        starting (erp/billing needs it)
+   ✅ mdm/product@3.0.12        starting (erp/inventory needs it)
+   ✅ erp/credit@3.0.8          starting (erp/sales needs it)
+   ✅ erp/inventory@3.0.8       starting (erp/sales needs it)
+   ✅ erp/sales@3.0.13          starting (erp/billing needs it)
+   ✅ infra/print@3.0.7         starting (erp/billing needs it)
+   ✅ erp/billing@3.0.12        starting (top-level)
+   ✅ infra/audit@3.0.8         starting (erp/billing needs it)
+   ✅ infra/authz@3.0.11        starting (erp/billing needs it)
+   ✅ infra/iam-casdoor@3.0.10  starting (erp/billing needs it)
+
+⚠️ Files under config/ may contain plaintext secrets
+   Config items: infra/iam-casdoor@3.0.10 → IAM_TOKEN_ISSUER ($var:IAM_ISSUER)
+   Why it matters: config/*.yaml and config/vars.yaml are meant to be committed to Git, so a secret written there goes into version control with it and can't be removed from the history
+   Suggestions:
+   1. Change it to a reference such as ${MY_TOKEN} (real value in .env) or file://.secrets/token
+   2. .env must be listed in .gitignore
+   3. Items that declare secret: true are ones the component author identified as credentials; the ones that merely have a suspicious name are judged by name only, not by value, so you can ignore them if they really aren't secrets
+📋 Start order (topological sort):
+   1. be-go-infra-3-0-36   no dependencies  (hosts mdm/currency@3.0.10, mdm/org@3.0.9, mdm/partner@3.0.12, mdm/product@3.0.12, infra/audit@3.0.8, infra/authz@3.0.11, infra/iam-casdoor@3.0.10)
+   2. be-go-core-3-0-36    ← depends on 1  (hosts erp/credit@3.0.8, erp/inventory@3.0.8, erp/sales@3.0.13, erp/billing@3.0.12)
+   3. be-py-render-3-0-26  no dependencies  (hosts infra/print@3.0.7)
+
+Can start on their own: be-go-infra-3-0-36, be-py-render-3-0-26 (no dependencies)
+Only referenced by optional dependencies (turning them off affects no one: mode: disable): erp/credit, erp/inventory, erp/sales, infra/print
+Longest dependency chain (2 levels): be-go-infra-3-0-36 → be-go-core-3-0-36
+   Components not on this chain start in parallel with it
+
+Dependency graph:
+   erp/sales@3.0.13 → mdm/currency@3.0.10
+                    → mdm/org@3.0.9
+                    → mdm/partner@3.0.12
+                    → mdm/product@3.0.12
+                    → erp/credit@3.0.8 (optional)
+                    → erp/inventory@3.0.8 (optional)
+   erp/inventory@3.0.8 → mdm/org@3.0.9
+                       → mdm/product@3.0.12
+   mdm/product@3.0.12 → mdm/org@3.0.9
+   erp/credit@3.0.8 → mdm/currency@3.0.10
+                    → mdm/org@3.0.9
+                    → mdm/partner@3.0.12
+   erp/billing@3.0.12 → mdm/currency@3.0.10
+                      → mdm/org@3.0.9
+                      → mdm/partner@3.0.12
+                      → erp/sales@3.0.13 (optional)
+                      → infra/print@3.0.7 (optional)
+   mdm/partner@3.0.12 → mdm/org@3.0.9
+📄 Generated 32 manifests: .brickkit/generated/k8s/
+   Namespace: k9-h
+
+🔧 Database migrations that run before startup (on failure that component won't start):
+   infra/audit@3.0.8  /infra-audit migrate
+   infra/authz@3.0.11  /infra-authz migrate
+   infra/iam-casdoor@3.0.10  /infra-iam-casdoor migrate
+   infra/print@3.0.7  python -m infra_print migrate
+   mdm/currency@3.0.10  /mdm-currency migrate
+   mdm/org@3.0.9  /mdm-org migrate
+   mdm/partner@3.0.12  /mdm-partner migrate
+   erp/billing@3.0.12  /erp-billing migrate
+   erp/credit@3.0.8  /erp-credit migrate
+   mdm/product@3.0.12  /mdm-product migrate
+   erp/inventory@3.0.8  /erp-inventory migrate
+   erp/sales@3.0.13  /erp-sales migrate
+
+☸️  Deploying to Kubernetes (namespace k9-h)...
+   Database migrations run first; the main service starts only after they finish
+
+🧹 Cleaned up leftovers from an old version (4 items):
+   - deployment.apps/erp-billing-3-0-12
+   - deployment.apps/erp-credit-3-0-8
+   - deployment.apps/erp-inventory-3-0-8
+   - deployment.apps/erp-sales-3-0-13
+   They carry this project's labels but are not part of this deployment
+   be-go-core-3-0-36            running (healthy)
+   be-go-infra-3-0-36           running (healthy)
+   be-py-render-3-0-26          running (healthy)
+✅ All components started (3)
+
+💡 View the status: brickkit status
+   View the logs: kubectl logs deployment/<service-name> -n k9-h
+   View the Pods: kubectl get pods -n k9-h
+['np-infra-iam-casdoor:30200', 'np-infra-authz:30223', 'np-infra-audit:30206', 'np-mdm-org:30083', 'np-mdm-currency:30226', 'np-mdm-partner:30225', 'np-mdm-product:30082', 'np-erp-inventory:30086', 'np-erp-credit:30088', 'np-erp-sales:30084', 'np-erp-billing:30089', 'np-infra-print:30400', 'np-be-go-infra:30224', 'np-be-go-core:30090', 'np-be-py-render:30402']
+2026-10-31T00:05:47+01:00 STEP up-in exit=0 secs=18.9
+2026-10-31T00:05:47+01:00 STEP healthy-in exit=0 secs=0.1
+F.FFFFF....FFFFFF.                                                       [100%]
+=================================== FAILURES ===================================
+_________________ test_rs01_two_orders_race_for_the_last_unit __________________
+
+bob = User(name='test.bob', cell=Cell(dir=PosixPath('/home/zhijie/Desktop/github/be-assembly-standard/dev/rebuild/experiment...0DZoFS14RShC1AWFBX3CQ', principal='01a18f02-6f53-7c0d-8acf-d60e21488246', http=<httpx.Client object at 0x7a020678f750>)
+world = World(le='01a18f02-e502-73aa-98b7-b0fe04b268da', shanghai='01a18f03-192a-760f-b609-48ee0905e467', beijing='01a18f03-1a...-238392019be9', 'CS-POST': '01a18f02-e5ab-7c63-9c07-6a5e3d45da2b', 'PROJ-OLD': '01a18f02-e5ad-7753-b9ce-d598bb331086'})
+
+    def test_rs01_two_orders_race_for_the_last_unit(bob, world):
+        """RS01: Beijing holds one tin; two orders for it confirm at once — one holds it, the other is refused for stock."""
+        on_hand, reserved = position(bob, world, world.beijing, world.tin["id"])
+        free = on_hand - reserved
+>       assert free >= 1, f"Beijing has {free} tins free: the seed keeps one"
+E       AssertionError: Beijing has 0 tins free: the seed keeps one
+E       assert Decimal('0') >= 1
+
+scenarios/test_expectations.py:25: AssertionError
+_____________________ test_rs08_the_same_key_confirms_once _____________________
+
+bob = User(name='test.bob', cell=Cell(dir=PosixPath('/home/zhijie/Desktop/github/be-assembly-standard/dev/rebuild/experiment...0DZoFS14RShC1AWFBX3CQ', principal='01a18f02-6f53-7c0d-8acf-d60e21488246', http=<httpx.Client object at 0x7a020678f750>)
+world = World(le='01a18f02-e502-73aa-98b7-b0fe04b268da', shanghai='01a18f03-192a-760f-b609-48ee0905e467', beijing='01a18f03-1a...-238392019be9', 'CS-POST': '01a18f02-e5ab-7c63-9c07-6a5e3d45da2b', 'PROJ-OLD': '01a18f02-e5ad-7753-b9ce-d598bb331086'})
+
+    def test_rs08_the_same_key_confirms_once(bob, world):
+        """RS08: confirming again with the same idempotency key answers the same process and holds the stock once."""
+        on_hand, reserved = position(bob, world, world.shanghai, world.goods["id"])
+        o = order(bob, world, world.large, [goods(world, 2)])
+        key = f"l3:{uuid.uuid4()}"
+        first, again = confirm(bob, o["id"], key), confirm(bob, o["id"], key)
+>       assert first["outcome"] == again["outcome"] == "confirmed", (first, again)
+E       AssertionError: ({'outcome': 'processing', 'confirmation_id': '01a18f0f-f082-710e-965b-257f6ffb6950', 'reason': None, 'order': {'id': ...tner_id': '01a18f02-f6f8-7eb7-a5db-927f963da211', 'name': '「本地测试」北京演示食品有限公司 17', 'tax_id': '91310000SEED0017X'}, ...}})
+E       assert 'processing' == 'confirmed'
+E         
+E         - confirmed
+E         + processing
+
+scenarios/test_expectations.py:47: AssertionError
+___________ test_rs16_opposite_line_orders_confirm_without_deadlock ____________
+
+bob = User(name='test.bob', cell=Cell(dir=PosixPath('/home/zhijie/Desktop/github/be-assembly-standard/dev/rebuild/experiment...0DZoFS14RShC1AWFBX3CQ', principal='01a18f02-6f53-7c0d-8acf-d60e21488246', http=<httpx.Client object at 0x7a020678f750>)
+world = World(le='01a18f02-e502-73aa-98b7-b0fe04b268da', shanghai='01a18f03-192a-760f-b609-48ee0905e467', beijing='01a18f03-1a...-238392019be9', 'CS-POST': '01a18f02-e5ab-7c63-9c07-6a5e3d45da2b', 'PROJ-OLD': '01a18f02-e5ad-7753-b9ce-d598bb331086'})
+second_goods = {'id': '01a18f03-05d3-7225-a8e6-674d43954072', 'code': 'TW-00', 'kind': 'stock', 'stocked': True, ...}
+
+    def test_rs16_opposite_line_orders_confirm_without_deadlock(bob, world, second_goods):
+        """RS16: orders with the same two products in opposite order confirm at the same time, ten pairs: every one is
+        confirmed, none waits on the other (a fixed lock order)."""
+        a, b = world.goods, second_goods
+        pairs = [(order(bob, world, world.large, [goods(world, 1, product=a), goods(world, 1, product=b)]),
+                  order(bob, world, world.large, [goods(world, 1, product=b), goods(world, 1, product=a)])) for _ in range(10)]
+        flat = [o for p in pairs for o in p]
+        with ThreadPoolExecutor(len(flat)) as pool:
+            answers = list(pool.map(lambda o: confirm(bob, o["id"]), flat))
+>       assert [x["outcome"] for x in answers] == ["confirmed"] * len(flat), [x.get("reason") for x in answers]
+E       AssertionError: [None, None, None, None, None, None, ...]
+E       assert ['processing'...cessing', ...] == ['confirmed',...nfirmed', ...]
+E         
+E         At index 0 diff: 'processing' != 'confirmed'
+E         Use -v to get more diff
+
+scenarios/test_expectations.py:63: AssertionError
+_______ test_rs19_the_delivery_consumes_its_branch_in_the_same_movement ________
+
+bob = User(name='test.bob', cell=Cell(dir=PosixPath('/home/zhijie/Desktop/github/be-assembly-standard/dev/rebuild/experiment...0DZoFS14RShC1AWFBX3CQ', principal='01a18f02-6f53-7c0d-8acf-d60e21488246', http=<httpx.Client object at 0x7a020678f750>)
+world = World(le='01a18f02-e502-73aa-98b7-b0fe04b268da', shanghai='01a18f03-192a-760f-b609-48ee0905e467', beijing='01a18f03-1a...-238392019be9', 'CS-POST': '01a18f02-e5ab-7c63-9c07-6a5e3d45da2b', 'PROJ-OLD': '01a18f02-e5ad-7753-b9ce-d598bb331086'})
+
+    def test_rs19_the_delivery_consumes_its_branch_in_the_same_movement(bob, world):
+        """RS19: the delivery's stock issue and the branch's consumption are one movement, which names the branch."""
+        on_hand, reserved = position(bob, world, world.shanghai, world.goods["id"])
+        o = order(bob, world, world.large, [goods(world, 2)])
+        ans = confirm(bob, o["id"])
+>       assert ans["outcome"] == "confirmed", ans
+E       AssertionError: {'outcome': 'processing', 'confirmation_id': '01a18f0f-f301-7acf-ba85-70b5d843928e', 'reason': None, 'order': {'id': '...rtner_id': '01a18f02-f6f8-7eb7-a5db-927f963da211', 'name': '「本地测试」北京演示食品有限公司 17', 'tax_id': '91310000SEED0017X'}, ...}}
+E       assert 'processing' == 'confirmed'
+E         
+E         - confirmed
+E         + processing
+
+scenarios/test_expectations.py:73: AssertionError
+_____________ test_bl01_two_drafts_race_for_the_same_billable_line _____________
+
+bob = User(name='test.bob', cell=Cell(dir=PosixPath('/home/zhijie/Desktop/github/be-assembly-standard/dev/rebuild/experiment...0DZoFS14RShC1AWFBX3CQ', principal='01a18f02-6f53-7c0d-8acf-d60e21488246', http=<httpx.Client object at 0x7a020678f750>)
+world = World(le='01a18f02-e502-73aa-98b7-b0fe04b268da', shanghai='01a18f03-192a-760f-b609-48ee0905e467', beijing='01a18f03-1a...-238392019be9', 'CS-POST': '01a18f02-e5ab-7c63-9c07-6a5e3d45da2b', 'PROJ-OLD': '01a18f02-e5ad-7753-b9ce-d598bb331086'})
+
+    def test_bl01_two_drafts_race_for_the_same_billable_line(bob, world):
+        """BL01: two drafts for the same order at once: one claims what is left, the other finds nothing to claim."""
+        o = order(bob, world, world.large, [goods(world, 1)])
+        ans = confirm(bob, o["id"])
+        line = ans["order"]["lines"][0]
+>       bob.post("erp/sales", "/api/sales/deliveries", {"order_id": o["id"], "lines": [{"order_line_id": line["id"], "quantity": "1"}]})
+
+scenarios/test_expectations.py:87: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+scenarios/conftest.py:47: in post
+    return self.ok(self.call("POST", component, path, body))
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+r = <Response [409 Conflict]>
+
+    @staticmethod
+    def ok(r: httpx.Response) -> dict:
+        if r.status_code != 200:
+>           raise Refused(f"{r.request.method} {r.request.url.path}: {r.status_code} {r.text[:300]}")
+E           conftest.Refused: POST /api/sales/deliveries: 409 {"type":"urn:be:erp/sales:STATE_CONFLICT","title":"The record's state does not allow this","status":409,"detail":"only a confirmed order is delivered; this one is confirming","reason":"STATE_CONFLICT","domain":"erp/sales","trace_id":"7a1a1606b3bdf66c3497a3725f154542"}
+
+scenarios/conftest.py:52: Refused
+_________________ test_bl02_the_same_draft_retried_claims_once _________________
+
+bob = User(name='test.bob', cell=Cell(dir=PosixPath('/home/zhijie/Desktop/github/be-assembly-standard/dev/rebuild/experiment...0DZoFS14RShC1AWFBX3CQ', principal='01a18f02-6f53-7c0d-8acf-d60e21488246', http=<httpx.Client object at 0x7a020678f750>)
+world = World(le='01a18f02-e502-73aa-98b7-b0fe04b268da', shanghai='01a18f03-192a-760f-b609-48ee0905e467', beijing='01a18f03-1a...-238392019be9', 'CS-POST': '01a18f02-e5ab-7c63-9c07-6a5e3d45da2b', 'PROJ-OLD': '01a18f02-e5ad-7753-b9ce-d598bb331086'})
+
+    def test_bl02_the_same_draft_retried_claims_once(bob, world):
+        """BL02: drafting again with the same idempotency key answers the same invoice and claims nothing more."""
+        o = order(bob, world, world.large, [goods(world, 1)])
+        ans = confirm(bob, o["id"])
+        line = ans["order"]["lines"][0]
+>       bob.post("erp/sales", "/api/sales/deliveries", {"order_id": o["id"], "lines": [{"order_line_id": line["id"], "quantity": "1"}]})
+
+scenarios/test_expectations.py:99: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+scenarios/conftest.py:47: in post
+    return self.ok(self.call("POST", component, path, body))
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+r = <Response [409 Conflict]>
+
+    @staticmethod
+    def ok(r: httpx.Response) -> dict:
+        if r.status_code != 200:
+>           raise Refused(f"{r.request.method} {r.request.url.path}: {r.status_code} {r.text[:300]}")
+E           conftest.Refused: POST /api/sales/deliveries: 409 {"type":"urn:be:erp/sales:STATE_CONFLICT","title":"The record's state does not allow this","status":409,"detail":"only a confirmed order is delivered; this one is confirming","reason":"STATE_CONFLICT","domain":"erp/sales","trace_id":"a25d8b24574eab58a7b05d81d4b8de54"}
+
+scenarios/conftest.py:52: Refused
+__________________ test_only_the_billing_role_issues_invoices __________________
+
+login = <function login.<locals>.get at 0x7a02067dfcc0>
+bob = User(name='test.bob', cell=Cell(dir=PosixPath('/home/zhijie/Desktop/github/be-assembly-standard/dev/rebuild/experiment...0DZoFS14RShC1AWFBX3CQ', principal='01a18f02-6f53-7c0d-8acf-d60e21488246', http=<httpx.Client object at 0x7a020678f750>)
+world = World(le='01a18f02-e502-73aa-98b7-b0fe04b268da', shanghai='01a18f03-192a-760f-b609-48ee0905e467', beijing='01a18f03-1a...-238392019be9', 'CS-POST': '01a18f02-e5ab-7c63-9c07-6a5e3d45da2b', 'PROJ-OLD': '01a18f02-e5ad-7753-b9ce-d598bb331086'})
+
+    def test_only_the_billing_role_issues_invoices(login, bob, world):
+        o = order(bob, world, world.large, [goods(world, 1)])
+>       assert bob.post("erp/sales", f"/api/sales/orders/{o['id']}/confirm")["outcome"] == "confirmed"
+E       AssertionError: assert 'processing' == 'confirmed'
+E         
+E         - confirmed
+E         + processing
+
+scenarios/test_scope.py:53: AssertionError
+__________ test_sales_inventory_credit_billing_print_order_to_invoice __________
+
+bob = User(name='test.bob', cell=Cell(dir=PosixPath('/home/zhijie/Desktop/github/be-assembly-standard/dev/rebuild/experiment...0DZoFS14RShC1AWFBX3CQ', principal='01a18f02-6f53-7c0d-8acf-d60e21488246', http=<httpx.Client object at 0x7a020678f750>)
+world = World(le='01a18f02-e502-73aa-98b7-b0fe04b268da', shanghai='01a18f03-192a-760f-b609-48ee0905e467', beijing='01a18f03-1a...-238392019be9', 'CS-POST': '01a18f02-e5ab-7c63-9c07-6a5e3d45da2b', 'PROJ-OLD': '01a18f02-e5ad-7753-b9ce-d598bb331086'})
+
+    def test_sales_inventory_credit_billing_print_order_to_invoice(bob, world):
+        """An order goes from confirmation to a printed invoice: the holds are taken, the delivery issues the stock, the
+        invoice claims the billable amount, and the order completes once billing formalizes."""
+        on_hand, reserved = position(bob, world, world.shanghai, world.goods["id"])
+        exposed = exposure(bob, world, world.large)
+    
+        o = order(bob, world, world.large, [goods(world, 3), service(world, 1)])
+        ans = bob.post("erp/sales", f"/api/sales/orders/{o['id']}/confirm")
+>       assert ans["outcome"] == "confirmed", ans
+E       AssertionError: {'outcome': 'processing', 'confirmation_id': '01a18f0f-f530-7d4b-a5fa-50a33300711b', 'reason': None, 'order': {'id': '...rtner_id': '01a18f02-f6f8-7eb7-a5db-927f963da211', 'name': '「本地测试」北京演示食品有限公司 17', 'tax_id': '91310000SEED0017X'}, ...}}
+E       assert 'processing' == 'confirmed'
+E         
+E         - confirmed
+E         + processing
+
+scenarios/test_trading_chain.py:49: AssertionError
+____________ test_sales_credit_refusal_releases_the_inventory_hold _____________
+
+bob = User(name='test.bob', cell=Cell(dir=PosixPath('/home/zhijie/Desktop/github/be-assembly-standard/dev/rebuild/experiment...0DZoFS14RShC1AWFBX3CQ', principal='01a18f02-6f53-7c0d-8acf-d60e21488246', http=<httpx.Client object at 0x7a020678f750>)
+world = World(le='01a18f02-e502-73aa-98b7-b0fe04b268da', shanghai='01a18f03-192a-760f-b609-48ee0905e467', beijing='01a18f03-1a...-238392019be9', 'CS-POST': '01a18f02-e5ab-7c63-9c07-6a5e3d45da2b', 'PROJ-OLD': '01a18f02-e5ad-7753-b9ce-d598bb331086'})
+
+    def test_sales_credit_refusal_releases_the_inventory_hold(bob, world):
+        """Credit refuses an order over a 20,000 limit; the stock inventory held for it is released."""
+        on_hand, reserved = position(bob, world, world.shanghai, world.goods["id"])
+        o = order(bob, world, world.small, [goods(world, 2), service(world, 10000)])
+        ans = bob.post("erp/sales", f"/api/sales/orders/{o['id']}/confirm")
+>       assert (ans["outcome"], ans["reason"], ans["order"]["state"]) == ("rejected", "over_limit", "draft"), ans
+E       AssertionError: {'outcome': 'processing', 'confirmation_id': '01a18f0f-f55d-7945-b52f-3af9c92b0588', 'reason': None, 'order': {'id': '...rtner_id': '01a18f02-f6ee-7286-a904-6516edd75692', 'name': '「本地测试」武汉演示科技有限公司 14', 'tax_id': '91310000SEED0014X'}, ...}}
+E       assert ('processing'... 'confirming') == ('rejected', ...mit', 'draft')
+E         
+E         At index 0 diff: 'processing' != 'rejected'
+E         Use -v to get more diff
+
+scenarios/test_trading_chain.py:78: AssertionError
+____________ test_sales_inventory_refusal_releases_the_credit_hold _____________
+
+bob = User(name='test.bob', cell=Cell(dir=PosixPath('/home/zhijie/Desktop/github/be-assembly-standard/dev/rebuild/experiment...0DZoFS14RShC1AWFBX3CQ', principal='01a18f02-6f53-7c0d-8acf-d60e21488246', http=<httpx.Client object at 0x7a020678f750>)
+world = World(le='01a18f02-e502-73aa-98b7-b0fe04b268da', shanghai='01a18f03-192a-760f-b609-48ee0905e467', beijing='01a18f03-1a...-238392019be9', 'CS-POST': '01a18f02-e5ab-7c63-9c07-6a5e3d45da2b', 'PROJ-OLD': '01a18f02-e5ad-7753-b9ce-d598bb331086'})
+
+    def test_sales_inventory_refusal_releases_the_credit_hold(bob, world):
+        """Inventory refuses two tins from Beijing, which has one; the credit held for the order is released."""
+        exposed = exposure(bob, world, world.large)
+        o = order(bob, world, world.large, [goods(world, 2, world.beijing, world.tin)])
+        ans = bob.post("erp/sales", f"/api/sales/orders/{o['id']}/confirm")
+>       assert (ans["outcome"], ans["reason"], ans["order"]["state"]) == ("rejected", "insufficient_stock", "draft"), ans
+E       AssertionError: {'outcome': 'processing', 'confirmation_id': '01a18f0f-f58b-77d3-99a0-696621a333a5', 'reason': None, 'order': {'id': '...rtner_id': '01a18f02-f6f8-7eb7-a5db-927f963da211', 'name': '「本地测试」北京演示食品有限公司 17', 'tax_id': '91310000SEED0017X'}, ...}}
+E       assert ('processing'... 'confirming') == ('rejected', ...ock', 'draft')
+E         
+E         At index 0 diff: 'processing' != 'rejected'
+E         Use -v to get more diff
+
+scenarios/test_trading_chain.py:87: AssertionError
+_______________ test_sales_cancel_releases_inventory_and_credit ________________
+
+bob = User(name='test.bob', cell=Cell(dir=PosixPath('/home/zhijie/Desktop/github/be-assembly-standard/dev/rebuild/experiment...0DZoFS14RShC1AWFBX3CQ', principal='01a18f02-6f53-7c0d-8acf-d60e21488246', http=<httpx.Client object at 0x7a020678f750>)
+world = World(le='01a18f02-e502-73aa-98b7-b0fe04b268da', shanghai='01a18f03-192a-760f-b609-48ee0905e467', beijing='01a18f03-1a...-238392019be9', 'CS-POST': '01a18f02-e5ab-7c63-9c07-6a5e3d45da2b', 'PROJ-OLD': '01a18f02-e5ad-7753-b9ce-d598bb331086'})
+
+    def test_sales_cancel_releases_inventory_and_credit(bob, world):
+        """Cancelling a confirmed order releases both holds."""
+        on_hand, reserved = position(bob, world, world.shanghai, world.goods["id"])
+        exposed = exposure(bob, world, world.large)
+        o = order(bob, world, world.large, [goods(world, 2)])
+>       assert bob.post("erp/sales", f"/api/sales/orders/{o['id']}/confirm")["outcome"] == "confirmed"
+E       AssertionError: assert 'processing' == 'confirmed'
+E         
+E         - confirmed
+E         + processing
+
+scenarios/test_trading_chain.py:96: AssertionError
+_______________ test_billing_claim_and_void_against_sales_ledger _______________
+
+bob = User(name='test.bob', cell=Cell(dir=PosixPath('/home/zhijie/Desktop/github/be-assembly-standard/dev/rebuild/experiment...0DZoFS14RShC1AWFBX3CQ', principal='01a18f02-6f53-7c0d-8acf-d60e21488246', http=<httpx.Client object at 0x7a020678f750>)
+world = World(le='01a18f02-e502-73aa-98b7-b0fe04b268da', shanghai='01a18f03-192a-760f-b609-48ee0905e467', beijing='01a18f03-1a...-238392019be9', 'CS-POST': '01a18f02-e5ab-7c63-9c07-6a5e3d45da2b', 'PROJ-OLD': '01a18f02-e5ad-7753-b9ce-d598bb331086'})
+
+    def test_billing_claim_and_void_against_sales_ledger(bob, world):
+        """A draft invoice claims what is left to bill at sales, so a second draft finds nothing; voiding the first releases
+        the claim and the order can be drafted again."""
+        o = order(bob, world, world.large, [service(world, 2)])
+>       assert bob.post("erp/sales", f"/api/sales/orders/{o['id']}/confirm")["outcome"] == "confirmed"
+E       AssertionError: assert 'processing' == 'confirmed'
+E         
+E         - confirmed
+E         + processing
+
+scenarios/test_trading_chain.py:106: AssertionError
+=========================== short test summary info ============================
+FAILED scenarios/test_expectations.py::test_rs01_two_orders_race_for_the_last_unit
+FAILED scenarios/test_expectations.py::test_rs08_the_same_key_confirms_once
+FAILED scenarios/test_expectations.py::test_rs16_opposite_line_orders_confirm_without_deadlock
+FAILED scenarios/test_expectations.py::test_rs19_the_delivery_consumes_its_branch_in_the_same_movement
+FAILED scenarios/test_expectations.py::test_bl01_two_drafts_race_for_the_same_billable_line
+FAILED scenarios/test_expectations.py::test_bl02_the_same_draft_retried_claims_once
+FAILED scenarios/test_scope.py::test_only_the_billing_role_issues_invoices - ...
+FAILED scenarios/test_trading_chain.py::test_sales_inventory_credit_billing_print_order_to_invoice
+FAILED scenarios/test_trading_chain.py::test_sales_credit_refusal_releases_the_inventory_hold
+FAILED scenarios/test_trading_chain.py::test_sales_inventory_refusal_releases_the_credit_hold
+FAILED scenarios/test_trading_chain.py::test_sales_cancel_releases_inventory_and_credit
+FAILED scenarios/test_trading_chain.py::test_billing_claim_and_void_against_sales_ledger
+12 failed, 6 passed in 2.30s
+2026-10-31T00:05:51+01:00 STEP scenarios-in exit=1 secs=2.8
+2026-10-31T00:05:51+01:00 SPLIT in scenarios FAILED

@@ -1,0 +1,166 @@
+2026-10-30T18:24:51+01:00 UPGRADE erp/inventory@3.0.9 erp/sales@3.0.14 erp/billing@3.0.13
+📋 Release notes of erp/inventory, 3.0.8 → 3.0.9:
+
+   ── 3.0.9 ──
+      erp/inventory 3.0.9
+
+      What users must do: nothing. Needs BrickKit CLI 1.10.1 or later, which injects PORT into containers and Kubernetes too.
+
+      Changed: the image no longer sets ENV PORT=8086; the platform-injected PORT is used everywhere. No code, contract or migration change.
+
+   ⬆️  erp/inventory: 3.0.8 → 3.0.9
+   ℹ️  erp/inventory@3.0.8 runs beside erp/inventory@3.0.9, a separate deployment with its own config, kept for erp/sales; if one version was meant, upgrade erp/sales to versions that depend on erp/inventory@3.0.9
+   ✅ erp/inventory@3.0.8 (requiredBy: erp/sales)
+📝 config/erp-inventory.yaml
+   Kept as written: BUS_URL, IMPLEMENTATION_INSTANCE, PG_DATABASE, PG_HOST, PG_PASSWORD, PG_SCHEMA, PG_USER, AUDIT_GRPC_URL, AUTHZ_GRPC_URL, DEPLOYMENT_ID, IAM_ISSUER, IAM_JWKS_URL, PG_OWNER_PASSWORD, PG_OWNER_USER, PG_PORT, SERVICE_TLS_CA_FILE, SERVICE_TLS_CERT_FILE, SERVICE_TLS_KEY_FILE
+📝 Written: brickkit.yaml, deploy.yaml
+2026-10-30T18:24:53+01:00 STEP upgrade-erp/inventory@3.0.9 exit=0 secs=1.7
+📋 Release notes of erp/sales, 3.0.13 → 3.0.14:
+
+   ── 3.0.14 ──
+      erp/sales 3.0.14
+
+      What users must do: upgrade erp/inventory to 3.0.9 with it (brickkit upgrade does). Needs BrickKit CLI 1.10.1 or later, which injects PORT into containers and Kubernetes.
+
+      Changed: the exact dependency erp/inventory@3.0.9 (was 3.0.8); the image no longer sets ENV PORT=8084. No code, contract or migration change.
+
+   ⬆️  erp/sales: 3.0.13 → 3.0.14
+   ℹ️  erp/sales@3.0.13 runs beside erp/sales@3.0.14, a separate deployment with its own config, kept for erp/billing; if one version was meant, upgrade erp/billing to versions that depend on erp/sales@3.0.14
+   ✅ erp/sales@3.0.13 (requiredBy: erp/billing)
+📝 config/erp-sales.yaml
+   Kept as written: BUS_URL, IMPLEMENTATION_INSTANCE, PG_DATABASE, PG_HOST, PG_PASSWORD, PG_SCHEMA, PG_USER, AUDIT_GRPC_URL, AUTHZ_GRPC_URL, DEPLOYMENT_ID, IAM_ISSUER, IAM_JWKS_URL, PG_OWNER_PASSWORD, PG_OWNER_USER, PG_PORT, SERVICE_TLS_CA_FILE, SERVICE_TLS_CERT_FILE, SERVICE_TLS_KEY_FILE
+📝 Written: brickkit.yaml, deploy.yaml
+2026-10-30T18:24:54+01:00 STEP upgrade-erp/sales@3.0.14 exit=0 secs=1.4
+📋 Release notes of erp/billing, 3.0.12 → 3.0.13:
+
+   ── 3.0.13 ──
+      erp/billing 3.0.13
+
+      What users must do: upgrade erp/sales to 3.0.14 with it (brickkit upgrade does). Needs BrickKit CLI 1.10.1 or later, which injects PORT into containers and Kubernetes.
+
+      Changed: the exact dependency erp/sales@3.0.14 (was 3.0.13); the image no longer sets ENV PORT=8089. No code, contract or migration change.
+
+   ⬆️  erp/billing: 3.0.12 → 3.0.13
+   ➖ erp/inventory@3.0.8 (a version kept only for it; nothing requires it any more)
+   ➖ erp/sales@3.0.13 (a version kept only for it; nothing requires it any more)
+📝 config/erp-billing.yaml
+   Kept as written: BUS_URL, IMPLEMENTATION_INSTANCE, PG_DATABASE, PG_HOST, PG_PASSWORD, PG_SCHEMA, PG_USER, AUDIT_GRPC_URL, AUTHZ_GRPC_URL, DEPLOYMENT_ID, IAM_ISSUER, IAM_JWKS_URL, PG_OWNER_PASSWORD, PG_OWNER_USER, PG_PORT, SERVICE_TLS_CA_FILE, SERVICE_TLS_CERT_FILE, SERVICE_TLS_KEY_FILE
+🗄️  Config archived: config/erp-billing.yaml → config/.archive/erp-billing@3.0.12.yaml
+🗄️  Config archived: config/erp-inventory@3.0.8.yaml → config/.archive/erp-inventory@3.0.8.yaml
+🗄️  Config archived: config/erp-sales@3.0.13.yaml → config/.archive/erp-sales@3.0.13.yaml
+📝 Written: brickkit.yaml, deploy.yaml
+2026-10-30T18:24:56+01:00 STEP upgrade-erp/billing@3.0.13 exit=0 secs=1.5
+⏭️  mdm/currency@3.0.10: image mdm-currency:3.0.10 already exists, skipped (--force rebuilds)
+⏭️  mdm/org@3.0.9: image mdm-org:3.0.9 already exists, skipped (--force rebuilds)
+⏭️  mdm/partner@3.0.12: image mdm-partner:3.0.12 already exists, skipped (--force rebuilds)
+⏭️  mdm/product@3.0.12: image mdm-product:3.0.12 already exists, skipped (--force rebuilds)
+⏭️  erp/credit@3.0.8: image erp-credit:3.0.8 already exists, skipped (--force rebuilds)
+⏭️  erp/inventory@3.0.9: image erp-inventory:3.0.9 already exists, skipped (--force rebuilds)
+⏭️  erp/sales@3.0.14: image erp-sales:3.0.14 already exists, skipped (--force rebuilds)
+⏭️  infra/print@3.0.7: image infra-print:3.0.7 already exists, skipped (--force rebuilds)
+⏭️  erp/billing@3.0.13: image erp-billing:3.0.13 already exists, skipped (--force rebuilds)
+⏭️  infra/audit@3.0.8: image infra-audit:3.0.8 already exists, skipped (--force rebuilds)
+⏭️  infra/authz@3.0.11: image infra-authz:3.0.11 already exists, skipped (--force rebuilds)
+⏭️  infra/iam-casdoor@3.0.10: image infra-iam-casdoor:3.0.10 already exists, skipped (--force rebuilds)
+2026-10-30T18:24:56+01:00 STEP build exit=0 secs=0.4
+🚀 Starting project d9-s (target: docker)
+⬆️ Version change detected:
+   erp/billing: 3.0.12 → 3.0.13
+   erp/inventory: 3.0.8 → 3.0.9
+   erp/sales: 3.0.13 → 3.0.14
+
+📋 Component state calculation:
+   ✅ mdm/currency@3.0.10       starting (erp/billing needs it)
+   ✅ mdm/org@3.0.9             starting (erp/billing needs it)
+   ✅ mdm/partner@3.0.12        starting (erp/billing needs it)
+   ✅ mdm/product@3.0.12        starting (erp/inventory needs it)
+   ✅ erp/credit@3.0.8          starting (erp/sales needs it)
+   ✅ erp/inventory@3.0.9       starting (erp/sales needs it)
+   ✅ erp/sales@3.0.14          starting (erp/billing needs it)
+   ✅ infra/print@3.0.7         starting (erp/billing needs it)
+   ✅ erp/billing@3.0.13        starting (top-level)
+   ✅ infra/audit@3.0.8         starting (erp/billing needs it)
+   ✅ infra/authz@3.0.11        starting (erp/billing needs it)
+   ✅ infra/iam-casdoor@3.0.10  starting (erp/billing needs it)
+
+⚠️ Files under config/ may contain plaintext secrets
+   Config items: infra/iam-casdoor@3.0.10 → IAM_TOKEN_ISSUER ($var:IAM_ISSUER)
+   Why it matters: config/*.yaml and config/vars.yaml are meant to be committed to Git, so a secret written there goes into version control with it and can't be removed from the history
+   Suggestions:
+   1. Change it to a reference such as ${MY_TOKEN} (real value in .env) or file://.secrets/token
+   2. .env must be listed in .gitignore
+   3. Items that declare secret: true are ones the component author identified as credentials; the ones that merely have a suspicious name are judged by name only, not by value, so you can ignore them if they really aren't secrets
+📋 Start order (topological sort):
+   1. infra-audit-3-0-8         no dependencies
+   2. infra-authz-3-0-11        no dependencies
+   3. infra-iam-casdoor-3-0-10  no dependencies
+   4. infra-print-3-0-7         no dependencies
+   5. mdm-currency-3-0-10       no dependencies
+   6. mdm-org-3-0-9             no dependencies
+   7. mdm-partner-3-0-12        ← depends on 6
+   8. erp-billing-3-0-13        ← depends on 5, 6, 7
+   9. erp-credit-3-0-8          ← depends on 5, 6, 7
+   10. mdm-product-3-0-12        ← depends on 6
+   11. erp-inventory-3-0-9       ← depends on 6, 10
+   12. erp-sales-3-0-14          ← depends on 5, 6, 7, 10
+
+Can start on their own: infra-audit-3-0-8, infra-authz-3-0-11, infra-iam-casdoor-3-0-10, infra-print-3-0-7, mdm-currency-3-0-10, mdm-org-3-0-9 (no dependencies)
+Only referenced by optional dependencies (turning them off affects no one: mode: disable): erp/credit, erp/inventory, erp/sales, infra/print
+Longest dependency chain (3 levels): mdm-org-3-0-9 → mdm-partner-3-0-12 → erp-billing-3-0-13
+   Components not on this chain start in parallel with it
+
+Dependency graph:
+   erp/sales@3.0.14 → mdm/currency@3.0.10
+                    → mdm/org@3.0.9
+                    → mdm/partner@3.0.12
+                    → mdm/product@3.0.12
+                    → erp/credit@3.0.8 (optional)
+                    → erp/inventory@3.0.9 (optional)
+   erp/inventory@3.0.9 → mdm/org@3.0.9
+                       → mdm/product@3.0.12
+   mdm/product@3.0.12 → mdm/org@3.0.9
+   erp/credit@3.0.8 → mdm/currency@3.0.10
+                    → mdm/org@3.0.9
+                    → mdm/partner@3.0.12
+   erp/billing@3.0.13 → mdm/currency@3.0.10
+                      → mdm/org@3.0.9
+                      → mdm/partner@3.0.12
+                      → erp/sales@3.0.14 (optional)
+                      → infra/print@3.0.7 (optional)
+   mdm/partner@3.0.12 → mdm/org@3.0.9
+📄 Generated: .brickkit/generated/compose.yaml
+
+🔧 Database migrations that run before startup (on failure that component won't start):
+   infra/audit@3.0.8  /infra-audit migrate
+   infra/authz@3.0.11  /infra-authz migrate
+   infra/iam-casdoor@3.0.10  /infra-iam-casdoor migrate
+   infra/print@3.0.7  python -m infra_print migrate
+   mdm/currency@3.0.10  /mdm-currency migrate
+   mdm/org@3.0.9  /mdm-org migrate
+   mdm/partner@3.0.12  /mdm-partner migrate
+   erp/billing@3.0.13  /erp-billing migrate
+   erp/credit@3.0.8  /erp-credit migrate
+   mdm/product@3.0.12  /mdm-product migrate
+   erp/inventory@3.0.9  /erp-inventory migrate
+   erp/sales@3.0.14  /erp-sales migrate
+
+🐳 Starting (docker)...
+   infra-audit-3-0-8            running (healthy)
+   infra-authz-3-0-11           running (healthy)
+   infra-iam-casdoor-3-0-10     running (healthy)
+   infra-print-3-0-7            running (healthy)
+   mdm-currency-3-0-10          running (healthy)
+   mdm-org-3-0-9                running (healthy)
+   mdm-partner-3-0-12           running (healthy)
+   erp-billing-3-0-13           running (healthy)
+   erp-credit-3-0-8             running (healthy)
+   mdm-product-3-0-12           running (healthy)
+   erp-inventory-3-0-9          running (healthy)
+   erp-sales-3-0-14             running (healthy)
+✅ All components started (12)
+
+💡 View the status: brickkit status
+   View the logs: docker compose -p brickkit-d9-s logs -f
+2026-10-30T18:25:07+01:00 STEP up exit=0 secs=10.8
+2026-10-30T18:25:07+01:00 STEP healthy exit=0 secs=0.0
+2026-10-30T18:25:07+01:00 REPLACED brickkit-d9-s-erp-billing-3-0-13-1 brickkit-d9-s-erp-inventory-3-0-9-1 brickkit-d9-s-erp-sales-3-0-14-1 
