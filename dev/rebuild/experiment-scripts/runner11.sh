@@ -8,7 +8,8 @@
 # is in <out>/<cell>/faults.jsonl, what the load saw in <out>/<cell>/series.json. CONF points at a snapshot of the
 # conformance tools (cell-chain.sh); run it under systemd-inhibit (night-wrap.sh).
 # FAULTS picks and orders the faults, comma-separated: pytest -k expressions (R1, R2), or burst (R3), split (R5, the H
-# and X cells only) and upgrade (R4, last: it changes the versions), which run ops11.sh. The default is all of them.
+# and X cells only) and upgrade (R4, last: it changes the versions), which run ops11.sh; sh:<command> runs a command of
+# this directory between faults (probes11.sh). The default is all of them.
 # Usage: runner11.sh <out> <cell>...
 set -u
 OUT=$(realpath -m "$1"); shift
@@ -60,6 +61,7 @@ for CELL in "$@"; do
       split) grep -q '^alone:' "$D/cell.yaml" && ! grep -q 'be/go' "$D/cell.yaml" && { log "CELL $CELL FAULT $n ($F) not for an S cell"; continue; }
         ;&
       burst|upgrade) stage "$CELL" "$name" env CONF="$CONF" "$R/dev/rebuild/experiment-scripts/ops11.sh" "$F" "$CELL" "$OUT/$CELL/$F" ;;
+      sh:*) stage "$CELL" "$name" bash -c "cd $R/dev/rebuild/experiment-scripts && ./${F#sh:}" ;;
       *) stage "$CELL" "$name" bash -c "cd $CONF && BE_ACC_CELL=$D BE_ACC_FAULT_LOG=$OUT/$CELL/faults.jsonl uv run pytest -q -x faults -k '$F'" ;;
     esac && log "CELL $CELL FAULT $n ($F) passed" || log "CELL $CELL FAULT $n ($F) FAILED"
     stage "$CELL" "invariants-$n" bash -c "cd $CONF && uv run python -m cells invariants $D $OUT/$CELL/invariants-$n.json $INV_WAIT" \
