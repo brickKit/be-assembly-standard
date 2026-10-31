@@ -22,10 +22,10 @@ teardown() {
 log "START power=$(powerprofilesctl get)"
 if ! KEEP_UP=1 "$X/cell-chain.sh" LD9-S "$OUT/bring-up" > "$OUT/bring-up.log" 2>&1; then
   log "FAILED bring-up"; teardown; log "ALL-DONE"; exit 1; fi
-PROJECT=$(docker ps --format '{{index .Labels "com.docker.compose.project"}}' | grep -i 'ld9-s' | head -1)
+PROJECT=$(docker ps --format '{{.Label "com.docker.compose.project"}}' | grep -ix 'brickkit-ld9-s' | head -1)
 S=$(pid_on 8084); I=$(pid_on 8086); SESS=$(sessions)
 log "BEFORE sales=$S inventory=$I sessions=$SESS project=$PROJECT containers=$(containers)"
-[ -n "$S" ] && [ -n "$I" ] && [ -n "$SESS" ] || { log "FAILED no processes to watch"; teardown; log "ALL-DONE"; exit 1; }
+[ -n "$S" ] && [ -n "$I" ] && [ -n "$SESS" ] && [ -n "$PROJECT" ] || { log "FAILED no processes to watch"; teardown; log "ALL-DONE"; exit 1; }
 T0=$(date +%s.%N); kill -ABRT "$S"; log "KILLED sales $S"
 for _ in $(seq 120); do
   t=$(echo "$(date +%s.%N) - $T0" | bc)
@@ -33,5 +33,5 @@ for _ in $(seq 120); do
   sleep 0.5
 done
 log "AFTER inventory=$(alive "$I") session=$(alive "${SESS%% *}") containers=$(containers)"
-tail -30 "$OUT/bring-up/logs/local-session.log" > "$OUT/session-tail.log" 2>/dev/null
+cp "$D/.brickkit/local-session.log" "$OUT/local-session.log" 2>/dev/null  # secure restarts the session into this log
 teardown; log "ALL-DONE"
