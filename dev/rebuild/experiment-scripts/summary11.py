@@ -2,7 +2,8 @@
 """Step 11 (suite C): one Markdown summary of a runner11.sh output. Per cell, each fault with its result, what the
 fault test timed (faults.jsonl), what the background load saw while the fault and its invariants ran (series.json:
 failed requests, the seconds whose confirmations came back 'processing' instead of confirmed, latency), the
-invariants' verdict, and the R3, R4 and R5 operations' timed steps.
+invariants' verdict, and the R3, R4 and R5 operations' timed steps; the streams' message and duplicate counts the last
+invariants read.
 Usage: summary11.py <runner out>... > summary.md"""
 import datetime as dt
 import json
@@ -42,7 +43,9 @@ def status(out: pathlib.Path) -> tuple[dict, dict]:
 def timing(rec: dict) -> str:
     keys = [("up_after", "up {} s"), ("settled_after", "settled {} s"), ("refused_after", "refused after {} s"),
             ("refused_with", "({})"), ("allowed_after", "allowed {} s after the start"),
-            ("answered_after", "answering {} s after"), ("reason", "reason {}"), ("outcome", "outcome {}")]
+            ("answered_after", "answering {} s after"), ("reason", "reason {}"), ("outcome", "outcome {}"),
+            ("backlog_peak", "outbox backlog peak {}"), ("backlog_peak_at", "{} s after the stop"),
+            ("drained_after", "drained {} s after the start"), ("projection_after", "projection caught up {} s after")]
     return ", ".join(f.format(rec[k]) for k, f in keys if k in rec)
 
 
@@ -85,6 +88,10 @@ def cell(out: pathlib.Path, name: str, stages: dict, faults: dict) -> None:
         load_cell = window(series, st[0], (iv[1] if iv and iv[1] else st[1]) + 55) if st and series else ""
         what = timing(rec) if rec else (steps(d / f"fault-{n}.log") if st else "")
         print(f"| {n} | {fault} | {result} | {inv or ''} | {what} | {load_cell} |")
+    last = max(d.glob("invariants-*.json"), key=lambda f: f.stat().st_mtime, default=None)
+    if last and "measured" in (m := json.load(open(last))):
+        print(f"\nStreams after the last fault ({last.name}): messages {m['measured']['stream_messages']}, "
+              f"IDs more than once {m['measured']['stream_duplicates']}.")
 
 
 def main() -> None:

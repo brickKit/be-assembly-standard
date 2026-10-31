@@ -20,6 +20,7 @@ mkdir -p "$OUT"; echo $$ > "$OUT/runner.pid"
 envval() { grep "^$1=" "$R/.env" | cut -d= -f2- | tr -d "\"'"; }
 export BE_ACC_IAM_TEST_PASSWORD; BE_ACC_IAM_TEST_PASSWORD=$(envval IAM_TEST_PASSWORD)
 export BE_ACC_PG_ADMIN; BE_ACC_PG_ADMIN="postgres://postgres:$(envval POSTGRES_PASSWORD)@localhost:5432/postgres?sslmode=disable"
+export BE_ACC_NATS_URL=nats://localhost:4222  # the stream check of the invariants (cells/invariants.py)
 export PATH=$R/dev/rebuild/experiment-scripts/bin:$PATH  # kubectl for the K row
 log() { echo "$* $(date -Is)" >> "$OUT/status.log"; }
 stage() {  # stage <cell> <name> <command...>; returns the command's status

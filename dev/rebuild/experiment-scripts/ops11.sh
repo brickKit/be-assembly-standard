@@ -97,8 +97,10 @@ case $ACT in
     ;;
   split)
     cp "$D/deploy.yaml" "$OUT/deploy-before.yaml"; cp "$D/brickkit.yaml" "$OUT/brickkit-before.yaml"
-    # the shell that compiles the members' current versions in: 3.0.36 (inventory 3.0.8), or 3.0.38 after R4
-    SHELL_REF=be/go-core@3.0.36; grep -A1 'id: erp/inventory$' "$D/brickkit.yaml" | grep -q '3.0.9' && SHELL_REF=be/go-core@3.0.38
+    # the shell that compiles the members' current versions in: the cell's own (H), else the current release (X);
+    # after an R4 upgrade in the same run that is the upgraded shell, which R4 writes into neither: run split before it
+    SHELL_REF=$(grep -oE 'be/go-core@[0-9.]+' "$D/cell.yaml" | head -1)
+    [ -n "$SHELL_REF" ] || SHELL_REF=be/go-core@$(sed -n 's/^ *version: *//p' "$R/shell/be/go-core/component.yaml" | head -1)
     move() {  # move out: be/go-core's four trading members to the top level of deploy.yaml
       python3 - "$D/deploy.yaml" "$1" <<'EOF2'
 import sys, yaml
