@@ -3,10 +3,11 @@
 # each can also run alone). Every action prints timed lines; what changed is in <out>.
 #   burst <cell> <out>    R3: a burst of billing and printing (load -flow print, BURST_RATE/s for BURST_SECONDS)
 #                         beside the background mix: what it does to the mix is in the mix's per-second series
-#   upgrade <cell> <out>  R4: erp/inventory 3.0.8 -> 3.0.9 with the dependents that name its version (erp/sales
-#                         3.0.14, erp/billing 3.0.13); a cell whose be/go-core hosts them upgrades the shell (3.0.38):
-#                         brickkit upgrade, build, the images into the row's engine, up; which containers or pods were
-#                         replaced, and when
+#   upgrade <cell> <out>  R4: UPGRADE_REFS (id@version ..., in order) are a patch release newer than the cell's: a
+#                         component with the dependents that name its version, from the bottom up, or the be/go-core
+#                         that hosts them. Step 11 ran erp/inventory@3.0.9 erp/sales@3.0.14 erp/billing@3.0.13, and
+#                         be/go-core@3.0.38 for a cell with the shell. brickkit upgrade, build, the images into the
+#                         row's engine, up; which containers or pods were replaced, and when
 #   split <cell> <out>    R5: be/go-core's members out of the shell to run alone (deploy.yaml: their entries to the top
 #                         level), up, the L3 scenarios; then back into the shell, up, the L3 scenarios. A cell without
 #                         be/go-core (X) does it the other way round: into a be/go-core first, then out again
@@ -66,6 +67,18 @@ healthy() {  # every container or pod of the cell healthy again (at most 300 s)
   done
   return 1
 }
+ready() {  # every component of the cell answers /readyz with 200 (at most 120 s). Docker's health check asks /healthz,
+  # which answers once the port listens; the module is ready only after its start (up to 2 s more), and until then
+  # answers 503 NOT_READY, which a caller's circuit breaker counts. A pod takes traffic only once ready (healthy waits)
+  [ "$ROW" = K ] && return 0
+  (cd "$CONF" && uv run python -c 'import asyncio, sys
+from cells.spec import Cell
+from cells.secure import ready
+c = Cell.load(sys.argv[1])
+async def main():
+    await asyncio.gather(*(ready(f"http://127.0.0.1:{c.host_port(x)}") for x in c.placed))
+asyncio.run(main())' "$D")
+}
 scenarios() { (cd "$CONF" && BE_ACC_CELL=$D uv run pytest -q scenarios); }
 timed() {  # timed <name> <command...>: one line with the seconds it took and its status
   local name=$1 t0 rc; shift; t0=$(date +%s.%N); "$@"; rc=$?
@@ -82,16 +95,14 @@ case $ACT in
     ;;
   upgrade)
     units > "$OUT/units-before.txt"
-    # erp/inventory 3.0.9 is a patch (its image no longer sets PORT), but erp/sales names its exact version and erp/billing
-    # erp/sales's: the patch is the three of them (sales 3.0.14, billing 3.0.13), upgraded from the bottom so that no
-    # version is left running beside the new one; a cell whose be/go-core hosts them upgrades the shell (3.0.38)
-    if grep -q 'be/go-core' "$D/cell.yaml"; then REFS="be/go-core@3.0.38"
-    else REFS="erp/inventory@3.0.9 erp/sales@3.0.14 erp/billing@3.0.13"; fi
+    # the release to upgrade to names versions newer than the cell's, so it is given each time, not kept here
+    REFS=${UPGRADE_REFS:-}; [ -n "$REFS" ] || { say "UPGRADE needs UPGRADE_REFS (id@version ...)"; exit 64; }
     say "UPGRADE $REFS"
     for REF in $REFS; do timed "upgrade-$REF" bash -c "cd $D && brickkit upgrade $REF --yes" || exit 1; done
     timed build build || exit 1
     timed up up || exit 1
     timed healthy healthy || exit 1
+    timed ready ready || exit 1
     units > "$OUT/units-after.txt"
     say "REPLACED $(diff "$OUT/units-before.txt" "$OUT/units-after.txt" | sed -n 's/^> //p' | awk '{print $1}' | tr '\n' ' ')"
     ;;
@@ -146,6 +157,7 @@ print(" ".join(sorted({c["id"] for c in yaml.safe_load(open(sys.argv[2]))["compo
       timed "build-$WAY" build || exit 1
       timed "up-$WAY" up || exit 1
       timed "healthy-$WAY" healthy || exit 1
+      timed "ready-$WAY" ready || exit 1
       units > "$OUT/units-after-$WAY.txt"
       "$0" conns "$CELL" > "$OUT/conns-$WAY.txt"
       timed "scenarios-$WAY" scenarios || { say "SPLIT $WAY scenarios FAILED"; BAD=1; }
