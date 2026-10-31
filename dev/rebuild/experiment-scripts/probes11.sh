@@ -1,9 +1,12 @@
 #!/bin/bash
 # Step 11 follow-up (11-01, section 8): sets the probes of one component's Deployment in a K cell, then waits for the
-# rollout (a new Pod, so kubelet's restart back-off starts over). default = what BrickKit 1.10 writes (startup probe
-# every 5 s; readiness after 5 s, every 5 s); fast = startup probe every 1 s (the same 60 s budget), readiness from
-# the start, every 1 s. Liveness and the failure thresholds stay as written. Prints the probes the new Pod runs.
-# Usage: probes11.sh <cell> <component> default|fast   (runner11.sh: FAULTS entry "sh:probes11.sh K9-S erp/sales fast")
+# rollout (a new Pod, so kubelet's restart back-off starts over). v1.10.2 (also "default", its name in the first run)
+# = what BrickKit 1.10.2 writes (startup probe every 5 s; readiness after 5 s, every 5 s); v1.10.3 = what 1.10.3 writes
+# (startup every 1 s; readiness from the start, every 5 s); fast = startup every 1 s, readiness from the start, every
+# 1 s. The startup budget stays 60 s; liveness and the failure thresholds stay as written. Prints the probes the new
+# Pod runs. events (no change) prints the probe events and starts of the component's Pods so far.
+# Usage: probes11.sh <cell> <component> v1.10.2|v1.10.3|fast|events
+#   (runner11.sh: FAULTS entry "sh:probes11.sh K9-S erp/sales fast")
 set -euo pipefail
 CELL=$1; COMP=$2; MODE=$3
 R=/home/zhijie/Desktop/github/be-assembly-standard; D=$R/dev/rebuild/experiment-cells/$CELL
@@ -12,7 +15,16 @@ VER=$(grep -oE "${COMP}@[0-9.]+" "$D/cell.yaml" | head -1 | cut -d@ -f2)
 NAME=${COMP//\//-}; DEPLOY=$NAME-${VER//./-}
 K() { minikube -p bek kubectl -- -n "$NS" "$@"; }
 case $MODE in
-  default) S='{"periodSeconds":5,"failureThreshold":12}'; RD='{"initialDelaySeconds":5,"periodSeconds":5}' ;;
+  events)
+    K get events --sort-by=.lastTimestamp -o json | python3 -c '
+import json, sys
+for e in json.load(sys.stdin)["items"]:
+    o = e["involvedObject"]
+    if o.get("kind") == "Pod" and o.get("name", "").startswith(sys.argv[1] + "-") and e["reason"] in ("Unhealthy", "Started", "Killing", "BackOff"):
+        print(e.get("firstTimestamp") or e.get("eventTime"), e.get("lastTimestamp"), e.get("count"), o["name"], e["reason"], e.get("message", "")[:120])' "$DEPLOY"
+    exit 0 ;;
+  v1.10.3) S='{"periodSeconds":1,"failureThreshold":60}'; RD='{"initialDelaySeconds":0,"periodSeconds":5}' ;;
+  default|v1.10.2) S='{"periodSeconds":5,"failureThreshold":12}'; RD='{"initialDelaySeconds":5,"periodSeconds":5}' ;;
   fast) S='{"periodSeconds":1,"failureThreshold":60}'; RD='{"initialDelaySeconds":0,"periodSeconds":1}' ;;
   *) echo "unknown mode $MODE" >&2; exit 2 ;;
 esac
