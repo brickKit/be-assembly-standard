@@ -99,7 +99,7 @@
 
 ## 5. 要维护者定的
 
-- **熔断的打开期**：P4.11 的 30 秒让一次 1 秒的重启变成 30 秒的“确认只能异步”。选项：缩短打开期；参与方重新就绪（健康）时提前半开试探；或维持现状（异步推进本来就会走完，数据不受影响）。这是协议的取舍，不在本步改。
+- **熔断的打开期**：已定（2026-10-31，决定 D79）：从 5 秒起，试探失败加倍，最多 30 秒（协议 P4.13，`be-sdk-go` 3.0.0-alpha.37、`be-sdk-python` 3.0.0a33，组件与外壳连锁发布）。复测见第 7 节。
 - **Kubernetes 上的就绪与流量**：崩溃时请求挂到 15 秒超时，说明容器死掉后到 Pod 被摘出 Service 之间仍有流量打进来。可以看就绪探针的间隔与失败阈值、调用方的连接超时；要不要调，放进运维手册的部署建议。
 
 ## 6. 环境与版本
@@ -111,3 +111,16 @@
 | 组件 | 同 [10-10](10-10-ld-lp-shell-columns.md)；R4 升到 `erp/inventory` 3.0.9、`erp/sales` 3.0.14、`erp/billing` 3.0.13、`be/go-core` 3.0.38 |
 | 工具 | `be-acceptance` v1.0.10（night11）、v1.0.11（night11b）的快照；`experiment-scripts/runner11.sh`、`ops11.sh`、`night11.sh`、`night-wrap.sh`；汇总 `experiment-scripts/summary11.py` |
 | 原始数据 | `experiment-data/11-01/night11/`、`night11b/`：每格的 `status.log`、`fault-*.log`、`faults.jsonl`、`invariants-*.json`、`load.json`、`series.json`，R3–R5 的 `burst/`、`upgrade/`、`split/` |
+
+## 7. D79 之后的复测（2026-10-31）
+
+改了熔断的打开期之后，在 D9-S、K9-S 上各复测一次“负载下库存崩溃”（`runner11.sh`，`FAULTS="process_crashes and inventory"`；组件是连锁发布后的版本；`experiment-data/11-02/verify-d79/`）。K9-S 上另外每半秒读一次销售的指标 `be_outbound_breaker_open`（`k/breaker-samples.txt`）。
+
+| 格 | 拉起 | 背景负载失败 | 确认答 `processing` 的窗口 | 第一次（第 2 节） |
+| --- | --- | --- | --- | --- |
+| D9-S | 5.4 s | 0 | 没有出现 | 30 s |
+| K9-S | 9.6 s | 0 | 7 s（崩溃那一秒起） | 31 s |
+
+- K9-S：销售对库存的熔断器在崩溃后 1.3 秒打开，6.5 秒时已经关上（指标在“不是关闭”时为 1），开了约 5 秒；之后三次试探成功就关闭，库存的 Pod 9.6 秒时才报健康，熔断器关得比它早。
+- D9-S 这一次熔断器大概没打开：崩溃那一秒失败的调用没有填满它的统计窗口（20 次里超过一半），所以没有窗口；第一次打开了，有 30 秒。没有读指标，不能确认。
+- 两格之后的不变量都成立。每格一次，只说明“打开期从 30 秒缩到约 5 秒”，没有量波动。
