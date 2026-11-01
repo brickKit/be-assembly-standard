@@ -136,7 +136,7 @@ Python 组件（第一个是 `infra/print`）的布局同一套，只是语言�
 ```text
 <仓库>/
 ├── component.yaml、BRICKKIT.md、AGENTS.md、CLAUDE.md、README.md、docs/、Dockerfile   同 Go
-├── pyproject.toml          分发名 <领域>-<名字>；依赖 be-sdk、本组件的契约包，都按 Git 标签（[tool.uv.sources]）
+├── pyproject.toml          分发名 <领域>-<名字>，版本同 component.yaml；依赖 be-sdk、本组件的契约包，都按 Git 标签（[tool.uv.sources]）；be-sdk 写成 be-sdk>=<钉的版本>（外壳按它核对）
 ├── uv.lock                 锁定的环境；外壳用自己的锁，按 override-dependencies 统一成一个 be-sdk
 ├── contract/               同 Go 的 contract/（单独的 Go 模块照样生成），另有 python/：契约的 Python 包，
 │                           调用方以 subdirectory = "contract/python" 按 contract/v3.… 标签引入

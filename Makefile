@@ -192,7 +192,7 @@ gates: docs-boundary docs-diagrams docs-mirror docs-links docs-ids docs-closure 
 version-check: pin-check  ## 扫全部 submodule（组件、外壳、工具仓库）：HEAD 是否领先最新 tag（兼容 2.0.0 与 v2.0.0 双 tag）；并查精确依赖
 	@bash infra/scripts/version-check.sh
 
-pin-check:  ## 组件的精确依赖、外壳的成员与 go.mod 都指向被引用组件的当前版本（3.x）
+pin-check:  ## 组件的精确依赖、外壳的成员与 go.mod 都指向被引用组件的当前版本（3.x）；Python 组件的包版本与清单一致、声明的最低 SDK 等于钉的标签
 	@python3 infra/scripts/pin-check.py
 .PHONY: version-check
 

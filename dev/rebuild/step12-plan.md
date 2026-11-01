@@ -97,6 +97,8 @@ V1–V7 是正确性测试，不是性能测量：不切电源模式，不要求
 | 投影一侧的事件 | 测试工具直接写进流，不给 `mdm/org` 发版本 | 与第 11 步的外部注入一致；业务组件不为测试发版本 |
 | 未知字段与类型（F2） | 线协议加一条：非投影的消费者忽略未知字段，对未知类型确认并记一次日志；投影按 PJ36 | 契约只做加法（决定 0302）意味着旧消费者一定会收到它不认识的字段与类型；不确认会让流卡住，与“不丢、不卡住”相反；投影要知道自己缺了什么，所以标不完整并取回 |
 | 正确性测试的条件 | 不切 performance、不要求整夜安静 | 用户级规则：只有受电源影响的性能测量才切 |
+| G5 的要求从哪里读（P1.21） | Python 成员在依赖里写 `be-sdk>=<钉的版本>`，外壳读包元数据的 `Requires-Dist` 核对；没有声明的也拒绝 | 计划原以为 `Requires-Dist` 里有版本，实际成员只写 `be-sdk`，钉的标签在 `[tool.uv.sources]`、不进元数据；声明最低版本是 Python 打包的通常做法；读不到要求就无从保证 SK09，所以拒绝 |
+| 防止再漂移 | `make pin-check` 加两条：包版本等于清单版本；成员的 `be-sdk>=` 等于钉的标签。`py-render` 加测试，用启动器自己的检查核对编进来的成员 | 规则只写一处（pin-check 本来就扫全部组件、外壳与探针）；外壳的测试能在发布前看到“承载就拒绝” |
 
 ## 8. 要维护者定的
 
@@ -131,15 +133,17 @@ V1–V7 是正确性测试，不是性能测量：不切电源模式，不要求
 - 2026-11-01 连锁发布（`experiment-data/12-01/chain38.log`）：12 个组件换到 `be-sdk-go` alpha.38、`be-sdk-python` a34（iam-casdoor 3.0.12、authz 3.0.13、audit 3.0.10、org 3.0.11、currency 3.0.12、print 3.0.9、partner 3.0.14、product 3.0.14、inventory 3.0.11、credit 3.0.10、sales 3.0.17、billing 3.0.16），外壳 go-infra 3.0.38、go-core 3.0.41、py-render 3.0.29（探针 Go 3.2.26、Python 3.2.25；py-render 原来还编进 Python 探针 3.2.20）。`make pin-check`、`make version-check` 通过。真机验证（`chain-check/`）：D12-V3（单跑）与 D12-H（三个外壳）都从空库起格、种子两遍、L3 场景、部门投影测试通过。现有的实验格仍是旧的一整套，下次用时再换。
 - F4 已按实际改写：协议 18 的“进入外壳”与 SK09、协议 17 的外壳一句：进程里只有外壳构建出的一个 SDK 版本，不早于任何成员的要求；兼容矩阵指向 `be-protocol` 的 `COMPAT.md`。**G5**（后续）：Go 的模块图自然保证外壳的 SDK 不早于成员的要求；Python 外壳用 `override-dependencies` 指定版本，可能比某个成员要求的旧，而启动器没有检查（`besdk/shell.py`），SK09 写的“构建或启动拒绝”在 Python 上还没有实现。
 - 2026-11-01 `be-protocol` alpha.31（只改 `COMPAT.md`：第 2 节补上 `be-sdk-go` alpha.38、`be-sdk-python` a34，第 3 节按 SK09 改写）。
+- 2026-11-01 **G5 做完**（P1.21）：读代码时发现计划的前提不成立（成员的 `Requires-Dist` 只有 `be-sdk`，没有版本），另查出一个缺陷：Python 探针的包版本从 3.2.21 起停在 3.2.20，`be/py-render` 3.0.29、3.0.30 一承载探针就以“发行包版本不符”拒绝启动（最近的格只让它承载 `infra/print`，没暴露）。做法见第 7 节。发布：`be-protocol` alpha.32（P1.21，归能力 `shell`；`COMPAT.md` 加 a35）、`be-sdk-python` a35（启动器核对，先红后绿，152 项单元测试通过）、`infra/print` 3.0.10、探针 Python 3.2.26（版本改为读包元数据；一致性测试 68 项通过）、`erp/billing` 3.0.17（精确依赖 print 3.0.10）、`be/go-core` 3.0.42、`be/py-render` 3.0.31（新测试先红后绿，镜像构建通过）、`be-acceptance` 1.0.15（`test_profile.py` 失败时停掉已启动的探针：第一次跑探针测试时 Python 探针起不来，留下的 Go 探针占着端口，下一轮全部冲突）。`make pin-check` 加了 Python 的两条并用改动前的文件验证能抓到。正式文档：协议 17 的拒绝条件、协议 18 的进入外壳、标准布局的 `pyproject.toml`。真机验证（`experiment-scripts/p121check.sh`，数据在 `experiment-data/12-01/p121/`）：`D12-H-a35`（go-core 3.0.42、py-render 3.0.31 承载 print 3.0.10）从空库起格、种子两遍、L3 场景、部门投影都通过；`D12-py-a35`（py-render 承载两个 Python 探针）能起来了，但截止时间测试失败，查出下面的 G6。
+- 2026-11-01 **G6：Python 外壳里一个成员阻塞事件循环，卡住全部成员**（`D12-py-a35`，`p121/py/`、`py-debug*/`）：两个 Python 探针第一次在同一外壳里互调（V4、V5 是 Python 与 Go、单跑），被调方的 `work` 在事件循环上烧 500 毫秒 CPU，调用方 150 毫秒的尝试上限触发不了，0.5 秒后答出自己请求的 504、点不出依赖。与 a35 无关：成员共用一个事件循环。第一次改成线程（探针 3.2.27、py-render 3.0.32，`py-r2/`）：线程仍争 GIL，计时器晚 30–180 毫秒，一次又答出自己的超时；改成探针自己管的工作进程（3.2.28，`python -I -c`，按需起、空闲复用、取消即杀；不用 `ProcessPoolExecutor`：它的子进程会重新导入外壳的主模块），烧 CPU 时循环最多晚 0.2 毫秒；py-render 3.0.33，`py-r3`、`py-r4` 两轮都通过（6 过 4 跳，同 V4、V5）。规则补进组件实现约定的合并安全（第四问）与根 `AGENTS.md` 的易错点；探针契约写明 `work` 不阻塞同进程的其他请求。`infra/print` 的渲染本来就在工作进程里。发布：探针 Python 3.2.27、3.2.28，`be-acceptance` 1.0.16、1.0.17，py-render 3.0.32、3.0.33。
 - 2026-11-01 第 3 步事故的处理（维护者定）：改写 `be-acceptance` 的历史去掉 52 MB 二进制，`be/py-render` 3.0.30 重新锁定探针的提交（经过见交接的“未推送、已知问题与外部往来”）。
 
 ### 9.1 下一个会话从这里接着做（2026-11-01 交接）
 
-本步还剩四件，按这个顺序：
+本步还剩三件（G5 已做完），按这个顺序：
 
-1. **G5：Python 外壳检查 SDK 版本**。`be-sdk-python` 的外壳启动器（`besdk/shell.py`）读每个成员包声明的 `be-sdk` 要求（包元数据的 `Requires-Dist`），与装着的 `be-sdk` 版本比较，装着的更旧就拒绝启动并点名成员（SK09 现在的写法，协议 17、18）。按改动的循环：先在 `be-protocol` 加一条外壳规则与检查编号，再写会红的测试（构造一个要求更新 SDK 的成员包），实现，发 `be-sdk-python` 新版本；`py-render` 跟着换 SDK、发新版本。Go 不用改：模块图本身保证。
+1. ~~G5~~：已做完（第 9 节）。
 2. **其余五种形态的冒烟**（第 4 节第 7 步）：V4（两个 SDK 版本的探针互调）在 P、K、L、LD、LP 各跑一格，复制 `D12-V4` 的 `cell.yaml` 改 `row`；V1（同一组件两个版本并存）只在 P、K 跑（`D12-V1b` 改 `row`，用 `v1b.sh` 的做法）。L、LD、LP 从源码跑，同一份源码只有一个版本，维护者定本机不跑多个版本，V1 不适用，记进记录。K 行的 `also` 版本的部署条目与端口要先核对（格工具的 `also` 只在非 K 行加了宿主机端口；K 行要靠 NodePort，见 `cells/units.py` 的 `nodeports`）。
-3. **记录 12-01**（`experiment-records/12-01-suite-d-compat.md`）与报告的“套件 D”一节：结论按 V1–V7；发现 F1–F5、G1–G5 与各自的处理；原始数据在 `experiment-data/12-01/`（`pairs/` 是第一次误判的那一轮、`pairs2/`、`v1*`、`v3*`、`v6*`、`retest/`、`chain-check/`、`chain38.log`）；中间几次失败（`v1-try1`、`v1-try2`、`v3-try1`、`v6-try1`–`try4`）是工具的问题，写清楚各是什么。档案索引 `experiment-records/README.md` 加一行。
+3. **记录 12-01**（`experiment-records/12-01-suite-d-compat.md`）与报告的“套件 D”一节：结论按 V1–V7；发现 F1–F5、G1–G6 与各自的处理（G5 连带的探针包版本缺陷与 pin-check 的两条；G6 线程与工作进程两次修正的对比）；原始数据在 `experiment-data/12-01/`（`pairs/` 是第一次误判的那一轮、`pairs2/`、`v1*`、`v3*`、`v6*`、`retest/`、`chain-check/`、`chain38.log`）；中间几次失败（`v1-try1`、`v1-try2`、`v3-try1`、`v6-try1`–`try4`）是工具的问题，写清楚各是什么。档案索引 `experiment-records/README.md` 加一行。
 4. **交给 kb**：
    - 一份反馈或实测记录：旧版本的迁移遇到被新版本迁移过的库（golang-migrate 的 `no migration found for version N`），在“同一组件多版本并存、部署工具每次重跑迁移”的部署里会让旧版本起不来；kb 的数据库迁移、零停机部署（扩展与收缩）一类文章该提醒；
    - 读模型按类型订阅会收不到来源新加的动作，应按聚合订阅；改订阅的过滤条件要换订阅名（持久订阅保留原设置）；

@@ -86,6 +86,7 @@
 | 模块代码读进程环境 | 合进外壳后成员互相覆盖 schema 名与配置，静默读写别人的 schema | [合并安全](docs/zh/01-conventions/06-component-implementation.md#合并安全) |
 | 在模块里初始化进程级的东西（全局追踪、日志全局配置、信号处理、默认指标注册表） | 合并后最后一个赢；默认注册表在第二个成员注册时崩溃 | [合并安全](docs/zh/01-conventions/06-component-implementation.md#合并安全) |
 | 模块里退出进程，或绕过 SDK 自建 HTTP 引擎、连接池、监听 | 一个模块拖垮整个外壳；静默丢掉身份、追踪、授权 | [合并安全](docs/zh/01-conventions/06-component-implementation.md#合并安全) |
+| Python 模块在事件循环上做 CPU 密集或阻塞的工作 | 单跑只慢自己；进外壳后同一外壳的成员都被卡住，截止时间失效 | [合并安全](docs/zh/01-conventions/06-component-implementation.md#合并安全) |
 | 导入另一个组件的代码、共享模型包、复制别人的生成代码 | 要单独部署时拆不动；复制的生成代码进同一个外壳时启动即崩溃 | [决定 0101](docs/zh/02-decisions/10-earlier-decisions.md#0101-组件之间禁止导入代码) |
 | 把缺席的可选依赖当作空值 | 变量根本不存在，启动时崩溃 | [运行时](docs/zh/01-conventions/06-component-implementation.md#运行时是唯一入口) |
 | 配置键以 `_ENDPOINT` 结尾，或用平台保留名 | 平台的值优先，组件永远拿不到你的值 | [协议 19 的配置](docs/zh/06-protocols/19-config-secrets-registries-release.md#配置) |

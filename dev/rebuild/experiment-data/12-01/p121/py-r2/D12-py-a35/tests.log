@@ -1,0 +1,36 @@
+.F....ssss                                                               [100%]
+=================================== FAILURES ===================================
+____ test_the_deadline_shrinks_hop_by_hop_and_its_errors_map_the_same[grpc] ____
+
+cell = Cell(dir=PosixPath('/home/zhijie/Desktop/github/be-assembly-standard/dev/rebuild/experiment-cells/D12-py-a35'), name='...obe-py', 'test/probe-py2']}, alone=[], concurrency=1, row='D', local=[], pooler='', baseline_scale=1, base='', also=[])
+surface = 'grpc'
+
+    @pytest.mark.parametrize("surface", ["grpc", "http"])
+    def test_the_deadline_shrinks_hop_by_hop_and_its_errors_map_the_same(cell, surface):
+        """P4.3-P4.5: 200 ms left for a 500 ms call times out after the attempt's limit (left - 50 ms), not after 500 ms;
+        40 ms left is not sent at all. Both answers cross the other SDK with the same reason and domain. The callee goes on
+        with its 500 ms of CPU after the caller gave up (the probe's work does not watch the deadline); a Python probe does
+        it on its event loop, so the next call waits until it is done before it times anything."""
+        for caller in cell.chain:
+            other = cell.next_of(caller)
+            time.sleep(0.7)
+            t0 = time.monotonic()
+            r = post(cell, caller, "/api/probe/call", {"op": "work", "ms": 500, "surface": surface}, {"Be-Timeout-Ms": "200"})
+            took = time.monotonic() - t0
+            body = r.json()
+            assert (r.status_code, body["reason"], body["domain"]) == (504, "DEADLINE_EXCEEDED", "be"), (caller, r.text)
+>           assert body["metadata"]["dependency"] == other
+                   ^^^^^^^^^^^^^^^^
+E           KeyError: 'metadata'
+
+compat/test_pairs.py:91: KeyError
+==================================== PASSES ====================================
+=========================== short test summary info ============================
+PASSED compat/test_pairs.py::test_calls_go_both_ways_on_both_surfaces
+PASSED compat/test_pairs.py::test_the_deadline_shrinks_hop_by_hop_and_its_errors_map_the_same[http]
+PASSED compat/test_pairs.py::test_the_trace_and_the_request_id_cross[grpc]
+PASSED compat/test_pairs.py::test_the_trace_and_the_request_id_cross[http]
+PASSED compat/test_pairs.py::test_events_go_both_ways_and_are_relayed
+SKIPPED [4] compat/test_pairs.py:135: V2 needs one probe with the additive contract and one before it
+FAILED compat/test_pairs.py::test_the_deadline_shrinks_hop_by_hop_and_its_errors_map_the_same[grpc]
+1 failed, 5 passed, 4 skipped in 4.81s

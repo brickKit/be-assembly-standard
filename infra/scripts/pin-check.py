@@ -7,6 +7,11 @@ in its own component.yaml (components/, shell/, the probes in tools/be-acceptanc
     below a repository's root (the probes' github.com/brickKit/be-acceptance/probes/go/v3) counts too.
 A reference to an older version brings a second node into a project (`brickkit up` finds a duplicate, cells create
 says "already has") or compiles an old member into a shell; it slipped through six times while 3.x had no check.
+A Python component's pyproject.toml beside its component.yaml must agree with it too:
+  - [project] version is metadata.version: a shell compares the installed distribution's version with the member's,
+    and the Python probe stayed at 3.2.20 from 3.2.21 to 3.2.25, so a shell hosting it refused to start;
+  - a member (not a shell, whose SDK is its override-dependencies) declares `be-sdk>=<v>` with v the tag it pins in
+    [tool.uv.sources]: the tag never reaches the package metadata, and a shell checks the declared minimum (P1.21).
 Only rebuilt components count (major version 3); the 2.x leftovers and the frozen shells are skipped.
 Usage: pin-check.py [root]   (exits 1 when a reference is stale)"""
 from __future__ import annotations
@@ -14,12 +19,14 @@ from __future__ import annotations
 import pathlib
 import re
 import sys
+import tomllib
 
 FROZEN = {"shell/be/go-backoffice"}  # the same list as version-check.sh
 REF = re.compile(r"(?<![\w/.-])([a-z]+/[a-z0-9-]+)@(\d+\.\d+\.\d+)\b")
 GOMOD = re.compile(r"^\s*(github\.com/brickKit/\S+) v(\d+\.\d+\.\d+)(?:\s|$)(?!.*// indirect)", re.M)
 DOCKERFILE = re.compile(r"(github\.com/brickKit/\S+?)@v(\d+\.\d+\.\d+)\b")
 MODULE = re.compile(r"^module\s+(\S+)", re.M)
+SDK = re.compile(r"^be[-_]sdk(?![\w.-])")
 
 
 def manifests(root: pathlib.Path) -> list[pathlib.Path]:
@@ -33,6 +40,24 @@ def meta(p: pathlib.Path) -> tuple[str, str]:
     block = text[text.index("metadata:"):]
     return (re.search(r"^\s+id:\s*(\S+)", block, re.M).group(1),
             re.search(r"^\s+version:\s*(\S+)", block, re.M).group(1))
+
+
+def python(root: pathlib.Path, manifest: pathlib.Path, version: str) -> list[str]:
+    f = manifest.parent / "pyproject.toml"
+    if not f.exists():
+        return []
+    rel, data = f.relative_to(root), tomllib.loads(f.read_text())
+    out = []
+    if (own := data["project"].get("version")) != version:
+        out.append(f"{rel}: version {own}, component.yaml {version}")
+    if re.search(r"^shell:", manifest.read_text(), re.M):
+        return out
+    for dep in data["project"].get("dependencies", []):
+        if SDK.match(dep):
+            tag = data.get("tool", {}).get("uv", {}).get("sources", {}).get("be-sdk", {}).get("tag", "")
+            if dep.replace(" ", "") != f"be-sdk>={tag.removeprefix('v')}":
+                out.append(f"{rel}: {dep}, the pinned tag is {tag}; declare be-sdk>={tag.removeprefix('v')} (P1.21)")
+    return out
 
 
 def check(root: pathlib.Path) -> list[str]:
@@ -59,6 +84,7 @@ def check(root: pathlib.Path) -> list[str]:
         for name, pattern in (("go.mod", GOMOD), ("Dockerfile", DOCKERFILE)):
             if (p.parent / name).exists():
                 pins(p.parent / name, pattern)
+        stale += python(root, p, current[cid])
     return stale
 
 
