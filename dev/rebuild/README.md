@@ -24,6 +24,7 @@
 | [step10-plan.md](step10-plan.md) | 实验第 10 步（套件 B，附加对照）的计划：B1–B7 怎样搭、缺的工具、时长、要维护者定的两件事（2026-10-27 起草） |
 | [step11-plan.md](step11-plan.md) | 实验第 11 步（套件 C，故障与运维）的计划：从外部注入故障（容器、基础资源、数据库里临时的触发器）、每次之后的不变量、缺的工具、时长（2026-10-29 起草） |
 | [step12-plan.md](step12-plan.md) | 实验第 12 步（套件 D，多版本兼容）的计划：V1–V7、开工前读代码发现的五件事（破坏性迁移后没有机制拒绝旧版本、线协议没写未知字段与类型、兼容矩阵还没有、外壳里的 SDK 版本由 Go 统一、探针单跑的 SDK 很旧）、用探针测、专门发的三组版本、缺的工具（2026-11-01 起草，等维护者审） |
+| [step13-plan.md](step13-plan.md) | 实验第 13 步（套件 E，多实例与多数据库）的计划：E1–E7、开工前读代码发现的六件事（Docker 上多副本够不着宿主机端口、E4 的断言与 P6.31 冲突、按顺序的订阅在多副本时没有保证、格工具只有一个库、E7 要一套业务库回退、两种形态停副本的方式），缺的工具、时长（2026-11-01 起草，等维护者审） |
 | [doc-structure-plan.md](doc-structure-plan.md) | 文档结构实验（2026-10-22 起）：内容类型 × 层、初步结构、给 BrickKit 的 FRR-010–012、R0–R3 的轮次；题库在 `dev/routing-tests/structure-questions.md` |
 
 ## 现在在哪里
@@ -37,6 +38,7 @@
 - 测量期间不在机器上跑任何测试、编译或剖析：会干扰数字，也会抢端口（4-03 记了一次）。 每一轮记下电源模式；运行脚本切到 performance 并在结束时恢复。
 - 实验之后先做底层（权限、登录、冷热数据、事务、消息），再按 [rebuild-plan.md](rebuild-plan.md) 重建业务组件。
 
+- **第 13 步（套件 E，多实例与多数据库）：计划起草，等维护者审**（2026-11-01，[step13-plan.md](step13-plan.md)）。
 - **第 12 步（套件 D，多版本兼容）：做完**（记录 [12-01](experiment-records/12-01-suite-d-compat.md)，复盘 [retro-step12.md](retro-step12.md)；等维护者确认后进第 13 步）（2026-11-01，[step12-plan.md](step12-plan.md) 第 9 节）。V3–V7 通过；V1、V2 查出 G1、G2（没有的操作答 `INTERNAL`、`NOT_FOUND`）与 G4（旧版的迁移遇到更新的库就失败，旧版起不来、`brickkit up` 中止；FRR-019 让 BrickKit 补了文档，v1.10.5，已关闭）。修正：`be-protocol` alpha.30（P5.32、P3.10、P4.29），`be-sdk-go` alpha.38、`be-sdk-python` a34，12 个组件与 3 个外壳连锁发布（sales 3.0.17、go-core 3.0.41 等，见计划），复测与真机验证通过；alpha.31 补了兼容矩阵（`COMPAT.md`）。破坏性变化按维护者的规则所有组件一起更新。G5 已做完（P1.21：Python 成员在包元数据里声明最低 SDK，外壳启动时核对；连带修了探针的包版本停在 3.2.20、py-render 3.0.29/3.0.30 一承载探针就拒绝启动；`be-protocol` alpha.32、`be-sdk-python` a35、print 3.0.10、探针 3.2.26、billing 3.0.17、go-core 3.0.42、py-render 3.0.31、`be-acceptance` 1.0.15；`make pin-check` 加了 Python 的两条）。真机验证时查出 G6：Python 外壳里一个成员在事件循环上做 CPU 工作会卡住全部成员（截止时间失效）；规则补进合并安全与根 `AGENTS.md` 的易错点，探针改用工作进程（3.2.28，线程仍争 GIL 不够），py-render 3.0.33，`D12-py-a35` 两轮通过。其余五种形态的冒烟做完（P、K、L 全过；LD、LP 的大事件取不到：G7，协议 alpha.33 写明对象存储一个名字，本机 `/etc/hosts` 已加，FRR-020 等 BrickKit）；记录 [12-01](experiment-records/12-01-suite-d-compat.md) 与报告的“套件 D”一节已写。探针的 SDK 对照（F5）做完：只换 SDK，空闲 CPU Go 少 42%、Python 少 58%（P6.32），以前的比较没被扭曲。交 kb 做完（knowledge-base PR #49–#53，等审查）。**第 12 步做完**，等维护者确认后进第 13 步（套件 E）。FRR-020 之后的 LD12-V4、LP12-V4 重跑已通过（BrickKit v1.11.0）。
 - **第 11 步（套件 C，故障与运维）：做完**（2026-11-01，[step11-plan.md](step11-plan.md) 第 8、9 节）。
   - **主测**（[11-01](experiment-records/11-01-suite-c-faults.md)）：`night11.sh` 2026-10-30 17:30–23:48，D、K 两行六格；K9-H 的 R5、R4 因格工具的缺陷（拆出后仍找外壳的 Service）补跑一次（`be-acceptance` v1.0.11，23:48–00:13）。70 项之后不变量全部成立，RS05、RS06、BL04 都照协议恢复。代价在可用性：参与方重启后同步确认停约 30 秒（熔断的打开期）；K 行崩溃时请求挂住，同一 Pod 反复崩溃受 kubelet 退避（外壳格 22→34→53 秒）；外壳格停授权 2.4 秒就拒写。实验报告已加“套件 C”一节，第三部分 D、K 两节加了“出事时”一行。
