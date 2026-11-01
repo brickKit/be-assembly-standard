@@ -1,0 +1,36 @@
+...F...............                                                      [100%]
+=================================== FAILURES ===================================
+______________ test_rs08_the_same_key_sent_at_once_confirms_once _______________
+
+bob = User(name='test.bob', cell=Cell(dir=PosixPath('/home/zhijie/Desktop/github/be-assembly-standard/dev/rebuild/experiment...XMuaORRkCSz8GkuJnwKDg', principal='01a19831-295e-7c6b-a008-32b417e95b32', http=<httpx.Client object at 0x7eb4551e6d50>)
+world = World(le='01a19831-65ec-7142-ac8a-9755a660bad3', shanghai='01a19831-998b-725d-a487-83290ed8f0fb', beijing='01a19831-9a...-401ff1c78c9c', 'CS-POST': '01a19831-668c-7a79-bb2b-321de676b047', 'PROJ-OLD': '01a19831-668f-73cf-94ce-1050aae1352f'})
+
+    def test_rs08_the_same_key_sent_at_once_confirms_once(bob, world):
+        """RS08 at once (suite E): eight confirmations with one key at the same time (with replicas, the front door sends
+        them to different replicas) make one process (P4.23): each answer is the same confirmation, or
+        IDEMPOTENCY_IN_PROGRESS while the first use has not finished; the stock is held once."""
+        on_hand, reserved = position(bob, world, world.shanghai, world.goods["id"])
+        o = order(bob, world, world.large, [goods(world, 2)])
+        key = f"l3:{uuid.uuid4()}"
+        url = bob.url("erp/sales", f"/api/sales/orders/{o['id']}/confirm")
+        with ThreadPoolExecutor(8) as pool:
+            answers = list(pool.map(lambda _: bob.http.post(
+                url, headers={"Authorization": f"Bearer {bob.token}", "Idempotency-Key": key}), range(8)))
+        done = [r.json() for r in answers if r.status_code == 200]
+        busy = [r for r in answers if r.status_code != 200]
+        assert all(r.status_code == 409 and r.json().get("reason") == "IDEMPOTENCY_IN_PROGRESS" for r in busy), \
+            [f"{r.status_code} {r.text[:200]}" for r in busy]
+        assert done, "at least the first use answers"
+        assert len({a.get("confirmation_id") for a in done}) == 1, [a.get("confirmation_id") for a in done]
+>       assert {a["outcome"] for a in done} == {"confirmed"}, [a["outcome"] for a in done]
+E       AssertionError: ['confirmed', 'processing', 'processing', 'processing', 'processing', 'processing', ...]
+E       assert {'confirmed', 'processing'} == {'confirmed'}
+E         
+E         Extra items in the left set:
+E         'processing'
+E         Use -v to get more diff
+
+scenarios/test_expectations.py:71: AssertionError
+=========================== short test summary info ============================
+FAILED scenarios/test_expectations.py::test_rs08_the_same_key_sent_at_once_confirms_once
+1 failed, 18 passed in 5.93s

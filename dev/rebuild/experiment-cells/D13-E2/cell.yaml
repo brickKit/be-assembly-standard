@@ -1,0 +1,12 @@
+# Step 13, suite E2 on the D row: the trading shell be/go-core (inventory, credit, sales, billing) with 2 replicas; the
+# security and master data in be/go-infra and print in be/py-render with one. cells/front.py puts a front door on the
+# shell's port and on each member's.
+cell: D13-E2
+row: D
+shells:
+  be/go-infra@3.0.39: [infra/iam-casdoor, infra/authz, infra/audit, mdm/org, mdm/currency, mdm/partner, mdm/product]
+  be/go-core@3.0.43: [erp/inventory, erp/credit, erp/sales, erp/billing]
+  be/py-render@3.0.35: [infra/print]
+replicas:
+  be/go-core@3.0.43: 2
+chain: []
