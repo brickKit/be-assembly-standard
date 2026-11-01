@@ -13,11 +13,16 @@ The least E7 needs, not the operations runbook's tool:
      fingerprint is unchanged (not rolled back, nothing transferred lost), and the audit loss per component is the
      records produced after T and not transferred before the freeze (protocol 15 step 9). The load runs on through
      the freeze (runner13.sh stops it after this step), so business goes on after T as it would.
+With a pause (the third argument, seconds), infra/audit's container is paused for the last seconds before the
+freeze: the transfers fail meanwhile, so some records produced after T are not received when the business database
+rolls back, and the loss is not zero (it is unpaused once the executors have stopped).
 Steps 4-10 of the recovery (generation, streams, replays, reconciliation, reopening) are not done: the cell stays
 frozen and goes down after. One JSON object to <out>.
-Usage: cd <conformance> && PYTHONPATH=. uv run python <this> <cell directory> <out file> [after seconds]"""
+Usage: cd <conformance> && PYTHONPATH=. uv run python <this> <cell directory> <out file> [after seconds] [pause seconds]
+(the pause also from E7_PAUSE, as runner13.sh passes only the first three)"""
 import asyncio
 import json
+import os
 import subprocess
 import sys
 import time
@@ -98,26 +103,33 @@ def pg(*args: str) -> str:
     return subprocess.run(["docker", "exec", "be-postgres", *args], check=True, capture_output=True, text=True).stdout
 
 
-def containers(c: Cell) -> list[str]:
+def containers(c: Cell, audit: bool = False) -> list[str]:
+    """The cell's containers: every one but infra/audit's, or (audit) only infra/audit's."""
     names = subprocess.run(["docker", "ps", "--filter", f"label=com.docker.compose.project=brickkit-{c.project}",
                             "--format", "{{.Names}}"], check=True, capture_output=True, text=True).stdout.split()
-    return [n for n in names if "-infra-audit-" not in n]
+    return [n for n in names if ("-infra-audit-" in n) == audit and "-migration-" not in n]
 
 
-async def main(c: Cell, out: str, after: float) -> None:
+async def main(c: Cell, out: str, after: float, pause: float = 0) -> None:
     if c.home_of("infra/audit") == ("main", c.database) or c.target != "docker":
         raise SystemExit(f"{c.name}: E7 needs infra/audit in its own database (databases:) on the D row")
     db, r = c.database, {"cell": c.name, "database": c.database, "audit_database": c.home_of("infra/audit")[1]}
     # 1. T
     r["t"] = time.time()
     r["at_t"] = {"business": await backup_at_t(c), "audit": await audit(c)}
-    # 2. the business goes on
-    await asyncio.sleep(after)
+    # 2. the business goes on (the audit component paused for its last `pause` seconds)
+    r["pause"] = pause
+    await asyncio.sleep(after - pause)
+    if pause:
+        subprocess.run(["docker", "pause", *containers(c, audit=True)], check=True, capture_output=True)
+        await asyncio.sleep(pause)
     # 3. freeze: every executor but the audit component stops
     r["freeze"] = time.time()
     stopped = containers(c)
     subprocess.run(["docker", "stop", *stopped], check=True, capture_output=True)
     r["stopped"] = stopped
+    if pause:
+        subprocess.run(["docker", "unpause", *containers(c, audit=True)], check=True, capture_output=True)
     r["at_freeze"] = {"business": await business(c, r["at_t"]["business"]), "audit": await audit(c),
                       "received_after_t": await received_after(c, r["at_t"]["business"])}
     # 4. restore the business database to T; the audit database is not touched
@@ -151,4 +163,5 @@ async def main(c: Cell, out: str, after: float) -> None:
 
 
 if __name__ == "__main__":
-    asyncio.run(main(Cell.load(sys.argv[1]), sys.argv[2], float(sys.argv[3]) if len(sys.argv) > 3 else 120))
+    asyncio.run(main(Cell.load(sys.argv[1]), sys.argv[2], float(sys.argv[3]) if len(sys.argv) > 3 else 120,
+                     float(sys.argv[4]) if len(sys.argv) > 4 else float(os.environ.get("E7_PAUSE", 0))))

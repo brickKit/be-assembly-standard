@@ -48,6 +48,7 @@ down() {  # down <cell dir>: the cell's own down, then whatever an engine still 
     '{{.Name}} status={{.State.Status}} exit={{.State.ExitCode}} oom={{.State.OOMKilled}} restarts={{.RestartCount}}' \
     $(docker ps -aq); } >> "$OUT/$(basename "$1")/containers.txt" 2>&1
   docker rm -f be-pgbouncer >/dev/null 2>&1 || true  # a pooler cell's PgBouncer (cell-chain.sh starts it)
+  docker rm -fv be-postgres-2 >/dev/null 2>&1 || true  # step 13 E5's second instance (cell-chain.sh starts it): sampled as a base resource while it runs
 }
 export PATH=$R/dev/rebuild/experiment-scripts/bin:$PATH  # kubectl for the K row
 cluster() {  # cluster <on|off>: the minikube node (profile bek) runs only during the K row's cells

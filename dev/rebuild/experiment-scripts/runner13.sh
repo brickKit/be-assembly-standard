@@ -49,13 +49,18 @@ down() {
 }
 invariants() { stage "$1" "invariants-$2" bash -c "cd $CONF && uv run python -m cells invariants $3 $OUT/$1/invariants-$2.json $INV_WAIT" \
   && log "CELL $1 INVARIANTS $2 hold" || log "CELL $1 INVARIANTS $2 VIOLATED"; }
+cluster() {  # the minikube node runs only for the K row's cells: it publishes the host ports the other rows bind
+  local up=0; minikube -p bek status >/dev/null 2>&1 && up=1
+  if [ "$1" = on ] && [ $up = 0 ]; then log "CLUSTER start"; "$X/cluster-on.sh" "$OUT/cluster.log" >> "$OUT/cluster.log" 2>&1 || log "CLUSTER start FAILED"; fi
+  if [ "$1" = off ] && [ $up = 1 ]; then log "CLUSTER stop"; minikube -p bek stop >> "$OUT/cluster.log" 2>&1; fi
+}
 stop_bg() { for p in ${LPID:-} ${HPID:-}; do kill -INT "$p" 2>/dev/null && wait "$p" 2>/dev/null; done; LPID=; HPID=; }
 trap 'stop_bg' EXIT
 (cd "$CONF/../load" && go build -o "$OUT/load" .) || { log "FAILED load build"; exit 1; }
 log "START rate=$RATE users=$USERS inv_wait=$INV_WAIT steps=$STEPS conf=$CONF brickkit=$(brickkit --version | head -1)"
 for CELL in "$@"; do
   D=$R/dev/rebuild/experiment-cells/$CELL; mkdir -p "$OUT/$CELL"
-  ROW=$(sed -n 's/^row: *//p' "$D/cell.yaml")
+  ROW=$(sed -n 's/^row: *//p' "$D/cell.yaml"); [ "$ROW" = K ] && cluster on || cluster off
   log "CELL $CELL power=$(powerprofilesctl get)"
   if ! stage "$CELL" bring-up env KEEP_UP=1 "$X/cell-chain.sh" "$CELL" "$OUT/$CELL/bring-up"; then
     log "CELL $CELL FAILED bring-up"; logs "$D" "$OUT/$CELL/logs" "$ROW"; stage "$CELL" down down "$D"; continue; fi
@@ -91,4 +96,5 @@ for CELL in "$@"; do
   find "$OUT/$CELL/logs" -name '*.log' -size +256k -exec gzip -9 {} +  # about 160 MB a cell as text, 15 MB packed
   stage "$CELL" down down "$D"
 done
+[ -n "${KEEP_CLUSTER:-}" ] || cluster off
 log "ALL-DONE"
