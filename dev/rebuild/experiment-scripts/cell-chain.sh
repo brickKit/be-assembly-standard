@@ -94,6 +94,8 @@ local = {x.split("@")[0] for x in yaml.safe_load(open(sys.argv[2])).get("local")
 }
 echo "START $CELL power=$(powerprofilesctl get) $(date -Is)" >> "$OUT/status.log"
 stage down-others down_cells
+# suite E5: a cell with a schema on the second instance (databases: ... second/<database>) starts it afresh first
+grep -qE '^  [^ ]+: *second/' "$D/cell.yaml" && stage postgres2 bash "$R/dev/rebuild/experiment-scripts/postgres2.sh" up
 stage create bash -c "cd $CONF && uv run python -m cells create $D && uv run python -m cells prepare $D"
 grep -q '^pooler: *pgbouncer' "$D/cell.yaml" && stage pooler pooler
 build() {  # every row's images come from Docker (the same images in every row): P and LP build as a docker target
@@ -151,5 +153,5 @@ if [ "${SEED:-1}" != 0 ]; then
 fi
 # brickkit down does not reach a mode: local session's processes: cells/localrun.py stops the session by its PID
 [ "${KEEP_UP:-1}" = 0 ] && { stage down bash -c "cd $CONF && uv run python -m cells front down $D; cd $D && brickkit down && cd $CONF && uv run python -m cells.localrun down $D"
-  stop_forward "$(forward_pid "$D")"; docker rm -f be-pgbouncer >/dev/null 2>&1; }
+  stop_forward "$(forward_pid "$D")"; docker rm -f be-pgbouncer >/dev/null 2>&1; docker rm -fv be-postgres-2 >/dev/null 2>&1; }
 echo "ALL-DONE $(date -Is)" >> "$OUT/status.log"
