@@ -24,6 +24,7 @@ a.add_argument("--protocol", required=True)
 a.add_argument("--change", required=True)
 a.add_argument("only", nargs="*")
 o = a.parse_args()
+o.log = str(pathlib.Path(o.log).resolve())  # the commands run in each component's directory
 LOG = open(o.log, "a")
 NOTES = pathlib.Path(o.log + ".notes")
 NOTES.mkdir(exist_ok=True)
@@ -56,6 +57,9 @@ for cid in ORDER:
     if o.only and cid not in o.only:
         new[cid] = old
         continue
+    # a run that failed after `git add -A` leaves the bump staged: running again would bump once more (13-01 chain41)
+    if run("git status --porcelain", d).strip():
+        raise SystemExit(f"FAILED: {cid} has uncommitted changes; finish or undo them (git reset --hard) first")
     nv = bump(old)
     new[cid] = nv
     y = (d / "component.yaml").read_text().replace(f"  version: {old}\n", f"  version: {nv}\n", 1)

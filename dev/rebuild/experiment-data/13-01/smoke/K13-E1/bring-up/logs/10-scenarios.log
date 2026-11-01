@@ -1,0 +1,31 @@
+...F...............                                                      [100%]
+=================================== FAILURES ===================================
+______________ test_rs08_the_same_key_sent_at_once_confirms_once _______________
+
+bob = User(name='test.bob', cell=Cell(dir=PosixPath('/home/zhijie/Desktop/github/be-assembly-standard/dev/rebuild/experiment...YEi6iP2hFzzlX_2lhDbBw', principal='01a198b1-6140-762a-9382-31e0a8aa2c99', http=<httpx.Client object at 0x76d7ed46fd90>)
+world = World(le='01a198b1-bd95-7265-b5b3-616a9d28eb11', shanghai='01a198b1-f33c-7f11-81d7-cccbe72a299f', beijing='01a198b1-f4...-a4afe811fc33', 'CS-POST': '01a198b1-be3c-72d1-8fc6-90dda863242a', 'PROJ-OLD': '01a198b1-be3e-7317-b82c-0b2031cf42b7'})
+
+    def test_rs08_the_same_key_sent_at_once_confirms_once(bob, world):
+        """RS08 at once (suite E): eight confirmations with one key at the same time (with replicas, the front door sends
+        them to different replicas) make one process (P4.23): each answer is IDEMPOTENCY_IN_PROGRESS while the first use
+        has not committed, or that one confirmation in its state when the answer was read (the contract: "the same key
+        again answers the same process", processing until it ends; P4.24); the order ends confirmed, the stock held once."""
+        on_hand, reserved = position(bob, world, world.shanghai, world.goods["id"])
+        o = order(bob, world, world.large, [goods(world, 2)])
+        key = f"l3:{uuid.uuid4()}"
+        url = bob.url("erp/sales", f"/api/sales/orders/{o['id']}/confirm")
+        with ThreadPoolExecutor(8) as pool:
+            answers = list(pool.map(lambda _: bob.http.post(
+                url, headers={"Authorization": f"Bearer {bob.token}", "Idempotency-Key": key}), range(8)))
+        done = [r.json() for r in answers if r.status_code == 200]
+        busy = [r for r in answers if r.status_code != 200]
+>       assert all(r.status_code == 409 and r.json().get("reason") == "IDEMPOTENCY_IN_PROGRESS" for r in busy), \
+            [f"{r.status_code} {r.text[:200]}" for r in busy]
+E       AssertionError: ['503 {"type":"urn:be:be:DEPENDENCY_UNAVAILABLE","title":"A dependency is unavailable","status":503,"detail":"the iden...tatus":503,"detail":"the identity keys are unavailable","reason":"DEPENDENCY_UNAVAILABLE","domain":"be","metadata":{"']
+E       assert False
+E        +  where False = all(<generator object test_rs08_the_same_key_sent_at_once_confirms_once.<locals>.<genexpr> at 0x76d7ed3fe960>)
+
+scenarios/test_expectations.py:68: AssertionError
+=========================== short test summary info ============================
+FAILED scenarios/test_expectations.py::test_rs08_the_same_key_sent_at_once_confirms_once
+1 failed, 18 passed in 6.12s
