@@ -1,0 +1,23 @@
+🚀 Starting project p12-v4 (target: podman)
+📋 Component state calculation:
+   ✅ test/probe-go@3.2.21   starting (test/probe-go2 needs it)
+   ✅ test/probe-go2@3.2.22  starting (test/probe-go needs it)
+
+📋 Start order (topological sort):
+   1. test-probe-go-3-2-21   no dependencies
+   2. test-probe-go2-3-2-22  no dependencies
+
+Can start on their own: test-probe-go-3-2-21, test-probe-go2-3-2-22 (no dependencies)
+📄 Generated: .brickkit/generated/compose.yaml
+
+🔧 Database migrations that run before startup (on failure that component won't start):
+   test/probe-go@3.2.21  /probe-go migrate
+   test/probe-go2@3.2.22  /probe-go migrate
+
+🐳 Starting (podman)...
+❌ Error: podman failed to run
+   Command: podman compose --project-directory . -p brickkit-p12-v4 -f .brickkit/generated/compose.yaml up -d --wait --remove-orphans test-probe-go-3-2-21 test-probe-go2-3-2-22
+   Output: Container brickkit-p12-v4-test-probe-go2-3-2-22-1 Starting
+      Error response from daemon: rootlessport listen tcp 0.0.0.0:18600: bind: address already in use
+      Error: executing /usr/libexec/docker/cli-plugins/docker-compose --project-directory . -p brickkit-p12-v4 -f .brickkit/generated/compose.yaml up -d --wait --remove-orphans test-probe-go-3-2-21 test-probe-go2-3-2-22: exit status 1
+{"time":"2026-11-01T14:04:41.619130226+01:00","level":"ERROR","message":"Command failed","command":"brickkit up","elapsed_ms":7269,"error_code":"ENGINE_FAILED","error":"ENGINE_FAILED: Error: podman failed to run; Command=podman compose --project-directory /home/zhijie/Desktop/github/be-assembly-standard/dev/rebuild/experiment-cells/P12-V4 -p brickkit-p12-v4 -f /home/zhijie/Desktop/github/be-assembly-standard/dev/rebuild/experiment-cells/P12-V4/.brickkit/generated/compose.yaml up -d --wait --remove-orphans test-probe-go-3-2-21 test-probe-go2-3-2-22; Output=Container brickkit-p12-v4-test-probe-go2-3-2-22-1 Starting / Error response from daemon: rootlessport listen tcp 0.0.0.0:18600: bind: address already in use / Error: executing /usr/libexec/docker/cli-plugins/docker-compose --project-directory /home/zhijie/Desktop/github/be-assembly-standard/dev/rebuild/experiment-cells/P12-V4 -p brickkit-p12-v4 -f /home/zhijie/Desktop/github/be-assembly-standard/dev/rebuild/experiment-cells/P12-V4/.brickkit/generated/compose.yaml up -d --wait --remove-orphans test-probe-go-3-2-21 test-probe-go2-3-2-22: exit status 1","exit_code":1}

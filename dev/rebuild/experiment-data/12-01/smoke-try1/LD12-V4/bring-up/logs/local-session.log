@@ -1,0 +1,23 @@
+🚀 Starting project ld12-v4 (target: docker)
+📋 Component state calculation:
+   ✅ test/probe-go@3.2.21   starting (mode: local)
+   ✅ test/probe-go2@3.2.22  starting (test/probe-go needs it)
+
+📋 Start order (topological sort):
+   1. test-probe-go-3-2-21   no dependencies
+   2. test-probe-go2-3-2-22  no dependencies
+
+Can start on their own: test-probe-go-3-2-21, test-probe-go2-3-2-22 (no dependencies)
+📄 Generated: .brickkit/generated/compose.yaml
+
+🔧 Database migrations that run before startup (on failure that component won't start):
+   test/probe-go2@3.2.22  /probe-go migrate
+   test/probe-go@3.2.21  go run . migrate
+
+🐳 Starting (docker)...
+❌ Error: docker failed to run
+   Command: docker compose --project-directory . -p brickkit-ld12-v4 -f .brickkit/generated/compose.yaml up -d --wait --remove-orphans test-probe-go2-3-2-22
+   Output: Container brickkit-ld12-v4-test-probe-go2-3-2-22-migration-1 Exited
+      Container brickkit-ld12-v4-test-probe-go2-3-2-22-1 Starting
+      Error response from daemon: failed to set up container networking: driver failed programming external connectivity on endpoint brickkit-ld12-v4-test-probe-go2-3-2-22-1 (0fe2c133ab5999c398d88a92c98a86456c13ed0a09b726cb5b00db7c8cbeca6c): Bind for 0.0.0.0:18602 failed: port is already allocated
+{"time":"2026-11-01T14:05:01.690094586+01:00","level":"ERROR","message":"Command failed","command":"brickkit up","elapsed_ms":1084,"error_code":"ENGINE_FAILED","error":"ENGINE_FAILED: Error: docker failed to run; Command=docker compose --project-directory /home/zhijie/Desktop/github/be-assembly-standard/dev/rebuild/experiment-cells/LD12-V4 -p brickkit-ld12-v4 -f /home/zhijie/Desktop/github/be-assembly-standard/dev/rebuild/experiment-cells/LD12-V4/.brickkit/generated/compose.yaml up -d --wait --remove-orphans test-probe-go2-3-2-22; Output=Container brickkit-ld12-v4-test-probe-go2-3-2-22-migration-1 Exited / Container brickkit-ld12-v4-test-probe-go2-3-2-22-1 Starting / Error response from daemon: failed to set up container networking: driver failed programming external connectivity on endpoint brickkit-ld12-v4-test-probe-go2-3-2-22-1 (0fe2c133ab5999c398d88a92c98a86456c13ed0a09b726cb5b00db7c8cbeca6c): Bind for 0.0.0.0:18602 failed: port is already allocated","exit_code":1}

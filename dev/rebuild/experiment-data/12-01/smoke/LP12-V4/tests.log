@@ -1,0 +1,56 @@
+.....Fssss
+=================================== FAILURES ===================================
+___________________ test_events_go_both_ways_and_are_relayed ___________________
+
+cell = Cell(dir=PosixPath('/home/zhijie/Desktop/github/be-assembly-standard/dev/rebuild/experiment-cells/LP12-V4'), name='LP1...o', 'test/probe-go2'], concurrency=1, row='LP', local=['test/probe-go'], pooler='', baseline_scale=1, base='', also=[])
+
+    def test_events_go_both_ways_and_are_relayed(cell):
+        a, b = cell.chain
+        before = {p: seen(cell, p) for p in (a, b)}
+        for producer in (a, b):
+            for i in range(3):
+                r = post(cell, producer, "/api/probe/write", {"bytes": 100, "relay": i == 0})
+                assert r.status_code == 201, r.text
+            assert post(cell, producer, "/api/probe/write", {"bytes": 100 * 1024}).status_code == 201
+        for consumer in (a, b):
+            def grew(p=consumer):
+                now = seen(cell, p)
+                got = {k: now[k] - before[p][k] for k in ("count", "big", "relayed")}
+                assert got == {"count": 4, "big": 1, "relayed": 1}, (p, got)
+>           eventually(grew)
+
+compat/test_pairs.py:127: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+compat/test_pairs.py:66: in eventually
+    raise last
+compat/test_pairs.py:62: in eventually
+    return fn()
+           ^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+p = 'test/probe-go'
+
+    def grew(p=consumer):
+        now = seen(cell, p)
+        got = {k: now[k] - before[p][k] for k in ("count", "big", "relayed")}
+>       assert got == {"count": 4, "big": 1, "relayed": 1}, (p, got)
+E       AssertionError: ('test/probe-go', {'count': 3, 'big': 0, 'relayed': 1})
+E       assert {'count': 3, ... 'relayed': 1} == {'count': 4, ... 'relayed': 1}
+E         
+E         Omitting 1 identical items, use -vv to show
+E         Differing items:
+E         {'count': 3} != {'count': 4}
+E         {'big': 0} != {'big': 1}
+E         Use -v to get more diff
+
+compat/test_pairs.py:126: AssertionError
+==================================== PASSES ====================================
+=========================== short test summary info ============================
+PASSED compat/test_pairs.py::test_calls_go_both_ways_on_both_surfaces
+PASSED compat/test_pairs.py::test_the_deadline_shrinks_hop_by_hop_and_its_errors_map_the_same[grpc]
+PASSED compat/test_pairs.py::test_the_deadline_shrinks_hop_by_hop_and_its_errors_map_the_same[http]
+PASSED compat/test_pairs.py::test_the_trace_and_the_request_id_cross[grpc]
+PASSED compat/test_pairs.py::test_the_trace_and_the_request_id_cross[http]
+SKIPPED [4] compat/test_pairs.py:134: V2 needs one probe with the additive contract and one before it
+FAILED compat/test_pairs.py::test_events_go_both_ways_and_are_relayed - Asser...
+1 failed, 5 passed, 4 skipped in 34.04s

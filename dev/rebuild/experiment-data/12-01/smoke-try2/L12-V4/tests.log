@@ -1,0 +1,90 @@
+...FF.ssss
+=================================== FAILURES ===================================
+________________ test_the_trace_and_the_request_id_cross[grpc] _________________
+
+cell = Cell(dir=PosixPath('/home/zhijie/Desktop/github/be-assembly-standard/dev/rebuild/experiment-cells/L12-V4'), name='L12-...o2'], concurrency=1, row='L', local=['test/probe-go', 'test/probe-go2'], pooler='', baseline_scale=1, base='', also=[])
+surface = 'grpc'
+
+    @pytest.mark.parametrize("surface", ["grpc", "http"])
+    def test_the_trace_and_the_request_id_cross(cell, surface):
+        """P4.2: the caller's trace and request ID arrive in the other SDK's access log."""
+        for caller in cell.chain:
+            trace = uuid.uuid4().hex
+            r = post(cell, caller, "/api/probe/call", {"op": "echo", "bytes": 8, "surface": surface},
+                     {"traceparent": f"00-{trace}-00f067aa0ba902b7-01", "X-Request-Id": f"compat-{trace[:12]}"})
+            assert r.status_code == 200, r.text
+            other = cell.next_of(caller)
+    
+            def logged():
+                out = subprocess.run(["docker", "logs", cell.container_of(other)], capture_output=True, text=True).stdout
+                lines = [line for line in out.splitlines() if trace in line]
+                assert lines, f"{other}'s log has no line of trace {trace}"
+                assert any(f"compat-{trace[:12]}" in line for line in lines), lines
+>           eventually(logged, 10)
+
+compat/test_pairs.py:112: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+compat/test_pairs.py:66: in eventually
+    raise last
+compat/test_pairs.py:62: in eventually
+    return fn()
+           ^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    def logged():
+        out = subprocess.run(["docker", "logs", cell.container_of(other)], capture_output=True, text=True).stdout
+        lines = [line for line in out.splitlines() if trace in line]
+>       assert lines, f"{other}'s log has no line of trace {trace}"
+E       AssertionError: test/probe-go2's log has no line of trace 27fbde9f9ce14055895f6cfc0a7cf2c4
+E       assert []
+
+compat/test_pairs.py:110: AssertionError
+________________ test_the_trace_and_the_request_id_cross[http] _________________
+
+cell = Cell(dir=PosixPath('/home/zhijie/Desktop/github/be-assembly-standard/dev/rebuild/experiment-cells/L12-V4'), name='L12-...o2'], concurrency=1, row='L', local=['test/probe-go', 'test/probe-go2'], pooler='', baseline_scale=1, base='', also=[])
+surface = 'http'
+
+    @pytest.mark.parametrize("surface", ["grpc", "http"])
+    def test_the_trace_and_the_request_id_cross(cell, surface):
+        """P4.2: the caller's trace and request ID arrive in the other SDK's access log."""
+        for caller in cell.chain:
+            trace = uuid.uuid4().hex
+            r = post(cell, caller, "/api/probe/call", {"op": "echo", "bytes": 8, "surface": surface},
+                     {"traceparent": f"00-{trace}-00f067aa0ba902b7-01", "X-Request-Id": f"compat-{trace[:12]}"})
+            assert r.status_code == 200, r.text
+            other = cell.next_of(caller)
+    
+            def logged():
+                out = subprocess.run(["docker", "logs", cell.container_of(other)], capture_output=True, text=True).stdout
+                lines = [line for line in out.splitlines() if trace in line]
+                assert lines, f"{other}'s log has no line of trace {trace}"
+                assert any(f"compat-{trace[:12]}" in line for line in lines), lines
+>           eventually(logged, 10)
+
+compat/test_pairs.py:112: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+compat/test_pairs.py:66: in eventually
+    raise last
+compat/test_pairs.py:62: in eventually
+    return fn()
+           ^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    def logged():
+        out = subprocess.run(["docker", "logs", cell.container_of(other)], capture_output=True, text=True).stdout
+        lines = [line for line in out.splitlines() if trace in line]
+>       assert lines, f"{other}'s log has no line of trace {trace}"
+E       AssertionError: test/probe-go2's log has no line of trace c8704d459e3440d2a300e2324dabe79b
+E       assert []
+
+compat/test_pairs.py:110: AssertionError
+==================================== PASSES ====================================
+=========================== short test summary info ============================
+PASSED compat/test_pairs.py::test_calls_go_both_ways_on_both_surfaces
+PASSED compat/test_pairs.py::test_the_deadline_shrinks_hop_by_hop_and_its_errors_map_the_same[grpc]
+PASSED compat/test_pairs.py::test_the_deadline_shrinks_hop_by_hop_and_its_errors_map_the_same[http]
+PASSED compat/test_pairs.py::test_events_go_both_ways_and_are_relayed
+SKIPPED [4] compat/test_pairs.py:135: V2 needs one probe with the additive contract and one before it
+FAILED compat/test_pairs.py::test_the_trace_and_the_request_id_cross[grpc] - ...
+FAILED compat/test_pairs.py::test_the_trace_and_the_request_id_cross[http] - ...
+2 failed, 4 passed, 4 skipped in 24.06s

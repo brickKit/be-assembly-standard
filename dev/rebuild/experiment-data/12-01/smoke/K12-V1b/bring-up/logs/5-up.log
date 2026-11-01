@@ -1,0 +1,31 @@
+🚀 Starting project k12-v1b (target: k8s)
+☸️  Target cluster: bek
+📋 Component state calculation:
+   ✅ test/probe-go@3.2.26   starting (test/probe-go2 needs it)
+   ✅ test/probe-go2@3.2.26  starting (test/probe-go needs it)
+   ✅ test/probe-go@3.2.25   starting (top-level)
+
+📋 Start order (topological sort):
+   1. test-probe-go-3-2-25   no dependencies
+   2. test-probe-go-3-2-26   no dependencies
+   3. test-probe-go2-3-2-26  no dependencies
+
+Can start on their own: test-probe-go-3-2-25, test-probe-go-3-2-26, test-probe-go2-3-2-26 (no dependencies)
+📄 Generated 11 manifests: .brickkit/generated/k8s/
+   Namespace: k12-v1b
+
+🔧 Database migrations that run before startup (on failure that component won't start):
+   test/probe-go@3.2.25  /probe-go migrate
+   test/probe-go@3.2.26  /probe-go migrate
+   test/probe-go2@3.2.26  /probe-go migrate
+
+☸️  Deploying to Kubernetes (namespace k12-v1b)...
+   Database migrations run first; the main service starts only after they finish
+   test-probe-go-3-2-25         running (healthy)
+   test-probe-go-3-2-26         running (healthy)
+   test-probe-go2-3-2-26        running (healthy)
+✅ All components started (3)
+
+💡 View the status: brickkit status
+   View the logs: kubectl logs deployment/<service-name> -n k12-v1b
+   View the Pods: kubectl get pods -n k12-v1b
