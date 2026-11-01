@@ -168,10 +168,10 @@ docker / podman 用就留着，否则删掉。
 | `COMPONENT_DISABLED` | 钉住要跑的组件（`enabled` / `local` / `debug`）有个强依赖写了 `disable` | 两个意图矛盾，去掉其中一个 |
 | `MANIFEST_INVALID` | 某个 `component.yaml` 不合法，报错点名字段。`release` 报的还可能是"Go 不会认……的 tag v…"——写了 `release.goModule`，`go.mod` 的模块路径缺了（或多了）`/v<主版本>` 后缀 | 由组件作者修（在组件仓库里 `brickkit lint`）；Go 的 tag 那条，改 `module` 行或者改版本 |
 | `PORT_CONFLICT` | `localPort` / `exposePort` 重复，或 `mode: local` 进程要用的端口被别的程序占着 | 换端口；只是你机器上的事就改在 `deploy.local.yaml` |
-| `MIGRATION_FAILED` | 迁移命令失败（或入口没拒绝写错的参数） | 看迁移容器的日志，修好重跑 |
+| `MIGRATION_FAILED` | 迁移命令失败（或入口没拒绝写错的参数；或两个版本并存时，旧版本的迁移不接受被新版本迁移过的库） | 看迁移容器的日志，修好重跑；旧版本的迁移要把更新的库当作已完成（以 0 退出） |
 | `MIGRATION_SKIPPED`（警告） | `mode: local` / `debug` 的组件——或从本地仓库编进这种外壳的成员——没有迁移容器，`up` 也不替它跑迁移 | 跑提示里给出的 `local.migrationCommand`；没给出的，组件该写一条 |
 | `ENGINE_MISSING` | `docker` / `podman` / `kubectl` 不在 `PATH` 上或没在运行；或者只装了 Podman，部署文件却写着 `target: docker` | 装上、启动；或改成 `target: podman` |
-| `ENGINE_FAILED` | `docker compose` / `podman compose` / `kubectl` 执行失败，组件起来了但不健康，或 `mode: local` 的进程崩了 | 报错里带着引擎自己的输出；再看组件日志 |
+| `ENGINE_FAILED` | `docker compose` / `podman compose` / `kubectl` 执行失败，组件起来了但不健康，或 `mode: local` 的进程崩了 | 报错里带着引擎自己的输出；再看组件日志。本地进程崩了：最后几行输出在崩溃摘要里，那里的退出码是启动的那条命令的——`go run` 一律是 1 |
 | `AUTH_REQUIRED` / `TOKEN_EXPIRED` | 市场要登录，或登录过期 | `brickkit login` |
 | `AUTH_FAILED` | 市场拒绝了用户名或密码；或 Git 远端连上了但拒绝拉取——凭据被拒，或仓库根本不存在（托管平台对两者回答得一样） | 核对凭据；Git 的情形读报错里 git 自己的原话 |
 | `IMAGE_UNAUTHORIZED` | 镜像仓库拒绝拉取，或者仓库里没有这个镜像 | `docker login <仓库>`，核对镜像地址；或者用 `brickkit build` 在本机构建 |
@@ -238,4 +238,4 @@ docker / podman 用就留着，否则删掉。
 - 组件自己的说明（配置怎么填、依赖为什么要）：`.brickkit/manifests/<scope>/<name>/<版本>/BRICKKIT.md`
 - 「为什么这样设计」的完整论证与全部错误码：<https://github.com/brickKit/brickKit> 根目录 `AGENTS.zh.md`
 
-<!-- brickkit:skill version=v1.10.0 sum=sha256:78e4179435d945e3a82ae15c4e2cc66381deb952443ce705dbc866feed1924eb -->
+<!-- brickkit:skill version=v1.10.5 sum=sha256:a7b92a9dc722e64bcf72922445328c79f6ae09c8f29ea358965e54f5b9ac1bad -->

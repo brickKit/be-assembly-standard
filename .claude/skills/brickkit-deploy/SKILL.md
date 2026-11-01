@@ -64,8 +64,8 @@ docker / podman，`target: k8s` 下拒绝——集群里的 Pod 到不了你的�
 
 这样在本机跑的进程（`mode: local` / `debug`，或焦点组件）怎么占宿主机端口：进程监听 `localPort`；没写就用组件自己的
 `deployment.port`，被占了再从 8081 往上找第一个空的——这个数通过 `PORT` 给它。它的额外端口按声明的号在宿主机上占住。
-它依赖的每个容器发布到宿主机的 10000 + 容器端口（5432 → 15432、8080 → 18080），被占了再从 18080 往上找，env 文件 /
-进程拿到的就是 `localhost:<那个端口>`；被外壳承载的依赖发布在外壳的容器上。调用它的容器照旧用它的服务名，靠
+它依赖的每个容器发布到宿主机的 10000 + 容器端口（5432 → 15432、8080 → 18080），被占了再从 18080 往上找（依赖写了 `expose` 的——外壳替成员开放的也算——主端口直接用它的
+`exposePort`），env 文件 / 进程拿到的就是 `localhost:<那个端口>`；被外壳承载的依赖发布在外壳的容器上。调用它的容器照旧用它的服务名，靠
 `extra_hosts: <服务名>:host-gateway` 解析到宿主机。这些是 BrickKit 在一次运行里自己分的；本机别的程序已经占着的端口，
 要等引擎绑定时才失败——`mode: local` 进程的端口除外，`up` 启动任何进程之前先查（`PORT_CONFLICT`）。项目自己的端口登记表照常用 8080、8081 这些号：进程只有在它的 `deployment.port` 已被这次 `up`
 分给别人时才让出来（从 8081 往上顺延，可能落到另一个组件的端口上，写 `localPort` 就固定了）；「10000 + 各容器端口」
@@ -203,4 +203,4 @@ K8s 下是 Deployment 的副本数（`> 1` 时自动生成 PDB）；迁移都只
 - 某个组件要配哪些值：`.brickkit/manifests/<scope>/<name>/<版本>/BRICKKIT.md` 的配置指南
 - 完整规范：<https://github.com/brickKit/brickKit> 根目录 `AGENTS.zh.md`
 
-<!-- brickkit:skill version=v1.8.0 sum=sha256:ef483c7994de5fa28022ade4b095c479172ec72f36d8835a459e1cfda7035c60 -->
+<!-- brickkit:skill version=v1.10.5 sum=sha256:20e3b1f08ba16b9ebe4b0bc64844d730428ad87cdf6907b92d57a00be7378608 -->

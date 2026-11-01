@@ -65,8 +65,8 @@ Secret；平台从不按名字猜哪个是密钥。私钥、证书这类要能�
 | `COMPONENT_ID`、`COMPONENT_VERSION`、`BRICKKIT_SERVED_MEMBERS`、`BRICKKIT_SERVED_MEMBERS_CONFIG`、`PORT` | 精确 |
 | `*_ENDPOINT` | 后缀 |
 
-撞了：lint 与 up 警告，平台注入的值优先——你的配置项静默失效。`PORT` 是 `mode: local`
-起裸进程时平台给的监听端口。
+撞了：lint 与 up 警告，平台注入的值优先——你的配置项静默失效。`PORT` 是你的监听端口：
+容器里是 `deployment.port`，本机进程是为它选定的宿主机端口——读它，镜像里不用再写 `ENV PORT`。
 
 **4. 健康检查禁令：只检查本进程存活。**
 
@@ -175,7 +175,8 @@ Go 外壳按 Go 模块 import 成员（它的 `go.mod` 按 `shell.members` 的�
 `migration.command` 是数组，拿到的环境变量与主进程一样（包括全部配置值）。如果入口在不认识的
 参数上落回「启动服务」，迁移容器就变成第二个服务容器、永不退出，整个部署卡在 `Created`，而日志
 一片正常。先校验参数，再读环境变量、连数据库。迁移状态自己记；两个组件共用一个库时，状态表主键
-要带组件标识。
+要带组件标识。它每次 `up` 都跑，所以要幂等；组件两个版本并存时，旧版本的迁移会对着被新版本迁移过的库
+再跑一遍——把它当作已完成（什么也不改，以 0 退出），否则 `up` 以 `MIGRATION_FAILED` 停下。
 
 **14. 发布新版本 = 提交（版本号动手前已经升好）、推送、`brickkit release`。**
 
@@ -239,4 +240,4 @@ PEOPLE_BASIC_GRPC_ENDPOINT=http://people-basic-1-0-0:9090
 - 完整规范：<https://github.com/brickKit/brickKit> 根目录 `AGENTS.zh.md`
 - 别的组件的写法样例：你项目里 `.brickkit/manifests/` 下缓存的 `component.yaml` 与 `BRICKKIT.md`
 
-<!-- brickkit:skill version=v1.10.0 sum=sha256:21209822760fd3f514e07c2de14c3372b8b1cafc5ed8e4aadfe37d8bd4df1eb0 -->
+<!-- brickkit:skill version=v1.10.5 sum=sha256:2dc62b294e3a136351670418abaa231bda9caba9870701052ee04fffeac8f4cd -->
