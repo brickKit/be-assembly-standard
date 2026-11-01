@@ -1,0 +1,29 @@
+F                                                                        [100%]
+=================================== FAILURES ===================================
+_________ test_v3_later_mdm_org_events_reach_the_department_projection _________
+
+cell = Cell(dir=PosixPath('/home/zhijie/Desktop/github/be-assembly-standard/dev/rebuild/experiment-cells/D12-V3'), name='D12-...sales', 'erp/billing', 'infra/print'], concurrency=1, row='D', local=[], pooler='', baseline_scale=1, base='', also=[])
+
+    async def test_v3_later_mdm_org_events_reach_the_department_projection(cell):
+>       conn = await _conn(cell)
+               ^^^^^^^^^^^^^^^^^
+
+compat/test_projection.py:93: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+cells/faults.py:137: in _conn
+    return await asyncpg.connect(urlsplit(need("BE_ACC_PG_ADMIN"))._replace(path="/" + c.database).geturl())
+                                          ^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+name = 'BE_ACC_PG_ADMIN'
+
+    def need(name: str) -> str:
+        v = os.environ.get(name, "")
+        if not v:
+>           raise AssertionError(f"{name} is not set: the probe tests run against real base resources")
+E           AssertionError: BE_ACC_PG_ADMIN is not set: the probe tests run against real base resources
+
+harness.py:29: AssertionError
+=========================== short test summary info ============================
+FAILED compat/test_projection.py::test_v3_later_mdm_org_events_reach_the_department_projection
+1 failed in 0.24s

@@ -1,0 +1,43 @@
+📋 Release notes of test/probe-go, 3.2.23 → 3.2.24:
+
+   ── 3.2.24 ──
+      /tmp/claude-1000/-home-zhijie-Desktop-github-be-assembly-standard/50abddb1-4a5f-46f1-951a-1c59973ee1b3/scratchpad/pC-notes.md
+
+   ⬆️  test/probe-go: 3.2.23 → 3.2.24
+📝 config/test-probe-go.yaml
+   Kept as written: BUS_URL, IMPLEMENTATION_INSTANCE, PG_DATABASE, PG_HOST, PG_PASSWORD, PG_SCHEMA, PG_USER, DEPLOYMENT_ID, OBJECT_STORE_ACCESS_KEY, OBJECT_STORE_BUCKET, OBJECT_STORE_PREFIX, OBJECT_STORE_SECRET_KEY, OBJECT_STORE_URL, PG_OWNER_PASSWORD, PG_OWNER_USER, PG_PORT, PROBE_NEXT, PROBE_NEXT_GRPC_URL, PROBE_NEXT_URL, PROBE_PEER_STREAM, SERVICE_TLS_CA_FILE, SERVICE_TLS_CERT_FILE, SERVICE_TLS_KEY_FILE
+🗄️  Config archived: config/test-probe-go.yaml → config/.archive/test-probe-go@3.2.23.yaml
+📝 Written: brickkit.yaml, deploy.yaml
+⏭️  test/probe-go@3.2.24: image test-probe-go:3.2.24 already exists, skipped (--force rebuilds)
+⏭️  test/probe-go@3.2.22: image test-probe-go:3.2.22 already exists, skipped (--force rebuilds)
+⏭️  test/probe-go2@3.2.23: image test-probe-go2:3.2.23 already exists, skipped (--force rebuilds)
+🚀 Starting project d12-v1 (target: docker)
+⬆️ Version change detected:
+   test/probe-go: 3.2.23 → 3.2.24
+
+📋 Component state calculation:
+   ✅ test/probe-go@3.2.24   starting (test/probe-go2 needs it)
+   ✅ test/probe-go@3.2.22   starting (top-level)
+   ✅ test/probe-go2@3.2.23  starting (test/probe-go needs it)
+
+📋 Start order (topological sort):
+   1. test-probe-go-3-2-22   no dependencies
+   2. test-probe-go-3-2-24   no dependencies
+   3. test-probe-go2-3-2-23  no dependencies
+
+Can start on their own: test-probe-go-3-2-22, test-probe-go-3-2-24, test-probe-go2-3-2-23 (no dependencies)
+📄 Generated: .brickkit/generated/compose.yaml
+
+🔧 Database migrations that run before startup (on failure that component won't start):
+   test/probe-go@3.2.22  /probe-go migrate
+   test/probe-go@3.2.24  /probe-go migrate
+   test/probe-go2@3.2.23  /probe-go migrate
+
+🐳 Starting (docker)...
+❌ Error: database migration failed
+   Component: test/probe-go@3.2.22
+   View logs: docker compose -p brickkit-d12-v1 logs test-probe-go-3-2-22-migration
+   Suggestions:
+   1. When a migration fails the main service does not start: it waits for the migration to finish successfully
+   2. Fix it and run brickkit up again: the migration container runs once more
+{"time":"2026-11-01T09:44:30.515719443+01:00","level":"ERROR","message":"Command failed","command":"brickkit up","elapsed_ms":3392,"error_code":"MIGRATION_FAILED","error":"MIGRATION_FAILED: Error: database migration failed; Component=test/probe-go@3.2.22; View logs=docker compose -p brickkit-d12-v1 logs test-probe-go-3-2-22-migration","exit_code":1}

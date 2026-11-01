@@ -1,0 +1,51 @@
+# Component: test/probe-go@3.2.24
+# Environment variables for this component; every key is injected as-is.
+# Shared variable: $var:NAME (config/vars.yaml) · environment variable: ${NAME} · local file: file://path
+# Another component's address: $endpoint:<scope>/<name>
+
+# === Required: startup is blocked until these have a value ===
+BUS_URL: file://.secrets/bus
+IMPLEMENTATION_INSTANCE: 2db86fca-d90d-4bcb-b9c0-3bcc1452a38d
+PG_DATABASE: $var:PG_DATABASE
+# Written by be-acceptance/conformance/cells/prepare.py for cell D12-V1; regenerate instead of editing.
+PG_HOST: $var:PG_HOST
+PG_PASSWORD: file://.secrets/db/test_probe_go_rw
+PG_SCHEMA: test_probe_go
+PG_USER: test_probe_go_rw
+
+# === Optional: commented keys use the component's default; uncomment to override ===
+# AUDIT_GRPC_URL:  # string | process-level: the same for every member of a shell
+# AUTHZ_GRPC_URL:  # string | process-level: the same for every member of a shell
+# BUS_SUBSCRIPTION_CONCURRENCY:  # integer
+DEPLOYMENT_ID: $var:DEPLOYMENT_ID
+# IAM_ISSUER:  # string | process-level: the same for every member of a shell
+# IAM_JWKS_URL:  # string | process-level: the same for every member of a shell
+# LOG_LEVEL:  # string | SDK default info
+OBJECT_STORE_ACCESS_KEY: ${BE_ACC_S3_ACCESS_KEY}
+OBJECT_STORE_BUCKET: $var:OBJECT_STORE_BUCKET
+OBJECT_STORE_PREFIX: test_probe_go/
+# OBJECT_STORE_REGION:  # string | SDK default us-east-1
+OBJECT_STORE_SECRET_KEY: ${BE_ACC_S3_SECRET_KEY}
+OBJECT_STORE_URL: $var:OBJECT_STORE_URL
+# OTEL_URL:  # string | process-level: the same for every member of a shell
+# PG_IDLE_IN_TX_TIMEOUT:  # string | a duration (e.g. 2s, 500ms); SDK default 10s
+# PG_LOCK_TIMEOUT:  # string | a duration (e.g. 2s, 500ms); SDK default 2s
+# PG_MIGRATION_HOST:  # string
+# PG_MIGRATION_PORT:  # integer
+PG_OWNER_PASSWORD: file://.secrets/db/test_probe_go_owner
+PG_OWNER_USER: test_probe_go_owner
+# PG_POOLER_PREPARED:  # boolean | SDK default true
+# PG_POOL_BACKGROUND:  # integer | SDK default 4
+# PG_POOL_FOREGROUND:  # integer | SDK default 8
+PG_PORT: $var:PG_PORT
+# PG_STATEMENT_TIMEOUT:  # string | a duration (e.g. 2s, 500ms); SDK default 5s
+# PROBE_GUARD:  # boolean | true: the user routes need a credential and their operation instead of being public; SDK default false
+PROBE_NEXT: test/probe-go2
+PROBE_NEXT_GRPC_URL: $endpoint:test/probe-go2:grpc
+PROBE_NEXT_URL: $endpoint:test/probe-go2
+PROBE_PEER_STREAM: test.probe_go2
+SERVICE_TLS_CA_FILE: file://.secrets/tls/ca.pem
+SERVICE_TLS_CERT_FILE: file://.secrets/tls/test-probe-go.cert.pem
+SERVICE_TLS_KEY_FILE: file://.secrets/tls/test-probe-go.key.pem
+# STOP_DRAIN_DELAY:  # string | a duration (e.g. 2s, 500ms); SDK default 2s
+# STOP_TIMEOUT:  # string | a duration (e.g. 2s, 500ms); SDK default 30s

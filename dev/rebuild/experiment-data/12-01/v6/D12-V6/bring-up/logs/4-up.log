@@ -1,0 +1,25 @@
+🚀 Starting project d12-v6 (target: docker)
+📋 Component state calculation:
+   ✅ be/go-core@3.0.40      starting (top-level)
+   ✅ be/go-infra@3.0.35     starting (top-level)
+   ✅ test/probe-go@3.2.21   starting (test/probe-go2 needs it)
+   ✅ test/probe-go2@3.2.21  starting (test/probe-go needs it)
+
+📋 Start order (topological sort):
+   1. be-go-core-3-0-40   no dependencies  (hosts test/probe-go@3.2.21)
+   2. be-go-infra-3-0-35  no dependencies  (hosts test/probe-go2@3.2.21)
+
+Can start on their own: be-go-core-3-0-40, be-go-infra-3-0-35 (no dependencies)
+📄 Generated: .brickkit/generated/compose.yaml
+
+🔧 Database migrations that run before startup (on failure that component won't start):
+   test/probe-go@3.2.21  /probe-go migrate
+   test/probe-go2@3.2.21  /probe-go migrate
+
+🐳 Starting (docker)...
+   be-go-core-3-0-40            running (healthy)
+   be-go-infra-3-0-35           running (healthy)
+✅ All components started (2)
+
+💡 View the status: brickkit status
+   View the logs: docker compose -p brickkit-d12-v6 logs -f

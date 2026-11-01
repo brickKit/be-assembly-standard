@@ -1,0 +1,36 @@
+📋 Release notes of test/probe-go, 3.2.23 → 3.2.24:
+
+   ── 3.2.24 ──
+      /tmp/claude-1000/-home-zhijie-Desktop-github-be-assembly-standard/50abddb1-4a5f-46f1-951a-1c59973ee1b3/scratchpad/pC-notes.md
+
+   ⬆️  test/probe-go: 3.2.23 → 3.2.24
+📝 config/test-probe-go.yaml
+   Kept as written: BUS_URL, IMPLEMENTATION_INSTANCE, PG_DATABASE, PG_HOST, PG_PASSWORD, PG_SCHEMA, PG_USER, DEPLOYMENT_ID, OBJECT_STORE_ACCESS_KEY, OBJECT_STORE_BUCKET, OBJECT_STORE_PREFIX, OBJECT_STORE_SECRET_KEY, OBJECT_STORE_URL, PG_OWNER_PASSWORD, PG_OWNER_USER, PG_PORT, PROBE_NEXT, PROBE_NEXT_GRPC_URL, PROBE_NEXT_URL, PROBE_PEER_STREAM, SERVICE_TLS_CA_FILE, SERVICE_TLS_CERT_FILE, SERVICE_TLS_KEY_FILE
+🗄️  Config archived: config/test-probe-go.yaml → config/.archive/test-probe-go@3.2.23.yaml
+📝 Written: brickkit.yaml, deploy.yaml
+🔨 Building test/probe-go@3.2.24 → test-probe-go:3.2.24
+✅ Built test/probe-go@3.2.24 → test-probe-go:3.2.24
+⏭️  test/probe-go@3.2.22: image test-probe-go:3.2.22 already exists, skipped (--force rebuilds)
+⏭️  test/probe-go2@3.2.23: image test-probe-go2:3.2.23 already exists, skipped (--force rebuilds)
+🚀 Starting project d12-v1 (target: docker)
+⬆️ Version change detected:
+   test/probe-go: 3.2.23 → 3.2.24
+
+📋 Component state calculation:
+   ✅ test/probe-go@3.2.24   starting (test/probe-go2 needs it)
+   ✅ test/probe-go@3.2.22   starting (top-level)
+   ✅ test/probe-go2@3.2.23  starting (test/probe-go needs it)
+
+📋 Start order (topological sort):
+   1. test-probe-go-3-2-22   no dependencies
+   2. test-probe-go-3-2-24   no dependencies
+   3. test-probe-go2-3-2-23  no dependencies
+
+Can start on their own: test-probe-go-3-2-22, test-probe-go-3-2-24, test-probe-go2-3-2-23 (no dependencies)
+❌ Error: environment variables referenced in config/ or the deploy file are not defined
+   Missing variables: BE_ACC_S3_ACCESS_KEY, BE_ACC_S3_SECRET_KEY
+   Reason: docker compose would replace them with an empty string at start, warning only in its own output: the component would get a broken value and no error at all
+   Suggestions:
+   1. Add these variables to .env in the project root, or export them in the current shell
+   2. You can also write a default: ${POSTGRES_PASSWORD:-dev}
+{"time":"2026-11-01T09:43:28.933586608+01:00","level":"ERROR","message":"Command failed","command":"brickkit up","elapsed_ms":10,"error_code":"CONFIG_INVALID","error":"CONFIG_INVALID: Error: environment variables referenced in config/ or the deploy file are not defined; Missing variables=BE_ACC_S3_ACCESS_KEY, BE_ACC_S3_SECRET_KEY; Reason=docker compose would replace them with an empty string at start, warning only in its own output: the component would get a broken value and no error at all","exit_code":1}

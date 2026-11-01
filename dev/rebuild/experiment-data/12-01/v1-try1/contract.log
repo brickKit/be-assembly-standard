@@ -1,0 +1,32 @@
+sthe older version's write after the contract migration: 201 {"id":"01a19647-2c33-79c7-8de4-74b59854982a"}
+Fthe older version's migration, run again: 1 {"time":"2026-11-01T08:43:29.360Z","level":"INFO","msg":"migrations applied","component":"test/probe-go","version":"3.2.22","set":"be-sdk","schema_version":9}
+{"time":"2026-11-01T08:43:29.369Z","level":"ERROR","msg":"migrate failed","component":"test/probe-go","version":"3.2.22","error":"test/probe-go: no migration found for version 2: read down for version 2 .: file does not exist"}
+
+.
+=================================== FAILURES ===================================
+________ test_v1_after_a_contract_migration_the_older_writer_is_refused ________
+
+cell = Cell(dir=PosixPath('/home/zhijie/Desktop/github/be-assembly-standard/dev/rebuild/experiment-cells/D12-V1'), name='D12-...est/probe-go2'], concurrency=1, row='D', local=[], pooler='', baseline_scale=1, base='', also=['test/probe-go@3.2.22'])
+
+    @pytest.mark.skipif(PHASE != "contract", reason="V1_PHASE=contract")
+    def test_v1_after_a_contract_migration_the_older_writer_is_refused(cell):
+        """ST10: after a breaking migration the older writer is refused. The step 12 plan (F1) expects this to fail today:
+        nothing refuses the older version; its insert fails on the renamed column instead."""
+        new, old, _ = ports(cell)
+        n = write(new, {"bytes": 8, "label": "after"})
+        assert n.status_code == 201, n.text
+        assert read(new, n.json()["id"]).json()["bytes"] == 8
+        o = write(old, {"bytes": 9})
+        print("the older version's write after the contract migration:", o.status_code, o.text)
+>       assert o.status_code != 201, "the older version wrote into a schema it does not know"
+E       AssertionError: the older version wrote into a schema it does not know
+E       assert 201 != 201
+E        +  where 201 = <Response [201 Created]>.status_code
+
+compat/test_v1.py:81: AssertionError
+==================================== PASSES ====================================
+=========================== short test summary info ============================
+PASSED compat/test_v1.py::test_v1_the_older_version_does_not_start_again_on_the_newer_schema
+SKIPPED [1] compat/test_v1.py:53: V1_PHASE=expand
+FAILED compat/test_v1.py::test_v1_after_a_contract_migration_the_older_writer_is_refused
+1 failed, 1 passed, 1 skipped in 0.32s

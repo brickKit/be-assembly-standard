@@ -1,0 +1,98 @@
+.FF...FF..s                                                              [100%]
+=================================== FAILURES ===================================
+____ test_the_deadline_shrinks_hop_by_hop_and_its_errors_map_the_same[grpc] ____
+
+cell = Cell(dir=PosixPath('/home/zhijie/Desktop/github/be-assembly-standard/dev/rebuild/experiment-cells/D12-V2-py'), name='D...={}, alone=['test/probe-py', 'test/probe-py2'], concurrency=1, row='D', local=[], pooler='', baseline_scale=1, base='')
+surface = 'grpc'
+
+    @pytest.mark.parametrize("surface", ["grpc", "http"])
+    def test_the_deadline_shrinks_hop_by_hop_and_its_errors_map_the_same(cell, surface):
+        """P4.3-P4.5: 200 ms left for a 500 ms call times out after the attempt's limit (left - 50 ms), not after 500 ms;
+        40 ms left is not sent at all. Both answers cross the other SDK with the same reason and domain."""
+        for caller in cell.chain:
+            other = cell.next_of(caller)
+            t0 = time.monotonic()
+            r = post(cell, caller, "/api/probe/call", {"op": "work", "ms": 500, "surface": surface}, {"Be-Timeout-Ms": "200"})
+            took = time.monotonic() - t0
+            body = r.json()
+            assert (r.status_code, body["reason"], body["domain"]) == (504, "DEADLINE_EXCEEDED", "be"), (caller, r.text)
+            assert body["metadata"]["dependency"] == other
+>           assert took < 0.4, f"{caller}: the deadline did not reach {other} ({took:.3f} s)"
+E           AssertionError: test/probe-py2: the deadline did not reach test/probe-py (0.495 s)
+E           assert 0.4949908810085617 < 0.4
+
+compat/test_pairs.py:83: AssertionError
+____ test_the_deadline_shrinks_hop_by_hop_and_its_errors_map_the_same[http] ____
+
+cell = Cell(dir=PosixPath('/home/zhijie/Desktop/github/be-assembly-standard/dev/rebuild/experiment-cells/D12-V2-py'), name='D...={}, alone=['test/probe-py', 'test/probe-py2'], concurrency=1, row='D', local=[], pooler='', baseline_scale=1, base='')
+surface = 'http'
+
+    @pytest.mark.parametrize("surface", ["grpc", "http"])
+    def test_the_deadline_shrinks_hop_by_hop_and_its_errors_map_the_same(cell, surface):
+        """P4.3-P4.5: 200 ms left for a 500 ms call times out after the attempt's limit (left - 50 ms), not after 500 ms;
+        40 ms left is not sent at all. Both answers cross the other SDK with the same reason and domain."""
+        for caller in cell.chain:
+            other = cell.next_of(caller)
+            t0 = time.monotonic()
+            r = post(cell, caller, "/api/probe/call", {"op": "work", "ms": 500, "surface": surface}, {"Be-Timeout-Ms": "200"})
+            took = time.monotonic() - t0
+            body = r.json()
+            assert (r.status_code, body["reason"], body["domain"]) == (504, "DEADLINE_EXCEEDED", "be"), (caller, r.text)
+            assert body["metadata"]["dependency"] == other
+>           assert took < 0.4, f"{caller}: the deadline did not reach {other} ({took:.3f} s)"
+E           AssertionError: test/probe-py: the deadline did not reach test/probe-py2 (0.462 s)
+E           assert 0.4620443530147895 < 0.4
+
+compat/test_pairs.py:83: AssertionError
+__ test_v2_a_new_caller_gets_capability_unsupported_from_an_old_callee[grpc] ___
+
+cell = Cell(dir=PosixPath('/home/zhijie/Desktop/github/be-assembly-standard/dev/rebuild/experiment-cells/D12-V2-py'), name='D...={}, alone=['test/probe-py', 'test/probe-py2'], concurrency=1, row='D', local=[], pooler='', baseline_scale=1, base='')
+surface = 'grpc'
+
+    @pytest.mark.parametrize("surface", ["grpc", "http"])
+    def test_v2_a_new_caller_gets_capability_unsupported_from_an_old_callee(cell, surface):
+        """V2: an operation the callee's version does not have is refused explicitly, never a silent success."""
+        new, old = pair_by_contract(cell)
+        r = post(cell, new, "/api/probe/call", {"op": "note", "surface": surface})
+        assert r.status_code != 200, r.text
+>       assert r.json()["reason"] == "CAPABILITY_UNSUPPORTED", r.text
+E       AssertionError: {"type":"urn:be:be:INTERNAL","title":"Internal error","status":500,"detail":"an internal error occurred; quote the trace id when reporting it","reason":"INTERNAL","domain":"be","trace_id":"755f7872f98a049dbe2f9042b973ed94"}
+E       assert 'INTERNAL' == 'CAPABILITY_UNSUPPORTED'
+E         
+E         - CAPABILITY_UNSUPPORTED
+E         + INTERNAL
+
+compat/test_pairs.py:136: AssertionError
+__ test_v2_a_new_caller_gets_capability_unsupported_from_an_old_callee[http] ___
+
+cell = Cell(dir=PosixPath('/home/zhijie/Desktop/github/be-assembly-standard/dev/rebuild/experiment-cells/D12-V2-py'), name='D...={}, alone=['test/probe-py', 'test/probe-py2'], concurrency=1, row='D', local=[], pooler='', baseline_scale=1, base='')
+surface = 'http'
+
+    @pytest.mark.parametrize("surface", ["grpc", "http"])
+    def test_v2_a_new_caller_gets_capability_unsupported_from_an_old_callee(cell, surface):
+        """V2: an operation the callee's version does not have is refused explicitly, never a silent success."""
+        new, old = pair_by_contract(cell)
+        r = post(cell, new, "/api/probe/call", {"op": "note", "surface": surface})
+        assert r.status_code != 200, r.text
+>       assert r.json()["reason"] == "CAPABILITY_UNSUPPORTED", r.text
+E       AssertionError: {"type":"urn:be:be:NOT_FOUND","title":"Not found","status":404,"detail":"no such route","reason":"NOT_FOUND","domain":"be","trace_id":"fe4932c7131d652e35c7fc6c27e3d4c3"}
+E       assert 'NOT_FOUND' == 'CAPABILITY_UNSUPPORTED'
+E         
+E         - CAPABILITY_UNSUPPORTED
+E         + NOT_FOUND
+
+compat/test_pairs.py:136: AssertionError
+==================================== PASSES ====================================
+=========================== short test summary info ============================
+PASSED compat/test_pairs.py::test_calls_go_both_ways_on_both_surfaces
+PASSED compat/test_pairs.py::test_the_trace_and_the_request_id_cross[grpc]
+PASSED compat/test_pairs.py::test_the_trace_and_the_request_id_cross[http]
+PASSED compat/test_pairs.py::test_events_go_both_ways_and_are_relayed
+PASSED compat/test_pairs.py::test_v2_an_old_callee_ignores_a_field_it_does_not_know
+PASSED compat/test_pairs.py::test_v2_an_old_consumer_takes_the_new_fields_and_never_sees_the_new_type
+SKIPPED [1] compat/test_projection.py:92: the projection side needs erp/sales and mdm/org
+FAILED compat/test_pairs.py::test_the_deadline_shrinks_hop_by_hop_and_its_errors_map_the_same[grpc]
+FAILED compat/test_pairs.py::test_the_deadline_shrinks_hop_by_hop_and_its_errors_map_the_same[http]
+FAILED compat/test_pairs.py::test_v2_a_new_caller_gets_capability_unsupported_from_an_old_callee[grpc]
+FAILED compat/test_pairs.py::test_v2_a_new_caller_gets_capability_unsupported_from_an_old_callee[http]
+4 failed, 6 passed, 1 skipped in 4.56s

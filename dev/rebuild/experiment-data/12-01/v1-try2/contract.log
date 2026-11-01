@@ -1,0 +1,127 @@
+sFthe older version's migration, run again: 1 {"time":"2026-11-01T08:44:31.003Z","level":"INFO","msg":"migrations applied","component":"test/probe-go","version":"3.2.22","set":"be-sdk","schema_version":9}
+{"time":"2026-11-01T08:44:31.014Z","level":"ERROR","msg":"migrate failed","component":"test/probe-go","version":"3.2.22","error":"test/probe-go: no migration found for version 2: read down for version 2 .: file does not exist"}
+
+.
+=================================== FAILURES ===================================
+________ test_v1_after_a_contract_migration_the_older_writer_is_refused ________
+
+    @contextlib.contextmanager
+    def map_httpcore_exceptions() -> typing.Iterator[None]:
+        global HTTPCORE_EXC_MAP
+        if len(HTTPCORE_EXC_MAP) == 0:
+            HTTPCORE_EXC_MAP = _load_httpcore_exceptions()
+        try:
+>           yield
+
+.venv/lib/python3.15/site-packages/httpx/_transports/default.py:101: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+.venv/lib/python3.15/site-packages/httpx/_transports/default.py:250: in handle_request
+    resp = self._pool.handle_request(req)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.15/site-packages/httpcore/_sync/connection_pool.py:256: in handle_request
+    raise exc from None
+.venv/lib/python3.15/site-packages/httpcore/_sync/connection_pool.py:236: in handle_request
+    response = connection.handle_request(
+.venv/lib/python3.15/site-packages/httpcore/_sync/connection.py:101: in handle_request
+    raise exc
+.venv/lib/python3.15/site-packages/httpcore/_sync/connection.py:78: in handle_request
+    stream = self._connect(request)
+             ^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.15/site-packages/httpcore/_sync/connection.py:124: in _connect
+    stream = self._network_backend.connect_tcp(**kwargs)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.15/site-packages/httpcore/_backends/sync.py:207: in connect_tcp
+    with map_exceptions(exc_map):
+         ^^^^^^^^^^^^^^^^^^^^^^^
+/home/zhijie/.local/share/uv/python/cpython-3.15.0-linux-x86_64-gnu/lib/python3.15/contextlib.py:224: in __exit__
+    self.gen.throw(value)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+map = {<class 'TimeoutError'>: <class 'httpcore.ConnectTimeout'>, <class 'OSError'>: <class 'httpcore.ConnectError'>}
+
+    @contextlib.contextmanager
+    def map_exceptions(map: ExceptionMapping) -> typing.Iterator[None]:
+        try:
+            yield
+        except Exception as exc:  # noqa: PIE786
+            for from_exc, to_exc in map.items():
+                if isinstance(exc, from_exc):
+>                   raise to_exc(exc) from exc
+E                   httpcore.ConnectError: [Errno 111] Connection refused
+
+.venv/lib/python3.15/site-packages/httpcore/_exceptions.py:14: ConnectError
+
+The above exception was the direct cause of the following exception:
+
+cell = Cell(dir=PosixPath('/home/zhijie/Desktop/github/be-assembly-standard/dev/rebuild/experiment-cells/D12-V1'), name='D12-...est/probe-go2'], concurrency=1, row='D', local=[], pooler='', baseline_scale=1, base='', also=['test/probe-go@3.2.22'])
+
+    @pytest.mark.skipif(PHASE != "contract", reason="V1_PHASE=contract")
+    def test_v1_after_a_contract_migration_the_older_writer_is_refused(cell):
+        """ST10: after a breaking migration the older writer is refused. The step 12 plan (F1) expects this to fail today:
+        nothing refuses the older version; its insert fails on the renamed column instead."""
+        new, old, _ = ports(cell)
+>       n = write(new, {"bytes": 8, "label": "after"})
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+compat/test_v1.py:76: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+compat/test_v1.py:42: in write
+    return httpx.post(f"http://127.0.0.1:{port}/api/probe/write", json=body, timeout=30)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.15/site-packages/httpx/_api.py:304: in post
+    return request(
+.venv/lib/python3.15/site-packages/httpx/_api.py:109: in request
+    return client.request(
+.venv/lib/python3.15/site-packages/httpx/_client.py:825: in request
+    return self.send(request, auth=auth, follow_redirects=follow_redirects)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.15/site-packages/httpx/_client.py:914: in send
+    response = self._send_handling_auth(
+.venv/lib/python3.15/site-packages/httpx/_client.py:942: in _send_handling_auth
+    response = self._send_handling_redirects(
+.venv/lib/python3.15/site-packages/httpx/_client.py:979: in _send_handling_redirects
+    response = self._send_single_request(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.15/site-packages/httpx/_client.py:1014: in _send_single_request
+    response = transport.handle_request(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.15/site-packages/httpx/_transports/default.py:249: in handle_request
+    with map_httpcore_exceptions():
+         ^^^^^^^^^^^^^^^^^^^^^^^^^
+/home/zhijie/.local/share/uv/python/cpython-3.15.0-linux-x86_64-gnu/lib/python3.15/contextlib.py:224: in __exit__
+    self.gen.throw(value)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    @contextlib.contextmanager
+    def map_httpcore_exceptions() -> typing.Iterator[None]:
+        global HTTPCORE_EXC_MAP
+        if len(HTTPCORE_EXC_MAP) == 0:
+            HTTPCORE_EXC_MAP = _load_httpcore_exceptions()
+        try:
+            yield
+        except Exception as exc:
+            mapped_exc = None
+    
+            for from_exc, to_exc in HTTPCORE_EXC_MAP.items():
+                if not isinstance(exc, from_exc):
+                    continue
+                # We want to map to the most specific exception we can find.
+                # Eg if `exc` is an `httpcore.ReadTimeout`, we want to map to
+                # `httpx.ReadTimeout`, not just `httpx.TimeoutException`.
+                if mapped_exc is None or issubclass(to_exc, mapped_exc):
+                    mapped_exc = to_exc
+    
+            if mapped_exc is None:  # pragma: no cover
+                raise
+    
+            message = str(exc)
+>           raise mapped_exc(message) from exc
+E           httpx.ConnectError: [Errno 111] Connection refused
+
+.venv/lib/python3.15/site-packages/httpx/_transports/default.py:118: ConnectError
+==================================== PASSES ====================================
+=========================== short test summary info ============================
+PASSED compat/test_v1.py::test_v1_the_older_version_does_not_start_again_on_the_newer_schema
+SKIPPED [1] compat/test_v1.py:53: V1_PHASE=expand
+FAILED compat/test_v1.py::test_v1_after_a_contract_migration_the_older_writer_is_refused
+1 failed, 1 passed, 1 skipped in 0.36s
