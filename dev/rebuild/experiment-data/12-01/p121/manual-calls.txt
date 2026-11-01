@@ -1,0 +1,27 @@
+# Step 12, G6: outputs copied from the session's terminal on 2026-11-01 (they were printed, not written to a file).
+# Each call: POST /api/probe/call {"op": "work", "ms": 500, "surface": ...} with Be-Timeout-Ms: 200, sent by hand to the
+# caller in D12-py-a35 (both Python probes in be/py-render). Expected: 504 DEADLINE_EXCEEDED naming the dependency after
+# about 150 ms (the attempt's limit: 200 ms left minus 50).
+
+## py-debug: be/py-render 3.0.31, probes 3.2.26 (work burns on the event loop)
+test/probe-py grpc 504 0.532s {"type":"urn:be:be:DEADLINE_EXCEEDED","title":"The request ran out of time","status":504,"detail":"the request ran out of time","reason":"DEADLINE_EXCEEDED","domain":"be","trace_id":"42f3d32a101c7fbbbe4bdad384494c0e"}
+test/probe-py http 504 0.513s {"type":"urn:be:be:DEADLINE_EXCEEDED","title":"The request ran out of time","status":504,"detail":"the request ran out of time","reason":"DEADLINE_EXCEEDED","domain":"be","trace_id":"87e41c53a08542d9ff126eb4cf36cda0"}
+test/probe-py2 grpc 504 0.511s {"type":"urn:be:be:DEADLINE_EXCEEDED","title":"The request ran out of time","status":504,"detail":"the request ran out of time","reason":"DEADLINE_EXCEEDED","domain":"be","trace_id":"47e0e6404a52b831391a41f18c4502dc"}
+test/probe-py2 http 504 0.508s {"type":"urn:be:be:DEADLINE_EXCEEDED","title":"The request ran out of time","status":504,"detail":"the request ran out of time","reason":"DEADLINE_EXCEEDED","domain":"be","trace_id":"744ac29ec53973ca377f28df806ec84f"}
+
+## py-debug2: be/py-render 3.0.32, probes 3.2.27 (work in a worker thread); responses cut at 260 characters
+test/probe-py grpc 504 0.210s {"type":"urn:be:be:DEADLINE_EXCEEDED","title":"The request ran out of time","status":504,"detail":"a dependency did not answer in time","reason":"DEADLINE_EXCEEDED","domain":"be","trace_id":"bd7411e083701b03c19edd6654ccec12","metadata":{"dependency":"test/prob
+test/probe-py http 504 0.187s {"type":"urn:be:be:DEADLINE_EXCEEDED","title":"The request ran out of time","status":504,"detail":"a dependency did not answer in time","reason":"DEADLINE_EXCEEDED","domain":"be","trace_id":"e44c34fbf8a1fc16da9d4e7add875cd2","metadata":{"dependency":"test/prob
+test/probe-py grpc 504 0.235s {"type":"urn:be:be:DEADLINE_EXCEEDED","title":"The request ran out of time","status":504,"detail":"a dependency did not answer in time","reason":"DEADLINE_EXCEEDED","domain":"be","trace_id":"586cf12e94f2a7504481d56dc11d9d30","metadata":{"dependency":"test/prob
+test/probe-py2 grpc 504 0.205s {"type":"urn:be:be:DEADLINE_EXCEEDED","title":"The request ran out of time","status":504,"detail":"a dependency did not answer in time","reason":"DEADLINE_EXCEEDED","domain":"be","trace_id":"9a9dfcda0e08573504db39b8d3fb6460","metadata":{"dependency":"test/prob
+test/probe-py2 http 504 0.331s {"type":"urn:be:be:DEADLINE_EXCEEDED","title":"The request ran out of time","status":504,"detail":"the request ran out of time","reason":"DEADLINE_EXCEEDED","domain":"be","trace_id":"9f1d1183c59b6e150c33b605448846c5"}
+test/probe-py2 grpc 504 0.178s {"type":"urn:be:be:DEADLINE_EXCEEDED","title":"The request ran out of time","status":504,"detail":"a dependency did not answer in time","reason":"DEADLINE_EXCEEDED","domain":"be","trace_id":"ded95d9714cc892c1346816d70010e36","metadata":{"dependency":"test/prob
+
+## The worker processes of probe 3.2.28 (probe_py.module.Burners), run alone on this machine before the release
+# one 200 ms burn; three at once; the event loop's largest lateness over twenty 10 ms sleeps during a 300 ms burn;
+# a cancelled 1000 ms burn; close
+one 0.208
+three at once 0.212
+max loop lateness 0.0002
+cancelled; workers 2
+closed; workers 0
