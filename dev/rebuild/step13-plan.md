@@ -67,7 +67,7 @@ E5、E6 只在 D 行：数据库的布置与形态无关，K 行的基础资源�
 | --- | --- | --- |
 | 前门 | 每个多副本的组件或外壳一个转发容器：宿主机端口进、服务名出，按请求均衡；`cell.yaml` 的 `replicas:` 写哪些组件几个副本，格工具写进部署文件并起停前门 | `be-acceptance` 的 `conformance/cells/` |
 | 多库 | `cell.yaml` 的 `databases:`；`prepare` 按它建库、角色与授权，写每个组件的连接配置；第二个实例的起停 | 同上；第二个实例的脚本在 `experiment-scripts/` |
-| 多副本的检查 | 流里每条正好一条（11-03 已有）、工作项表里每项只有一次成功的认领、幂等表里同一个键只有一次执行；按副本分开读日志确认两个副本都干过活 | `conformance/cells/invariants.py` |
+| 多副本的检查 | 流里每条正好一条（11-03 已有）；同一个幂等键并发只执行一次（L3 的并发 RS08）；工作项“只完成一次”由 SDK 的纪元守卫保证、做重了由业务不变量查出，所以只采样运行中工作项的持有进程看每个副本都认领过（第 9 节）；按副本数访问日志看两个副本都服务过 | `scenarios/`；`experiment-scripts/holders.py`、`replica-counts.sh` |
 | 乱序注入 | 向部门事件的流写同一部门的几个版本，倒序、重复（第 12 步 V3 的注入工具扩一个参数） | `conformance/compat/` |
 | 业务库回退 | 逻辑备份、恢复到临时库、逐库复制回业务库（审计库除外）；之后算审计损失 | `experiment-scripts/` |
 | 运行器 | 起格、跑一格的检查或注入、按引擎收日志与停格（第 12 步的 `runner12r.sh` 加 `replicas` 与 `databases` 的处理） | `experiment-scripts/runner13.sh` |
