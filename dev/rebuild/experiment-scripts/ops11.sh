@@ -79,6 +79,56 @@ async def main():
     await asyncio.gather(*(ready(f"http://127.0.0.1:{c.host_port(x)}") for x in c.placed))
 asyncio.run(main())' "$D")
 }
+settled() {  # settled <file>: every caller reaches its dependencies again (at most 120 s): its outbound circuit breakers
+  # closed and, for 3 s, no new failed attempt (unavailable, connect_failed, deadline). On Docker a caller that came up
+  # before its dependency failed to connect, and gRPC waits out its reconnection backoff (up to 5 s, be-sdk-go
+  # calls/grpc.go) before it tries again, ready or not: the L3 scenarios meanwhile answer `processing`. <file> keeps
+  # each component's be_outbound_* lines when ready and when settled
+  (cd "$CONF" && uv run python -c 'import re, sys, time, httpx
+from cells.spec import Cell
+c, out = Cell.load(sys.argv[1]), sys.argv[2]
+FAILED = ("unavailable", "connect_failed", "deadline")
+def scrape():
+    lines = {}
+    for x in c.placed:
+        try:
+            r = httpx.get(f"http://127.0.0.1:{c.host_port(x)}/metrics", timeout=5)
+            lines[x] = ([l for l in r.text.splitlines() if l.startswith("be_outbound_")] if r.status_code == 200
+                        else [f"# /metrics answered {r.status_code}"])
+        except httpx.HTTPError as e:
+            lines[x] = [f"# {e!r}"]
+    return lines
+def state(lines):
+    """the open breakers and unreadable components, and the failed attempts by caller and dependency"""
+    bad, failed = [], {}
+    for x, ls in lines.items():
+        for l in ls:
+            if l.startswith("# "):
+                bad.append(f"{x} {l}"); continue
+            name, value = l.rsplit(" ", 1)
+            if name.startswith("be_outbound_breaker_open") and float(value) != 0:
+                bad.append(f"{x} {l}")
+            m = re.search(r"class=\"([a-z_]+)\",dependency=\"([^\"]+)\"", name)
+            if name.startswith("be_outbound_attempts_total") and m and m.group(1) in FAILED:
+                failed[(x, m.group(2))] = failed.get((x, m.group(2)), 0) + float(value)
+    return bad, failed
+def keep(when, lines):
+    with open(out, "a") as f:
+        f.writelines(f"{when} {x} {l}\n" for x, ls in lines.items() for l in ls)
+first = scrape(); keep("ready", first); t0 = time.monotonic()
+history = [(t0, state(first)[1])]
+while True:
+    time.sleep(0.5)
+    lines = scrape(); now = time.monotonic(); bad, failed = state(lines); history.append((now, failed))
+    before = next((f for t, f in reversed(history) if now - t >= 3), None)
+    if not bad and before is not None and failed == before:
+        keep("settled", lines)
+        after = {f"{x}->{d}": int(n - history[0][1].get((x, d), 0)) for (x, d), n in failed.items()
+                 if n > history[0][1].get((x, d), 0)}
+        print(f"settled after {now - t0:.1f} s; failed attempts after ready: {after or 0}"); break
+    if now - t0 > 120:
+        keep("unsettled", lines); print("not settled after 120 s:", *bad, sep="\n  "); sys.exit(1)' "$D" "$1")
+}
 scenarios() { (cd "$CONF" && BE_ACC_CELL=$D uv run pytest -q scenarios); }
 timed() {  # timed <name> <command...>: one line with the seconds it took and its status
   local name=$1 t0 rc; shift; t0=$(date +%s.%N); "$@"; rc=$?
@@ -103,6 +153,7 @@ case $ACT in
     timed up up || exit 1
     timed healthy healthy || exit 1
     timed ready ready || exit 1
+    timed settled settled "$OUT/breakers.txt" || exit 1
     units > "$OUT/units-after.txt"
     say "REPLACED $(diff "$OUT/units-before.txt" "$OUT/units-after.txt" | sed -n 's/^> //p' | awk '{print $1}' | tr '\n' ' ')"
     ;;
@@ -155,12 +206,21 @@ print(" ".join(sorted({c["id"] for c in yaml.safe_load(open(sys.argv[2]))["compo
       say "SPLIT $WAY ($SHELL_REF)"; timed "move-$WAY" "${WAY}_way" || exit 1
       units > "$OUT/units-before-$WAY.txt"
       timed "build-$WAY" build || exit 1
+      SINCE=$(date -Is)
       timed "up-$WAY" up || exit 1
       timed "healthy-$WAY" healthy || exit 1
       timed "ready-$WAY" ready || exit 1
+      # SPLIT_SETTLE=0 runs the scenarios as soon as every component is ready (to see what the settling waits out)
+      [ "${SPLIT_SETTLE:-1}" = 0 ] || timed "settled-$WAY" settled "$OUT/breakers-$WAY.txt" || exit 1
       units > "$OUT/units-after-$WAY.txt"
       "$0" conns "$CELL" > "$OUT/conns-$WAY.txt"
       timed "scenarios-$WAY" scenarios || { say "SPLIT $WAY scenarios FAILED"; BAD=1; }
+      [ "${SPLIT_SETTLE:-1}" = 0 ] && settled "$OUT/breakers-$WAY.txt"  # the readings after the scenarios
+      if [ "$ROW" != K ]; then  # each container's log since this way's up (the next way replaces some of them)
+        mkdir -p "$OUT/logs-$WAY"
+        for n in $($(eng) ps --filter "label=com.docker.compose.project=brickkit-${CELL,,}" --format '{{.Names}}'); do
+          $(eng) logs --since "$SINCE" "$n" > "$OUT/logs-$WAY/$n.log" 2>&1; done
+      fi
     done
     exit $BAD
     ;;
