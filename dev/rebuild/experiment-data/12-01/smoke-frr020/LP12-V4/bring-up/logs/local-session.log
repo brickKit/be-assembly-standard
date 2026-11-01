@@ -1,0 +1,69 @@
+🚀 Starting project lp12-v4 (target: podman)
+📋 Component state calculation:
+   ✅ test/probe-go@3.2.21   starting (mode: local)
+   ✅ test/probe-go2@3.2.22  starting (test/probe-go needs it)
+
+📋 Start order (topological sort):
+   1. test-probe-go-3-2-21   no dependencies
+   2. test-probe-go2-3-2-22  no dependencies
+
+Can start on their own: test-probe-go-3-2-21, test-probe-go2-3-2-22 (no dependencies)
+📄 Generated: .brickkit/generated/compose.yaml
+ℹ️ host.docker.internal resolves to loopback on this machine: processes here get it as written, the same name the containers use
+
+🔧 Database migrations that run before startup (on failure that component won't start):
+   test/probe-go2@3.2.22  /probe-go migrate
+   test/probe-go@3.2.21  go run . migrate
+
+🐳 Starting (podman)...
+   test-probe-go2-3-2-22        running (healthy)
+✅ All components started (1)
+
+💡 View the status: brickkit status
+   View the logs: podman compose -p brickkit-lp12-v4 logs -f
+
+Starting 1 local component(s) — press Ctrl+C to stop
+test-probe-go-3-2-21-migration  running the migration from source: go run . migrate
+test-probe-go-3-2-21-migration | {"time":"2026-11-01T14:26:46.600Z","level":"INFO","msg":"migrations applied","component":"test/probe-go","version":"3.2.21","set":"be-sdk","schema_version":9}
+test-probe-go-3-2-21-migration | {"time":"2026-11-01T14:26:46.630Z","level":"INFO","msg":"migrations applied","component":"test/probe-go","version":"3.2.21","set":"test/probe-go","schema_version":1}
+test-probe-go-3-2-21-migration | {"time":"2026-11-01T14:26:46.630Z","level":"INFO","msg":"migrate done","component":"test/probe-go","version":"3.2.21"}
+test-probe-go-3-2-21-migration  migration finished
+test-probe-go-3-2-21           | {"time":"2026-11-01T14:26:46.762Z","level":"WARN","msg":"AUDIT_GRPC_URL is not set: audit records stay in the local table until it is","component":"test/probe-go","version":"3.2.21"}
+test-probe-go-3-2-21           | {"time":"2026-11-01T14:26:46.779Z","level":"INFO","msg":"ready","component":"test/probe-go","version":"3.2.21","event":"ready","protocol":"3.0.0-alpha.19","sdk":"3.0.0-alpha.23","startup_ms":19}
+test-probe-go-3-2-21  listening on port 8600
+test-probe-go-3-2-21           | {"time":"2026-11-01T14:26:48.941Z","level":"INFO","msg":"access","component":"test/probe-go","version":"3.2.21","request_id":"01a19781-7fe4-7813-94d1-8f38b04327b9","trace_id":"7fca8d4dd38b2668fef95c25897d2683","method":"POST","route":"/api/probe/call","status":200,"duration_ms":8}
+test-probe-go-3-2-21           | {"time":"2026-11-01T14:26:48.950Z","level":"INFO","msg":"access","component":"test/probe-go","version":"3.2.21","request_id":"01a19781-7ff4-778a-8528-d0639bd9dbe2","trace_id":"5142b0b12f79d3800f32c772d2b7d474","method":"POST","route":"/api/probe/call","status":200,"duration_ms":2}
+test-probe-go-3-2-21           | {"time":"2026-11-01T14:26:48.961Z","level":"INFO","msg":"access","component":"test/probe-go","version":"3.2.21","request_id":"01a19781-7ffb-7811-a2fd-7e1eda5c6fb4","trace_id":"158cf9b413d698e16ceb4b20bccaff7d","method":"POST","route":"/api/probe/call","status":200,"duration_ms":5}
+test-probe-go-3-2-21           | {"time":"2026-11-01T14:26:48.967Z","level":"INFO","msg":"access","component":"test/probe-go","version":"3.2.21","request_id":"01a19781-8006-7a0e-a98e-8e27af5fed4c","trace_id":"85e7aced373c8d6d85935e12c374272e","method":"POST","route":"/api/probe/call","status":200,"duration_ms":1}
+test-probe-go-3-2-21           | {"time":"2026-11-01T14:26:48.974Z","level":"INFO","msg":"access","component":"test/probe-go","version":"3.2.21","request_id":"01a19781-800d-7c11-a5d1-1c2b2545dd75","trace_id":"cefa0b511ec94d4a3ccaa8b6fecbe4b1","method":"POST","route":"/api/probe/call","status":200,"duration_ms":1}
+test-probe-go-3-2-21           | {"time":"2026-11-01T14:26:48.988Z","level":"INFO","msg":"access","component":"test/probe-go","version":"3.2.21","request_id":"01a19781-8016-7d1b-bc46-036d6a087cf0","trace_id":"186818b04bd2747fc076cef2b2a7fbe9","method":"POST","route":"/api/probe/call","status":200,"duration_ms":5}
+test-probe-go-3-2-21           | {"time":"2026-11-01T14:26:48.999Z","level":"INFO","msg":"access","component":"test/probe-go","version":"3.2.21","request_id":"01a19781-8023-7a0b-af7d-7e8eeebfd1a7","trace_id":"ca075237e723794f18fa83c7feebdbc6","method":"/test.probe.v1.Probe/Echo","code":"OK","duration_ms":0}
+test-probe-go-3-2-21           | {"time":"2026-11-01T14:26:49.006Z","level":"INFO","msg":"access","component":"test/probe-go","version":"3.2.21","request_id":"01a19781-802d-75fc-a08a-84e19c214220","trace_id":"2a8cb69c6131db73ef232f2d42f0b21b","method":"/test.probe.v1.Probe/Echo","code":"OK","duration_ms":0}
+test-probe-go-3-2-21           | {"time":"2026-11-01T14:26:49.019Z","level":"INFO","msg":"access","component":"test/probe-go","version":"3.2.21","request_id":"01a19781-8036-7223-a1ae-3d551a0a5d87","trace_id":"7233d0cf0a665a3adea4fe43546e2c10","method":"/test.probe.v1.Probe/Work","code":"OK","duration_ms":5}
+test-probe-go-3-2-21           | {"time":"2026-11-01T14:26:49.026Z","level":"INFO","msg":"access","component":"test/probe-go","version":"3.2.21","request_id":"01a19781-8041-7c3e-b40a-72e70b64c5d7","trace_id":"00669ca18000c26162ea3d78f4d26a37","method":"POST","route":"/api/probe/echo","status":200,"duration_ms":0}
+test-probe-go-3-2-21           | {"time":"2026-11-01T14:26:49.032Z","level":"INFO","msg":"access","component":"test/probe-go","version":"3.2.21","request_id":"01a19781-8047-7bec-a8c8-643b01ad743b","trace_id":"4dc57f1221149bfae1282d5bcd9c0fa8","method":"POST","route":"/api/probe/echo","status":200,"duration_ms":0}
+test-probe-go-3-2-21           | {"time":"2026-11-01T14:26:49.043Z","level":"INFO","msg":"access","component":"test/probe-go","version":"3.2.21","request_id":"01a19781-804e-7086-a6d3-48eaed271a3a","trace_id":"f777aac65e2713f3abddc05d4c5f195f","method":"POST","route":"/api/probe/work","status":200,"duration_ms":5}
+test-probe-go-3-2-21           | {"time":"2026-11-01T14:26:49.905Z","level":"WARN","msg":"request failed","component":"test/probe-go","version":"3.2.21","request_id":"01a19781-831a-7901-a444-5adf7c23ca2a","trace_id":"d9806e5d67d5a38fc683d53a913716eb","reason":"DEADLINE_EXCEEDED","domain":"be","error":"be/DEADLINE_EXCEEDED: a dependency did not answer in time: rpc error: code = DeadlineExceeded desc = context deadline exceeded"}
+test-probe-go-3-2-21           | {"time":"2026-11-01T14:26:49.905Z","level":"WARN","msg":"access","component":"test/probe-go","version":"3.2.21","request_id":"01a19781-831a-7901-a444-5adf7c23ca2a","trace_id":"d9806e5d67d5a38fc683d53a913716eb","method":"POST","route":"/api/probe/call","status":504,"duration_ms":151}
+test-probe-go-3-2-21           | {"time":"2026-11-01T14:26:49.913Z","level":"WARN","msg":"request failed","component":"test/probe-go","version":"3.2.21","request_id":"01a19781-83b9-7350-b1b5-a2cbd6331dff","trace_id":"1b1c4550113b42e15b7c724d457c9f99","reason":"DEADLINE_BUDGET_EXHAUSTED","domain":"be","error":"be/DEADLINE_BUDGET_EXHAUSTED: not enough time was left to call a dependency"}
+test-probe-go-3-2-21           | {"time":"2026-11-01T14:26:49.913Z","level":"WARN","msg":"access","component":"test/probe-go","version":"3.2.21","request_id":"01a19781-83b9-7350-b1b5-a2cbd6331dff","trace_id":"1b1c4550113b42e15b7c724d457c9f99","method":"POST","route":"/api/probe/call","status":504,"duration_ms":0}
+test-probe-go-3-2-21           | {"time":"2026-11-01T14:26:51.119Z","level":"INFO","msg":"access","component":"test/probe-go","version":"3.2.21","request_id":"01a19781-867b-75ff-897c-e28d55af09ba","trace_id":"4407502eb80e5d546a49f264ce933327","method":"/test.probe.v1.Probe/Work","code":"OK","duration_ms":500}
+test-probe-go-3-2-21           | {"time":"2026-11-01T14:26:51.636Z","level":"WARN","msg":"request failed","component":"test/probe-go","version":"3.2.21","request_id":"01a19781-89de-70f0-8e74-97d9e752bd12","trace_id":"9d711d3a7df8217007685de9daf57d88","reason":"DEADLINE_EXCEEDED","domain":"be","error":"be/DEADLINE_EXCEEDED: a dependency did not answer in time: Post \"http://localhost:18602/api/probe/work\": context deadline exceeded"}
+test-probe-go-3-2-21           | {"time":"2026-11-01T14:26:51.636Z","level":"WARN","msg":"access","component":"test/probe-go","version":"3.2.21","request_id":"01a19781-89de-70f0-8e74-97d9e752bd12","trace_id":"9d711d3a7df8217007685de9daf57d88","method":"POST","route":"/api/probe/call","status":504,"duration_ms":150}
+test-probe-go-3-2-21           | {"time":"2026-11-01T14:26:51.642Z","level":"WARN","msg":"request failed","component":"test/probe-go","version":"3.2.21","request_id":"01a19781-8a7a-7944-b618-4c239a598330","trace_id":"9f2b51450cadb59a82cca912b08259ec","reason":"DEADLINE_BUDGET_EXHAUSTED","domain":"be","error":"be/DEADLINE_BUDGET_EXHAUSTED: not enough time was left to call a dependency"}
+test-probe-go-3-2-21           | {"time":"2026-11-01T14:26:51.642Z","level":"WARN","msg":"access","component":"test/probe-go","version":"3.2.21","request_id":"01a19781-8a7a-7944-b618-4c239a598330","trace_id":"9f2b51450cadb59a82cca912b08259ec","method":"POST","route":"/api/probe/call","status":504,"duration_ms":0}
+test-probe-go-3-2-21           | {"time":"2026-11-01T14:26:52.519Z","level":"INFO","msg":"access","component":"test/probe-go","version":"3.2.21","request_id":"compat-722362a4f6f7","trace_id":"722362a4f6f741268655f0e8c27d83cf","method":"POST","route":"/api/probe/call","status":200,"duration_ms":0}
+test-probe-go-3-2-21           | {"time":"2026-11-01T14:26:52.661Z","level":"INFO","msg":"access","component":"test/probe-go","version":"3.2.21","request_id":"compat-da80b10f862f","trace_id":"da80b10f862f4633ae02941ebe97ddee","method":"/test.probe.v1.Probe/Echo","code":"OK","duration_ms":0}
+test-probe-go-3-2-21           | {"time":"2026-11-01T14:26:52.668Z","level":"INFO","msg":"access","component":"test/probe-go","version":"3.2.21","request_id":"compat-dc6825c1c686","trace_id":"dc6825c1c6864650aaaf81794b5edfb5","method":"POST","route":"/api/probe/call","status":200,"duration_ms":0}
+test-probe-go-3-2-21           | {"time":"2026-11-01T14:26:52.711Z","level":"INFO","msg":"access","component":"test/probe-go","version":"3.2.21","request_id":"compat-c4d88fb50f9c","trace_id":"c4d88fb50f9c4e7fab1d875ba3c71de7","method":"POST","route":"/api/probe/echo","status":200,"duration_ms":0}
+test-probe-go-3-2-21           | {"time":"2026-11-01T14:26:52.721Z","level":"INFO","msg":"access","component":"test/probe-go","version":"3.2.21","request_id":"01a19781-8eaf-7cb4-bca9-a38b0a7c9053","trace_id":"ed90473b2637f2cd106b200495bf3724","method":"GET","route":"/api/probe/seen","status":200,"duration_ms":1}
+test-probe-go-3-2-21           | {"time":"2026-11-01T14:26:52.736Z","level":"INFO","msg":"access","component":"test/probe-go","version":"3.2.21","request_id":"01a19781-8ebe-77cc-83bb-352a56b83886","trace_id":"35ab1b81cccb735946e771ba6276d099","method":"POST","route":"/api/probe/write","status":201,"duration_ms":2}
+test-probe-go-3-2-21           | {"time":"2026-11-01T14:26:52.742Z","level":"INFO","msg":"access","component":"test/probe-go","version":"3.2.21","request_id":"01a19781-8ec5-75ac-907f-b7c25ef04cd0","trace_id":"cf8c9c60af437391b8f6fc128aff6136","method":"POST","route":"/api/probe/write","status":201,"duration_ms":1}
+test-probe-go-3-2-21           | {"time":"2026-11-01T14:26:52.743Z","level":"INFO","msg":"access","component":"test/probe-go","version":"3.2.21","request_id":"01a19781-8ec7-767b-83c1-3760a0178f58","trace_id":"6bdd925d33b1cbdfd28f79ab8fa5c995","method":"/test.probe.v1.Probe/Echo","code":"OK","duration_ms":0}
+test-probe-go-3-2-21           | {"time":"2026-11-01T14:26:52.748Z","level":"INFO","msg":"access","component":"test/probe-go","version":"3.2.21","request_id":"01a19781-8ecb-7030-9116-ccc8ca91b52a","trace_id":"c8d1cc20420324f16092a8b15cb356b4","method":"POST","route":"/api/probe/write","status":201,"duration_ms":1}
+test-probe-go-3-2-21           | {"time":"2026-11-01T14:26:52.755Z","level":"INFO","msg":"access","component":"test/probe-go","version":"3.2.21","request_id":"01a19781-8ed1-7544-9ca8-a1fdcd8b5486","trace_id":"03a0401b4b04963104dfb6f7285ebe71","method":"POST","route":"/api/probe/write","status":201,"duration_ms":2}
+test-probe-go-3-2-21           | {"time":"2026-11-01T14:26:52.796Z","level":"INFO","msg":"access","component":"test/probe-go","version":"3.2.21","request_id":"01a19781-8efb-7077-b4c4-0b2ed576b7f3","trace_id":"fd54b51211376950d233347ad8e5bcb8","method":"GET","route":"/api/probe/seen","status":200,"duration_ms":1}
+test-probe-go-3-2-21           | {"time":"2026-11-01T14:26:52.849Z","level":"INFO","msg":"access","component":"test/probe-go","version":"3.2.21","request_id":"01a19781-8d3c-7d78-9ec9-6d5ad4aad16a","trace_id":"017b917435151e162201332ef8a9d885","method":"POST","route":"/api/probe/work","status":200,"duration_ms":500}
+test-probe-go-3-2-21           | {"time":"2026-11-01T14:26:53.008Z","level":"INFO","msg":"access","component":"test/probe-go","version":"3.2.21","request_id":"01a19781-8fcf-7962-9c32-576779a53361","trace_id":"2cc0e77943bb5fa1f2f6af03073dfd34","method":"GET","route":"/api/probe/seen","status":200,"duration_ms":1}
+test-probe-go-3-2-21           | {"time":"2026-11-01T14:26:55.741Z","level":"INFO","msg":"stopping","component":"test/probe-go","version":"3.2.21","event":"stopping"}
+test-probe-go-3-2-21           | {"time":"2026-11-01T14:26:57.742Z","level":"INFO","msg":"stopped","component":"test/probe-go","version":"3.2.21","event":"stopped","exit_code":0}

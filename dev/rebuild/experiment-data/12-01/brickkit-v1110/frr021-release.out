@@ -1,0 +1,22 @@
+$ brickkit --version
+BrickKit CLI v1.11.0
+# a temporary component repository with no remote; notes.md exists, missing.md does not
+$ brickkit release --notes './notes.md'
+❌ --notes takes the text of the release notes, but ./notes.md is a file
+   Suggestion: To release with that file's content: --notes-file ./notes.md. Nothing was released
+exit=2
+$ brickkit release --notes 'notes.md'
+❌ --notes takes the text of the release notes, but notes.md is a file
+   Suggestion: To release with that file's content: --notes-file notes.md. Nothing was released
+exit=2
+$ brickkit release --notes './missing.md'
+❌ --notes takes the text of the release notes, but ./missing.md looks like a file name (and there is no such file)
+   Suggestion: To read the notes from a file, give its path to --notes-file; to use this text as the notes, write it into a file and give that to --notes-file. Nothing was released
+exit=2
+$ brickkit release --notes 'Fixes the export; see CHANGES.md'
+❌ Error: the branch test/probe-py2@9.9.1 is released from has no upstream
+   Branch: master
+   Suggestion: Push the branch and set its upstream: git push -u origin master
+exit=1
+$ git tag
+(end of tags)

@@ -1,0 +1,49 @@
+$ brickkit --version
+BrickKit CLI v1.11.0
+# the V7 copy of D12-H-a35: be/go-core 3.0.41 (compiled in: erp/billing 3.0.16), erp/billing 3.0.17 declared
+$ brickkit lint
+✅ brickkit.yaml
+✅ deploy.yaml
+❌ [CONFIG_INVALID] Error: the member versions the deploy file puts in a shell differ from the ones its component.yaml says are compiled in
+   File: deploy.yaml
+   components[1].members[3]: shell be/go-core@3.0.41 contains erp/billing@3.0.16, but the deploy file puts erp/billing@3.0.17 in it
+   Suggestions:
+   1. Upgrade be/go-core to a version whose component.yaml lists erp/billing@3.0.17 under shell.members
+   2. Move the entry of erp/billing out of the members of be/go-core to the top level of the deploy file, so it runs on its own
+   3. Keep both versions: add `- {id: erp/billing, version: 3.0.16, requiredBy: [be/go-core]}` to the components of brickkit.yaml, change the member entry under be/go-core to `- id: erp/billing@3.0.16`, and add `- id: erp/billing` at the top level of the deploy file so erp/billing@3.0.17 runs on its own
+⚠️ [DOC_PLACEHOLDER] a placeholder (TODO) is still in the text
+   File: AGENTS.md
+   Line: 7
+⚠️ [DOC_PLACEHOLDER] a placeholder (TODO) is still in the text
+   File: AGENTS.md
+   Line: 11
+⚠️ [DOC_PLACEHOLDER] a placeholder (TODO) is still in the text
+   File: AGENTS.md
+   Line: 15
+⚠️ [DOC_PLACEHOLDER] a placeholder (TODO) is still in the text
+   File: AGENTS.md
+   Line: 19
+
+📋 Checked 4 files: 1 with errors, 4 warnings
+❌ Error: the structure check did not pass
+   Checked: 4 files
+   With errors: 1 file
+   Suggestion: Fix them at the locations listed above, then run brickkit lint again
+exit=1
+$ brickkit lint erp/billing
+🔎 Only erp/billing is checked (brickkit lint --all checks the whole project)
+❌ [CONFIG_INVALID] Error: the member versions the deploy file puts in a shell differ from the ones its component.yaml says are compiled in
+   File: deploy.yaml
+   components[1].members[3]: shell be/go-core@3.0.41 contains erp/billing@3.0.16, but the deploy file puts erp/billing@3.0.17 in it
+   Suggestions:
+   1. Upgrade be/go-core to a version whose component.yaml lists erp/billing@3.0.17 under shell.members
+   2. Move the entry of erp/billing out of the members of be/go-core to the top level of the deploy file, so it runs on its own
+   3. Keep both versions: add `- {id: erp/billing, version: 3.0.16, requiredBy: [be/go-core]}` to the components of brickkit.yaml, change the member entry under be/go-core to `- id: erp/billing@3.0.16`, and add `- id: erp/billing` at the top level of the deploy file so erp/billing@3.0.17 runs on its own
+ℹ️ erp/billing is in no local source here, so its component.yaml and documents are not checked (they are its author's); its configuration is
+
+📋 Checked 1 file: 1 with errors, 0 warnings
+❌ Error: the structure check did not pass
+   Checked: 1 file
+   With errors: 1 file
+   Suggestion: Fix them at the locations listed above, then run brickkit lint again
+exit=1
