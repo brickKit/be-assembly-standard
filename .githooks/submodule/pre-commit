@@ -1,0 +1,6 @@
+#!/bin/sh
+# Every component, shell and tool repository of the project commits through this hook (make hooks sets their
+# core.hooksPath here): no build output in Git history (infra/scripts/no-binaries.py; dev/rebuild/retro-step12.md P1).
+top=$(git rev-parse --show-superproject-working-tree)
+[ -n "$top" ] || { echo "no-binaries: not inside the project's checkout; skipped" >&2; exit 0; }
+exec python3 "$top/infra/scripts/no-binaries.py" staged

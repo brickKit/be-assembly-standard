@@ -41,6 +41,7 @@
 - 改测试的提交单独一次，并写清原断言错在哪里。
 - 提交信息用英文（D74），先写进文件，再 `git commit -F <文件>`。打标签之前先看 `git log --oneline -1`：命令行里引号没配对的提交信息可能静默失败，标签就会打在上一个提交上。
 - 标签一律用带注释的标签（`git tag -a`）；`git push --follow-tags` 会不声不响地跳过轻量标签。
+- 构建产物不进 Git：`go build .`、`go test -c` 会把几十 MB 的二进制留在源码目录里，进了历史就只能改写历史。每份新的检出跑一次 `make hooks`，之后父仓库与每个子仓库的提交都拒绝大于 5 MiB 的文件与可执行的二进制（例外写在 `infra/scripts/no-binaries.allow`，要写理由）；`make gates` 另查每个仓库的 `HEAD`。
 
 ## 真机运行
 

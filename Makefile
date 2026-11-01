@@ -183,7 +183,7 @@ teardown-down:  ## 停掉拆回验证的容器
 # The Go gates of the 0.x be-acceptance (import, SystemClient, bare-route, event and OpenAPI
 # breaking changes, data-scope tests, dependency versions, config keys) moved to its legacy/v0
 # branch with the old code (D59); conformance suites and gates return with the rebuilt tools.
-gates: docs-boundary docs-diagrams docs-mirror docs-links docs-ids docs-closure docs-index-check infra-images security-schemas  ## Document gates (boundary, mirror, links, IDs, closure), infra image pins, security schemas + brickkit up --dry-run
+gates: docs-boundary docs-diagrams docs-mirror docs-links docs-ids docs-closure docs-index-check infra-images security-schemas no-binaries  ## Document gates (boundary, mirror, links, IDs, closure), infra image pins, security schemas, no build output in any repository + brickkit up --dry-run
 	@echo "▸ brickkit up --dry-run"
 	@bash $(S)/lib/require-brickkit.sh
 	@brickkit up --dry-run
@@ -227,3 +227,11 @@ seed-data-clean:  ## 主数据组件没有清除命令：说明怎样重置（do
 
 # tier0/tier1/tier2 acceptance lived in the 0.x be-acceptance (legacy/v0); acceptance returns
 # with the rebuilt components and conformance suites (protocols 18, 21).
+
+.PHONY: no-binaries hooks
+no-binaries:  ## no file over 5 MiB in HEAD of the project or any submodule (infra/scripts/no-binaries.allow lists the exceptions)
+	@python3 infra/scripts/no-binaries.py tree
+
+hooks:  ## every submodule commits through .githooks/submodule/pre-commit (no build output, no executables); run once per checkout
+	@git submodule --quiet foreach 'git config core.hooksPath "$$toplevel/.githooks/submodule" && echo "hooks: $$sm_path"'
+
