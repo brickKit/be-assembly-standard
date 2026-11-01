@@ -1,19 +1,45 @@
+# Component: erp/billing@3.0.13
+# Environment variables for this component; every key is injected as-is.
+# Shared variable: $var:NAME (config/vars.yaml) · environment variable: ${NAME} · local file: file://path
+# Another component's address: $endpoint:<scope>/<name>
+
+# === Required: startup is blocked until these have a value ===
+BUS_URL: file://.secrets/bus
+IMPLEMENTATION_INSTANCE: f5cba3f5-1f26-4293-b50e-81e4dea80cec
+PG_DATABASE: $var:PG_DATABASE
 # Written by be-acceptance/conformance/cells/prepare.py for cell P9-X; regenerate instead of editing.
 PG_HOST: $var:PG_HOST
-PG_PORT: $var:PG_PORT
-PG_DATABASE: $var:PG_DATABASE
-DEPLOYMENT_ID: $var:DEPLOYMENT_ID
-PG_USER: erp_billing_rw
 PG_PASSWORD: file://.secrets/db/erp_billing_rw
 PG_SCHEMA: erp_billing
-PG_OWNER_USER: erp_billing_owner
-PG_OWNER_PASSWORD: file://.secrets/db/erp_billing_owner
+PG_USER: erp_billing_rw
+
+# === Optional: commented keys use the component's default; uncomment to override ===
+AUDIT_GRPC_URL: $var:AUDIT_GRPC_URL
+AUTHZ_GRPC_URL: $var:AUTHZ_GRPC_URL
+DEPLOYMENT_ID: $var:DEPLOYMENT_ID
 IAM_ISSUER: $var:IAM_ISSUER
 IAM_JWKS_URL: $var:IAM_JWKS_URL
-AUTHZ_GRPC_URL: $var:AUTHZ_GRPC_URL
-AUDIT_GRPC_URL: $var:AUDIT_GRPC_URL
+# LOG_LEVEL:  # string | SDK default info
+# OBJECT_STORE_ACCESS_KEY:  # string
+# OBJECT_STORE_BUCKET:  # string
+# OBJECT_STORE_PREFIX:  # string
+# OBJECT_STORE_REGION:  # string | SDK default us-east-1
+# OBJECT_STORE_SECRET_KEY:  # string | secret
+# OBJECT_STORE_URL:  # string
+# OTEL_URL:  # string | process-level: the same for every member of a shell
+# PG_IDLE_IN_TX_TIMEOUT:  # string | a duration (e.g. 2s, 500ms); SDK default 10s
+# PG_LOCK_TIMEOUT:  # string | a duration (e.g. 2s, 500ms); SDK default 2s
+# PG_MIGRATION_HOST:  # string
+# PG_MIGRATION_PORT:  # integer
+PG_OWNER_PASSWORD: file://.secrets/db/erp_billing_owner
+PG_OWNER_USER: erp_billing_owner
+# PG_POOLER_PREPARED:  # boolean | SDK default true
+# PG_POOL_BACKGROUND:  # integer | SDK default 4
+# PG_POOL_FOREGROUND:  # integer | SDK default 8
+PG_PORT: $var:PG_PORT
+# PG_STATEMENT_TIMEOUT:  # string | a duration (e.g. 2s, 500ms); SDK default 5s
+SERVICE_TLS_CA_FILE: file://.secrets/tls/ca.pem
 SERVICE_TLS_CERT_FILE: file://.secrets/tls/erp-billing.cert.pem
 SERVICE_TLS_KEY_FILE: file://.secrets/tls/erp-billing.key.pem
-SERVICE_TLS_CA_FILE: file://.secrets/tls/ca.pem
-BUS_URL: file://.secrets/bus
-IMPLEMENTATION_INSTANCE: dbc521d9-ee1c-4be6-b2e6-7d7291794d04
+# STOP_DRAIN_DELAY:  # string | a duration (e.g. 2s, 500ms); SDK default 2s
+# STOP_TIMEOUT:  # string | a duration (e.g. 2s, 500ms); SDK default 30s
