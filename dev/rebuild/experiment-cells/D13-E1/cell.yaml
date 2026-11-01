@@ -1,0 +1,13 @@
+# Step 13 (step13-plan.md), suite E1 on the D row: erp/sales and erp/inventory with 2 replicas each, running alone;
+# every other component alone with one (billing and print take part with one replica: the chain, the load and the
+# checks run unchanged). On Docker the two replicated components map no host port: cells/front.py puts a front door
+# (HAProxy) on 18084 (sales) and 18086 (inventory).
+cell: D13-E1
+row: D
+alone: [infra/iam-casdoor@3.0.12, infra/authz@3.0.13, infra/audit@3.0.10, mdm/org@3.0.11, mdm/currency@3.0.12,
+        mdm/partner@3.0.14, mdm/product@3.0.14, erp/inventory@3.0.11, erp/credit@3.0.10, erp/sales@3.0.17,
+        erp/billing@3.0.17, infra/print@3.0.10]
+replicas:
+  erp/sales@3.0.17: 2
+  erp/inventory@3.0.11: 2
+chain: []

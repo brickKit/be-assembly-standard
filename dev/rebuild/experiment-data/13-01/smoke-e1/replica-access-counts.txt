@@ -1,0 +1,11 @@
+# Step 13, D13-E1 smoke (2026-11-01 17:51-17:54): requests each replica served, counted from the containers' logs
+# right after the bring-up (two seed runs and the L3 scenarios). Copied from the session's terminal: the cell was
+# brought down before the logs were saved, and `brickkit down` removed the containers (a slip against the rule that
+# outputs going into a record are written at once, retro-step12.md I3).
+# Command: docker logs <container> | grep -c '"msg":"access"' (every request), and of those the ones whose route
+# starts with /api (the user surface, through the front door); the rest are system-surface (gRPC) calls from the
+# other components, made directly over the project network.
+brickkit-d13-e1-erp-sales-3-0-17-1: access=1014 user-surface=604
+brickkit-d13-e1-erp-sales-3-0-17-2: access=603 user-surface=603
+brickkit-d13-e1-erp-inventory-3-0-11-1: access=509 user-surface=42
+brickkit-d13-e1-erp-inventory-3-0-11-2: access=44 user-surface=44
