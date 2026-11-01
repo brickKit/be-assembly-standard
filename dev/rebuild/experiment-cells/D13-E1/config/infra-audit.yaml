@@ -1,17 +1,36 @@
-# Written by be-acceptance/conformance/cells/prepare.py for cell D13-E1; regenerate instead of editing.
-DEPLOYMENT_ID: $var:DEPLOYMENT_ID
-PG_HOST: $var:PG_HOST
-PG_PORT: $var:PG_PORT
-PG_DATABASE: $var:PG_DATABASE
-PG_USER: infra_audit_rw
-PG_PASSWORD: file://.secrets/db/infra_audit_rw
-PG_SCHEMA: infra_audit
-PG_OWNER_USER: infra_audit_owner
-PG_OWNER_PASSWORD: file://.secrets/db/infra_audit_owner
-IAM_ISSUER: $var:IAM_ISSUER
-IAM_JWKS_URL: $var:IAM_JWKS_URL
-AUTHZ_GRPC_URL: $var:AUTHZ_GRPC_URL
-AUDIT_GRPC_URL: $var:AUDIT_GRPC_URL
-SERVICE_TLS_CERT_FILE: file://.secrets/tls/infra-audit.cert.pem
-SERVICE_TLS_KEY_FILE: file://.secrets/tls/infra-audit.key.pem
-SERVICE_TLS_CA_FILE: file://.secrets/tls/ca.pem
+# Component: infra/audit@3.0.12
+# Environment variables for this component; every key is injected as-is.
+# Shared variable: $var:NAME (config/vars.yaml) · environment variable: ${NAME} · local file: file://path
+# Another component's address: $endpoint:<scope>/<name>
+
+# === Required: startup is blocked until these have a value ===
+AUTHZ_GRPC_URL: ""  # string | process-level: the same for every member of a shell
+DEPLOYMENT_ID: ""  # string | process-level: the same for every member of a shell
+IAM_ISSUER: ""  # string | process-level: the same for every member of a shell
+IAM_JWKS_URL: ""  # string | process-level: the same for every member of a shell
+PG_DATABASE: ""  # string
+PG_HOST: ""  # string
+PG_PASSWORD: ""  # string | secret
+PG_SCHEMA: ""  # string
+PG_USER: ""  # string
+SERVICE_TLS_CA_FILE: ""  # string | secret | delivered as a file | a file path, re-read on rotation
+SERVICE_TLS_CERT_FILE: ""  # string | secret | delivered as a file | a file path, re-read on rotation
+SERVICE_TLS_KEY_FILE: ""  # string | secret | delivered as a file | a file path, re-read on rotation
+
+# === Optional: commented keys use the component's default; uncomment to override ===
+# AUDIT_GRPC_URL:  # string | process-level; for this component its own system surface ($endpoint:infra/audit:grpc): its own audit records go through the same intake
+# LOG_LEVEL:  # string | SDK default info
+# OTEL_URL:  # string | process-level: the same for every member of a shell
+# PG_IDLE_IN_TX_TIMEOUT:  # string | a duration (e.g. 2s, 500ms); SDK default 10s
+# PG_LOCK_TIMEOUT:  # string | a duration (e.g. 2s, 500ms); SDK default 2s
+# PG_MIGRATION_HOST:  # string
+# PG_MIGRATION_PORT:  # integer
+# PG_OWNER_PASSWORD:  # string | secret
+# PG_OWNER_USER:  # string
+# PG_POOLER_PREPARED:  # boolean | SDK default true
+# PG_POOL_BACKGROUND:  # integer | SDK default 4
+# PG_POOL_FOREGROUND:  # integer | SDK default 8
+# PG_PORT:  # integer | SDK default 5432
+# PG_STATEMENT_TIMEOUT:  # string | a duration (e.g. 2s, 500ms); SDK default 5s
+# STOP_DRAIN_DELAY:  # string | a duration (e.g. 2s, 500ms); SDK default 2s
+# STOP_TIMEOUT:  # string | a duration (e.g. 2s, 500ms); SDK default 30s

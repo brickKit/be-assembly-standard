@@ -1,38 +1,15 @@
-# deploy.yaml — cell D13-E1; written by be-acceptance/conformance/cells/create.py from cell.yaml
-target: docker
+# deploy.yaml — how this project is deployed: the target, and which components run and how.
+# The team file: commit it. Your personal copy is deploy.local.yaml (brickkit local on).
+target: docker # docker | podman | k8s
 
 components:
-  - id: infra/iam-casdoor
-    expose: true
-    exposePort: 18200
-  - id: infra/authz
-    expose: true
-    exposePort: 18223
-  - id: infra/audit
-    expose: true
-    exposePort: 18206
-  - id: mdm/org
-    expose: true
-    exposePort: 18083
-  - id: mdm/currency
-    expose: true
-    exposePort: 18226
-  - id: mdm/partner
-    expose: true
-    exposePort: 18225
-  - id: mdm/product
-    expose: true
-    exposePort: 18082
-  - id: erp/inventory
-    replicas: 2
   - id: erp/credit
-    expose: true
-    exposePort: 18088
+  - id: erp/inventory
   - id: erp/sales
-    replicas: 2
-  - id: erp/billing
-    expose: true
-    exposePort: 18089
-  - id: infra/print
-    expose: true
-    exposePort: 18400
+  - id: infra/audit
+  - id: infra/authz
+  - id: infra/iam-casdoor
+  - id: mdm/currency
+  - id: mdm/org
+  - id: mdm/partner
+  - id: mdm/product

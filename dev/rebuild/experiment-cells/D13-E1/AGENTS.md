@@ -1,0 +1,39 @@
+# d13-e1
+
+The AI guide to this project: what it is, the rules every component here follows, where to look. The block at the end is maintained by brickkit; the component table is COMPONENTS.md.
+
+## Overview
+
+<!-- TODO: what this project is, its domains, how its components group -->
+
+## Conventions
+
+<!-- TODO: the rules every component in this project follows, one line each: stack, port and schema registries, naming, review rules — components never repeat them; a rule that needs more links its full text in docs/ -->
+
+## Where to look
+
+<!-- TODO: a table: what you are doing (the words you would search for) → the file to read first; include where the detailed conventions, the decisions (a change that may go against one) and the operations docs are; last line: not here? COMPONENTS.md, then the component's AGENTS.md -->
+
+## Pitfalls
+
+<!-- TODO: a table: Never / Symptom / Why — mistakes that hold for every component in this project -->
+
+<!-- brickkit:managed:begin lang=en -->
+<!-- maintained by brickkit (init, add, remove, upgrade, skills update): edits between these markers are overwritten -->
+
+## BrickKit
+
+This project is assembled with [BrickKit](https://github.com/brickKit/brickKit): each component describes itself in its own `component.yaml`; the `brickkit` CLI resolves the graph, generates the deployment files and exits. There is no registry, config server or gateway to look for.
+
+- `brickkit.yaml` lists the components at exact versions (it is the lock file); `deploy.yaml` says how they run (`deploy.local.yaml` replaces it on your machine while local mode is on); `config/<scope>-<name>.yaml` holds each component's environment variables, `config/vars.yaml` the shared values.
+- `brickkit add` / `remove` / `upgrade` keep the three layers in step: never hand-edit one and forget another.
+- Config keys are the environment variable names the component's `configSchema` declares; secrets are `${VAR}` or `file://.secrets/…`, never plaintext.
+- A health check checks only its own process. To work on one component, run `brickkit up` in its directory; `brickkit up --all` runs everything again.
+- Task skills are in `.claude/skills/brickkit-*`; for flags ask `brickkit <command> --help`; BrickKit's own documentation, for the version installed, is `brickkit docs` (it lists the pages; `brickkit docs 04-shell` prints one).
+
+## Components
+
+`COMPONENTS.md` lists the project's components (10 now), one row each: ID, version, what it does, which docs it carries, home. It is maintained by brickkit; read it to find the component a task belongs to, or search it for an ID or a scope.
+
+A component's documentation is `BRICKKIT.md` (translations `BRICKKIT.<lang>.md`) in its source directory when a local source holds this version, otherwise in `.brickkit/manifests/<id>/<version>/`; its contracts are in `.brickkit/artifacts/<service name>/` (the ID and the version joined by `-`, with every `/` and `.` as `-`: `erp/backend` 1.0.0 → `erp-backend-1-0-0`). To change a component, read its own `AGENTS.md`.
+<!-- brickkit:managed:end -->
