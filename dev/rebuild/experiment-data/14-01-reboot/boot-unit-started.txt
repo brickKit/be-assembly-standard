@@ -1,0 +1,38 @@
+# The two real rootless reboots of this record (boots 7de26c14: no drop-in; ff4c6992: with the network-wait drop-in):
+# the containers the user's podman-restart.service started. Its ExecStart is 'podman start --all --filter restart-policy=always',
+# so every container its own process (the first podman PID after 'Starting') started had the restart policy 'always'.
+# journalctl --user -b <boot> -o short-precise -u podman-restart.service; container ids shortened to 12, labels cut after name=.
+
+## boot 7de26c14
+Nov 02 10:25:36.115215 zhijie systemd[2072]: Starting podman-restart.service - Podman Start All Containers With Restart Policy Set To Always...
+Nov 02 10:25:36.764019 zhijie podman[2471]: 2026-11-02 10:25:36.763639367 +0100 CET m=+0.452889629 container start baad322c679e image=localhost/mdm-org:3.0.10 name=brickkit-p9-s-mdm-org-3-0-10-1
+Nov 02 10:25:36.871708 zhijie podman[2471]: 2026-11-02 10:25:36.871657756 +0100 CET m=+0.560908012 container start 294ccb7c3a68 image=localhost/mdm-currency:3.0.11 name=brickkit-p9-s-mdm-currency-3-0-11-1
+Nov 02 10:25:36.991723 zhijie podman[2471]: 2026-11-02 10:25:36.991665984 +0100 CET m=+0.680916241 container start 093d838edcf2 image=localhost/infra-print:3.0.8 name=brickkit-p9-s-infra-print-3-0-8-1
+Nov 02 10:25:37.099777 zhijie podman[2471]: 2026-11-02 10:25:37.099717589 +0100 CET m=+0.788967845 container start def9826163f5 image=localhost/mdm-partner:3.0.13 name=brickkit-p9-s-mdm-partner-3-0-13-1
+Nov 02 10:25:37.206694 zhijie podman[2471]: 2026-11-02 10:25:37.206642367 +0100 CET m=+0.895892619 container start 12f8cb3673c2 image=localhost/mdm-product:3.0.13 name=brickkit-p9-s-mdm-product-3-0-13-1
+Nov 02 10:25:37.320607 zhijie podman[2471]: 2026-11-02 10:25:37.320552225 +0100 CET m=+1.009802486 container start 1e25b7c89cfa image=localhost/infra-iam-casdoor:3.0.11 name=brickkit-p9-s-infra-iam-casdoor-3-0-11-1
+Nov 02 10:25:37.482810 zhijie podman[2471]: 2026-11-02 10:25:37.482753009 +0100 CET m=+1.172003274 container start ee664b7afaee image=localhost/infra-audit:3.0.9 name=brickkit-p9-s-infra-audit-3-0-9-1
+Nov 02 10:25:37.609335 zhijie podman[2471]: 2026-11-02 10:25:37.609272878 +0100 CET m=+1.298523145 container start 415405dbba15 image=localhost/erp-billing:3.0.14 name=brickkit-p9-s-erp-billing-3-0-14-1
+Nov 02 10:25:37.755961 zhijie podman[2471]: 2026-11-02 10:25:37.755893211 +0100 CET m=+1.445143474 container start 5d8bf514749b image=localhost/erp-credit:3.0.9 name=brickkit-p9-s-erp-credit-3-0-9-1
+Nov 02 10:25:37.934570 zhijie podman[2471]: 2026-11-02 10:25:37.934492241 +0100 CET m=+1.623742505 container start 8db9e17b130b image=localhost/erp-sales:3.0.15 name=brickkit-p9-s-erp-sales-3-0-15-1
+Nov 02 10:25:38.080289 zhijie podman[2471]: 2026-11-02 10:25:38.080218989 +0100 CET m=+1.769469270 container start fa0b3ed7948f image=localhost/erp-inventory:3.0.10 name=brickkit-p9-s-erp-inventory-3-0-10-1
+Nov 02 10:25:38.443968 zhijie podman[2471]: 2026-11-02 10:25:38.44388408 +0100 CET m=+2.133134341 container start 4f3127342a30 image=localhost/infra-authz:3.0.12 name=brickkit-p9-s-infra-authz-3-0-12-1
+Nov 02 10:25:38.481647 zhijie systemd[2072]: Finished podman-restart.service - Podman Start All Containers With Restart Policy Set To Always.
+started by podman[2471]: 12
+
+## boot ff4c6992
+Nov 02 10:32:00.627598 zhijie systemd[2069]: Starting podman-restart.service - Podman Start All Containers With Restart Policy Set To Always...
+Nov 02 10:32:01.255982 zhijie podman[4209]: 2026-11-02 10:32:01.255911791 +0100 CET m=+0.446998658 container start baad322c679e image=localhost/mdm-org:3.0.10 name=brickkit-p9-s-mdm-org-3-0-10-1
+Nov 02 10:32:01.358129 zhijie podman[4209]: 2026-11-02 10:32:01.358052964 +0100 CET m=+0.549139821 container start 294ccb7c3a68 image=localhost/mdm-currency:3.0.11 name=brickkit-p9-s-mdm-currency-3-0-11-1
+Nov 02 10:32:01.504975 zhijie podman[4209]: 2026-11-02 10:32:01.504908437 +0100 CET m=+0.695995289 container start 093d838edcf2 image=localhost/infra-print:3.0.8 name=brickkit-p9-s-infra-print-3-0-8-1
+Nov 02 10:32:01.695783 zhijie podman[4209]: 2026-11-02 10:32:01.695687215 +0100 CET m=+0.886774077 container start def9826163f5 image=localhost/mdm-partner:3.0.13 name=brickkit-p9-s-mdm-partner-3-0-13-1
+Nov 02 10:32:01.834286 zhijie podman[4209]: 2026-11-02 10:32:01.834203035 +0100 CET m=+1.025289894 container start 12f8cb3673c2 image=localhost/mdm-product:3.0.13 name=brickkit-p9-s-mdm-product-3-0-13-1
+Nov 02 10:32:01.954613 zhijie podman[4209]: 2026-11-02 10:32:01.954520821 +0100 CET m=+1.145607694 container start 1e25b7c89cfa image=localhost/infra-iam-casdoor:3.0.11 name=brickkit-p9-s-infra-iam-casdoor-3-0-11-1
+Nov 02 10:32:02.092992 zhijie podman[4209]: 2026-11-02 10:32:02.092882641 +0100 CET m=+1.283969503 container start ee664b7afaee image=localhost/infra-audit:3.0.9 name=brickkit-p9-s-infra-audit-3-0-9-1
+Nov 02 10:32:02.226066 zhijie podman[4209]: 2026-11-02 10:32:02.225978184 +0100 CET m=+1.417065047 container start 415405dbba15 image=localhost/erp-billing:3.0.14 name=brickkit-p9-s-erp-billing-3-0-14-1
+Nov 02 10:32:02.361947 zhijie podman[4209]: 2026-11-02 10:32:02.361849422 +0100 CET m=+1.552936289 container start 5d8bf514749b image=localhost/erp-credit:3.0.9 name=brickkit-p9-s-erp-credit-3-0-9-1
+Nov 02 10:32:02.502409 zhijie podman[4209]: 2026-11-02 10:32:02.502331849 +0100 CET m=+1.693418744 container start 8db9e17b130b image=localhost/erp-sales:3.0.15 name=brickkit-p9-s-erp-sales-3-0-15-1
+Nov 02 10:32:02.618981 zhijie podman[4209]: 2026-11-02 10:32:02.618917194 +0100 CET m=+1.810004054 container start fa0b3ed7948f image=localhost/erp-inventory:3.0.10 name=brickkit-p9-s-erp-inventory-3-0-10-1
+Nov 02 10:32:02.736578 zhijie podman[4209]: 2026-11-02 10:32:02.736499608 +0100 CET m=+1.927586468 container start 4f3127342a30 image=localhost/infra-authz:3.0.12 name=brickkit-p9-s-infra-authz-3-0-12-1
+Nov 02 10:32:02.745874 zhijie systemd[2069]: Finished podman-restart.service - Podman Start All Containers With Restart Policy Set To Always.
+started by podman[4209]: 12

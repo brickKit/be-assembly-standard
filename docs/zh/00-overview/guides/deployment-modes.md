@@ -121,7 +121,7 @@
 
 单元自动等网络在线（依赖 Podman 自带的 `podman-user-wait-network-online.service`），不用另配。项目目录与其中的 `.brickkit/` 要留在原处。
 
-验证：用 Quadlet 单元起一套，真重启一次机器，不登录、不跑 `up`，等网络在线后 `brickkit status` 全部 healthy。实验在 Ubuntu 26.04 上，`podman-restart.service` 停用、没有等网络的附加配置时，12 个组件按依赖顺序全部回来，L3 场景全部通过；`down` 之后再重启什么都不回来。v1.12.1 上又真重启一次，重启前故意做了一次迁移失败的 `up`：开机没有跑迁移、没有失败的单元，回来的是失败之前的那份。
+验证：用 Quadlet 单元起一套，真重启一次机器，不登录、不跑 `up`，等网络在线后 `brickkit status` 全部 healthy。实验在 Ubuntu 26.04 上，`podman-restart.service` 停用、没有等网络的附加配置时，12 个组件按依赖顺序全部回来，L3 场景全部通过；`down` 之后再重启什么都不回来。v1.12.1 上又真重启一次，重启前故意做了一次迁移失败的 `up`：开机没有跑迁移，回来的是失败之前的那份；币种、组织两个组件在 Docker 里的 NATS 就绪之前约 1 秒启动，连不上消息系统而退出，由单元的 `Restart=always` 重启、约 11 秒后健康，最后没有失败的单元（见已知风险）。
 
 **开发机用 compose 时**还要：装 Docker 的 Compose V2；`systemctl --user enable --now podman.socket`；`systemctl --user enable podman-restart.service`（开机时拉起重启策略为 `always` 的容器）；**让它等网络**：它写的 `After=network-online.target` 在用户的 systemd 里不起作用，加用户级 drop-in `~/.config/systemd/user/podman-restart.service.d/wait-network.conf`，内容为 `[Unit]`、`Wants=podman-user-wait-network-online.service`、`After=podman-user-wait-network-online.service`——没有它，地址由 DHCP 慢一点取到时，无根网络命名空间先于网络起来、之后一直不通，组件连不上宿主机上的基础资源、反复重启。实验用 compose 真重启了三次才查全：缺 AppArmor 的配置时一个都没回来，缺等网络时拉起了但连不上基础资源，都补上后全部回来。
 
@@ -169,6 +169,7 @@
 - 结论来自一台机器、12 个组件、小公司规模的负载；负载上限、更多组件同机、多台机器、多节点 Kubernetes、高可用都没有量，在路线的第 4 步另测。
 - 有根与无根 Podman 都只在有 Docker 也在的机器上测过；只有 Podman 与 Compose 的机器没有端到端验证。有根的资源只量过整套 CPU（比无根少 9–10%，另一批），平台内存没有单独量。
 - 机器重启后自己回来只在一台 Ubuntu 26.04 桌面机（Wi-Fi、自动登录）上验证过（Quadlet 单元有根一次、无根两次；compose 有根一次、无根三次）；其他发行版与 Docker 的开机拉起没有真重启验证。
+- 组件启动时连不上消息系统就以 69 退出（Go 与 Python 的 SDK、外壳都是），不像连不上数据库时那样一直重试（线协议 P5.10）。无根时用户 systemd 的单元排不到系统级的 Docker 之后，基础资源在同机 Docker 里时，开机先起来的组件会这样退出一次，靠单元的 `Restart=always` 恢复（实测约 11 秒）；只看最后的状态看不出，日志里有 `the bus is not usable` 与 `Failed to start`。SDK 改成与数据库一样等它、协议补一条，在底层先行里做。
 - 现有组件与外壳的镜像都没有写 `USER`，容器里以 root 运行；有根 Podman 下这等同宿主机的 root。重建组件时按组件实现约定改成非 root 用户。
 - 外部请求的边缘（Traefik）没有接上，实验用测试的入口代替；Ingress 未测。
 - 本机进程只用于开发与演示：BrickKit 不重启、不开机启动它们，长期运行不在 BrickKit 的范围内。

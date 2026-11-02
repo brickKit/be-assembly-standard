@@ -1,0 +1,29 @@
+# boot c75f0cf4 (the v1.12.1 reboot): why mdm-currency and mdm-org failed their first start, and when Docker, NATS and PostgreSQL were up.
+# Collected afterwards by the knowledge base's review, on the same host, from the same boot's journal and the containers' logs.
+## journalctl --user -b c75f0cf4 -o short-precise -u brickkit-p9-s-q_* | grep -E 'bus is not usable|status=69|Failed|Scheduled restart|Started .*mdm-(currency|org)'
+Nov 02 18:20:19.559252 zhijie brickkit-p9-s-q_mdm-currency-3-0-11[4813]: {"time":"2026-11-02T17:20:19.559Z","level":"ERROR","msg":"the bus is not usable","component":"mdm/currency","version":"3.0.11","error":"bus nats://host.docker.internal:4222: nats: no servers available for connection"}
+Nov 02 18:20:19.617660 zhijie brickkit-p9-s-q_mdm-org-3-0-10[4986]: {"time":"2026-11-02T17:20:19.617Z","level":"ERROR","msg":"the bus is not usable","component":"mdm/org","version":"3.0.10","error":"bus nats://host.docker.internal:4222: nats: no servers available for connection"}
+Nov 02 18:20:19.786655 zhijie systemd[2068]: brickkit-p9-s-q_mdm-currency-3-0-11.service: Main process exited, code=exited, status=69/UNAVAILABLE
+Nov 02 18:20:19.815556 zhijie systemd[2068]: brickkit-p9-s-q_mdm-org-3-0-10.service: Main process exited, code=exited, status=69/UNAVAILABLE
+Nov 02 18:20:19.834144 zhijie systemd[2068]: brickkit-p9-s-q_mdm-currency-3-0-11.service: Failed with result 'exit-code'.
+Nov 02 18:20:19.834638 zhijie systemd[2068]: Failed to start brickkit-p9-s-q_mdm-currency-3-0-11.service - mdm/currency@3.0.11 (BrickKit project p9-s-q).
+Nov 02 18:20:19.855361 zhijie systemd[2068]: brickkit-p9-s-q_mdm-org-3-0-10.service: Failed with result 'exit-code'.
+Nov 02 18:20:19.855793 zhijie systemd[2068]: Failed to start brickkit-p9-s-q_mdm-org-3-0-10.service - mdm/org@3.0.10 (BrickKit project p9-s-q).
+Nov 02 18:20:19.939082 zhijie systemd[2068]: brickkit-p9-s-q_mdm-currency-3-0-11.service: Scheduled restart job, restart counter is at 1.
+Nov 02 18:20:19.991992 zhijie systemd[2068]: brickkit-p9-s-q_mdm-org-3-0-10.service: Scheduled restart job, restart counter is at 1.
+Nov 02 18:20:31.220325 zhijie systemd[2068]: Started brickkit-p9-s-q_mdm-org-3-0-10.service - mdm/org@3.0.10 (BrickKit project p9-s-q).
+Nov 02 18:20:31.403131 zhijie systemd[2068]: Started brickkit-p9-s-q_mdm-currency-3-0-11.service - mdm/currency@3.0.11 (BrickKit project p9-s-q).
+## journalctl -b c75f0cf4 -o short-precise -u docker.service | grep -E 'API listen|Started'
+Nov 02 18:20:20.462339 zhijie dockerd[4058]: time="2026-11-02T18:20:20.462267412+01:00" level=info msg="API listen on /run/docker.sock"
+Nov 02 18:20:20.463219 zhijie systemd[1]: Started docker.service - Docker Application Container Engine.
+## docker logs -t be-nats (UTC; 17:20 UTC = 18:20 CET)
+2026-11-02T17:20:19.979393785Z [1] 2026/11/02 17:20:19.977059 [INF] Starting nats-server
+2026-11-02T17:20:20.012865366Z [1] 2026/11/02 17:20:20.012839 [INF] Listening for client connections on 0.0.0.0:4222
+2026-11-02T17:20:20.012980622Z [1] 2026/11/02 17:20:20.012952 [INF] Server is ready
+## docker logs -t be-postgres (UTC)
+2026-11-02T17:20:20.402615505Z 2026-11-02 17:20:20.402 UTC [1] LOG:  starting PostgreSQL 16.15 on x86_64-pc-linux-musl, compiled by gcc (Alpine 15.2.0) 15.2.0, 64-bit
+2026-11-02T17:20:20.432933116Z 2026-11-02 17:20:20.432 UTC [1] LOG:  database system is ready to accept connections
+## the Compose path's boot unit was enabled on this boot (with the network-wait drop-in) and started no container:
+## journalctl --user -b c75f0cf4 -o short-precise -u podman-restart.service | grep -E 'Starting|Finished|container start'
+Nov 02 18:20:18.778505 zhijie systemd[2068]: Starting podman-restart.service - Podman Start All Containers With Restart Policy Set To Always...
+Nov 02 18:20:19.053835 zhijie systemd[2068]: Finished podman-restart.service - Podman Start All Containers With Restart Policy Set To Always.
