@@ -16,14 +16,6 @@ export PATH=$X/bin:$PATH  # kubectl for the K row
 mkdir -p "$OUT"; echo $$ > "$OUT/runner.pid"; LOG=$OUT/status.log
 say() { echo "$* $(date -Is)" >> "$LOG"; }
 kube() { kubectl --context bek "$@"; }
-logs() {  # every container's, pod's or session's log of the cell, on its own engine
-  local D=$1 O=$2 ROW=$3 ns=${1##*/}; ns=${ns,,}; mkdir -p "$O/logs"
-  case $ROW in
-    K) for p in $(kube -n "$ns" get pods -o name 2>/dev/null); do kube -n "$ns" logs "$p" --all-containers > "$O/logs/${p#pod/}.log" 2>&1; done ;;
-    P|LP) for n in $(podman ps -a --filter "label=com.docker.compose.project=brickkit-$ns" --format '{{.Names}}'); do podman logs "$n" > "$O/logs/$n.log" 2>&1; done ;;
-    *) for n in $(docker ps -a --filter "label=com.docker.compose.project=brickkit-$ns" --format '{{.Names}}'); do docker logs "$n" > "$O/logs/$n.log" 2>&1; done ;;
-  esac
-}
 down() {  # brickkit down does not reach a mode: local session or its forwarder (cell-chain.sh does the same)
   local D=$1 f="${XDG_RUNTIME_DIR:-/tmp}/be-cell-forward-$(basename "$1").pid"
   (cd "$D" && brickkit down)
@@ -57,7 +49,7 @@ for CELL in "$@"; do
     pytest_in "$D" compat/test_pairs.py > "$O/tests.log" 2>&1; say "CELL $CELL TESTS exit=$? $(tail -1 "$O/tests.log")"
   fi
   [ -n "$PF" ] && kill "$PF" 2>/dev/null
-  logs "$D" "$O" "$ROW"
+  bash "$X/cell-logs.sh" "$D" "$O/logs" "$ROW"
   down "$D" > "$O/down.log" 2>&1
   say "CELL $CELL DONE"
 done

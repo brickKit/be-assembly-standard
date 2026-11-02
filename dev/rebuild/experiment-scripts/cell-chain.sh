@@ -41,11 +41,9 @@ stage() {  # stage <name> <command...>; stops the run on failure
   echo "STAGE $I $name END exit=$rc secs=$(( $(date +%s) - t0 ))" >> "$OUT/status.log"
   if [ $rc -ne 0 ]; then echo "FAILED $name $(date -Is)" >> "$OUT/status.log"; pod_logs; exit $rc; fi
 }
-pod_logs() {  # K row: every pod's log of the cell, kept beside the stage logs when a stage fails
+pod_logs() {  # K row: the cell's logs kept beside the stage logs when a stage fails (cell-logs.sh)
   [ "$ROW" = K ] || return 0
-  local ns p; ns=$(echo "$CELL" | tr 'A-Z' 'a-z'); mkdir -p "$OUT/logs/pods"
-  for p in $(kubectl --context bek -n "$ns" get pods -o name 2>/dev/null); do
-    kubectl --context bek -n "$ns" logs "$p" --all-containers > "$OUT/logs/pods/${p#pod/}.log" 2>&1; done
+  bash "$R/dev/rebuild/experiment-scripts/cell-logs.sh" "$D" "$OUT/logs/pods" K
 }
 down_cells() {  # every experiment cell on every engine (projects brickkit-<cell>, namespaces <cell> in minikube)
   # suite E's front doors first: a project network with a container still attached cannot be removed

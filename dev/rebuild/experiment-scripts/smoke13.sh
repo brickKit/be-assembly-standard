@@ -14,13 +14,6 @@ CELLS=("$@"); [ ${#CELLS[@]} -gt 0 ] || CELLS=(D13-E2 D13-E4 D13-E6a D13-E6b K13
 mkdir -p "$OUT"; echo $$ > "$OUT/smoke.pid"; LOG=$OUT/smoke.log
 say() { echo "$* $(date -Is)" >> "$LOG"; }
 kube() { kubectl --context bek "$@"; }
-logs() {  # as runner13.sh
-  local D=$1 O=$2 ROW=$3 ns=${1##*/}; ns=${ns,,}; mkdir -p "$O"
-  case $ROW in
-    K) for p in $(kube -n "$ns" get pods -o name 2>/dev/null); do kube -n "$ns" logs "$p" --all-containers > "$O/${p#pod/}.log" 2>&1; done ;;
-    *) for n in $(docker ps -a --filter "label=com.docker.compose.project=brickkit-$ns" --format '{{.Names}}'); do docker logs "$n" > "$O/$n.log" 2>&1; done ;;
-  esac
-}
 say "SMOKE13 START cells=${CELLS[*]} conf=$CONF brickkit=$(brickkit --version | head -1)"
 for CELL in "${CELLS[@]}"; do
   D=$R/dev/rebuild/experiment-cells/$CELL; O=$OUT/$CELL; mkdir -p "$O"
@@ -30,9 +23,7 @@ for CELL in "${CELLS[@]}"; do
   fi
   if KEEP_UP=1 "$X/cell-chain.sh" "$CELL" "$O/bring-up" > "$O/bring-up.log" 2>&1; then say "CELL $CELL passed"
   else say "CELL $CELL FAILED $(grep -h 'END exit=[1-9]' "$O/bring-up/status.log" | tail -1)"; fi
-  logs "$D" "$O/logs" "$ROW"
-  bash "$X/replica-counts.sh" "$O/logs" "$O/replica-counts.txt" > /dev/null
-  find "$O/logs" -name '*.log' -size +256k -exec gzip -9 {} +
+  bash "$X/cell-logs.sh" "$D" "$O/logs" "$ROW"
   { (cd "$CONF" && uv run python -m cells front down "$D"); (cd "$D" && brickkit down); docker rm -fv be-postgres-2; } > "$O/down.log" 2>&1
   say "CELL $CELL down"
 done

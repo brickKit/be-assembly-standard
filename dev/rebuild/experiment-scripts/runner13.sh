@@ -32,14 +32,6 @@ stage() {  # stage <cell> <name> <command...>; returns the command's status
   return $rc
 }
 kube() { kubectl --context bek "$@"; }
-logs() {  # every container's or pod's log of the cell, on its own engine (as runner12r.sh)
-  local D=$1 O=$2 ROW=$3 ns=${1##*/}; ns=${ns,,}; mkdir -p "$O"
-  case $ROW in
-    K) for p in $(kube -n "$ns" get pods -o name 2>/dev/null); do kube -n "$ns" logs "$p" --all-containers > "$O/${p#pod/}.log" 2>&1; done ;;
-    P|LP) for n in $(podman ps -a --filter "label=com.docker.compose.project=brickkit-$ns" --format '{{.Names}}'); do podman logs "$n" > "$O/$n.log" 2>&1; done ;;
-    *) for n in $(docker ps -a --filter "label=com.docker.compose.project=brickkit-$ns" --format '{{.Names}}'); do docker logs "$n" > "$O/$n.log" 2>&1; done ;;
-  esac
-}
 down() {
   local D=$1
   (cd "$CONF" && uv run python -m cells front down "$D")
@@ -63,9 +55,9 @@ for CELL in "$@"; do
   ROW=$(sed -n 's/^row: *//p' "$D/cell.yaml"); [ "$ROW" = K ] && cluster on || cluster off
   log "CELL $CELL power=$(powerprofilesctl get)"
   if ! stage "$CELL" bring-up env KEEP_UP=1 "$X/cell-chain.sh" "$CELL" "$OUT/$CELL/bring-up"; then
-    log "CELL $CELL FAILED bring-up"; logs "$D" "$OUT/$CELL/logs" "$ROW"; stage "$CELL" down down "$D"; continue; fi
+    log "CELL $CELL FAILED bring-up"; bash "$X/cell-logs.sh" "$D" "$OUT/$CELL/logs" "$ROW"; stage "$CELL" down down "$D"; continue; fi
   if ! stage "$CELL" baseline bash -c "cd $CONF && uv run python -m cells baseline $D $OUT/$CELL/world.json"; then
-    log "CELL $CELL FAILED baseline"; logs "$D" "$OUT/$CELL/logs" "$ROW"; stage "$CELL" down down "$D"; continue; fi
+    log "CELL $CELL FAILED baseline"; bash "$X/cell-logs.sh" "$D" "$OUT/$CELL/logs" "$ROW"; stage "$CELL" down down "$D"; continue; fi
   invariants "$CELL" before "$D"
   (cd "$CONF" && PYTHONPATH=. exec uv run python "$X/holders.py" "$D" "$OUT/$CELL/holders.txt") \
     > "$OUT/$CELL/holders.log" 2>&1 & HPID=$!
@@ -91,9 +83,7 @@ for CELL in "$@"; do
     sleep 60
   done
   if [ -n "${LPID:-}" ]; then stop_bg; log "CELL $CELL load and holders stopped"; invariants "$CELL" after "$D"; fi
-  logs "$D" "$OUT/$CELL/logs" "$ROW"
-  bash "$X/replica-counts.sh" "$OUT/$CELL/logs" "$OUT/$CELL/replica-counts.txt" > /dev/null
-  find "$OUT/$CELL/logs" -name '*.log' -size +256k -exec gzip -9 {} +  # about 160 MB a cell as text, 15 MB packed
+  bash "$X/cell-logs.sh" "$D" "$OUT/$CELL/logs" "$ROW"
   stage "$CELL" down down "$D"
 done
 [ -n "${KEEP_CLUSTER:-}" ] || cluster off
