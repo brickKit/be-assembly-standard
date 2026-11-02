@@ -1,0 +1,54 @@
+power mode: performance (was balanced)
+claim pair 1 auto: latency average = 0.218 ms
+claim pair 1 force_custom_plan: latency average = 0.539 ms
+unpublished(current index) pair 1 auto: latency average = 3.340 ms
+unpublished(current index) pair 1 force_custom_plan: latency average = 0.972 ms
+unpublished(candidate index) pair 1 auto: latency average = 0.589 ms
+unpublished(candidate index) pair 1 force_custom_plan: latency average = 0.964 ms
+claim pair 2 auto: latency average = 0.218 ms
+claim pair 2 force_custom_plan: latency average = 0.562 ms
+unpublished(current index) pair 2 auto: latency average = 3.660 ms
+unpublished(current index) pair 2 force_custom_plan: latency average = 1.552 ms
+unpublished(candidate index) pair 2 auto: latency average = 0.806 ms
+unpublished(candidate index) pair 2 force_custom_plan: latency average = 1.677 ms
+claim pair 3 auto: latency average = 0.500 ms
+claim pair 3 force_custom_plan: latency average = 0.676 ms
+unpublished(current index) pair 3 auto: latency average = 3.605 ms
+unpublished(current index) pair 3 force_custom_plan: latency average = 1.022 ms
+unpublished(candidate index) pair 3 auto: latency average = 0.579 ms
+unpublished(candidate index) pair 3 force_custom_plan: latency average = 1.025 ms
+== generic plan of the claim in the steady state
+                                                               QUERY PLAN                                                                
+-----------------------------------------------------------------------------------------------------------------------------------------
+ Update on be_work_item w (actual time=1.162..1.166 rows=1 loops=1)
+   CTE expired
+     ->  Limit (actual time=0.061..0.061 rows=0 loops=1)
+           ->  LockRows (actual time=0.060..0.061 rows=0 loops=1)
+                 ->  Sort (actual time=0.060..0.060 rows=0 loops=1)
+                       Sort Key: be_work_item.lease_until
+                       Sort Method: quicksort  Memory: 25kB
+                       ->  Index Scan using be_work_item_lease on be_work_item (actual time=0.025..0.026 rows=0 loops=1)
+                             Index Cond: ((job = ANY ($1)) AND (lease_until <= now()))
+                             Filter: (state = 'running'::text)
+   CTE due
+     ->  Limit (actual time=0.043..0.044 rows=1 loops=1)
+           InitPlan 2 (returns $2)
+             ->  CTE Scan on expired expired_1 (actual time=0.000..0.000 rows=0 loops=1)
+           ->  LockRows (actual time=0.042..0.043 rows=1 loops=1)
+                 ->  Result (actual time=0.032..0.032 rows=1 loops=1)
+                       One-Time Filter: (NOT $2)
+                       ->  Index Scan using be_work_item_due_at on be_work_item be_work_item_1 (actual time=0.030..0.030 rows=1 loops=1)
+                             Index Cond: (run_at <= now())
+                             Filter: ((state = ANY ('{pending,retry_wait}'::text[])) AND (job = ANY ($1)))
+   ->  Nested Loop (actual time=0.935..0.937 rows=1 loops=1)
+         ->  Function Scan on be_current_db_epoch e (actual time=0.794..0.795 rows=1 loops=1)
+         ->  Nested Loop (actual time=0.136..0.138 rows=1 loops=1)
+               ->  Append (actual time=0.107..0.108 rows=1 loops=1)
+                     ->  CTE Scan on expired (actual time=0.061..0.061 rows=0 loops=1)
+                     ->  CTE Scan on due (actual time=0.045..0.045 rows=1 loops=1)
+               ->  Index Scan using be_work_item_pkey on be_work_item w (actual time=0.028..0.028 rows=1 loops=1)
+                     Index Cond: (id = expired.id)
+ Planning Time: 2.229 ms
+ Execution Time: 1.418 ms
+(30 rows)
+

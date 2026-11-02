@@ -1,0 +1,48 @@
+== pgqueue backlog without the upkeep run 1
+>           assert large < small + BACKLOG_MARGIN, f"claims with 20 000 waiting ({large * 1000:.2f} ms) against 20 ({small * 1000:.2f} ms)"
+E           AssertionError: claims with 20 000 waiting (5.26 ms) against 20 (0.69 ms)
+E           assert 0.005260058998828754 < (0.0006906779999553692 + 0.001)
+== pgqueue backlog without the upkeep run 2
+>           assert large < small + BACKLOG_MARGIN, f"claims with 20 000 waiting ({large * 1000:.2f} ms) against 20 ({small * 1000:.2f} ms)"
+E           AssertionError: claims with 20 000 waiting (4.32 ms) against 20 (0.63 ms)
+E           assert 0.004315047001000494 < (0.000632960996881593 + 0.001)
+== pgqueue backlog without the upkeep run 3
+>           assert large < small + BACKLOG_MARGIN, f"claims with 20 000 waiting ({large * 1000:.2f} ms) against 20 ({small * 1000:.2f} ms)"
+E           AssertionError: claims with 20 000 waiting (4.31 ms) against 20 (0.52 ms)
+E           assert 0.004307412997150095 < (0.0005174149991944432 + 0.001)
+== forwarder read with the old index run 1
+                assert len(got) == f.batch and got[0].seq == 100001, "a full batch in position order"
+>           assert large < small + 0.001, f"a batch with 20 020 published rows ahead ({large * 1000:.2f} ms) against 20 ({small * 1000:.2f} ms)"
+E           AssertionError: a batch with 20 020 published rows ahead (5.66 ms) against 20 (1.51 ms)
+== forwarder read with the old index run 2
+                assert len(got) == f.batch and got[0].seq == 100001, "a full batch in position order"
+>           assert large < small + 0.001, f"a batch with 20 020 published rows ahead ({large * 1000:.2f} ms) against 20 ({small * 1000:.2f} ms)"
+E           AssertionError: a batch with 20 020 published rows ahead (5.57 ms) against 20 (1.23 ms)
+== forwarder read with the old index run 3
+                assert len(got) == f.batch and got[0].seq == 100001, "a full batch in position order"
+>           assert large < small + 0.001, f"a batch with 20 020 published rows ahead ({large * 1000:.2f} ms) against 20 ({small * 1000:.2f} ms)"
+E           AssertionError: a batch with 20 020 published rows ahead (5.65 ms) against 20 (1.80 ms)
+== transport without the loop run 1
+>               raise AssertionError("the open transport did not analyze a delivery table whose statistics lag")
+E               AssertionError: the open transport did not analyze a delivery table whose statistics lag
+tests/test_transports.py:199: AssertionError
+== transport without the loop run 2
+>               raise AssertionError("the open transport did not analyze a delivery table whose statistics lag")
+E               AssertionError: the open transport did not analyze a delivery table whose statistics lag
+tests/test_transports.py:199: AssertionError
+== transport without the loop run 3
+>               raise AssertionError("the open transport did not analyze a delivery table whose statistics lag")
+E               AssertionError: the open transport did not analyze a delivery table whose statistics lag
+tests/test_transports.py:199: AssertionError
+== member without the upkeep run 1
+        assert await launcher.run(definition(), launcher.Options(args=["migrate"], env=env(e), stdout=io.StringIO(),
+>               raise AssertionError("the running component did not analyze a table whose statistics lag")
+E               AssertionError: the running component did not analyze a table whose statistics lag
+== member without the upkeep run 2
+        assert await launcher.run(definition(), launcher.Options(args=["migrate"], env=env(e), stdout=io.StringIO(),
+>               raise AssertionError("the running component did not analyze a table whose statistics lag")
+E               AssertionError: the running component did not analyze a table whose statistics lag
+== member without the upkeep run 3
+        assert await launcher.run(definition(), launcher.Options(args=["migrate"], env=env(e), stdout=io.StringIO(),
+>               raise AssertionError("the running component did not analyze a table whose statistics lag")
+E               AssertionError: the running component did not analyze a table whose statistics lag

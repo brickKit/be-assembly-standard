@@ -1,0 +1,237 @@
+NOTICE:  schema "t3_fn" does not exist, skipping
+== never analyzed, 20 items: the function does nothing (under 1000 changed)
+ pg_stat_force_next_flush 
+--------------------------
+ 
+(1 row)
+
+ be_analyze_stale 
+------------------
+(0 rows)
+
+                  id                  | job  | kind  | epoch | claim_db_generation | claim_db_timeline | attempts | max_attempts | effect_class |             operation_id             | outcome_unknown | args | progress | coalesce | call_results 
+--------------------------------------+------+-------+-------+---------------------+-------------------+----------+--------------+--------------+--------------------------------------+-----------------+------+----------+----------+--------------
+ 4f6f9946-234e-4469-95bb-a0cb96d4ef03 | bulk | queue |     1 |                   1 |                 1 |        1 |            3 | local        | 4a5b4eb9-bb81-4e48-98ff-f0a67a982080 | f               | {}   |          |          | {}
+(1 row)
+
+                  id                  | job  | kind  | epoch | claim_db_generation | claim_db_timeline | attempts | max_attempts | effect_class |             operation_id             | outcome_unknown | args | progress | coalesce | call_results 
+--------------------------------------+------+-------+-------+---------------------+-------------------+----------+--------------+--------------+--------------------------------------+-----------------+------+----------+----------+--------------
+ 4f6f9946-234e-4469-95bb-a0cb96d4ef03 | bulk | queue |     1 |                   1 |                 1 |        1 |            3 | local        | 4a5b4eb9-bb81-4e48-98ff-f0a67a982080 | f               | {}   |          |          | {}
+(1 row)
+
+                  id                  | job  | kind  | epoch | claim_db_generation | claim_db_timeline | attempts | max_attempts | effect_class |             operation_id             | outcome_unknown | args | progress | coalesce | call_results 
+--------------------------------------+------+-------+-------+---------------------+-------------------+----------+--------------+--------------+--------------------------------------+-----------------+------+----------+----------+--------------
+ 4f6f9946-234e-4469-95bb-a0cb96d4ef03 | bulk | queue |     1 |                   1 |                 1 |        1 |            3 | local        | 4a5b4eb9-bb81-4e48-98ff-f0a67a982080 | f               | {}   |          |          | {}
+(1 row)
+
+                  id                  | job  | kind  | epoch | claim_db_generation | claim_db_timeline | attempts | max_attempts | effect_class |             operation_id             | outcome_unknown | args | progress | coalesce | call_results 
+--------------------------------------+------+-------+-------+---------------------+-------------------+----------+--------------+--------------+--------------------------------------+-----------------+------+----------+----------+--------------
+ 4f6f9946-234e-4469-95bb-a0cb96d4ef03 | bulk | queue |     1 |                   1 |                 1 |        1 |            3 | local        | 4a5b4eb9-bb81-4e48-98ff-f0a67a982080 | f               | {}   |          |          | {}
+(1 row)
+
+                  id                  | job  | kind  | epoch | claim_db_generation | claim_db_timeline | attempts | max_attempts | effect_class |             operation_id             | outcome_unknown | args | progress | coalesce | call_results 
+--------------------------------------+------+-------+-------+---------------------+-------------------+----------+--------------+--------------+--------------------------------------+-----------------+------+----------+----------+--------------
+ 4f6f9946-234e-4469-95bb-a0cb96d4ef03 | bulk | queue |     1 |                   1 |                 1 |        1 |            3 | local        | 4a5b4eb9-bb81-4e48-98ff-f0a67a982080 | f               | {}   |          |          | {}
+(1 row)
+
+                  id                  | job  | kind  | epoch | claim_db_generation | claim_db_timeline | attempts | max_attempts | effect_class |             operation_id             | outcome_unknown | args | progress | coalesce | call_results 
+--------------------------------------+------+-------+-------+---------------------+-------------------+----------+--------------+--------------+--------------------------------------+-----------------+------+----------+----------+--------------
+ 4f6f9946-234e-4469-95bb-a0cb96d4ef03 | bulk | queue |     1 |                   1 |                 1 |        1 |            3 | local        | 4a5b4eb9-bb81-4e48-98ff-f0a67a982080 | f               | {}   |          |          | {}
+(1 row)
+
+                  id                  | job  | kind  | epoch | claim_db_generation | claim_db_timeline | attempts | max_attempts | effect_class |             operation_id             | outcome_unknown | args | progress | coalesce | call_results 
+--------------------------------------+------+-------+-------+---------------------+-------------------+----------+--------------+--------------+--------------------------------------+-----------------+------+----------+----------+--------------
+ 4f6f9946-234e-4469-95bb-a0cb96d4ef03 | bulk | queue |     1 |                   1 |                 1 |        1 |            3 | local        | 4a5b4eb9-bb81-4e48-98ff-f0a67a982080 | f               | {}   |          |          | {}
+(1 row)
+
+                  id                  | job  | kind  | epoch | claim_db_generation | claim_db_timeline | attempts | max_attempts | effect_class |             operation_id             | outcome_unknown | args | progress | coalesce | call_results 
+--------------------------------------+------+-------+-------+---------------------+-------------------+----------+--------------+--------------+--------------------------------------+-----------------+------+----------+----------+--------------
+ 4f6f9946-234e-4469-95bb-a0cb96d4ef03 | bulk | queue |     1 |                   1 |                 1 |        1 |            3 | local        | 4a5b4eb9-bb81-4e48-98ff-f0a67a982080 | f               | {}   |          |          | {}
+(1 row)
+
+== 20 000 items, before the function
+                                                      QUERY PLAN                                                       
+-----------------------------------------------------------------------------------------------------------------------
+ Update on be_work_item w (actual rows=1 loops=1)
+   CTE expired
+     ->  Limit (actual rows=0 loops=1)
+           ->  LockRows (actual rows=0 loops=1)
+                 ->  Sort (actual rows=0 loops=1)
+                       Sort Key: be_work_item.lease_until
+                       Sort Method: quicksort  Memory: 25kB
+                       ->  Index Scan using be_work_item_lease on be_work_item (actual rows=0 loops=1)
+                             Index Cond: ((job = ANY ($1)) AND (lease_until <= now()))
+                             Filter: (state = 'running'::text)
+   CTE due
+     ->  Limit (actual rows=1 loops=1)
+           InitPlan 2 (returns $2)
+             ->  CTE Scan on expired expired_1 (actual rows=0 loops=1)
+           ->  LockRows (actual rows=1 loops=1)
+                 ->  Result (actual rows=1 loops=1)
+                       One-Time Filter: (NOT $2)
+                       ->  Index Scan using be_work_item_due_at on be_work_item be_work_item_1 (actual rows=1 loops=1)
+                             Index Cond: (run_at <= now())
+                             Filter: ((state = ANY ('{pending,retry_wait}'::text[])) AND (job = ANY ($1)))
+   ->  Nested Loop (actual rows=1 loops=1)
+         ->  Function Scan on be_current_db_epoch e (actual rows=1 loops=1)
+         ->  Hash Join (actual rows=1 loops=1)
+               Hash Cond: (w.id = expired.id)
+               ->  Seq Scan on be_work_item w (actual rows=20000 loops=1)
+               ->  Hash (actual rows=1 loops=1)
+                     Buckets: 1024  Batches: 1  Memory Usage: 9kB
+                     ->  Append (actual rows=1 loops=1)
+                           ->  CTE Scan on expired (actual rows=0 loops=1)
+                           ->  CTE Scan on due (actual rows=1 loops=1)
+ Planning Time: 0.032 ms
+ Execution Time: 2.872 ms
+(32 rows)
+
+ pg_stat_force_next_flush 
+--------------------------
+ 
+(1 row)
+
+== the function
+ be_analyze_stale 
+------------------
+ be_work_item
+(1 row)
+
+== after the function
+                                                      QUERY PLAN                                                       
+-----------------------------------------------------------------------------------------------------------------------
+ Update on be_work_item w (actual rows=1 loops=1)
+   CTE expired
+     ->  Limit (actual rows=0 loops=1)
+           ->  LockRows (actual rows=0 loops=1)
+                 ->  Sort (actual rows=0 loops=1)
+                       Sort Key: be_work_item.lease_until
+                       Sort Method: quicksort  Memory: 25kB
+                       ->  Index Scan using be_work_item_lease on be_work_item (actual rows=0 loops=1)
+                             Index Cond: ((job = ANY ($1)) AND (lease_until <= now()))
+                             Filter: (state = 'running'::text)
+   CTE due
+     ->  Limit (actual rows=1 loops=1)
+           InitPlan 2 (returns $2)
+             ->  CTE Scan on expired expired_1 (actual rows=0 loops=1)
+           ->  LockRows (actual rows=1 loops=1)
+                 ->  Result (actual rows=1 loops=1)
+                       One-Time Filter: (NOT $2)
+                       ->  Index Scan using be_work_item_due_at on be_work_item be_work_item_1 (actual rows=1 loops=1)
+                             Index Cond: (run_at <= now())
+                             Filter: ((state = ANY ('{pending,retry_wait}'::text[])) AND (job = ANY ($1)))
+   ->  Nested Loop (actual rows=1 loops=1)
+         ->  Function Scan on be_current_db_epoch e (actual rows=1 loops=1)
+         ->  Nested Loop (actual rows=1 loops=1)
+               ->  Append (actual rows=1 loops=1)
+                     ->  CTE Scan on expired (actual rows=0 loops=1)
+                     ->  CTE Scan on due (actual rows=1 loops=1)
+               ->  Index Scan using be_work_item_pkey on be_work_item w (actual rows=1 loops=1)
+                     Index Cond: (id = expired.id)
+ Planning Time: 0.553 ms
+ Execution Time: 0.249 ms
+(30 rows)
+
+                  id                  | job  | kind  | epoch | claim_db_generation | claim_db_timeline | attempts | max_attempts | effect_class |             operation_id             | outcome_unknown | args | progress | coalesce | call_results 
+--------------------------------------+------+-------+-------+---------------------+-------------------+----------+--------------+--------------+--------------------------------------+-----------------+------+----------+----------+--------------
+ f2f8b7bb-946d-4cc5-91cf-bf7a5d81d604 | bulk | queue |     1 |                   1 |                 1 |        1 |            3 | local        | ddba7bbe-22ce-4265-842a-511c899ebff8 | f               | {}   |          |          | {}
+(1 row)
+
+                  id                  | job  | kind  | epoch | claim_db_generation | claim_db_timeline | attempts | max_attempts | effect_class |             operation_id             | outcome_unknown | args | progress | coalesce | call_results 
+--------------------------------------+------+-------+-------+---------------------+-------------------+----------+--------------+--------------+--------------------------------------+-----------------+------+----------+----------+--------------
+ f2f8b7bb-946d-4cc5-91cf-bf7a5d81d604 | bulk | queue |     1 |                   1 |                 1 |        1 |            3 | local        | ddba7bbe-22ce-4265-842a-511c899ebff8 | f               | {}   |          |          | {}
+(1 row)
+
+                  id                  | job  | kind  | epoch | claim_db_generation | claim_db_timeline | attempts | max_attempts | effect_class |             operation_id             | outcome_unknown | args | progress | coalesce | call_results 
+--------------------------------------+------+-------+-------+---------------------+-------------------+----------+--------------+--------------+--------------------------------------+-----------------+------+----------+----------+--------------
+ f2f8b7bb-946d-4cc5-91cf-bf7a5d81d604 | bulk | queue |     1 |                   1 |                 1 |        1 |            3 | local        | ddba7bbe-22ce-4265-842a-511c899ebff8 | f               | {}   |          |          | {}
+(1 row)
+
+                  id                  | job  | kind  | epoch | claim_db_generation | claim_db_timeline | attempts | max_attempts | effect_class |             operation_id             | outcome_unknown | args | progress | coalesce | call_results 
+--------------------------------------+------+-------+-------+---------------------+-------------------+----------+--------------+--------------+--------------------------------------+-----------------+------+----------+----------+--------------
+ f2f8b7bb-946d-4cc5-91cf-bf7a5d81d604 | bulk | queue |     1 |                   1 |                 1 |        1 |            3 | local        | ddba7bbe-22ce-4265-842a-511c899ebff8 | f               | {}   |          |          | {}
+(1 row)
+
+                  id                  | job  | kind  | epoch | claim_db_generation | claim_db_timeline | attempts | max_attempts | effect_class |             operation_id             | outcome_unknown | args | progress | coalesce | call_results 
+--------------------------------------+------+-------+-------+---------------------+-------------------+----------+--------------+--------------+--------------------------------------+-----------------+------+----------+----------+--------------
+ f2f8b7bb-946d-4cc5-91cf-bf7a5d81d604 | bulk | queue |     1 |                   1 |                 1 |        1 |            3 | local        | ddba7bbe-22ce-4265-842a-511c899ebff8 | f               | {}   |          |          | {}
+(1 row)
+
+                  id                  | job  | kind  | epoch | claim_db_generation | claim_db_timeline | attempts | max_attempts | effect_class |             operation_id             | outcome_unknown | args | progress | coalesce | call_results 
+--------------------------------------+------+-------+-------+---------------------+-------------------+----------+--------------+--------------+--------------------------------------+-----------------+------+----------+----------+--------------
+ f2f8b7bb-946d-4cc5-91cf-bf7a5d81d604 | bulk | queue |     1 |                   1 |                 1 |        1 |            3 | local        | ddba7bbe-22ce-4265-842a-511c899ebff8 | f               | {}   |          |          | {}
+(1 row)
+
+== after six more executions (the plan settled again)
+                                                      QUERY PLAN                                                       
+-----------------------------------------------------------------------------------------------------------------------
+ Update on be_work_item w (actual rows=1 loops=1)
+   CTE expired
+     ->  Limit (actual rows=0 loops=1)
+           ->  LockRows (actual rows=0 loops=1)
+                 ->  Sort (actual rows=0 loops=1)
+                       Sort Key: be_work_item.lease_until
+                       Sort Method: quicksort  Memory: 25kB
+                       ->  Index Scan using be_work_item_lease on be_work_item (actual rows=0 loops=1)
+                             Index Cond: ((job = ANY ($1)) AND (lease_until <= now()))
+                             Filter: (state = 'running'::text)
+   CTE due
+     ->  Limit (actual rows=1 loops=1)
+           InitPlan 2 (returns $2)
+             ->  CTE Scan on expired expired_1 (actual rows=0 loops=1)
+           ->  LockRows (actual rows=1 loops=1)
+                 ->  Result (actual rows=1 loops=1)
+                       One-Time Filter: (NOT $2)
+                       ->  Index Scan using be_work_item_due_at on be_work_item be_work_item_1 (actual rows=1 loops=1)
+                             Index Cond: (run_at <= now())
+                             Filter: ((state = ANY ('{pending,retry_wait}'::text[])) AND (job = ANY ($1)))
+   ->  Nested Loop (actual rows=1 loops=1)
+         ->  Function Scan on be_current_db_epoch e (actual rows=1 loops=1)
+         ->  Nested Loop (actual rows=1 loops=1)
+               ->  Append (actual rows=1 loops=1)
+                     ->  CTE Scan on expired (actual rows=0 loops=1)
+                     ->  CTE Scan on due (actual rows=1 loops=1)
+               ->  Index Scan using be_work_item_pkey on be_work_item w (actual rows=1 loops=1)
+                     Index Cond: (id = expired.id)
+ Planning Time: 0.007 ms
+ Execution Time: 0.183 ms
+(30 rows)
+
+== called again at once: nothing (analyzed under 30 s ago, nothing changed)
+ pg_stat_force_next_flush 
+--------------------------
+ 
+(1 row)
+
+ be_analyze_stale 
+------------------
+(0 rows)
+
+== a temporary table of the same name changes nothing
+ be_analyze_stale 
+------------------
+(0 rows)
+
+NOTICE:  drop cascades to 22 other objects
+DETAIL:  drop cascades to table be_doc_series
+drop cascades to table be_recovery_generation
+drop cascades to function be_current_db_epoch()
+drop cascades to table be_outbox
+drop cascades to table be_outbox_partition
+drop cascades to table be_epoch_history
+drop cascades to table be_inbox
+drop cascades to table be_dead_letter
+drop cascades to table t3_fn.be_work_item
+drop cascades to table be_cron_watermark
+drop cascades to table be_audit_log
+drop cascades to table be_audit_counter
+drop cascades to table be_audit_denial_budget
+drop cascades to table be_projection
+drop cascades to table be_projection_source
+drop cascades to table be_partition_plan
+drop cascades to function be_partition_plan_guard()
+drop cascades to function be_maintain_partitions()
+drop cascades to function be_declare_monthly_partitions(text,integer)
+drop cascades to function be_undeclare_monthly_partitions(text)
+drop cascades to table be_idempotency
+drop cascades to function be_analyze_stale()
