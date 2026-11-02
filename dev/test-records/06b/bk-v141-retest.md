@@ -3,7 +3,7 @@
 ## 目标
 
 1. 项目级采纳 brickKit v1.4.1：`skills update`、`require-brickkit.sh` 要求 v1.4.1。
-2. 按 `brickkit-feedback/replies/phase-06.md` 的"第四轮回复"里每条的"复测"，自己复现。项目规则："已修复"要自己复现才算关闭。
+2. 按 `brickkit-feedback/archive/phase-06-replies.md` 的"第四轮回复"里每条的"复测"，自己复现。项目规则："已修复"要自己复现才算关闭。
 
 ## 环境
 

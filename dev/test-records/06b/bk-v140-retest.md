@@ -3,7 +3,7 @@
 ## 目标
 
 1. 项目级采纳 brickKit v1.4.0：`skills update`、`require-brickkit.sh` 要求 v1.4.0，`make gates` 照旧通过。
-2. 按 `brickkit-feedback/replies/phase-06.md` 的"第三轮回复"（F06-011～014）与"FR06-028 发版前检查"每条的"复测"，在真机上自己复现。项目规则："已修复"要自己复现才算关闭。
+2. 按 `brickkit-feedback/archive/phase-06-replies.md` 的"第三轮回复"（F06-011～014）与"FR06-028 发版前检查"每条的"复测"，在真机上自己复现。项目规则："已修复"要自己复现才算关闭。
 3. 读 brickKit 的 release 源码，回答本项目的 `make ship`（`infra/scripts/ship.sh`）能不能整个交给 `brickkit release` + `release.checks`；本轮不改 `ship.sh`，只给建议。
 
 ## 环境

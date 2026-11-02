@@ -61,7 +61,7 @@
 
 - **第 1 步的动作清单加两项**：删旧标签之后，删除 `~/.cache/brickkit/repos/github.com/brickKit/`；删除本项目与组件工作台的 `.brickkit/manifests/` 与 `.brickkit/artifacts/`。连同 0-01 的 Go 模块缓存、本机旧镜像，一共四种缓存。
 - **开发流程**：A107 那条补一句“删标签后清空 BrickKit 的两层缓存”（正式文档 `10-development-workflow.md` 的版本一节）。
-- **给 BrickKit 的功能请求（低优先级）**：可选的“核对缓存里的标签与远端是否一致、不一致就警告”，以及清缓存的命令；写进 `brickkit-feedback/rebuild.md` 的 FRR-002。只有移动标签的人会碰到，所以是低优先级。
+- **给 BrickKit 的功能请求（低优先级）**：可选的“核对缓存里的标签与远端是否一致、不一致就警告”，以及清缓存的命令；写进 `brickkit-feedback/archive/rebuild-2026.md` 的 FRR-002。只有移动标签的人会碰到，所以是低优先级。
 
 ## 8. 原始数据
 
@@ -69,7 +69,7 @@
 
 ## 9. v1.5.0 复测（2026-10-17）
 
-BrickKit 对 FRR-002 的回复：项目缓存记下取清单时标签指向的提交，每次读缓存都与用户级裸仓库里的同名标签比较，对不上报 `VERSION_CHANGED`；`add`、`upgrade`、`fetch` 读仓库前先联网核对；不加清缓存的命令（回复在 `brickkit-feedback/replies/rebuild.md`）。用 CLI v1.5.0 按第 4 节的步骤重做，多测了“裸仓库还没联网更新”与“照报错删目录”两种情况。
+BrickKit 对 FRR-002 的回复：项目缓存记下取清单时标签指向的提交，每次读缓存都与用户级裸仓库里的同名标签比较，对不上报 `VERSION_CHANGED`；`add`、`upgrade`、`fetch` 读仓库前先联网核对；不加清缓存的命令（回复在 `brickkit-feedback/archive/rebuild-2026-replies.md`）。用 CLI v1.5.0 按第 4 节的步骤重做，多测了“裸仓库还没联网更新”与“照报错删目录”两种情况。
 
 | 情况 | v1.4.1 | v1.5.0 |
 | --- | --- | --- |

@@ -9,13 +9,13 @@
 | # | 发生了什么 | 代价 | 出处 |
 | --- | --- | --- | --- |
 | P1 | **构建产物进了 Git 历史，第四次**：探针 3.2.23 的提交带了 `go build .` 留下的 52 MB `probes/go/go`。查历史时又发现 `be-sdk-go` alpha.8 的 48.6 MB `grpcx.test`、`be/go-infra` 3.0.23 的 54.6 MB 产物；`be/go-core` 3.0.20 的 55 MB 在 10-23 已改写过一次 | 改写三个仓库的历史、两次强推被自动权限拦下由维护者执行；`be/py-render` 3.0.29 的锁指向的提交消失，发 3.0.30 补救 | 提交 `1f9bdf80`、`3c0ae9d2`；交接“改写过历史的仓库”一条 |
-| P2 | **65 个发布标签的说明是文件路径**：交接文档与 AI 的记忆都写着 `brickkit release --notes <文件>`，照做的发布把路径写进了标签。先查出的是 42 个（说明文件在 `/tmp/`）；第 13 步写连锁发布脚本时又查出 23 个（第 12 步连锁发布的 12 个组件，说明文件在项目的 `experiment-data/` 里，第一次只按 `/tmp/` 找漏了），从运行日志重建说明后重打 | 7 个仓库的 65 个标签重打（强推被拦，维护者执行）；之前发出去的说明使用方看不到 | 提交 `e7daa372`；`brickkit-feedback/rebuild.md` FRR-021 |
+| P2 | **65 个发布标签的说明是文件路径**：交接文档与 AI 的记忆都写着 `brickkit release --notes <文件>`，照做的发布把路径写进了标签。先查出的是 42 个（说明文件在 `/tmp/`）；第 13 步写连锁发布脚本时又查出 23 个（第 12 步连锁发布的 12 个组件，说明文件在项目的 `experiment-data/` 里，第一次只按 `/tmp/` 找漏了），从运行日志重建说明后重打 | 7 个仓库的 65 个标签重打（强推被拦，维护者执行）；之前发出去的说明使用方看不到 | 提交 `e7daa372`；`brickkit-feedback/archive/rebuild-2026.md` FRR-021 |
 | P3 | **交接的剩余清单漏了一项**：计划第 4 节第 6 步“探针的 SDK 对照（F5）”没写进 9.1 的剩余清单，写记录时才发现 | 差点带着未完成的核对结束这一步；之后补测约 1 小时 | `step12-plan.md` 第 4 节与提交 `712567c1` 的 9.1 |
 | P4 | **结论进了记录、原始输出却没存**：V6 第二部分（临时模块的构建）、V7（`D9-H` 副本上的 `--dry-run`）、G6 的手动调用当时只在终端里 | 写记录时 V6、V7 重做一遍，手动调用从会话里抄回来 | 提交 `e8c40aef`（`v6-mixed/`、`v7/`、`p121/manual-calls.txt`） |
 | P5 | **没验证的说法写进了正式文档**：“`ProcessPoolExecutor` 的子进程会重新导入外壳的主模块”写进了合并安全、探针注释与记录；交 kb 前写最小复现，发现对 `python -m` 的入口不成立 | 改正 4 处文档，探针与外壳为一行注释各发一个版本（3.2.29、3.0.34） | 提交 `14a7e98a`（写入）、`835f8924`（改正）；`experiment-data/12-01/pool-main/` |
 | P6 | **工具发布前没跑它自己的单元测试**：`be-acceptance` 1.0.18 把等待写进 `nodeports`，用假 kubectl 的单元测试去等真实端口而失败；只在 K 行真机上验证过 | 多发一个版本（1.0.19）、重跑 K 行 | 提交 `835f8924`；`be-acceptance` v1.0.18、v1.0.19 |
 | P7 | **外壳编进的成员长期没被承载过**：`be/py-render` 自 3.0.28 起编进的 Python 探针，没有一个格让它承载；探针的包版本停在 3.2.20（G5 连带的缺陷）、在事件循环上烧 CPU（G6），都只在第 12 步才暴露 | 查出两个缺陷，各一轮发布 | 记录 12-01 的 G5、G6 |
-| P8 | **找 BrickKit 的回复绕了路**：回复不在收件箱 `rebuild.md` 里，而在 `brickkit-feedback/replies/rebuild.md`，先去 BrickKit 仓库翻了提交才找到 | 几次多余的查找 | 本会话 |
+| P8 | **找 BrickKit 的回复绕了路**：回复不在收件箱 `rebuild.md` 里，而在 `brickkit-feedback/archive/rebuild-2026-replies.md`，先去 BrickKit 仓库翻了提交才找到 | 几次多余的查找 | 本会话 |
 
 做对的、值得保留的：冒烟先于测量（F5 冒烟、`smoke-try1/2` 在测量前暴露工具问题）；测试代码在运行中不改、改完整批重跑；“发出去之前自己复测”抓到了 P5 与 P6；BrickKit 三条请求当天实现、当天复测关闭。
 
@@ -30,7 +30,7 @@
 | I5 | 检查 | `be-acceptance` 加 `make check`：不需要基础资源的单元测试（`tests/test_units.py` 等）与 `variants.py --check`；它的 `AGENTS.md` 写“打 `v` 标签前跑 `make check`” | P6 | 已做 |
 | I6 | 检查 | `be/py-render` 的测试用启动器自己的检查核对编进来的成员（G5 时已加）；`make pin-check` 查 Python 组件的包版本与声明的最低 SDK（已加） | P7 | 已做 |
 | I7 | 指令与记忆 | 交接与记忆改成 `--notes-file`；BrickKit v1.11.0 起 `--notes` 收到文件就拒绝（FRR-021） | P2 | 已做 |
-| I8 | 导航 | 交接里“给 BrickKit 的收件箱”一条写明回复在 `brickkit-feedback/replies/rebuild.md` | P8 | 不批（回复的位置改记在 AI 的记忆里） |
+| I8 | 导航 | 交接里“给 BrickKit 的收件箱”一条写明回复在 `brickkit-feedback/archive/rebuild-2026-replies.md` | P8 | 不批（回复的位置改记在 AI 的记忆里） |
 
 ## 3. 批准与落实
 

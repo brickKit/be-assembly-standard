@@ -3,7 +3,7 @@
 ## 目标
 
 1. 项目级采纳 brickKit v1.3.1（当前 2.x 组件不动）：`skills update`、`$endpoint:` 地址、项目自己提供的网络、去掉 R39 的 host-gateway 绕法。
-2. 按 `brickkit-feedback/replies/phase-06.md` 每条的"复测"，在真机上自己复现能在 Docker 上验的条目；需要 2.x 组件没有的 `component.yaml` 新字段的条目，用 scratch 项目里 `brickkit new` 出来的最小组件验。项目规则："已修复"要自己复现才算关闭。
+2. 按 `brickkit-feedback/archive/phase-06-replies.md` 每条的"复测"，在真机上自己复现能在 Docker 上验的条目；需要 2.x 组件没有的 `component.yaml` 新字段的条目，用 scratch 项目里 `brickkit new` 出来的最小组件验。项目规则："已修复"要自己复现才算关闭。
 
 ## 环境
 

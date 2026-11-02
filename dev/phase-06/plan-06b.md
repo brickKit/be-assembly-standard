@@ -976,7 +976,7 @@ make teardown-down
 
 **Files:**
 - Create: `dev/phase-06/batches/06b.md`（给用户看的汇报）
-- Modify: `dev/phase-06/to-verify.md`、`dev/phase-06/plan.md`（待办勾选、06b 行状态）、`brickkit-feedback/phase-06.md`（只放真机验证过的条目，被 git 忽略）
+- Modify: `dev/phase-06/to-verify.md`、`dev/phase-06/plan.md`（待办勾选、06b 行状态）、`brickkit-feedback/archive/phase-06.md`（只放真机验证过的条目，被 git 忽略）
 
 - [ ] **Step 1: `batches/06b.md`**，结构：
   1. 结果总表：每个组件 / 外壳的版本、tag（`2.0.0` / `v2.0.0` / `gen/*` / 外壳 `1.0.0`）、组件仓库提交 SHA、父仓库提交、过程记录路径。
@@ -987,7 +987,7 @@ make teardown-down
   6. 遗留：T26 标为"交 06c/06e/06f"的条目。
   7. 给 06c 的输入：bff-mobile 与各 REST 接口的最终形状、菜单 schema 扩展（06a §6.2）、网关路由（`edge_routes` 与 be-ops `routes` 未实现）、print 默认模板 id、im-dingtalk 菜单。
 - [ ] **Step 2: `to-verify.md`**：合并各记录里的 V 项结论与知识缺口行。
-- [ ] **Step 3: 反馈信箱**：真机验证成立、属于 brickKit 的问题写进 `brickkit-feedback/phase-06.md`（新编号接 F06-009 之后），每条带原始证据路径；不催对方读。
+- [ ] **Step 3: 反馈信箱**：真机验证成立、属于 brickKit 的问题写进 `brickkit-feedback/archive/phase-06.md`（新编号接 F06-009 之后），每条带原始证据路径；不催对方读。
 - [ ] **Step 4: `plan.md`**：06b 行写"完成，见 `batches/06b.md`"；勾掉"SDK 注释里的旧文档路径"（T1/T2 完成的提交号）；"阶段 06 结束时删 R33 那句"保持未勾。
 - [ ] **Step 5: 提交并推送**（父仓库按路径：`dev/phase-06/batches/06b.md dev/phase-06/to-verify.md dev/phase-06/plan.md`）。
 - [ ] **Step 6: 进入 06c**：按自主模式不等回复，以 `batches/06b.md` §7 与 spec §6 为输入写 `dev/phase-06/plan-06c.md`。

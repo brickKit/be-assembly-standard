@@ -6,7 +6,7 @@
 > SDK 现状来自 be-sdk-go / be-sdk-python / be-sdk-ts 三个仓库 v0.5.0 的代码（行号以写作时工作区为准），外壳来自 `shell/be/*`，门禁来自 `tools/be-acceptance`，生成器来自 `tools/be-ops` v0.2.0。brickKit 只读了本机 v1.1.0 文档（`brickkit docs`）和源码仓库 `docs/en/`。
 > 姊妹文件 `sdk-redesign-apis.md`：三门语言逐个 API、外壳启动器、夹具组件、第四门语言指南。本文件：结论、协议、一致性套件、现状盘点、迁移路径、brickKit 候选。
 > **修订（phase A 收尾，lane X2）**：按控制者对九个 lane 报告的裁决（a…bc）和 R1 最小复现的结果（`../repros/README.md`）修订。be-protocol rc.1（`tools/be-protocol`）已经是规范正文，名字和说法不一致时以它为准，本文件只是设计记录。
-> **修订（2026-10-03，lane L2b）**：吸收 brickKit v1.2–v1.3.1 的新能力（`brickkit-feedback/replies/phase-06.md`，控制者裁决 bk1–bk14，`.superpowers/sdd/plan-06b/bk13-rulings.md`）：族地址改为 `$endpoint:` 引用、每个 gRPC 端口一个键（不再 +1000）；密钥一律以文件交付（`mount: file`、`_FILE` 键、三门 SDK 都重读）；`readinessCheck`、`stopGracePeriodSeconds`、端口 `protocol`、`events:` 段进 `component.yaml`；`configSchema` 的协议键段和 `events:` 段由 be-ops 生成（O1）；边缘路由生成进部署条目；FR06-007 不做，0508 不变，协议加可选的"跑一次"入口。条款编号以 be-protocol 为准（L2a 同步修订）。
+> **修订（2026-10-03，lane L2b）**：吸收 brickKit v1.2–v1.3.1 的新能力（`brickkit-feedback/archive/phase-06-replies.md`，控制者裁决 bk1–bk14，`.superpowers/sdd/plan-06b/bk13-rulings.md`）：族地址改为 `$endpoint:` 引用、每个 gRPC 端口一个键（不再 +1000）；密钥一律以文件交付（`mount: file`、`_FILE` 键、三门 SDK 都重读）；`readinessCheck`、`stopGracePeriodSeconds`、端口 `protocol`、`events:` 段进 `component.yaml`；`configSchema` 的协议键段和 `events:` 段由 be-ops 生成（O1）；边缘路由生成进部署条目；FR06-007 不做，0508 不变，协议加可选的"跑一次"入口。条款编号以 be-protocol 为准（L2a 同步修订）。
 > **修订（2026-10-03，rc.2 spec lane 的文档 lane）**：按阶段 B 第一波审查裁决（`.superpowers/sdd/plan-06b/stageB-review.md`）定下的 rc.2 事实修订 §2、§4、§7：`be` 的 reason 从 32 行补齐到 36 个（新增 `REQUEST_INVALID`、`DEPENDENCY_UNAVAILABLE`、`REQUEST_CANCELLED`，补列 `NESTED_TX`）；路由判定顺序（先 401，再"还没拿到 bundle"的 503，再 stale / 撤销的授予 / 委托链）；空值即未设；`EVENTS_*` 没有目录默认值；`PG_POOL_MIN_IDLE` 退役；新键 `DEPLOY_ENV`；最后一次允许的投递照常 Nak、下一次收到时进 DLQ；payload 超过 64 KiB 必须拒绝；OpenAPI 标记 `x-be-permission` / `x-be-internal`；契约迁移靠会话 `application_name` 判断旧版本是否还在线；发版接 brickKit ≥ v1.4.0 的 `release.checks`（P20.5、§4.6），`compconf-record-scan` 收窄。be-protocol `v1.0.0-rc.2`、contract-infra-authz `v2.0.0-rc.2`、contract-infra-iam `v1.0.0-rc.2` 是这些事实的正文。
 
 ---
@@ -1331,7 +1331,7 @@ A 规范与契约 ─┬─ B 实现（并行 lane） ── C pilot（冻结点
 
 ## 8. brickKit 可以支持或推荐的（候选，交给 lane E 处理）
 
-> **结论（2026-10-03，brickKit v1.2.0–v1.3.1 的答复，`brickkit-feedback/replies/phase-06.md`）**：B1 不做（FR06-014），改为 O1 生成；B2 做了 `protocol` → `appProtocol`，headless 伴生 Service 不做（FR06-008）；B3（FR06-006 `readinessCheck`）、B4（FR06-009 `stopGracePeriodSeconds`）、B8（FR06-012 `mount: file`）、B10（FR06-001，做成 `$endpoint:` 而不是 `dependencies.slots`）、B11（FR06-005 `events:`）已落地并写进本文 P1、P2、P12；B5（FR06-029）、B7（FR06-013，改由组件声明 `PG_MIGRATION_HOST` 这类键）、B12（FR06-020，契约迁移门禁改由运行时靠会话 `application_name` 自己做，P11.4）不做；B14（FR06-028）在 brickKit v1.4.0 落地为 `release.checks`（P20.5、§4.6）；另有 FR06-007（定时任务）不做，0508 不变。
+> **结论（2026-10-03，brickKit v1.2.0–v1.3.1 的答复，`brickkit-feedback/archive/phase-06-replies.md`）**：B1 不做（FR06-014），改为 O1 生成；B2 做了 `protocol` → `appProtocol`，headless 伴生 Service 不做（FR06-008）；B3（FR06-006 `readinessCheck`）、B4（FR06-009 `stopGracePeriodSeconds`）、B8（FR06-012 `mount: file`）、B10（FR06-001，做成 `$endpoint:` 而不是 `dependencies.slots`）、B11（FR06-005 `events:`）已落地并写进本文 P1、P2、P12；B5（FR06-029）、B7（FR06-013，改由组件声明 `PG_MIGRATION_HOST` 这类键）、B12（FR06-020，契约迁移门禁改由运行时靠会话 `application_name` 自己做，P11.4）不做；B14（FR06-028）在 brickKit v1.4.0 落地为 `release.checks`（P20.5、§4.6）；另有 FR06-007（定时任务）不做，0508 不变。
 >
 > 按记忆里的规则，下面全部是**候选**："不支持"的判断来自 `brickkit docs`（v1.1.0）和源码仓库 `docs/en/` 的检索，还没有在重建后真机复现。lane E 先把它们放进 `dev/phase-06/to-verify.md`；分成"问题"（必须验证）和"功能请求"（问能不能支持）两类。和前文重复的只列编号，不再展开。
 

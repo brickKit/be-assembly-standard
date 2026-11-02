@@ -105,7 +105,7 @@ main.go                   单跑入口
 
 ## 给 BrickKit 的需求
 
-都**不阻塞**实验的第 0、1 轮；收件箱 `brickkit-feedback/rebuild.md` 的 FRR-010 到 FRR-012。
+都**不阻塞**实验的第 0、1 轮；收件箱 `brickkit-feedback/archive/rebuild-2026.md` 的 FRR-010 到 FRR-012。
 
 | 编号 | 请求 | 依据 |
 | --- | --- | --- |
