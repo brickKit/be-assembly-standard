@@ -98,7 +98,8 @@ K8s 的 readinessProbe 和 Docker / Podman 的 healthcheck（依赖方与 `up` �
 只有 `build: { context: ., dockerfile: Dockerfile }` 的组件，使用者要 `brickkit build`；`up` 从不
 构建。只有写了 `build` 的组件才会被构建：只写 `image` 的组件来自本地源也是拉取的——所以带代码的组件要写
 `build`（只写 `image` 而旁边有 `Dockerfile` 时 `lint`、`build`、`up` 都会警告），不给代码分发的组件只写 `image`。所以**改了代码、没改版本**，旧镜像还在，`build` 会跳过——要么升 `metadata.version`，要么
-让使用者 `brickkit build <id> --force`。
+让使用者 `brickkit build <id> --force`。镜像以非 root 用户运行：`Dockerfile` 最后写 `USER` 与一个非 0 的 uid（Alpine 上
+`adduser -D -u 10001 app` 之后 `USER 10001`），因为在 Docker 与有根 Podman 上，容器里的 root 就是主机上的 root。没有东西检查它。
 
 **9. 外壳：`shell.members` 写的是编进去的精确版本。**
 
@@ -240,4 +241,4 @@ PEOPLE_BASIC_GRPC_ENDPOINT=http://people-basic-1-0-0:9090
 - 完整规范：<https://github.com/brickKit/brickKit> 根目录 `AGENTS.zh.md`
 - 别的组件的写法样例：你项目里 `.brickkit/manifests/` 下缓存的 `component.yaml` 与 `BRICKKIT.md`
 
-<!-- brickkit:skill version=v1.11.1 sum=sha256:ad7ad7ded75e944821585da16bb2a94a6a9aff9ab5d11ccdec199ec5e4d144f4 -->
+<!-- brickkit:skill version=v1.12.0 sum=sha256:28250808d27148e0cdc44732ac998ffb8bfedcb22667027326ee213839ddb98e -->

@@ -1,0 +1,6 @@
+# /usr/lib/systemd/user/podman-restart.service
+# /home/zhijie/.config/systemd/user/podman-restart.service.d/wait-network.conf
+# podman-restart waits for network-online.target, which does nothing in a user manager; this unit polls the
+# system one (containers/podman#22197). Without it the rootless network namespace starts before DHCP and stays broken.
+Wants=podman-user-wait-network-online.service
+After=podman-user-wait-network-online.service

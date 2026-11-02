@@ -47,9 +47,10 @@
 - **`/etc/hosts` 有 `127.0.0.1 host.docker.internal`**（维护者 2026-11-01，第 12 步 G7）：让本机进程与容器用同一个名字访问对象存储；不要删。
 - **无根 Podman 的开机自启**（2026-11-02，`experiment-data/14-01-reboot/`）：linger 已开、`podman-restart.service` 已启用；`~/.config/systemd/user/podman-restart.service.d/wait-network.conf` 让它等网络；`/etc/systemd/system/user@1000.service.d/data-disk.conf` 让用户的 systemd 等数据盘；AppArmor 的 `podman`、`passt` 配置是包里的原样，`usr.bin.pasta` 是原样加 BrickKit 的一条信号规则（enforce）。**AI 的终端在 VS Code 的 snap 里**，那里允许建用户命名空间：查 Podman 的问题、模拟开机或 ssh，用 `systemd-run --user --wait …`；P、LP 两行起格前 `cell-chain.sh` 会先跑 `podman-preflight.sh`。
 - **有根 Podman 的开机测试**（2026-11-02，`experiment-data/14-02-rootful-reboot/`，D80 因此改为有根）：测试时装了 root 的 `podman.socket`（组 `docker`，drop-in `be-rootful.conf`、`be-rootful-dir.conf`）、`DOCKER-USER` 的放行规则与开机补回它的 `be-podman-docker-forward.service`、系统的 `podman-restart.service`；测完维护者 2026-11-02 执行了 `rootful/revert-boot.sh` 与 `rootful/revert.sh`，都已还原（`after-revert.txt`）。以后再测有根，重新执行 `rootful/setup.sh` 与 `setup-boot.sh`。
+- **Quadlet 单元的复测**（2026-11-02，`experiment-data/14-03-quadlet/`，FRR-025、FRR-024）：格 P9-S-q（无根）与 P9-S-root-q（有根，`rootful/quadlet-up.sh` 由维护者以 root 执行）都已 `down`；无根时临时停用的 `podman-restart` 与等网络的 drop-in 已恢复（`rootless-restored.txt`）；有根装的 `podman-docker-forward.service`、镜像与 `DOCKER-USER` 规则已由 `rootful/quadlet-revert.sh` 还原（`rootful-after-revert.txt`）。有根 Quadlet 格只有 root 能 `up`：`cell-chain.sh` 在 `up-by-root` 一段等，`quadlet-up.sh` 等安装声明写好后自己再 `up` 一次；中断的链用 `FROM=<段名>` 接着跑。
 - **数据盘** `/home/zhijie/data`：Docker 与 containerd 的根、Podman 的存储、Go 与 Python 的缓存都在上面；Docker 与用户的 systemd 都等它挂上。
 - **还原过的设置**：维护者 2026-10-29 执行了 `cap/revert.sh` 与 `rootful/revert.sh`（Docker 的 `cgroup-parent` 去掉、`be-cap.slice` 停了；root 的 `podman.socket` 停用、`DOCKER-USER` 清空）。以后再要限内存或有根 Podman，重新执行对应的 `setup.sh`。GNOME 的文件索引忽略 `/home/zhijie/data`（`org.freedesktop.Tracker3.Miner.Files ignored-directories`）。
-- **BrickKit**：CLI v1.11.3，本项目装的技能是 v1.11.3（`brickkit skills update`）。v1.11.1 起 `target: podman` 生成 `restart: always`，旧格升级后第一次 `up` 会重建每个组件容器；v1.10.3 起 compose 健康检查在启动阶段每秒一次（`start_interval: 1s`），D 行崩溃后的拉起读数在那之后变短，不与之前的比。
+- **BrickKit**：CLI v1.12.0，本项目装的技能是 v1.12.0（`brickkit skills update`）；v1.12.0 起 `target: podman` 可以加 `podman: { units: quadlet }`，BrickKit 推荐它做单机交付，本项目的正式文档还没跟（见“待用户决定”）。v1.11.1 起 `target: podman` 生成 `restart: always`，旧格升级后第一次 `up` 会重建每个组件容器；v1.10.3 起 compose 健康检查在启动阶段每秒一次（`start_interval: 1s`），D 行崩溃后的拉起读数在那之后变短，不与之前的比。
 - **要查的**：Casdoor 的库导出有 557 MB（第 10 步 B7 切换前导出，已移出仓库），大得反常，推测是多轮测试积下的令牌与记录，要看是哪张表、要不要定期清理（[10-08](experiment-records/10-08-base-in-cluster.md)）。
 
 ## 推进方式与停点
@@ -65,13 +66,14 @@
 ## 待用户决定
 
 - 进入底层先行（换阶段）。
+- 单机交付用 Podman 时，正式文档（部署模式指南、D80）要不要改成 BrickKit v1.12.0 的 Quadlet 单元（开机只靠生成的单元，不用 `podman-restart` 与等网络的 drop-in；复测见 FRR-025）。
 - 破坏性迁移的保险（第 12 步计划 9.1“还没定的”，不急）。
 - 父仓库之后的提交（`git log origin/main..main`）：推送要维护者下令或授权。
 
 ## 未推送、已知问题与外部往来
 
 - **推送**：子仓库（协议、SDK、验收、外壳、组件）的发布都已推送。父仓库 2026-11-02 推送到 `c755ccc9`（维护者下令）；之后的提交以 `git log origin/main..main` 为准。
-- **给 BrickKit 的信箱** `brickkit-feedback/`（被 gitignore；规则在它的 `README.md`）：待办每条一个文件放在 `open/`，回复与复测写在同一个文件里，关闭后移到 `archive/`。待办：FRR-024（单机交付推荐有根 Podman，附开机实测；放行规则的持久化做法；镜像以非 root 用户运行）、FRR-025（`target: podman` 能否生成 Quadlet 单元），都待回复。FRB-001–010、FRR-001–023 都已关闭。下一个编号 FRB-011、FRR-026。
+- **给 BrickKit 的信箱** `brickkit-feedback/`（被 gitignore；规则在它的 `README.md`）：待办每条一个文件放在 `open/`，回复与复测写在同一个文件里，关闭后移到 `archive/`。待办：FRR-025（Quadlet 单元；v1.12.0 复测除一处外都通过：无根开机时迁移比数据库早、11 个迁移单元失败、用户的 systemd `degraded`，待回复）、FRB-011（文档对 distroless 能否过健康检查说法不一）、FRB-012（有根装好的 Quadlet 项目，普通用户再 `up` 会静默装出第二份无根的），都待回复。FRB-001–010、FRR-001–024 都已关闭（FRR-024 2026-11-02 在 v1.12.0 上复测通过）。下一个编号 FRB-013、FRR-026。
 - **本项目的待办（来自 FRB-009）**：各组件、外壳与探针 Dockerfile 里的 `ENV PORT` 与注释“BrickKit injects PORT only for mode: local”已过时但无害，下次改动该组件时删掉（Python 探针与它的变体已在 3.2.20 删掉；Go 探针与它的变体还在）。
 - **组件与外壳的 SDK**：组件与外壳在 `be-sdk-go` alpha.41、`be-sdk-python` a38；SDK 已到 alpha.42、a39（只给测试标了 CK-ID-01，行为不变），协议到 alpha.39（`COMPAT.md` 的“装配项目的正式文档”一列）。下次连锁发布时一起换。
 - **改写过历史的仓库**（去掉误提交的二进制）：做法都一样——`git filter-repo` 只去掉那一个文件，只有含它的版本的文件树变了，其余文件树、作者、时间与说明都不变（说明里的旧哈希换成新哈希），分支与标签重新指向、强推；父仓库在改写之前记的指针已不在远端；改写前的整库备份放在当时会话的临时目录（会话结束会清掉）。
