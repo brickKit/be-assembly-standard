@@ -85,7 +85,15 @@
 
 - **决定**：交付的默认容器引擎是有根 Podman，容器内以非 root 用户运行；客户要求引擎本身不以 root 运行时用无根 Podman；客户已经在用 Docker、或要用只支持 Docker 的周边工具时用 Docker。维护者 2026-11-02 定。
 - **理由**：代表部署实验同一批测量里，Podman 与 Docker 的 CPU 与延迟看不出差别（无根 Podman 整套多 6%，在波动内）；Podman 没有常驻的守护进程：同一批里平台自己的内存 Podman 135 MiB、Docker 548 MiB，每台机器省约 0.4 GiB（Docker 的守护进程在另一批里因构建镜像涨到约 0.7 GiB）。有根与无根之间：有根整套少 9–10% 的 CPU（网络由内核转发，不经用户态的 pasta）；开机回来只要启用系统级的 `podman-restart.service`（它在系统的 systemd 里，等得到网络在线），同一台机器上第一次真重启就全部回来、没有重启；无根真重启三次才通过，要 linger、让用户级的开机单元等网络、Ubuntu 上 AppArmor 的 `podman` 配置、存储在另一块盘时的挂载顺序这四项主机设置，缺一项就开机不回来或回来了连不上。
-- **修订**（同日，开机实测之后）：起初定为无根 Podman（理由是引擎不以 root 运行、权限面更小）；三次真重启查出无根的四项主机设置，有根第一次就通过，维护者改定为有根。无根的准备步骤保留在部署模式指南里。
+- **修订**（同日，开机实测之后）：起初定为无根 Podman（理由是引擎不以 root 运行、权限面更小）；三次真重启查出无根的四项主机设置，有根第一次就通过，维护者改定为有根。无根的准备步骤保留在部署模式指南里。容器在 Podman 上怎样看护与开机拉起，后来由 D81 定为 Quadlet 单元。
 - **不采用**：无根 Podman 为默认（引擎不以 root 运行，但开机与网络的主机准备多、容易漏，CPU 多 9–10%）；Docker 为默认（适配与生态最好，但守护进程的内存是持续的代价）；不定默认、按客户选（交付与文档要按三套写）。
 - **代价**：引擎以 root 运行，容器被攻破时影响比无根大；靠容器内的非 root 用户与镜像的最小权限缓解。与 Docker 装在同一台机器时，Docker 把转发策略设为丢弃，要在 `DOCKER-USER` 链放行 Podman 的网桥，且开机时补回（Docker 每次启动重建自己的链）。
 - **落在**：[部署与运行](../04-foundations/01-deployment-and-runtime.md)、[部署模式](../00-overview/guides/deployment-modes.md)、[底层选择](../04-foundations/README.md)。
+
+## D81 Podman 上交付用 Quadlet 单元，compose 只给开发机
+
+- **决定**：单机交付用 Podman 时（有根或无根，D80），部署文件写 `podman: { units: quadlet }`：BrickKit 把每个组件与每个迁移生成为一个 Podman Quadlet 单元，由 systemd 看护与开机拉起。`compose`（不写 `podman.units`）只用于开发机：只有它能与本机进程（`mode: local`、`debug`）、焦点运行混用。维护者 2026-11-02 定（AI 推荐）。
+- **理由**：同一台机器（Ubuntu 26.04、Podman 5.7.0、BrickKit v1.12.0、12 个组件单跑）真重启三次：有根、无根的 Quadlet 单元都一次就全部回来、全部 healthy，开机只靠生成的单元，不用 `podman-restart.service` 与让它等网络的附加配置（无根的单元自动等网络）；迁移先跑，组件在它依赖的组件健康之后才启动；`down` 之后再重启什么都不回来。compose 那条路开机只拉起重启策略为 `always` 的容器、不按依赖顺序、要手工启用开机单元并（无根时）让它等网络，缺一项要等下一次重启才发现。Quadlet 还在组件不健康时杀掉并重启它（只看存活检查的组件），日志进 journald。BrickKit 与知识库的单机部署篇也都推荐它，compose 在 Podman 上是过渡做法。
+- **不采用**：继续用 compose 加 `podman-restart.service`（开机路径靠手工补的主机设置，缺了静默失败）；等 BrickKit 修好开机时的迁移再改（那一处只影响 systemd 的状态，组件照常）。
+- **代价**：有根时只有 root 能 `up`、`down`（单元装进 `/etc/containers/systemd`），普通用户在同一个项目目录里 `up` 不会报错，而是另装一份无根的、连同一个数据库——部署脚本与 AI 要固定用同一个身份。单元从项目目录挂入文件型的配置，项目目录与 `.brickkit/` 要留在原处。无根开机时迁移可能比同机的数据库早而失败，用户的 systemd 显示 `degraded`，组件不受影响（库结构在上一次 `up` 时已经迁好）。Podman 至少 5.3。
+- **落在**：[部署模式](../00-overview/guides/deployment-modes.md)、[部署与运行](../04-foundations/01-deployment-and-runtime.md)。

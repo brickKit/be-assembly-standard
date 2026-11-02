@@ -57,7 +57,7 @@
 | 数据库实例 | 小型部署共用一个实例，每个组件独立 schema 与角色；需要隔离或成为热点时独立数据库或实例 | 各组件的 `PG_HOST`、`PG_DATABASE` 指向不同的实例或库 | 引擎本身不可切换：其他 SQL 方言按客户要求做专项，不是配置项 | 共用实例、每组件一个 schema 是默认；每组件一个库、交易组件单独一个实例都在代表部署实验中测过：业务结果相同，延迟与组件的 CPU、内存看不出差别，第二个实例多约 160 MiB 内存 | [数据与生命周期](02-data-and-lifecycle.md)、[数据库引擎](05-database-engine.md) |
 | 观测后端 | 默认 Tempo、Loki、Prometheus、Grafana；任何接收 OTLP 的平台 | 追踪经 `OTEL_URL` 发往所选后端（不设即关闭）；指标由 Prometheus 拉取 `/metrics`；日志写标准输出，由采集器收集 | 换后端不动组件 | 输出格式由协议第 10 章与剖面检查验证；后端组合未测 | [观测](10-observability.md) |
 | 边缘入口 | Traefik；Kubernetes 上能合并同一主机多份 Ingress 的控制器；需要跨实例全局限流时 Envoy Gateway 等 | 部署时的选择 | 永不路由的路径与路由由声明派生，换产品时照样适用 | 未测 | [边缘入口](09-edge.md) |
-| 运行形态 | 有根 Podman（默认，D80）；无根 Podman；Docker；Kubernetes；本机进程（开发与演示） | `deploy.yaml` 的 `target`；本机进程用 BrickKit 的 `mode: local` | 本机进程由运行 `up` 的会话看护，长期运行的看护不在 BrickKit 范围内 | 代表部署实验测了 Docker、Podman（无根与有根）、单节点 Kubernetes、本机进程及其与 Docker 或 Podman 的混合；默认有根 Podman（D80） | [部署与运行](01-deployment-and-runtime.md) |
+| 运行形态 | 有根 Podman（默认，D80）；无根 Podman；Docker；Kubernetes；本机进程（开发与演示） | `deploy.yaml` 的 `target`（Podman 上交付再加 `podman: { units: quadlet }`，D81）；本机进程用 BrickKit 的 `mode: local` | 本机进程由运行 `up` 的会话看护，长期运行的看护不在 BrickKit 范围内 | 代表部署实验测了 Docker、Podman（无根与有根）、单节点 Kubernetes、本机进程及其与 Docker 或 Podman 的混合；默认有根 Podman（D80） | [部署与运行](01-deployment-and-runtime.md) |
 | 运行拓扑 | 单跑；外壳；两者混合 | `deploy.yaml` 中把成员嵌在外壳下或放在顶层 | 外壳的成员清单、编进的成员与依赖锁必须一致（协议 17） | 每种运行形态都实测了单跑、外壳与混合；默认见 A112 | [部署与运行](01-deployment-and-runtime.md)、协议 17 |
 
 新的底层实现按同一方式加入：先有协议规定的端口与共同验收（例如运输的同一组检查），再进这张表；只在一处试用过的不列为选项。
