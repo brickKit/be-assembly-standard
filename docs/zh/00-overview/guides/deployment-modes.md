@@ -169,6 +169,7 @@
 - 结论来自一台机器、12 个组件、小公司规模的负载；负载上限、更多组件同机、多台机器、多节点 Kubernetes、高可用都没有量，在路线的第 4 步另测。
 - 有根与无根 Podman 都只在有 Docker 也在的机器上测过；只有 Podman 与 Compose 的机器没有端到端验证。有根的资源只量过整套 CPU（比无根少 9–10%，另一批），平台内存没有单独量。
 - 机器重启后自己回来只在一台 Ubuntu 26.04 桌面机（Wi-Fi、自动登录）上验证过（Quadlet 单元有根一次、无根两次；compose 有根一次、无根三次）；其他发行版与 Docker 的开机拉起没有真重启验证。
+- 组件启动时连不上数据库或消息系统就一直等（线协议 P5.10、P6.34），不自己退出：单机上靠“组件不健康或未就绪”的告警（[告警与处置](../../05-operations/03-alerts.md)）才看得见地址写错这类配置错误，没配告警就没人知道；Quadlet 单元（`Notify=healthy`，BrickKit 生成的 `TimeoutStartSec=120`）在 120 秒内没健康会被 systemd 重启一次再等，计入 `NRestarts`。Kubernetes 上等待期间组件还没开始监听，启动探针（宽限期默认 60 秒，`startPeriodSeconds` 可调）到了就把它杀掉重来，进入逐级拉长的重启间隔，效果与“重试有上限后退出”相同，原因在日志的 `waiting for …` 里；要在 Kubernetes 上真正一直等，得让组件等待时就应答存活检查、启动探针不等依赖，现在没有这样做。
 - 组件启动时连不上消息系统要等它（线协议 P6.34，与连不上数据库的 P5.10 一样），`be-sdk-go` alpha.43、`be-sdk-python` a40 起这样做；现有组件与外壳还在更早的 SDK 上，连不上时 Go 的以 69 退出，Python 的不退出、在 nats-py 里无限重连（不经 SDK 的结构化日志），随下次连锁发布换上。之前无根时用户 systemd 的单元排不到系统级的 Docker 之后，基础资源在同机 Docker 里时，开机先起来的组件会这样退出一次，靠单元的 `Restart=always` 恢复（实测约 11 秒）；只看最后的状态看不出，日志里有 `the bus is not usable` 与 `Failed to start`。
 - 现有组件与外壳的镜像都没有写 `USER`，容器里以 root 运行；有根 Podman 下这等同宿主机的 root。重建组件时按组件实现约定改成非 root 用户。
 - 外部请求的边缘（Traefik）没有接上，实验用测试的入口代替；Ingress 未测。
