@@ -50,7 +50,7 @@
 - **Quadlet 单元的复测**（2026-11-02，`experiment-data/14-03-quadlet/`，FRR-025、FRR-024）：格 P9-S-q（无根）与 P9-S-root-q（有根，`rootful/quadlet-up.sh` 由维护者以 root 执行）都已 `down`；无根时临时停用的 `podman-restart` 与等网络的 drop-in 已恢复（`rootless-restored.txt`）；有根装的 `podman-docker-forward.service`、镜像与 `DOCKER-USER` 规则已由 `rootful/quadlet-revert.sh` 还原（`rootful-after-revert.txt`）。有根 Quadlet 格只有 root 能 `up`：`cell-chain.sh` 在 `up-by-root` 一段等，`quadlet-up.sh` 等安装声明写好后自己再 `up` 一次；中断的链用 `FROM=<段名>` 接着跑。
 - **数据盘** `/home/zhijie/data`：Docker 与 containerd 的根、Podman 的存储、Go 与 Python 的缓存都在上面；Docker 与用户的 systemd 都等它挂上。
 - **还原过的设置**：维护者 2026-10-29 执行了 `cap/revert.sh` 与 `rootful/revert.sh`（Docker 的 `cgroup-parent` 去掉、`be-cap.slice` 停了；root 的 `podman.socket` 停用、`DOCKER-USER` 清空）。以后再要限内存或有根 Podman，重新执行对应的 `setup.sh`。GNOME 的文件索引忽略 `/home/zhijie/data`（`org.freedesktop.Tracker3.Miner.Files ignored-directories`）。
-- **BrickKit**：CLI v1.12.0，本项目装的技能是 v1.12.0（`brickkit skills update`）；v1.12.0 起 `target: podman` 可以加 `podman: { units: quadlet }`，本项目 D81（维护者 2026-11-02 定）：Podman 上交付用它，compose 只给开发机；`infra/scripts/lib/require-brickkit.sh` 要求 v1.12.0。v1.11.1 起 `target: podman` 生成 `restart: always`，旧格升级后第一次 `up` 会重建每个组件容器；v1.10.3 起 compose 健康检查在启动阶段每秒一次（`start_interval: 1s`），D 行崩溃后的拉起读数在那之后变短，不与之前的比。
+- **BrickKit**：CLI v1.12.1，本项目装的技能是 v1.12.1（`brickkit skills update`）；`target: podman` 加 `podman: { units: quadlet }` 生成 Quadlet 单元，本项目 D81（维护者 2026-11-02 定）：Podman 上交付用它，compose 只给开发机；`infra/scripts/lib/require-brickkit.sh` 要求 v1.12.1（开机不跑迁移、迁移成功才换组件、换了身份 `up` 报 `DEPLOYED_ELSEWHERE`）。v1.11.1 起 compose 下 `target: podman` 生成 `restart: always`，旧格升级后第一次 `up` 会重建每个组件容器；v1.10.3 起 compose 健康检查在启动阶段每秒一次（`start_interval: 1s`），D 行崩溃后的拉起读数在那之后变短，不与之前的比。
 - **要查的**：Casdoor 的库导出有 557 MB（第 10 步 B7 切换前导出，已移出仓库），大得反常，推测是多轮测试积下的令牌与记录，要看是哪张表、要不要定期清理（[10-08](experiment-records/10-08-base-in-cluster.md)）。
 
 ## 推进方式与停点
@@ -72,7 +72,7 @@
 ## 未推送、已知问题与外部往来
 
 - **推送**：子仓库（协议、SDK、验收、外壳、组件）的发布都已推送。父仓库 2026-11-02 推送到 `c755ccc9`（维护者下令）；之后的提交以 `git log origin/main..main` 为准。
-- **给 BrickKit 的信箱** `brickkit-feedback/`（被 gitignore；规则在它的 `README.md`）：待办每条一个文件放在 `open/`，回复与复测写在同一个文件里，关闭后移到 `archive/`。待办：FRR-025（Quadlet 单元；v1.12.0 复测除一处外都通过：无根开机时迁移比数据库早、11 个迁移单元失败、用户的 systemd `degraded`，待回复）、FRB-011（文档对 distroless 能否过健康检查说法不一）、FRB-012（有根装好的 Quadlet 项目，普通用户再 `up` 会静默装出第二份无根的），都待回复。FRB-001–010、FRR-001–024 都已关闭（FRR-024 2026-11-02 在 v1.12.0 上复测通过）。下一个编号 FRB-013、FRR-026。
+- **给 BrickKit 的信箱** `brickkit-feedback/`（被 gitignore；规则在它的 `README.md`）：待办每条一个文件放在 `open/`，回复与复测写在同一个文件里，关闭后移到 `archive/`。待办：FRB-013（被 `DEPLOYED_ELSEWHERE` 拒绝的 `up` 在报错之前已打印迁移清单与“Starting”，轻微）。FRB-001–012、FRR-001–025 都已关闭（FRR-025、FRB-011、FRB-012 2026-11-02 在 v1.12.1 上复测通过，`experiment-data/14-04-frb012/`、`14-05-quadlet-v1121/`）。下一个编号 FRB-014、FRR-026。**待查（没验证，不进信箱）**：被拒的 `up` 在报错前生成了 `.brickkit/generated/`，有根那份的单元从 `.brickkit/generated/secrets/` 挂文件进容器——它会不会改写那里的内容或属主。
 - **本项目的待办（来自 FRB-009）**：各组件、外壳与探针 Dockerfile 里的 `ENV PORT` 与注释“BrickKit injects PORT only for mode: local”已过时但无害，下次改动该组件时删掉（Python 探针与它的变体已在 3.2.20 删掉；Go 探针与它的变体还在）。
 - **组件与外壳的 SDK**：组件与外壳在 `be-sdk-go` alpha.41、`be-sdk-python` a38；SDK 已到 alpha.42、a39（只给测试标了 CK-ID-01，行为不变），协议到 alpha.39（`COMPAT.md` 的“装配项目的正式文档”一列）。下次连锁发布时一起换。
 - **改写过历史的仓库**（去掉误提交的二进制）：做法都一样——`git filter-repo` 只去掉那一个文件，只有含它的版本的文件树变了，其余文件树、作者、时间与说明都不变（说明里的旧哈希换成新哈希），分支与标签重新指向、强推；父仓库在改写之前记的指针已不在远端；改写前的整库备份放在当时会话的临时目录（会话结束会清掉）。

@@ -85,7 +85,7 @@
 
 | 形态 | 不同的地方 |
 | --- | --- |
-| P Podman | `target: podman` 加 `podman: { units: quadlet }`：`up` 把每个组件与每个迁移生成为 Quadlet 单元，先跑迁移、再按依赖启动组件；日志用 `journalctl [--user] -u 'brickkit-<项目>_*'` 看。有根（默认）：主机照下面“为有根 Podman 准备主机”做一遍，`brickkit` 由 root 运行（`sudo brickkit up`）；无根：照“为无根 Podman 准备主机”，由部署用户运行 |
+| P Podman | `target: podman` 加 `podman: { units: quadlet }`：`up` 把每个组件与每个迁移生成为 Quadlet 单元，先跑完全部迁移，全部成功才装上并按依赖启动组件的单元（有一个失败就停下：组件照旧跑原来那份，之后崩溃重启、机器重启回来的也是原来那份）；日志用 `journalctl [--user] -u 'brickkit-<项目>_*'` 看。有根（默认）：主机照下面“为有根 Podman 准备主机”做一遍，`brickkit` 由 root 运行（`sudo brickkit up`）；无根：照“为无根 Podman 准备主机”，由部署用户运行 |
 | D Docker | `target: docker`；容器的重启策略是 `unless-stopped` |
 | K Kubernetes | `target: k8s` 加 `k8s:` 块（`context`、`namespace`、`createNamespace`）；镜像推到集群拉得到的仓库。外部访问经边缘（[边缘](../../04-foundations/09-edge.md)），实验没有接 Ingress |
 | L、LD、LP | 要本机跑的组件或外壳写 `mode: local`；宿主机要有工具链（Go、uv）与源码；`brickkit up` 在前台运行，关掉它本机进程一起停，一个本机进程崩溃时同一会话的其他本机进程也停，容器照常 |
@@ -96,14 +96,14 @@
 
 1. 装 Podman，至少 5.3（Quadlet 单元要用到的功能从这一版起才齐）。
 2. **与 Docker 装在同一台机器时**：Docker 把转发策略设为丢弃，有根 Podman 的容器之间静默不通。在 `DOCKER-USER` 链放行 Podman 的网桥（`iptables -I DOCKER-USER -i podman+ -j ACCEPT` 与 `-o podman+` 各一条），并且开机时补回：Docker 每次启动重建自己的链，手加的规则重启就没了——用 BrickKit 排障页给的一次性单元 `podman-docker-forward.service`（`After=docker.service`，只在规则缺时才加），生成的单元自动排在它之后。只装 Podman 的机器不需要这一步。
-3. `brickkit` 由 root 运行：`sudo brickkit up`、`down`、`status`（单元装进 `/etc/containers/systemd/brickkit-<项目>/`）。**部署脚本与 AI 固定用 root**：普通用户在同一个项目目录里 `up` 不会报错，而是另装一份无根的、连同一个数据库。
+3. `brickkit` 由 root 运行：`sudo brickkit up`、`down`、`status`（单元装进 `/etc/containers/systemd/brickkit-<项目>/`）。**部署脚本与 AI 固定用 root**：普通用户在同一个项目目录里 `up` 会被拒（`DEPLOYED_ELSEWHERE`，BrickKit v1.12.1 起），反过来也一样；要换边先在原来那边 `down`。
 4. 镜像在 root 的存储里（`/var/lib/containers`，从镜像仓库拉或 `podman load`）；容器里以非 root 用户运行（镜像的 `USER`，[组件实现约定](../../01-conventions/06-component-implementation.md#健康检查与镜像)）：有根时容器里的 root 就是宿主机的 root。
 5. Podman 的存储放在 fstab 里带 `nofail` 的盘上时：systemd 不保证它在单元启动前挂上，给所有 `brickkit-` 开头的单元加一个前缀 drop-in `/etc/systemd/system/brickkit-.service.d/storage.conf`，内容为 `[Unit]`、`RequiresMountsFor=<那块盘>`。
 6. 检查：以 root 跑 BrickKit 的环境检查 `scripts/podman/check-environment.sh --units quadlet`：它真起两个容器试互通与删除，缺第 1、2、5 步时警告。
 
 项目目录与其中的 `.brickkit/` 要留在原处：单元从那里挂入证书等文件型的配置。
 
-验证：实验在 Ubuntu 26.04（与 Docker 同机）上做了一次真重启，系统的 `podman-restart.service` 与 `podman.socket` 都没启用：网络在线 → Docker → 补回规则的单元 → 12 个迁移 → 12 个组件全部 healthy，L3 场景全部通过；`down` 之后再重启什么都不回来。
+验证：实验在 Ubuntu 26.04（与 Docker 同机）上做了一次真重启，系统的 `podman-restart.service` 与 `podman.socket` 都没启用：网络在线 → Docker → 补回规则的单元 → 12 个组件全部 healthy，L3 场景全部通过（那次是 v1.12.0，开机还先跑一遍迁移；v1.12.1 起开机不跑迁移）；`down` 之后再重启什么都不回来。
 
 **开发机用 compose 时**还要：装 Docker 的 Compose V2（`podman compose` 转给它，不需要 Docker Engine）；`systemctl enable --now podman.socket`（`brickkit` 经它连 Podman；要让一个组的用户经它操作时，给套接字设 `SocketGroup=`，并加 `ExecStartPost=/bin/chmod 0711 /run/podman`——Podman 包的 `tmpfiles.d` 每次开机把这个目录建成 0700；这个组的成员等同 root）；`systemctl enable podman-restart.service`（系统级的开机单元，等网络在线之后拉起重启策略为 `always` 的容器）；第 2 步的单元再加 `Before=podman-restart.service`。compose 这条路实验也真重启过一次：网络在线 2 秒后开机单元拉起 12 个组件，全部 healthy、没有重启、启动阶段过后没有警告，但开机不按依赖顺序、不跑迁移。
 
@@ -121,7 +121,7 @@
 
 单元自动等网络在线（依赖 Podman 自带的 `podman-user-wait-network-online.service`），不用另配。项目目录与其中的 `.brickkit/` 要留在原处。
 
-验证：用 Quadlet 单元起一套，真重启一次机器，不登录、不跑 `up`，等网络在线后 `brickkit status` 全部 healthy。实验在 Ubuntu 26.04 上，`podman-restart.service` 停用、没有等网络的附加配置时，12 个组件按依赖顺序全部回来，L3 场景全部通过；`down` 之后再重启什么都不回来。
+验证：用 Quadlet 单元起一套，真重启一次机器，不登录、不跑 `up`，等网络在线后 `brickkit status` 全部 healthy。实验在 Ubuntu 26.04 上，`podman-restart.service` 停用、没有等网络的附加配置时，12 个组件按依赖顺序全部回来，L3 场景全部通过；`down` 之后再重启什么都不回来。v1.12.1 上又真重启一次，重启前故意做了一次迁移失败的 `up`：开机没有跑迁移、没有失败的单元，回来的是失败之前的那份。
 
 **开发机用 compose 时**还要：装 Docker 的 Compose V2；`systemctl --user enable --now podman.socket`；`systemctl --user enable podman-restart.service`（开机时拉起重启策略为 `always` 的容器）；**让它等网络**：它写的 `After=network-online.target` 在用户的 systemd 里不起作用，加用户级 drop-in `~/.config/systemd/user/podman-restart.service.d/wait-network.conf`，内容为 `[Unit]`、`Wants=podman-user-wait-network-online.service`、`After=podman-user-wait-network-online.service`——没有它，地址由 DHCP 慢一点取到时，无根网络命名空间先于网络起来、之后一直不通，组件连不上宿主机上的基础资源、反复重启。实验用 compose 真重启了三次才查全：缺 AppArmor 的配置时一个都没回来，缺等网络时拉起了但连不上基础资源，都补上后全部回来。
 
@@ -136,7 +136,7 @@
 | 消息系统停 2 分钟 | 事件积压在发件表（约 4000 条），恢复后约 2 秒清空，投影 1–2 秒追平 |
 | 授权组件停 | 单跑时写操作在授权视图有效期内照常（约 31 秒）后被拒；授权在外壳里时，和它同外壳的成员一起停 |
 | 数据库重启 | 各组件自己重连 |
-| 机器重启 | Podman 的 Quadlet 单元由 systemd 拉起：先跑迁移，组件在它依赖的组件健康之后才启动（有根与 Docker 同机时排在补回放行规则的单元之后，无根要“为无根 Podman 准备主机”的第 2–4 步）。Docker 与开发机上的 compose 靠引擎拉起（Docker 服务开机启用与 `unless-stopped`；Podman 的 `podman-restart.service`）：不按依赖顺序、不再跑迁移。两种都要组件自己重试连接还没起来的依赖。`down` 之后什么都不回来；本机进程从不回来。实验在有根与无根 Podman、两种方式上都真重启验证过 |
+| 机器重启 | Podman 的 Quadlet 单元由 systemd 拉起：组件在它依赖的组件健康之后才启动，开机不跑迁移（迁移只由 `up` 跑，库结构在那时已经迁好；有根与 Docker 同机时排在补回放行规则的单元之后，无根要“为无根 Podman 准备主机”的第 2–4 步）。Docker 与开发机上的 compose 靠引擎拉起（Docker 服务开机启用与 `unless-stopped`；Podman 的 `podman-restart.service`）：不按依赖顺序，也不跑迁移。两种都要组件自己重试连接还没起来的依赖。`down` 之后什么都不回来；本机进程从不回来。实验在有根与无根 Podman、两种方式上都真重启验证过 |
 | 升级一个组件 | 被依赖的组件升级要连锁发布依赖方（它们写的是精确版本）；`up` 只换改动的容器，Docker 约 11 秒、Kubernetes 约 18 秒；进外壳的成员升级是重建外壳、只换外壳一个容器 |
 | 滚动升级时新旧版本并存 | SDK 版本不同的组件之间调用、事件、截止时间、追踪都互通；只做加法的契约下新旧两版共用库与流；调用旧版没有的操作答 501 `CAPABILITY_UNSUPPORTED`；旧版的迁移遇到新版迁移过的库按成功结束。收缩迁移（删列、改名）之后还在跑的旧版写入会出错：破坏性变化所有组件一起更新 |
 | 一个组件跑几个副本 | 只发布一次、只执行一次、只生效一次都成立；停或崩一个副本时在途的确认过程续上，负载只丢正在被杀的进程上的请求；组件之间的调用靠服务端定期关连接按时间分到各副本，短时突发会偏到一个副本（[调用与错误](../../04-foundations/08-calls-and-errors.md)） |
@@ -159,7 +159,7 @@
 
 ## 依据
 
-- 机器：Intel i5-12450H（12 线程）、14 GiB、NVMe，Linux 7.0；Podman 5.7.0（无根）、Docker 29.9.2、minikube v1.38.1（Kubernetes v1.35.1，单节点）、BrickKit v1.10–v1.11（测量），v1.12.0（Quadlet 单元的重启）；performance 电源模式。
+- 机器：Intel i5-12450H（12 线程）、14 GiB、NVMe，Linux 7.0；Podman 5.7.0（无根）、Docker 29.9.2、minikube v1.38.1（Kubernetes v1.35.1，单节点）、BrickKit v1.10–v1.11（测量），v1.12.0–v1.12.1（Quadlet 单元的重启）；performance 电源模式。
 - 组件：身份、授权、审计、组织、币种、往来单位、产品、库存、信用、销售、出账（Go）与打印（Python）；外壳 `be/go-infra`、`be/go-core`、`be/py-render`。
 - 负载：2 个法人、2 000 个产品、500 个客户、2 万张历史订单；开环每秒 7 次、20 个用户（列表 40%、报价转订单 25%、确认 20%、交货 10%、出账打印 5%）。
 - 基础资源：PostgreSQL 16.15、NATS JetStream 2.10.29、RustFS 1.0.0-beta.12、Casdoor 4.1.0。
@@ -168,8 +168,7 @@
 
 - 结论来自一台机器、12 个组件、小公司规模的负载；负载上限、更多组件同机、多台机器、多节点 Kubernetes、高可用都没有量，在路线的第 4 步另测。
 - 有根与无根 Podman 都只在有 Docker 也在的机器上测过；只有 Podman 与 Compose 的机器没有端到端验证。有根的资源只量过整套 CPU（比无根少 9–10%，另一批），平台内存没有单独量。
-- 机器重启后自己回来只在一台 Ubuntu 26.04 桌面机（Wi-Fi、自动登录）上验证过（Quadlet 单元有根、无根各一次；compose 有根一次、无根三次）；其他发行版与 Docker 的开机拉起没有真重启验证。
-- 无根开机时，Quadlet 的迁移单元可能比同机的数据库早起来、连不上而失败：组件照常回来（库结构在上一次 `up` 时已经迁好），但用户的 systemd 显示 `degraded`、`systemctl --user --failed` 列出这些迁移，直到下一次 `up`。已报 BrickKit；看 systemd 状态的监控要知道这一条。
+- 机器重启后自己回来只在一台 Ubuntu 26.04 桌面机（Wi-Fi、自动登录）上验证过（Quadlet 单元有根一次、无根两次；compose 有根一次、无根三次）；其他发行版与 Docker 的开机拉起没有真重启验证。
 - 现有组件与外壳的镜像都没有写 `USER`，容器里以 root 运行；有根 Podman 下这等同宿主机的 root。重建组件时按组件实现约定改成非 root 用户。
 - 外部请求的边缘（Traefik）没有接上，实验用测试的入口代替；Ingress 未测。
 - 本机进程只用于开发与演示：BrickKit 不重启、不开机启动它们，长期运行不在 BrickKit 的范围内。

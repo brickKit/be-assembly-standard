@@ -93,7 +93,7 @@
 ## D81 Podman 上交付用 Quadlet 单元，compose 只给开发机
 
 - **决定**：单机交付用 Podman 时（有根或无根，D80），部署文件写 `podman: { units: quadlet }`：BrickKit 把每个组件与每个迁移生成为一个 Podman Quadlet 单元，由 systemd 看护与开机拉起。`compose`（不写 `podman.units`）只用于开发机：只有它能与本机进程（`mode: local`、`debug`）、焦点运行混用。维护者 2026-11-02 定（AI 推荐）。
-- **理由**：同一台机器（Ubuntu 26.04、Podman 5.7.0、BrickKit v1.12.0、12 个组件单跑）真重启三次：有根、无根的 Quadlet 单元都一次就全部回来、全部 healthy，开机只靠生成的单元，不用 `podman-restart.service` 与让它等网络的附加配置（无根的单元自动等网络）；迁移先跑，组件在它依赖的组件健康之后才启动；`down` 之后再重启什么都不回来。compose 那条路开机只拉起重启策略为 `always` 的容器、不按依赖顺序、要手工启用开机单元并（无根时）让它等网络，缺一项要等下一次重启才发现。Quadlet 还在组件不健康时杀掉并重启它（只看存活检查的组件），日志进 journald。BrickKit 与知识库的单机部署篇也都推荐它，compose 在 Podman 上是过渡做法。
-- **不采用**：继续用 compose 加 `podman-restart.service`（开机路径靠手工补的主机设置，缺了静默失败）；等 BrickKit 修好开机时的迁移再改（那一处只影响 systemd 的状态，组件照常）。
-- **代价**：有根时只有 root 能 `up`、`down`（单元装进 `/etc/containers/systemd`），普通用户在同一个项目目录里 `up` 不会报错，而是另装一份无根的、连同一个数据库——部署脚本与 AI 要固定用同一个身份。单元从项目目录挂入文件型的配置，项目目录与 `.brickkit/` 要留在原处。无根开机时迁移可能比同机的数据库早而失败，用户的 systemd 显示 `degraded`，组件不受影响（库结构在上一次 `up` 时已经迁好）。Podman 至少 5.3。
+- **理由**：同一台机器（Ubuntu 26.04、Podman 5.7.0、BrickKit v1.12.0 与 v1.12.1、12 个组件单跑）真重启四次：有根、无根的 Quadlet 单元都一次就全部回来、全部 healthy，开机只靠生成的单元，不用 `podman-restart.service` 与让它等网络的附加配置（无根的单元自动等网络）；组件在它依赖的组件健康之后才启动；`down` 之后再重启什么都不回来。迁移只由 `up` 跑，全部成功才换上组件的新单元：迁移失败时组件照旧，之后的开机回来的也是原来那份（v1.12.1 上真重启验证）。compose 那条路开机只拉起重启策略为 `always` 的容器、不按依赖顺序、要手工启用开机单元并（无根时）让它等网络，缺一项要等下一次重启才发现。Quadlet 还在组件不健康时杀掉并重启它（只看存活检查的组件），日志进 journald。BrickKit 与知识库的单机部署篇也都推荐它，compose 在 Podman 上是过渡做法。
+- **不采用**：继续用 compose 加 `podman-restart.service`（开机路径靠手工补的主机设置，缺了静默失败）；等 BrickKit 修好开机时的迁移再改（那一处只影响 systemd 的状态，组件照常；v1.12.1 已改为开机不跑迁移）。
+- **代价**：有根时只有 root 能 `up`、`down`（单元装进 `/etc/containers/systemd`），部署脚本与 AI 要固定用同一个身份（换了身份在同一个项目目录里 `up`，BrickKit v1.12.1 起报 `DEPLOYED_ELSEWHERE` 拒绝）。单元从项目目录挂入文件型的配置，项目目录与 `.brickkit/` 要留在原处。开机不跑迁移，库结构以上一次 `up` 为准。Podman 至少 5.3，BrickKit 至少 v1.12.1。
 - **落在**：[部署模式](../00-overview/guides/deployment-modes.md)、[部署与运行](../04-foundations/01-deployment-and-runtime.md)。
