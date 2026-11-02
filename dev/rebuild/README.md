@@ -4,7 +4,7 @@
 
 ## 现在在哪里
 
-- **代表部署实验（D41）做完了**（2026-10-17 至 11-02）。结论在[实验报告](experiment-report.md)（最后是“结论汇总”与“限制与未测”），已提炼进正式文档：[部署模式](../../docs/zh/00-overview/guides/deployment-modes.md)、决定 D80（默认有根 Podman，开机实测后由无根改定）与 A112–A114（默认全部单跑、不加连接池代理、NATS；维护者 2026-11-02 复核）、各篇的修订（[第 14 步计划](step14-plan.md)第 3 节）。复盘：[整个实验](retro-experiment.md)、[第 12 步](retro-step12.md)、[第 13 步](retro-step13.md)。
+- **代表部署实验（D41）做完了**（2026-10-17 至 11-02）。结论在[实验报告](experiment-report.md)（最后是“结论汇总”与“限制与未测”），已提炼进正式文档：[部署模式](../../docs/zh/00-overview/guides/deployment-modes.md)、决定 D80（默认有根 Podman，开机实测后由无根改定）与 D81（Podman 上交付用 Quadlet 单元，2026-11-02 复测 BrickKit v1.12.0 之后）与 A112–A114（默认全部单跑、不加连接池代理、NATS；维护者 2026-11-02 复核）、各篇的修订（[第 14 步计划](step14-plan.md)第 3 节）。复盘：[整个实验](retro-experiment.md)、[第 12 步](retro-step12.md)、[第 13 步](retro-step13.md)。
 - **下一步：底层先行**（[重建计划](rebuild-plan.md)“顺序”第 3 项，路线第 3 步开头）：事务与消息、登录与身份、权限、审计与整套恢复、冷热数据，以及 Python 补到代表组件需要的剖面；各项的验证门槛在[实验计划](experiment-plan.md)的“实验之后：底层先行”，实验留给各项的待测在重建计划里列着。之后按依赖顺序重建业务组件。**进入它是换阶段，等维护者确认**（要改根 `AGENTS.md` 的“推进方式”一行）。
 - 设计冻结与正式文档迁移已完成（[migration-plan.md](migration-plan.md)）。待复核的 AI 选择只剩 A109（驻留期起始值，`docs/zh/02-decisions/09-ai-choices.md`）。
 
@@ -50,7 +50,7 @@
 - **Quadlet 单元的复测**（2026-11-02，`experiment-data/14-03-quadlet/`，FRR-025、FRR-024）：格 P9-S-q（无根）与 P9-S-root-q（有根，`rootful/quadlet-up.sh` 由维护者以 root 执行）都已 `down`；无根时临时停用的 `podman-restart` 与等网络的 drop-in 已恢复（`rootless-restored.txt`）；有根装的 `podman-docker-forward.service`、镜像与 `DOCKER-USER` 规则已由 `rootful/quadlet-revert.sh` 还原（`rootful-after-revert.txt`）。有根 Quadlet 格只有 root 能 `up`：`cell-chain.sh` 在 `up-by-root` 一段等，`quadlet-up.sh` 等安装声明写好后自己再 `up` 一次；中断的链用 `FROM=<段名>` 接着跑。
 - **数据盘** `/home/zhijie/data`：Docker 与 containerd 的根、Podman 的存储、Go 与 Python 的缓存都在上面；Docker 与用户的 systemd 都等它挂上。
 - **还原过的设置**：维护者 2026-10-29 执行了 `cap/revert.sh` 与 `rootful/revert.sh`（Docker 的 `cgroup-parent` 去掉、`be-cap.slice` 停了；root 的 `podman.socket` 停用、`DOCKER-USER` 清空）。以后再要限内存或有根 Podman，重新执行对应的 `setup.sh`。GNOME 的文件索引忽略 `/home/zhijie/data`（`org.freedesktop.Tracker3.Miner.Files ignored-directories`）。
-- **BrickKit**：CLI v1.12.0，本项目装的技能是 v1.12.0（`brickkit skills update`）；v1.12.0 起 `target: podman` 可以加 `podman: { units: quadlet }`，BrickKit 推荐它做单机交付，本项目的正式文档还没跟（见“待用户决定”）。v1.11.1 起 `target: podman` 生成 `restart: always`，旧格升级后第一次 `up` 会重建每个组件容器；v1.10.3 起 compose 健康检查在启动阶段每秒一次（`start_interval: 1s`），D 行崩溃后的拉起读数在那之后变短，不与之前的比。
+- **BrickKit**：CLI v1.12.0，本项目装的技能是 v1.12.0（`brickkit skills update`）；v1.12.0 起 `target: podman` 可以加 `podman: { units: quadlet }`，本项目 D81（维护者 2026-11-02 定）：Podman 上交付用它，compose 只给开发机；`infra/scripts/lib/require-brickkit.sh` 要求 v1.12.0。v1.11.1 起 `target: podman` 生成 `restart: always`，旧格升级后第一次 `up` 会重建每个组件容器；v1.10.3 起 compose 健康检查在启动阶段每秒一次（`start_interval: 1s`），D 行崩溃后的拉起读数在那之后变短，不与之前的比。
 - **要查的**：Casdoor 的库导出有 557 MB（第 10 步 B7 切换前导出，已移出仓库），大得反常，推测是多轮测试积下的令牌与记录，要看是哪张表、要不要定期清理（[10-08](experiment-records/10-08-base-in-cluster.md)）。
 
 ## 推进方式与停点
@@ -66,7 +66,6 @@
 ## 待用户决定
 
 - 进入底层先行（换阶段）。
-- 单机交付用 Podman 时，正式文档（部署模式指南、D80）要不要改成 BrickKit v1.12.0 的 Quadlet 单元（开机只靠生成的单元，不用 `podman-restart` 与等网络的 drop-in；复测见 FRR-025）。
 - 破坏性迁移的保险（第 12 步计划 9.1“还没定的”，不急）。
 - 父仓库之后的提交（`git log origin/main..main`）：推送要维护者下令或授权。
 
