@@ -26,7 +26,7 @@ description: 新写一个 BrickKit 组件或外壳、修改 component.yaml、写
 
 只要动过 `component.yaml`，先跑 `brickkit lint`。离线、只读、不要 Docker，一次报出必填字段、
 类型、不认识的键（拼写笔误）、版本格式、端口范围，外加两类警告：`configSchema` 属性里拼错的键
-（比如 `defualt`，会静默不生效）、配置项撞上保留名。它**不查**依赖能不能解析、外壳成员对不对得上
+（比如 `defualt`，会静默不生效）、配置项撞上保留名。它**不查**依赖能不能解析
 ——那要解析依赖图，留给项目里的 `brickkit up --dry-run`。在项目里，在组件目录下跑 `brickkit lint` 只查这个组件
 （它的清单、文档、配置）；`brickkit lint --all` 查整个项目。
 
@@ -240,4 +240,4 @@ PEOPLE_BASIC_GRPC_ENDPOINT=http://people-basic-1-0-0:9090
 - 完整规范：<https://github.com/brickKit/brickKit> 根目录 `AGENTS.zh.md`
 - 别的组件的写法样例：你项目里 `.brickkit/manifests/` 下缓存的 `component.yaml` 与 `BRICKKIT.md`
 
-<!-- brickkit:skill version=v1.10.5 sum=sha256:2dc62b294e3a136351670418abaa231bda9caba9870701052ee04fffeac8f4cd -->
+<!-- brickkit:skill version=v1.11.1 sum=sha256:ad7ad7ded75e944821585da16bb2a94a6a9aff9ab5d11ccdec199ec5e4d144f4 -->

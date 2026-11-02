@@ -84,7 +84,7 @@
 ## D80 默认容器引擎是无根 Podman，Docker 同等支持
 
 - **决定**：交付的默认容器引擎是无根 Podman；Docker 同等支持，客户已经在用 Docker、或要用只支持 Docker 的周边工具时选它；有根 Podman 只在客户接受引擎以 root 运行、并要省下无根网络转发的 CPU 时选。维护者 2026-11-02 定。
-- **理由**：代表部署实验同一批测量里，两者的 CPU 与延迟看不出差别（Podman 整套多 6%，在波动内）；Podman 没有常驻的守护进程，平台约 0.14 GiB，Docker 的守护进程约 0.55–0.7 GiB，小机器上这约 0.5 GiB 占整套的三成；不常驻 root 守护进程，权限面更小。代价是适配多一些：无根要用户自己的 `podman.socket`，与 Docker 装在同一台机器时要处理转发规则，网络在用户态转发（有根时少 9–10% 的 CPU）。
+- **理由**：代表部署实验同一批测量里，两者的 CPU 与延迟看不出差别（Podman 整套多 6%，在波动内）；Podman 没有常驻的守护进程：同一批里平台自己的内存 Podman 135 MiB、Docker 548 MiB，每台机器省约 0.4 GiB（Docker 的守护进程在另一批里因构建镜像涨到约 0.7 GiB）；不常驻 root 守护进程，权限面更小。代价是适配多一些：无根要用户自己的 `podman.socket`，与 Docker 装在同一台机器时要处理转发规则，网络在用户态转发（有根时少 9–10% 的 CPU）。
 - **不采用**：Docker 为默认（适配与生态最好，但小机器上多出的守护进程内存是持续的代价）；不定默认、按客户选（交付与文档要按两套写）；有根 Podman 为默认（省 CPU，但引擎以 root 运行）。
 - **落在**：[部署与运行](../04-foundations/01-deployment-and-runtime.md)、[部署模式](../00-overview/guides/deployment-modes.md)、[底层选择](../04-foundations/README.md)。
 

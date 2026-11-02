@@ -69,8 +69,9 @@ docker / podman，`target: k8s` 下拒绝——集群里的 Pod 到不了你的�
 `extra_hosts: <服务名>:host-gateway` 解析到宿主机。这些是 BrickKit 在一次运行里自己分的；本机别的程序已经占着的端口，
 要等引擎绑定时才失败——`mode: local` 进程的端口除外，`up` 启动任何进程之前先查（`PORT_CONFLICT`）。项目自己的端口登记表照常用 8080、8081 这些号：进程只有在它的 `deployment.port` 已被这次 `up`
 分给别人时才让出来（从 8081 往上顺延，可能落到另一个组件的端口上，写 `localPort` 就固定了）；「10000 + 各容器端口」
-这一段要留给映射，别登记给组件。这样的进程拿到的值里，`host.docker.internal`（容器里对宿主机的称呼）换成 `localhost`；
-容器拿到的仍是原文，所以同一份 `config/` 两边都能用——不要在 `vars:` 里覆盖它，`vars:` 同样作用于容器。
+这一段要留给映射，别登记给组件。这样的进程拿到的值里，`host.docker.internal`（容器里对宿主机的称呼）换成 `localhost`，除非本机把它解析到
+回环地址（`up` 会说是哪一种）；容器拿到的仍是原文，所以同一份 `config/` 两边都能用——不要在 `vars:` 里覆盖它，`vars:` 同样作用于容器。
+组件把地址交给别的组件时（预签名地址、回调地址），两边要是同一个名字：在 `/etc/hosts` 里加一行 `127.0.0.1 host.docker.internal`。
 
 **5. 值写在 `config/`，键就是环境变量名。**
 
@@ -172,6 +173,17 @@ p99 毛刺）；内存 requests = limits（拿 Guaranteed QoS）。写法：
 （需要时顺手打开本地模式），`up --all` 去掉它；`-f` 与 `--no-local` 跳过它；`sync` 不看它；`local refresh`
 把它列在你的本地修改里。会让文件通不过校验的焦点，在写任何东西之前就被拒绝。
 
+**15. 长期运行的是容器；本机进程不是。**
+
+按部署要在哪里长期运行来选 target。一台机器（一次交付、小规模生产）：推荐 `target: podman`，用无根 Podman——
+没有 root 守护进程，常驻内存比 Docker 的守护进程少约 0.4 GiB，CPU 一样；`target: docker` 同等支持，给已经在跑
+Docker 的机器、或只认 Docker 的周边工具。集群，或者要自愈、跨机器扩容：`target: k8s`（单节点时控制面是约 2 GiB
+的固定开销）。重启机器之后回来是引擎的事，要把引擎设好：Docker 服务开机启动；无根 Podman 要
+`sudo loginctl enable-linger <用户>` 与 `systemctl --user enable podman-restart.service`（`up` 本身还要 `podman.socket`）。
+BrickKit 在 Podman 上生成 `restart: always`，因为 Podman 的开机单元只启动这种策略；开机时引擎不按启动顺序，组件要自己重试连接。
+`mode: local` / `debug` 用于开发、演示与试用——每个组件都 `mode: local` 时不要任何引擎，但会话结束就停、重启机器之后不会回来。
+不要把它们当成交付方案提出来。
+
 ## 机制是怎么运作的
 
 **地址格式在所有 target 下一样**：`http://<版本化服务名>:<端口>`，组件代码零修改，多版本天然共存。
@@ -197,10 +209,10 @@ K8s 下是 Deployment 的副本数（`> 1` 时自动生成 PDB）；迁移都只
 
 ## 去哪查更细的
 
-- 这个版本的 BrickKit 文档，离线可读：`brickkit docs` 列出全部页——三层文件 `brickkit docs 01-three-layers`、本地调试 `brickkit docs 02-project-guide/03-local-debug-workflow`、外壳 `brickkit docs 04-shell`、部署文件全部字段 `brickkit docs 11-reference/03-deploy-yaml-schema`
+- 这个版本的 BrickKit 文档，离线可读：`brickkit docs` 列出全部页——选部署目标与拓扑 `brickkit docs 09-patterns/06-deployment-selection`、三层文件 `brickkit docs 01-three-layers`、本地调试 `brickkit docs 02-project-guide/03-local-debug-workflow`、外壳 `brickkit docs 04-shell`、部署文件全部字段 `brickkit docs 11-reference/03-deploy-yaml-schema`
 - 参数：`brickkit up --help`、`brickkit local --help`、`brickkit build --help`、`brickkit lint --help`
   （`lint --strict` 还会查 `${VAR}` 和 `file://` 引用能否取到）
 - 某个组件要配哪些值：`.brickkit/manifests/<scope>/<name>/<版本>/BRICKKIT.md` 的配置指南
 - 完整规范：<https://github.com/brickKit/brickKit> 根目录 `AGENTS.zh.md`
 
-<!-- brickkit:skill version=v1.10.5 sum=sha256:20e3b1f08ba16b9ebe4b0bc64844d730428ad87cdf6907b92d57a00be7378608 -->
+<!-- brickkit:skill version=v1.11.1 sum=sha256:9a42720bde5bc5bb7bda38ad10d12d4d2caa673f38eaba0d298de69ae2f9e9eb -->

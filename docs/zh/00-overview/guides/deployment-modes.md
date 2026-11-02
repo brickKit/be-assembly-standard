@@ -23,7 +23,7 @@
 
 | 形态 | 是什么 | 优势 | 劣势 | 适合谁 |
 | --- | --- | --- | --- | --- |
-| **P 无根 Podman**（默认） | 每个进程一个容器，没有常驻守护进程 | 不要 root、不要守护进程，平台常驻约 0.14 GiB | 网络在用户态转发（每千次请求约 13 CPU 秒，有根时省掉大部分）；要用户自己的 `podman.socket` | 单机交付的默认；内存紧的小机器；不允许常驻 root 守护进程（RHEL 系） |
+| **P 无根 Podman**（默认） | 每个进程一个容器，没有常驻守护进程 | 不要 root、不要守护进程；平台常驻约 0.14 GiB，同一批里比 Docker 少约 0.4 GiB | 网络在用户态转发（每千次请求约 13 CPU 秒，有根时省掉大部分）；要用户自己的 `podman.socket` | 单机交付的默认；内存紧的小机器；不允许常驻 root 守护进程（RHEL 系） |
 | **D Docker** | 同上，由 Docker 守护进程管理 | 最普及，周边工具最多 | 守护进程常驻约 0.55–0.7 GiB | 已经在用 Docker 的客户；中型单机 |
 | **K Kubernetes** | 每个进程一个 Deployment（外壳的成员各有自己的 Service） | 自动重启、按组件扩容 | 单节点时控制面与 kubelet 常驻约 2 GiB（不含页缓存约 0.75）；崩溃时请求会挂住几秒 | 已有 Kubernetes、要自愈与扩容的中型与集团型客户；小客户不划算 |
 | **L 本机进程** | BrickKit 的 `mode: local` 从源码直接运行，不用容器 | 不用装容器环境，一次启动、一次关闭 | 只活在一次 `up` 会话里，不重启、不开机启动，不能长期运行；`go run` 的包装常驻约 0.4 GiB | 开发、演示、不想装容器环境的试用；**不用于交付** |
@@ -37,7 +37,7 @@
 
 ## 实测的消耗
 
-整套 = 组件 + 基础资源（PostgreSQL、NATS、对象存储、Casdoor）+ 平台（容器引擎或集群）。内存不含页缓存，CPU 是每秒 7 次请求的混合负载下。每一行在自己那一批测量里比；行与行之间来自不同的批，绝对数只能粗看（不同批整体可能差约 8%）。
+整套 = 组件 + 基础资源（PostgreSQL、NATS、对象存储、Casdoor）+ 平台（容器引擎或集群）；实验里基础资源一直跑在 Docker 里，所以 P、K、L 行的整套还含为它们服务的那份 Docker（P 行约 251 MiB），P 行与 D 行整套的差不全是引擎的差——同一批里平台自己的内存 Podman 135 MiB、Docker 548 MiB。内存不含页缓存，CPU 是每秒 7 次请求的混合负载下。每一行在自己那一批测量里比；行与行之间来自不同的批，绝对数只能粗看（不同批整体可能差约 8%）。
 
 | 形态 | S 全部单跑 | H 全部进外壳 | X 混合 |
 | --- | --- | --- | --- |
@@ -83,7 +83,7 @@
 
 | 形态 | 不同的地方 |
 | --- | --- |
-| P 无根 Podman | `target: podman`；用户的 `podman.socket` 要开着；镜像要在 Podman 的存储里（从镜像仓库拉，或 `podman load`）。有根时用系统的 `podman.socket`；Docker 与有根 Podman 不装在同一台机器上（同机时要在 `DOCKER-USER` 链里放行 Podman 的网桥） |
+| P 无根 Podman | `target: podman`；用户的 `podman.socket` 要开着（`systemctl --user enable --now podman.socket`）；**要开机自己回来**：给部署用户开 linger（`sudo loginctl enable-linger <用户>`）并启用 `systemctl --user enable podman-restart.service`——它只启动重启策略为 `always` 的容器，BrickKit v1.11.1 起给 Podman 生成的就是 `always`（之前的 `unless-stopped` 开机不会回来；升级后第一次 `up` 会重建每个容器）；装 Docker 的 Compose V2（`podman compose` 转给它，不需要 Docker Engine）；1024 以下的端口无根发布不了，前面的网关占 443 或调低 `net.ipv4.ip_unprivileged_port_start`；镜像要在 Podman 的存储里（从镜像仓库拉，或 `podman load`）。有根时用系统的 `podman.socket`；Docker 与有根 Podman 不装在同一台机器上（同机时要在 `DOCKER-USER` 链里放行 Podman 的网桥） |
 | D Docker | `target: docker`；容器的重启策略是 `unless-stopped` |
 | K Kubernetes | `target: k8s` 加 `k8s:` 块（`context`、`namespace`、`createNamespace`）；镜像推到集群拉得到的仓库。外部访问经边缘（[边缘](../../04-foundations/09-edge.md)），实验没有接 Ingress |
 | L、LD、LP | 要本机跑的组件或外壳写 `mode: local`；宿主机要有工具链（Go、uv）与源码；`brickkit up` 在前台运行，关掉它本机进程一起停，一个本机进程崩溃时同一会话的其他本机进程也停，容器照常 |
@@ -99,6 +99,7 @@
 | 消息系统停 2 分钟 | 事件积压在发件表（约 4000 条），恢复后约 2 秒清空，投影 1–2 秒追平 |
 | 授权组件停 | 单跑时写操作在授权视图有效期内照常（约 31 秒）后被拒；授权在外壳里时，和它同外壳的成员一起停 |
 | 数据库重启 | 各组件自己重连 |
+| 机器重启 | 容器由引擎拉起：Docker 靠开机启用的 Docker 服务与 `unless-stopped`；无根 Podman 靠 linger 与 `podman-restart.service`（见“怎样部署”）；开机时不按依赖顺序、不再跑迁移，组件自己重试连接依赖。`down` 之后什么都不回来；本机进程从不回来。实验没有真重启过机器 |
 | 升级一个组件 | 被依赖的组件升级要连锁发布依赖方（它们写的是精确版本）；`up` 只换改动的容器，Docker 约 11 秒、Kubernetes 约 18 秒；进外壳的成员升级是重建外壳、只换外壳一个容器 |
 | 滚动升级时新旧版本并存 | SDK 版本不同的组件之间调用、事件、截止时间、追踪都互通；只做加法的契约下新旧两版共用库与流；调用旧版没有的操作答 501 `CAPABILITY_UNSUPPORTED`；旧版的迁移遇到新版迁移过的库按成功结束。收缩迁移（删列、改名）之后还在跑的旧版写入会出错：破坏性变化所有组件一起更新 |
 | 一个组件跑几个副本 | 只发布一次、只执行一次、只生效一次都成立；停或崩一个副本时在途的确认过程续上，负载只丢正在被杀的进程上的请求；组件之间的调用靠服务端定期关连接按时间分到各副本，短时突发会偏到一个副本（[调用与错误](../../04-foundations/08-calls-and-errors.md)） |
@@ -129,7 +130,8 @@
 ## 已知风险与待定
 
 - 结论来自一台机器、12 个组件、小公司规模的负载；负载上限、更多组件同机、多台机器、多节点 Kubernetes、高可用都没有量，在路线的第 4 步另测。
-- 无根 Podman 作为默认，只在有 Docker 也在的机器上测过；只有 Podman 的机器上的有根 Podman 没有单独量。
+- 无根 Podman 作为默认，只在有 Docker 也在的机器上测过；只有 Podman 与 Compose 的机器没有端到端验证，有根 Podman 也没有在那样的机器上单独量。
+- 机器重启后组件自己回来（linger 加 `podman-restart.service`，BrickKit v1.11.1 的 `restart: always`）还没有真重启验证过。
 - 外部请求的边缘（Traefik）没有接上，实验用测试的入口代替；Ingress 未测。
 - 本机进程只用于开发与演示：BrickKit 不重启、不开机启动它们，长期运行不在 BrickKit 的范围内。
 - 每组件一个库、多实例的备份与恢复代价没有量。
