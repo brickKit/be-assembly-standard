@@ -207,3 +207,7 @@ R1 用 R0 的 19 题重考，再加一半新题；Haiku 的平均步数与“经
 （逐个问）
 
 1. 组件建好后，项目的边界卡是否缩成“一行 + 指向组件仓库”，统一语言、拥有的数据、不变量、命令搬进组件（R1 在 `mdm` 试）。
+
+## 从交接移来的记录（2026-11-02 重写交接时）
+
+- 本轮的发布已推送（2026-10-22，用户同意）：`be-protocol` `v3.0.0-alpha.20`、`be-sdk-go` `v3.0.0-alpha.26`；`mdm/org` 3.0.4，`mdm/currency`、`mdm/partner`、`mdm/product` 3.0.5；`infra/authz` 3.0.5（包改名为 `authz/`）、`infra/audit` 3.0.3（包改名为 `audit/`）、`infra/iam-casdoor` 3.0.4；外壳 `be/go-infra` 3.0.25 编进 `mdm` 3.0.3/3.0.4、`infra/authz` 3.0.4、`infra/audit` 3.0.3、`infra/iam-casdoor` 3.0.3（之后只改了文档的版本没有再进外壳）。外壳 3.0.23 误带了 52MB 的构建产物，3.0.24 移除；用户同意保留历史、不改写。

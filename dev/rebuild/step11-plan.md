@@ -111,3 +111,7 @@ D、K 两行各三格：D9-S、D9-H、D9-X、K9-S、K9-H、K9-X（第 9 步的�
 - 2026-10-30 17:30–23:48 正式运行 `night11.sh`（维护者下令），23:48–00:13 补跑 K9-H 的 R5、R4（`be-acceptance` v1.0.11：拆出后外壳离开项目，格工具重建 NodePort 时不再找它的 Service）。70 项之后不变量全部成立；结果与发现见 [11-01](experiment-records/11-01-suite-c-faults.md)，原始数据在 `experiment-data/11-01/`。补跑里 K9-H 的 R5 场景在换拓扑后的熔断窗口里失败，`ops11.sh split` 当时仍报通过，已改成场景失败即失败。
 - 计划里有、工具没做的（11-01 第 4 节）：发件表积压峰值、消息流不缺不重、部门投影追平、审计一致性的检查；LD9-S 的本机进程崩溃复核。补做要另写检查、再跑一晚，要不要补由维护者定。另外两件见第 8 节（熔断已定，探针已提 BrickKit）。
 - 2026-10-31 维护者定为补做。四项检查写进 `be-acceptance` v1.0.12（`cells invariants` 加部门投影、订单审计与审计送达、流里每条发件正好一条与重复计数；RS18 每秒采发件表积压、停的期间改部门名并量投影追平），LD9-S 用 `local11.sh`。按维护者用机器的空档分三轮跑（`night11c.sh`，2026-10-31 12:52–2026-11-01 00:59）：六格每项故障之后全部成立；LD9-S 符合设计。D9-H 拆出后马上跑的 L3 场景失败，查明是 Docker 上同时起的成员之间的启动竞争让销售对库存的熔断器打开 5 秒，`ops11.sh` 改为等容器健康、`/readyz`、调用方稳定之后再跑场景，复测通过（r4–r6，至 2026-11-01 02:00）。结果见 [11-03](experiment-records/11-03-suite-c-remaining-checks.md)，原始数据在 `experiment-data/11-03/night11c/`。第 11 步做完。
+
+## 从交接移来的记录（2026-11-02 重写交接时）
+
+- **熔断的打开期**（D79，2026-10-31）：5 秒起、试探失败加倍到 30 秒；`be-protocol` alpha.28、`be-sdk-go` alpha.37、`be-sdk-python` a33，12 个组件与 3 个外壳连锁发布（iam-casdoor 3.0.11、authz 3.0.12、audit 3.0.9、org 3.0.10、currency 3.0.11、partner 3.0.13、product 3.0.13、inventory 3.0.10、credit 3.0.9、sales 3.0.15、billing 3.0.14、print 3.0.8；go-infra 3.0.37、go-core 3.0.39、py-render 3.0.28），62 个现行的格换到这些版本。复测 K9-S 的库存崩溃，`processing` 窗口 31 → 7 秒（11-01 第 7 节）。

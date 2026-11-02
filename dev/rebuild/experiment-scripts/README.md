@@ -69,6 +69,7 @@
 | 脚本 | 做什么 |
 | --- | --- |
 | `runner13.sh` | 一批格依次跑完套件 E：起格（种子与 L3 场景）、基线、不变量；背景负载下依次做 `STEPS`（`scenarios`、`faults:<-k>`、`e4`、`e7`、`sh:<命令>`），每步之后不变量；停格前用 `cell-logs.sh` 存日志 |
+| `podman-preflight.sh` | P、LP 两行起格前（`cell-chain.sh` 的第一段）：在用户的 systemd 里确认 `podman` 能建用户命名空间——VS Code 等 snap 里的终端可能放开了机器上别处不允许的东西（第 14 步、整个实验的复盘 K2）；`PODMAN_PREFLIGHT_WRAP="aa-exec -p unprivileged_userns --"` 让它变红 |
 | `cell-logs.sh` | 停格前存下一个格的日志：每个容器或 Pod 的日志（按格的行选引擎）、`replica-counts.sh` 的逐副本计数、大于 256 KiB 的压缩；各运行器与 `cell-chain.sh` 都调用它，手工停格前也先跑它（第 13 步复盘 J4） |
 | `replica-counts.sh` | 从存下的日志算每个容器、Pod 或进程服务的请求：全部、用户面（`/api`）、系统面（gRPC） |
 | `holders.py` | 负载期间每 2 秒采样运行中工作项的持有进程，看每个副本都认领过工作 |
