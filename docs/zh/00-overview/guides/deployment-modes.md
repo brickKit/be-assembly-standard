@@ -83,7 +83,7 @@
 
 | 形态 | 不同的地方 |
 | --- | --- |
-| P 无根 Podman | `target: podman`；用户的 `podman.socket` 要开着（`systemctl --user enable --now podman.socket`）；**要开机自己回来**：给部署用户开 linger（`sudo loginctl enable-linger <用户>`）并启用 `systemctl --user enable podman-restart.service`——它只启动重启策略为 `always` 的容器，BrickKit v1.11.1 起给 Podman 生成的就是 `always`（之前的 `unless-stopped` 开机不会回来；升级后第一次 `up` 会重建每个容器）；装 Docker 的 Compose V2（`podman compose` 转给它，不需要 Docker Engine）；1024 以下的端口无根发布不了，前面的网关占 443 或调低 `net.ipv4.ip_unprivileged_port_start`；镜像要在 Podman 的存储里（从镜像仓库拉，或 `podman load`）。有根时用系统的 `podman.socket`；Docker 与有根 Podman 不装在同一台机器上（同机时要在 `DOCKER-USER` 链里放行 Podman 的网桥） |
+| P 无根 Podman | `target: podman`；用户的 `podman.socket` 要开着（`systemctl --user enable --now podman.socket`）；**要开机自己回来**：给部署用户开 linger（`sudo loginctl enable-linger <用户>`）并启用 `systemctl --user enable podman-restart.service`——它只启动重启策略为 `always` 的容器，BrickKit v1.11.1 起给 Podman 生成的就是 `always`（之前的 `unless-stopped` 开机不会回来；升级后第一次 `up` 会重建每个容器）；Podman 的存储放在单独的磁盘上、而那块盘在 fstab 里带 `nofail` 时，systemd 不保证它在用户的 systemd 之前挂上，要给 `user@<uid>.service` 加 `RequiresMountsFor=<那块盘>`（drop-in），否则开机时 `podman-restart` 找不到存储；装 Docker 的 Compose V2（`podman compose` 转给它，不需要 Docker Engine）；1024 以下的端口无根发布不了，前面的网关占 443 或调低 `net.ipv4.ip_unprivileged_port_start`；镜像要在 Podman 的存储里（从镜像仓库拉，或 `podman load`）。有根时用系统的 `podman.socket`；Docker 与有根 Podman 不装在同一台机器上（同机时要在 `DOCKER-USER` 链里放行 Podman 的网桥） |
 | D Docker | `target: docker`；容器的重启策略是 `unless-stopped` |
 | K Kubernetes | `target: k8s` 加 `k8s:` 块（`context`、`namespace`、`createNamespace`）；镜像推到集群拉得到的仓库。外部访问经边缘（[边缘](../../04-foundations/09-edge.md)），实验没有接 Ingress |
 | L、LD、LP | 要本机跑的组件或外壳写 `mode: local`；宿主机要有工具链（Go、uv）与源码；`brickkit up` 在前台运行，关掉它本机进程一起停，一个本机进程崩溃时同一会话的其他本机进程也停，容器照常 |
