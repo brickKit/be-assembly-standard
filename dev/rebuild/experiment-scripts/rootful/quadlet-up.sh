@@ -6,7 +6,9 @@
 # chain lets Podman's bridges through, at every boot; (2) the cell's Docker-built images into root's Podman storage
 # (the same images in every row); (3) `brickkit up` as root (it installs into /etc/containers/systemd), the cell's
 # .env holding the ${VAR}s; then the cell's files go back to their owner; (4) BrickKit's environment check, as root:
-# with the forward unit enabled, briefly with it disabled (FRR-024 expects a warning), and with --units quadlet.
+# with the forward unit enabled, briefly with it disabled (FRR-024 expects a warning), and with --units quadlet;
+# (5) once cell-chain.sh's secure stage has written the install claim into config/ (it can't run `up` itself), `up`
+# again so that the authorization member restarts with it. `--again` does only (5), for a claim already written.
 # Outputs go to experiment-data/14-03-quadlet/rootful-setup/. rootful/quadlet-revert.sh undoes all of it.
 set -euo pipefail
 [ "$(id -u)" = 0 ] || { echo "run as root"; exit 1; }
@@ -14,6 +16,19 @@ CELL=$1; R=/home/zhijie/Desktop/github/be-assembly-standard; D=$R/dev/rebuild/ex
 OUT=$R/dev/rebuild/experiment-data/14-03-quadlet/rootful-setup; CHECK=/home/zhijie/Desktop/github/brickKit/scripts/podman/check-environment.sh
 OWNER=$(stat -c %U:%G "$D/cell.yaml"); mkdir -p "$OUT"
 grep -q '^units: *quadlet' "$D/cell.yaml" && grep -q '^podman: *rootful' "$D/cell.yaml" || { echo "$CELL is not a rootful Quadlet cell"; exit 1; }
+up() {  # up <output file>: `brickkit up` as root, then the cell's files back to their owner
+  local rc=0; (cd "$D" && /home/zhijie/.local/bin/brickkit up) 2>&1 | tee "$1" || rc=$?
+  chown -R "$OWNER" "$D"
+  [ "$rc" = 0 ] || { echo "brickkit up failed ($rc)"; exit "$rc"; }
+}
+claimed() {  # the install claim cells/secure.py writes, then up again
+  local t0; t0=$(date +%s)
+  echo "waiting for the install claim in config/infra-authz.yaml (cell-chain.sh's secure stage)..."
+  until grep -q '^AUTHZ_BOOTSTRAP_ADMIN:' "$D/config/infra-authz.yaml"; do
+    [ $(( $(date +%s) - t0 )) -gt 900 ] && { echo "no install claim after 15 min"; exit 1; }; sleep 2; done
+  up "$OUT/8-up-with-claim.txt"; chown -R "$OWNER" "$OUT"; echo "done: the authorization member runs with the claim"
+}
+[ "${2:-}" = --again ] && { claimed; exit 0; }
 
 cat > /etc/systemd/system/podman-docker-forward.service <<'UNIT'
 [Unit]
@@ -43,9 +58,7 @@ for img in $(python3 -c 'import sys,yaml
 done
 podman images --format '{{.Repository}}:{{.Tag}}' | sort | tee "$OUT/2-images.txt"
 
-rc=0; (cd "$D" && /home/zhijie/.local/bin/brickkit up) 2>&1 | tee "$OUT/3-up.txt" || rc=$?
-chown -R "$OWNER" "$D"
-[ "$rc" = 0 ] || { echo "brickkit up failed ($rc)"; exit "$rc"; }
+up "$OUT/3-up.txt"
 { systemctl list-units 'brickkit-*' --all --no-legend; podman ps --format '{{.Names}} {{.Status}}'; } | tee "$OUT/4-units.txt"
 
 bash "$CHECK" > "$OUT/5-check-env.txt" 2>&1 || true
@@ -54,4 +67,5 @@ bash "$CHECK" > "$OUT/6-check-env-forward-disabled.txt" 2>&1 || true
 systemctl enable podman-docker-forward.service
 bash "$CHECK" --units quadlet > "$OUT/7-check-env-quadlet.txt" 2>&1 || true
 chown -R "$OWNER" "$OUT"
+claimed
 echo "done: outputs in $OUT"

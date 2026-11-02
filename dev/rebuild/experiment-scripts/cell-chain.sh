@@ -8,6 +8,7 @@
 # the conformance tools, so that editing them does not change a run in progress. MOVE=1 (D and P rows) adds the
 # regression of 8-01 section 6 after the seeds: the authorization member restarts on another IP address and the L3
 # scenarios, which never retry, run as soon as it is ready again.
+# FROM=<stage> resumes a failed run at that stage.
 # Usage: cell-chain.sh <cell name, e.g. D8-S> <output directory>
 set -u
 CELL=$1; OUT=$(realpath -m "$2"); R=/home/zhijie/Desktop/github/be-assembly-standard
@@ -34,8 +35,12 @@ casdoor_secret() {  # from whichever PostgreSQL holds Casdoor's schema: Docker's
 export BE_ACC_IAM_CLIENT_SECRET BE_ACC_IAM_DEV_CLIENT_SECRET
 BE_ACC_IAM_CLIENT_SECRET=$(casdoor_secret be-iam-client); BE_ACC_IAM_DEV_CLIENT_SECRET=$(casdoor_secret be-iam-dev-client)
 I=0
-stage() {  # stage <name> <command...>; stops the run on failure
+stage() {  # stage <name> <command...>; stops the run on failure. FROM=<name> skips the stages before that one (a run
+  # that failed there resumes on the cell as it is)
   I=$((I+1)); local name=$1; shift; local t0; t0=$(date +%s)
+  if [ -n "${FROM:-}" ]; then
+    if [ "$name" = "$FROM" ]; then FROM=; else echo "STAGE $I $name SKIPPED" >> "$OUT/status.log"; return 0; fi
+  fi
   echo "STAGE $I $name BEGIN $(date -Is)" >> "$OUT/status.log"
   ( "$@" ) > "$OUT/logs/$I-$name.log" 2>&1; local rc=$?
   echo "STAGE $I $name END exit=$rc secs=$(( $(date +%s) - t0 ))" >> "$OUT/status.log"
@@ -140,8 +145,8 @@ if [ "$ROW" = L ] || [ "$ROW" = LD ] || [ "$ROW" = LP ]; then
     "$(forward_pid "$D")" "$D" < /dev/null > "$OUT/logs/forward.log" 2>&1 &)
 elif [ -n "$ROOTQ" ]; then
   # root's `brickkit up` evaluates the ${VAR}s itself: the cell's .env (gitignored) hands it the two this runner exports
-  printf 'BE_ACC_IAM_CLIENT_SECRET=%s\nBE_ACC_IAM_DEV_CLIENT_SECRET=%s\n' "$BE_ACC_IAM_CLIENT_SECRET" \
-    "$BE_ACC_IAM_DEV_CLIENT_SECRET" > "$D/.env"
+  (umask 077; printf 'BE_ACC_IAM_CLIENT_SECRET=%s\nBE_ACC_IAM_DEV_CLIENT_SECRET=%s\n' "$BE_ACC_IAM_CLIENT_SECRET" \
+    "$BE_ACC_IAM_DEV_CLIENT_SECRET" > "$D/.env")
   echo "WAITING for: sudo dev/rebuild/experiment-scripts/rootful/quadlet-up.sh $CELL $(date -Is)" >> "$OUT/status.log"
   stage up-by-root bash -c "cd $CONF && uv run python -c 'import sys, yaml; from cells.units import wait_answering; wait_answering([c[\"exposePort\"] for c in yaml.safe_load(open(sys.argv[1]))[\"components\"] if \"exposePort\" in c], timeout=3600)' $D/deploy.yaml"
 else

@@ -1,0 +1,23 @@
+== Podman environment check ==
+
+✅ podman found: podman version 5.7.0
+✅ $XDG_DATA_HOME does not look snap-redirected.
+✅ 'podman info' runs cleanly.
+Running as root: checking rootful Podman (compose).
+⚠️  podman.socket is not active — 'podman compose' will fail to connect.
+⚠️  Fix: systemctl enable --now podman.socket
+
+Checking that two containers on one network can reach each other...
+✅ Containers on one network reach each other.
+
+Running a real create+remove cycle to check teardown reliability...
+✅ Container removed cleanly. This machine does not show the AppArmor teardown issue.
+You don't need scripts/podman/fix-apparmor.sh.
+
+Checking what a deployment needs to come back after a reboot (warnings only)...
+⚠️  podman-restart.service is not enabled: nothing starts the containers at boot. Fix: systemctl enable podman-restart.service
+⚠️  Docker runs here, and podman-docker-forward.service is not enabled: the rules letting Podman's bridges through DOCKER-USER are lost at reboot.
+  Fix (unless this host's firewall setup restores them another way): the unit in
+  docs/en/10-troubleshooting/01-up-down-issues.md#all-healthy-on-podman-yet-calls-between-containers-time-out
+
+Nothing to do.
