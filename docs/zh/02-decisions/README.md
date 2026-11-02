@@ -14,7 +14,7 @@
 | [审批与流程](04-approval-and-workflow.md) | D11、D18、D19、D23、D33、D38、D39、D60 |
 | [事务、数据、审计与恢复](05-transactions-data-and-recovery.md) | D12–D14、D26、D28、D65（已被取代）、D66、D79 |
 | [前端与终端](06-frontend.md) | D17、D24、D34 |
-| [部署、交付与维护](07-deployment-and-delivery.md) | D25、D32、D40–D43、D54、D55、D58、D63、D75 |
+| [部署、交付与维护](07-deployment-and-delivery.md) | D25、D32、D40–D43、D54、D55、D58、D63、D75、D80 |
 | [文档与设计推进方式](08-documentation-and-process.md) | D56、D59、D67、D74 |
 | [AI 做出的设计选择](09-ai-choices.md) | A 编号：AI 按授权做出的选择与维护者的复核结论 |
 | [原有决定](10-earlier-decisions.md) | 0101–0509：终局设计之前的决定，按原编号承接、修订或取代 |

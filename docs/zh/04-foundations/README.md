@@ -53,12 +53,12 @@
 | --- | --- | --- | --- | --- | --- |
 | 消息运输 | NATS JetStream；PostgreSQL 队列 | 每个组件的 `BUS_URL`：`nats://…` 或 `pgqueue://…?schema=<总线 schema>`（协议第 6 章 P6.16）；PostgreSQL 队列要先建总线的角色与 schema，再执行总线迁移 | 同一条运输链上的生产者与全部订阅者必须用同一个总线；PostgreSQL 队列与业务共用数据库、每条消息的开销比 JetStream 大，适合不想多跑一个消息服务的小型安装与测试环境 | 两个 SDK 都实现并跑同一组运输检查；代表部署实验的 D 行每格都有 JetStream 与 PostgreSQL 队列两版 | [消息运输](06-message-transport.md)、[事务与消息](03-transactions-and-messaging.md#消息运输的选择) |
 | 对象存储 | RustFS；SeaweedFS；其他兼容 S3 的实现或客户提供的 S3 服务 | 每个组件的 `OBJECT_STORE_URL` 及同组的桶、前缀、凭据键（协议第 2 章）；开发环境用 `make seaweedfs-up` 换成 SeaweedFS，地址不变 | 所用的 S3 子集（签名、预签名、长度限制、并发等）要在目标实现上验；不设时大事件无法经对象存储传递（P6.14） | RustFS 在实验中使用；SeaweedFS 通过 SDK 现在用到的子集，并与 RustFS 实测对比过（各有长短，见详细）；存储一致性套件的其余项未测 | [数据与生命周期的对象存储](02-data-and-lifecycle.md#对象存储) |
-| 数据库连接 | 组件直连 PostgreSQL；可在前面加事务模式的连接池代理（PgBouncer 等） | 运行连接（`PG_HOST`、`PG_PORT`）指向代理，迁移连接（`PG_MIGRATION_HOST`、`PG_MIGRATION_PORT`）指向数据库本身；按代理的能力设置 `PG_POOLER_PREPARED` | 必须是事务模式；一切会话设置都在事务内（本项目的约定已经如此） | 计划作为实验的对照组，未测 | [数据库引擎与连接](05-database-engine.md) |
-| 数据库实例 | 小型部署共用一个实例，每个组件独立 schema 与角色；需要隔离或成为热点时独立数据库或实例 | 各组件的 `PG_HOST`、`PG_DATABASE` 指向不同的实例或库 | 引擎本身不可切换：其他 SQL 方言按客户要求做专项，不是配置项 | 共用实例在实验中使用；少量组件的多实例多库在实验计划中 | [数据与生命周期](02-data-and-lifecycle.md)、[数据库引擎](05-database-engine.md) |
+| 数据库连接 | 组件直连 PostgreSQL；可在前面加事务模式的连接池代理（PgBouncer 等） | 运行连接（`PG_HOST`、`PG_PORT`）指向代理，迁移连接（`PG_MIGRATION_HOST`、`PG_MIGRATION_PORT`）指向数据库本身；按代理的能力设置 `PG_POOLER_PREPARED` | 必须是事务模式；一切会话设置都在事务内（本项目的约定已经如此） | 代表部署实验对照过：事务模式的 PgBouncer 让后端连接约减半、数据库内存少约 200 MiB，整套 CPU 多约 9%；默认不加（A113） | [数据库引擎与连接](05-database-engine.md) |
+| 数据库实例 | 小型部署共用一个实例，每个组件独立 schema 与角色；需要隔离或成为热点时独立数据库或实例 | 各组件的 `PG_HOST`、`PG_DATABASE` 指向不同的实例或库 | 引擎本身不可切换：其他 SQL 方言按客户要求做专项，不是配置项 | 共用实例、每组件一个 schema 是默认；每组件一个库、交易组件单独一个实例都在代表部署实验中测过：业务结果相同，延迟与组件的 CPU、内存看不出差别，第二个实例多约 160 MiB 内存 | [数据与生命周期](02-data-and-lifecycle.md)、[数据库引擎](05-database-engine.md) |
 | 观测后端 | 默认 Tempo、Loki、Prometheus、Grafana；任何接收 OTLP 的平台 | 追踪经 `OTEL_URL` 发往所选后端（不设即关闭）；指标由 Prometheus 拉取 `/metrics`；日志写标准输出，由采集器收集 | 换后端不动组件 | 输出格式由协议第 10 章与剖面检查验证；后端组合未测 | [观测](10-observability.md) |
 | 边缘入口 | Traefik；Kubernetes 上能合并同一主机多份 Ingress 的控制器；需要跨实例全局限流时 Envoy Gateway 等 | 部署时的选择 | 永不路由的路径与路由由声明派生，换产品时照样适用 | 未测 | [边缘入口](09-edge.md) |
-| 运行形态 | Docker；Podman；Kubernetes；本机进程（开发与实验） | `deploy.yaml` 的 `target`；本机进程用 BrickKit 的 `mode: local` | 本机进程由运行 `up` 的会话看护，长期运行的看护不在 BrickKit 范围内 | Docker 在实验中使用；Podman、Kubernetes 与本机进程在实验的后续步骤中 | [部署与运行](01-deployment-and-runtime.md) |
-| 运行拓扑 | 单跑；外壳；两者混合 | `deploy.yaml` 中把成员嵌在外壳下或放在顶层 | 外壳的成员清单、编进的成员与依赖锁必须一致（协议 17） | 实验 D 行实测三种拓扑 | [部署与运行](01-deployment-and-runtime.md)、协议 17 |
+| 运行形态 | 无根 Podman（默认，D80）；Docker；Kubernetes；本机进程（开发与演示） | `deploy.yaml` 的 `target`；本机进程用 BrickKit 的 `mode: local` | 本机进程由运行 `up` 的会话看护，长期运行的看护不在 BrickKit 范围内 | 代表部署实验测了 Docker、Podman（无根与有根）、单节点 Kubernetes、本机进程及其与 Docker 或 Podman 的混合；默认无根 Podman（D80） | [部署与运行](01-deployment-and-runtime.md) |
+| 运行拓扑 | 单跑；外壳；两者混合 | `deploy.yaml` 中把成员嵌在外壳下或放在顶层 | 外壳的成员清单、编进的成员与依赖锁必须一致（协议 17） | 每种运行形态都实测了单跑、外壳与混合；默认见 A112 | [部署与运行](01-deployment-and-runtime.md)、协议 17 |
 
 新的底层实现按同一方式加入：先有协议规定的端口与共同验收（例如运输的同一组检查），再进这张表；只在一处试用过的不列为选项。
 

@@ -68,6 +68,7 @@
 | 设计模式；文件太长；要不要为性能优化 | [AI 编码习惯](docs/zh/01-conventions/09-ai-coding.md) |
 | 写或拆文档；画图与表 | [文档规则](docs/zh/01-conventions/03-documentation.md)、[图与表](docs/zh/01-conventions/04-diagrams-and-tables.md) |
 | 升版本；发布；打标签 | [版本与发布](docs/zh/01-conventions/10-development-workflow.md#版本)、`brickkit-component` 技能 |
+| 用哪种部署模式；Podman 还是 Docker；外壳还是单跑；要多大的机器 | [部署模式](docs/zh/00-overview/guides/deployment-modes.md)（默认与实测的代价） |
 | 安装或部署；谁建数据库；密钥；Kubernetes；只跑一个组件 | `brickkit-deploy` 技能（[SKILL.md](.claude/skills/brickkit-deploy/SKILL.md)）、[部署与运行](docs/zh/04-foundations/01-deployment-and-runtime.md)、[真机运行](docs/zh/01-conventions/10-development-workflow.md#真机运行)、组件 `BRICKKIT.md` 的“部署前准备” |
 | 上线、备份与恢复、升级、告警 | [运维手册](docs/zh/05-operations/README.md) |
 | 加、删、升级组件；组件起不来；`brickkit` 报错 | `brickkit-assemble`、`brickkit-troubleshoot` 技能；`brickkit <命令> --help` |
