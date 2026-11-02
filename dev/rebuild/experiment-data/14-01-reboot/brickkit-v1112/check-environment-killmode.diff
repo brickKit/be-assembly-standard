@@ -1,0 +1,10 @@
+206c206
+<     systemd-run --user --wait --pipe --quiet "$@"
+---
+>     if [[ "$1" == -p ]]; then systemd-run --user --wait --pipe --quiet "$1" "$2" "${@:3}"; else systemd-run --user --wait --pipe --quiet "$@"; fi
+207a208
+>     if [[ "$1" == -p ]]; then shift 2; fi
+226c227
+< elif ! in_user_systemd podman run -d --name "$NAME" --network bridge alpine:latest sleep 30 >/dev/null 2>&1; then
+---
+> elif ! in_user_systemd -p KillMode=process podman run -d --name "$NAME" --network bridge alpine:latest sleep 30 >/dev/null 2>&1; then

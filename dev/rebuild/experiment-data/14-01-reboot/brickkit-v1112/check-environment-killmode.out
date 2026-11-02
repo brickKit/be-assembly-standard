@@ -1,0 +1,26 @@
+== Podman environment check ==
+
+✅ podman found: podman version 5.7.0
+✅ $XDG_DATA_HOME does not look snap-redirected.
+✅ 'podman info' runs cleanly.
+
+AppArmor restricts unprivileged user namespaces here: checking podman as the user's systemd starts it...
+✅ podman runs under an AppArmor profile that allows user namespaces (podman (unconfined)).
+Running as zhijie: checking rootless Podman (run as root to check rootful Podman).
+✅ podman.socket is active (needed for 'podman compose').
+
+Checking that two containers on one network can reach each other...
+✅ Containers on one network reach each other.
+
+Running a real create+remove cycle to check teardown reliability...
+✅ Container removed cleanly. This machine does not show the AppArmor teardown issue.
+You don't need scripts/podman/fix-apparmor.sh.
+
+Checking what a deployment needs to come back after a reboot (warnings only)...
+✅ Linger is on for zhijie.
+✅ podman-restart.service (user unit) is enabled.
+✅ podman-restart.service waits for the network.
+✅ Podman's storage (/home/zhijie/data, nofail) is mounted before the user's systemd starts.
+
+Nothing to do.
+exit=0

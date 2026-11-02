@@ -1,0 +1,14 @@
+== md5 vs packaged
+ee63594be1590a1a80ad24463be3aec9  /etc/apparmor.d/podman
+39ac544fc1bcdf880b1c2ce1ecbd7a9b  /etc/apparmor.d/usr.bin.passt
+bf3c5bca5f9358c6356ed44fe7749bc8  /etc/apparmor.d/usr.bin.pasta
+ /etc/apparmor.d/podman ee63594be1590a1a80ad24463be3aec9
+ /etc/apparmor.d/usr.bin.passt 28d59d63fbb3dd9268f93105ab690545
+ /etc/apparmor.d/usr.bin.pasta c7b2926613394e4de6f5f146a87d0b63
+== pasta profile
+18:profile pasta /usr/bin/pasta{,.avx2} flags=(attach_disconnected, complain) {
+19:  signal (receive) set=(term) peer=podman,
+== passt profile signal lines
+2
+== podman label from user systemd
+podman (unconfined)
