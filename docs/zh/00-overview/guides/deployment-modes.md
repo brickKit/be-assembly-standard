@@ -83,10 +83,26 @@
 
 | 形态 | 不同的地方 |
 | --- | --- |
-| P 无根 Podman | `target: podman`；用户的 `podman.socket` 要开着（`systemctl --user enable --now podman.socket`）；**要开机自己回来**：给部署用户开 linger（`sudo loginctl enable-linger <用户>`）并启用 `systemctl --user enable podman-restart.service`——它只启动重启策略为 `always` 的容器，BrickKit v1.11.1 起给 Podman 生成的就是 `always`（之前的 `unless-stopped` 开机不会回来；升级后第一次 `up` 会重建每个容器）；Podman 的存储放在单独的磁盘上、而那块盘在 fstab 里带 `nofail` 时，systemd 不保证它在用户的 systemd 之前挂上，要给 `user@<uid>.service` 加 `RequiresMountsFor=<那块盘>`（drop-in），否则开机时 `podman-restart` 找不到存储；装 Docker 的 Compose V2（`podman compose` 转给它，不需要 Docker Engine）；1024 以下的端口无根发布不了，前面的网关占 443 或调低 `net.ipv4.ip_unprivileged_port_start`；镜像要在 Podman 的存储里（从镜像仓库拉，或 `podman load`）。有根时用系统的 `podman.socket`；Docker 与有根 Podman 不装在同一台机器上（同机时要在 `DOCKER-USER` 链里放行 Podman 的网桥） |
+| P 无根 Podman | `target: podman`；主机先照下面“为无根 Podman 准备主机”做一遍。有根时用系统的 `podman.socket`；Docker 与有根 Podman 不装在同一台机器上（同机时要在 `DOCKER-USER` 链里放行 Podman 的网桥） |
 | D Docker | `target: docker`；容器的重启策略是 `unless-stopped` |
 | K Kubernetes | `target: k8s` 加 `k8s:` 块（`context`、`namespace`、`createNamespace`）；镜像推到集群拉得到的仓库。外部访问经边缘（[边缘](../../04-foundations/09-edge.md)），实验没有接 Ingress |
 | L、LD、LP | 要本机跑的组件或外壳写 `mode: local`；宿主机要有工具链（Go、uv）与源码；`brickkit up` 在前台运行，关掉它本机进程一起停，一个本机进程崩溃时同一会话的其他本机进程也停，容器照常 |
+
+### 为无根 Podman 准备主机
+
+以部署用户的身份做一次，之后 `brickkit up` 起的容器在崩溃与机器重启后都会自己回来。前三步缺了哪一步，开机时都会静默失败：服务器开机后没人登录，没有人会发现。
+
+1. 装 Podman 与 Docker 的 Compose V2（`podman compose` 转给它，不需要 Docker Engine）。
+2. `systemctl --user enable --now podman.socket`：`brickkit up`、`down`、`status` 经它连 Podman。
+3. **AppArmor 限制无特权用户命名空间的发行版**（Ubuntu 23.10 起，`sysctl kernel.apparmor_restrict_unprivileged_userns` 为 1）：给 `/usr/bin/podman` 一个允许 `userns` 的配置，照发行版自带的 `/etc/apparmor.d/buildah` 写 `/etc/apparmor.d/podman`（`profile podman /usr/bin/podman flags=(unconfined) { userns, @{exec_path} mr, include if exists <local/podman> }`），`sudo apparmor_parser -r /etc/apparmor.d/podman`。没有它，在用户的 systemd、ssh 或普通终端里启动的 `podman` 建不了自己的用户命名空间（`failed to reexec: Permission denied`）。检查：`systemd-run --user --wait podman unshare true` 以 0 退出。比关掉整个限制窄。
+4. `sudo loginctl enable-linger <用户>`：用户的服务开机就启动，不等有人登录。
+5. `systemctl --user enable podman-restart.service`：开机时拉起重启策略为 `always` 的容器（BrickKit v1.11.1 起给 Podman 生成的就是 `always`；之前的 `unless-stopped` 开机不会回来，升级后第一次 `up` 会重建每个容器）。
+6. **让 `podman-restart` 等网络**：它写的 `After=network-online.target` 在用户的 systemd 里不起作用；加用户级 drop-in `~/.config/systemd/user/podman-restart.service.d/wait-network.conf`，内容为 `[Unit]`、`Wants=podman-user-wait-network-online.service`、`After=podman-user-wait-network-online.service`（Podman 自带的单元，轮询系统的网络在线，最多 90 秒）。没有它，地址由 DHCP 慢一点取到时，无根网络命名空间先于网络起来、之后一直不通，组件连不上宿主机上的基础资源、反复重启。
+7. Podman 的存储（`~/.local/share/containers`）放在另一块盘、那块盘在 fstab 里带 `nofail` 时，给 `user@<uid>.service` 加 drop-in `RequiresMountsFor=<那块盘>`：systemd 不保证这样的盘在用户的 systemd 之前挂上。
+8. 1024 以下的端口无根发布不了：前面的网关占 443，或调低 `net.ipv4.ip_unprivileged_port_start`。
+9. 镜像要在 Podman 的存储里（从镜像仓库拉，或 `podman load`）。
+
+验证：用 `target: podman` 起一套，真重启一次机器，不登录、不跑 `up`，等网络在线后 `brickkit status` 全部 healthy。实验在 Ubuntu 26.04 上这样做了三次：缺第 3 步时一个都没回来，缺第 6 步时拉起了但连不上基础资源，第 3–7 步都做了时 12 个组件不用人动手全部 healthy。
 
 ## 出事时、升级时、版本不整齐时
 
@@ -99,7 +115,7 @@
 | 消息系统停 2 分钟 | 事件积压在发件表（约 4000 条），恢复后约 2 秒清空，投影 1–2 秒追平 |
 | 授权组件停 | 单跑时写操作在授权视图有效期内照常（约 31 秒）后被拒；授权在外壳里时，和它同外壳的成员一起停 |
 | 数据库重启 | 各组件自己重连 |
-| 机器重启 | 容器由引擎拉起：Docker 靠开机启用的 Docker 服务与 `unless-stopped`；无根 Podman 靠 linger 与 `podman-restart.service`（见“怎样部署”）；开机时不按依赖顺序、不再跑迁移，组件自己重试连接依赖。`down` 之后什么都不回来；本机进程从不回来。实验没有真重启过机器 |
+| 机器重启 | 容器由引擎拉起：Docker 靠开机启用的 Docker 服务与 `unless-stopped`；无根 Podman 靠“为无根 Podman 准备主机”的第 3–7 步；开机时不按依赖顺序、不再跑迁移，组件自己重试连接依赖。`down` 之后什么都不回来；本机进程从不回来。实验在无根 Podman 上真重启验证过 |
 | 升级一个组件 | 被依赖的组件升级要连锁发布依赖方（它们写的是精确版本）；`up` 只换改动的容器，Docker 约 11 秒、Kubernetes 约 18 秒；进外壳的成员升级是重建外壳、只换外壳一个容器 |
 | 滚动升级时新旧版本并存 | SDK 版本不同的组件之间调用、事件、截止时间、追踪都互通；只做加法的契约下新旧两版共用库与流；调用旧版没有的操作答 501 `CAPABILITY_UNSUPPORTED`；旧版的迁移遇到新版迁移过的库按成功结束。收缩迁移（删列、改名）之后还在跑的旧版写入会出错：破坏性变化所有组件一起更新 |
 | 一个组件跑几个副本 | 只发布一次、只执行一次、只生效一次都成立；停或崩一个副本时在途的确认过程续上，负载只丢正在被杀的进程上的请求；组件之间的调用靠服务端定期关连接按时间分到各副本，短时突发会偏到一个副本（[调用与错误](../../04-foundations/08-calls-and-errors.md)） |
@@ -131,7 +147,7 @@
 
 - 结论来自一台机器、12 个组件、小公司规模的负载；负载上限、更多组件同机、多台机器、多节点 Kubernetes、高可用都没有量，在路线的第 4 步另测。
 - 无根 Podman 作为默认，只在有 Docker 也在的机器上测过；只有 Podman 与 Compose 的机器没有端到端验证，有根 Podman 也没有在那样的机器上单独量。
-- 机器重启后组件自己回来（linger 加 `podman-restart.service`，BrickKit v1.11.1 的 `restart: always`）还没有真重启验证过。
+- 机器重启后自己回来只在一台 Ubuntu 26.04 桌面机（Wi-Fi、自动登录）上的无根 Podman 验证过；其他发行版、有根 Podman、Docker 的开机拉起没有真重启验证。
 - 外部请求的边缘（Traefik）没有接上，实验用测试的入口代替；Ingress 未测。
 - 本机进程只用于开发与演示：BrickKit 不重启、不开机启动它们，长期运行不在 BrickKit 的范围内。
 - 每组件一个库、多实例的备份与恢复代价没有量。
