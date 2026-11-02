@@ -82,6 +82,9 @@ docs-ids:  ## Expectation IDs: one owner per prefix, unique, contiguous (check 3
 docs-closure:  ## Required dependencies acyclic and customer combinations closed (check 34)
 	@python3 tools/be-acceptance/doc-checks/34-dependency-closure.py .
 
+protocol-coverage:  ## Wire-protocol rules each named by a test (check 35); CH=05,06 narrows the chapters, REQUIRE=go,suite the implementations
+	@python3 tools/be-acceptance/doc-checks/35-protocol-coverage.py . $(if $(CH),--chapters $(CH)) $(if $(REQUIRE),--require $(REQUIRE))
+
 docs-index:  ## Regenerate the component index (docs/zh/00-overview/09-component-index.md) from the catalog, cards and component.yaml files
 	@python3 infra/scripts/component-index.py
 
