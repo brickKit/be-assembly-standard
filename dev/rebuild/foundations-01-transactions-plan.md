@@ -35,7 +35,7 @@
 | T1 | 覆盖地图与“每条检查都有测试”的检查 | — | ✅ 检查与地图（缺口见 T1b） |
 | T1b | 补 Go SDK 缺的测试（T1 查出的 4 条与 4 条只测了一部分的） | T1 | ✅ `be-sdk-go` alpha.47 |
 | T2 | 共用测试 schema 不再越积越多 | — | ✅ `be-sdk-go` alpha.48、`be-sdk-python` a43、`be-acceptance` 1.0.33 |
-| T3 | 组件连接池上的通用计划排查 | — | ✅ 协议 alpha.45、`be-sdk-go` alpha.49、`be-sdk-python` a44（T3d 的 kb 记录见下） |
+| T3 | 组件连接池上的通用计划排查 | — | ✅ 协议 alpha.45、`be-sdk-go` alpha.49、`be-sdk-python` a44；kb PR #61 |
 | T4 | 事件剖面（含消息运输）进黑盒套件 | T1 | ⬜ |
 | T5 | 后台工作：崩溃副本的工作项被接管、空闲轮询，后台工作剖面进黑盒套件 | T1 | ⬜ |
 | T6 | 水位来源的线协议条款与向量 | T1 | ⬜ |
@@ -99,6 +99,7 @@
 - **T3b**：`be-sdk-go` alpha.49。`db.KeepStatistics` 在成员的 Start 与 Stop 之间运行，pgqueue 运输自己也跑一份，去掉 alpha.44 的 `force_custom_plan`。工作项与 pgqueue 的积压测试原来自己先 analyze（或在从没 analyze 的库上），所以看不出缓存计划的问题；改为关掉自动 vacuum、调一次统计维护。新增函数阈值的测试、成员与运输的接线测试、P6.35 的测试。每个新测试都做了反向检查，全部变红（`experiment-data/15-01-component-pool-plans/t3-*-mutation.txt`）。Go 97 / 97 条规则有测试点名。
 - **T3c**：`be-sdk-python` a44。同样的统计维护；总线连接池改为缓存语句（原来 `statement_cache_size=0`，每次认领都在规划）。interop 的三个 Go 辅助程序从 be-sdk-go alpha.21（协议 alpha.18）升到 alpha.49：原来只是因为两边迁移文件数相同才碰巧通过；加了单元测试，要求它们钉的协议等于包里的副本。
 - **稳态的代价**（pgbench，性能模式，每次重建 schema，三对交替）：认领在缓存的计划下 pgqueue 0.13–0.15 ms、工作项 0.22–0.50 ms，每次规划时 0.42–0.45 ms、0.54–0.68 ms；候选索引下取未发布行 0.58–0.81 ms，原索引 3.3–3.7 ms。统计落后的窗口从“等自动 analyze”（实测 23 秒，最长 60 秒）缩到最多 2 秒。
+- **T3d**：kb PR #61（实测记录 16.04.03.09 `queue-claim-plan-cache`：稳态代价与窗口用通用脚本复测过一轮，窗口第二次是 45 秒；反馈：`force_custom_plan` 的代价写轻了、缺“缓存计划加自己 analyze”，发件表读取的索引顺序），等 kb 审查。
 - **没做的**：在从没 analyze 过的表上，工作项“到期”那条路的按参数规划会排整个积压（`job = ANY($1)` 没有统计时按缺省选择性估）；统计维护在表改动 1000 行后的下一次调用里 analyze，这个窗口也就最多 2 秒，所以不另改语句。组件随下一次连锁发布换上新 SDK 并跑一次 `migrate`。
 
 ### T4 事件剖面（含消息运输）进黑盒套件
