@@ -1,0 +1,7 @@
+DROP SCHEMA
+CREATE SCHEMA
+CREATE TABLE
+CREATE INDEX be_bus_delivery_durable_lease_until_idx ON probe_like.be_bus_delivery USING btree (durable, lease_until) WHERE in_flight
+CREATE INDEX be_bus_delivery_durable_seq_idx ON probe_like.be_bus_delivery USING btree (durable, seq) WHERE (NOT in_flight)
+CREATE UNIQUE INDEX be_bus_delivery_pkey ON probe_like.be_bus_delivery USING btree (durable, seq)
+DROP SCHEMA

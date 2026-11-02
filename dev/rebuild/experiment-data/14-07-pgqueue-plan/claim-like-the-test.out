@@ -1,0 +1,2575 @@
+# 2026-11-02T20:29:02+01:00, power balanced; psql -X -f claim-like-the-test.sql against the be_sdk_test database
+Pager usage is off.
+NOTICE:  schema "claim_probe" does not exist, skipping
+DROP SCHEMA
+CREATE SCHEMA
+SET
+SET
+CREATE TABLE
+CREATE INDEX
+CREATE INDEX
+CREATE INDEX
+CREATE TABLE
+CREATE TABLE
+CREATE TABLE
+CREATE INDEX
+CREATE INDEX
+DROP INDEX
+CREATE INDEX
+PREPARE
+INSERT 0 1
+INSERT 0 20
+== auto small claim 1
+                                               QUERY PLAN                                                
+---------------------------------------------------------------------------------------------------------
+ Nested Loop Left Join (actual rows=1 loops=1)
+   CTE ready
+     ->  Limit (actual rows=1 loops=1)
+           ->  LockRows (actual rows=1 loops=1)
+                 ->  Sort (actual rows=1 loops=1)
+                       Sort Key: be_bus_delivery.seq
+                       Sort Method: quicksort  Memory: 25kB
+                       ->  Bitmap Heap Scan on be_bus_delivery (actual rows=20 loops=1)
+                             Recheck Cond: ((durable = 'small'::text) AND (NOT in_flight))
+                             Filter: (not_before <= clock_timestamp())
+                             Heap Blocks: exact=1
+                             ->  Bitmap Index Scan on be_bus_delivery_ready (actual rows=20 loops=1)
+                                   Index Cond: (durable = 'small'::text)
+   CTE expired
+     ->  Limit (actual rows=0 loops=1)
+           ->  LockRows (actual rows=0 loops=1)
+                 ->  Sort (actual rows=0 loops=1)
+                       Sort Key: be_bus_delivery_1.seq
+                       Sort Method: quicksort  Memory: 25kB
+                       ->  Bitmap Heap Scan on be_bus_delivery be_bus_delivery_1 (actual rows=0 loops=1)
+                             Recheck Cond: ((durable = 'small'::text) AND in_flight)
+                             Filter: ((attempts < 3) AND (lease_until < clock_timestamp()))
+                             ->  Bitmap Index Scan on be_bus_delivery_lease (actual rows=0 loops=1)
+                                   Index Cond: (durable = 'small'::text)
+   CTE claimed
+     ->  Update on be_bus_delivery d (actual rows=1 loops=1)
+           InitPlan 3 (returns $6)
+             ->  Aggregate (actual rows=1 loops=1)
+                   ->  Append (actual rows=1 loops=1)
+                         ->  CTE Scan on ready (actual rows=1 loops=1)
+                         ->  CTE Scan on expired (actual rows=0 loops=1)
+           ->  Index Scan using be_bus_delivery_pkey on be_bus_delivery d (actual rows=1 loops=1)
+                 Index Cond: ((durable = 'small'::text) AND (seq = $6))
+   ->  CTE Scan on claimed c (actual rows=1 loops=1)
+   ->  Index Scan using be_bus_message_pkey on be_bus_message m (actual rows=1 loops=1)
+         Index Cond: (seq = c.seq)
+ Planning Time: 0.519 ms
+ Execution Time: 0.239 ms
+(38 rows)
+
+== auto small claim 2
+                                               QUERY PLAN                                                
+---------------------------------------------------------------------------------------------------------
+ Nested Loop Left Join (actual rows=1 loops=1)
+   CTE ready
+     ->  Limit (actual rows=1 loops=1)
+           ->  LockRows (actual rows=1 loops=1)
+                 ->  Sort (actual rows=1 loops=1)
+                       Sort Key: be_bus_delivery.seq
+                       Sort Method: quicksort  Memory: 25kB
+                       ->  Bitmap Heap Scan on be_bus_delivery (actual rows=19 loops=1)
+                             Recheck Cond: ((durable = 'small'::text) AND (NOT in_flight))
+                             Filter: (not_before <= clock_timestamp())
+                             Heap Blocks: exact=1
+                             ->  Bitmap Index Scan on be_bus_delivery_ready (actual rows=20 loops=1)
+                                   Index Cond: (durable = 'small'::text)
+   CTE expired
+     ->  Limit (actual rows=0 loops=1)
+           ->  LockRows (actual rows=0 loops=1)
+                 ->  Sort (actual rows=0 loops=1)
+                       Sort Key: be_bus_delivery_1.seq
+                       Sort Method: quicksort  Memory: 25kB
+                       ->  Bitmap Heap Scan on be_bus_delivery be_bus_delivery_1 (actual rows=0 loops=1)
+                             Recheck Cond: ((durable = 'small'::text) AND in_flight)
+                             Filter: ((attempts < 3) AND (lease_until < clock_timestamp()))
+                             Rows Removed by Filter: 1
+                             Heap Blocks: exact=1
+                             ->  Bitmap Index Scan on be_bus_delivery_lease (actual rows=1 loops=1)
+                                   Index Cond: (durable = 'small'::text)
+   CTE claimed
+     ->  Update on be_bus_delivery d (actual rows=1 loops=1)
+           InitPlan 3 (returns $6)
+             ->  Aggregate (actual rows=1 loops=1)
+                   ->  Append (actual rows=1 loops=1)
+                         ->  CTE Scan on ready (actual rows=1 loops=1)
+                         ->  CTE Scan on expired (actual rows=0 loops=1)
+           ->  Index Scan using be_bus_delivery_pkey on be_bus_delivery d (actual rows=1 loops=1)
+                 Index Cond: ((durable = 'small'::text) AND (seq = $6))
+   ->  CTE Scan on claimed c (actual rows=1 loops=1)
+   ->  Index Scan using be_bus_message_pkey on be_bus_message m (actual rows=1 loops=1)
+         Index Cond: (seq = c.seq)
+ Planning Time: 0.241 ms
+ Execution Time: 0.163 ms
+(40 rows)
+
+== auto small claim 3
+                                               QUERY PLAN                                                
+---------------------------------------------------------------------------------------------------------
+ Nested Loop Left Join (actual rows=1 loops=1)
+   CTE ready
+     ->  Limit (actual rows=1 loops=1)
+           ->  LockRows (actual rows=1 loops=1)
+                 ->  Sort (actual rows=1 loops=1)
+                       Sort Key: be_bus_delivery.seq
+                       Sort Method: quicksort  Memory: 25kB
+                       ->  Bitmap Heap Scan on be_bus_delivery (actual rows=18 loops=1)
+                             Recheck Cond: ((durable = 'small'::text) AND (NOT in_flight))
+                             Filter: (not_before <= clock_timestamp())
+                             Heap Blocks: exact=1
+                             ->  Bitmap Index Scan on be_bus_delivery_ready (actual rows=20 loops=1)
+                                   Index Cond: (durable = 'small'::text)
+   CTE expired
+     ->  Limit (actual rows=0 loops=1)
+           ->  LockRows (actual rows=0 loops=1)
+                 ->  Sort (actual rows=0 loops=1)
+                       Sort Key: be_bus_delivery_1.seq
+                       Sort Method: quicksort  Memory: 25kB
+                       ->  Bitmap Heap Scan on be_bus_delivery be_bus_delivery_1 (actual rows=0 loops=1)
+                             Recheck Cond: ((durable = 'small'::text) AND in_flight)
+                             Filter: ((attempts < 3) AND (lease_until < clock_timestamp()))
+                             Rows Removed by Filter: 2
+                             Heap Blocks: exact=1
+                             ->  Bitmap Index Scan on be_bus_delivery_lease (actual rows=2 loops=1)
+                                   Index Cond: (durable = 'small'::text)
+   CTE claimed
+     ->  Update on be_bus_delivery d (actual rows=1 loops=1)
+           InitPlan 3 (returns $6)
+             ->  Aggregate (actual rows=1 loops=1)
+                   ->  Append (actual rows=1 loops=1)
+                         ->  CTE Scan on ready (actual rows=1 loops=1)
+                         ->  CTE Scan on expired (actual rows=0 loops=1)
+           ->  Index Scan using be_bus_delivery_pkey on be_bus_delivery d (actual rows=1 loops=1)
+                 Index Cond: ((durable = 'small'::text) AND (seq = $6))
+   ->  CTE Scan on claimed c (actual rows=1 loops=1)
+   ->  Index Scan using be_bus_message_pkey on be_bus_message m (actual rows=1 loops=1)
+         Index Cond: (seq = c.seq)
+ Planning Time: 0.226 ms
+ Execution Time: 0.149 ms
+(40 rows)
+
+== auto small claim 4
+                                               QUERY PLAN                                                
+---------------------------------------------------------------------------------------------------------
+ Nested Loop Left Join (actual rows=1 loops=1)
+   CTE ready
+     ->  Limit (actual rows=1 loops=1)
+           ->  LockRows (actual rows=1 loops=1)
+                 ->  Sort (actual rows=1 loops=1)
+                       Sort Key: be_bus_delivery.seq
+                       Sort Method: quicksort  Memory: 25kB
+                       ->  Bitmap Heap Scan on be_bus_delivery (actual rows=17 loops=1)
+                             Recheck Cond: ((durable = 'small'::text) AND (NOT in_flight))
+                             Filter: (not_before <= clock_timestamp())
+                             Heap Blocks: exact=1
+                             ->  Bitmap Index Scan on be_bus_delivery_ready (actual rows=20 loops=1)
+                                   Index Cond: (durable = 'small'::text)
+   CTE expired
+     ->  Limit (actual rows=0 loops=1)
+           ->  LockRows (actual rows=0 loops=1)
+                 ->  Sort (actual rows=0 loops=1)
+                       Sort Key: be_bus_delivery_1.seq
+                       Sort Method: quicksort  Memory: 25kB
+                       ->  Bitmap Heap Scan on be_bus_delivery be_bus_delivery_1 (actual rows=0 loops=1)
+                             Recheck Cond: ((durable = 'small'::text) AND in_flight)
+                             Filter: ((attempts < 3) AND (lease_until < clock_timestamp()))
+                             Rows Removed by Filter: 3
+                             Heap Blocks: exact=1
+                             ->  Bitmap Index Scan on be_bus_delivery_lease (actual rows=3 loops=1)
+                                   Index Cond: (durable = 'small'::text)
+   CTE claimed
+     ->  Update on be_bus_delivery d (actual rows=1 loops=1)
+           InitPlan 3 (returns $6)
+             ->  Aggregate (actual rows=1 loops=1)
+                   ->  Append (actual rows=1 loops=1)
+                         ->  CTE Scan on ready (actual rows=1 loops=1)
+                         ->  CTE Scan on expired (actual rows=0 loops=1)
+           ->  Index Scan using be_bus_delivery_pkey on be_bus_delivery d (actual rows=1 loops=1)
+                 Index Cond: ((durable = 'small'::text) AND (seq = $6))
+   ->  CTE Scan on claimed c (actual rows=1 loops=1)
+   ->  Index Scan using be_bus_message_pkey on be_bus_message m (actual rows=1 loops=1)
+         Index Cond: (seq = c.seq)
+ Planning Time: 0.210 ms
+ Execution Time: 0.145 ms
+(40 rows)
+
+== auto small claim 5
+                                               QUERY PLAN                                                
+---------------------------------------------------------------------------------------------------------
+ Nested Loop Left Join (actual rows=1 loops=1)
+   CTE ready
+     ->  Limit (actual rows=1 loops=1)
+           ->  LockRows (actual rows=1 loops=1)
+                 ->  Sort (actual rows=1 loops=1)
+                       Sort Key: be_bus_delivery.seq
+                       Sort Method: quicksort  Memory: 25kB
+                       ->  Bitmap Heap Scan on be_bus_delivery (actual rows=16 loops=1)
+                             Recheck Cond: ((durable = 'small'::text) AND (NOT in_flight))
+                             Filter: (not_before <= clock_timestamp())
+                             Heap Blocks: exact=1
+                             ->  Bitmap Index Scan on be_bus_delivery_ready (actual rows=20 loops=1)
+                                   Index Cond: (durable = 'small'::text)
+   CTE expired
+     ->  Limit (actual rows=0 loops=1)
+           ->  LockRows (actual rows=0 loops=1)
+                 ->  Sort (actual rows=0 loops=1)
+                       Sort Key: be_bus_delivery_1.seq
+                       Sort Method: quicksort  Memory: 25kB
+                       ->  Bitmap Heap Scan on be_bus_delivery be_bus_delivery_1 (actual rows=0 loops=1)
+                             Recheck Cond: ((durable = 'small'::text) AND in_flight)
+                             Filter: ((attempts < 3) AND (lease_until < clock_timestamp()))
+                             Rows Removed by Filter: 4
+                             Heap Blocks: exact=1
+                             ->  Bitmap Index Scan on be_bus_delivery_lease (actual rows=4 loops=1)
+                                   Index Cond: (durable = 'small'::text)
+   CTE claimed
+     ->  Update on be_bus_delivery d (actual rows=1 loops=1)
+           InitPlan 3 (returns $6)
+             ->  Aggregate (actual rows=1 loops=1)
+                   ->  Append (actual rows=1 loops=1)
+                         ->  CTE Scan on ready (actual rows=1 loops=1)
+                         ->  CTE Scan on expired (actual rows=0 loops=1)
+           ->  Index Scan using be_bus_delivery_pkey on be_bus_delivery d (actual rows=1 loops=1)
+                 Index Cond: ((durable = 'small'::text) AND (seq = $6))
+   ->  CTE Scan on claimed c (actual rows=1 loops=1)
+   ->  Index Scan using be_bus_message_pkey on be_bus_message m (actual rows=1 loops=1)
+         Index Cond: (seq = c.seq)
+ Planning Time: 0.232 ms
+ Execution Time: 0.157 ms
+(40 rows)
+
+== auto small claim 6
+                                               QUERY PLAN                                                
+---------------------------------------------------------------------------------------------------------
+ Nested Loop Left Join (actual rows=1 loops=1)
+   CTE ready
+     ->  Limit (actual rows=1 loops=1)
+           ->  LockRows (actual rows=1 loops=1)
+                 ->  Sort (actual rows=1 loops=1)
+                       Sort Key: be_bus_delivery.seq
+                       Sort Method: quicksort  Memory: 25kB
+                       ->  Bitmap Heap Scan on be_bus_delivery (actual rows=15 loops=1)
+                             Recheck Cond: ((durable = $1) AND (NOT in_flight))
+                             Filter: (not_before <= clock_timestamp())
+                             Heap Blocks: exact=1
+                             ->  Bitmap Index Scan on be_bus_delivery_ready (actual rows=20 loops=1)
+                                   Index Cond: (durable = $1)
+   CTE expired
+     ->  Limit (actual rows=0 loops=1)
+           ->  LockRows (actual rows=0 loops=1)
+                 ->  Sort (actual rows=0 loops=1)
+                       Sort Key: be_bus_delivery_1.seq
+                       Sort Method: quicksort  Memory: 25kB
+                       ->  Bitmap Heap Scan on be_bus_delivery be_bus_delivery_1 (actual rows=0 loops=1)
+                             Recheck Cond: ((durable = $1) AND in_flight)
+                             Filter: ((attempts < $4) AND (lease_until < clock_timestamp()))
+                             Rows Removed by Filter: 5
+                             Heap Blocks: exact=1
+                             ->  Bitmap Index Scan on be_bus_delivery_lease (actual rows=5 loops=1)
+                                   Index Cond: (durable = $1)
+   CTE claimed
+     ->  Update on be_bus_delivery d (actual rows=1 loops=1)
+           InitPlan 3 (returns $6)
+             ->  Aggregate (actual rows=1 loops=1)
+                   ->  Append (actual rows=1 loops=1)
+                         ->  CTE Scan on ready (actual rows=1 loops=1)
+                         ->  CTE Scan on expired (actual rows=0 loops=1)
+           ->  Index Scan using be_bus_delivery_pkey on be_bus_delivery d (actual rows=1 loops=1)
+                 Index Cond: ((durable = $1) AND (seq = $6))
+   ->  CTE Scan on claimed c (actual rows=1 loops=1)
+   ->  Index Scan using be_bus_message_pkey on be_bus_message m (actual rows=1 loops=1)
+         Index Cond: (seq = c.seq)
+ Planning Time: 0.211 ms
+ Execution Time: 0.146 ms
+(40 rows)
+
+== auto small claim 7
+                                               QUERY PLAN                                                
+---------------------------------------------------------------------------------------------------------
+ Nested Loop Left Join (actual rows=1 loops=1)
+   CTE ready
+     ->  Limit (actual rows=1 loops=1)
+           ->  LockRows (actual rows=1 loops=1)
+                 ->  Sort (actual rows=1 loops=1)
+                       Sort Key: be_bus_delivery.seq
+                       Sort Method: quicksort  Memory: 25kB
+                       ->  Bitmap Heap Scan on be_bus_delivery (actual rows=14 loops=1)
+                             Recheck Cond: ((durable = $1) AND (NOT in_flight))
+                             Filter: (not_before <= clock_timestamp())
+                             Heap Blocks: exact=1
+                             ->  Bitmap Index Scan on be_bus_delivery_ready (actual rows=20 loops=1)
+                                   Index Cond: (durable = $1)
+   CTE expired
+     ->  Limit (actual rows=0 loops=1)
+           ->  LockRows (actual rows=0 loops=1)
+                 ->  Sort (actual rows=0 loops=1)
+                       Sort Key: be_bus_delivery_1.seq
+                       Sort Method: quicksort  Memory: 25kB
+                       ->  Bitmap Heap Scan on be_bus_delivery be_bus_delivery_1 (actual rows=0 loops=1)
+                             Recheck Cond: ((durable = $1) AND in_flight)
+                             Filter: ((attempts < $4) AND (lease_until < clock_timestamp()))
+                             Rows Removed by Filter: 6
+                             Heap Blocks: exact=1
+                             ->  Bitmap Index Scan on be_bus_delivery_lease (actual rows=6 loops=1)
+                                   Index Cond: (durable = $1)
+   CTE claimed
+     ->  Update on be_bus_delivery d (actual rows=1 loops=1)
+           InitPlan 3 (returns $6)
+             ->  Aggregate (actual rows=1 loops=1)
+                   ->  Append (actual rows=1 loops=1)
+                         ->  CTE Scan on ready (actual rows=1 loops=1)
+                         ->  CTE Scan on expired (actual rows=0 loops=1)
+           ->  Index Scan using be_bus_delivery_pkey on be_bus_delivery d (actual rows=1 loops=1)
+                 Index Cond: ((durable = $1) AND (seq = $6))
+   ->  CTE Scan on claimed c (actual rows=1 loops=1)
+   ->  Index Scan using be_bus_message_pkey on be_bus_message m (actual rows=1 loops=1)
+         Index Cond: (seq = c.seq)
+ Planning Time: 0.014 ms
+ Execution Time: 0.158 ms
+(40 rows)
+
+== auto small claim 8
+                                               QUERY PLAN                                                
+---------------------------------------------------------------------------------------------------------
+ Nested Loop Left Join (actual rows=1 loops=1)
+   CTE ready
+     ->  Limit (actual rows=1 loops=1)
+           ->  LockRows (actual rows=1 loops=1)
+                 ->  Sort (actual rows=1 loops=1)
+                       Sort Key: be_bus_delivery.seq
+                       Sort Method: quicksort  Memory: 25kB
+                       ->  Bitmap Heap Scan on be_bus_delivery (actual rows=13 loops=1)
+                             Recheck Cond: ((durable = $1) AND (NOT in_flight))
+                             Filter: (not_before <= clock_timestamp())
+                             Heap Blocks: exact=1
+                             ->  Bitmap Index Scan on be_bus_delivery_ready (actual rows=20 loops=1)
+                                   Index Cond: (durable = $1)
+   CTE expired
+     ->  Limit (actual rows=0 loops=1)
+           ->  LockRows (actual rows=0 loops=1)
+                 ->  Sort (actual rows=0 loops=1)
+                       Sort Key: be_bus_delivery_1.seq
+                       Sort Method: quicksort  Memory: 25kB
+                       ->  Bitmap Heap Scan on be_bus_delivery be_bus_delivery_1 (actual rows=0 loops=1)
+                             Recheck Cond: ((durable = $1) AND in_flight)
+                             Filter: ((attempts < $4) AND (lease_until < clock_timestamp()))
+                             Rows Removed by Filter: 7
+                             Heap Blocks: exact=1
+                             ->  Bitmap Index Scan on be_bus_delivery_lease (actual rows=7 loops=1)
+                                   Index Cond: (durable = $1)
+   CTE claimed
+     ->  Update on be_bus_delivery d (actual rows=1 loops=1)
+           InitPlan 3 (returns $6)
+             ->  Aggregate (actual rows=1 loops=1)
+                   ->  Append (actual rows=1 loops=1)
+                         ->  CTE Scan on ready (actual rows=1 loops=1)
+                         ->  CTE Scan on expired (actual rows=0 loops=1)
+           ->  Index Scan using be_bus_delivery_pkey on be_bus_delivery d (actual rows=1 loops=1)
+                 Index Cond: ((durable = $1) AND (seq = $6))
+   ->  CTE Scan on claimed c (actual rows=1 loops=1)
+   ->  Index Scan using be_bus_message_pkey on be_bus_message m (actual rows=1 loops=1)
+         Index Cond: (seq = c.seq)
+ Planning Time: 0.013 ms
+ Execution Time: 0.132 ms
+(40 rows)
+
+== auto small claim 9
+                                               QUERY PLAN                                                
+---------------------------------------------------------------------------------------------------------
+ Nested Loop Left Join (actual rows=1 loops=1)
+   CTE ready
+     ->  Limit (actual rows=1 loops=1)
+           ->  LockRows (actual rows=1 loops=1)
+                 ->  Sort (actual rows=1 loops=1)
+                       Sort Key: be_bus_delivery.seq
+                       Sort Method: quicksort  Memory: 25kB
+                       ->  Bitmap Heap Scan on be_bus_delivery (actual rows=12 loops=1)
+                             Recheck Cond: ((durable = $1) AND (NOT in_flight))
+                             Filter: (not_before <= clock_timestamp())
+                             Heap Blocks: exact=1
+                             ->  Bitmap Index Scan on be_bus_delivery_ready (actual rows=20 loops=1)
+                                   Index Cond: (durable = $1)
+   CTE expired
+     ->  Limit (actual rows=0 loops=1)
+           ->  LockRows (actual rows=0 loops=1)
+                 ->  Sort (actual rows=0 loops=1)
+                       Sort Key: be_bus_delivery_1.seq
+                       Sort Method: quicksort  Memory: 25kB
+                       ->  Bitmap Heap Scan on be_bus_delivery be_bus_delivery_1 (actual rows=0 loops=1)
+                             Recheck Cond: ((durable = $1) AND in_flight)
+                             Filter: ((attempts < $4) AND (lease_until < clock_timestamp()))
+                             Rows Removed by Filter: 8
+                             Heap Blocks: exact=1
+                             ->  Bitmap Index Scan on be_bus_delivery_lease (actual rows=8 loops=1)
+                                   Index Cond: (durable = $1)
+   CTE claimed
+     ->  Update on be_bus_delivery d (actual rows=1 loops=1)
+           InitPlan 3 (returns $6)
+             ->  Aggregate (actual rows=1 loops=1)
+                   ->  Append (actual rows=1 loops=1)
+                         ->  CTE Scan on ready (actual rows=1 loops=1)
+                         ->  CTE Scan on expired (actual rows=0 loops=1)
+           ->  Index Scan using be_bus_delivery_pkey on be_bus_delivery d (actual rows=1 loops=1)
+                 Index Cond: ((durable = $1) AND (seq = $6))
+   ->  CTE Scan on claimed c (actual rows=1 loops=1)
+   ->  Index Scan using be_bus_message_pkey on be_bus_message m (actual rows=1 loops=1)
+         Index Cond: (seq = c.seq)
+ Planning Time: 0.012 ms
+ Execution Time: 0.131 ms
+(40 rows)
+
+== auto small claim 10
+                                               QUERY PLAN                                                
+---------------------------------------------------------------------------------------------------------
+ Nested Loop Left Join (actual rows=1 loops=1)
+   CTE ready
+     ->  Limit (actual rows=1 loops=1)
+           ->  LockRows (actual rows=1 loops=1)
+                 ->  Sort (actual rows=1 loops=1)
+                       Sort Key: be_bus_delivery.seq
+                       Sort Method: quicksort  Memory: 25kB
+                       ->  Bitmap Heap Scan on be_bus_delivery (actual rows=11 loops=1)
+                             Recheck Cond: ((durable = $1) AND (NOT in_flight))
+                             Filter: (not_before <= clock_timestamp())
+                             Heap Blocks: exact=1
+                             ->  Bitmap Index Scan on be_bus_delivery_ready (actual rows=20 loops=1)
+                                   Index Cond: (durable = $1)
+   CTE expired
+     ->  Limit (actual rows=0 loops=1)
+           ->  LockRows (actual rows=0 loops=1)
+                 ->  Sort (actual rows=0 loops=1)
+                       Sort Key: be_bus_delivery_1.seq
+                       Sort Method: quicksort  Memory: 25kB
+                       ->  Bitmap Heap Scan on be_bus_delivery be_bus_delivery_1 (actual rows=0 loops=1)
+                             Recheck Cond: ((durable = $1) AND in_flight)
+                             Filter: ((attempts < $4) AND (lease_until < clock_timestamp()))
+                             Rows Removed by Filter: 9
+                             Heap Blocks: exact=1
+                             ->  Bitmap Index Scan on be_bus_delivery_lease (actual rows=9 loops=1)
+                                   Index Cond: (durable = $1)
+   CTE claimed
+     ->  Update on be_bus_delivery d (actual rows=1 loops=1)
+           InitPlan 3 (returns $6)
+             ->  Aggregate (actual rows=1 loops=1)
+                   ->  Append (actual rows=1 loops=1)
+                         ->  CTE Scan on ready (actual rows=1 loops=1)
+                         ->  CTE Scan on expired (actual rows=0 loops=1)
+           ->  Index Scan using be_bus_delivery_pkey on be_bus_delivery d (actual rows=1 loops=1)
+                 Index Cond: ((durable = $1) AND (seq = $6))
+   ->  CTE Scan on claimed c (actual rows=1 loops=1)
+   ->  Index Scan using be_bus_message_pkey on be_bus_message m (actual rows=1 loops=1)
+         Index Cond: (seq = c.seq)
+ Planning Time: 0.011 ms
+ Execution Time: 0.132 ms
+(40 rows)
+
+== auto small claim 11
+                                               QUERY PLAN                                                
+---------------------------------------------------------------------------------------------------------
+ Nested Loop Left Join (actual rows=1 loops=1)
+   CTE ready
+     ->  Limit (actual rows=1 loops=1)
+           ->  LockRows (actual rows=1 loops=1)
+                 ->  Sort (actual rows=1 loops=1)
+                       Sort Key: be_bus_delivery.seq
+                       Sort Method: quicksort  Memory: 25kB
+                       ->  Bitmap Heap Scan on be_bus_delivery (actual rows=10 loops=1)
+                             Recheck Cond: ((durable = $1) AND (NOT in_flight))
+                             Filter: (not_before <= clock_timestamp())
+                             Heap Blocks: exact=1
+                             ->  Bitmap Index Scan on be_bus_delivery_ready (actual rows=20 loops=1)
+                                   Index Cond: (durable = $1)
+   CTE expired
+     ->  Limit (actual rows=0 loops=1)
+           ->  LockRows (actual rows=0 loops=1)
+                 ->  Sort (actual rows=0 loops=1)
+                       Sort Key: be_bus_delivery_1.seq
+                       Sort Method: quicksort  Memory: 25kB
+                       ->  Bitmap Heap Scan on be_bus_delivery be_bus_delivery_1 (actual rows=0 loops=1)
+                             Recheck Cond: ((durable = $1) AND in_flight)
+                             Filter: ((attempts < $4) AND (lease_until < clock_timestamp()))
+                             Rows Removed by Filter: 10
+                             Heap Blocks: exact=1
+                             ->  Bitmap Index Scan on be_bus_delivery_lease (actual rows=10 loops=1)
+                                   Index Cond: (durable = $1)
+   CTE claimed
+     ->  Update on be_bus_delivery d (actual rows=1 loops=1)
+           InitPlan 3 (returns $6)
+             ->  Aggregate (actual rows=1 loops=1)
+                   ->  Append (actual rows=1 loops=1)
+                         ->  CTE Scan on ready (actual rows=1 loops=1)
+                         ->  CTE Scan on expired (actual rows=0 loops=1)
+           ->  Index Scan using be_bus_delivery_pkey on be_bus_delivery d (actual rows=1 loops=1)
+                 Index Cond: ((durable = $1) AND (seq = $6))
+   ->  CTE Scan on claimed c (actual rows=1 loops=1)
+   ->  Index Scan using be_bus_message_pkey on be_bus_message m (actual rows=1 loops=1)
+         Index Cond: (seq = c.seq)
+ Planning Time: 0.011 ms
+ Execution Time: 0.132 ms
+(40 rows)
+
+== auto small claim 12
+                                               QUERY PLAN                                                
+---------------------------------------------------------------------------------------------------------
+ Nested Loop Left Join (actual rows=1 loops=1)
+   CTE ready
+     ->  Limit (actual rows=1 loops=1)
+           ->  LockRows (actual rows=1 loops=1)
+                 ->  Sort (actual rows=1 loops=1)
+                       Sort Key: be_bus_delivery.seq
+                       Sort Method: quicksort  Memory: 25kB
+                       ->  Bitmap Heap Scan on be_bus_delivery (actual rows=9 loops=1)
+                             Recheck Cond: ((durable = $1) AND (NOT in_flight))
+                             Filter: (not_before <= clock_timestamp())
+                             Heap Blocks: exact=1
+                             ->  Bitmap Index Scan on be_bus_delivery_ready (actual rows=20 loops=1)
+                                   Index Cond: (durable = $1)
+   CTE expired
+     ->  Limit (actual rows=0 loops=1)
+           ->  LockRows (actual rows=0 loops=1)
+                 ->  Sort (actual rows=0 loops=1)
+                       Sort Key: be_bus_delivery_1.seq
+                       Sort Method: quicksort  Memory: 25kB
+                       ->  Bitmap Heap Scan on be_bus_delivery be_bus_delivery_1 (actual rows=0 loops=1)
+                             Recheck Cond: ((durable = $1) AND in_flight)
+                             Filter: ((attempts < $4) AND (lease_until < clock_timestamp()))
+                             Rows Removed by Filter: 11
+                             Heap Blocks: exact=1
+                             ->  Bitmap Index Scan on be_bus_delivery_lease (actual rows=11 loops=1)
+                                   Index Cond: (durable = $1)
+   CTE claimed
+     ->  Update on be_bus_delivery d (actual rows=1 loops=1)
+           InitPlan 3 (returns $6)
+             ->  Aggregate (actual rows=1 loops=1)
+                   ->  Append (actual rows=1 loops=1)
+                         ->  CTE Scan on ready (actual rows=1 loops=1)
+                         ->  CTE Scan on expired (actual rows=0 loops=1)
+           ->  Index Scan using be_bus_delivery_pkey on be_bus_delivery d (actual rows=1 loops=1)
+                 Index Cond: ((durable = $1) AND (seq = $6))
+   ->  CTE Scan on claimed c (actual rows=1 loops=1)
+   ->  Index Scan using be_bus_message_pkey on be_bus_message m (actual rows=1 loops=1)
+         Index Cond: (seq = c.seq)
+ Planning Time: 0.011 ms
+ Execution Time: 0.134 ms
+(40 rows)
+
+== auto small claim 13
+                                               QUERY PLAN                                                
+---------------------------------------------------------------------------------------------------------
+ Nested Loop Left Join (actual rows=1 loops=1)
+   CTE ready
+     ->  Limit (actual rows=1 loops=1)
+           ->  LockRows (actual rows=1 loops=1)
+                 ->  Sort (actual rows=1 loops=1)
+                       Sort Key: be_bus_delivery.seq
+                       Sort Method: quicksort  Memory: 25kB
+                       ->  Bitmap Heap Scan on be_bus_delivery (actual rows=8 loops=1)
+                             Recheck Cond: ((durable = $1) AND (NOT in_flight))
+                             Filter: (not_before <= clock_timestamp())
+                             Heap Blocks: exact=1
+                             ->  Bitmap Index Scan on be_bus_delivery_ready (actual rows=20 loops=1)
+                                   Index Cond: (durable = $1)
+   CTE expired
+     ->  Limit (actual rows=0 loops=1)
+           ->  LockRows (actual rows=0 loops=1)
+                 ->  Sort (actual rows=0 loops=1)
+                       Sort Key: be_bus_delivery_1.seq
+                       Sort Method: quicksort  Memory: 25kB
+                       ->  Bitmap Heap Scan on be_bus_delivery be_bus_delivery_1 (actual rows=0 loops=1)
+                             Recheck Cond: ((durable = $1) AND in_flight)
+                             Filter: ((attempts < $4) AND (lease_until < clock_timestamp()))
+                             Rows Removed by Filter: 12
+                             Heap Blocks: exact=1
+                             ->  Bitmap Index Scan on be_bus_delivery_lease (actual rows=12 loops=1)
+                                   Index Cond: (durable = $1)
+   CTE claimed
+     ->  Update on be_bus_delivery d (actual rows=1 loops=1)
+           InitPlan 3 (returns $6)
+             ->  Aggregate (actual rows=1 loops=1)
+                   ->  Append (actual rows=1 loops=1)
+                         ->  CTE Scan on ready (actual rows=1 loops=1)
+                         ->  CTE Scan on expired (actual rows=0 loops=1)
+           ->  Index Scan using be_bus_delivery_pkey on be_bus_delivery d (actual rows=1 loops=1)
+                 Index Cond: ((durable = $1) AND (seq = $6))
+   ->  CTE Scan on claimed c (actual rows=1 loops=1)
+   ->  Index Scan using be_bus_message_pkey on be_bus_message m (actual rows=1 loops=1)
+         Index Cond: (seq = c.seq)
+ Planning Time: 0.011 ms
+ Execution Time: 0.126 ms
+(40 rows)
+
+== auto small claim 14
+                                               QUERY PLAN                                                
+---------------------------------------------------------------------------------------------------------
+ Nested Loop Left Join (actual rows=1 loops=1)
+   CTE ready
+     ->  Limit (actual rows=1 loops=1)
+           ->  LockRows (actual rows=1 loops=1)
+                 ->  Sort (actual rows=1 loops=1)
+                       Sort Key: be_bus_delivery.seq
+                       Sort Method: quicksort  Memory: 25kB
+                       ->  Bitmap Heap Scan on be_bus_delivery (actual rows=7 loops=1)
+                             Recheck Cond: ((durable = $1) AND (NOT in_flight))
+                             Filter: (not_before <= clock_timestamp())
+                             Heap Blocks: exact=1
+                             ->  Bitmap Index Scan on be_bus_delivery_ready (actual rows=20 loops=1)
+                                   Index Cond: (durable = $1)
+   CTE expired
+     ->  Limit (actual rows=0 loops=1)
+           ->  LockRows (actual rows=0 loops=1)
+                 ->  Sort (actual rows=0 loops=1)
+                       Sort Key: be_bus_delivery_1.seq
+                       Sort Method: quicksort  Memory: 25kB
+                       ->  Bitmap Heap Scan on be_bus_delivery be_bus_delivery_1 (actual rows=0 loops=1)
+                             Recheck Cond: ((durable = $1) AND in_flight)
+                             Filter: ((attempts < $4) AND (lease_until < clock_timestamp()))
+                             Rows Removed by Filter: 13
+                             Heap Blocks: exact=1
+                             ->  Bitmap Index Scan on be_bus_delivery_lease (actual rows=13 loops=1)
+                                   Index Cond: (durable = $1)
+   CTE claimed
+     ->  Update on be_bus_delivery d (actual rows=1 loops=1)
+           InitPlan 3 (returns $6)
+             ->  Aggregate (actual rows=1 loops=1)
+                   ->  Append (actual rows=1 loops=1)
+                         ->  CTE Scan on ready (actual rows=1 loops=1)
+                         ->  CTE Scan on expired (actual rows=0 loops=1)
+           ->  Index Scan using be_bus_delivery_pkey on be_bus_delivery d (actual rows=1 loops=1)
+                 Index Cond: ((durable = $1) AND (seq = $6))
+   ->  CTE Scan on claimed c (actual rows=1 loops=1)
+   ->  Index Scan using be_bus_message_pkey on be_bus_message m (actual rows=1 loops=1)
+         Index Cond: (seq = c.seq)
+ Planning Time: 0.011 ms
+ Execution Time: 0.129 ms
+(40 rows)
+
+== auto small claim 15
+                                               QUERY PLAN                                                
+---------------------------------------------------------------------------------------------------------
+ Nested Loop Left Join (actual rows=1 loops=1)
+   CTE ready
+     ->  Limit (actual rows=1 loops=1)
+           ->  LockRows (actual rows=1 loops=1)
+                 ->  Sort (actual rows=1 loops=1)
+                       Sort Key: be_bus_delivery.seq
+                       Sort Method: quicksort  Memory: 25kB
+                       ->  Bitmap Heap Scan on be_bus_delivery (actual rows=6 loops=1)
+                             Recheck Cond: ((durable = $1) AND (NOT in_flight))
+                             Filter: (not_before <= clock_timestamp())
+                             Heap Blocks: exact=1
+                             ->  Bitmap Index Scan on be_bus_delivery_ready (actual rows=20 loops=1)
+                                   Index Cond: (durable = $1)
+   CTE expired
+     ->  Limit (actual rows=0 loops=1)
+           ->  LockRows (actual rows=0 loops=1)
+                 ->  Sort (actual rows=0 loops=1)
+                       Sort Key: be_bus_delivery_1.seq
+                       Sort Method: quicksort  Memory: 25kB
+                       ->  Bitmap Heap Scan on be_bus_delivery be_bus_delivery_1 (actual rows=0 loops=1)
+                             Recheck Cond: ((durable = $1) AND in_flight)
+                             Filter: ((attempts < $4) AND (lease_until < clock_timestamp()))
+                             Rows Removed by Filter: 14
+                             Heap Blocks: exact=1
+                             ->  Bitmap Index Scan on be_bus_delivery_lease (actual rows=14 loops=1)
+                                   Index Cond: (durable = $1)
+   CTE claimed
+     ->  Update on be_bus_delivery d (actual rows=1 loops=1)
+           InitPlan 3 (returns $6)
+             ->  Aggregate (actual rows=1 loops=1)
+                   ->  Append (actual rows=1 loops=1)
+                         ->  CTE Scan on ready (actual rows=1 loops=1)
+                         ->  CTE Scan on expired (actual rows=0 loops=1)
+           ->  Index Scan using be_bus_delivery_pkey on be_bus_delivery d (actual rows=1 loops=1)
+                 Index Cond: ((durable = $1) AND (seq = $6))
+   ->  CTE Scan on claimed c (actual rows=1 loops=1)
+   ->  Index Scan using be_bus_message_pkey on be_bus_message m (actual rows=1 loops=1)
+         Index Cond: (seq = c.seq)
+ Planning Time: 0.010 ms
+ Execution Time: 0.124 ms
+(40 rows)
+
+INSERT 0 1
+INSERT 0 20000
+== auto large claim 1
+                                               QUERY PLAN                                                
+---------------------------------------------------------------------------------------------------------
+ Nested Loop Left Join (actual rows=1 loops=1)
+   CTE ready
+     ->  Limit (actual rows=1 loops=1)
+           ->  LockRows (actual rows=1 loops=1)
+                 ->  Sort (actual rows=1 loops=1)
+                       Sort Key: be_bus_delivery.seq
+                       Sort Method: quicksort  Memory: 1550kB
+                       ->  Bitmap Heap Scan on be_bus_delivery (actual rows=20000 loops=1)
+                             Recheck Cond: ((durable = $1) AND (NOT in_flight))
+                             Filter: (not_before <= clock_timestamp())
+                             Heap Blocks: exact=148
+                             ->  Bitmap Index Scan on be_bus_delivery_ready (actual rows=20000 loops=1)
+                                   Index Cond: (durable = $1)
+   CTE expired
+     ->  Limit (actual rows=0 loops=1)
+           ->  LockRows (actual rows=0 loops=1)
+                 ->  Sort (actual rows=0 loops=1)
+                       Sort Key: be_bus_delivery_1.seq
+                       Sort Method: quicksort  Memory: 25kB
+                       ->  Bitmap Heap Scan on be_bus_delivery be_bus_delivery_1 (actual rows=0 loops=1)
+                             Recheck Cond: ((durable = $1) AND in_flight)
+                             Filter: ((attempts < $4) AND (lease_until < clock_timestamp()))
+                             ->  Bitmap Index Scan on be_bus_delivery_lease (actual rows=0 loops=1)
+                                   Index Cond: (durable = $1)
+   CTE claimed
+     ->  Update on be_bus_delivery d (actual rows=1 loops=1)
+           InitPlan 3 (returns $6)
+             ->  Aggregate (actual rows=1 loops=1)
+                   ->  Append (actual rows=1 loops=1)
+                         ->  CTE Scan on ready (actual rows=1 loops=1)
+                         ->  CTE Scan on expired (actual rows=0 loops=1)
+           ->  Index Scan using be_bus_delivery_pkey on be_bus_delivery d (actual rows=1 loops=1)
+                 Index Cond: ((durable = $1) AND (seq = $6))
+   ->  CTE Scan on claimed c (actual rows=1 loops=1)
+   ->  Index Scan using be_bus_message_pkey on be_bus_message m (actual rows=1 loops=1)
+         Index Cond: (seq = c.seq)
+ Planning Time: 0.037 ms
+ Execution Time: 3.587 ms
+(38 rows)
+
+== auto large claim 2
+                                               QUERY PLAN                                                
+---------------------------------------------------------------------------------------------------------
+ Nested Loop Left Join (actual rows=1 loops=1)
+   CTE ready
+     ->  Limit (actual rows=1 loops=1)
+           ->  LockRows (actual rows=1 loops=1)
+                 ->  Sort (actual rows=1 loops=1)
+                       Sort Key: be_bus_delivery.seq
+                       Sort Method: quicksort  Memory: 1550kB
+                       ->  Bitmap Heap Scan on be_bus_delivery (actual rows=19999 loops=1)
+                             Recheck Cond: ((durable = $1) AND (NOT in_flight))
+                             Filter: (not_before <= clock_timestamp())
+                             Heap Blocks: exact=148
+                             ->  Bitmap Index Scan on be_bus_delivery_ready (actual rows=20000 loops=1)
+                                   Index Cond: (durable = $1)
+   CTE expired
+     ->  Limit (actual rows=0 loops=1)
+           ->  LockRows (actual rows=0 loops=1)
+                 ->  Sort (actual rows=0 loops=1)
+                       Sort Key: be_bus_delivery_1.seq
+                       Sort Method: quicksort  Memory: 25kB
+                       ->  Bitmap Heap Scan on be_bus_delivery be_bus_delivery_1 (actual rows=0 loops=1)
+                             Recheck Cond: ((durable = $1) AND in_flight)
+                             Filter: ((attempts < $4) AND (lease_until < clock_timestamp()))
+                             Rows Removed by Filter: 1
+                             Heap Blocks: exact=1
+                             ->  Bitmap Index Scan on be_bus_delivery_lease (actual rows=1 loops=1)
+                                   Index Cond: (durable = $1)
+   CTE claimed
+     ->  Update on be_bus_delivery d (actual rows=1 loops=1)
+           InitPlan 3 (returns $6)
+             ->  Aggregate (actual rows=1 loops=1)
+                   ->  Append (actual rows=1 loops=1)
+                         ->  CTE Scan on ready (actual rows=1 loops=1)
+                         ->  CTE Scan on expired (actual rows=0 loops=1)
+           ->  Index Scan using be_bus_delivery_pkey on be_bus_delivery d (actual rows=1 loops=1)
+                 Index Cond: ((durable = $1) AND (seq = $6))
+   ->  CTE Scan on claimed c (actual rows=1 loops=1)
+   ->  Index Scan using be_bus_message_pkey on be_bus_message m (actual rows=1 loops=1)
+         Index Cond: (seq = c.seq)
+ Planning Time: 0.027 ms
+ Execution Time: 3.364 ms
+(40 rows)
+
+== auto large claim 3
+                                               QUERY PLAN                                                
+---------------------------------------------------------------------------------------------------------
+ Nested Loop Left Join (actual rows=1 loops=1)
+   CTE ready
+     ->  Limit (actual rows=1 loops=1)
+           ->  LockRows (actual rows=1 loops=1)
+                 ->  Sort (actual rows=1 loops=1)
+                       Sort Key: be_bus_delivery.seq
+                       Sort Method: quicksort  Memory: 1550kB
+                       ->  Bitmap Heap Scan on be_bus_delivery (actual rows=19998 loops=1)
+                             Recheck Cond: ((durable = $1) AND (NOT in_flight))
+                             Filter: (not_before <= clock_timestamp())
+                             Heap Blocks: exact=148
+                             ->  Bitmap Index Scan on be_bus_delivery_ready (actual rows=20000 loops=1)
+                                   Index Cond: (durable = $1)
+   CTE expired
+     ->  Limit (actual rows=0 loops=1)
+           ->  LockRows (actual rows=0 loops=1)
+                 ->  Sort (actual rows=0 loops=1)
+                       Sort Key: be_bus_delivery_1.seq
+                       Sort Method: quicksort  Memory: 25kB
+                       ->  Bitmap Heap Scan on be_bus_delivery be_bus_delivery_1 (actual rows=0 loops=1)
+                             Recheck Cond: ((durable = $1) AND in_flight)
+                             Filter: ((attempts < $4) AND (lease_until < clock_timestamp()))
+                             Rows Removed by Filter: 2
+                             Heap Blocks: exact=1
+                             ->  Bitmap Index Scan on be_bus_delivery_lease (actual rows=2 loops=1)
+                                   Index Cond: (durable = $1)
+   CTE claimed
+     ->  Update on be_bus_delivery d (actual rows=1 loops=1)
+           InitPlan 3 (returns $6)
+             ->  Aggregate (actual rows=1 loops=1)
+                   ->  Append (actual rows=1 loops=1)
+                         ->  CTE Scan on ready (actual rows=1 loops=1)
+                         ->  CTE Scan on expired (actual rows=0 loops=1)
+           ->  Index Scan using be_bus_delivery_pkey on be_bus_delivery d (actual rows=1 loops=1)
+                 Index Cond: ((durable = $1) AND (seq = $6))
+   ->  CTE Scan on claimed c (actual rows=1 loops=1)
+   ->  Index Scan using be_bus_message_pkey on be_bus_message m (actual rows=1 loops=1)
+         Index Cond: (seq = c.seq)
+ Planning Time: 0.021 ms
+ Execution Time: 3.272 ms
+(40 rows)
+
+== auto large claim 4
+                                               QUERY PLAN                                                
+---------------------------------------------------------------------------------------------------------
+ Nested Loop Left Join (actual rows=1 loops=1)
+   CTE ready
+     ->  Limit (actual rows=1 loops=1)
+           ->  LockRows (actual rows=1 loops=1)
+                 ->  Sort (actual rows=1 loops=1)
+                       Sort Key: be_bus_delivery.seq
+                       Sort Method: quicksort  Memory: 1550kB
+                       ->  Bitmap Heap Scan on be_bus_delivery (actual rows=19997 loops=1)
+                             Recheck Cond: ((durable = $1) AND (NOT in_flight))
+                             Filter: (not_before <= clock_timestamp())
+                             Heap Blocks: exact=148
+                             ->  Bitmap Index Scan on be_bus_delivery_ready (actual rows=20000 loops=1)
+                                   Index Cond: (durable = $1)
+   CTE expired
+     ->  Limit (actual rows=0 loops=1)
+           ->  LockRows (actual rows=0 loops=1)
+                 ->  Sort (actual rows=0 loops=1)
+                       Sort Key: be_bus_delivery_1.seq
+                       Sort Method: quicksort  Memory: 25kB
+                       ->  Bitmap Heap Scan on be_bus_delivery be_bus_delivery_1 (actual rows=0 loops=1)
+                             Recheck Cond: ((durable = $1) AND in_flight)
+                             Filter: ((attempts < $4) AND (lease_until < clock_timestamp()))
+                             Rows Removed by Filter: 3
+                             Heap Blocks: exact=1
+                             ->  Bitmap Index Scan on be_bus_delivery_lease (actual rows=3 loops=1)
+                                   Index Cond: (durable = $1)
+   CTE claimed
+     ->  Update on be_bus_delivery d (actual rows=1 loops=1)
+           InitPlan 3 (returns $6)
+             ->  Aggregate (actual rows=1 loops=1)
+                   ->  Append (actual rows=1 loops=1)
+                         ->  CTE Scan on ready (actual rows=1 loops=1)
+                         ->  CTE Scan on expired (actual rows=0 loops=1)
+           ->  Index Scan using be_bus_delivery_pkey on be_bus_delivery d (actual rows=1 loops=1)
+                 Index Cond: ((durable = $1) AND (seq = $6))
+   ->  CTE Scan on claimed c (actual rows=1 loops=1)
+   ->  Index Scan using be_bus_message_pkey on be_bus_message m (actual rows=1 loops=1)
+         Index Cond: (seq = c.seq)
+ Planning Time: 0.022 ms
+ Execution Time: 3.314 ms
+(40 rows)
+
+== auto large claim 5
+                                               QUERY PLAN                                                
+---------------------------------------------------------------------------------------------------------
+ Nested Loop Left Join (actual rows=1 loops=1)
+   CTE ready
+     ->  Limit (actual rows=1 loops=1)
+           ->  LockRows (actual rows=1 loops=1)
+                 ->  Sort (actual rows=1 loops=1)
+                       Sort Key: be_bus_delivery.seq
+                       Sort Method: quicksort  Memory: 1550kB
+                       ->  Bitmap Heap Scan on be_bus_delivery (actual rows=19996 loops=1)
+                             Recheck Cond: ((durable = $1) AND (NOT in_flight))
+                             Filter: (not_before <= clock_timestamp())
+                             Heap Blocks: exact=148
+                             ->  Bitmap Index Scan on be_bus_delivery_ready (actual rows=20000 loops=1)
+                                   Index Cond: (durable = $1)
+   CTE expired
+     ->  Limit (actual rows=0 loops=1)
+           ->  LockRows (actual rows=0 loops=1)
+                 ->  Sort (actual rows=0 loops=1)
+                       Sort Key: be_bus_delivery_1.seq
+                       Sort Method: quicksort  Memory: 25kB
+                       ->  Bitmap Heap Scan on be_bus_delivery be_bus_delivery_1 (actual rows=0 loops=1)
+                             Recheck Cond: ((durable = $1) AND in_flight)
+                             Filter: ((attempts < $4) AND (lease_until < clock_timestamp()))
+                             Rows Removed by Filter: 4
+                             Heap Blocks: exact=1
+                             ->  Bitmap Index Scan on be_bus_delivery_lease (actual rows=4 loops=1)
+                                   Index Cond: (durable = $1)
+   CTE claimed
+     ->  Update on be_bus_delivery d (actual rows=1 loops=1)
+           InitPlan 3 (returns $6)
+             ->  Aggregate (actual rows=1 loops=1)
+                   ->  Append (actual rows=1 loops=1)
+                         ->  CTE Scan on ready (actual rows=1 loops=1)
+                         ->  CTE Scan on expired (actual rows=0 loops=1)
+           ->  Index Scan using be_bus_delivery_pkey on be_bus_delivery d (actual rows=1 loops=1)
+                 Index Cond: ((durable = $1) AND (seq = $6))
+   ->  CTE Scan on claimed c (actual rows=1 loops=1)
+   ->  Index Scan using be_bus_message_pkey on be_bus_message m (actual rows=1 loops=1)
+         Index Cond: (seq = c.seq)
+ Planning Time: 0.019 ms
+ Execution Time: 3.331 ms
+(40 rows)
+
+== auto large claim 6
+                                               QUERY PLAN                                                
+---------------------------------------------------------------------------------------------------------
+ Nested Loop Left Join (actual rows=1 loops=1)
+   CTE ready
+     ->  Limit (actual rows=1 loops=1)
+           ->  LockRows (actual rows=1 loops=1)
+                 ->  Sort (actual rows=1 loops=1)
+                       Sort Key: be_bus_delivery.seq
+                       Sort Method: quicksort  Memory: 1550kB
+                       ->  Bitmap Heap Scan on be_bus_delivery (actual rows=19995 loops=1)
+                             Recheck Cond: ((durable = $1) AND (NOT in_flight))
+                             Filter: (not_before <= clock_timestamp())
+                             Heap Blocks: exact=148
+                             ->  Bitmap Index Scan on be_bus_delivery_ready (actual rows=20000 loops=1)
+                                   Index Cond: (durable = $1)
+   CTE expired
+     ->  Limit (actual rows=0 loops=1)
+           ->  LockRows (actual rows=0 loops=1)
+                 ->  Sort (actual rows=0 loops=1)
+                       Sort Key: be_bus_delivery_1.seq
+                       Sort Method: quicksort  Memory: 25kB
+                       ->  Bitmap Heap Scan on be_bus_delivery be_bus_delivery_1 (actual rows=0 loops=1)
+                             Recheck Cond: ((durable = $1) AND in_flight)
+                             Filter: ((attempts < $4) AND (lease_until < clock_timestamp()))
+                             Rows Removed by Filter: 5
+                             Heap Blocks: exact=1
+                             ->  Bitmap Index Scan on be_bus_delivery_lease (actual rows=5 loops=1)
+                                   Index Cond: (durable = $1)
+   CTE claimed
+     ->  Update on be_bus_delivery d (actual rows=1 loops=1)
+           InitPlan 3 (returns $6)
+             ->  Aggregate (actual rows=1 loops=1)
+                   ->  Append (actual rows=1 loops=1)
+                         ->  CTE Scan on ready (actual rows=1 loops=1)
+                         ->  CTE Scan on expired (actual rows=0 loops=1)
+           ->  Index Scan using be_bus_delivery_pkey on be_bus_delivery d (actual rows=1 loops=1)
+                 Index Cond: ((durable = $1) AND (seq = $6))
+   ->  CTE Scan on claimed c (actual rows=1 loops=1)
+   ->  Index Scan using be_bus_message_pkey on be_bus_message m (actual rows=1 loops=1)
+         Index Cond: (seq = c.seq)
+ Planning Time: 0.021 ms
+ Execution Time: 3.343 ms
+(40 rows)
+
+== auto large claim 7
+                                               QUERY PLAN                                                
+---------------------------------------------------------------------------------------------------------
+ Nested Loop Left Join (actual rows=1 loops=1)
+   CTE ready
+     ->  Limit (actual rows=1 loops=1)
+           ->  LockRows (actual rows=1 loops=1)
+                 ->  Sort (actual rows=1 loops=1)
+                       Sort Key: be_bus_delivery.seq
+                       Sort Method: quicksort  Memory: 1550kB
+                       ->  Bitmap Heap Scan on be_bus_delivery (actual rows=19994 loops=1)
+                             Recheck Cond: ((durable = $1) AND (NOT in_flight))
+                             Filter: (not_before <= clock_timestamp())
+                             Heap Blocks: exact=148
+                             ->  Bitmap Index Scan on be_bus_delivery_ready (actual rows=20000 loops=1)
+                                   Index Cond: (durable = $1)
+   CTE expired
+     ->  Limit (actual rows=0 loops=1)
+           ->  LockRows (actual rows=0 loops=1)
+                 ->  Sort (actual rows=0 loops=1)
+                       Sort Key: be_bus_delivery_1.seq
+                       Sort Method: quicksort  Memory: 25kB
+                       ->  Bitmap Heap Scan on be_bus_delivery be_bus_delivery_1 (actual rows=0 loops=1)
+                             Recheck Cond: ((durable = $1) AND in_flight)
+                             Filter: ((attempts < $4) AND (lease_until < clock_timestamp()))
+                             Rows Removed by Filter: 6
+                             Heap Blocks: exact=1
+                             ->  Bitmap Index Scan on be_bus_delivery_lease (actual rows=6 loops=1)
+                                   Index Cond: (durable = $1)
+   CTE claimed
+     ->  Update on be_bus_delivery d (actual rows=1 loops=1)
+           InitPlan 3 (returns $6)
+             ->  Aggregate (actual rows=1 loops=1)
+                   ->  Append (actual rows=1 loops=1)
+                         ->  CTE Scan on ready (actual rows=1 loops=1)
+                         ->  CTE Scan on expired (actual rows=0 loops=1)
+           ->  Index Scan using be_bus_delivery_pkey on be_bus_delivery d (actual rows=1 loops=1)
+                 Index Cond: ((durable = $1) AND (seq = $6))
+   ->  CTE Scan on claimed c (actual rows=1 loops=1)
+   ->  Index Scan using be_bus_message_pkey on be_bus_message m (actual rows=1 loops=1)
+         Index Cond: (seq = c.seq)
+ Planning Time: 0.023 ms
+ Execution Time: 3.316 ms
+(40 rows)
+
+== auto large claim 8
+                                               QUERY PLAN                                                
+---------------------------------------------------------------------------------------------------------
+ Nested Loop Left Join (actual rows=1 loops=1)
+   CTE ready
+     ->  Limit (actual rows=1 loops=1)
+           ->  LockRows (actual rows=1 loops=1)
+                 ->  Sort (actual rows=1 loops=1)
+                       Sort Key: be_bus_delivery.seq
+                       Sort Method: quicksort  Memory: 1549kB
+                       ->  Bitmap Heap Scan on be_bus_delivery (actual rows=19993 loops=1)
+                             Recheck Cond: ((durable = $1) AND (NOT in_flight))
+                             Filter: (not_before <= clock_timestamp())
+                             Heap Blocks: exact=148
+                             ->  Bitmap Index Scan on be_bus_delivery_ready (actual rows=20000 loops=1)
+                                   Index Cond: (durable = $1)
+   CTE expired
+     ->  Limit (actual rows=0 loops=1)
+           ->  LockRows (actual rows=0 loops=1)
+                 ->  Sort (actual rows=0 loops=1)
+                       Sort Key: be_bus_delivery_1.seq
+                       Sort Method: quicksort  Memory: 25kB
+                       ->  Bitmap Heap Scan on be_bus_delivery be_bus_delivery_1 (actual rows=0 loops=1)
+                             Recheck Cond: ((durable = $1) AND in_flight)
+                             Filter: ((attempts < $4) AND (lease_until < clock_timestamp()))
+                             Rows Removed by Filter: 7
+                             Heap Blocks: exact=1
+                             ->  Bitmap Index Scan on be_bus_delivery_lease (actual rows=7 loops=1)
+                                   Index Cond: (durable = $1)
+   CTE claimed
+     ->  Update on be_bus_delivery d (actual rows=1 loops=1)
+           InitPlan 3 (returns $6)
+             ->  Aggregate (actual rows=1 loops=1)
+                   ->  Append (actual rows=1 loops=1)
+                         ->  CTE Scan on ready (actual rows=1 loops=1)
+                         ->  CTE Scan on expired (actual rows=0 loops=1)
+           ->  Index Scan using be_bus_delivery_pkey on be_bus_delivery d (actual rows=1 loops=1)
+                 Index Cond: ((durable = $1) AND (seq = $6))
+   ->  CTE Scan on claimed c (actual rows=1 loops=1)
+   ->  Index Scan using be_bus_message_pkey on be_bus_message m (actual rows=1 loops=1)
+         Index Cond: (seq = c.seq)
+ Planning Time: 0.016 ms
+ Execution Time: 3.373 ms
+(40 rows)
+
+== auto large claim 9
+                                               QUERY PLAN                                                
+---------------------------------------------------------------------------------------------------------
+ Nested Loop Left Join (actual rows=1 loops=1)
+   CTE ready
+     ->  Limit (actual rows=1 loops=1)
+           ->  LockRows (actual rows=1 loops=1)
+                 ->  Sort (actual rows=1 loops=1)
+                       Sort Key: be_bus_delivery.seq
+                       Sort Method: quicksort  Memory: 1549kB
+                       ->  Bitmap Heap Scan on be_bus_delivery (actual rows=19992 loops=1)
+                             Recheck Cond: ((durable = $1) AND (NOT in_flight))
+                             Filter: (not_before <= clock_timestamp())
+                             Heap Blocks: exact=148
+                             ->  Bitmap Index Scan on be_bus_delivery_ready (actual rows=20000 loops=1)
+                                   Index Cond: (durable = $1)
+   CTE expired
+     ->  Limit (actual rows=0 loops=1)
+           ->  LockRows (actual rows=0 loops=1)
+                 ->  Sort (actual rows=0 loops=1)
+                       Sort Key: be_bus_delivery_1.seq
+                       Sort Method: quicksort  Memory: 25kB
+                       ->  Bitmap Heap Scan on be_bus_delivery be_bus_delivery_1 (actual rows=0 loops=1)
+                             Recheck Cond: ((durable = $1) AND in_flight)
+                             Filter: ((attempts < $4) AND (lease_until < clock_timestamp()))
+                             Rows Removed by Filter: 8
+                             Heap Blocks: exact=1
+                             ->  Bitmap Index Scan on be_bus_delivery_lease (actual rows=8 loops=1)
+                                   Index Cond: (durable = $1)
+   CTE claimed
+     ->  Update on be_bus_delivery d (actual rows=1 loops=1)
+           InitPlan 3 (returns $6)
+             ->  Aggregate (actual rows=1 loops=1)
+                   ->  Append (actual rows=1 loops=1)
+                         ->  CTE Scan on ready (actual rows=1 loops=1)
+                         ->  CTE Scan on expired (actual rows=0 loops=1)
+           ->  Index Scan using be_bus_delivery_pkey on be_bus_delivery d (actual rows=1 loops=1)
+                 Index Cond: ((durable = $1) AND (seq = $6))
+   ->  CTE Scan on claimed c (actual rows=1 loops=1)
+   ->  Index Scan using be_bus_message_pkey on be_bus_message m (actual rows=1 loops=1)
+         Index Cond: (seq = c.seq)
+ Planning Time: 0.060 ms
+ Execution Time: 5.274 ms
+(40 rows)
+
+== auto large claim 10
+                                               QUERY PLAN                                                
+---------------------------------------------------------------------------------------------------------
+ Nested Loop Left Join (actual rows=1 loops=1)
+   CTE ready
+     ->  Limit (actual rows=1 loops=1)
+           ->  LockRows (actual rows=1 loops=1)
+                 ->  Sort (actual rows=1 loops=1)
+                       Sort Key: be_bus_delivery.seq
+                       Sort Method: quicksort  Memory: 1549kB
+                       ->  Bitmap Heap Scan on be_bus_delivery (actual rows=19991 loops=1)
+                             Recheck Cond: ((durable = $1) AND (NOT in_flight))
+                             Filter: (not_before <= clock_timestamp())
+                             Heap Blocks: exact=148
+                             ->  Bitmap Index Scan on be_bus_delivery_ready (actual rows=20000 loops=1)
+                                   Index Cond: (durable = $1)
+   CTE expired
+     ->  Limit (actual rows=0 loops=1)
+           ->  LockRows (actual rows=0 loops=1)
+                 ->  Sort (actual rows=0 loops=1)
+                       Sort Key: be_bus_delivery_1.seq
+                       Sort Method: quicksort  Memory: 25kB
+                       ->  Bitmap Heap Scan on be_bus_delivery be_bus_delivery_1 (actual rows=0 loops=1)
+                             Recheck Cond: ((durable = $1) AND in_flight)
+                             Filter: ((attempts < $4) AND (lease_until < clock_timestamp()))
+                             Rows Removed by Filter: 9
+                             Heap Blocks: exact=1
+                             ->  Bitmap Index Scan on be_bus_delivery_lease (actual rows=9 loops=1)
+                                   Index Cond: (durable = $1)
+   CTE claimed
+     ->  Update on be_bus_delivery d (actual rows=1 loops=1)
+           InitPlan 3 (returns $6)
+             ->  Aggregate (actual rows=1 loops=1)
+                   ->  Append (actual rows=1 loops=1)
+                         ->  CTE Scan on ready (actual rows=1 loops=1)
+                         ->  CTE Scan on expired (actual rows=0 loops=1)
+           ->  Index Scan using be_bus_delivery_pkey on be_bus_delivery d (actual rows=1 loops=1)
+                 Index Cond: ((durable = $1) AND (seq = $6))
+   ->  CTE Scan on claimed c (actual rows=1 loops=1)
+   ->  Index Scan using be_bus_message_pkey on be_bus_message m (actual rows=1 loops=1)
+         Index Cond: (seq = c.seq)
+ Planning Time: 0.033 ms
+ Execution Time: 3.412 ms
+(40 rows)
+
+== auto large claim 11
+                                               QUERY PLAN                                                
+---------------------------------------------------------------------------------------------------------
+ Nested Loop Left Join (actual rows=1 loops=1)
+   CTE ready
+     ->  Limit (actual rows=1 loops=1)
+           ->  LockRows (actual rows=1 loops=1)
+                 ->  Sort (actual rows=1 loops=1)
+                       Sort Key: be_bus_delivery.seq
+                       Sort Method: quicksort  Memory: 1549kB
+                       ->  Bitmap Heap Scan on be_bus_delivery (actual rows=19990 loops=1)
+                             Recheck Cond: ((durable = $1) AND (NOT in_flight))
+                             Filter: (not_before <= clock_timestamp())
+                             Heap Blocks: exact=148
+                             ->  Bitmap Index Scan on be_bus_delivery_ready (actual rows=20000 loops=1)
+                                   Index Cond: (durable = $1)
+   CTE expired
+     ->  Limit (actual rows=0 loops=1)
+           ->  LockRows (actual rows=0 loops=1)
+                 ->  Sort (actual rows=0 loops=1)
+                       Sort Key: be_bus_delivery_1.seq
+                       Sort Method: quicksort  Memory: 25kB
+                       ->  Bitmap Heap Scan on be_bus_delivery be_bus_delivery_1 (actual rows=0 loops=1)
+                             Recheck Cond: ((durable = $1) AND in_flight)
+                             Filter: ((attempts < $4) AND (lease_until < clock_timestamp()))
+                             Rows Removed by Filter: 10
+                             Heap Blocks: exact=1
+                             ->  Bitmap Index Scan on be_bus_delivery_lease (actual rows=10 loops=1)
+                                   Index Cond: (durable = $1)
+   CTE claimed
+     ->  Update on be_bus_delivery d (actual rows=1 loops=1)
+           InitPlan 3 (returns $6)
+             ->  Aggregate (actual rows=1 loops=1)
+                   ->  Append (actual rows=1 loops=1)
+                         ->  CTE Scan on ready (actual rows=1 loops=1)
+                         ->  CTE Scan on expired (actual rows=0 loops=1)
+           ->  Index Scan using be_bus_delivery_pkey on be_bus_delivery d (actual rows=1 loops=1)
+                 Index Cond: ((durable = $1) AND (seq = $6))
+   ->  CTE Scan on claimed c (actual rows=1 loops=1)
+   ->  Index Scan using be_bus_message_pkey on be_bus_message m (actual rows=1 loops=1)
+         Index Cond: (seq = c.seq)
+ Planning Time: 0.028 ms
+ Execution Time: 3.272 ms
+(40 rows)
+
+== auto large claim 12
+                                               QUERY PLAN                                                
+---------------------------------------------------------------------------------------------------------
+ Nested Loop Left Join (actual rows=1 loops=1)
+   CTE ready
+     ->  Limit (actual rows=1 loops=1)
+           ->  LockRows (actual rows=1 loops=1)
+                 ->  Sort (actual rows=1 loops=1)
+                       Sort Key: be_bus_delivery.seq
+                       Sort Method: quicksort  Memory: 1549kB
+                       ->  Bitmap Heap Scan on be_bus_delivery (actual rows=19989 loops=1)
+                             Recheck Cond: ((durable = $1) AND (NOT in_flight))
+                             Filter: (not_before <= clock_timestamp())
+                             Heap Blocks: exact=148
+                             ->  Bitmap Index Scan on be_bus_delivery_ready (actual rows=20000 loops=1)
+                                   Index Cond: (durable = $1)
+   CTE expired
+     ->  Limit (actual rows=0 loops=1)
+           ->  LockRows (actual rows=0 loops=1)
+                 ->  Sort (actual rows=0 loops=1)
+                       Sort Key: be_bus_delivery_1.seq
+                       Sort Method: quicksort  Memory: 25kB
+                       ->  Bitmap Heap Scan on be_bus_delivery be_bus_delivery_1 (actual rows=0 loops=1)
+                             Recheck Cond: ((durable = $1) AND in_flight)
+                             Filter: ((attempts < $4) AND (lease_until < clock_timestamp()))
+                             Rows Removed by Filter: 11
+                             Heap Blocks: exact=1
+                             ->  Bitmap Index Scan on be_bus_delivery_lease (actual rows=11 loops=1)
+                                   Index Cond: (durable = $1)
+   CTE claimed
+     ->  Update on be_bus_delivery d (actual rows=1 loops=1)
+           InitPlan 3 (returns $6)
+             ->  Aggregate (actual rows=1 loops=1)
+                   ->  Append (actual rows=1 loops=1)
+                         ->  CTE Scan on ready (actual rows=1 loops=1)
+                         ->  CTE Scan on expired (actual rows=0 loops=1)
+           ->  Index Scan using be_bus_delivery_pkey on be_bus_delivery d (actual rows=1 loops=1)
+                 Index Cond: ((durable = $1) AND (seq = $6))
+   ->  CTE Scan on claimed c (actual rows=1 loops=1)
+   ->  Index Scan using be_bus_message_pkey on be_bus_message m (actual rows=1 loops=1)
+         Index Cond: (seq = c.seq)
+ Planning Time: 0.027 ms
+ Execution Time: 3.222 ms
+(40 rows)
+
+== auto large claim 13
+                                               QUERY PLAN                                                
+---------------------------------------------------------------------------------------------------------
+ Nested Loop Left Join (actual rows=1 loops=1)
+   CTE ready
+     ->  Limit (actual rows=1 loops=1)
+           ->  LockRows (actual rows=1 loops=1)
+                 ->  Sort (actual rows=1 loops=1)
+                       Sort Key: be_bus_delivery.seq
+                       Sort Method: quicksort  Memory: 1549kB
+                       ->  Bitmap Heap Scan on be_bus_delivery (actual rows=19988 loops=1)
+                             Recheck Cond: ((durable = $1) AND (NOT in_flight))
+                             Filter: (not_before <= clock_timestamp())
+                             Heap Blocks: exact=148
+                             ->  Bitmap Index Scan on be_bus_delivery_ready (actual rows=20000 loops=1)
+                                   Index Cond: (durable = $1)
+   CTE expired
+     ->  Limit (actual rows=0 loops=1)
+           ->  LockRows (actual rows=0 loops=1)
+                 ->  Sort (actual rows=0 loops=1)
+                       Sort Key: be_bus_delivery_1.seq
+                       Sort Method: quicksort  Memory: 25kB
+                       ->  Bitmap Heap Scan on be_bus_delivery be_bus_delivery_1 (actual rows=0 loops=1)
+                             Recheck Cond: ((durable = $1) AND in_flight)
+                             Filter: ((attempts < $4) AND (lease_until < clock_timestamp()))
+                             Rows Removed by Filter: 12
+                             Heap Blocks: exact=1
+                             ->  Bitmap Index Scan on be_bus_delivery_lease (actual rows=12 loops=1)
+                                   Index Cond: (durable = $1)
+   CTE claimed
+     ->  Update on be_bus_delivery d (actual rows=1 loops=1)
+           InitPlan 3 (returns $6)
+             ->  Aggregate (actual rows=1 loops=1)
+                   ->  Append (actual rows=1 loops=1)
+                         ->  CTE Scan on ready (actual rows=1 loops=1)
+                         ->  CTE Scan on expired (actual rows=0 loops=1)
+           ->  Index Scan using be_bus_delivery_pkey on be_bus_delivery d (actual rows=1 loops=1)
+                 Index Cond: ((durable = $1) AND (seq = $6))
+   ->  CTE Scan on claimed c (actual rows=1 loops=1)
+   ->  Index Scan using be_bus_message_pkey on be_bus_message m (actual rows=1 loops=1)
+         Index Cond: (seq = c.seq)
+ Planning Time: 0.019 ms
+ Execution Time: 3.172 ms
+(40 rows)
+
+== auto large claim 14
+                                               QUERY PLAN                                                
+---------------------------------------------------------------------------------------------------------
+ Nested Loop Left Join (actual rows=1 loops=1)
+   CTE ready
+     ->  Limit (actual rows=1 loops=1)
+           ->  LockRows (actual rows=1 loops=1)
+                 ->  Sort (actual rows=1 loops=1)
+                       Sort Key: be_bus_delivery.seq
+                       Sort Method: quicksort  Memory: 1549kB
+                       ->  Bitmap Heap Scan on be_bus_delivery (actual rows=19987 loops=1)
+                             Recheck Cond: ((durable = $1) AND (NOT in_flight))
+                             Filter: (not_before <= clock_timestamp())
+                             Heap Blocks: exact=148
+                             ->  Bitmap Index Scan on be_bus_delivery_ready (actual rows=20000 loops=1)
+                                   Index Cond: (durable = $1)
+   CTE expired
+     ->  Limit (actual rows=0 loops=1)
+           ->  LockRows (actual rows=0 loops=1)
+                 ->  Sort (actual rows=0 loops=1)
+                       Sort Key: be_bus_delivery_1.seq
+                       Sort Method: quicksort  Memory: 25kB
+                       ->  Bitmap Heap Scan on be_bus_delivery be_bus_delivery_1 (actual rows=0 loops=1)
+                             Recheck Cond: ((durable = $1) AND in_flight)
+                             Filter: ((attempts < $4) AND (lease_until < clock_timestamp()))
+                             Rows Removed by Filter: 13
+                             Heap Blocks: exact=1
+                             ->  Bitmap Index Scan on be_bus_delivery_lease (actual rows=13 loops=1)
+                                   Index Cond: (durable = $1)
+   CTE claimed
+     ->  Update on be_bus_delivery d (actual rows=1 loops=1)
+           InitPlan 3 (returns $6)
+             ->  Aggregate (actual rows=1 loops=1)
+                   ->  Append (actual rows=1 loops=1)
+                         ->  CTE Scan on ready (actual rows=1 loops=1)
+                         ->  CTE Scan on expired (actual rows=0 loops=1)
+           ->  Index Scan using be_bus_delivery_pkey on be_bus_delivery d (actual rows=1 loops=1)
+                 Index Cond: ((durable = $1) AND (seq = $6))
+   ->  CTE Scan on claimed c (actual rows=1 loops=1)
+   ->  Index Scan using be_bus_message_pkey on be_bus_message m (actual rows=1 loops=1)
+         Index Cond: (seq = c.seq)
+ Planning Time: 0.019 ms
+ Execution Time: 3.274 ms
+(40 rows)
+
+== auto large claim 15
+                                               QUERY PLAN                                                
+---------------------------------------------------------------------------------------------------------
+ Nested Loop Left Join (actual rows=1 loops=1)
+   CTE ready
+     ->  Limit (actual rows=1 loops=1)
+           ->  LockRows (actual rows=1 loops=1)
+                 ->  Sort (actual rows=1 loops=1)
+                       Sort Key: be_bus_delivery.seq
+                       Sort Method: quicksort  Memory: 1549kB
+                       ->  Bitmap Heap Scan on be_bus_delivery (actual rows=19986 loops=1)
+                             Recheck Cond: ((durable = $1) AND (NOT in_flight))
+                             Filter: (not_before <= clock_timestamp())
+                             Heap Blocks: exact=148
+                             ->  Bitmap Index Scan on be_bus_delivery_ready (actual rows=20000 loops=1)
+                                   Index Cond: (durable = $1)
+   CTE expired
+     ->  Limit (actual rows=0 loops=1)
+           ->  LockRows (actual rows=0 loops=1)
+                 ->  Sort (actual rows=0 loops=1)
+                       Sort Key: be_bus_delivery_1.seq
+                       Sort Method: quicksort  Memory: 25kB
+                       ->  Bitmap Heap Scan on be_bus_delivery be_bus_delivery_1 (actual rows=0 loops=1)
+                             Recheck Cond: ((durable = $1) AND in_flight)
+                             Filter: ((attempts < $4) AND (lease_until < clock_timestamp()))
+                             Rows Removed by Filter: 14
+                             Heap Blocks: exact=1
+                             ->  Bitmap Index Scan on be_bus_delivery_lease (actual rows=14 loops=1)
+                                   Index Cond: (durable = $1)
+   CTE claimed
+     ->  Update on be_bus_delivery d (actual rows=1 loops=1)
+           InitPlan 3 (returns $6)
+             ->  Aggregate (actual rows=1 loops=1)
+                   ->  Append (actual rows=1 loops=1)
+                         ->  CTE Scan on ready (actual rows=1 loops=1)
+                         ->  CTE Scan on expired (actual rows=0 loops=1)
+           ->  Index Scan using be_bus_delivery_pkey on be_bus_delivery d (actual rows=1 loops=1)
+                 Index Cond: ((durable = $1) AND (seq = $6))
+   ->  CTE Scan on claimed c (actual rows=1 loops=1)
+   ->  Index Scan using be_bus_message_pkey on be_bus_message m (actual rows=1 loops=1)
+         Index Cond: (seq = c.seq)
+ Planning Time: 0.024 ms
+ Execution Time: 3.337 ms
+(40 rows)
+
+DEALLOCATE
+NOTICE:  drop cascades to 4 other objects
+DETAIL:  drop cascades to table be_bus_message
+drop cascades to table be_bus_stream
+drop cascades to table be_bus_subscription
+drop cascades to table be_bus_delivery
+DROP SCHEMA
+CREATE SCHEMA
+SET
+SET
+CREATE TABLE
+CREATE INDEX
+CREATE INDEX
+CREATE INDEX
+CREATE TABLE
+CREATE TABLE
+CREATE TABLE
+CREATE INDEX
+CREATE INDEX
+DROP INDEX
+CREATE INDEX
+PREPARE
+INSERT 0 1
+INSERT 0 20
+== force_custom_plan small claim 1
+                                               QUERY PLAN                                                
+---------------------------------------------------------------------------------------------------------
+ Nested Loop Left Join (actual rows=1 loops=1)
+   CTE ready
+     ->  Limit (actual rows=1 loops=1)
+           ->  LockRows (actual rows=1 loops=1)
+                 ->  Sort (actual rows=1 loops=1)
+                       Sort Key: be_bus_delivery.seq
+                       Sort Method: quicksort  Memory: 25kB
+                       ->  Bitmap Heap Scan on be_bus_delivery (actual rows=20 loops=1)
+                             Recheck Cond: ((durable = 'small'::text) AND (NOT in_flight))
+                             Filter: (not_before <= clock_timestamp())
+                             Heap Blocks: exact=1
+                             ->  Bitmap Index Scan on be_bus_delivery_ready (actual rows=20 loops=1)
+                                   Index Cond: (durable = 'small'::text)
+   CTE expired
+     ->  Limit (actual rows=0 loops=1)
+           ->  LockRows (actual rows=0 loops=1)
+                 ->  Sort (actual rows=0 loops=1)
+                       Sort Key: be_bus_delivery_1.seq
+                       Sort Method: quicksort  Memory: 25kB
+                       ->  Bitmap Heap Scan on be_bus_delivery be_bus_delivery_1 (actual rows=0 loops=1)
+                             Recheck Cond: ((durable = 'small'::text) AND in_flight)
+                             Filter: ((attempts < 3) AND (lease_until < clock_timestamp()))
+                             ->  Bitmap Index Scan on be_bus_delivery_lease (actual rows=0 loops=1)
+                                   Index Cond: (durable = 'small'::text)
+   CTE claimed
+     ->  Update on be_bus_delivery d (actual rows=1 loops=1)
+           InitPlan 3 (returns $6)
+             ->  Aggregate (actual rows=1 loops=1)
+                   ->  Append (actual rows=1 loops=1)
+                         ->  CTE Scan on ready (actual rows=1 loops=1)
+                         ->  CTE Scan on expired (actual rows=0 loops=1)
+           ->  Index Scan using be_bus_delivery_pkey on be_bus_delivery d (actual rows=1 loops=1)
+                 Index Cond: ((durable = 'small'::text) AND (seq = $6))
+   ->  CTE Scan on claimed c (actual rows=1 loops=1)
+   ->  Index Scan using be_bus_message_pkey on be_bus_message m (actual rows=1 loops=1)
+         Index Cond: (seq = c.seq)
+ Planning Time: 0.535 ms
+ Execution Time: 0.358 ms
+(38 rows)
+
+== force_custom_plan small claim 2
+                                               QUERY PLAN                                                
+---------------------------------------------------------------------------------------------------------
+ Nested Loop Left Join (actual rows=1 loops=1)
+   CTE ready
+     ->  Limit (actual rows=1 loops=1)
+           ->  LockRows (actual rows=1 loops=1)
+                 ->  Sort (actual rows=1 loops=1)
+                       Sort Key: be_bus_delivery.seq
+                       Sort Method: quicksort  Memory: 25kB
+                       ->  Bitmap Heap Scan on be_bus_delivery (actual rows=19 loops=1)
+                             Recheck Cond: ((durable = 'small'::text) AND (NOT in_flight))
+                             Filter: (not_before <= clock_timestamp())
+                             Heap Blocks: exact=1
+                             ->  Bitmap Index Scan on be_bus_delivery_ready (actual rows=20 loops=1)
+                                   Index Cond: (durable = 'small'::text)
+   CTE expired
+     ->  Limit (actual rows=0 loops=1)
+           ->  LockRows (actual rows=0 loops=1)
+                 ->  Sort (actual rows=0 loops=1)
+                       Sort Key: be_bus_delivery_1.seq
+                       Sort Method: quicksort  Memory: 25kB
+                       ->  Bitmap Heap Scan on be_bus_delivery be_bus_delivery_1 (actual rows=0 loops=1)
+                             Recheck Cond: ((durable = 'small'::text) AND in_flight)
+                             Filter: ((attempts < 3) AND (lease_until < clock_timestamp()))
+                             Rows Removed by Filter: 1
+                             Heap Blocks: exact=1
+                             ->  Bitmap Index Scan on be_bus_delivery_lease (actual rows=1 loops=1)
+                                   Index Cond: (durable = 'small'::text)
+   CTE claimed
+     ->  Update on be_bus_delivery d (actual rows=1 loops=1)
+           InitPlan 3 (returns $6)
+             ->  Aggregate (actual rows=1 loops=1)
+                   ->  Append (actual rows=1 loops=1)
+                         ->  CTE Scan on ready (actual rows=1 loops=1)
+                         ->  CTE Scan on expired (actual rows=0 loops=1)
+           ->  Index Scan using be_bus_delivery_pkey on be_bus_delivery d (actual rows=1 loops=1)
+                 Index Cond: ((durable = 'small'::text) AND (seq = $6))
+   ->  CTE Scan on claimed c (actual rows=1 loops=1)
+   ->  Index Scan using be_bus_message_pkey on be_bus_message m (actual rows=1 loops=1)
+         Index Cond: (seq = c.seq)
+ Planning Time: 0.305 ms
+ Execution Time: 0.250 ms
+(40 rows)
+
+== force_custom_plan small claim 3
+                                               QUERY PLAN                                                
+---------------------------------------------------------------------------------------------------------
+ Nested Loop Left Join (actual rows=1 loops=1)
+   CTE ready
+     ->  Limit (actual rows=1 loops=1)
+           ->  LockRows (actual rows=1 loops=1)
+                 ->  Sort (actual rows=1 loops=1)
+                       Sort Key: be_bus_delivery.seq
+                       Sort Method: quicksort  Memory: 25kB
+                       ->  Bitmap Heap Scan on be_bus_delivery (actual rows=18 loops=1)
+                             Recheck Cond: ((durable = 'small'::text) AND (NOT in_flight))
+                             Filter: (not_before <= clock_timestamp())
+                             Heap Blocks: exact=1
+                             ->  Bitmap Index Scan on be_bus_delivery_ready (actual rows=20 loops=1)
+                                   Index Cond: (durable = 'small'::text)
+   CTE expired
+     ->  Limit (actual rows=0 loops=1)
+           ->  LockRows (actual rows=0 loops=1)
+                 ->  Sort (actual rows=0 loops=1)
+                       Sort Key: be_bus_delivery_1.seq
+                       Sort Method: quicksort  Memory: 25kB
+                       ->  Bitmap Heap Scan on be_bus_delivery be_bus_delivery_1 (actual rows=0 loops=1)
+                             Recheck Cond: ((durable = 'small'::text) AND in_flight)
+                             Filter: ((attempts < 3) AND (lease_until < clock_timestamp()))
+                             Rows Removed by Filter: 2
+                             Heap Blocks: exact=1
+                             ->  Bitmap Index Scan on be_bus_delivery_lease (actual rows=2 loops=1)
+                                   Index Cond: (durable = 'small'::text)
+   CTE claimed
+     ->  Update on be_bus_delivery d (actual rows=1 loops=1)
+           InitPlan 3 (returns $6)
+             ->  Aggregate (actual rows=1 loops=1)
+                   ->  Append (actual rows=1 loops=1)
+                         ->  CTE Scan on ready (actual rows=1 loops=1)
+                         ->  CTE Scan on expired (actual rows=0 loops=1)
+           ->  Index Scan using be_bus_delivery_pkey on be_bus_delivery d (actual rows=1 loops=1)
+                 Index Cond: ((durable = 'small'::text) AND (seq = $6))
+   ->  CTE Scan on claimed c (actual rows=1 loops=1)
+   ->  Index Scan using be_bus_message_pkey on be_bus_message m (actual rows=1 loops=1)
+         Index Cond: (seq = c.seq)
+ Planning Time: 0.310 ms
+ Execution Time: 0.276 ms
+(40 rows)
+
+== force_custom_plan small claim 4
+                                               QUERY PLAN                                                
+---------------------------------------------------------------------------------------------------------
+ Nested Loop Left Join (actual rows=1 loops=1)
+   CTE ready
+     ->  Limit (actual rows=1 loops=1)
+           ->  LockRows (actual rows=1 loops=1)
+                 ->  Sort (actual rows=1 loops=1)
+                       Sort Key: be_bus_delivery.seq
+                       Sort Method: quicksort  Memory: 25kB
+                       ->  Bitmap Heap Scan on be_bus_delivery (actual rows=17 loops=1)
+                             Recheck Cond: ((durable = 'small'::text) AND (NOT in_flight))
+                             Filter: (not_before <= clock_timestamp())
+                             Heap Blocks: exact=1
+                             ->  Bitmap Index Scan on be_bus_delivery_ready (actual rows=20 loops=1)
+                                   Index Cond: (durable = 'small'::text)
+   CTE expired
+     ->  Limit (actual rows=0 loops=1)
+           ->  LockRows (actual rows=0 loops=1)
+                 ->  Sort (actual rows=0 loops=1)
+                       Sort Key: be_bus_delivery_1.seq
+                       Sort Method: quicksort  Memory: 25kB
+                       ->  Bitmap Heap Scan on be_bus_delivery be_bus_delivery_1 (actual rows=0 loops=1)
+                             Recheck Cond: ((durable = 'small'::text) AND in_flight)
+                             Filter: ((attempts < 3) AND (lease_until < clock_timestamp()))
+                             Rows Removed by Filter: 3
+                             Heap Blocks: exact=1
+                             ->  Bitmap Index Scan on be_bus_delivery_lease (actual rows=3 loops=1)
+                                   Index Cond: (durable = 'small'::text)
+   CTE claimed
+     ->  Update on be_bus_delivery d (actual rows=1 loops=1)
+           InitPlan 3 (returns $6)
+             ->  Aggregate (actual rows=1 loops=1)
+                   ->  Append (actual rows=1 loops=1)
+                         ->  CTE Scan on ready (actual rows=1 loops=1)
+                         ->  CTE Scan on expired (actual rows=0 loops=1)
+           ->  Index Scan using be_bus_delivery_pkey on be_bus_delivery d (actual rows=1 loops=1)
+                 Index Cond: ((durable = 'small'::text) AND (seq = $6))
+   ->  CTE Scan on claimed c (actual rows=1 loops=1)
+   ->  Index Scan using be_bus_message_pkey on be_bus_message m (actual rows=1 loops=1)
+         Index Cond: (seq = c.seq)
+ Planning Time: 0.213 ms
+ Execution Time: 0.173 ms
+(40 rows)
+
+== force_custom_plan small claim 5
+                                               QUERY PLAN                                                
+---------------------------------------------------------------------------------------------------------
+ Nested Loop Left Join (actual rows=1 loops=1)
+   CTE ready
+     ->  Limit (actual rows=1 loops=1)
+           ->  LockRows (actual rows=1 loops=1)
+                 ->  Sort (actual rows=1 loops=1)
+                       Sort Key: be_bus_delivery.seq
+                       Sort Method: quicksort  Memory: 25kB
+                       ->  Bitmap Heap Scan on be_bus_delivery (actual rows=16 loops=1)
+                             Recheck Cond: ((durable = 'small'::text) AND (NOT in_flight))
+                             Filter: (not_before <= clock_timestamp())
+                             Heap Blocks: exact=1
+                             ->  Bitmap Index Scan on be_bus_delivery_ready (actual rows=20 loops=1)
+                                   Index Cond: (durable = 'small'::text)
+   CTE expired
+     ->  Limit (actual rows=0 loops=1)
+           ->  LockRows (actual rows=0 loops=1)
+                 ->  Sort (actual rows=0 loops=1)
+                       Sort Key: be_bus_delivery_1.seq
+                       Sort Method: quicksort  Memory: 25kB
+                       ->  Bitmap Heap Scan on be_bus_delivery be_bus_delivery_1 (actual rows=0 loops=1)
+                             Recheck Cond: ((durable = 'small'::text) AND in_flight)
+                             Filter: ((attempts < 3) AND (lease_until < clock_timestamp()))
+                             Rows Removed by Filter: 4
+                             Heap Blocks: exact=1
+                             ->  Bitmap Index Scan on be_bus_delivery_lease (actual rows=4 loops=1)
+                                   Index Cond: (durable = 'small'::text)
+   CTE claimed
+     ->  Update on be_bus_delivery d (actual rows=1 loops=1)
+           InitPlan 3 (returns $6)
+             ->  Aggregate (actual rows=1 loops=1)
+                   ->  Append (actual rows=1 loops=1)
+                         ->  CTE Scan on ready (actual rows=1 loops=1)
+                         ->  CTE Scan on expired (actual rows=0 loops=1)
+           ->  Index Scan using be_bus_delivery_pkey on be_bus_delivery d (actual rows=1 loops=1)
+                 Index Cond: ((durable = 'small'::text) AND (seq = $6))
+   ->  CTE Scan on claimed c (actual rows=1 loops=1)
+   ->  Index Scan using be_bus_message_pkey on be_bus_message m (actual rows=1 loops=1)
+         Index Cond: (seq = c.seq)
+ Planning Time: 0.308 ms
+ Execution Time: 0.289 ms
+(40 rows)
+
+== force_custom_plan small claim 6
+                                               QUERY PLAN                                                
+---------------------------------------------------------------------------------------------------------
+ Nested Loop Left Join (actual rows=1 loops=1)
+   CTE ready
+     ->  Limit (actual rows=1 loops=1)
+           ->  LockRows (actual rows=1 loops=1)
+                 ->  Sort (actual rows=1 loops=1)
+                       Sort Key: be_bus_delivery.seq
+                       Sort Method: quicksort  Memory: 25kB
+                       ->  Bitmap Heap Scan on be_bus_delivery (actual rows=15 loops=1)
+                             Recheck Cond: ((durable = 'small'::text) AND (NOT in_flight))
+                             Filter: (not_before <= clock_timestamp())
+                             Heap Blocks: exact=1
+                             ->  Bitmap Index Scan on be_bus_delivery_ready (actual rows=20 loops=1)
+                                   Index Cond: (durable = 'small'::text)
+   CTE expired
+     ->  Limit (actual rows=0 loops=1)
+           ->  LockRows (actual rows=0 loops=1)
+                 ->  Sort (actual rows=0 loops=1)
+                       Sort Key: be_bus_delivery_1.seq
+                       Sort Method: quicksort  Memory: 25kB
+                       ->  Bitmap Heap Scan on be_bus_delivery be_bus_delivery_1 (actual rows=0 loops=1)
+                             Recheck Cond: ((durable = 'small'::text) AND in_flight)
+                             Filter: ((attempts < 3) AND (lease_until < clock_timestamp()))
+                             Rows Removed by Filter: 5
+                             Heap Blocks: exact=1
+                             ->  Bitmap Index Scan on be_bus_delivery_lease (actual rows=5 loops=1)
+                                   Index Cond: (durable = 'small'::text)
+   CTE claimed
+     ->  Update on be_bus_delivery d (actual rows=1 loops=1)
+           InitPlan 3 (returns $6)
+             ->  Aggregate (actual rows=1 loops=1)
+                   ->  Append (actual rows=1 loops=1)
+                         ->  CTE Scan on ready (actual rows=1 loops=1)
+                         ->  CTE Scan on expired (actual rows=0 loops=1)
+           ->  Index Scan using be_bus_delivery_pkey on be_bus_delivery d (actual rows=1 loops=1)
+                 Index Cond: ((durable = 'small'::text) AND (seq = $6))
+   ->  CTE Scan on claimed c (actual rows=1 loops=1)
+   ->  Index Scan using be_bus_message_pkey on be_bus_message m (actual rows=1 loops=1)
+         Index Cond: (seq = c.seq)
+ Planning Time: 0.305 ms
+ Execution Time: 0.254 ms
+(40 rows)
+
+== force_custom_plan small claim 7
+                                               QUERY PLAN                                                
+---------------------------------------------------------------------------------------------------------
+ Nested Loop Left Join (actual rows=1 loops=1)
+   CTE ready
+     ->  Limit (actual rows=1 loops=1)
+           ->  LockRows (actual rows=1 loops=1)
+                 ->  Sort (actual rows=1 loops=1)
+                       Sort Key: be_bus_delivery.seq
+                       Sort Method: quicksort  Memory: 25kB
+                       ->  Bitmap Heap Scan on be_bus_delivery (actual rows=14 loops=1)
+                             Recheck Cond: ((durable = 'small'::text) AND (NOT in_flight))
+                             Filter: (not_before <= clock_timestamp())
+                             Heap Blocks: exact=1
+                             ->  Bitmap Index Scan on be_bus_delivery_ready (actual rows=20 loops=1)
+                                   Index Cond: (durable = 'small'::text)
+   CTE expired
+     ->  Limit (actual rows=0 loops=1)
+           ->  LockRows (actual rows=0 loops=1)
+                 ->  Sort (actual rows=0 loops=1)
+                       Sort Key: be_bus_delivery_1.seq
+                       Sort Method: quicksort  Memory: 25kB
+                       ->  Bitmap Heap Scan on be_bus_delivery be_bus_delivery_1 (actual rows=0 loops=1)
+                             Recheck Cond: ((durable = 'small'::text) AND in_flight)
+                             Filter: ((attempts < 3) AND (lease_until < clock_timestamp()))
+                             Rows Removed by Filter: 6
+                             Heap Blocks: exact=1
+                             ->  Bitmap Index Scan on be_bus_delivery_lease (actual rows=6 loops=1)
+                                   Index Cond: (durable = 'small'::text)
+   CTE claimed
+     ->  Update on be_bus_delivery d (actual rows=1 loops=1)
+           InitPlan 3 (returns $6)
+             ->  Aggregate (actual rows=1 loops=1)
+                   ->  Append (actual rows=1 loops=1)
+                         ->  CTE Scan on ready (actual rows=1 loops=1)
+                         ->  CTE Scan on expired (actual rows=0 loops=1)
+           ->  Index Scan using be_bus_delivery_pkey on be_bus_delivery d (actual rows=1 loops=1)
+                 Index Cond: ((durable = 'small'::text) AND (seq = $6))
+   ->  CTE Scan on claimed c (actual rows=1 loops=1)
+   ->  Index Scan using be_bus_message_pkey on be_bus_message m (actual rows=1 loops=1)
+         Index Cond: (seq = c.seq)
+ Planning Time: 0.202 ms
+ Execution Time: 0.151 ms
+(40 rows)
+
+== force_custom_plan small claim 8
+                                               QUERY PLAN                                                
+---------------------------------------------------------------------------------------------------------
+ Nested Loop Left Join (actual rows=1 loops=1)
+   CTE ready
+     ->  Limit (actual rows=1 loops=1)
+           ->  LockRows (actual rows=1 loops=1)
+                 ->  Sort (actual rows=1 loops=1)
+                       Sort Key: be_bus_delivery.seq
+                       Sort Method: quicksort  Memory: 25kB
+                       ->  Bitmap Heap Scan on be_bus_delivery (actual rows=13 loops=1)
+                             Recheck Cond: ((durable = 'small'::text) AND (NOT in_flight))
+                             Filter: (not_before <= clock_timestamp())
+                             Heap Blocks: exact=1
+                             ->  Bitmap Index Scan on be_bus_delivery_ready (actual rows=20 loops=1)
+                                   Index Cond: (durable = 'small'::text)
+   CTE expired
+     ->  Limit (actual rows=0 loops=1)
+           ->  LockRows (actual rows=0 loops=1)
+                 ->  Sort (actual rows=0 loops=1)
+                       Sort Key: be_bus_delivery_1.seq
+                       Sort Method: quicksort  Memory: 25kB
+                       ->  Bitmap Heap Scan on be_bus_delivery be_bus_delivery_1 (actual rows=0 loops=1)
+                             Recheck Cond: ((durable = 'small'::text) AND in_flight)
+                             Filter: ((attempts < 3) AND (lease_until < clock_timestamp()))
+                             Rows Removed by Filter: 7
+                             Heap Blocks: exact=1
+                             ->  Bitmap Index Scan on be_bus_delivery_lease (actual rows=7 loops=1)
+                                   Index Cond: (durable = 'small'::text)
+   CTE claimed
+     ->  Update on be_bus_delivery d (actual rows=1 loops=1)
+           InitPlan 3 (returns $6)
+             ->  Aggregate (actual rows=1 loops=1)
+                   ->  Append (actual rows=1 loops=1)
+                         ->  CTE Scan on ready (actual rows=1 loops=1)
+                         ->  CTE Scan on expired (actual rows=0 loops=1)
+           ->  Index Scan using be_bus_delivery_pkey on be_bus_delivery d (actual rows=1 loops=1)
+                 Index Cond: ((durable = 'small'::text) AND (seq = $6))
+   ->  CTE Scan on claimed c (actual rows=1 loops=1)
+   ->  Index Scan using be_bus_message_pkey on be_bus_message m (actual rows=1 loops=1)
+         Index Cond: (seq = c.seq)
+ Planning Time: 0.178 ms
+ Execution Time: 0.138 ms
+(40 rows)
+
+== force_custom_plan small claim 9
+                                               QUERY PLAN                                                
+---------------------------------------------------------------------------------------------------------
+ Nested Loop Left Join (actual rows=1 loops=1)
+   CTE ready
+     ->  Limit (actual rows=1 loops=1)
+           ->  LockRows (actual rows=1 loops=1)
+                 ->  Sort (actual rows=1 loops=1)
+                       Sort Key: be_bus_delivery.seq
+                       Sort Method: quicksort  Memory: 25kB
+                       ->  Bitmap Heap Scan on be_bus_delivery (actual rows=12 loops=1)
+                             Recheck Cond: ((durable = 'small'::text) AND (NOT in_flight))
+                             Filter: (not_before <= clock_timestamp())
+                             Heap Blocks: exact=1
+                             ->  Bitmap Index Scan on be_bus_delivery_ready (actual rows=20 loops=1)
+                                   Index Cond: (durable = 'small'::text)
+   CTE expired
+     ->  Limit (actual rows=0 loops=1)
+           ->  LockRows (actual rows=0 loops=1)
+                 ->  Sort (actual rows=0 loops=1)
+                       Sort Key: be_bus_delivery_1.seq
+                       Sort Method: quicksort  Memory: 25kB
+                       ->  Bitmap Heap Scan on be_bus_delivery be_bus_delivery_1 (actual rows=0 loops=1)
+                             Recheck Cond: ((durable = 'small'::text) AND in_flight)
+                             Filter: ((attempts < 3) AND (lease_until < clock_timestamp()))
+                             Rows Removed by Filter: 8
+                             Heap Blocks: exact=1
+                             ->  Bitmap Index Scan on be_bus_delivery_lease (actual rows=8 loops=1)
+                                   Index Cond: (durable = 'small'::text)
+   CTE claimed
+     ->  Update on be_bus_delivery d (actual rows=1 loops=1)
+           InitPlan 3 (returns $6)
+             ->  Aggregate (actual rows=1 loops=1)
+                   ->  Append (actual rows=1 loops=1)
+                         ->  CTE Scan on ready (actual rows=1 loops=1)
+                         ->  CTE Scan on expired (actual rows=0 loops=1)
+           ->  Index Scan using be_bus_delivery_pkey on be_bus_delivery d (actual rows=1 loops=1)
+                 Index Cond: ((durable = 'small'::text) AND (seq = $6))
+   ->  CTE Scan on claimed c (actual rows=1 loops=1)
+   ->  Index Scan using be_bus_message_pkey on be_bus_message m (actual rows=1 loops=1)
+         Index Cond: (seq = c.seq)
+ Planning Time: 0.175 ms
+ Execution Time: 0.132 ms
+(40 rows)
+
+== force_custom_plan small claim 10
+                                               QUERY PLAN                                                
+---------------------------------------------------------------------------------------------------------
+ Nested Loop Left Join (actual rows=1 loops=1)
+   CTE ready
+     ->  Limit (actual rows=1 loops=1)
+           ->  LockRows (actual rows=1 loops=1)
+                 ->  Sort (actual rows=1 loops=1)
+                       Sort Key: be_bus_delivery.seq
+                       Sort Method: quicksort  Memory: 25kB
+                       ->  Bitmap Heap Scan on be_bus_delivery (actual rows=11 loops=1)
+                             Recheck Cond: ((durable = 'small'::text) AND (NOT in_flight))
+                             Filter: (not_before <= clock_timestamp())
+                             Heap Blocks: exact=1
+                             ->  Bitmap Index Scan on be_bus_delivery_ready (actual rows=20 loops=1)
+                                   Index Cond: (durable = 'small'::text)
+   CTE expired
+     ->  Limit (actual rows=0 loops=1)
+           ->  LockRows (actual rows=0 loops=1)
+                 ->  Sort (actual rows=0 loops=1)
+                       Sort Key: be_bus_delivery_1.seq
+                       Sort Method: quicksort  Memory: 25kB
+                       ->  Bitmap Heap Scan on be_bus_delivery be_bus_delivery_1 (actual rows=0 loops=1)
+                             Recheck Cond: ((durable = 'small'::text) AND in_flight)
+                             Filter: ((attempts < 3) AND (lease_until < clock_timestamp()))
+                             Rows Removed by Filter: 9
+                             Heap Blocks: exact=1
+                             ->  Bitmap Index Scan on be_bus_delivery_lease (actual rows=9 loops=1)
+                                   Index Cond: (durable = 'small'::text)
+   CTE claimed
+     ->  Update on be_bus_delivery d (actual rows=1 loops=1)
+           InitPlan 3 (returns $6)
+             ->  Aggregate (actual rows=1 loops=1)
+                   ->  Append (actual rows=1 loops=1)
+                         ->  CTE Scan on ready (actual rows=1 loops=1)
+                         ->  CTE Scan on expired (actual rows=0 loops=1)
+           ->  Index Scan using be_bus_delivery_pkey on be_bus_delivery d (actual rows=1 loops=1)
+                 Index Cond: ((durable = 'small'::text) AND (seq = $6))
+   ->  CTE Scan on claimed c (actual rows=1 loops=1)
+   ->  Index Scan using be_bus_message_pkey on be_bus_message m (actual rows=1 loops=1)
+         Index Cond: (seq = c.seq)
+ Planning Time: 0.196 ms
+ Execution Time: 0.154 ms
+(40 rows)
+
+== force_custom_plan small claim 11
+                                               QUERY PLAN                                                
+---------------------------------------------------------------------------------------------------------
+ Nested Loop Left Join (actual rows=1 loops=1)
+   CTE ready
+     ->  Limit (actual rows=1 loops=1)
+           ->  LockRows (actual rows=1 loops=1)
+                 ->  Sort (actual rows=1 loops=1)
+                       Sort Key: be_bus_delivery.seq
+                       Sort Method: quicksort  Memory: 25kB
+                       ->  Bitmap Heap Scan on be_bus_delivery (actual rows=10 loops=1)
+                             Recheck Cond: ((durable = 'small'::text) AND (NOT in_flight))
+                             Filter: (not_before <= clock_timestamp())
+                             Heap Blocks: exact=1
+                             ->  Bitmap Index Scan on be_bus_delivery_ready (actual rows=20 loops=1)
+                                   Index Cond: (durable = 'small'::text)
+   CTE expired
+     ->  Limit (actual rows=0 loops=1)
+           ->  LockRows (actual rows=0 loops=1)
+                 ->  Sort (actual rows=0 loops=1)
+                       Sort Key: be_bus_delivery_1.seq
+                       Sort Method: quicksort  Memory: 25kB
+                       ->  Bitmap Heap Scan on be_bus_delivery be_bus_delivery_1 (actual rows=0 loops=1)
+                             Recheck Cond: ((durable = 'small'::text) AND in_flight)
+                             Filter: ((attempts < 3) AND (lease_until < clock_timestamp()))
+                             Rows Removed by Filter: 10
+                             Heap Blocks: exact=1
+                             ->  Bitmap Index Scan on be_bus_delivery_lease (actual rows=10 loops=1)
+                                   Index Cond: (durable = 'small'::text)
+   CTE claimed
+     ->  Update on be_bus_delivery d (actual rows=1 loops=1)
+           InitPlan 3 (returns $6)
+             ->  Aggregate (actual rows=1 loops=1)
+                   ->  Append (actual rows=1 loops=1)
+                         ->  CTE Scan on ready (actual rows=1 loops=1)
+                         ->  CTE Scan on expired (actual rows=0 loops=1)
+           ->  Index Scan using be_bus_delivery_pkey on be_bus_delivery d (actual rows=1 loops=1)
+                 Index Cond: ((durable = 'small'::text) AND (seq = $6))
+   ->  CTE Scan on claimed c (actual rows=1 loops=1)
+   ->  Index Scan using be_bus_message_pkey on be_bus_message m (actual rows=1 loops=1)
+         Index Cond: (seq = c.seq)
+ Planning Time: 0.185 ms
+ Execution Time: 0.161 ms
+(40 rows)
+
+== force_custom_plan small claim 12
+                                               QUERY PLAN                                                
+---------------------------------------------------------------------------------------------------------
+ Nested Loop Left Join (actual rows=1 loops=1)
+   CTE ready
+     ->  Limit (actual rows=1 loops=1)
+           ->  LockRows (actual rows=1 loops=1)
+                 ->  Sort (actual rows=1 loops=1)
+                       Sort Key: be_bus_delivery.seq
+                       Sort Method: quicksort  Memory: 25kB
+                       ->  Bitmap Heap Scan on be_bus_delivery (actual rows=9 loops=1)
+                             Recheck Cond: ((durable = 'small'::text) AND (NOT in_flight))
+                             Filter: (not_before <= clock_timestamp())
+                             Heap Blocks: exact=1
+                             ->  Bitmap Index Scan on be_bus_delivery_ready (actual rows=20 loops=1)
+                                   Index Cond: (durable = 'small'::text)
+   CTE expired
+     ->  Limit (actual rows=0 loops=1)
+           ->  LockRows (actual rows=0 loops=1)
+                 ->  Sort (actual rows=0 loops=1)
+                       Sort Key: be_bus_delivery_1.seq
+                       Sort Method: quicksort  Memory: 25kB
+                       ->  Bitmap Heap Scan on be_bus_delivery be_bus_delivery_1 (actual rows=0 loops=1)
+                             Recheck Cond: ((durable = 'small'::text) AND in_flight)
+                             Filter: ((attempts < 3) AND (lease_until < clock_timestamp()))
+                             Rows Removed by Filter: 11
+                             Heap Blocks: exact=1
+                             ->  Bitmap Index Scan on be_bus_delivery_lease (actual rows=11 loops=1)
+                                   Index Cond: (durable = 'small'::text)
+   CTE claimed
+     ->  Update on be_bus_delivery d (actual rows=1 loops=1)
+           InitPlan 3 (returns $6)
+             ->  Aggregate (actual rows=1 loops=1)
+                   ->  Append (actual rows=1 loops=1)
+                         ->  CTE Scan on ready (actual rows=1 loops=1)
+                         ->  CTE Scan on expired (actual rows=0 loops=1)
+           ->  Index Scan using be_bus_delivery_pkey on be_bus_delivery d (actual rows=1 loops=1)
+                 Index Cond: ((durable = 'small'::text) AND (seq = $6))
+   ->  CTE Scan on claimed c (actual rows=1 loops=1)
+   ->  Index Scan using be_bus_message_pkey on be_bus_message m (actual rows=1 loops=1)
+         Index Cond: (seq = c.seq)
+ Planning Time: 0.186 ms
+ Execution Time: 0.141 ms
+(40 rows)
+
+== force_custom_plan small claim 13
+                                               QUERY PLAN                                                
+---------------------------------------------------------------------------------------------------------
+ Nested Loop Left Join (actual rows=1 loops=1)
+   CTE ready
+     ->  Limit (actual rows=1 loops=1)
+           ->  LockRows (actual rows=1 loops=1)
+                 ->  Sort (actual rows=1 loops=1)
+                       Sort Key: be_bus_delivery.seq
+                       Sort Method: quicksort  Memory: 25kB
+                       ->  Bitmap Heap Scan on be_bus_delivery (actual rows=8 loops=1)
+                             Recheck Cond: ((durable = 'small'::text) AND (NOT in_flight))
+                             Filter: (not_before <= clock_timestamp())
+                             Heap Blocks: exact=1
+                             ->  Bitmap Index Scan on be_bus_delivery_ready (actual rows=20 loops=1)
+                                   Index Cond: (durable = 'small'::text)
+   CTE expired
+     ->  Limit (actual rows=0 loops=1)
+           ->  LockRows (actual rows=0 loops=1)
+                 ->  Sort (actual rows=0 loops=1)
+                       Sort Key: be_bus_delivery_1.seq
+                       Sort Method: quicksort  Memory: 25kB
+                       ->  Bitmap Heap Scan on be_bus_delivery be_bus_delivery_1 (actual rows=0 loops=1)
+                             Recheck Cond: ((durable = 'small'::text) AND in_flight)
+                             Filter: ((attempts < 3) AND (lease_until < clock_timestamp()))
+                             Rows Removed by Filter: 12
+                             Heap Blocks: exact=1
+                             ->  Bitmap Index Scan on be_bus_delivery_lease (actual rows=12 loops=1)
+                                   Index Cond: (durable = 'small'::text)
+   CTE claimed
+     ->  Update on be_bus_delivery d (actual rows=1 loops=1)
+           InitPlan 3 (returns $6)
+             ->  Aggregate (actual rows=1 loops=1)
+                   ->  Append (actual rows=1 loops=1)
+                         ->  CTE Scan on ready (actual rows=1 loops=1)
+                         ->  CTE Scan on expired (actual rows=0 loops=1)
+           ->  Index Scan using be_bus_delivery_pkey on be_bus_delivery d (actual rows=1 loops=1)
+                 Index Cond: ((durable = 'small'::text) AND (seq = $6))
+   ->  CTE Scan on claimed c (actual rows=1 loops=1)
+   ->  Index Scan using be_bus_message_pkey on be_bus_message m (actual rows=1 loops=1)
+         Index Cond: (seq = c.seq)
+ Planning Time: 0.201 ms
+ Execution Time: 0.159 ms
+(40 rows)
+
+== force_custom_plan small claim 14
+                                               QUERY PLAN                                                
+---------------------------------------------------------------------------------------------------------
+ Nested Loop Left Join (actual rows=1 loops=1)
+   CTE ready
+     ->  Limit (actual rows=1 loops=1)
+           ->  LockRows (actual rows=1 loops=1)
+                 ->  Sort (actual rows=1 loops=1)
+                       Sort Key: be_bus_delivery.seq
+                       Sort Method: quicksort  Memory: 25kB
+                       ->  Bitmap Heap Scan on be_bus_delivery (actual rows=7 loops=1)
+                             Recheck Cond: ((durable = 'small'::text) AND (NOT in_flight))
+                             Filter: (not_before <= clock_timestamp())
+                             Heap Blocks: exact=1
+                             ->  Bitmap Index Scan on be_bus_delivery_ready (actual rows=20 loops=1)
+                                   Index Cond: (durable = 'small'::text)
+   CTE expired
+     ->  Limit (actual rows=0 loops=1)
+           ->  LockRows (actual rows=0 loops=1)
+                 ->  Sort (actual rows=0 loops=1)
+                       Sort Key: be_bus_delivery_1.seq
+                       Sort Method: quicksort  Memory: 25kB
+                       ->  Bitmap Heap Scan on be_bus_delivery be_bus_delivery_1 (actual rows=0 loops=1)
+                             Recheck Cond: ((durable = 'small'::text) AND in_flight)
+                             Filter: ((attempts < 3) AND (lease_until < clock_timestamp()))
+                             Rows Removed by Filter: 13
+                             Heap Blocks: exact=1
+                             ->  Bitmap Index Scan on be_bus_delivery_lease (actual rows=13 loops=1)
+                                   Index Cond: (durable = 'small'::text)
+   CTE claimed
+     ->  Update on be_bus_delivery d (actual rows=1 loops=1)
+           InitPlan 3 (returns $6)
+             ->  Aggregate (actual rows=1 loops=1)
+                   ->  Append (actual rows=1 loops=1)
+                         ->  CTE Scan on ready (actual rows=1 loops=1)
+                         ->  CTE Scan on expired (actual rows=0 loops=1)
+           ->  Index Scan using be_bus_delivery_pkey on be_bus_delivery d (actual rows=1 loops=1)
+                 Index Cond: ((durable = 'small'::text) AND (seq = $6))
+   ->  CTE Scan on claimed c (actual rows=1 loops=1)
+   ->  Index Scan using be_bus_message_pkey on be_bus_message m (actual rows=1 loops=1)
+         Index Cond: (seq = c.seq)
+ Planning Time: 0.201 ms
+ Execution Time: 0.155 ms
+(40 rows)
+
+== force_custom_plan small claim 15
+                                               QUERY PLAN                                                
+---------------------------------------------------------------------------------------------------------
+ Nested Loop Left Join (actual rows=1 loops=1)
+   CTE ready
+     ->  Limit (actual rows=1 loops=1)
+           ->  LockRows (actual rows=1 loops=1)
+                 ->  Sort (actual rows=1 loops=1)
+                       Sort Key: be_bus_delivery.seq
+                       Sort Method: quicksort  Memory: 25kB
+                       ->  Bitmap Heap Scan on be_bus_delivery (actual rows=6 loops=1)
+                             Recheck Cond: ((durable = 'small'::text) AND (NOT in_flight))
+                             Filter: (not_before <= clock_timestamp())
+                             Heap Blocks: exact=1
+                             ->  Bitmap Index Scan on be_bus_delivery_ready (actual rows=20 loops=1)
+                                   Index Cond: (durable = 'small'::text)
+   CTE expired
+     ->  Limit (actual rows=0 loops=1)
+           ->  LockRows (actual rows=0 loops=1)
+                 ->  Sort (actual rows=0 loops=1)
+                       Sort Key: be_bus_delivery_1.seq
+                       Sort Method: quicksort  Memory: 25kB
+                       ->  Bitmap Heap Scan on be_bus_delivery be_bus_delivery_1 (actual rows=0 loops=1)
+                             Recheck Cond: ((durable = 'small'::text) AND in_flight)
+                             Filter: ((attempts < 3) AND (lease_until < clock_timestamp()))
+                             Rows Removed by Filter: 14
+                             Heap Blocks: exact=1
+                             ->  Bitmap Index Scan on be_bus_delivery_lease (actual rows=14 loops=1)
+                                   Index Cond: (durable = 'small'::text)
+   CTE claimed
+     ->  Update on be_bus_delivery d (actual rows=1 loops=1)
+           InitPlan 3 (returns $6)
+             ->  Aggregate (actual rows=1 loops=1)
+                   ->  Append (actual rows=1 loops=1)
+                         ->  CTE Scan on ready (actual rows=1 loops=1)
+                         ->  CTE Scan on expired (actual rows=0 loops=1)
+           ->  Index Scan using be_bus_delivery_pkey on be_bus_delivery d (actual rows=1 loops=1)
+                 Index Cond: ((durable = 'small'::text) AND (seq = $6))
+   ->  CTE Scan on claimed c (actual rows=1 loops=1)
+   ->  Index Scan using be_bus_message_pkey on be_bus_message m (actual rows=1 loops=1)
+         Index Cond: (seq = c.seq)
+ Planning Time: 0.206 ms
+ Execution Time: 0.156 ms
+(40 rows)
+
+INSERT 0 1
+INSERT 0 20000
+== force_custom_plan large claim 1
+                                                       QUERY PLAN                                                       
+------------------------------------------------------------------------------------------------------------------------
+ Nested Loop Left Join (actual rows=1 loops=1)
+   CTE ready
+     ->  Limit (actual rows=1 loops=1)
+           ->  LockRows (actual rows=1 loops=1)
+                 ->  Index Scan using be_bus_delivery_ready on be_bus_delivery (actual rows=1 loops=1)
+                       Index Cond: (durable = 'large'::text)
+                       Filter: ((NOT in_flight) AND (not_before <= clock_timestamp()))
+   CTE expired
+     ->  Limit (actual rows=0 loops=1)
+           ->  LockRows (actual rows=0 loops=1)
+                 ->  Index Scan using be_bus_delivery_pkey on be_bus_delivery be_bus_delivery_1 (actual rows=0 loops=1)
+                       Index Cond: (durable = 'large'::text)
+                       Filter: (in_flight AND (attempts < 3) AND (lease_until < clock_timestamp()))
+                       Rows Removed by Filter: 20000
+   CTE claimed
+     ->  Update on be_bus_delivery d (actual rows=1 loops=1)
+           InitPlan 3 (returns $6)
+             ->  Aggregate (actual rows=1 loops=1)
+                   ->  Append (actual rows=1 loops=1)
+                         ->  CTE Scan on ready (actual rows=1 loops=1)
+                         ->  CTE Scan on expired (actual rows=0 loops=1)
+           ->  Index Scan using be_bus_delivery_pkey on be_bus_delivery d (actual rows=1 loops=1)
+                 Index Cond: ((durable = 'large'::text) AND (seq = $6))
+   ->  CTE Scan on claimed c (actual rows=1 loops=1)
+   ->  Index Scan using be_bus_message_pkey on be_bus_message m (actual rows=1 loops=1)
+         Index Cond: (seq = c.seq)
+ Planning Time: 0.266 ms
+ Execution Time: 1.982 ms
+(28 rows)
+
+== force_custom_plan large claim 2
+                                                       QUERY PLAN                                                       
+------------------------------------------------------------------------------------------------------------------------
+ Nested Loop Left Join (actual rows=1 loops=1)
+   CTE ready
+     ->  Limit (actual rows=1 loops=1)
+           ->  LockRows (actual rows=1 loops=1)
+                 ->  Index Scan using be_bus_delivery_ready on be_bus_delivery (actual rows=1 loops=1)
+                       Index Cond: (durable = 'large'::text)
+                       Filter: ((NOT in_flight) AND (not_before <= clock_timestamp()))
+   CTE expired
+     ->  Limit (actual rows=0 loops=1)
+           ->  LockRows (actual rows=0 loops=1)
+                 ->  Index Scan using be_bus_delivery_pkey on be_bus_delivery be_bus_delivery_1 (actual rows=0 loops=1)
+                       Index Cond: (durable = 'large'::text)
+                       Filter: (in_flight AND (attempts < 3) AND (lease_until < clock_timestamp()))
+                       Rows Removed by Filter: 20000
+   CTE claimed
+     ->  Update on be_bus_delivery d (actual rows=1 loops=1)
+           InitPlan 3 (returns $6)
+             ->  Aggregate (actual rows=1 loops=1)
+                   ->  Append (actual rows=1 loops=1)
+                         ->  CTE Scan on ready (actual rows=1 loops=1)
+                         ->  CTE Scan on expired (actual rows=0 loops=1)
+           ->  Index Scan using be_bus_delivery_pkey on be_bus_delivery d (actual rows=1 loops=1)
+                 Index Cond: ((durable = 'large'::text) AND (seq = $6))
+   ->  CTE Scan on claimed c (actual rows=1 loops=1)
+   ->  Index Scan using be_bus_message_pkey on be_bus_message m (actual rows=1 loops=1)
+         Index Cond: (seq = c.seq)
+ Planning Time: 0.220 ms
+ Execution Time: 1.685 ms
+(28 rows)
+
+== force_custom_plan large claim 3
+                                                       QUERY PLAN                                                       
+------------------------------------------------------------------------------------------------------------------------
+ Nested Loop Left Join (actual rows=1 loops=1)
+   CTE ready
+     ->  Limit (actual rows=1 loops=1)
+           ->  LockRows (actual rows=1 loops=1)
+                 ->  Index Scan using be_bus_delivery_ready on be_bus_delivery (actual rows=1 loops=1)
+                       Index Cond: (durable = 'large'::text)
+                       Filter: ((NOT in_flight) AND (not_before <= clock_timestamp()))
+   CTE expired
+     ->  Limit (actual rows=0 loops=1)
+           ->  LockRows (actual rows=0 loops=1)
+                 ->  Index Scan using be_bus_delivery_pkey on be_bus_delivery be_bus_delivery_1 (actual rows=0 loops=1)
+                       Index Cond: (durable = 'large'::text)
+                       Filter: (in_flight AND (attempts < 3) AND (lease_until < clock_timestamp()))
+                       Rows Removed by Filter: 20000
+   CTE claimed
+     ->  Update on be_bus_delivery d (actual rows=1 loops=1)
+           InitPlan 3 (returns $6)
+             ->  Aggregate (actual rows=1 loops=1)
+                   ->  Append (actual rows=1 loops=1)
+                         ->  CTE Scan on ready (actual rows=1 loops=1)
+                         ->  CTE Scan on expired (actual rows=0 loops=1)
+           ->  Index Scan using be_bus_delivery_pkey on be_bus_delivery d (actual rows=1 loops=1)
+                 Index Cond: ((durable = 'large'::text) AND (seq = $6))
+   ->  CTE Scan on claimed c (actual rows=1 loops=1)
+   ->  Index Scan using be_bus_message_pkey on be_bus_message m (actual rows=1 loops=1)
+         Index Cond: (seq = c.seq)
+ Planning Time: 0.298 ms
+ Execution Time: 1.672 ms
+(28 rows)
+
+== force_custom_plan large claim 4
+                                                       QUERY PLAN                                                       
+------------------------------------------------------------------------------------------------------------------------
+ Nested Loop Left Join (actual rows=1 loops=1)
+   CTE ready
+     ->  Limit (actual rows=1 loops=1)
+           ->  LockRows (actual rows=1 loops=1)
+                 ->  Index Scan using be_bus_delivery_ready on be_bus_delivery (actual rows=1 loops=1)
+                       Index Cond: (durable = 'large'::text)
+                       Filter: ((NOT in_flight) AND (not_before <= clock_timestamp()))
+   CTE expired
+     ->  Limit (actual rows=0 loops=1)
+           ->  LockRows (actual rows=0 loops=1)
+                 ->  Index Scan using be_bus_delivery_pkey on be_bus_delivery be_bus_delivery_1 (actual rows=0 loops=1)
+                       Index Cond: (durable = 'large'::text)
+                       Filter: (in_flight AND (attempts < 3) AND (lease_until < clock_timestamp()))
+                       Rows Removed by Filter: 20000
+   CTE claimed
+     ->  Update on be_bus_delivery d (actual rows=1 loops=1)
+           InitPlan 3 (returns $6)
+             ->  Aggregate (actual rows=1 loops=1)
+                   ->  Append (actual rows=1 loops=1)
+                         ->  CTE Scan on ready (actual rows=1 loops=1)
+                         ->  CTE Scan on expired (actual rows=0 loops=1)
+           ->  Index Scan using be_bus_delivery_pkey on be_bus_delivery d (actual rows=1 loops=1)
+                 Index Cond: ((durable = 'large'::text) AND (seq = $6))
+   ->  CTE Scan on claimed c (actual rows=1 loops=1)
+   ->  Index Scan using be_bus_message_pkey on be_bus_message m (actual rows=1 loops=1)
+         Index Cond: (seq = c.seq)
+ Planning Time: 0.220 ms
+ Execution Time: 1.686 ms
+(28 rows)
+
+== force_custom_plan large claim 5
+                                                       QUERY PLAN                                                       
+------------------------------------------------------------------------------------------------------------------------
+ Nested Loop Left Join (actual rows=1 loops=1)
+   CTE ready
+     ->  Limit (actual rows=1 loops=1)
+           ->  LockRows (actual rows=1 loops=1)
+                 ->  Index Scan using be_bus_delivery_ready on be_bus_delivery (actual rows=1 loops=1)
+                       Index Cond: (durable = 'large'::text)
+                       Filter: ((NOT in_flight) AND (not_before <= clock_timestamp()))
+   CTE expired
+     ->  Limit (actual rows=0 loops=1)
+           ->  LockRows (actual rows=0 loops=1)
+                 ->  Index Scan using be_bus_delivery_pkey on be_bus_delivery be_bus_delivery_1 (actual rows=0 loops=1)
+                       Index Cond: (durable = 'large'::text)
+                       Filter: (in_flight AND (attempts < 3) AND (lease_until < clock_timestamp()))
+                       Rows Removed by Filter: 20000
+   CTE claimed
+     ->  Update on be_bus_delivery d (actual rows=1 loops=1)
+           InitPlan 3 (returns $6)
+             ->  Aggregate (actual rows=1 loops=1)
+                   ->  Append (actual rows=1 loops=1)
+                         ->  CTE Scan on ready (actual rows=1 loops=1)
+                         ->  CTE Scan on expired (actual rows=0 loops=1)
+           ->  Index Scan using be_bus_delivery_pkey on be_bus_delivery d (actual rows=1 loops=1)
+                 Index Cond: ((durable = 'large'::text) AND (seq = $6))
+   ->  CTE Scan on claimed c (actual rows=1 loops=1)
+   ->  Index Scan using be_bus_message_pkey on be_bus_message m (actual rows=1 loops=1)
+         Index Cond: (seq = c.seq)
+ Planning Time: 0.205 ms
+ Execution Time: 1.669 ms
+(28 rows)
+
+== force_custom_plan large claim 6
+                                                       QUERY PLAN                                                       
+------------------------------------------------------------------------------------------------------------------------
+ Nested Loop Left Join (actual rows=1 loops=1)
+   CTE ready
+     ->  Limit (actual rows=1 loops=1)
+           ->  LockRows (actual rows=1 loops=1)
+                 ->  Index Scan using be_bus_delivery_ready on be_bus_delivery (actual rows=1 loops=1)
+                       Index Cond: (durable = 'large'::text)
+                       Filter: ((NOT in_flight) AND (not_before <= clock_timestamp()))
+   CTE expired
+     ->  Limit (actual rows=0 loops=1)
+           ->  LockRows (actual rows=0 loops=1)
+                 ->  Index Scan using be_bus_delivery_pkey on be_bus_delivery be_bus_delivery_1 (actual rows=0 loops=1)
+                       Index Cond: (durable = 'large'::text)
+                       Filter: (in_flight AND (attempts < 3) AND (lease_until < clock_timestamp()))
+                       Rows Removed by Filter: 20000
+   CTE claimed
+     ->  Update on be_bus_delivery d (actual rows=1 loops=1)
+           InitPlan 3 (returns $6)
+             ->  Aggregate (actual rows=1 loops=1)
+                   ->  Append (actual rows=1 loops=1)
+                         ->  CTE Scan on ready (actual rows=1 loops=1)
+                         ->  CTE Scan on expired (actual rows=0 loops=1)
+           ->  Index Scan using be_bus_delivery_pkey on be_bus_delivery d (actual rows=1 loops=1)
+                 Index Cond: ((durable = 'large'::text) AND (seq = $6))
+   ->  CTE Scan on claimed c (actual rows=1 loops=1)
+   ->  Index Scan using be_bus_message_pkey on be_bus_message m (actual rows=1 loops=1)
+         Index Cond: (seq = c.seq)
+ Planning Time: 0.207 ms
+ Execution Time: 1.607 ms
+(28 rows)
+
+== force_custom_plan large claim 7
+                                                       QUERY PLAN                                                       
+------------------------------------------------------------------------------------------------------------------------
+ Nested Loop Left Join (actual rows=1 loops=1)
+   CTE ready
+     ->  Limit (actual rows=1 loops=1)
+           ->  LockRows (actual rows=1 loops=1)
+                 ->  Index Scan using be_bus_delivery_ready on be_bus_delivery (actual rows=1 loops=1)
+                       Index Cond: (durable = 'large'::text)
+                       Filter: ((NOT in_flight) AND (not_before <= clock_timestamp()))
+   CTE expired
+     ->  Limit (actual rows=0 loops=1)
+           ->  LockRows (actual rows=0 loops=1)
+                 ->  Index Scan using be_bus_delivery_pkey on be_bus_delivery be_bus_delivery_1 (actual rows=0 loops=1)
+                       Index Cond: (durable = 'large'::text)
+                       Filter: (in_flight AND (attempts < 3) AND (lease_until < clock_timestamp()))
+                       Rows Removed by Filter: 20000
+   CTE claimed
+     ->  Update on be_bus_delivery d (actual rows=1 loops=1)
+           InitPlan 3 (returns $6)
+             ->  Aggregate (actual rows=1 loops=1)
+                   ->  Append (actual rows=1 loops=1)
+                         ->  CTE Scan on ready (actual rows=1 loops=1)
+                         ->  CTE Scan on expired (actual rows=0 loops=1)
+           ->  Index Scan using be_bus_delivery_pkey on be_bus_delivery d (actual rows=1 loops=1)
+                 Index Cond: ((durable = 'large'::text) AND (seq = $6))
+   ->  CTE Scan on claimed c (actual rows=1 loops=1)
+   ->  Index Scan using be_bus_message_pkey on be_bus_message m (actual rows=1 loops=1)
+         Index Cond: (seq = c.seq)
+ Planning Time: 0.446 ms
+ Execution Time: 2.070 ms
+(28 rows)
+
+== force_custom_plan large claim 8
+                                                       QUERY PLAN                                                       
+------------------------------------------------------------------------------------------------------------------------
+ Nested Loop Left Join (actual rows=1 loops=1)
+   CTE ready
+     ->  Limit (actual rows=1 loops=1)
+           ->  LockRows (actual rows=1 loops=1)
+                 ->  Index Scan using be_bus_delivery_ready on be_bus_delivery (actual rows=1 loops=1)
+                       Index Cond: (durable = 'large'::text)
+                       Filter: ((NOT in_flight) AND (not_before <= clock_timestamp()))
+   CTE expired
+     ->  Limit (actual rows=0 loops=1)
+           ->  LockRows (actual rows=0 loops=1)
+                 ->  Index Scan using be_bus_delivery_pkey on be_bus_delivery be_bus_delivery_1 (actual rows=0 loops=1)
+                       Index Cond: (durable = 'large'::text)
+                       Filter: (in_flight AND (attempts < 3) AND (lease_until < clock_timestamp()))
+                       Rows Removed by Filter: 20000
+   CTE claimed
+     ->  Update on be_bus_delivery d (actual rows=1 loops=1)
+           InitPlan 3 (returns $6)
+             ->  Aggregate (actual rows=1 loops=1)
+                   ->  Append (actual rows=1 loops=1)
+                         ->  CTE Scan on ready (actual rows=1 loops=1)
+                         ->  CTE Scan on expired (actual rows=0 loops=1)
+           ->  Index Scan using be_bus_delivery_pkey on be_bus_delivery d (actual rows=1 loops=1)
+                 Index Cond: ((durable = 'large'::text) AND (seq = $6))
+   ->  CTE Scan on claimed c (actual rows=1 loops=1)
+   ->  Index Scan using be_bus_message_pkey on be_bus_message m (actual rows=1 loops=1)
+         Index Cond: (seq = c.seq)
+ Planning Time: 0.261 ms
+ Execution Time: 1.783 ms
+(28 rows)
+
+== force_custom_plan large claim 9
+                                                       QUERY PLAN                                                       
+------------------------------------------------------------------------------------------------------------------------
+ Nested Loop Left Join (actual rows=1 loops=1)
+   CTE ready
+     ->  Limit (actual rows=1 loops=1)
+           ->  LockRows (actual rows=1 loops=1)
+                 ->  Index Scan using be_bus_delivery_ready on be_bus_delivery (actual rows=1 loops=1)
+                       Index Cond: (durable = 'large'::text)
+                       Filter: ((NOT in_flight) AND (not_before <= clock_timestamp()))
+   CTE expired
+     ->  Limit (actual rows=0 loops=1)
+           ->  LockRows (actual rows=0 loops=1)
+                 ->  Index Scan using be_bus_delivery_pkey on be_bus_delivery be_bus_delivery_1 (actual rows=0 loops=1)
+                       Index Cond: (durable = 'large'::text)
+                       Filter: (in_flight AND (attempts < 3) AND (lease_until < clock_timestamp()))
+                       Rows Removed by Filter: 20000
+   CTE claimed
+     ->  Update on be_bus_delivery d (actual rows=1 loops=1)
+           InitPlan 3 (returns $6)
+             ->  Aggregate (actual rows=1 loops=1)
+                   ->  Append (actual rows=1 loops=1)
+                         ->  CTE Scan on ready (actual rows=1 loops=1)
+                         ->  CTE Scan on expired (actual rows=0 loops=1)
+           ->  Index Scan using be_bus_delivery_pkey on be_bus_delivery d (actual rows=1 loops=1)
+                 Index Cond: ((durable = 'large'::text) AND (seq = $6))
+   ->  CTE Scan on claimed c (actual rows=1 loops=1)
+   ->  Index Scan using be_bus_message_pkey on be_bus_message m (actual rows=1 loops=1)
+         Index Cond: (seq = c.seq)
+ Planning Time: 0.205 ms
+ Execution Time: 1.915 ms
+(28 rows)
+
+== force_custom_plan large claim 10
+                                                       QUERY PLAN                                                       
+------------------------------------------------------------------------------------------------------------------------
+ Nested Loop Left Join (actual rows=1 loops=1)
+   CTE ready
+     ->  Limit (actual rows=1 loops=1)
+           ->  LockRows (actual rows=1 loops=1)
+                 ->  Index Scan using be_bus_delivery_ready on be_bus_delivery (actual rows=1 loops=1)
+                       Index Cond: (durable = 'large'::text)
+                       Filter: ((NOT in_flight) AND (not_before <= clock_timestamp()))
+   CTE expired
+     ->  Limit (actual rows=0 loops=1)
+           ->  LockRows (actual rows=0 loops=1)
+                 ->  Index Scan using be_bus_delivery_pkey on be_bus_delivery be_bus_delivery_1 (actual rows=0 loops=1)
+                       Index Cond: (durable = 'large'::text)
+                       Filter: (in_flight AND (attempts < 3) AND (lease_until < clock_timestamp()))
+                       Rows Removed by Filter: 20000
+   CTE claimed
+     ->  Update on be_bus_delivery d (actual rows=1 loops=1)
+           InitPlan 3 (returns $6)
+             ->  Aggregate (actual rows=1 loops=1)
+                   ->  Append (actual rows=1 loops=1)
+                         ->  CTE Scan on ready (actual rows=1 loops=1)
+                         ->  CTE Scan on expired (actual rows=0 loops=1)
+           ->  Index Scan using be_bus_delivery_pkey on be_bus_delivery d (actual rows=1 loops=1)
+                 Index Cond: ((durable = 'large'::text) AND (seq = $6))
+   ->  CTE Scan on claimed c (actual rows=1 loops=1)
+   ->  Index Scan using be_bus_message_pkey on be_bus_message m (actual rows=1 loops=1)
+         Index Cond: (seq = c.seq)
+ Planning Time: 0.226 ms
+ Execution Time: 1.662 ms
+(28 rows)
+
+== force_custom_plan large claim 11
+                                                       QUERY PLAN                                                       
+------------------------------------------------------------------------------------------------------------------------
+ Nested Loop Left Join (actual rows=1 loops=1)
+   CTE ready
+     ->  Limit (actual rows=1 loops=1)
+           ->  LockRows (actual rows=1 loops=1)
+                 ->  Index Scan using be_bus_delivery_ready on be_bus_delivery (actual rows=1 loops=1)
+                       Index Cond: (durable = 'large'::text)
+                       Filter: ((NOT in_flight) AND (not_before <= clock_timestamp()))
+   CTE expired
+     ->  Limit (actual rows=0 loops=1)
+           ->  LockRows (actual rows=0 loops=1)
+                 ->  Index Scan using be_bus_delivery_pkey on be_bus_delivery be_bus_delivery_1 (actual rows=0 loops=1)
+                       Index Cond: (durable = 'large'::text)
+                       Filter: (in_flight AND (attempts < 3) AND (lease_until < clock_timestamp()))
+                       Rows Removed by Filter: 20000
+   CTE claimed
+     ->  Update on be_bus_delivery d (actual rows=1 loops=1)
+           InitPlan 3 (returns $6)
+             ->  Aggregate (actual rows=1 loops=1)
+                   ->  Append (actual rows=1 loops=1)
+                         ->  CTE Scan on ready (actual rows=1 loops=1)
+                         ->  CTE Scan on expired (actual rows=0 loops=1)
+           ->  Index Scan using be_bus_delivery_pkey on be_bus_delivery d (actual rows=1 loops=1)
+                 Index Cond: ((durable = 'large'::text) AND (seq = $6))
+   ->  CTE Scan on claimed c (actual rows=1 loops=1)
+   ->  Index Scan using be_bus_message_pkey on be_bus_message m (actual rows=1 loops=1)
+         Index Cond: (seq = c.seq)
+ Planning Time: 0.214 ms
+ Execution Time: 1.722 ms
+(28 rows)
+
+== force_custom_plan large claim 12
+                                                       QUERY PLAN                                                       
+------------------------------------------------------------------------------------------------------------------------
+ Nested Loop Left Join (actual rows=1 loops=1)
+   CTE ready
+     ->  Limit (actual rows=1 loops=1)
+           ->  LockRows (actual rows=1 loops=1)
+                 ->  Index Scan using be_bus_delivery_ready on be_bus_delivery (actual rows=1 loops=1)
+                       Index Cond: (durable = 'large'::text)
+                       Filter: ((NOT in_flight) AND (not_before <= clock_timestamp()))
+   CTE expired
+     ->  Limit (actual rows=0 loops=1)
+           ->  LockRows (actual rows=0 loops=1)
+                 ->  Index Scan using be_bus_delivery_pkey on be_bus_delivery be_bus_delivery_1 (actual rows=0 loops=1)
+                       Index Cond: (durable = 'large'::text)
+                       Filter: (in_flight AND (attempts < 3) AND (lease_until < clock_timestamp()))
+                       Rows Removed by Filter: 20000
+   CTE claimed
+     ->  Update on be_bus_delivery d (actual rows=1 loops=1)
+           InitPlan 3 (returns $6)
+             ->  Aggregate (actual rows=1 loops=1)
+                   ->  Append (actual rows=1 loops=1)
+                         ->  CTE Scan on ready (actual rows=1 loops=1)
+                         ->  CTE Scan on expired (actual rows=0 loops=1)
+           ->  Index Scan using be_bus_delivery_pkey on be_bus_delivery d (actual rows=1 loops=1)
+                 Index Cond: ((durable = 'large'::text) AND (seq = $6))
+   ->  CTE Scan on claimed c (actual rows=1 loops=1)
+   ->  Index Scan using be_bus_message_pkey on be_bus_message m (actual rows=1 loops=1)
+         Index Cond: (seq = c.seq)
+ Planning Time: 0.184 ms
+ Execution Time: 1.748 ms
+(28 rows)
+
+== force_custom_plan large claim 13
+                                                       QUERY PLAN                                                       
+------------------------------------------------------------------------------------------------------------------------
+ Nested Loop Left Join (actual rows=1 loops=1)
+   CTE ready
+     ->  Limit (actual rows=1 loops=1)
+           ->  LockRows (actual rows=1 loops=1)
+                 ->  Index Scan using be_bus_delivery_ready on be_bus_delivery (actual rows=1 loops=1)
+                       Index Cond: (durable = 'large'::text)
+                       Filter: ((NOT in_flight) AND (not_before <= clock_timestamp()))
+   CTE expired
+     ->  Limit (actual rows=0 loops=1)
+           ->  LockRows (actual rows=0 loops=1)
+                 ->  Index Scan using be_bus_delivery_pkey on be_bus_delivery be_bus_delivery_1 (actual rows=0 loops=1)
+                       Index Cond: (durable = 'large'::text)
+                       Filter: (in_flight AND (attempts < 3) AND (lease_until < clock_timestamp()))
+                       Rows Removed by Filter: 20000
+   CTE claimed
+     ->  Update on be_bus_delivery d (actual rows=1 loops=1)
+           InitPlan 3 (returns $6)
+             ->  Aggregate (actual rows=1 loops=1)
+                   ->  Append (actual rows=1 loops=1)
+                         ->  CTE Scan on ready (actual rows=1 loops=1)
+                         ->  CTE Scan on expired (actual rows=0 loops=1)
+           ->  Index Scan using be_bus_delivery_pkey on be_bus_delivery d (actual rows=1 loops=1)
+                 Index Cond: ((durable = 'large'::text) AND (seq = $6))
+   ->  CTE Scan on claimed c (actual rows=1 loops=1)
+   ->  Index Scan using be_bus_message_pkey on be_bus_message m (actual rows=1 loops=1)
+         Index Cond: (seq = c.seq)
+ Planning Time: 0.212 ms
+ Execution Time: 1.729 ms
+(28 rows)
+
+== force_custom_plan large claim 14
+                                                       QUERY PLAN                                                       
+------------------------------------------------------------------------------------------------------------------------
+ Nested Loop Left Join (actual rows=1 loops=1)
+   CTE ready
+     ->  Limit (actual rows=1 loops=1)
+           ->  LockRows (actual rows=1 loops=1)
+                 ->  Index Scan using be_bus_delivery_ready on be_bus_delivery (actual rows=1 loops=1)
+                       Index Cond: (durable = 'large'::text)
+                       Filter: ((NOT in_flight) AND (not_before <= clock_timestamp()))
+   CTE expired
+     ->  Limit (actual rows=0 loops=1)
+           ->  LockRows (actual rows=0 loops=1)
+                 ->  Index Scan using be_bus_delivery_pkey on be_bus_delivery be_bus_delivery_1 (actual rows=0 loops=1)
+                       Index Cond: (durable = 'large'::text)
+                       Filter: (in_flight AND (attempts < 3) AND (lease_until < clock_timestamp()))
+                       Rows Removed by Filter: 20000
+   CTE claimed
+     ->  Update on be_bus_delivery d (actual rows=1 loops=1)
+           InitPlan 3 (returns $6)
+             ->  Aggregate (actual rows=1 loops=1)
+                   ->  Append (actual rows=1 loops=1)
+                         ->  CTE Scan on ready (actual rows=1 loops=1)
+                         ->  CTE Scan on expired (actual rows=0 loops=1)
+           ->  Index Scan using be_bus_delivery_pkey on be_bus_delivery d (actual rows=1 loops=1)
+                 Index Cond: ((durable = 'large'::text) AND (seq = $6))
+   ->  CTE Scan on claimed c (actual rows=1 loops=1)
+   ->  Index Scan using be_bus_message_pkey on be_bus_message m (actual rows=1 loops=1)
+         Index Cond: (seq = c.seq)
+ Planning Time: 0.190 ms
+ Execution Time: 1.732 ms
+(28 rows)
+
+== force_custom_plan large claim 15
+                                                       QUERY PLAN                                                       
+------------------------------------------------------------------------------------------------------------------------
+ Nested Loop Left Join (actual rows=1 loops=1)
+   CTE ready
+     ->  Limit (actual rows=1 loops=1)
+           ->  LockRows (actual rows=1 loops=1)
+                 ->  Index Scan using be_bus_delivery_ready on be_bus_delivery (actual rows=1 loops=1)
+                       Index Cond: (durable = 'large'::text)
+                       Filter: ((NOT in_flight) AND (not_before <= clock_timestamp()))
+   CTE expired
+     ->  Limit (actual rows=0 loops=1)
+           ->  LockRows (actual rows=0 loops=1)
+                 ->  Index Scan using be_bus_delivery_pkey on be_bus_delivery be_bus_delivery_1 (actual rows=0 loops=1)
+                       Index Cond: (durable = 'large'::text)
+                       Filter: (in_flight AND (attempts < 3) AND (lease_until < clock_timestamp()))
+                       Rows Removed by Filter: 20000
+   CTE claimed
+     ->  Update on be_bus_delivery d (actual rows=1 loops=1)
+           InitPlan 3 (returns $6)
+             ->  Aggregate (actual rows=1 loops=1)
+                   ->  Append (actual rows=1 loops=1)
+                         ->  CTE Scan on ready (actual rows=1 loops=1)
+                         ->  CTE Scan on expired (actual rows=0 loops=1)
+           ->  Index Scan using be_bus_delivery_pkey on be_bus_delivery d (actual rows=1 loops=1)
+                 Index Cond: ((durable = 'large'::text) AND (seq = $6))
+   ->  CTE Scan on claimed c (actual rows=1 loops=1)
+   ->  Index Scan using be_bus_message_pkey on be_bus_message m (actual rows=1 loops=1)
+         Index Cond: (seq = c.seq)
+ Planning Time: 0.208 ms
+ Execution Time: 1.722 ms
+(28 rows)
+
+DEALLOCATE
+                                         version                                          
+------------------------------------------------------------------------------------------
+ PostgreSQL 16.15 on x86_64-pc-linux-musl, compiled by gcc (Alpine 15.2.0) 15.2.0, 64-bit
+(1 row)
+
+NOTICE:  drop cascades to 4 other objects
+DETAIL:  drop cascades to table be_bus_message
+drop cascades to table be_bus_stream
+drop cascades to table be_bus_subscription
+drop cascades to table be_bus_delivery
+DROP SCHEMA

@@ -1,0 +1,47 @@
+diff --git a/events/pgqueue/pgqueue.go b/events/pgqueue/pgqueue.go
+index 16c31e4..d9af370 100644
+--- a/events/pgqueue/pgqueue.go
++++ b/events/pgqueue/pgqueue.go
+@@ -5,6 +5,7 @@
+ package pgqueue
+ 
+ import (
++	"os" // [DEBUG-b7c1]
+ 	"context"
+ 	"encoding/base64"
+ 	"encoding/json"
+@@ -133,6 +134,12 @@ func Connect(ctx context.Context, busURL, name string, maxConns int32) (*Transpo
+ 		return nil, err
+ 	}
+ 	pc.ConnConfig = cfg
++	if os.Getenv("DEBUG_B7C1_MODE") == "describe" { // [DEBUG-b7c1]
++		pc.ConnConfig.DefaultQueryExecMode = pgx.QueryExecModeCacheDescribe
++	}
++	if os.Getenv("DEBUG_B7C1_MODE") == "custom" { // [DEBUG-b7c1]
++		pc.ConnConfig.RuntimeParams["plan_cache_mode"] = "force_custom_plan"
++	}
+ 	pc.MaxConns = max(maxConns, 4)
+ 	pool, err := pgxpool.NewWithConfig(ctx, pc)
+ 	if err != nil {
+diff --git a/events/pgqueue/pgqueue_integration_test.go b/events/pgqueue/pgqueue_integration_test.go
+index c0bca69..f5a973f 100644
+--- a/events/pgqueue/pgqueue_integration_test.go
++++ b/events/pgqueue/pgqueue_integration_test.go
+@@ -164,6 +164,9 @@ func backlog(t *testing.T, n int) events.SubscriptionSpec {
+ 			SELECT 'be.x.0.t.v1', '{}'::jsonb, '\x7b7d'::bytea FROM generate_series(1, $2) RETURNING seq)
+ 		INSERT INTO be_bus_test.be_bus_delivery (durable, seq) SELECT $1, seq FROM m`, s.Durable, n)
+ 	require.NoError(t, err)
++	if os.Getenv("DEBUG_B7C1_ANALYZE") != "" { // [DEBUG-b7c1]
++		pgtest.Exec(t, admin, "ANALYZE be_bus_test.be_bus_delivery")
++	}
+ 	t.Cleanup(func() { forget(t, s.Durable, "be.x.0.t.v1") })
+ 	return s
+ }
+@@ -223,6 +226,7 @@ func TestABacklogDoesNotSlowEachClaim(t *testing.T) { // P6.23
+ 	tr, _ := factory(t)
+ 	small := medianClaim(t, tr.(*Transport), backlog(t, 20))
+ 	large := medianClaim(t, tr.(*Transport), backlog(t, 20000))
++	t.Logf("[DEBUG-b7c1] small=%v large=%v ratio=%.1f", small, large, float64(large)/float64(small))
+ 	assert.Less(t, large, 3*small+2*time.Millisecond, "claims with 20 000 waiting (%v) against 20 waiting (%v)", large, small)
+ }
+ 
