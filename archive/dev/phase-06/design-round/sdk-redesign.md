@@ -246,23 +246,23 @@ brickKit 的 `config-schema-design` 一节提醒过："一个键装一整块 JSO
 | `NOT_READY` | `UNAVAILABLE` | 进程还没就绪：还没拿到 bundle、库身份探测没通过，或库里的迁移落后于镜像（`/readyz`） |
 | `TOKEN_INVALID` | `UNAUTHENTICATED` | 没有 token，或 token 校验不过（签名、`iss`、`aud`、`typ`、过期） |
 | `UNSUPPORTED_DELEGATION` | `UNAUTHENTICATED` | token 经由一种 provider 不支持的代理方行事 |
-| `MISSING_CALLER` | `UNAUTHENTICATED` | 系统面调用没带 `be-caller`（[14](../../../docs/zh/04-foundations/14-system-rpc.md)） |
+| `MISSING_CALLER` | `UNAUTHENTICATED` | 系统面调用没带 `be-caller`（[14](../../../../docs/zh/04-foundations/14-system-rpc.md)） |
 | `OUT_OF_SCOPE` | `PERMISSION_DENIED` | 调用方持有路由键，但这条记录不在这个键的范围内；或请求参数本身就是一个维度取值，且不在调用方的范围内（`warehouse_id=7`）（K1 裁决 w） |
 | `FIELD_FORBIDDEN` | `PERMISSION_DENIED` | 写了一个调用方看不到的字段 |
 | `SORT_FORBIDDEN` | `INVALID_ARGUMENT` | 按对调用方掩码的字段排序、过滤或聚合 |
-| `SHARE_NOT_ALLOWED` | `PERMISSION_DENIED` | 这个资源类型或这个调用方不允许做的分享（[20](../../../docs/zh/04-foundations/20-authorization-provider.md)） |
+| `SHARE_NOT_ALLOWED` | `PERMISSION_DENIED` | 这个资源类型或这个调用方不允许做的分享（[20](../../../../docs/zh/04-foundations/20-authorization-provider.md)） |
 | `CAPABILITY_UNAVAILABLE` | `UNIMPLEMENTED` | 装的 provider 或适配器缺某项能力；`metadata.capability` 写明是哪项 |
 | `IDEMPOTENCY_MISMATCH` | `INVALID_ARGUMENT` | 一个键被复用在别的命令、目标或请求体上 |
 | `IDEMPOTENCY_IN_PROGRESS` | `ABORTED` | 这个键的第一次使用还没结束 |
 | `CURSOR_INVALID` | `INVALID_ARGUMENT` | 游标与请求不匹配 |
 | `BATCH_TOO_LARGE` | `INVALID_ARGUMENT` | ID 数超过一个批次允许的数量 |
-| `LOCK_TIMEOUT` | `ABORTED` | 锁等待超过了 `lock_timeout`（[10](../../../docs/zh/04-foundations/10-local-transactions.md#端口契约)） |
+| `LOCK_TIMEOUT` | `ABORTED` | 锁等待超过了 `lock_timeout`（[10](../../../../docs/zh/04-foundations/10-local-transactions.md#端口契约)） |
 | `STATEMENT_TIMEOUT` | `DEADLINE_EXCEEDED` | 一条语句或一个事务超过了它的超时 |
 | `TX_CONFLICT` | `ABORTED` | 自动重试之后序列化失败仍然存在 |
 | `DB_POOL_EXHAUSTED` | `RESOURCE_EXHAUSTED` | 成员的连接预算一直满到截止时间 |
-| `OUTBOUND_LIMIT` | `RESOURCE_EXHAUSTED` | 对同一个依赖的并发调用太多（[16](../../../docs/zh/04-foundations/16-deadlines-and-retries.md)） |
+| `OUTBOUND_LIMIT` | `RESOURCE_EXHAUSTED` | 对同一个依赖的并发调用太多（[16](../../../../docs/zh/04-foundations/16-deadlines-and-retries.md)） |
 | `DEADLINE_BUDGET_EXHAUSTED` | `DEADLINE_EXCEEDED` | 剩余时间太少，不足以发起调用 |
-| `BODY_TOO_LARGE` | `INVALID_ARGUMENT` | 请求体超过路由的上限；以 HTTP 413 回答（[16](../../../docs/zh/04-foundations/16-deadlines-and-retries.md)） |
+| `BODY_TOO_LARGE` | `INVALID_ARGUMENT` | 请求体超过路由的上限；以 HTTP 413 回答（[16](../../../../docs/zh/04-foundations/16-deadlines-and-retries.md)） |
 | `RANGE_COLD` | `FAILED_PRECONDITION` | 请求的时间范围已转入冷存储；`metadata` 给出冷区间，以及能否解冻、能否异步导出 |
 | `UNIT_SEALED` | `FAILED_PRECONDITION` | 修改一个已封存的生命周期单元；应当新建一张冲销单据 |
 | `RATE_LIMITED` | `RESOURCE_EXHAUSTED` | 边缘按客户端 IP（以后按 API key）限流；HTTP 429，带 `Retry-After` |
