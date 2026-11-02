@@ -82,6 +82,9 @@ docs-ids:  ## Expectation IDs: one owner per prefix, unique, contiguous (check 3
 docs-closure:  ## Required dependencies acyclic and customer combinations closed (check 34)
 	@python3 tools/be-acceptance/doc-checks/34-dependency-closure.py .
 
+protocol-coverage-go:  ## Every rule of the chapters the foundations have reached is named by a Go test (05-07, 09; widen as items finish)
+	@python3 tools/be-acceptance/doc-checks/35-protocol-coverage.py . --chapters 05,06,07,09 --require go
+
 protocol-coverage:  ## Wire-protocol rules each named by a test (check 35); CH=05,06 narrows the chapters, REQUIRE=go,suite the implementations
 	@python3 tools/be-acceptance/doc-checks/35-protocol-coverage.py . $(if $(CH),--chapters $(CH)) $(if $(REQUIRE),--require $(REQUIRE))
 
@@ -186,7 +189,7 @@ teardown-down:  ## 停掉拆回验证的容器
 # The Go gates of the 0.x be-acceptance (import, SystemClient, bare-route, event and OpenAPI
 # breaking changes, data-scope tests, dependency versions, config keys) moved to its legacy/v0
 # branch with the old code (D59); conformance suites and gates return with the rebuilt tools.
-gates: docs-boundary docs-diagrams docs-mirror docs-links docs-ids docs-closure docs-index-check infra-images security-schemas no-binaries  ## Document gates (boundary, mirror, links, IDs, closure), infra image pins, security schemas, no build output in any repository + brickkit up --dry-run
+gates: docs-boundary docs-diagrams docs-mirror docs-links docs-ids docs-closure docs-index-check infra-images security-schemas no-binaries protocol-coverage-go  ## Document gates (boundary, mirror, links, IDs, closure), infra image pins, security schemas, no build output in any repository + brickkit up --dry-run
 	@echo "▸ brickkit up --dry-run"
 	@bash $(S)/lib/require-brickkit.sh
 	@brickkit up --dry-run
