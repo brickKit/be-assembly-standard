@@ -91,7 +91,9 @@ local = {x.split("@")[0] for x in yaml.safe_load(open(sys.argv[2])).get("local")
   done
 }
 echo "START $CELL power=$(powerprofilesctl get) $(date -Is)" >> "$OUT/status.log"
-case $ROW in P|LP) stage podman-preflight bash "$R/dev/rebuild/experiment-scripts/podman-preflight.sh" ;; esac
+# rootless Podman only: a rootful cell (cell.yaml `podman: rootful`, CONTAINER_HOST at root's socket) needs no user namespace
+if grep -q '^podman: *rootful' "$D/cell.yaml"; then export CONTAINER_HOST=unix:///run/podman/podman.sock
+else case $ROW in P|LP) stage podman-preflight bash "$R/dev/rebuild/experiment-scripts/podman-preflight.sh" ;; esac; fi
 stage down-others down_cells
 # suite E5: a cell with a schema on the second instance (databases: ... second/<database>) starts it afresh first
 grep -qE '^  [^ ]+: *second/' "$D/cell.yaml" && stage postgres2 bash "$R/dev/rebuild/experiment-scripts/postgres2.sh" up
