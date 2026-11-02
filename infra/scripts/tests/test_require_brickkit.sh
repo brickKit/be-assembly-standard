@@ -12,7 +12,7 @@ expect() { # <期望退出码> <说明>
   PATH="$T:$PATH" LIB="$LIB" bash -c 'set -euo pipefail; source "$LIB"; require_brickkit' >/dev/null 2>&1; rc=$?
   if [ "$rc" = "$1" ]; then echo "ok   $2"; else echo "FAIL $2（rc=$rc，期望 $1）"; fail=1; fi
 }
-fake 'echo "BrickKit CLI v1.12.1"; sleep 0.3; echo "Supported Manifest version: brickkit/v1"; echo more'
+fake 'echo "BrickKit CLI v1.12.2"; sleep 0.3; echo "Supported Manifest version: brickkit/v1"; echo more'
 expect 0 "正确版本、版本行之后慢慢再写几行 → 放行"
 fake 'echo "BrickKit CLI v0.4.6"'
 expect 2 "旧版本 → 拒绝"
@@ -51,8 +51,10 @@ expect 2 "更早要求的版本 v1.8.5 → 拒绝（Podman 上交付用的 Quadl
 fake 'echo "BrickKit CLI v1.11.4"'
 expect 2 "更早的发布 v1.11.4 → 拒绝（没有 podman.units）"
 fake 'echo "BrickKit CLI v1.12.0"'
-expect 2 "上一个要求的版本 v1.12.0 → 拒绝（开机不跑迁移、迁移成功才换组件、DEPLOYED_ELSEWHERE 在 v1.12.1，FRR-025、FRB-012）"
-fake 'echo "{\"level\":\"info\"}" >&2; echo "BrickKit CLI v1.12.1"'
+expect 2 "更早要求的版本 v1.12.0 → 拒绝（开机不跑迁移、迁移成功才换组件、DEPLOYED_ELSEWHERE 在 v1.12.1，FRR-025、FRB-012）"
+fake 'echo "BrickKit CLI v1.12.1"'
+expect 2 "上一个要求的版本 v1.12.1 → 拒绝（DEPLOYED_ELSEWHERE 在生成与打印计划之前拒绝在 v1.12.2，FRB-013）"
+fake 'echo "{\"level\":\"info\"}" >&2; echo "BrickKit CLI v1.12.2"'
 expect 0 "stderr 有日志、stdout 版本对 → 放行"
 fake 'exit 1'
 expect 2 "brickkit version 失败 → 拒绝"

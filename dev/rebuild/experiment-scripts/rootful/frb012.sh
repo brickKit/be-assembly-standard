@@ -7,11 +7,13 @@
 # root's copy keeps running -> root down -> the user's up -> root's up is refused, with SUDO_USER and without it
 # (as `sudo -i` would be; the project directory's owner names the user) -> the user's down. Then BrickKit's
 # podman-docker-forward.service, root's images and the DOCKER-USER rules go again (as rootful/quadlet-revert.sh).
-# Each step's output and exit code go to experiment-data/14-04-frb012/<step>.txt.
+# FRB-013 (v1.12.2) adds two checks: the refused up leaves .brickkit/generated/quadlet/ as it was (modification
+# times before and after), and `up --dry-run` as the refused identity only warns. Each step's output and exit code
+# go to experiment-data/<OUT, default 14-04-frb012>/<step>.txt:   sudo …/frb012.sh P9-S-root-q 14-06-frb013
 set -u
 [ "$(id -u)" = 0 ] || { echo "run as root"; exit 1; }
 CELL=$1; R=/home/zhijie/Desktop/github/be-assembly-standard; D=$R/dev/rebuild/experiment-cells/$CELL
-OUT=$R/dev/rebuild/experiment-data/14-04-frb012; BK=/home/zhijie/.local/bin/brickkit
+OUT=$R/dev/rebuild/experiment-data/${2:-14-04-frb012}; BK=/home/zhijie/.local/bin/brickkit
 U=$(stat -c %U "$D/cell.yaml"); UI=$(id -u "$U"); OWNER=$(stat -c %U:%G "$D/cell.yaml"); P=brickkit-$(echo "$CELL" | tr 'A-Z' 'a-z')
 mkdir -p "$OUT"
 asuser() {  # as the deploying user, reaching the user's systemd and Podman as a login would
@@ -55,7 +57,11 @@ step 0-version "$BK" --version
 
 # direction 1: root deployed, the user tries
 step 1-root-up bash -c "cd '$D' && '$BK' up"
+gen() { find "$D/.brickkit/generated" -type f -printf '%TY-%Tm-%Td %TT %u %p\n' | sort -k4 | md5sum | cut -c1-12; }
+echo "generated before: $(gen)" > "$OUT/2a-generated.txt"
 step 2-user-up asuser bash -c "cd '$D' && brickkit up"
+echo "generated after:  $(gen)" >> "$OUT/2a-generated.txt"
+step 2c-user-dry-run asuser bash -c "cd '$D' && brickkit up --dry-run"
 step 2b-sides side
 step 3-user-status asuser bash -c "cd '$D' && brickkit status"
 step 3b-user-down asuser bash -c "cd '$D' && brickkit down"
@@ -64,7 +70,9 @@ step 4-root-down bash -c "cd '$D' && '$BK' down"
 
 # direction 2: the user deployed, root tries, with SUDO_USER and without it
 step 5-user-up asuser bash -c "cd '$D' && brickkit up"
+echo "generated before: $(gen)" > "$OUT/6a-generated.txt"
 step 6-root-up-sudo-user bash -c "cd '$D' && '$BK' up"
+echo "generated after:  $(gen)" >> "$OUT/6a-generated.txt"
 step 6b-root-up-no-sudo-user env -u SUDO_USER bash -c "cd '$D' && '$BK' up"
 step 6c-sides side
 step 7-user-down asuser bash -c "cd '$D' && brickkit down"
