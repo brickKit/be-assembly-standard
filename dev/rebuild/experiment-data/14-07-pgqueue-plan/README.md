@@ -13,4 +13,5 @@
   (small backlog 2 to 17 ms in every mode) and are not used.
 - `measure-publish.sh` / `.out`: BenchmarkConcurrentPublish (8 publishers, 5000 messages), 4 alternated rounds,
   performance mode: prepared 12 528 to 13 800 msgs/s, force_custom_plan 12 906 to 13 109 msgs/s.
-- On the test's own fresh bus, before the fix: 17 of 20 runs red; after (force_custom_plan): 0 of 20.
+- `own-schema-20-runs.txt`: on the test's own fresh bus, before the fix 19 of 20 runs red (large 4.1-6.5 ms, small 0.5-0.9 ms), after (force_custom_plan) 0 of 20. An earlier, unsaved run gave 17 of 20, the figure in be-sdk-go alpha.44's commit message and tag.
+- `claim-executions.txt`, `claim-fresh-schema.txt`: two psql traces that did not reproduce the bad generic plan (another statistics state; a copied schema): the plan depends on the state.

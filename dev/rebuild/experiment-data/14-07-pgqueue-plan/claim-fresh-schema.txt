@@ -1,0 +1,339 @@
+NOTICE:  schema "probe_b7c1" does not exist, skipping
+       ?column?       
+----------------------
+ reltuples before: -1
+(1 row)
+
+== execution 1
+                                                       QUERY PLAN                                                       
+------------------------------------------------------------------------------------------------------------------------
+ Nested Loop Left Join (actual rows=1 loops=1)
+   CTE ready
+     ->  Limit (actual rows=1 loops=1)
+           ->  LockRows (actual rows=1 loops=1)
+                 ->  Index Scan using be_bus_delivery_durable_seq_idx on be_bus_delivery (actual rows=1 loops=1)
+                       Index Cond: (durable = 'backlog_x'::text)
+                       Filter: ((NOT in_flight) AND (not_before <= clock_timestamp()))
+   CTE expired
+     ->  Limit (actual rows=0 loops=1)
+           ->  LockRows (actual rows=0 loops=1)
+                 ->  Index Scan using be_bus_delivery_pkey on be_bus_delivery be_bus_delivery_1 (actual rows=0 loops=1)
+                       Index Cond: (durable = 'backlog_x'::text)
+                       Filter: (in_flight AND (attempts < 3) AND (lease_until < clock_timestamp()))
+                       Rows Removed by Filter: 20000
+   CTE claimed
+     ->  Update on be_bus_delivery d (actual rows=1 loops=1)
+           InitPlan 3 (returns $6)
+             ->  Aggregate (actual rows=1 loops=1)
+                   ->  Append (actual rows=1 loops=1)
+                         ->  CTE Scan on ready (actual rows=1 loops=1)
+                         ->  CTE Scan on expired (actual rows=0 loops=1)
+           ->  Index Scan using be_bus_delivery_pkey on be_bus_delivery d (actual rows=1 loops=1)
+                 Index Cond: ((durable = 'backlog_x'::text) AND (seq = $6))
+   ->  CTE Scan on claimed c (actual rows=1 loops=1)
+   ->  Index Scan using be_bus_message_pkey on be_bus_message m (actual rows=1 loops=1)
+         Index Cond: (seq = c.seq)
+ Planning Time: 0.678 ms
+ Execution Time: 2.229 ms
+(28 rows)
+
+== execution 2
+                                                       QUERY PLAN                                                       
+------------------------------------------------------------------------------------------------------------------------
+ Nested Loop Left Join (actual rows=1 loops=1)
+   CTE ready
+     ->  Limit (actual rows=1 loops=1)
+           ->  LockRows (actual rows=1 loops=1)
+                 ->  Index Scan using be_bus_delivery_durable_seq_idx on be_bus_delivery (actual rows=1 loops=1)
+                       Index Cond: (durable = 'backlog_x'::text)
+                       Filter: ((NOT in_flight) AND (not_before <= clock_timestamp()))
+   CTE expired
+     ->  Limit (actual rows=0 loops=1)
+           ->  LockRows (actual rows=0 loops=1)
+                 ->  Index Scan using be_bus_delivery_pkey on be_bus_delivery be_bus_delivery_1 (actual rows=0 loops=1)
+                       Index Cond: (durable = 'backlog_x'::text)
+                       Filter: (in_flight AND (attempts < 3) AND (lease_until < clock_timestamp()))
+                       Rows Removed by Filter: 20000
+   CTE claimed
+     ->  Update on be_bus_delivery d (actual rows=1 loops=1)
+           InitPlan 3 (returns $6)
+             ->  Aggregate (actual rows=1 loops=1)
+                   ->  Append (actual rows=1 loops=1)
+                         ->  CTE Scan on ready (actual rows=1 loops=1)
+                         ->  CTE Scan on expired (actual rows=0 loops=1)
+           ->  Index Scan using be_bus_delivery_pkey on be_bus_delivery d (actual rows=1 loops=1)
+                 Index Cond: ((durable = 'backlog_x'::text) AND (seq = $6))
+   ->  CTE Scan on claimed c (actual rows=1 loops=1)
+   ->  Index Scan using be_bus_message_pkey on be_bus_message m (actual rows=1 loops=1)
+         Index Cond: (seq = c.seq)
+ Planning Time: 0.233 ms
+ Execution Time: 2.249 ms
+(28 rows)
+
+== execution 3
+                                                       QUERY PLAN                                                       
+------------------------------------------------------------------------------------------------------------------------
+ Nested Loop Left Join (actual rows=1 loops=1)
+   CTE ready
+     ->  Limit (actual rows=1 loops=1)
+           ->  LockRows (actual rows=1 loops=1)
+                 ->  Index Scan using be_bus_delivery_durable_seq_idx on be_bus_delivery (actual rows=1 loops=1)
+                       Index Cond: (durable = 'backlog_x'::text)
+                       Filter: ((NOT in_flight) AND (not_before <= clock_timestamp()))
+   CTE expired
+     ->  Limit (actual rows=0 loops=1)
+           ->  LockRows (actual rows=0 loops=1)
+                 ->  Index Scan using be_bus_delivery_pkey on be_bus_delivery be_bus_delivery_1 (actual rows=0 loops=1)
+                       Index Cond: (durable = 'backlog_x'::text)
+                       Filter: (in_flight AND (attempts < 3) AND (lease_until < clock_timestamp()))
+                       Rows Removed by Filter: 20000
+   CTE claimed
+     ->  Update on be_bus_delivery d (actual rows=1 loops=1)
+           InitPlan 3 (returns $6)
+             ->  Aggregate (actual rows=1 loops=1)
+                   ->  Append (actual rows=1 loops=1)
+                         ->  CTE Scan on ready (actual rows=1 loops=1)
+                         ->  CTE Scan on expired (actual rows=0 loops=1)
+           ->  Index Scan using be_bus_delivery_pkey on be_bus_delivery d (actual rows=1 loops=1)
+                 Index Cond: ((durable = 'backlog_x'::text) AND (seq = $6))
+   ->  CTE Scan on claimed c (actual rows=1 loops=1)
+   ->  Index Scan using be_bus_message_pkey on be_bus_message m (actual rows=1 loops=1)
+         Index Cond: (seq = c.seq)
+ Planning Time: 0.234 ms
+ Execution Time: 1.895 ms
+(28 rows)
+
+== execution 4
+                                                       QUERY PLAN                                                       
+------------------------------------------------------------------------------------------------------------------------
+ Nested Loop Left Join (actual rows=1 loops=1)
+   CTE ready
+     ->  Limit (actual rows=1 loops=1)
+           ->  LockRows (actual rows=1 loops=1)
+                 ->  Index Scan using be_bus_delivery_durable_seq_idx on be_bus_delivery (actual rows=1 loops=1)
+                       Index Cond: (durable = 'backlog_x'::text)
+                       Filter: ((NOT in_flight) AND (not_before <= clock_timestamp()))
+   CTE expired
+     ->  Limit (actual rows=0 loops=1)
+           ->  LockRows (actual rows=0 loops=1)
+                 ->  Index Scan using be_bus_delivery_pkey on be_bus_delivery be_bus_delivery_1 (actual rows=0 loops=1)
+                       Index Cond: (durable = 'backlog_x'::text)
+                       Filter: (in_flight AND (attempts < 3) AND (lease_until < clock_timestamp()))
+                       Rows Removed by Filter: 20000
+   CTE claimed
+     ->  Update on be_bus_delivery d (actual rows=1 loops=1)
+           InitPlan 3 (returns $6)
+             ->  Aggregate (actual rows=1 loops=1)
+                   ->  Append (actual rows=1 loops=1)
+                         ->  CTE Scan on ready (actual rows=1 loops=1)
+                         ->  CTE Scan on expired (actual rows=0 loops=1)
+           ->  Index Scan using be_bus_delivery_pkey on be_bus_delivery d (actual rows=1 loops=1)
+                 Index Cond: ((durable = 'backlog_x'::text) AND (seq = $6))
+   ->  CTE Scan on claimed c (actual rows=1 loops=1)
+   ->  Index Scan using be_bus_message_pkey on be_bus_message m (actual rows=1 loops=1)
+         Index Cond: (seq = c.seq)
+ Planning Time: 0.269 ms
+ Execution Time: 1.902 ms
+(28 rows)
+
+== execution 5
+                                                       QUERY PLAN                                                       
+------------------------------------------------------------------------------------------------------------------------
+ Nested Loop Left Join (actual rows=1 loops=1)
+   CTE ready
+     ->  Limit (actual rows=1 loops=1)
+           ->  LockRows (actual rows=1 loops=1)
+                 ->  Index Scan using be_bus_delivery_durable_seq_idx on be_bus_delivery (actual rows=1 loops=1)
+                       Index Cond: (durable = 'backlog_x'::text)
+                       Filter: ((NOT in_flight) AND (not_before <= clock_timestamp()))
+   CTE expired
+     ->  Limit (actual rows=0 loops=1)
+           ->  LockRows (actual rows=0 loops=1)
+                 ->  Index Scan using be_bus_delivery_pkey on be_bus_delivery be_bus_delivery_1 (actual rows=0 loops=1)
+                       Index Cond: (durable = 'backlog_x'::text)
+                       Filter: (in_flight AND (attempts < 3) AND (lease_until < clock_timestamp()))
+                       Rows Removed by Filter: 20000
+   CTE claimed
+     ->  Update on be_bus_delivery d (actual rows=1 loops=1)
+           InitPlan 3 (returns $6)
+             ->  Aggregate (actual rows=1 loops=1)
+                   ->  Append (actual rows=1 loops=1)
+                         ->  CTE Scan on ready (actual rows=1 loops=1)
+                         ->  CTE Scan on expired (actual rows=0 loops=1)
+           ->  Index Scan using be_bus_delivery_pkey on be_bus_delivery d (actual rows=1 loops=1)
+                 Index Cond: ((durable = 'backlog_x'::text) AND (seq = $6))
+   ->  CTE Scan on claimed c (actual rows=1 loops=1)
+   ->  Index Scan using be_bus_message_pkey on be_bus_message m (actual rows=1 loops=1)
+         Index Cond: (seq = c.seq)
+ Planning Time: 0.242 ms
+ Execution Time: 1.822 ms
+(28 rows)
+
+== execution 6
+                                                       QUERY PLAN                                                       
+------------------------------------------------------------------------------------------------------------------------
+ Nested Loop Left Join (actual rows=1 loops=1)
+   CTE ready
+     ->  Limit (actual rows=1 loops=1)
+           ->  LockRows (actual rows=1 loops=1)
+                 ->  Index Scan using be_bus_delivery_durable_seq_idx on be_bus_delivery (actual rows=1 loops=1)
+                       Index Cond: (durable = $1)
+                       Filter: ((NOT in_flight) AND (not_before <= clock_timestamp()))
+   CTE expired
+     ->  Limit (actual rows=0 loops=1)
+           ->  LockRows (actual rows=0 loops=1)
+                 ->  Index Scan using be_bus_delivery_pkey on be_bus_delivery be_bus_delivery_1 (actual rows=0 loops=1)
+                       Index Cond: (durable = $1)
+                       Filter: (in_flight AND (attempts < $4) AND (lease_until < clock_timestamp()))
+                       Rows Removed by Filter: 20000
+   CTE claimed
+     ->  Update on be_bus_delivery d (actual rows=1 loops=1)
+           InitPlan 3 (returns $6)
+             ->  Aggregate (actual rows=1 loops=1)
+                   ->  Append (actual rows=1 loops=1)
+                         ->  CTE Scan on ready (actual rows=1 loops=1)
+                         ->  CTE Scan on expired (actual rows=0 loops=1)
+           ->  Index Scan using be_bus_delivery_pkey on be_bus_delivery d (actual rows=1 loops=1)
+                 Index Cond: ((durable = $1) AND (seq = $6))
+   ->  CTE Scan on claimed c (actual rows=1 loops=1)
+   ->  Index Scan using be_bus_message_pkey on be_bus_message m (actual rows=1 loops=1)
+         Index Cond: (seq = c.seq)
+ Planning Time: 0.200 ms
+ Execution Time: 1.838 ms
+(28 rows)
+
+== execution 7
+                                                       QUERY PLAN                                                       
+------------------------------------------------------------------------------------------------------------------------
+ Nested Loop Left Join (actual rows=1 loops=1)
+   CTE ready
+     ->  Limit (actual rows=1 loops=1)
+           ->  LockRows (actual rows=1 loops=1)
+                 ->  Index Scan using be_bus_delivery_durable_seq_idx on be_bus_delivery (actual rows=1 loops=1)
+                       Index Cond: (durable = $1)
+                       Filter: ((NOT in_flight) AND (not_before <= clock_timestamp()))
+   CTE expired
+     ->  Limit (actual rows=0 loops=1)
+           ->  LockRows (actual rows=0 loops=1)
+                 ->  Index Scan using be_bus_delivery_pkey on be_bus_delivery be_bus_delivery_1 (actual rows=0 loops=1)
+                       Index Cond: (durable = $1)
+                       Filter: (in_flight AND (attempts < $4) AND (lease_until < clock_timestamp()))
+                       Rows Removed by Filter: 20000
+   CTE claimed
+     ->  Update on be_bus_delivery d (actual rows=1 loops=1)
+           InitPlan 3 (returns $6)
+             ->  Aggregate (actual rows=1 loops=1)
+                   ->  Append (actual rows=1 loops=1)
+                         ->  CTE Scan on ready (actual rows=1 loops=1)
+                         ->  CTE Scan on expired (actual rows=0 loops=1)
+           ->  Index Scan using be_bus_delivery_pkey on be_bus_delivery d (actual rows=1 loops=1)
+                 Index Cond: ((durable = $1) AND (seq = $6))
+   ->  CTE Scan on claimed c (actual rows=1 loops=1)
+   ->  Index Scan using be_bus_message_pkey on be_bus_message m (actual rows=1 loops=1)
+         Index Cond: (seq = c.seq)
+ Planning Time: 0.024 ms
+ Execution Time: 1.804 ms
+(28 rows)
+
+== execution 8
+                                                       QUERY PLAN                                                       
+------------------------------------------------------------------------------------------------------------------------
+ Nested Loop Left Join (actual rows=1 loops=1)
+   CTE ready
+     ->  Limit (actual rows=1 loops=1)
+           ->  LockRows (actual rows=1 loops=1)
+                 ->  Index Scan using be_bus_delivery_durable_seq_idx on be_bus_delivery (actual rows=1 loops=1)
+                       Index Cond: (durable = $1)
+                       Filter: ((NOT in_flight) AND (not_before <= clock_timestamp()))
+   CTE expired
+     ->  Limit (actual rows=0 loops=1)
+           ->  LockRows (actual rows=0 loops=1)
+                 ->  Index Scan using be_bus_delivery_pkey on be_bus_delivery be_bus_delivery_1 (actual rows=0 loops=1)
+                       Index Cond: (durable = $1)
+                       Filter: (in_flight AND (attempts < $4) AND (lease_until < clock_timestamp()))
+                       Rows Removed by Filter: 20000
+   CTE claimed
+     ->  Update on be_bus_delivery d (actual rows=1 loops=1)
+           InitPlan 3 (returns $6)
+             ->  Aggregate (actual rows=1 loops=1)
+                   ->  Append (actual rows=1 loops=1)
+                         ->  CTE Scan on ready (actual rows=1 loops=1)
+                         ->  CTE Scan on expired (actual rows=0 loops=1)
+           ->  Index Scan using be_bus_delivery_pkey on be_bus_delivery d (actual rows=1 loops=1)
+                 Index Cond: ((durable = $1) AND (seq = $6))
+   ->  CTE Scan on claimed c (actual rows=1 loops=1)
+   ->  Index Scan using be_bus_message_pkey on be_bus_message m (actual rows=1 loops=1)
+         Index Cond: (seq = c.seq)
+ Planning Time: 0.015 ms
+ Execution Time: 1.814 ms
+(28 rows)
+
+== execution 9
+                                                       QUERY PLAN                                                       
+------------------------------------------------------------------------------------------------------------------------
+ Nested Loop Left Join (actual rows=1 loops=1)
+   CTE ready
+     ->  Limit (actual rows=1 loops=1)
+           ->  LockRows (actual rows=1 loops=1)
+                 ->  Index Scan using be_bus_delivery_durable_seq_idx on be_bus_delivery (actual rows=1 loops=1)
+                       Index Cond: (durable = $1)
+                       Filter: ((NOT in_flight) AND (not_before <= clock_timestamp()))
+   CTE expired
+     ->  Limit (actual rows=0 loops=1)
+           ->  LockRows (actual rows=0 loops=1)
+                 ->  Index Scan using be_bus_delivery_pkey on be_bus_delivery be_bus_delivery_1 (actual rows=0 loops=1)
+                       Index Cond: (durable = $1)
+                       Filter: (in_flight AND (attempts < $4) AND (lease_until < clock_timestamp()))
+                       Rows Removed by Filter: 20000
+   CTE claimed
+     ->  Update on be_bus_delivery d (actual rows=1 loops=1)
+           InitPlan 3 (returns $6)
+             ->  Aggregate (actual rows=1 loops=1)
+                   ->  Append (actual rows=1 loops=1)
+                         ->  CTE Scan on ready (actual rows=1 loops=1)
+                         ->  CTE Scan on expired (actual rows=0 loops=1)
+           ->  Index Scan using be_bus_delivery_pkey on be_bus_delivery d (actual rows=1 loops=1)
+                 Index Cond: ((durable = $1) AND (seq = $6))
+   ->  CTE Scan on claimed c (actual rows=1 loops=1)
+   ->  Index Scan using be_bus_message_pkey on be_bus_message m (actual rows=1 loops=1)
+         Index Cond: (seq = c.seq)
+ Planning Time: 0.013 ms
+ Execution Time: 1.770 ms
+(28 rows)
+
+== execution 10
+                                                       QUERY PLAN                                                       
+------------------------------------------------------------------------------------------------------------------------
+ Nested Loop Left Join (actual rows=1 loops=1)
+   CTE ready
+     ->  Limit (actual rows=1 loops=1)
+           ->  LockRows (actual rows=1 loops=1)
+                 ->  Index Scan using be_bus_delivery_durable_seq_idx on be_bus_delivery (actual rows=1 loops=1)
+                       Index Cond: (durable = $1)
+                       Filter: ((NOT in_flight) AND (not_before <= clock_timestamp()))
+   CTE expired
+     ->  Limit (actual rows=0 loops=1)
+           ->  LockRows (actual rows=0 loops=1)
+                 ->  Index Scan using be_bus_delivery_pkey on be_bus_delivery be_bus_delivery_1 (actual rows=0 loops=1)
+                       Index Cond: (durable = $1)
+                       Filter: (in_flight AND (attempts < $4) AND (lease_until < clock_timestamp()))
+                       Rows Removed by Filter: 20000
+   CTE claimed
+     ->  Update on be_bus_delivery d (actual rows=1 loops=1)
+           InitPlan 3 (returns $6)
+             ->  Aggregate (actual rows=1 loops=1)
+                   ->  Append (actual rows=1 loops=1)
+                         ->  CTE Scan on ready (actual rows=1 loops=1)
+                         ->  CTE Scan on expired (actual rows=0 loops=1)
+           ->  Index Scan using be_bus_delivery_pkey on be_bus_delivery d (actual rows=1 loops=1)
+                 Index Cond: ((durable = $1) AND (seq = $6))
+   ->  CTE Scan on claimed c (actual rows=1 loops=1)
+   ->  Index Scan using be_bus_message_pkey on be_bus_message m (actual rows=1 loops=1)
+         Index Cond: (seq = c.seq)
+ Planning Time: 0.022 ms
+ Execution Time: 1.799 ms
+(28 rows)
+
+NOTICE:  drop cascades to 2 other objects
+DETAIL:  drop cascades to table probe_b7c1.be_bus_message
+drop cascades to table probe_b7c1.be_bus_delivery
