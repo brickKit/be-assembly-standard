@@ -91,8 +91,11 @@ local = {x.split("@")[0] for x in yaml.safe_load(open(sys.argv[2])).get("local")
   done
 }
 echo "START $CELL power=$(powerprofilesctl get) $(date -Is)" >> "$OUT/status.log"
-# rootless Podman only: a rootful cell (cell.yaml `podman: rootful`, CONTAINER_HOST at root's socket) needs no user namespace
-if grep -q '^podman: *rootful' "$D/cell.yaml"; then export CONTAINER_HOST=unix:///run/podman/podman.sock
+# rootless Podman only: a rootful cell (cell.yaml `podman: rootful`) needs no user namespace. With compose it is reached
+# through root's socket (CONTAINER_HOST); with Quadlet units (`units: quadlet`, FRR-025) root itself runs `brickkit up`
+# (rootful/quadlet-up.sh, which also loads the images), and the up stage waits for every component to answer
+ROOTQ=; grep -q '^podman: *rootful' "$D/cell.yaml" && grep -q '^units: *quadlet' "$D/cell.yaml" && ROOTQ=1
+if grep -q '^podman: *rootful' "$D/cell.yaml"; then [ -n "$ROOTQ" ] || export CONTAINER_HOST=unix:///run/podman/podman.sock
 else case $ROW in P|LP) stage podman-preflight bash "$R/dev/rebuild/experiment-scripts/podman-preflight.sh" ;; esac; fi
 stage down-others down_cells
 # suite E5: a cell with a schema on the second instance (databases: ... second/<database>) starts it afresh first
@@ -108,7 +111,8 @@ build() {  # every row's images come from Docker (the same images in every row):
   (cd "$D" && brickkit build)
 }
 [ "$ROW" = L ] || stage build build  # the L row runs from source: no images
-case $ROW in P|LP|K) stage images images ;; esac  # after the build: a shell's new version exists only then
+# after the build: a shell's new version exists only then
+[ -n "$ROOTQ" ] || case $ROW in P|LP|K) stage images images ;; esac
 move_authz() {  # the container serving infra/authz (alone or in be/go-infra) restarts on another address of its network
   local eng=docker c net old new aliases a args=()
   [ "$ROW" = P ] && eng=podman
@@ -134,6 +138,12 @@ if [ "$ROW" = L ] || [ "$ROW" = LD ] || [ "$ROW" = LP ]; then
   # the shell after setsid writes its own PID (the group leader; setsid may fork first) and becomes the forwarder
   (cd "$CONF" && setsid bash -c 'echo $$ > "$1"; exec uv run python -m cells.localrun forward "$2"' _ \
     "$(forward_pid "$D")" "$D" < /dev/null > "$OUT/logs/forward.log" 2>&1 &)
+elif [ -n "$ROOTQ" ]; then
+  # root's `brickkit up` evaluates the ${VAR}s itself: the cell's .env (gitignored) hands it the two this runner exports
+  printf 'BE_ACC_IAM_CLIENT_SECRET=%s\nBE_ACC_IAM_DEV_CLIENT_SECRET=%s\n' "$BE_ACC_IAM_CLIENT_SECRET" \
+    "$BE_ACC_IAM_DEV_CLIENT_SECRET" > "$D/.env"
+  echo "WAITING for: sudo dev/rebuild/experiment-scripts/rootful/quadlet-up.sh $CELL $(date -Is)" >> "$OUT/status.log"
+  stage up-by-root bash -c "cd $CONF && uv run python -c 'import sys, yaml; from cells.units import wait_answering; wait_answering([c[\"exposePort\"] for c in yaml.safe_load(open(sys.argv[1]))[\"components\"] if \"exposePort\" in c], timeout=3600)' $D/deploy.yaml"
 else
   stage up bash -c "cd $D && brickkit up"
   # suite E: a replicated shell or component maps no host port on Docker and Podman; a front door takes it
