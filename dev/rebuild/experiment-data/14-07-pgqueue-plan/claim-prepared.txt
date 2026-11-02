@@ -1,0 +1,40 @@
+Time: 19.485 ms
+Time: 5.695 ms
+Time: 19.839 ms
+Time: 267.129 ms
+Time: 0.857 ms
+Time: 7.927 ms
+Time: 6.923 ms
+Time: 6.921 ms
+Time: 7.017 ms
+Time: 7.030 ms
+Time: 6.951 ms
+Time: 6.953 ms
+Time: 6.778 ms
+Time: 6.701 ms
+     ->  Limit (actual rows=1 loops=1)
+                 ->  Sort (actual rows=1 loops=1)
+                       Sort Key: be_bus_delivery.seq
+                       Sort Method: quicksort  Memory: 1549kB
+                       ->  Bitmap Heap Scan on be_bus_delivery (actual rows=19991 loops=1)
+                             Filter: (not_before <= clock_timestamp())
+                             ->  Bitmap Index Scan on be_bus_delivery_ready (actual rows=80000 loops=1)
+     ->  Limit (actual rows=0 loops=1)
+                 ->  Sort (actual rows=0 loops=1)
+                       Sort Key: be_bus_delivery_1.seq
+                       Sort Method: quicksort  Memory: 25kB
+                       ->  Index Scan using be_bus_delivery_lease on be_bus_delivery be_bus_delivery_1 (actual rows=0 loops=1)
+                             Filter: (in_flight AND (attempts < $4) AND (lease_until < clock_timestamp()))
+                             Rows Removed by Filter: 9
+                         ->  CTE Scan on ready (actual rows=1 loops=1)
+                         ->  CTE Scan on expired (actual rows=0 loops=1)
+           ->  Bitmap Heap Scan on be_bus_delivery d (actual rows=1 loops=1)
+                 ->  Bitmap Index Scan on be_bus_delivery_pkey (actual rows=1 loops=1)
+   ->  CTE Scan on claimed c (actual rows=1 loops=1)
+   ->  Bitmap Heap Scan on be_bus_message m (actual rows=1 loops=1)
+         ->  Bitmap Index Scan on be_bus_message_pkey (actual rows=1 loops=1)
+ Planning Time: 0.037 ms
+ Execution Time: 6.205 ms
+Time: 7.012 ms
+Time: 7.092 ms
+Time: 7.972 ms

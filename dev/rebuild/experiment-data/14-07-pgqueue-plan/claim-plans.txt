@@ -1,0 +1,73 @@
+ -- stale
+ Nested Loop Left Join (actual rows=1 loops=1)
+   CTE ready
+     ->  Limit (actual rows=1 loops=1)
+           ->  LockRows (actual rows=1 loops=1)
+                 ->  Index Scan using be_bus_delivery_pkey on be_bus_delivery (actual rows=1 loops=1)
+                       Index Cond: (durable = 'dbg_b7c1'::text)
+                       Filter: ((NOT in_flight) AND (not_before <= clock_timestamp()))
+   CTE expired
+     ->  Limit (actual rows=0 loops=1)
+           ->  LockRows (actual rows=0 loops=1)
+                 ->  Sort (actual rows=0 loops=1)
+                       Sort Key: be_bus_delivery_1.seq
+                       Sort Method: quicksort  Memory: 25kB
+                       ->  Index Scan using be_bus_delivery_lease on be_bus_delivery be_bus_delivery_1 (actual rows=0 loops=1)
+                             Index Cond: (durable = 'dbg_b7c1'::text)
+                             Filter: (in_flight AND (attempts < 3) AND (lease_until < clock_timestamp()))
+   CTE claimed
+     ->  Update on be_bus_delivery d (actual rows=1 loops=1)
+           InitPlan 3 (returns $5)
+             ->  Aggregate (actual rows=1 loops=1)
+                   ->  Append (actual rows=1 loops=1)
+                         ->  CTE Scan on ready (actual rows=1 loops=1)
+                         ->  CTE Scan on expired (actual rows=0 loops=1)
+           ->  Bitmap Heap Scan on be_bus_delivery d (actual rows=1 loops=1)
+                 Recheck Cond: ((durable = 'dbg_b7c1'::text) AND (seq = $5))
+                 Heap Blocks: exact=1
+                 ->  Bitmap Index Scan on be_bus_delivery_pkey (actual rows=1 loops=1)
+                       Index Cond: ((durable = 'dbg_b7c1'::text) AND (seq = $5))
+   ->  CTE Scan on claimed c (actual rows=1 loops=1)
+   ->  Bitmap Heap Scan on be_bus_message m (actual rows=1 loops=1)
+         Recheck Cond: (seq = c.seq)
+         Heap Blocks: exact=1
+         ->  Bitmap Index Scan on be_bus_message_pkey (actual rows=1 loops=1)
+               Index Cond: (seq = c.seq)
+ Planning Time: 0.567 ms
+ Execution Time: 0.212 ms
+ -- after ANALYZE of delivery
+ Nested Loop Left Join (actual rows=1 loops=1)
+   CTE ready
+     ->  Limit (actual rows=1 loops=1)
+           ->  LockRows (actual rows=1 loops=1)
+                 ->  Index Scan using be_bus_delivery_pkey on be_bus_delivery (actual rows=1 loops=1)
+                       Index Cond: (durable = 'dbg_b7c1'::text)
+                       Filter: ((NOT in_flight) AND (not_before <= clock_timestamp()))
+                       Rows Removed by Filter: 1
+   CTE expired
+     ->  Limit (actual rows=0 loops=1)
+           ->  LockRows (actual rows=0 loops=1)
+                 ->  Sort (actual rows=0 loops=1)
+                       Sort Key: be_bus_delivery_1.seq
+                       Sort Method: quicksort  Memory: 25kB
+                       ->  Index Scan using be_bus_delivery_lease on be_bus_delivery be_bus_delivery_1 (actual rows=0 loops=1)
+                             Index Cond: (durable = 'dbg_b7c1'::text)
+                             Filter: (in_flight AND (attempts < 3) AND (lease_until < clock_timestamp()))
+                             Rows Removed by Filter: 1
+   CTE claimed
+     ->  Update on be_bus_delivery d (actual rows=1 loops=1)
+           InitPlan 3 (returns $6)
+             ->  Aggregate (actual rows=1 loops=1)
+                   ->  Append (actual rows=1 loops=1)
+                         ->  CTE Scan on ready (actual rows=1 loops=1)
+                         ->  CTE Scan on expired (actual rows=0 loops=1)
+           ->  Index Scan using be_bus_delivery_pkey on be_bus_delivery d (actual rows=1 loops=1)
+                 Index Cond: ((durable = 'dbg_b7c1'::text) AND (seq = $6))
+   ->  CTE Scan on claimed c (actual rows=1 loops=1)
+   ->  Bitmap Heap Scan on be_bus_message m (actual rows=1 loops=1)
+         Recheck Cond: (seq = c.seq)
+         Heap Blocks: exact=1
+         ->  Bitmap Index Scan on be_bus_message_pkey (actual rows=1 loops=1)
+               Index Cond: (seq = c.seq)
+ Planning Time: 0.354 ms
+ Execution Time: 0.197 ms
