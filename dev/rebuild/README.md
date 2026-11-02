@@ -65,11 +65,11 @@
 
 - 进入底层先行（换阶段）。
 - 破坏性迁移的保险（第 12 步计划 9.1“还没定的”，不急）。
-- 父仓库未推送的提交（`git log origin/main..main`）：推送要维护者下令或授权。
+- 父仓库之后的提交（`git log origin/main..main`）：推送要维护者下令或授权。
 
 ## 未推送、已知问题与外部往来
 
-- **推送**：子仓库（协议、SDK、验收、外壳、组件）的发布都已推送。父仓库：2026-11-01 中午之后的提交还没推送，以 `git log origin/main..main` 为准。
+- **推送**：子仓库（协议、SDK、验收、外壳、组件）的发布都已推送。父仓库 2026-11-02 推送到 `c755ccc9`（维护者下令）；之后的提交以 `git log origin/main..main` 为准。
 - **给 BrickKit 的信箱** `brickkit-feedback/`（被 gitignore；规则在它的 `README.md`）：待办每条一个文件放在 `open/`，回复与复测写在同一个文件里，关闭后移到 `archive/`。现在没有待办：FRB-001–010、FRR-001–023 都已关闭（最后一条 FRR-023 于 2026-11-02 在 v1.11.3 复测通过）。下一个编号 FRB-011、FRR-024。
 - **本项目的待办（来自 FRB-009）**：各组件、外壳与探针 Dockerfile 里的 `ENV PORT` 与注释“BrickKit injects PORT only for mode: local”已过时但无害，下次改动该组件时删掉（Python 探针与它的变体已在 3.2.20 删掉；Go 探针与它的变体还在）。
 - **组件与外壳的 SDK**：组件与外壳在 `be-sdk-go` alpha.41、`be-sdk-python` a38；SDK 已到 alpha.42、a39（只给测试标了 CK-ID-01，行为不变），协议到 alpha.39（`COMPAT.md` 的“装配项目的正式文档”一列）。下次连锁发布时一起换。
