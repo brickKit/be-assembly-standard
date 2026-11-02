@@ -49,6 +49,7 @@
 - 健康检查同时应答 `GET` 与 `HEAD`，由 SDK 注册，组件不自己注册。
 - 启动宽限期按语言给起始值（[协议 17 的参数起始值](../06-protocols/17-runtime-and-resources.md#参数起始值)），实测后调整。
 - 基础镜像要带 `/bin/sh` 与 `wget`：健康检查经由 shell 执行。用 `scratch` 或 distroless，组件日志说“已就绪”，平台却永远报不健康。
+- 镜像以非 root 用户运行：`Dockerfile` 最后写 `USER` 一个非 0 的 uid，进程要写的目录事先 `chown` 给它；监听的端口都在 1024 以上（注册表里的端口本来就是）。默认引擎是有根 Podman（D80），容器里的 root 就是宿主机的 root；Docker 默认也是这样。
 
 ## 权限与资源
 

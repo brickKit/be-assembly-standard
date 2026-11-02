@@ -4,7 +4,7 @@
 
 ## 现在在哪里
 
-- **代表部署实验（D41）做完了**（2026-10-17 至 11-02）。结论在[实验报告](experiment-report.md)（最后是“结论汇总”与“限制与未测”），已提炼进正式文档：[部署模式](../../docs/zh/00-overview/guides/deployment-modes.md)、决定 D80（默认无根 Podman）与 A112–A114（默认全部单跑、不加连接池代理、NATS；维护者 2026-11-02 复核）、各篇的修订（[第 14 步计划](step14-plan.md)第 3 节）。复盘：[整个实验](retro-experiment.md)、[第 12 步](retro-step12.md)、[第 13 步](retro-step13.md)。
+- **代表部署实验（D41）做完了**（2026-10-17 至 11-02）。结论在[实验报告](experiment-report.md)（最后是“结论汇总”与“限制与未测”），已提炼进正式文档：[部署模式](../../docs/zh/00-overview/guides/deployment-modes.md)、决定 D80（默认有根 Podman，开机实测后由无根改定）与 A112–A114（默认全部单跑、不加连接池代理、NATS；维护者 2026-11-02 复核）、各篇的修订（[第 14 步计划](step14-plan.md)第 3 节）。复盘：[整个实验](retro-experiment.md)、[第 12 步](retro-step12.md)、[第 13 步](retro-step13.md)。
 - **下一步：底层先行**（[重建计划](rebuild-plan.md)“顺序”第 3 项，路线第 3 步开头）：事务与消息、登录与身份、权限、审计与整套恢复、冷热数据，以及 Python 补到代表组件需要的剖面；各项的验证门槛在[实验计划](experiment-plan.md)的“实验之后：底层先行”，实验留给各项的待测在重建计划里列着。之后按依赖顺序重建业务组件。**进入它是换阶段，等维护者确认**（要改根 `AGENTS.md` 的“推进方式”一行）。
 - 设计冻结与正式文档迁移已完成（[migration-plan.md](migration-plan.md)）。待复核的 AI 选择只剩 A109（驻留期起始值，`docs/zh/02-decisions/09-ai-choices.md`）。
 
@@ -46,6 +46,7 @@
 
 - **`/etc/hosts` 有 `127.0.0.1 host.docker.internal`**（维护者 2026-11-01，第 12 步 G7）：让本机进程与容器用同一个名字访问对象存储；不要删。
 - **无根 Podman 的开机自启**（2026-11-02，`experiment-data/14-01-reboot/`）：linger 已开、`podman-restart.service` 已启用；`~/.config/systemd/user/podman-restart.service.d/wait-network.conf` 让它等网络；`/etc/systemd/system/user@1000.service.d/data-disk.conf` 让用户的 systemd 等数据盘；AppArmor 的 `podman`、`passt` 配置是包里的原样，`usr.bin.pasta` 是原样加 BrickKit 的一条信号规则（enforce）。**AI 的终端在 VS Code 的 snap 里**，那里允许建用户命名空间：查 Podman 的问题、模拟开机或 ssh，用 `systemd-run --user --wait …`；P、LP 两行起格前 `cell-chain.sh` 会先跑 `podman-preflight.sh`。
+- **有根 Podman 的开机测试**（2026-11-02，`experiment-data/14-02-rootful-reboot/`，D80 因此改为有根）：测试时装了 root 的 `podman.socket`（组 `docker`，drop-in `be-rootful.conf`、`be-rootful-dir.conf`）、`DOCKER-USER` 的放行规则与开机补回它的 `be-podman-docker-forward.service`、系统的 `podman-restart.service`；测完由维护者执行 `rootful/revert-boot.sh` 与 `rootful/revert.sh` 还原。以后再测有根，重新执行 `rootful/setup.sh` 与 `setup-boot.sh`。
 - **数据盘** `/home/zhijie/data`：Docker 与 containerd 的根、Podman 的存储、Go 与 Python 的缓存都在上面；Docker 与用户的 systemd 都等它挂上。
 - **还原过的设置**：维护者 2026-10-29 执行了 `cap/revert.sh` 与 `rootful/revert.sh`（Docker 的 `cgroup-parent` 去掉、`be-cap.slice` 停了；root 的 `podman.socket` 停用、`DOCKER-USER` 清空）。以后再要限内存或有根 Podman，重新执行对应的 `setup.sh`。GNOME 的文件索引忽略 `/home/zhijie/data`（`org.freedesktop.Tracker3.Miner.Files ignored-directories`）。
 - **BrickKit**：CLI v1.11.3，本项目装的技能是 v1.11.3（`brickkit skills update`）。v1.11.1 起 `target: podman` 生成 `restart: always`，旧格升级后第一次 `up` 会重建每个组件容器；v1.10.3 起 compose 健康检查在启动阶段每秒一次（`start_interval: 1s`），D 行崩溃后的拉起读数在那之后变短，不与之前的比。
@@ -70,7 +71,7 @@
 ## 未推送、已知问题与外部往来
 
 - **推送**：子仓库（协议、SDK、验收、外壳、组件）的发布都已推送。父仓库 2026-11-02 推送到 `c755ccc9`（维护者下令）；之后的提交以 `git log origin/main..main` 为准。
-- **给 BrickKit 的信箱** `brickkit-feedback/`（被 gitignore；规则在它的 `README.md`）：待办每条一个文件放在 `open/`，回复与复测写在同一个文件里，关闭后移到 `archive/`。现在没有待办：FRB-001–010、FRR-001–023 都已关闭（最后一条 FRR-023 于 2026-11-02 在 v1.11.3 复测通过）。下一个编号 FRB-011、FRR-024。
+- **给 BrickKit 的信箱** `brickkit-feedback/`（被 gitignore；规则在它的 `README.md`）：待办每条一个文件放在 `open/`，回复与复测写在同一个文件里，关闭后移到 `archive/`。待办：FRR-024（单机交付推荐有根 Podman，附开机实测；放行规则的持久化做法；镜像以非 root 用户运行）、FRR-025（`target: podman` 能否生成 Quadlet 单元），都待回复。FRB-001–010、FRR-001–023 都已关闭。下一个编号 FRB-011、FRR-026。
 - **本项目的待办（来自 FRB-009）**：各组件、外壳与探针 Dockerfile 里的 `ENV PORT` 与注释“BrickKit injects PORT only for mode: local”已过时但无害，下次改动该组件时删掉（Python 探针与它的变体已在 3.2.20 删掉；Go 探针与它的变体还在）。
 - **组件与外壳的 SDK**：组件与外壳在 `be-sdk-go` alpha.41、`be-sdk-python` a38；SDK 已到 alpha.42、a39（只给测试标了 CK-ID-01，行为不变），协议到 alpha.39（`COMPAT.md` 的“装配项目的正式文档”一列）。下次连锁发布时一起换。
 - **改写过历史的仓库**（去掉误提交的二进制）：做法都一样——`git filter-repo` 只去掉那一个文件，只有含它的版本的文件树变了，其余文件树、作者、时间与说明都不变（说明里的旧哈希换成新哈希），分支与标签重新指向、强推；父仓库在改写之前记的指针已不在远端；改写前的整库备份放在当时会话的临时目录（会话结束会清掉）。

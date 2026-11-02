@@ -9,7 +9,7 @@ podman network prune -f >/dev/null 2>&1 || true
 podman rmi -af >/dev/null 2>&1 || true
 systemctl disable --now podman.socket
 chmod 0700 /run/podman 2>/dev/null || true
-rm -f /etc/systemd/system/podman.socket.d/be-rootful.conf
+rm -f /etc/systemd/system/podman.socket.d/be-rootful.conf /etc/systemd/system/podman.socket.d/be-rootful-dir.conf
 rmdir /etc/systemd/system/podman.socket.d 2>/dev/null || true
 systemctl daemon-reload
 for d in -i -o; do
