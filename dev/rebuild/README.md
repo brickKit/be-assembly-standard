@@ -8,7 +8,7 @@
 - **现在：底层先行**（维护者 2026-11-02 确认进入；[重建计划](rebuild-plan.md)“顺序”第 3 项，路线第 3 步开头）：事务与消息、登录与身份、权限、审计与整套恢复、冷热数据，以及 Python 补到代表组件需要的剖面，逐项做；每项先写计划，做到[实验计划](experiment-plan.md)“实验之后：底层先行”的验证门槛后汇报、维护者确认后进下一项；实验留给各项的待测在重建计划里列着。之后按依赖顺序重建业务组件。第一项是**事务与消息**（[计划](foundations-01-transactions-plan.md)：T1–T11）。
 - **第一项（事务与消息）完成**（维护者 2026-11-03 确认门槛，批准复盘的 K1，A115、A116 复核确认）：证据在[计划](foundations-01-transactions-plan.md)的 T11，复盘在 [retro-foundations-01.md](retro-foundations-01.md)。**下一步：第 2 项（登录与身份）**，先写计划（`f-plan`），做到门槛后汇报。挂着的事：
   - 上层仓库 2026-11-03 推送到 `1f974798`（维护者下令）；之后的提交以 `git log origin/main..main` 为准；子仓库（`be-protocol` alpha.52、`be-sdk-go` alpha.53、`be-sdk-python` a44、`be-acceptance` 1.0.37、`test/probe-go` 3.2.32、`test/probe-py` 3.2.33、`test/probe-py` 3.2.32 及变体）都已推送并打了标签。
-  - kb PR #61（计划缓存的实测记录与反馈）等 kb 审查；审查意见回来时照 `kb-contribute` 处理。kb PR #63（T5 的空闲轮询与统计检查的实测与反馈，以 #61 为前提）同样等审查。
+  - kb PR #61（计划缓存的实测记录与反馈）等 kb 审查；审查意见回来时照 `kb-contribute` 处理。kb PR #63（T5 的空闲轮询与统计检查的实测与反馈，以 #61 为前提）同样等审查。kb PR #64（复盘的反馈：补测的集成测试适合手工定点改坏；故障注入要打到“那一步”、只认故障造成的失败）等审查。
   - 组件与外壳还在旧 SDK 上；下一次连锁发布换上 `be-sdk-go` alpha.53 / `be-sdk-python` a44 并各跑一次 `migrate`（组件迁移 0010–0012，总线迁移 0004、0005）。
   - 移到 T10 的检查（要第二个副本或确定性的打断）：CK-EV-04、CK-EV-02 的两个副本同时编号、CK-WK-05、CK-WK-03 的接管一半；CK-EV-10 进 T8；Python 探针的 `fail`、`hold_ms`、`emit` 与后台工作项随第 6 项补。
   - 跑套件的环境：`source dev/rebuild/experiment-scripts/itenv.sh`，再把 `BE_ACC_*` 设成对应的 `BE_SDK_TEST_*`（PG_ADMIN、NATS_URL、S3_URL、S3_ACCESS_KEY、S3_SECRET_KEY）。监视长任务时 `pgrep -f '<命令>'` 会匹配到监视脚本自己（2026-11-03 两个监视因此不退出），盯进程号或用 `pgrep -x`。
