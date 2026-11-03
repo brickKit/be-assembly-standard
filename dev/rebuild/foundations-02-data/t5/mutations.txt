@@ -1,0 +1,19 @@
+be-sdk-go alpha.54 (foundations item 2, T5): each rule the new tests guard, broken by one edit, only the named test
+run, the file restored (2026-11-03). The two GREEN lines were findings: "past the end" was redundant (the purged-row
+path answers the same reset; the check was removed), and the epoch comparison had no case where the new epoch
+already has rows (added; the last line is the same mutation against it). Not mutated: TI05 and TI08 (the guard has
+no code that reads such headers or shares a context between requests; the tests guard against adding it) and TI21
+(each member's identity is its own certificate file; the test's precondition shows the callee reports the caller).
+
+red  guard/guard.go: if Stale(user.SecurityVersion, g.SecurityVersion) {  (TestOthersSeeNothing)
+red  guard/guard.go: func Stale(tokenSV, viewSV int64) bool { return viewSV > tokenSV }  (TestTokenStale)
+red  authz/view.go: SecurityVersion: entry.SecurityVersion}, nil  (TestOthersSeeNothing)
+red  identity/token.go: if !ok || sv < 1 ||  (TestJWTVerifyVectors)
+red  calls/http.go: if err != nil && req.ForwardUser && errs.From(err).Code == errs.Unauth  (TestADownstream401)
+red  events/readafter.go: next, reset = end, true // the next row was purged  (TestReadAfter)
+GREEN  events/readafter.go: || after.Seq > counter {  (TestReadAfter)
+GREEN  events/readafter.go: after.Epoch != current ||  (TestReadAfter)
+red  grpcx/grpcx.go: caller, ok := identity.Caller(ctx, d.TLS.Deployment)  (TestTheCallerIsTheCertificate)
+red  identity/service.go: if _, err := certs[0].Verify(x509.VerifyOptions{Roots: pool,  (TestAnExpiredCertificate)
+red  identity/service.go: 	s.cert, s.pool = &cert, pool  (TestARotatedCertificate)
+red  events/readafter.go: after.Epoch != current dropped, after the new-epoch-with-rows case was added  (TestReadAfter)

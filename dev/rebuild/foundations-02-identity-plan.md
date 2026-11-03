@@ -46,7 +46,7 @@
 | T2 | 设计两件事并写进线协议：令牌陈旧的依据；边缘的实现形态 | T1 | ✅ 2026-11-03（`be-protocol` alpha.53） |
 | T3 | `infra/iam-casdoor` 补全：会话状态表、刷新与换取在会话锁内一次、改密码结束其他会话、安全状态版本与账号状态事件、`SessionService`（换取、已结束的会话）、按 issuer 与 subject 绑定、开发换取的上线检查；换上 T5 发布的 SDK | T2、T5 | ⬜ |
 | T4 | 边缘（`be-edge`）：按会话缓存令牌、拉取已结束的会话、`TOKEN_STALE` 只重试一次、自定义请求头、`features` | T2、T3 | ⬜ |
-| T5 | SDK：`be_sv` 的核验、准入的 `TOKEN_STALE`、下游的 401、`SessionService` 的生成代码与已结束会话的读取、补测（T1 的缺口） | T2 | ⬜ |
+| T5 | SDK：`be_sv` 的核验、准入的 `TOKEN_STALE`、下游的 401、`SessionService` 的生成代码与已结束会话的读取、补测（T1 的缺口） | T2 | ✅ 2026-11-03（`be-sdk-go` alpha.54；Python 随第 6 项） |
 | T6 | 一致性套件：模拟身份提供方，登录剖面进黑盒套件 | T3、T4、T5 | ⬜ |
 | T7 | 收尾与门槛核对 | 全部 | ⬜ |
 
@@ -127,6 +127,9 @@
 - **验收**：向量全过；新测试先红后绿，写在实现之后的做改坏的反向检查并存记录；`features.json` 的 `token-staleness` 为 verified；`make vet`、`make test`、`make test-integration` 全过。
 - **回退**：没有数据迁移；组件不升级就照旧（但实现新协议的组件拒绝不带 `be_sv` 的令牌，所以身份成员要先签发它：T3 之前不让其他组件升级到这一版）。
 - **可能动到**：`identity/`、`guard/`、`authz/view.go`、`calls/`、`events/`（读取器）、`sessionpb/`（新）、`sectest/`、`features.json`。
+
+- **结果**（2026-11-03）：`be-sdk-go` alpha.54（`be-protocol` alpha.53；COMPAT 记在 alpha.54）。`make vet`、`make test`、`make test-integration`（33 个包）全过，输出在 `foundations-02-data/t5/test-integration.txt`。新规则各改坏一处都变红（`foundations-02-data/t5/mutations.txt`）；反向检查查出两处：`ReadAfter` 的“超过末尾”判断是多余的（删掉），“别的纪元”缺新纪元里已有行的一例（补上）。T1 的 SDK 缺口都补了测试：TI01、TI03、TI05–TI08、TI20、TI21。
+- **Python 移到第 6 项**：`be-sdk-python` 的协议副本还在 alpha.45，换到 alpha.53 会一起带进 alpha.46 以来的 P7.23、迁移 0011 与 0012、第 9 章的水位，这些本来就排在第 6 项（Python 剖面）。它的核验器忽略不认识的声明，带 `be_sv` 的新令牌照样接受，所以 T3 之后 Python 组件照常；在那之前它不判 `TOKEN_STALE`、不改写下游的 401，`features.json` 里 `token-staleness` 为未实现，T6 的登录剖面按能力状态只对 Go 跑这几项（与第一项的水位来源同样处理）。
 
 #### T3 `infra/iam-casdoor`
 
