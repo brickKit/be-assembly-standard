@@ -44,7 +44,7 @@
 | --- | --- | --- | --- |
 | T1 | 覆盖地图：上表每条落到哪个测试；已有的点名、缺的列出 | — | ✅ 2026-11-03 |
 | T2 | 设计两件事并写进线协议：令牌陈旧的依据；边缘的实现形态 | T1 | ✅ 2026-11-03（`be-protocol` alpha.53） |
-| T3 | `infra/iam-casdoor` 补全：会话状态表、刷新与换取在会话锁内一次、改密码结束其他会话、安全状态版本与账号状态事件、`SessionService`（换取、已结束的会话）、按 issuer 与 subject 绑定、开发换取的上线检查；换上 T5 发布的 SDK | T2、T5 | ⬜ |
+| T3 | `infra/iam-casdoor` 补全：会话状态表、刷新与换取在会话锁内一次、改密码结束其他会话、安全状态版本与账号状态事件、`SessionService`（换取、已结束的会话）、按 issuer 与 subject 绑定、开发换取的上线检查；换上 T5 发布的 SDK | T2、T5 | ✅ 2026-11-03（3.0.16） |
 | T4 | 边缘（`be-edge`）：按会话缓存令牌、拉取已结束的会话、`TOKEN_STALE` 只重试一次、自定义请求头、`features` | T2、T3 | ⬜ |
 | T5 | SDK：`be_sv` 的核验、准入的 `TOKEN_STALE`、下游的 401、`SessionService` 的生成代码与已结束会话的读取、补测（T1 的缺口） | T2 | ✅ 2026-11-03（`be-sdk-go` alpha.54；Python 随第 6 项） |
 | T6 | 一致性套件：模拟身份提供方，登录剖面进黑盒套件 | T3、T4、T5 | ⬜ |
@@ -140,6 +140,9 @@
 - **验收**：对真实 Casdoor 与 PostgreSQL 的端到端测试覆盖 UI05、UI07、UI22 的身份一侧与 TI04（真实的 ID 令牌交给 SDK 核验器被拒）、TI11；数据迁移先在副本上跑。
 - **回退**：迁移可逆（加列与新表）；回退版本前先停边缘。
 - **可能动到**：`iam/` 全部、`migrations/`、`docs/design.md`、组件定义与注册表（`infra/edge` 身份）。
+
+- **结果**（2026-11-03）：`infra/iam-casdoor` 3.0.16（`be-sdk-go` alpha.56）。SDK 顺带加了两样：`calls.Request.Form`（alpha.55：Casdoor 的 `set-password` 只读表单，密码与客户端密钥不能放进 URL）、`events.ParseEpoch`（alpha.56：边缘带回的游标）。端到端测试（真实的 Casdoor 4.1.0、PostgreSQL、NATS）覆盖：`be_sv`；TI04（Casdoor 的 ID 令牌在 `typ` 被拒）；TI11（别的签发者的同一 subject 不接管，旧行归配置的签发者）；UI04（公开换取路由没了）；边缘经 mTLS 的 `Exchange`（别的组件答 `PERMISSION_DENIED`，伪造的摘要答 `SESSION_ENDED`，`renew_idle` 为假不续期）；改密码（旧密码错时什么都不变；其他会话结束、当前会话拿到版本 2、账号状态进发件表、Casdoor 有了新密码）；空闲超时与登出出现在 `Ended` 里。十处改坏都变红（`foundations-02-data/t3/mutations.txt`）。第一次跑时 `Ended` 在提交后立即读不到改密码结束的会话：行提交之后才编号，读的一方要反复拉（测试改为像边缘一样拉，期望不变）。
+- **开发换取的上线检查**（A101）：没有新加机制，仍按 `BRICKKIT.md` 的“上线检查”与手册；归 T7 核对是否要做成检查。
 
 #### T4 `be-edge`
 
