@@ -1,0 +1,79 @@
+== mutant events/records.go: 'if !contains(s.Records.Readers, caller) {' -> 'if false {'
+   failed: ['TestOnlyTheDeclaredReadersMayRead']
+      Error:      	Not equal:
+      expected: 0x7
+      actual  : 0x0
+      Messages:   	a reader of another stream
+      Error:      	Not equal:
+      expected: 0x7
+== mutant events/records.go: 'coalesce((SELECT last_seq FROM' -> 'coalesce((SELECT 0::bigint FROM'
+   failed: ['TestAReadAnswersEveryIDInOrder']
+      Error:      	Not equal:
+      expected: map[uint32]uint64{0x0:0x0, 0x1:0x3}
+      actual  : map[uint32]uint64{0x0:0x0, 0x1:0x0}
+      Messages:   	every partition, in the same snapshot
+== mutant events/records.go: 'if tok.Impl != "" && (tok.Impl != r.Impl || tok.Epoch != snap.epoch) {' -> 'if false {'
+   failed: ['TestASnapshotPageTokenIsBoundToTheEpoch']
+      Error:      	Not equal:
+      expected: 0xa
+      actual  : 0x0
+      Messages:   	QUERY_PLAN_CHANGED: align again
+== mutant events/records.go: 'recs, err = s.Records.Page(ctx, tx, tok.After, RecordPage+1)' -> 'recs, err = s.Records.Page(ctx, tx, tok.After, RecordPage)'
+   failed: ['TestASnapshotPagesByRecordID']
+      Error:      	Not equal:
+      expected: []int{500, 500, 170}
+      actual  : []int{500}
+      Messages:   	1 170 records that exist (every tenth is deleted)
+== mutant events/records.go: 'if err != nil || len(b) <= MaxPayload {' -> 'if err != nil || true {'
+   failed: ['TestABigRecordIsAClaimCheck']
+      Error:      	Should be true
+      Messages:   	over 64 KiB: a claim check
+== mutant events/records.go: 'if len(ids) == 0 || len(ids) > RecordPage {' -> 'if len(ids) == 0 {'
+   failed: ['TestAReadAnswersEveryIDInOrder']
+      Error:      	Not equal:
+      expected: 0x3
+      actual  : 0x0
+      Messages:   	more than one read takes
+== mutant events/stream.go: 'if !contains(s.Records.Readers, c) {' -> 'if false {'
+   failed: ['TestAWatermarkStreamDeclaresItsRecordReads']
+      Error:      	An error is expected but got nil.
+== mutant events/stream.go: 'if s.Records == nil {\n\t\t\treturn fmt.Errorf' -> 'if false {\n\t\t\treturn fmt.Errorf'
+   failed: ['TestAWatermarkStreamDeclaresItsRecordReads']
+== mutant projection/align.go: 'if !d.Primary || d.Impl != want.Impl || d.Epoch != want.Epoch ||' -> 'if false && (!d.Primary || d.Impl != want.Impl || d.Epoch != want.Epoch) ||'
+   failed: ['TestOnlyTheAdoptedPrimaryIsUsed']
+      Error:      	Expected error with "projection: the read was not answered by the adopted source's primary" in chain but got nil.
+      Messages:   	a later page of another epoch
+== mutant projection/align.go: 'd.Epoch != want.Epoch ||' -> 'false ||'
+   failed: ['TestOnlyTheAdoptedPrimaryIsUsed']
+      Error:      	Expected error with "projection: the read was not answered by the adopted source's primary" in chain but got nil.
+      Messages:   	a later page of another epoch
+== mutant projection/align.go: '\t\tif learn {\n\t\t\tif !from.Primary {' -> '\t\tif learn {\n\t\t\tif false {'
+   failed: NONE (survived)
+== mutant projection/align.go: '\tif !from.Primary {\n\t\treturn 0, fmt.Errorf' -> '\tif false {\n\t\treturn 0, fmt.Errorf'
+   failed: ['TestOnlyTheAdoptedPrimaryIsUsed']
+      Error:      	Expected error with "projection: the read was not answered by the adopted source's primary" in chain but got nil.
+      Messages:   	a replica's read
+== mutant projection/records.go: 'if len(data) != ref.Claim.Size || hex.EncodeToString(sum[:]) != ref.Claim.SHA256 {' -> 'if false {'
+   does not compile: projection/records.go:45:2: declared and not used: sum
+== mutant projection/records.go: 'if start > 0 && d != from {' -> 'if false {'
+   failed: ['TestRecordClientReadsInBatchesFromOneSource']
+      Error:      	Expected error with "projection: the read was not answered by the adopted source's primary" in chain but got nil.
+      Messages:   	the reads of one batch declared different epochs
+== mutant projection/records.go: 'if r.GetRecordId() != part[i] {' -> 'if false {'
+   failed: ['TestRecordClientReadsInBatchesFromOneSource']
+      Error:      	An error is expected but got nil.
+== mutant projection/watermark.go: 'Identity{Deployment: w.Deployment, Impl: st.adopted.Impl, Epoch: st.adopted.Epoch}' -> 'Identity{}'
+   failed: NONE (survived)
+
+== round 2 (2026-11-03): after the deployment test and the replica-identity assertion; the claim mutant keeps the size check
+== mutant projection/align.go: '\t\tif learn {\n\t\t\tif !from.Primary {' -> '\t\tif learn {\n\t\t\tif false {'
+   failed: ['TestOnlyTheAdoptedPrimaryIsUsed']
+      Error:      	Expected nil, but got: (*string)(0x15139e446890)
+      Messages:   	a replica's declaration is not adopted
+== mutant projection/records.go: 'if len(data) != ref.Claim.Size || hex.EncodeToString(sum[:]) != ref.Claim.SHA256 {' -> 'if len(data) != ref.Claim.Size || hex.EncodeToString(sum[:]) == "" {'
+   failed: ['TestRecordClientResolvesClaims']
+      Error:      	An error is expected but got nil.
+== mutant projection/watermark.go: 'Identity{Deployment: w.Deployment, Impl: st.adopted.Impl, Epoch: st.adopted.Epoch}' -> 'Identity{}'
+   failed: ['TestTheAlignmentUsesOnlyTheAdoptedSourcesReads']
+      Error:      	Expected error with "projection: the read was not answered by the adopted source's primary" in chain but got nil.
+      Messages:   	the snapshot declares another deployment

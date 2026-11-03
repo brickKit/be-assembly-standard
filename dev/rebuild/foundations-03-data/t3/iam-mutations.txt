@@ -1,0 +1,39 @@
+infra/iam-casdoor 3.0.17 (be-sdk-go alpha.58), foundations item 3 T3: the account status as a source, each rule broken by one edit, the e2e test run, the file restored (2026-11-03).
+red  the accounts from before get no status at start
+               	Error:      	Not equal: 
+               	            	expected: map[string]string{"01a1a29d-97f7-7286-9e72-8d5a40ee5004":"exists", "01a1a29d-97f7-7288-8051-6bc3186fd1cb":"exists", "01a1a29d-987f-7b93-97e4-9803e7d8263e":"exists", "01a1a29d-9aef-7dab-b5ac-231689619482":"exists", "01a1a29d-9cf4-7512-9138-63f31baebc1a":"purged"}
+               	Messages:   	bound accounts, and the ones from before whose status went out at start
+           e2e_integration_test.go:453: 
+GREEN (survived)  a new account's status does not go out when it is bound
+red  every login sends the status again
+               	Error:      	Not equal: 
+               	            	expected: 2
+               	Messages:   	the account's status went out when it was bound and when it changed
+           e2e_integration_test.go:248: {"time":"2026-11-03T18:13:26.559Z","level":"WARN","msg":"the development token exchange is on (IAM_DEV_EXCHANGE): never in a production deployment (A101)","component":"infra/iam-casdoor","version":"3.0.17"}
+red  the record that went out is not kept
+               	Error:      	Condition never satisfied
+               	Test:       	TestEndToEndAgainstCasdoor
+red  an unknown ID is left out of the answer
+               	Error:      	Received unexpected error:
+               	            	be/INTERNAL: an internal error occurred; quote the trace id when reporting it: rpc error: code = Internal desc = an internal error occurred; quote the trace id when reporting it
+red  the edge may read the accounts
+               	Error:      	Should be true
+               	Test:       	TestEndToEndAgainstCasdoor
+               	Messages:   	only the authorization member reads: <nil>
+           e2e_integration_test.go:248: {"time":"2026-11-03T18:13:50.084Z","level":"WARN","msg":"the development token exchange is on (IAM_DEV_EXCHANGE): never in a production deployment (A101)","component":"infra/iam-casdoor","version":"3.0.17"}
+
+Round 2: 'the record that went out is not kept' was red because the mutant's SQL left $1 unused (the member did not start), not on the rule: rerun as 'WHERE principal = $1 AND false'. 'A new account's status at binding' survived (a later login sent it): the test now counts the status rows right after the first login and after a second one.
+red  the record that went out is not kept
+               	Error:      	Not equal: 
+               	            	expected: map[string]string{"01a1a29f-0d20-70d7-9bd0-3a01eec1410e":"exists", "01a1a29f-0d20-70da-9543-38d33c634e7c":"exists", "01a1a29f-0da7-7c4c-8be7-f63a891118b3":"exists", "01a1a29f-0ff7-7e10-8da8-77a5a3724ba5":"exists", "01a1a29f-121a-7343-bb2e-89e8673ca8d4":"purged"}
+               	Messages:   	bound accounts, and the ones from before whose status went out at start
+           e2e_integration_test.go:446: 
+red  a new account's status does not go out when it is bound (a later login sends it)
+               	Error:      	Not equal: 
+               	            	expected: 1
+               	Messages:   	a new account's status goes out when it is bound
+red  every login sends the status again
+               	Error:      	Not equal: 
+               	            	expected: 1
+               	Messages:   	a later login sends nothing
+           e2e_integration_test.go:410: 
