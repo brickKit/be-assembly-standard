@@ -28,7 +28,7 @@ before and restored after).
 | member process CPU | 7.179 / 7.148 / 7.100 ms | 1.697 / 1.590 / 1.704 ms |
 | member backends' CPU | 5.500 / 5.167 / 5.167 ms | 2.000 / 1.833 / 1.833 ms |
 
-The spread between runs of the same binary is under 7 %, the differences are 2-4 times. `transactions/s` in the
+The spread between runs of the same binary is under 10 % (the backends: 6-9 %, one 10 ms tick), the differences are 2-4 times. `transactions/s` in the
 output is the whole database (pg_stat_database), not only the member: 9.9 before against 9.88 `begin`s, 4.0 after
 against 2.6-2.7, so about 1.3 a second come from elsewhere (not chased). After the change the statistics check
 `be_analyze_stale()` (0.52 a second, 0.66-0.94 ms a call) is half the remaining execution time.
