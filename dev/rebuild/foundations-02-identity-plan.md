@@ -133,6 +133,8 @@
 
 #### T3 `infra/iam-casdoor`
 
+> 范围（2026-11-03，AI 定，待复核）：改密码由身份适配组件办理（`POST /api/iam/password`：会话 Cookie 加旧密码，用登录应用的凭据调 Casdoor 的 `set-password`，Casdoor 仍核对旧密码，小实验 `experiment-data/16-03-*`），所以它知道哪个是当前会话：加版本、结束其他会话、当前会话的下一次换取拿到新版本。用户在 Casdoor 自己的页面改的、在 Casdoor 控制台停用的，要靠定期全量比较才发现（Casdoor 没有可靠的变更序号，见组件设计），与停用的拉取、证据、作为授权内部来源的水位一起做，归第 3 项；那时按 `LastChangePasswordTime` 发现改密码，结束全部会话。强制登出与 MFA 的重置要授权的管理操作，也归第 3 项；本项把它们共用的“加版本、结束会话、发出账号状态”做成一个入口。
+
 - **要做到什么**：身份成员满足 P8.27、P8.28 与 T1 的 TI11，浏览器拿不到令牌（UI04）。
 - **内容**：账号表加安全状态版本与签发者；按 `(issuer, subject)` 绑定，同邮箱、同登录名不接管；会话表加结束原因与会话代次，换取在会话行锁内；`SessionService` 两个方法（调用组件 `infra/edge`），会话结束写进流 `be.session.ended`；改密码（经 Casdoor 的回调或拉取得知）结束其他会话并加版本；账号状态事件 `infra.iam.account_status_changed.v1` 带版本；删掉公开的换取路由；开发换取的上线检查（A101）。
 - **验收**：对真实 Casdoor 与 PostgreSQL 的端到端测试覆盖 UI05、UI07、UI22 的身份一侧与 TI04（真实的 ID 令牌交给 SDK 核验器被拒）、TI11；数据迁移先在副本上跑。
