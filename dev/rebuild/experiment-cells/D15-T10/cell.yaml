@@ -1,0 +1,13 @@
+# Foundations item 1, T10 (foundations-01-transactions-plan.md): faults under load on a probe chain. test/probe-go (two
+# replicas, its cron job on) writes and emits; test/probe-go2 (two replicas) consumes its stream and relays to
+# test/probe-go3, through a work item. On Docker the replicated probes map no host port: a front door (cells/front.py)
+# takes it.
+cell: D15-T10
+row: D
+alone: [test/probe-go@3.2.32, test/probe-go2@3.2.32, test/probe-go3@3.2.32]
+chain: [test/probe-go, test/probe-go2, test/probe-go3]
+replicas:
+  test/probe-go@3.2.32: 2
+  test/probe-go2@3.2.32: 2
+settings:
+  test/probe-go: {PROBE_CRON: "true"}
