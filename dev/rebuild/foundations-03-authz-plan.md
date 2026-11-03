@@ -34,7 +34,7 @@
 | T1 | 覆盖地图：安全 01、03、04、06、07、08、09a 的每条预期，归首批或不归（写理由）；首批的每条落到哪个测试，已有的点名、缺的列出 | — | ⬜ |
 | T2 | 设计里要先定的（T1 列出后逐个定，写进线协议与 A 台账）：身份作为水位来源、授权组件怎样消费账号状态；受保护操作的确认接口；安装认领 | T1 | 🔶 D1–D4 已定已做；确认接口与安装认领随 T5、T6 |
 | T3 | 内部来源：iam-casdoor 的账号状态流做水位来源（补取者 `infra/authz`）；授权组件以带水位的投影消费它，`accounts_disabled` 与 `security_version` 进视图；来源水位超期时按风险关闭分片（D64）；身份侧的处置（被盗标记） | T2 | ✅ 2026-11-03（被盗标记的处置移到 T6） |
-| T4 | 记录的生命周期与生效点：状态（待生效、待确认、暂停、结束及原因）、变更键的各种重试、到点生效的工作项、闭包作业与依赖索引、收紧与放宽拆开 | T2 | ⬜ |
+| T4 | 记录的生命周期与生效点：状态（待生效、待确认、暂停、结束及原因）、变更键的各种重试、到点生效的工作项、闭包作业与依赖索引、收紧与放宽拆开 | T2 | 🔶 T4a–T4c 已做（未发布，见“T4 进度”）；下一步 T4d |
 | T5 | 受保护操作与确认：独立确认人、部署所有者确认、`T_tight` 与只减少访问的操作、确认的使用与作废 | T4 | ⬜ |
 | T6 | 安全处置、最后管理员与待恢复（D62）、管理员恢复（`authz.recovery.owner`）、安装认领 | T5 | ⬜ |
 | T7 | 受限的分级管理：管理上限的包含证明、父职责收紧后的交集与待复核、批量计划、管理员交接 | T4 | ⬜ |
@@ -98,6 +98,12 @@
 **接口跟着换成 09a 的形状**（2026-11-03，从规范推出，不另记 A）：用户面 `POST /api/authz/changes` 收 `be.security.change_request`（`direction`、`target`、`candidate`、`termination`、`expected_state_revision`、`expected_revision`、`effective_from`、`acting_as`、`confirmation_ids`；`requested_by` 与 `trigger` 由生效点从调用通道得出），回答 `be.security.change_result`（`applied`、`rejected`、`processing`、`awaiting_confirmation`、`scheduled`、`held_kept`；后三种与 `processing` 是 202）；记录按 09a 的通用部分（`state`、`end_reason`、`held_reason`、`review_pending`、`predecessor`、`sources`、`valid`、`state_revision`、`last_change`）与专有字段。第 5 步临时的 `action` 名字（`unit.create`、`grant.revoke` 等）退掉，用它的有：`be-sdk-go` 的 `seed` 包、套件的 `conformance/cells/secure.py`、`infra/authz` 与 `mdm/partner` 的种子命令，随 T4 一起改。按键查询：`GET /api/authz/changes/{change_key}`，没有绑定的答 `outcome: unbound`。
 
 T4 的验收：安全 08 首批里“生效点、变更键与到点生效”“来源变化、上限与闭包”两组预期每条有通过的测试；参考模型 `09-change-protocol.py` 的关键交错落成定向测试（T4b、T4d、T4g 各自引用）。
+
+### T4 进度（2026-11-03 停在这里）
+
+- **做了（`infra/authz` 3.0.17，只在本地提交，未发布）**：T4b 决策表是纯函数 `authz/decide.go`，`decide_test.go` 按表逐行写了 61 例（先红后绿；“确认人拒绝”与“管理者取消”一度被我合成一种，按第 9 行与第 10–12 行分开，补了两例并用变异确认红在规则上）。T4a 迁移 0002：六个状态、暂停与结束原因、状态修订、前身、生效时间、记录级有效期、待复核、`last_change`；读有效记录时过滤有效期（到期在求值时生效）。T4c 新的生效点 `authz/change.go`：收 09a 的 `be.security.change_request`，收集事实（请求者的资格 = 安全记录上的管理资格 ∩ 身份来源证明的账号：此刻按 `D_src_high`，“最后已应用的事实”不计年龄）、决策表、按结果写记录（新放宽终局驳回也留一条 `ended`（`rejected`）），按键表绑定（冲突不再绑定）；按键查询 `GET /api/authz/changes/{key}`（未绑定答 `unbound`）；收窄（同一记录的新内容修订，候选必须在原内容之内，否则要求拆成两步）、续期与扩大（`predecessor`，新记录必须包含旧的，生效时旧的 `superseded`）、终止（收回、取消；拒绝要等 T5 的确认）。未来生效的放宽暂答 `CAPABILITY_UNSUPPORTED`（T4d 加到点的工作项后去掉）。端到端测试换成新接口并加了这一段的断言，全绿；反向检查（`foundations-03-data/t4/change-mutations.txt`）十处，第一轮三处存活——状态修订过期的那一例同时带着过期的内容修订（被第 17 行兜住）、“终止已生效的记录”那一例的目标早已结束、没有测试造过已过有效期的记录——补准这三例后都红在对的规则上。授权组件提交 `c709342` 已推送，没有打标签。
+- **发布之前要一起改**（旧接口的使用者）：`be-sdk-go` 的 `seed` 包、套件的 `conformance/cells/secure.py`、`infra/authz` 的 `cmd/seed`、`mdm/partner` 的 `cmd/seed`；`BRICKKIT.md` 与设计文档的接口一节。
+- **下一步**：T4d（到点生效的工作项、第 3 行的作废）、T4e 剩下的（中性变更）、T4f、T4g；放弃自己的授予要先能调用变更路由（现在路由要求 `infra.authz.security_record.change` 的权限，受授人一般没有），T4 里定。
 
 ## 全局约束
 

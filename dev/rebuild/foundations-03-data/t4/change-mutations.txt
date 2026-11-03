@@ -1,0 +1,46 @@
+infra/authz 3.0.17 in progress (T4a-T4c), 2026-11-03: each rule broken by one edit, TestMemberEndToEnd run, the file restored.
+red  a superseding record leaves its predecessor active
+               	Error:      	Not equal: 
+               	            	expected: authz.row{State:"ended", EndReason:"superseded", Revision:2, StateRev:3, Predecessor:""}
+red  a renewal need not contain its predecessor
+               	Error:      	Not equal: 
+               	            	expected: 403
+               	Messages:   	t6: map[change_key:t6 new_revision:map[domain:authz.record.state value:1] outcome:applied record:01a1a2ba-60e2-74d5-af27-0ae12e3de804 security_revisions:[map[domain:authz.security.deployment value:14]]]
+red  a narrowing may widen
+               	Error:      	Not equal: 
+               	            	expected: 400
+               	Messages:   	t5: map[change_key:t5 new_revision:map[domain:authz.record.state value:3] outcome:applied record:01a1a2ba-7c75-70bf-b96b-0c9f1957bf79 security_revisions:[map[domain:authz.security.deployment value:14]]]
+red  the content revision is not compared (row 17)
+               	Error:      	Not equal: 
+               	            	expected: 409
+               	Messages:   	t4: map[change_key:t4 new_revision:map[domain:authz.record.state value:3] outcome:applied record:01a1a2ba-97e8-79f2-b438-8a351960dbd1 security_revisions:[map[domain:authz.security.deployment value:14]]]
+GREEN (survived)  the state revision is not compared (row 4)
+red  a new widening rejected for good keeps no record
+               	Error:      	Received unexpected error:
+               	            	no rows in result set
+red  a manager's revocation is recorded as relinquished
+               	Error:      	Not equal: 
+               	            	expected: authz.row{State:"ended", EndReason:"revoked", Revision:1, StateRev:2, Predecessor:"01a1a2bb-0a08-70e2-a257-63f40b264aed"}
+               	Messages:   	a manager's revocation
+           identity_integration_test.go:139: the stand-in identity member:
+red  a conflict binds the key again
+               	Error:      	Not equal: 
+               	            	expected: 409
+               	Messages:   	b1: map[detail:an internal error occurred; quote the trace id when reporting it domain:be reason:INTERNAL status:500 title:Internal error trace_id:e8e3195b2602f74087888d19c2672c1d type:urn:be:be:INTERNAL]
+GREEN (survived)  an effective record can be terminated
+GREEN (survived)  a record past its validity still gives access
+
+Round 2 (2026-11-03): the three survivors, after the test sharpened them (a stale state revision alone; an active record cancelled; a record past its validity).
+red  the state revision is not compared (row 4)
+               	Error:      	Not equal: 
+               	            	expected: 409
+               	Messages:   	t3: map[change_key:t3 new_revision:map[domain:authz.record.state value:3] outcome:applied record:01a1a2bc-aaec-79d0-8110-ce134d0ecd38 security_revisions:[map[domain:authz.security.deployment value:14]]]
+red  an effective record can be terminated
+               	Error:      	Not equal: 
+               	            	expected: 409
+               	Messages:   	t9: map[change_key:t9 new_revision:map[domain:authz.record.state value:2] outcome:applied record:01a1a2bc-c6ed-7893-94b8-487b57e96716 security_revisions:[map[domain:authz.security.deployment value:17]]]
+red  a record past its validity still gives access
+               	Error:      	map[string]authz.SubjectEntry{"0190f3a1-0000-7000-8000-0000000000c3":authz.SubjectEntry{Segments:[]authz.Segment{authz.Segment{ResourceType:"demo.order", Operation:"demo.order.read", Atoms:map[string]authz.Atom{"region":authz.Atom{Kind:"in", Values:[]string{"east"}, Items:[]authz.TreeItem(nil), Currency:"", Lo:(*string)(nil), LoClosed:(*bool)(nil), Hi:(*string)(nil), HiClosed:(*bool)(nil)}}, ReadFields:[]string{"id", "total"}, WriteFields:[]string{}, Valid:authz.Window{From:"2026-01-01T00:00:00.000000Z", Until:""}, Binding:"", Source:"01a1a2bc-e2db-763b-b7be-7b275ae82cdf", Definition:jsontext.Value{0x7b, 0x22, 0x64, 0x69, 0x67, 0x65, 0x73, 0x74, 0x22, 0x3a, 0x22, 0x73, 0x68, 0x61, 0x32, 0x35, 0x36, 0x3a, 0x33, 0x31, 0x35, 0x66, 0x62, 0x61, 0x30, 0x38, 0x32, 0x31, 0x61, 0x35, 0x35, 0x33, 0x35, 0x35, 0x65, 0x36, 0x61, 0x38, 0x65, 0x32, 0x61, 0x31, 0x32, 0x31, 0x37, 0x37, 0x36, 0x64, 0x38, 0x30, 0x63, 0x62, 0x65, 0x35, 0x61, 0x33, 0x37, 0x39, 0x36, 0x63, 0x35, 0x34, 0x61, 0x35, 0x65, 0x31, 0x61, 0x65, 0x64, 0x33, 0x37, 0x39, 0x39, 0x36, 0x39, 0x36, 0x34, 0x33, 0x35, 0x63, 0x39, 0x35, 0x22, 0x2c, 0x22, 0x6b, 0x65, 0x79, 0x22, 0x3a, 0x22, 0x64, 0x65, 0x6d, 0x6f, 0x2e, 0x6f, 0x72, 0x64, 0x65, 0x72, 0x22, 0x2c, 0x22, 0x6b, 0x69, 0x6e, 0x64, 0x22, 0x3a, 0x22, 0x72, 0x65, 0x73, 0x6f, 0x75, 0x72, 0x63, 0x65, 0x22, 0x2c, 0x22, 0x6f, 0x77, 0x6e, 0x65, 0x72, 0x5f, 0x63, 0x6f, 0x6d, 0x70, 0x6f, 0x6e, 0x65, 0x6e, 0x74, 0x22, 0x3a, 0x22, 0x64, 0x65, 0x6d, 0x6f, 0x2f, 0x6f, 0x72, 0x64, 0x65, 0x72, 0x73, 0x22, 0x2c, 0x22, 0x76, 0x65, 0x72, 0x73, 0x69, 0x6f, 0x6e, 0x22, 0x3a, 0x22, 0x33, 0x2e, 0x30, 0x2e, 0x30, 0x22, 0x7d}}}, AccountsDisabled:false, SecurityVersion:1}} should not contain "0190f3a1-0000-7000-8000-0000000000c3"
+               	Test:       	TestMemberEndToEnd
+               	Messages:   	past its validity: not in the view
+           identity_integration_test.go:139: the stand-in identity member:
