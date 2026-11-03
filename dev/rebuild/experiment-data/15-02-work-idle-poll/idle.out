@@ -1,0 +1,71 @@
+# 2026-11-03T11:08:20+01:00 power mode: performance (was balanced); 12 CPUs; load: 0.92 0.83 0.55
+label=before-1 seconds=60.0 statistics=true backends=4
+transactions/s=9.92 client_cpu_ms/s=7.179 backend_cpu_ms/s=5.500
+statements/s=41.60 exec_ms/s=1.962
+     9.88/s   0.0094 ms/call  begin isolation level read committed
+     9.88/s   0.0147 ms/call  /* demo/idle */ SELECT set_config('role', $1, true), set_config('search_path', $2, true), set_config('statemen
+     9.88/s   0.0004 ms/call  commit
+     8.33/s   0.1369 ms/call  /* demo/idle */ WITH expired AS ( SELECT id FROM be_work_item WHERE job = ANY($1) AND state = 'running' AND le
+     1.03/s   0.0583 ms/call  /* demo/idle */ INSERT INTO be_cron_watermark (job, watermark_at) VALUES ($1, $2) ON CONFLICT DO NOTHING
+     1.03/s   0.0286 ms/call  /* demo/idle */ SELECT watermark_at FROM be_cron_watermark WHERE job = $1 FOR UPDATE
+     1.03/s   0.0020 ms/call  /* demo/idle */ SELECT now()
+     0.52/s   0.9413 ms/call  /* demo/idle */ SELECT be_analyze_stale()
+label=after-1 seconds=60.0 statistics=true backends=3
+transactions/s=4.07 client_cpu_ms/s=1.697 backend_cpu_ms/s=2.000
+statements/s=10.80 exec_ms/s=0.839
+     2.68/s   0.0062 ms/call  begin isolation level read committed
+     2.68/s   0.0182 ms/call  /* demo/idle */ SELECT set_config('role', $1, true), set_config('search_path', $2, true), set_config('statemen
+     2.68/s   0.0007 ms/call  commit
+     2.13/s   0.1839 ms/call  /* demo/idle */ WITH expired AS ( SELECT id FROM be_work_item WHERE job = ANY($1) AND state = 'running' AND le
+     0.52/s   0.7156 ms/call  /* demo/idle */ SELECT be_analyze_stale()
+     0.02/s   0.2718 ms/call  /* demo/idle */ UPDATE be_work_item SET state = $5, outcome_unknown = $6, waiting_since = $7, holder = $8, lea
+     0.02/s   0.0299 ms/call  /* demo/idle */ SELECT watermark_at FROM be_cron_watermark WHERE job = $1 FOR UPDATE
+     0.02/s   0.1142 ms/call  /* demo/idle */ INSERT INTO be_work_item (id, job, kind, state, pause_reason, max_attempts, effect_class, oper
+     0.02/s   0.1293 ms/call  /* demo/idle */ INSERT INTO be_cron_watermark (job, watermark_at) VALUES ($1, $2) ON CONFLICT DO NOTHING
+     0.02/s   0.0021 ms/call  /* demo/idle */ SELECT now()
+     0.02/s   0.0176 ms/call  /* demo/idle */ UPDATE be_cron_watermark SET watermark_at = $2, last_slot = coalesce($3, last_slot) WHERE job 
+label=before-2 seconds=60.0 statistics=true backends=4
+transactions/s=9.95 client_cpu_ms/s=7.148 backend_cpu_ms/s=5.167
+statements/s=41.60 exec_ms/s=1.907
+     9.88/s   0.0085 ms/call  begin isolation level read committed
+     9.88/s   0.0004 ms/call  commit
+     9.88/s   0.0145 ms/call  /* demo/idle */ SELECT set_config('role', $1, true), set_config('search_path', $2, true), set_config('statemen
+     8.33/s   0.1389 ms/call  /* demo/idle */ WITH expired AS ( SELECT id FROM be_work_item WHERE job = ANY($1) AND state = 'running' AND le
+     1.03/s   0.0573 ms/call  /* demo/idle */ INSERT INTO be_cron_watermark (job, watermark_at) VALUES ($1, $2) ON CONFLICT DO NOTHING
+     1.03/s   0.0307 ms/call  /* demo/idle */ SELECT watermark_at FROM be_cron_watermark WHERE job = $1 FOR UPDATE
+     1.03/s   0.0022 ms/call  /* demo/idle */ SELECT now()
+     0.52/s   0.8238 ms/call  /* demo/idle */ SELECT be_analyze_stale()
+label=after-2 seconds=60.0 statistics=true backends=3
+transactions/s=4.02 client_cpu_ms/s=1.590 backend_cpu_ms/s=1.833
+statements/s=10.47 exec_ms/s=0.845
+     2.62/s   0.0062 ms/call  begin isolation level read committed
+     2.62/s   0.0007 ms/call  commit
+     2.62/s   0.0179 ms/call  /* demo/idle */ SELECT set_config('role', $1, true), set_config('search_path', $2, true), set_config('statemen
+     2.10/s   0.1732 ms/call  /* demo/idle */ WITH expired AS ( SELECT id FROM be_work_item WHERE job = ANY($1) AND state = 'running' AND le
+     0.52/s   0.8067 ms/call  /* demo/idle */ SELECT be_analyze_stale()
+label=before-3 seconds=60.0 statistics=true backends=4
+transactions/s=9.92 client_cpu_ms/s=7.100 backend_cpu_ms/s=5.167
+statements/s=41.60 exec_ms/s=1.963
+     9.88/s   0.0088 ms/call  begin isolation level read committed
+     9.88/s   0.0005 ms/call  commit
+     9.88/s   0.0145 ms/call  /* demo/idle */ SELECT set_config('role', $1, true), set_config('search_path', $2, true), set_config('statemen
+     8.33/s   0.1393 ms/call  /* demo/idle */ WITH expired AS ( SELECT id FROM be_work_item WHERE job = ANY($1) AND state = 'running' AND le
+     1.03/s   0.0020 ms/call  /* demo/idle */ SELECT now()
+     1.03/s   0.0289 ms/call  /* demo/idle */ SELECT watermark_at FROM be_cron_watermark WHERE job = $1 FOR UPDATE
+     1.03/s   0.0561 ms/call  /* demo/idle */ INSERT INTO be_cron_watermark (job, watermark_at) VALUES ($1, $2) ON CONFLICT DO NOTHING
+     0.52/s   0.9245 ms/call  /* demo/idle */ SELECT be_analyze_stale()
+label=after-3 seconds=60.0 statistics=true backends=2
+transactions/s=3.98 client_cpu_ms/s=1.704 backend_cpu_ms/s=1.833
+statements/s=10.80 exec_ms/s=0.765
+     2.68/s   0.0067 ms/call  begin isolation level read committed
+     2.68/s   0.0164 ms/call  /* demo/idle */ SELECT set_config('role', $1, true), set_config('search_path', $2, true), set_config('statemen
+     2.68/s   0.0006 ms/call  commit
+     2.13/s   0.1645 ms/call  /* demo/idle */ WITH expired AS ( SELECT id FROM be_work_item WHERE job = ANY($1) AND state = 'running' AND le
+     0.52/s   0.6628 ms/call  /* demo/idle */ SELECT be_analyze_stale()
+     0.02/s   0.0756 ms/call  /* demo/idle */ INSERT INTO be_work_item (id, job, kind, state, pause_reason, max_attempts, effect_class, oper
+     0.02/s   0.2648 ms/call  /* demo/idle */ UPDATE be_work_item SET state = $5, outcome_unknown = $6, waiting_since = $7, holder = $8, lea
+     0.02/s   0.0715 ms/call  /* demo/idle */ INSERT INTO be_cron_watermark (job, watermark_at) VALUES ($1, $2) ON CONFLICT DO NOTHING
+     0.02/s   0.0285 ms/call  /* demo/idle */ UPDATE be_cron_watermark SET watermark_at = $2, last_slot = coalesce($3, last_slot) WHERE job 
+     0.02/s   0.0021 ms/call  /* demo/idle */ SELECT now()
+     0.02/s   0.0135 ms/call  /* demo/idle */ SELECT watermark_at FROM be_cron_watermark WHERE job = $1 FOR UPDATE
+# 2026-11-03T11:15:07+01:00 done; load: 0.40 0.45 0.46

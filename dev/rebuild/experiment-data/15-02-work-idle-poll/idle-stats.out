@@ -1,0 +1,56 @@
+# 2026-11-03T11:21:40+01:00 power mode: performance (was balanced); 12 CPUs; load: 1.48 1.16 0.78
+label=view-check-1 seconds=60.0 statistics=true backends=3
+transactions/s=3.97 client_cpu_ms/s=1.480 backend_cpu_ms/s=1.500
+statements/s=10.47 exec_ms/s=0.804
+     2.62/s   0.0066 ms/call  begin isolation level read committed
+     2.62/s   0.0006 ms/call  commit
+     2.62/s   0.0169 ms/call  /* demo/idle */ SELECT set_config('role', $1, true), set_config('search_path', $2, true), set_config('statemen
+     2.10/s   0.1691 ms/call  /* demo/idle */ WITH expired AS ( SELECT id FROM be_work_item WHERE job = ANY($1) AND state = 'running' AND le
+     0.52/s   0.7467 ms/call  /* demo/idle */ SELECT be_analyze_stale()
+label=oid-check-1 seconds=60.0 statistics=true backends=3
+transactions/s=3.97 client_cpu_ms/s=1.616 backend_cpu_ms/s=1.500
+statements/s=10.47 exec_ms/s=0.561
+     2.62/s   0.0006 ms/call  commit
+     2.62/s   0.0171 ms/call  /* demo/idle */ SELECT set_config('role', $1, true), set_config('search_path', $2, true), set_config('statemen
+     2.62/s   0.0071 ms/call  begin isolation level read committed
+     2.10/s   0.1722 ms/call  /* demo/idle */ WITH expired AS ( SELECT id FROM be_work_item WHERE job = ANY($1) AND state = 'running' AND le
+     0.52/s   0.2600 ms/call  /* demo/idle */ SELECT be_analyze_stale()
+label=view-check-2 seconds=60.0 statistics=true backends=2
+transactions/s=3.98 client_cpu_ms/s=1.804 backend_cpu_ms/s=1.667
+statements/s=10.80 exec_ms/s=0.756
+     2.68/s   0.0228 ms/call  begin isolation level read committed
+     2.68/s   0.0166 ms/call  /* demo/idle */ SELECT set_config('role', $1, true), set_config('search_path', $2, true), set_config('statemen
+     2.68/s   0.0006 ms/call  commit
+     2.13/s   0.1560 ms/call  /* demo/idle */ WITH expired AS ( SELECT id FROM be_work_item WHERE job = ANY($1) AND state = 'running' AND le
+     0.52/s   0.5989 ms/call  /* demo/idle */ SELECT be_analyze_stale()
+     0.02/s   0.2459 ms/call  /* demo/idle */ UPDATE be_work_item SET state = $5, outcome_unknown = $6, waiting_since = $7, holder = $8, lea
+     0.02/s   0.0524 ms/call  /* demo/idle */ INSERT INTO be_cron_watermark (job, watermark_at) VALUES ($1, $2) ON CONFLICT DO NOTHING
+     0.02/s   0.0143 ms/call  /* demo/idle */ SELECT watermark_at FROM be_cron_watermark WHERE job = $1 FOR UPDATE
+     0.02/s   0.0137 ms/call  /* demo/idle */ UPDATE be_cron_watermark SET watermark_at = $2, last_slot = coalesce($3, last_slot) WHERE job 
+     0.02/s   0.0679 ms/call  /* demo/idle */ INSERT INTO be_work_item (id, job, kind, state, pause_reason, max_attempts, effect_class, oper
+     0.02/s   0.0013 ms/call  /* demo/idle */ SELECT now()
+label=oid-check-2 seconds=60.0 statistics=true backends=3
+transactions/s=4.00 client_cpu_ms/s=1.713 backend_cpu_ms/s=1.500
+statements/s=10.47 exec_ms/s=0.517
+     2.62/s   0.0066 ms/call  begin isolation level read committed
+     2.62/s   0.0005 ms/call  commit
+     2.62/s   0.0158 ms/call  /* demo/idle */ SELECT set_config('role', $1, true), set_config('search_path', $2, true), set_config('statemen
+     2.10/s   0.1499 ms/call  /* demo/idle */ WITH expired AS ( SELECT id FROM be_work_item WHERE job = ANY($1) AND state = 'running' AND le
+     0.52/s   0.2756 ms/call  /* demo/idle */ SELECT be_analyze_stale()
+label=view-check-3 seconds=60.0 statistics=true backends=2
+transactions/s=3.88 client_cpu_ms/s=1.604 backend_cpu_ms/s=1.500
+statements/s=10.47 exec_ms/s=0.751
+     2.62/s   0.0060 ms/call  begin isolation level read committed
+     2.62/s   0.0007 ms/call  commit
+     2.62/s   0.0169 ms/call  /* demo/idle */ SELECT set_config('role', $1, true), set_config('search_path', $2, true), set_config('statemen
+     2.10/s   0.1699 ms/call  /* demo/idle */ WITH expired AS ( SELECT id FROM be_work_item WHERE job = ANY($1) AND state = 'running' AND le
+     0.52/s   0.6445 ms/call  /* demo/idle */ SELECT be_analyze_stale()
+label=oid-check-3 seconds=60.0 statistics=true backends=2
+transactions/s=3.92 client_cpu_ms/s=1.552 backend_cpu_ms/s=1.333
+statements/s=10.40 exec_ms/s=0.470
+     2.60/s   0.0005 ms/call  commit
+     2.60/s   0.0057 ms/call  begin isolation level read committed
+     2.60/s   0.0163 ms/call  /* demo/idle */ SELECT set_config('role', $1, true), set_config('search_path', $2, true), set_config('statemen
+     2.08/s   0.1535 ms/call  /* demo/idle */ WITH expired AS ( SELECT id FROM be_work_item WHERE job = ANY($1) AND state = 'running' AND le
+     0.52/s   0.1780 ms/call  /* demo/idle */ SELECT be_analyze_stale()
+# 2026-11-03T11:28:27+01:00 done; load: 0.36 0.53 0.63

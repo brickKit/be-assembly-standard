@@ -1,0 +1,45 @@
+=== M1 takeover without waiting for the lease
+--- FAIL: TestACrashedReplicasItemIsTakenOverAfterItsLease (0.91s)
+    --- FAIL: TestACrashedReplicasItemIsTakenOverAfterItsLease/handler (0.32s)
+            	Error:      	Should be true
+            	Messages:   	not taken over before the child's lease ran out
+    --- FAIL: TestACrashedReplicasItemIsTakenOverAfterItsLease/effect (0.28s)
+            	Error:      	Should be true
+            	Messages:   	not taken over before the child's lease ran out
+FAIL
+FAIL	github.com/brickKit/be-sdk-go/v3/work	0.921s
+FAIL
+=== M2 no takeover of running items
+--- FAIL: TestACrashedReplicasItemIsTakenOverAfterItsLease (36.74s)
+    --- FAIL: TestACrashedReplicasItemIsTakenOverAfterItsLease/handler (12.25s)
+            	Error:      	Condition never satisfied
+    --- FAIL: TestACrashedReplicasItemIsTakenOverAfterItsLease/effect (12.24s)
+            	Error:      	Condition never satisfied
+    --- FAIL: TestACrashedReplicasItemIsTakenOverAfterItsLease/call (12.26s)
+            	Error:      	Condition never satisfied
+FAIL
+FAIL	github.com/brickKit/be-sdk-go/v3/work	36.745s
+FAIL
+=== M3 a claim does not pause an unknown non-idempotent call
+--- FAIL: TestACrashedReplicasItemIsTakenOverAfterItsLease (16.80s)
+    --- FAIL: TestACrashedReplicasItemIsTakenOverAfterItsLease/call (12.24s)
+            	Error:      	Condition never satisfied
+FAIL
+FAIL	github.com/brickKit/be-sdk-go/v3/work	16.809s
+FAIL
+=== unchanged
+ok  	github.com/brickKit/be-sdk-go/v3/work	6.920s
+=== M1 takeover without waiting for the lease (rerun after the check covers the paused case)
+--- FAIL: TestACrashedReplicasItemIsTakenOverAfterItsLease (0.90s)
+    --- FAIL: TestACrashedReplicasItemIsTakenOverAfterItsLease/handler (0.32s)
+            	Error:      	Should be false
+            	Messages:   	not taken over before the child's lease ran out
+    --- FAIL: TestACrashedReplicasItemIsTakenOverAfterItsLease/effect (0.27s)
+            	Error:      	Should be false
+            	Messages:   	not taken over before the child's lease ran out
+    --- FAIL: TestACrashedReplicasItemIsTakenOverAfterItsLease/call (0.31s)
+            	Error:      	Should be false
+            	Messages:   	not taken over before the child's lease ran out
+FAIL
+FAIL	github.com/brickKit/be-sdk-go/v3/work	0.904s
+FAIL
