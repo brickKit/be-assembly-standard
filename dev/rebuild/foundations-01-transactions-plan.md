@@ -39,7 +39,7 @@
 | T4 | 事件剖面（含消息运输）进黑盒套件 | T1 | ✅ `be-acceptance` 1.0.34、`test/probe-go` 3.2.29 |
 | T5 | 后台工作：崩溃副本的工作项被接管、空闲轮询，后台工作剖面进黑盒套件 | T1 | ✅ 协议 alpha.47、`be-sdk-go` alpha.50、`be-acceptance` 1.0.35、`test/probe-go` 3.2.30 |
 | T6 | 水位来源的线协议条款与向量 | T1 | ✅ 协议 alpha.49 |
-| T7 | Go SDK 实现水位来源与对齐 | T6 | ⬜ |
+| T7 | Go SDK 实现水位来源与对齐 | T6 | ✅ 协议 alpha.50、`be-sdk-go` alpha.51 |
 | T8 | 水位来源剖面进黑盒套件 | T7 | ⬜ |
 | T9 | 参考模型 13、14、37 的关键交错落成定向测试 | T1 | ⬜ |
 | T10 | 故障注入：崩溃、消息系统中断、消费者库回退后的补发 | T4、T5、T7 | ⬜ |
@@ -230,10 +230,35 @@
   - **T7a**：`internal/sourcepb` 由容器里的 buf 生成，`make gen-check` 能抓到手改。顺带给 `make vet` 加了 gofmt 检查：`work/runner.go`（T5）与 `internal/host/member.go`（T3）发布时都没格式化，之前没有检查。
   - **T7b**：`events.Stream.Watermark`（补取的操作与补取者），`events.WatermarkSource`；核对的判断 `PullCheck` 对 `watermark-pull-check` 向量通过。
   - **T7b 的集成测试**：真实 mTLS 系统面上四个。改坏三处都变红（`foundations-01-data/t7/source-mutations.txt`）：不核对行（SK17）、不按流核对补取者、不分页。“不按流核对补取者”第一次没抓到：服务端按调用组件清单已经挡住，测试只有一条流，改成两条流、各列一个补取者之后才抓到。
+- **T7c（2026-11-03）**：
+  - 迁移 0012（协议工作区，未发布）：来源的状态（已采用的身份之外的部分）、各分区的连续位置与 P0 与回声的 `m_p`、补取记录、失败计数、隔离；投影行加 `min_read_seq`。
+  - 五张决策表在 SDK 里是纯函数（`projection/decide.go`），对协议向量通过。
+  - `projection.Watermarked` 实现了：按位置连续应用、补取与分页、身份与状态表、从 P0 对齐、绊线、隔离、`Judge`、`Confirm`。`Align` 改成带钩子的 `alignTo`，普通投影的行为不变。
+  - P9.11：别的实现实例转 `blocked`，“已清理”墓碑的 `min_read_seq`。
+  - `db.Tx.AfterRollback`：失败计数要在失败的事务回滚、并发名额和连接都还回之后才写。它自己的测试先红过一次：钩子运行时名额还没还，名额为 1 时 `SERVICE_BUSY`。
+  - 七个集成测试：新鲜与消息系统停着时的补取、空洞、纪元变化与迟到的旧事件、行核对发现回退、系统标识变了而代次没推进、隔离、`blocked` 与确认。七种坏变体都变红（`foundations-01-data/t7/consumer-mutations.txt`）；“系统标识变了”一开始没有测试能抓到，补了改写声明的补取客户端之后才抓到。
 - **下一个协议版本（alpha.50，与 T7c 的迁移 0012 一起）要改的**：
   - P9.16 页标记失效时答 `QUERY_PLAN_CHANGED`（ABORTED，重新补取）：协议的错误目录里没有 FAILED_PRECONDITION 的通用原因，SDK 的系统面只认目录里的原因；
   - P9.13 写明流的声明还要给补取方法一个操作（系统方法都要在资源定义里登记操作）；
   - proto 文件头的“protoc M flags”改为“各 SDK 生成时自己指定 go_package（buf 的 managed 模式）”。
+- **T7 的结果（2026-11-03）**：协议 alpha.50（迁移 0012 与三处条款的修正），`be-sdk-go` alpha.51，`projection-watermarks` 从 `not_implemented` 改为 verified。全部集成测试通过（32 个包）。
+  - **热路径**（`experiment-data/15-03-watermark-hot-path/`，performance 模式，三遍）：
+    - 按位置应用一个事件 0.96–1.07 ms，普通投影 0.68–0.71 ms；
+    - 一次“只要回声”的补取 8.3–8.5 ms；
+    - 带回 100 行的补取 57–63 ms。
+    - 安全来源变得少、补取每半个新鲜度才一次，所以不优化，可改的地方写在那里。
+  - **模型 35 的情形落成了测试的**：
+    - 来源可达而消息系统停着时，补取让水位不超期（PJ28）；
+    - 空洞（PJ27）；
+    - 恢复代次推进后位置重用、迟到的旧纪元事件被忽略（PJ26、PJ32）；
+    - 行核对发现回退（PJ44、PJ48）；
+    - 系统标识变而代次不变（PJ49）；
+    - 隔离（PJ30、PJ37）；
+    - `blocked` 与确认（PJ77）。
+  - **只由向量覆盖的**：迟到的旧纪元响应（PJ38）、副本作答（PJ39），以及判断表的各行。
+  - **模型的坏变体对应到改坏代码的**：越过空洞、新纪元不经对齐就用、回退当作正常、判断不看水位年龄。
+  - **没有落成测试的**：“水位按响应到达时刻算”（与按 `m_p` 算的差别只有一次往返，这种测试分不出来）、“主机挂起时时钟停走”（属于第 6 项的时钟）。
+  - **COMPAT 的第 2 节**（`be-sdk-go` alpha.51 实现 alpha.50）随下一个协议版本补写。
 - **T7e 收尾**：
   - `features.json` 的 `projection-watermarks` 改为 verified；
   - 量一次热路径：一次补取的耗时，以及消费者按位置应用比原来多付的代价；
