@@ -95,6 +95,8 @@
 | T4f | 有效段：授予 ∩ 治理单元当前的上限；退役权限键的段为空；部分越界保持生效并标记待复核 | 有效段的计算 |
 | T4g | 闭包作业与依赖索引：到期、来源结束、来源收窄、无法计算的记账迁移（推进状态修订，不进增量与证据）；`uncomputable` 恢复以派生键进生效点；索引不完整时整个来源域待复核 | 影响闭包；状态迁移 |
 
+**接口跟着换成 09a 的形状**（2026-11-03，从规范推出，不另记 A）：用户面 `POST /api/authz/changes` 收 `be.security.change_request`（`direction`、`target`、`candidate`、`termination`、`expected_state_revision`、`expected_revision`、`effective_from`、`acting_as`、`confirmation_ids`；`requested_by` 与 `trigger` 由生效点从调用通道得出），回答 `be.security.change_result`（`applied`、`rejected`、`processing`、`awaiting_confirmation`、`scheduled`、`held_kept`；后三种与 `processing` 是 202）；记录按 09a 的通用部分（`state`、`end_reason`、`held_reason`、`review_pending`、`predecessor`、`sources`、`valid`、`state_revision`、`last_change`）与专有字段。第 5 步临时的 `action` 名字（`unit.create`、`grant.revoke` 等）退掉，用它的有：`be-sdk-go` 的 `seed` 包、套件的 `conformance/cells/secure.py`、`infra/authz` 与 `mdm/partner` 的种子命令，随 T4 一起改。按键查询：`GET /api/authz/changes/{change_key}`，没有绑定的答 `outcome: unbound`。
+
 T4 的验收：安全 08 首批里“生效点、变更键与到点生效”“来源变化、上限与闭包”两组预期每条有通过的测试；参考模型 `09-change-protocol.py` 的关键交错落成定向测试（T4b、T4d、T4g 各自引用）。
 
 ## 全局约束
