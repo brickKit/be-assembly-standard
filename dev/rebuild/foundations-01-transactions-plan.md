@@ -226,6 +226,14 @@
   - 迟到的旧纪元响应；
   - 对齐期间的删除不复活；
   - 每个场景对照模型的坏变体，做一次“改坏代码就变红”。
+- **进度（2026-11-03）**：T7a、T7b 做完，在 `be-sdk-go` 本地提交（`b6cb035` 起，没有发布，alpha.51 等 T7c）。
+  - **T7a**：`internal/sourcepb` 由容器里的 buf 生成，`make gen-check` 能抓到手改。顺带给 `make vet` 加了 gofmt 检查：`work/runner.go`（T5）与 `internal/host/member.go`（T3）发布时都没格式化，之前没有检查。
+  - **T7b**：`events.Stream.Watermark`（补取的操作与补取者），`events.WatermarkSource`；核对的判断 `PullCheck` 对 `watermark-pull-check` 向量通过。
+  - **T7b 的集成测试**：真实 mTLS 系统面上四个。改坏三处都变红（`foundations-01-data/t7/source-mutations.txt`）：不核对行（SK17）、不按流核对补取者、不分页。“不按流核对补取者”第一次没抓到：服务端按调用组件清单已经挡住，测试只有一条流，改成两条流、各列一个补取者之后才抓到。
+- **下一个协议版本（alpha.50，与 T7c 的迁移 0012 一起）要改的**：
+  - P9.16 页标记失效时答 `QUERY_PLAN_CHANGED`（ABORTED，重新补取）：协议的错误目录里没有 FAILED_PRECONDITION 的通用原因，SDK 的系统面只认目录里的原因；
+  - P9.13 写明流的声明还要给补取方法一个操作（系统方法都要在资源定义里登记操作）；
+  - proto 文件头的“protoc M flags”改为“各 SDK 生成时自己指定 go_package（buf 的 managed 模式）”。
 - **T7e 收尾**：
   - `features.json` 的 `projection-watermarks` 改为 verified；
   - 量一次热路径：一次补取的耗时，以及消费者按位置应用比原来多付的代价；
