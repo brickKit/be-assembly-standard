@@ -12,6 +12,9 @@ A Python component's pyproject.toml beside its component.yaml must agree with it
     and the Python probe stayed at 3.2.20 from 3.2.21 to 3.2.25, so a shell hosting it refused to start;
   - a member (not a shell, whose SDK is its override-dependencies) declares `be-sdk>=<v>` with v the tag it pins in
     [tool.uv.sources]: the tag never reaches the package metadata, and a shell checks the declared minimum (P1.21).
+The conformance suite (tools/be-acceptance/conformance) pins the Python SDK too: its test deployment (besdk.testing)
+stands in for the identity provider and the members the probes talk to, so it is never older than the SDK any Python
+probe pins (the suite stayed at a20 while the probes were at a44, and its tokens lacked what newer SDKs require).
 Only rebuilt components count (major version 3); the 2.x leftovers and the frozen shells are skipped.
 Usage: pin-check.py [root]   (exits 1 when a reference is stale)"""
 from __future__ import annotations
@@ -88,9 +91,31 @@ def check(root: pathlib.Path) -> list[str]:
     return stale
 
 
+SDK_TAG = re.compile(r"^v?3\.0\.0a(\d+)$")
+
+
+def suite_sdk(root: pathlib.Path) -> list[str]:
+    """The suite's be-sdk tag is not older than any Python probe's."""
+    def tag(pyproject: pathlib.Path) -> str:
+        data = tomllib.loads(pyproject.read_text())
+        return data.get("tool", {}).get("uv", {}).get("sources", {}).get("be-sdk", {}).get("tag", "")
+    suite = root / "tools/be-acceptance/conformance/pyproject.toml"
+    if not suite.exists():
+        return []
+    st = tag(suite)
+    out = []
+    for probe in sorted(root.glob("tools/be-acceptance/probes/*/pyproject.toml")):
+        pt = tag(probe)
+        sm, pm = SDK_TAG.match(st), SDK_TAG.match(pt)
+        if sm and pm and int(sm.group(1)) < int(pm.group(1)):
+            out.append(f"{suite.relative_to(root)}: be-sdk {st} is older than {probe.relative_to(root)}'s {pt}; "
+                       "the suite's test deployment must know what the probes' SDK requires")
+    return out
+
+
 def main() -> int:
     root = pathlib.Path(sys.argv[1] if len(sys.argv) > 1 else pathlib.Path(__file__).resolve().parents[2])
-    stale = check(root)
+    stale = check(root) + suite_sdk(root)
     for s in stale:
         print(f"stale: {s}")
     print(f"pin-check: {len(stale)} stale reference(s)")

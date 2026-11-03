@@ -48,7 +48,7 @@
 | T4 | 边缘（`be-edge`）：按会话缓存令牌、拉取已结束的会话、`TOKEN_STALE` 只重试一次、自定义请求头、`features` | T2、T3 | ✅ 2026-11-03（`be-edge` v3.0.0-alpha.1、`be-ops` v3.0.0-alpha.1；对真实 iam-casdoor 的联调随 T6） |
 | T5 | SDK：`be_sv` 的核验、准入的 `TOKEN_STALE`、下游的 401、`SessionService` 的生成代码与已结束会话的读取、补测（T1 的缺口） | T2 | ✅ 2026-11-03（`be-sdk-go` alpha.54；Python 随第 6 项） |
 | T6 | 一致性套件：模拟身份提供方，登录剖面进黑盒套件 | T3、T4、T5 | ✅ 2026-11-03（`be-acceptance` 1.0.38；浏览器路径 `experiment-data/16-05-*`） |
-| T7 | 收尾与门槛核对 | 全部 | ⬜ |
+| T7 | 收尾与门槛核对 | 全部 | ✅ 2026-11-03（门槛表、复盘 [retro-foundations-02.md](retro-foundations-02.md)；等维护者确认） |
 
 ### T1 覆盖地图
 
