@@ -43,10 +43,10 @@
 | # | 任务 | 依赖 | 状态 |
 | --- | --- | --- | --- |
 | T1 | 覆盖地图：上表每条落到哪个测试；已有的点名、缺的列出 | — | ✅ 2026-11-03 |
-| T2 | 设计两件事并写进线协议：令牌陈旧的依据；边缘的实现形态 | T1 | ⬜ |
-| T3 | `infra/iam-casdoor` 补全：会话状态表、刷新与换取在会话锁内一次、改密码结束其他会话、失效推送、绑定的预期、开发换取的上线检查；换上 SDK alpha.53 | T2 | ⬜ |
-| T4 | 边缘：按会话缓存令牌、接受失效推送、`TOKEN_STALE` 只重试一次、自定义请求头、`features` | T2、T3 | ⬜ |
-| T5 | SDK 的准入：`TOKEN_STALE`、下游的 401 按可重试处理、带幂等键的重试 | T2 | ⬜ |
+| T2 | 设计两件事并写进线协议：令牌陈旧的依据；边缘的实现形态 | T1 | ✅ 2026-11-03（`be-protocol` alpha.53） |
+| T3 | `infra/iam-casdoor` 补全：会话状态表、刷新与换取在会话锁内一次、改密码结束其他会话、安全状态版本与账号状态事件、`SessionService`（换取、已结束的会话）、按 issuer 与 subject 绑定、开发换取的上线检查；换上 T5 发布的 SDK | T2、T5 | ⬜ |
+| T4 | 边缘（`be-edge`）：按会话缓存令牌、拉取已结束的会话、`TOKEN_STALE` 只重试一次、自定义请求头、`features` | T2、T3；仓库由维护者建 | ⬜ |
+| T5 | SDK：`be_sv` 的核验、准入的 `TOKEN_STALE`、下游的 401、`SessionService` 的生成代码与已结束会话的读取、补测（T1 的缺口） | T2 | ⬜ |
 | T6 | 一致性套件：模拟身份提供方，登录剖面进黑盒套件 | T3、T4、T5 | ⬜ |
 | T7 | 收尾与门槛核对 | 全部 | ⬜ |
 
@@ -118,7 +118,41 @@
 
 ### T3–T7
 
-在 T2 定下之后各自写“要做到什么、验收、可能动到”。
+> 2026-11-03 T2 定下之后写。顺序变了：T5 排到 T3 之前，因为 iam-casdoor 要用 SDK 提供的 `SessionService` 生成代码与“按位置读已结束会话”的读取器；T3、T4 的“失效推送”按 A118 改为“已结束会话的拉取”。
+
+#### T5 SDK（`be-sdk-go`，随后 `be-sdk-python`）
+
+- **要做到什么**：组件换上新版 SDK 就满足 P8.1 的 `be_sv`、P8.25、P8.26；身份成员能用 SDK 实现 `SessionService`。
+- **内容**：核验器要求 `be_sv`（向量 `jwt-verify` 新的 5 例）；视图的 `SubjectEntry.security_version` 解析与准入比较（向量 `token-stale`），`TOKEN_STALE` 在任何副作用之前；`calls` 的用户面与系统面调用把下游的 401 换成 `AUTHORIZATION_UNPROVABLE`；导出 `be.session.v1` 的生成代码；发件表上按位置分页读一条流的读取器（水位来源的 `page` 已有同类实现，抽成共用的）；`sectest` 的令牌带 `be_sv`、视图替身能设版本。T1 列的补测：`be-caller` 不参与判断（TI01、TI07）、目标不符时不发送用户凭据（TI03）、用户面的自称字段不进上下文（TI05）、`ForwardUser` 缺凭据报错（TI06）、同一连接交替两个用户（TI08）、过期的服务证书与证书文件轮换（TI20）、外壳里成员之间的调用者（TI21）。
+- **验收**：向量全过；新测试先红后绿，写在实现之后的做改坏的反向检查并存记录；`features.json` 的 `token-staleness` 为 verified；`make vet`、`make test`、`make test-integration` 全过。
+- **回退**：没有数据迁移；组件不升级就照旧（但实现新协议的组件拒绝不带 `be_sv` 的令牌，所以身份成员要先签发它：T3 之前不让其他组件升级到这一版）。
+- **可能动到**：`identity/`、`guard/`、`authz/view.go`、`calls/`、`events/`（读取器）、`sessionpb/`（新）、`sectest/`、`features.json`。
+
+#### T3 `infra/iam-casdoor`
+
+- **要做到什么**：身份成员满足 P8.27、P8.28 与 T1 的 TI11，浏览器拿不到令牌（UI04）。
+- **内容**：账号表加安全状态版本与签发者；按 `(issuer, subject)` 绑定，同邮箱、同登录名不接管；会话表加结束原因与会话代次，换取在会话行锁内；`SessionService` 两个方法（调用组件 `infra/edge`），会话结束写进流 `be.session.ended`；改密码（经 Casdoor 的回调或拉取得知）结束其他会话并加版本；账号状态事件 `infra.iam.account_status_changed.v1` 带版本；删掉公开的换取路由；开发换取的上线检查（A101）。
+- **验收**：对真实 Casdoor 与 PostgreSQL 的端到端测试覆盖 UI05、UI07、UI22 的身份一侧与 TI04（真实的 ID 令牌交给 SDK 核验器被拒）、TI11；数据迁移先在副本上跑。
+- **回退**：迁移可逆（加列与新表）；回退版本前先停边缘。
+- **可能动到**：`iam/` 全部、`migrations/`、`docs/design.md`、组件定义与注册表（`infra/edge` 身份）。
+
+#### T4 `be-edge`
+
+- **要做到什么**：P11.1–P11.10 在 Traefik v3.0.4 上成立。
+- **内容**：只用标准库的核心包（缓存、换取的单飞、重放、请求头、`features`、`Ended` 的拉取循环、手写的 gRPC 分帧）；Traefik 插件外壳；旁挂外壳只留形状；测试同时用 Go 编译器与 `yaegi test` 跑；向量 `edge-flow`。
+- **验收**：核心对向量全过；在 Traefik 容器里对真实的 iam-casdoor 跑通 CK-EDGE-01..07；每个请求的代价复测一次（命中缓存时不超过 16-01 的插件读数加波动）。
+- **前提**：维护者在 GitHub 建 `brickKit/be-edge`（自动模式不放行建公开仓库），之后加为子模块 `tools/be-edge`。
+- **可能动到**：新仓库；`infra/traefik/` 的静态配置（本地插件、证书）；装配工具生成的路由标签（中间件）。
+
+#### T6 一致性套件
+
+- **要做到什么**：登录剖面进黑盒套件：模拟身份提供方（签发带 `be_sv` 的令牌、JWKS 轮换、`SessionService` 的替身），CK-ID-01..07、CK-EDGE-01..07。
+- **验收**：Go 与 Python 的探针都过；改坏 SDK 的对应规则时剖面变红。
+- **可能动到**：`be-acceptance/conformance/profile/`（新的 `identity.py`）、探针。
+
+#### T7 收尾
+
+- **门槛核对**：上面“范围内的预期”每一条有通过的测试；COMPAT、`features.json`、组件索引、交接更新；复盘；实测记录（16-01、16-02）交 kb。
 
 ## 全局约束
 

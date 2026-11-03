@@ -269,6 +269,7 @@
 | `account` | `PrincipalRef` | 是 | `kind` 为 `user` |
 | `status` | `Enum` | 是 | `active`、`disabled`、`security_frozen` |
 | `security_mark` | `Enum` | 否 | `none`、`compromised`、`suspicious`；停用或冻结时可以带，身份侧处置按它派生（安全 08）；缺省等于 `none` |
+| `security_version` | `Int` | 是 | 账号的安全状态版本：从 1 起只增；改密码与重置密码、重置或移除 MFA 因素、强制登出、停用与冻结时加一。身份成员签发的访问令牌带签发时的版本，入口组件按视图里的版本判断令牌陈旧（[协议 20](../20-frontend.md#登录与会话)） |
 
 ## 变更协议
 
@@ -325,7 +326,7 @@
 | `recovery_generation` | `RevisionRef` | 是 | 恢复代次 |
 | `security_revisions` | `List<RevisionRef>` | 是 | 本分片覆盖的各依赖域水位（带授权库纪元，[协议 14](../14-data-foundations.md#库内计数与纪元)） |
 | `applicability` | `Set<Key>` | 是 | 本分片完整覆盖的资源类型；未列出的类型不能用本分片判定 |
-| `subjects` | `Map<Id,SubjectEntry>` | 是 | 每个主体的有效段（安全 08 已与来源求交）；`SubjectEntry = {segments: Set<Segment>, accounts_disabled: Bool}` |
+| `subjects` | `Map<Id,SubjectEntry>` | 是 | 每个主体的有效段（安全 08 已与来源求交）；`SubjectEntry = {segments: Set<Segment>, accounts_disabled: Bool, security_version: Int（否）}`；`security_version` 是这个主体的账号状态里最新的安全状态版本（没有账号状态时不写） |
 | `capabilities` | `Set<Key>` | 是 | 生成本分片的成员所具备的能力 |
 
 **核验请求 `be.security.view_verify_request`**：`component: PrincipalRef`（是）、`held: List<{shard: Key, digest: Digest}>`（是）、`nonce: Text`（是，至少 128 位随机数的十六进制）。
@@ -375,7 +376,7 @@
 | 业务控制拒绝 | 各业务的 reason | 409 或 422 | 视业务 | — | 与授权拒绝分开 |
 | 无法证明 | `AUTHORIZATION_UNPROVABLE` | 503 | 是 | 否 | 来源不可得、超期、修订不相容；不能写成“没有数据” |
 | 视图过期 | `AUTHORIZATION_VIEW_EXPIRED` | 503 | 是 | — | 默认路径超过 `W` |
-| 令牌陈旧 | `TOKEN_STALE` | 401 | 边缘换取新令牌后重试一次 | — | 只用于身份侧的事实（会话代次已推进、账号的安全状态版本已变），只由入口组件在准入阶段、任何副作用之前返回（[协议 20](../20-frontend.md#登录与会话)） |
+| 令牌陈旧 | `TOKEN_STALE` | 401 | 边缘换取新令牌后重试一次 | — | 只用于身份侧的事实（账号的安全状态版本已高于令牌签发时的），只由入口组件在准入阶段、任何副作用之前返回（[协议 20](../20-frontend.md#登录与会话)） |
 | 查询不可完成 | `QUERY_NOT_COMPLETABLE` | 422 | 否 | — | 有段不可下推、候选集超预算、冷层没有覆盖（安全 07） |
 | 受限字段不可用于此查询 | `FIELD_NOT_QUERYABLE` | 422 | 否 | — | 安全 07 的排序与筛选证明不成立 |
 | 查询计划已变化 | `QUERY_PLAN_CHANGED` | 409 | 否（重新查询） | — | 游标的计划摘要不一致 |

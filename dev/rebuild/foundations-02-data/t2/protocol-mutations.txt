@@ -1,0 +1,10 @@
+be-protocol alpha.53 (T2), the recomputations written for the new vectors, broken one line at a time; only the named
+test was run, then the file restored (2026-11-03). Every one went red.
+
+red  session_test.go: view > c.TokenSV -> view >= c.TokenSV                         (TestTokenStaleVectors)
+red  session_test.go: c.BodyBytes > 1<<20 -> c.BodyBytes >= 1<<20                    (TestEdgeFlowVectors)
+red  session_test.go: a second TOKEN_STALE answered as TOKEN_STALE, not SESSION_ENDED (TestEdgeFlowVectors)
+red  session_test.go: renew := c.Headers["BE-Polling"] != "1" -> renew := true      (TestEdgeFlowVectors)
+red  session_test.go: DELETE dropped from the state-changing methods                (TestEdgeFlowVectors)
+red  security_test.go: sv < 1 -> sv < 0                                              (TestJWTVerifyVectors)
+red  security_test.go: the integer check on be_sv removed                            (TestJWTVerifyVectors)
