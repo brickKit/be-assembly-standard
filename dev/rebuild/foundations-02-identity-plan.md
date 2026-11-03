@@ -129,7 +129,7 @@
 - **可能动到**：`identity/`、`guard/`、`authz/view.go`、`calls/`、`events/`（读取器）、`sessionpb/`（新）、`sectest/`、`features.json`。
 
 - **结果**（2026-11-03）：`be-sdk-go` alpha.54（`be-protocol` alpha.53；COMPAT 记在 alpha.54）。`make vet`、`make test`、`make test-integration`（33 个包）全过，输出在 `foundations-02-data/t5/test-integration.txt`。新规则各改坏一处都变红（`foundations-02-data/t5/mutations.txt`）；反向检查查出两处：`ReadAfter` 的“超过末尾”判断是多余的（删掉），“别的纪元”缺新纪元里已有行的一例（补上）。T1 的 SDK 缺口都补了测试：TI01、TI03、TI05–TI08、TI20、TI21。
-- **Python 移到第 6 项**：`be-sdk-python` 的协议副本还在 alpha.45，换到 alpha.53 会一起带进 alpha.46 以来的 P7.23、迁移 0011 与 0012、第 9 章的水位，这些本来就排在第 6 项（Python 剖面）。它的核验器忽略不认识的声明，带 `be_sv` 的新令牌照样接受，所以 T3 之后 Python 组件照常；在那之前它不判 `TOKEN_STALE`、不改写下游的 401，`features.json` 里 `token-staleness` 为未实现，T6 的登录剖面按能力状态只对 Go 跑这几项（与第一项的水位来源同样处理）。
+- **Python 移到第 6 项**：`be-sdk-python` 的协议副本还在 alpha.45，换到 alpha.53 会一起带进 alpha.46 以来的 P7.23、迁移 0011 与 0012、第 9 章的水位，这些本来就排在第 6 项（Python 剖面）。它的核验器忽略不认识的声明，带 `be_sv` 的新令牌照样接受，所以 T3 之后 Python 组件照常；在那之前它不判 `TOKEN_STALE`、不改写下游的 401，它的 `features.json` 里还没有 `token-staleness` 这项能力，T6 的登录剖面只对声明了它的 SDK 跑这几项（与第一项的水位来源同样处理）。
 
 #### T3 `infra/iam-casdoor`
 
