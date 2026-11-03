@@ -1,0 +1,21 @@
+http:
+  routers:
+    spike:
+      rule: PathPrefix(`/spike`)
+      entryPoints: [web]
+      middlewares: [spike]
+      service: none
+__EXTRA__
+  middlewares:
+    spike:
+      plugin:
+        spike:
+          target: https://127.0.0.1:18200
+          cert: /certs/client.pem
+          key: /certs/client.key
+          ca: /certs/ca.pem
+  services:
+    none:
+      loadBalancer:
+        servers:
+          - url: http://127.0.0.1:18299

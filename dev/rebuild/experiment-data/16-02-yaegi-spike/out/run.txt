@@ -1,0 +1,21 @@
+== 1. gRPC unary over mTLS from the Yaegi plugin
+be.spike: proto=HTTP/2.0 grpc-status=0 serving-status=1
+unknown: proto=HTTP/2.0 grpc-status=5 serving-status=-1
+-- the server saw a verified client certificate:
+2026/11/03 15:47:52 call /grpc.health.v1.Health/Check from verified client spike-client
+2026/11/03 15:47:52 call /grpc.health.v1.Health/Check from verified client spike-client
+-- reverse check: the same call without a client certificate is refused by the server:
+000
+refused (curl exit 56)
+== 2. package state across a dynamic configuration reload
+X-Hits: 4
+X-Instance: 893ef2b6bf591c6c
+X-News: 1
+X-Package: f2cc774c21a96a03
+-- after the reload:
+X-Hits: 13
+X-Instance: c5ebddcd66e52edc
+X-News: 2
+X-Package: f2cc774c21a96a03
+== both hold
+exit 0
