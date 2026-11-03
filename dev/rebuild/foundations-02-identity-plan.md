@@ -170,6 +170,7 @@
   3. 登录剖面（`be-acceptance` 的 `profile/identity.py`）：CK-ID-01（轮换）、02（日志里没有凭据）、03（用户凭据到不了系统面）、04（证书与调用组件）、05（令牌陈旧，写请求没有副作用）、06（下游的 401）；05、06 只对 Go，Python 判“不适用”（它的协议副本还没有 P8.25、P8.26，随第 6 项）。
   4. 浏览器路径的端到端：真实的 Casdoor、`infra/iam-casdoor`、Traefik 加 `be-edge`、Go 探针，测试部署出证书与授权视图（视图里版本的更新由测试部署代做，授权成员消费账号状态是第 3 项）：CK-ID-07、CK-EDGE-01..07 与 UI04–UI07、UI19–UI23、UI25、UI29。
 - **验收**：Go 与 Python 的探针按各自的能力通过；改坏 SDK 的对应规则时剖面变红；端到端跑通并存输出。
+- **第 1–3 步的结果**（2026-11-03）：`be-sdk-python` a45（只动 `besdk.testing`）；套件原来钉在 a20，一并换到 a45，第一项的四个剖面照常符合（`foundations-02-data/t6/item1-profiles-a45.txt`）；`test/probe-go` 及变体 3.2.33（SDK alpha.56）；`be-acceptance` 1.0.38 的身份剖面：Go 探针 CK-ID-01..06 全部通过，Python 探针 01..04 通过、05 与 06 不适用（`identity-profile.txt`）。反向检查（`profile-mutations.txt`）：在本地 SDK 源码里逐条改坏 P8.25、P8.26、P8.2、P8.6、P8.3，各自对应的检查失败；Python 的 P8.2 改坏一处同样。反向检查本身查出三处“红而没打中”：等不到 401 时 CK-ID-05 判成“未运行”而不是“失败”（观察改为记下最后一次的回答）；两处改坏让 SDK 编译不过（改在比较本身，并先确认能编译）；`-k py` 同时匹配了模块名、把 Go 那一例也跑了。
 
 #### T7 收尾
 

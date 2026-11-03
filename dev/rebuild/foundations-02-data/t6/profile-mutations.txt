@@ -1,0 +1,16 @@
+The identity profile (be-acceptance, foundations item 2 T6) against the Go probe built on the local be-sdk-go alpha.56 with one rule broken at a time; then the Python probe with its installed besdk broken once (2026-11-03).
+red  P8.25: no staleness check at admission  []
+red  P8.26: a downstream 401 passed on  []
+red  P8.2: an unknown kid refreshes every time  []
+red  P8.6: any component of the deployment may call  []
+red  P8.3: a refused credential is logged  []
+-- the first round counted a not-run CK-ID-05 as red; the observation now keeps the last answer, so a probe that never answers TOKEN_STALE fails the check. Again:
+red  P8.25: no staleness check at admission  [  CK-ID-05 失败 ]
+red  P8.26: a downstream 401 passed on  [  CK-ID-06 失败 ]
+red  P8.2: an unknown kid refreshes every time  []
+red  P8.6: any component of the deployment may call  []
+red  P8.3: a refused credential is logged  [  CK-ID-02 失败 ]
+-- the P8.2 and P8.6 lines above were red because the mutated SDK did not compile (the edit hit a declaration; an import went unused); redone on the comparison itself, the probe built first:
+red  P8.2: an unknown kid refreshes every time  [  CK-ID-01 失败 ]
+red  P8.6: any component of the deployment may call  [  CK-ID-04 失败 ]
+red  P8.2 (be-sdk-python): an unknown kid refreshes every time  [  CK-ID-01 失败 ]  (the runner's "-k py" also matched the module name and ran the Go case, which passed; the Python case failed on CK-ID-01: fetched 5 times, the unknown kid again)
