@@ -30,10 +30,16 @@
 
 | # | 任务 | 依赖 | 状态 |
 | --- | --- | --- | --- |
-| T0 | `be-sdk-python` 的协议副本到最新（alpha.55）：核验器要求 `be_sv`、准入的 `TOKEN_STALE`、下游的 401、视图的 `security_version`、新的错误原因；新章节（P7.23、第 9 章的水位）在 `features.json` 里如实标未实现 | — | ⬜ |
+| T0 | `be-sdk-python` 的协议副本到最新（alpha.55）：核验器要求 `be_sv`、准入的 `TOKEN_STALE`、下游的 401、视图的 `security_version`、新的错误原因；新章节（P7.23、第 9 章的水位）在 `features.json` 里如实标未实现 | — | ✅ 2026-11-03（a46；探针 3.2.34、套件 1.0.39） |
 | T1 | 覆盖地图：安全 01、03、04、06、07、08、09a 的每条预期，归首批或不归（写理由）；首批的每条落到哪个测试，已有的点名、缺的列出 | — | ⬜ |
 | T2 | 设计里要先定的（T1 列出后逐个定，写进线协议与 A 台账）：身份作为水位来源、授权组件怎样消费账号状态；受保护操作的确认接口；安装认领 | T1 | ⬜ |
 | T3–T8 | 在 T1、T2 之后各自写“要做到什么、验收、可能动到” | — | ⬜ |
+
+### T0 结果
+
+- `be-sdk-python` a46：协议副本 alpha.55；核验器要求 `be_sv`；视图解析 `security_version`；准入的 `TOKEN_STALE`（向量 `token-stale`）；`forward_user` 的下游 401 换成 `AUTHORIZATION_UNPROVABLE`；`SESSION_ENDED`、`CSRF_HEADER_REQUIRED`；`features.json` 的 `token-staleness` 为 verified。单元 164、集成 90 全过（`foundations-03-data/t0/test-integration.txt`）；四处改坏都红在对的测试上（`t0/mutations.txt`）。
+- 探针 `test/probe-py` 与 py2 3.2.34（从 a38 直接到 a46，清单检查照常）；套件 1.0.39：身份剖面对两种探针 CK-ID-01..06 全部通过。第一次跑出一处判定的错：CK-ID-06 把下游写死成 `test/probe-go2`，Python 那一例的下游是 py2（改为观察里记下期望的下游）。第 2 项门槛表里 TI06、UI28 的“Python 随第 6 项”由此补上。
+- 第 3 项的先决条件（Python 能收带 `security_version` 的视图）已满足。
 
 ### T1 覆盖地图
 
