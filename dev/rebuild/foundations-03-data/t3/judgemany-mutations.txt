@@ -1,0 +1,41 @@
+== mutant projection/watermark.go: 'in.Quarantined = in.Quarantined || q[s]' -> 'in.Quarantined = false'
+   does not compile: projection/watermark.go:503:10: declared and not used: s
+== mutant projection/watermark.go: 'in.Row = &JudgedRow{State: r.state, Adopted: r.impl == impl && r.epoch == epoch}' -> 'in.Row = &JudgedRow{State: r.state, Adopted: true}'
+   failed: NONE (survived)
+== mutant projection/watermark.go: '\t\tif j.Verdict != Usable {\n\t\t\tj.Data = nil\n\t\t}' -> ''
+   failed: ['TestJudgeManyAtTwoFreshnesses']
+      Error:      	Not equal:
+      expected: projection.Judged{Verdict:"unprovable", Version:1, Data:jsontext.Value(nil)}
+      actual  : projection.Judged{Verdict:"unprovable", Version:1, Data:jsontext.Value{0x7b, 0x22, 0x69, 0x64, 0x22, 0x3a, 0x20, 0x22, 0x70, 0x31, 0x22, 0x2c, 0x20, 0x22, 0x6e, 0x61, 0x6d, 0x65, 0x22, 0x3a,
+      Messages:   	no content of a record that is not usable
+== mutant projection/watermark.go: 'if Judge(base) != Unprovable { // the source rows' -> 'if true { // the source rows'
+   failed: ['TestJudgeManyAtTwoFreshnesses']
+      Error:      	Not equal:
+      expected: "unprovable"
+      actual  : "usable"
+== mutant projection/watermark.go: 'WHEN count(*) FILTER (WHERE echo_mp IS NULL) > 0 OR count(*) = 0 THEN NULL' -> 'WHEN count(*) = 0 THEN NULL'
+   failed: NONE (survived)
+== mutant projection/watermark.go: 'time.Duration(*age*float64(time.Second))' -> 'time.Duration(*age)'
+   failed: ['TestJudgeManyAtTwoFreshnesses']
+      Error:      	"0s" is not greater than "300ms"
+      Messages:   	the age is there to compare with another freshness
+
+== round 2: the quarantine mutant rewritten to compile; the test now makes a row of another epoch and a partition without an echo
+== mutant projection/watermark.go: 'in.Quarantined = in.Quarantined || q[s]' -> 'in.Quarantined = in.Quarantined || (q[s] && false)'
+   failed: ['TestAFailingEventQuarantinesItsSubjectsOnly']
+      Error:      	Not equal:
+      expected: "unprovable"
+      actual  : "provably_absent"
+      Messages:   	JudgeMany agrees with Judge on bad1
+== mutant projection/watermark.go: 'in.Row = &JudgedRow{State: r.state, Adopted: r.impl == impl && r.epoch == epoch}' -> 'in.Row = &JudgedRow{State: r.state, Adopted: true}'
+   failed: ['TestJudgeManyAtTwoFreshnesses']
+      Error:      	Not equal:
+      expected: "unprovable"
+      actual  : "usable"
+      Messages:   	JudgeMany agrees with Judge on p2
+== mutant projection/watermark.go: 'WHEN count(*) FILTER (WHERE echo_mp IS NULL) > 0 OR count(*) = 0 THEN NULL' -> 'WHEN count(*) = 0 THEN NULL'
+   failed: ['TestJudgeManyAtTwoFreshnesses']
+      Error:      	Not equal:
+      expected: "unprovable"
+      actual  : "usable"
+      Messages:   	JudgeMany agrees with Judge on p1
