@@ -34,6 +34,6 @@ moved 141 → 128 (drift, not compared).
 
 Reading: the Yaegi middleware adds about 22–35 µs of edge CPU a request and no visible latency; a compiled sidecar
 adds 166 µs in front of Traefik and 356 µs behind it (Traefik runs twice), and 0.1–0.4 ms at p99. For scale, the
-trivial backend used 67–78 µs a request. Recompute with `python3` over `runs*/runs.jsonl` (the summary in the
+trivial backend used 59–78 µs a request (the `backend` ticks; the kb record's `summarize.py` prints them). Recompute with `python3` over `runs*/runs.jsonl` (the summary in the
 plan's T2). Rerun: `scripts/run.sh <out> 6 2000 20 "a b c"` after building `scripts/{backend,proxy,load}` into
 `scripts/bin-*`.
