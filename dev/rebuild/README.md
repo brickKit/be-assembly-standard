@@ -6,10 +6,10 @@
 
 - **代表部署实验（D41）做完了**（2026-10-17 至 11-02）。结论在[实验报告](experiment-report.md)（最后是“结论汇总”与“限制与未测”），已提炼进正式文档：[部署模式](../../docs/zh/00-overview/guides/deployment-modes.md)、决定 D80（默认有根 Podman，开机实测后由无根改定）与 D81（Podman 上交付用 Quadlet 单元，2026-11-02 复测 BrickKit v1.12.0 之后）与 A112–A114（默认全部单跑、不加连接池代理、NATS；维护者 2026-11-02 复核）、各篇的修订（[第 14 步计划](step14-plan.md)第 3 节）。复盘：[整个实验](retro-experiment.md)、[第 12 步](retro-step12.md)、[第 13 步](retro-step13.md)。
 - **现在：底层先行**（维护者 2026-11-02 确认进入；[重建计划](rebuild-plan.md)“顺序”第 3 项，路线第 3 步开头）：事务与消息、登录与身份、权限、审计与整套恢复、冷热数据，以及 Python 补到代表组件需要的剖面，逐项做；每项先写计划，做到[实验计划](experiment-plan.md)“实验之后：底层先行”的验证门槛后汇报、维护者确认后进下一项；实验留给各项的待测在重建计划里列着。之后按依赖顺序重建业务组件。第一项是**事务与消息**（[计划](foundations-01-transactions-plan.md)：T1–T11）。
-- **第一项的进度（2026-11-03）**：T1–T8 做完（每项的结果写在计划里那一项下面）；**下一步 T9**（参考模型 13、14、37 的关键交错落成定向测试），之后 T10（故障注入，含移来的两个副本的检查）与 T11，估计还要 3–6 小时（T7 水位来源是新功能，变数最大）。挂着的事：
-  - 上层仓库有 37 个以上的提交没推送，等维护者说“推送”；子仓库（`be-protocol` alpha.51、`be-sdk-go` alpha.51、`be-sdk-python` a44、`be-acceptance` 1.0.36、`test/probe-go` 3.2.31、`test/probe-py` 3.2.32 及变体）都已推送并打了标签。
+- **第一项的进度（2026-11-03）**：T1–T9 做完（每项的结果写在计划里那一项下面）；**下一步 T10**（探针链在 Docker 上的故障注入：崩溃、消息系统中断、消费者库回退；含从 T4、T5 移来的两个副本的检查），之后 T11 收尾与门槛核对，估计还要 3–5 小时（T7 水位来源是新功能，变数最大）。挂着的事：
+  - 上层仓库有 37 个以上的提交没推送，等维护者说“推送”；子仓库（`be-protocol` alpha.51、`be-sdk-go` alpha.52、`be-sdk-python` a44、`be-acceptance` 1.0.36、`test/probe-go` 3.2.31、`test/probe-py` 3.2.32 及变体）都已推送并打了标签。
   - kb PR #61（计划缓存的实测记录与反馈）等 kb 审查；审查意见回来时照 `kb-contribute` 处理。kb PR #63（T5 的空闲轮询与统计检查的实测与反馈，以 #61 为前提）同样等审查。
-  - 组件与外壳还在旧 SDK 上；下一次连锁发布换上 `be-sdk-go` alpha.51 / `be-sdk-python` a44 并各跑一次 `migrate`（组件迁移 0010–0012，总线迁移 0004、0005）。
+  - 组件与外壳还在旧 SDK 上；下一次连锁发布换上 `be-sdk-go` alpha.52 / `be-sdk-python` a44 并各跑一次 `migrate`（组件迁移 0010–0012，总线迁移 0004、0005）。
   - 移到 T10 的检查（要第二个副本或确定性的打断）：CK-EV-04、CK-EV-02 的两个副本同时编号、CK-WK-05、CK-WK-03 的接管一半；CK-EV-10 进 T8；Python 探针的 `fail`、`hold_ms`、`emit` 与后台工作项随第 6 项补。
   - 跑套件的环境：`source dev/rebuild/experiment-scripts/itenv.sh`，再把 `BE_ACC_*` 设成对应的 `BE_SDK_TEST_*`（PG_ADMIN、NATS_URL、S3_URL、S3_ACCESS_KEY、S3_SECRET_KEY）。监视长任务时 `pgrep -f '<命令>'` 会匹配到监视脚本自己（2026-11-03 两个监视因此不退出），盯进程号或用 `pgrep -x`。
 - 设计冻结与正式文档迁移已完成（[migration-plan.md](migration-plan.md)）。待复核的 AI 选择只剩 A109（驻留期起始值，`docs/zh/02-decisions/09-ai-choices.md`）。

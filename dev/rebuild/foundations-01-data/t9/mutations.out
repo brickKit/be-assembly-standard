@@ -1,0 +1,69 @@
+=== unchanged
+ok  	github.com/brickKit/be-sdk-go/v3/work	10.931s
+ok  	github.com/brickKit/be-sdk-go/v3/projection	2.266s
+=== model 13: insert-only claim (no takeover)
+--- FAIL: TestACrashedReplicasItemIsTakenOverAfterItsLease (36.80s)
+--- FAIL: TestATakenOverHolderCanCommitNothing (1.37s)
+--- FAIL: TestNonIdempotentCallsAreNeverSentTwice (0.27s)
+--- FAIL: TestASingletonContinuesFromItsCommittedProgress (5.24s)
+FAIL	github.com/brickKit/be-sdk-go/v3/work	45.825s
+=== model 13: the completion mark in a separate transaction
+--- FAIL: TestATakenOverHolderCanCommitNothing (1.38s)
+--- FAIL: TestALostClaimCannotCommitUnderAReusedCounter (0.27s)
+FAIL	github.com/brickKit/be-sdk-go/v3/work	10.984s
+=== model 13: no epoch check on commit
+--- FAIL: TestATakenOverHolderCanCommitNothing (1.37s)
+--- FAIL: TestALostClaimCannotCommitUnderAReusedCounter (0.26s)
+FAIL	github.com/brickKit/be-sdk-go/v3/work	10.997s
+=== model 13: a non-idempotent call resent on takeover
+--- FAIL: TestACrashedReplicasItemIsTakenOverAfterItsLease (16.89s)
+--- FAIL: TestNonIdempotentCallsAreNeverSentTwice (0.26s)
+FAIL	github.com/brickKit/be-sdk-go/v3/work	20.808s
+=== model 13: cleanup without the watermark
+--- FAIL: TestPurgeKeepsWhatIsNotYetDue (0.26s)
+FAIL	github.com/brickKit/be-sdk-go/v3/work	10.990s
+=== model 13: an ambiguous error treated as retryable (the flag cleared)
+--- FAIL: TestNonIdempotentCallsAreNeverSentTwice (5.26s)
+FAIL	github.com/brickKit/be-sdk-go/v3/work	16.026s
+=== model 14: strict-greater rule only (R04)
+--- FAIL: TestProjectionApplyVectors (0.00s)
+--- FAIL: TestApplyAndRepair (0.22s)
+FAIL	github.com/brickKit/be-sdk-go/v3/projection	2.398s
+=== model 14: a partial event applied and marked complete
+--- FAIL: TestProjectionApplyVectors (0.00s)
+--- FAIL: TestApplyAndRepair (0.23s)
+FAIL	github.com/brickKit/be-sdk-go/v3/projection	2.273s
+=== model 14: a deletion removes the row instead of a tombstone
+--- FAIL: TestWrittenDuringAlignment (0.24s)
+--- FAIL: TestApplyAndRepair (0.24s)
+--- FAIL: TestInputsForANewRecordAreSerialized (0.73s)
+FAIL	github.com/brickKit/be-sdk-go/v3/projection	2.311s
+=== model 14: the re-fetch overwrites unconditionally (rows written meanwhile go backwards)
+--- FAIL: TestWrittenDuringAlignment (0.24s)
+FAIL	github.com/brickKit/be-sdk-go/v3/projection	2.349s
+=== model 14: no epoch (versions compared across a failover)
+ok  	github.com/brickKit/be-sdk-go/v3/projection	2.257s
+=== model 14: snapshots accepted only by version
+FAIL	github.com/brickKit/be-sdk-go/v3/projection	600.013s
+=== model 37: claims compare the claim counter only
+--- FAIL: TestATakenOverHolderCanCommitNothing (1.36s)
+--- FAIL: TestALostClaimCannotCommitUnderAReusedCounter (0.26s)
+FAIL	github.com/brickKit/be-sdk-go/v3/work	10.973s
+=== model 37: the row's claim epoch compared with the current one, not the holder's own
+--- FAIL: TestALostClaimCannotCommitUnderAReusedCounter (0.44s)
+FAIL	github.com/brickKit/be-sdk-go/v3/work	11.736s
+
+# 2026-11-03 rerun of two model-14 variants: a test for an older epoch's row added, the re-fetch stops when a round makes no progress
+=== unchanged
+ok  	github.com/brickKit/be-sdk-go/v3/work	11.093s
+ok  	github.com/brickKit/be-sdk-go/v3/projection	2.538s
+=== model 13: no epoch check on commit
+--- FAIL: TestATakenOverHolderCanCommitNothing (1.36s)
+--- FAIL: TestALostClaimCannotCommitUnderAReusedCounter (0.26s)
+FAIL	github.com/brickKit/be-sdk-go/v3/work	10.980s
+=== model 14: no epoch (versions compared across a failover)
+--- FAIL: TestANewEpochsInputOverwritesAnOlderEpochsRow (0.24s)
+FAIL	github.com/brickKit/be-sdk-go/v3/projection	2.664s
+=== model 14: snapshots accepted only by version
+--- FAIL: TestAlignMatchesSource (0.24s)
+FAIL	github.com/brickKit/be-sdk-go/v3/projection	2.624s
