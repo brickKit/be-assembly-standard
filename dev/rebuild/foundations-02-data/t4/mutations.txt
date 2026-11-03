@@ -1,0 +1,25 @@
+be-edge v3.0.0-alpha.1 (foundations item 2, T4): each rule broken by one edit, the root tests and the tests module
+run, the file restored (2026-11-03). The one green line was a finding: the replay test only checked the two tokens
+differed (tightened, then red).
+
+red  P11.1: the browser's Authorization is not stripped
+red  P11.1: the token is used to its last second
+red  P11.1: concurrent misses exchange each
+red  P11.2: DELETE needs no header
+green  P11.3: the replay carries the old token
+red  P11.3: a body over the limit is replayed
+red  P11.3: a second TOKEN_STALE passes through
+red  P11.4: SESSION_ENDED is read as the member being unavailable
+red  P8.5: the identity member's name is not checked
+red  P11.5: a reset keeps the cache
+red  P11.5: ended sessions keep their tokens
+red  P11.6: a logout keeps the token
+red  P11.7: polling renews the idle time
+red  P11.8: features without a session
+red  wire: renew_idle under the wrong field number
+red  P11.3: the replay carries the old token (after the test checks the second exchange's token)
+-- after the static TLS client (the Yaegi callback panic, see the plan's T4):
+red  P8.5: the identity member's certificate is not verified
+red  P8.5: rotated certificate files are not picked up
+red  sort.Slice(m.Components, func(i, j int) bool { return m.Components[i].ID < m.Componen
+red  		if seen[c.ID] {

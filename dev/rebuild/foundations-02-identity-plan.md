@@ -45,7 +45,7 @@
 | T1 | 覆盖地图：上表每条落到哪个测试；已有的点名、缺的列出 | — | ✅ 2026-11-03 |
 | T2 | 设计两件事并写进线协议：令牌陈旧的依据；边缘的实现形态 | T1 | ✅ 2026-11-03（`be-protocol` alpha.53） |
 | T3 | `infra/iam-casdoor` 补全：会话状态表、刷新与换取在会话锁内一次、改密码结束其他会话、安全状态版本与账号状态事件、`SessionService`（换取、已结束的会话）、按 issuer 与 subject 绑定、开发换取的上线检查；换上 T5 发布的 SDK | T2、T5 | ✅ 2026-11-03（3.0.16） |
-| T4 | 边缘（`be-edge`）：按会话缓存令牌、拉取已结束的会话、`TOKEN_STALE` 只重试一次、自定义请求头、`features` | T2、T3 | ⬜ |
+| T4 | 边缘（`be-edge`）：按会话缓存令牌、拉取已结束的会话、`TOKEN_STALE` 只重试一次、自定义请求头、`features` | T2、T3 | ✅ 2026-11-03（`be-edge` v3.0.0-alpha.1、`be-ops` v3.0.0-alpha.1；对真实 iam-casdoor 的联调随 T6） |
 | T5 | SDK：`be_sv` 的核验、准入的 `TOKEN_STALE`、下游的 401、`SessionService` 的生成代码与已结束会话的读取、补测（T1 的缺口） | T2 | ✅ 2026-11-03（`be-sdk-go` alpha.54；Python 随第 6 项） |
 | T6 | 一致性套件：模拟身份提供方，登录剖面进黑盒套件 | T3、T4、T5 | ⬜ |
 | T7 | 收尾与门槛核对 | 全部 | ⬜ |
@@ -151,6 +151,14 @@
 - **验收**：核心对向量全过；在 Traefik 容器里对真实的 iam-casdoor 跑通 CK-EDGE-01..07；每个请求的代价复测一次（命中缓存时不超过 16-01 的插件读数加波动）。
 - **仓库**：`brickKit/be-edge`（维护者 2026-11-03 放行，已建，子模块 `tools/be-edge`，只有 README 与许可证）。
 - **可能动到**：新仓库；`infra/traefik/` 的静态配置（本地插件、证书）；装配工具生成的路由标签（中间件）。
+
+- **结果**（2026-11-03）：`be-edge` v3.0.0-alpha.1：只用标准库的核心与 Traefik 的 Yaegi 插件（`.traefik.yml` 要写 `basePkg: edge`，否则 Traefik 按导入路径的最后一段 `v3` 找包）。测试四套：Go 编译器与 `yaegi test`（v0.16.1）下的单元测试；`tests/` 子模块经插件的公开入口对 grpc-go 的 `SessionService`（mTLS）跑协议向量 `edge-flow`、身份不符的服务端、轮询、证书轮换；真实 Traefik v3.0.4 容器里的插件（注入、`BE-Request`、重放一次、已结束会话、配置重载后缓存还在、日志里没有 Cookie 与令牌）。改坏 17 处都变红（`foundations-02-data/t4/mutations.txt`）；反向检查查出重放的测试只比了两枚令牌不同（收紧为必须是第二次换取的那一枚）。
+- **查到的坑**：
+  - Yaegi 里标准库回调解释执行的代码（`tls.Config` 的 `GetClientCertificate`、`VerifyConnection`）在握手中 panic（`reflect.Set: value of type *tls.CertificateRequestInfo is not assignable ...`），整个 Traefik 进程退出；单元测试与不连身份成员的手工复现都看不出，只有对真实服务器握手时才出。改为静态的 `tls.Config`、证书文件变了就换传输；轮询的 goroutine 加了 `recover`（Traefik 的恢复中间件管不到它）。写进 `be-edge` 的 `AGENTS.md`。
+  - Traefik 把插件写到标准错误的每一行都记成 ERR：普通提示改写到标准输出。
+- **代价**（`experiment-data/16-04-edge-plugin-cost/`，性能电源模式，成对交替）：命中缓存时每个请求多 90 µs 的边缘 CPU，p50、p99 各多 0.1 ms 左右；其中约 36 µs 是拦截器（原生的反向代理调解释执行的写入方法），`r.Clone` 量不出差别（去掉它的变体没有保留）。**没达到本任务自定的验收**（不超过 16-01 的插件读数加波动，那次只量了最简单的一步）；仍低于 16-01 里编译的旁挂代理的最低读数（放在前面多 166 µs，而那只是一个什么都不做的代理）。如实记下，汇报时说明。
+- **`features`**：`be-ops` 原来只有一行旧设计（写进身份适配层的 `enabledComponents`），与协议 20 相反；新加 `be-ops features --root <项目> --out <文件>`，从 `brickkit.yaml` 列出选中的组件与精确版本（协议 20 写的“能力”组件清单里还没有地方声明，前端用到时再定）。
+- **接进部署**（`infra/traefik` 的插件与证书、`infra/edge` 的服务证书、路由生成器挂中间件）：代表部署的单元格还没有边缘（实验第 5 步起外部请求经测试用的入口），随 T6 在单元格里接上，与真实的 iam-casdoor 一起跑。
 
 #### T6 一致性套件
 
