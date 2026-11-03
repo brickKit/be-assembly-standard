@@ -1,0 +1,14 @@
+== mutant: s/!s.Stopped \&\& a.ReadOnly:/!s.Stopped \&\& false:/
+--- FAIL: TestViewAcceptVectors (0.00s)
+    view_test.go:139: read-only-unchanged: got accepted map[s1:renewed], the vector says accepted map[s1:renewed_read]
+    view_test.go:139: read-only-suspended: got accepted map[s1:renewed], the vector says accepted map[s1:renewed_read]
+    view_test.go:139: read-only-mixed: got accepted map[s1:renewed s2:renewed], the vector says accepted map[s1:renewed s2:renewed_read]
+FAIL
+FAIL	github.com/brickKit/be-protocol/v3	0.007s
+== mutant: s/a.ReadOnly \&\& ok:/a.ReadOnly \&\& !ok:/
+--- FAIL: TestViewAcceptVectors (0.00s)
+    view_test.go:139: read-only-changed: got accepted map[s1:adopted_read], the vector says accepted map[s1:replaced_read]
+    view_test.go:139: read-only-start: got accepted map[s1:replaced_read], the vector says accepted map[s1:adopted_read]
+    view_test.go:139: read-only-recovery-higher: got accepted map[s1:replaced_read], the vector says accepted map[s1:adopted_read]
+FAIL
+FAIL	github.com/brickKit/be-protocol/v3	0.006s

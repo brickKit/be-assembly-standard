@@ -338,7 +338,7 @@
 | `nonce` | `Text` | 是 | 必须等于请求中的 `nonce`；不等则丢弃，不续期 |
 | `computed_at` | `Instant` | 是 | 只供审计；组件不用它计算有效期 |
 | `instance` | `Text` | 是 | 作答的授权成员实例；与组件记下的不同（没有登记的成员切换）时整个回答判为回退。放在回答上而不只在视图的修订里：只答“未变”的回答不带视图，从备份另建的环境内容相同、摘要也相同 |
-| `shards` | `List<{shard: Key, status: Enum(unchanged, changed, closed), view: be.security.view（条件）}>` | 是 | `changed` 时附新视图；`closed` 表示该分片暂时不能续发（安全 03） |
+| `shards` | `List<{shard: Key, status: Enum(unchanged, changed, closed), view: be.security.view（条件）, read_only: Bool（否）}>` | 是 | `changed` 时附新视图；`closed` 表示该分片暂时不能续发（安全 03）；`read_only` 为真（只随 `unchanged` 与 `changed`）表示这次只为普通读取续发：来源水位在 `D_src_high` 与 `D_src_read` 之间（安全 03 的续发与关闭），组件只延长普通读取的有效期，高风险操作的有效期不动 |
 | `recovery_generation` | `RevisionRef` | 是 | 比组件持有的大时，组件丢弃全部旧视图并采用新视图；比持有的小时判为回退（[安全 03](03-authorization-acceptance-and-revocation.md#授权视图与核验)） |
 
 组件按安全 03 计算有效期：从**发出这次请求**时的单调时钟读数起算。`nonce` 让组件能确认回答是针对本次请求计算的；缓存或重放的旧回答 `nonce` 不符，被丢弃（安全 03 模型中的“重放”坏变体）。回答通过已认证的服务通道传输（安全 02）。

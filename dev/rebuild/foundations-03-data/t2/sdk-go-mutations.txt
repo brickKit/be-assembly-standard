@@ -1,0 +1,51 @@
+== mutant (authz/view.go): 		if high {
+			from = s.highAt -> 		if false {
+			from = s.highAt
+FAIL
+FAIL	github.com/brickKit/be-sdk-go/v3/authz	0.023s
+--- FAIL: TestReadOnlyRenewalLeavesTheHighRiskValidity (0.00s)
+        	Messages:   	<nil>
+        	Messages:   	the high-risk cutoff stays at the full renewal
+== mutant (authz/view.go): (high && !s.hasHigh) || -> 
+ok  	github.com/brickKit/be-sdk-go/v3/authz	0.022s
+== mutant (authz/view.go): 				if !a.ReadOnly {
+					s.highAt -> 				if true {
+					s.highAt
+FAIL
+FAIL	github.com/brickKit/be-sdk-go/v3/authz	0.025s
+--- FAIL: TestReadOnlyRenewalLeavesTheHighRiskValidity (0.00s)
+--- FAIL: TestViewAcceptVectors (0.00s)
+        	Messages:   	<nil>
+        	Messages:   	read-only-mixed
+        	Messages:   	read-only-suspended
+        	Messages:   	read-only-unchanged
+        	Messages:   	the high-risk cutoff stays at the full renewal
+== mutant (authz/view.go): sentAt: sent, highAt: s.highAt, hasHigh: s.hasHigh} -> sentAt: sent, highAt: sent, hasHigh: true}
+FAIL
+FAIL	github.com/brickKit/be-sdk-go/v3/authz	0.022s
+--- FAIL: TestReadOnlyRenewalLeavesTheHighRiskValidity (0.00s)
+--- FAIL: TestViewAcceptVectors (0.00s)
+        	Messages:   	<nil>
+        	Messages:   	read-only-changed
+== mutant (authz/view.go): 			case a.ReadOnly:
+				h.shards[a.Shard] = &held{shard: *a.View, sentAt: sent} -> 			case a.ReadOnly:
+				h.shards[a.Shard] = &held{shard: *a.View, sentAt: sent, highAt: sent, hasHigh: true}
+FAIL
+FAIL	github.com/brickKit/be-sdk-go/v3/authz	0.024s
+--- FAIL: TestAReadOnlyFirstViewIsNotValidForHighRisk (0.00s)
+--- FAIL: TestViewAcceptVectors (0.00s)
+        	Messages:   	<nil>
+        	Messages:   	read-only-recovery-higher
+        	Messages:   	read-only-start
+== mutant (authz/source.go): ReadOnly: s.GetReadOnly()} -> }
+ok  	github.com/brickKit/be-sdk-go/v3/authz	(cached)
+== after adding source_test.go and the early clock in TestAReadOnlyFirstViewIsNotValidForHighRisk:
+== mutant (authz/view.go): (high && !s.hasHigh) || -> 
+FAIL
+FAIL	github.com/brickKit/be-sdk-go/v3/authz	0.024s
+--- FAIL: TestAReadOnlyFirstViewIsNotValidForHighRisk (0.00s)
+        	Messages:   	<nil>
+== mutant (authz/source.go): ReadOnly: s.GetReadOnly()} -> }
+FAIL
+FAIL	github.com/brickKit/be-sdk-go/v3/authz	0.029s
+--- FAIL: TestGRPCSourceCarriesReadOnly (0.00s)

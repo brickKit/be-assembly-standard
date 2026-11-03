@@ -67,6 +67,7 @@
 ### T2 要先定的
 
 - **D1 只为普通读取续期**（A120，AI 定，待复核）：安全 03 的“续发与关闭”要求来源水位在 `D_src_high` 与 `D_src_read` 之间时高风险关闭、普通读取续发，但核验回答的分片只有 `unchanged`、`changed`、`closed`，`closed` 连读取一起关。回答的分片项加可选的 `read_only: Bool`：为真时这次回答只延长普通读取的有效期，高风险的有效期不动（`changed` 与 `unchanged` 都可以带它）。线协议 P8.11 加一句、09a 的 `view_verify_answer` 加字段、向量 `view-accept` 加例子，两种 SDK 实现；不另加状态，因为“视图变了、只续读取”也要能表达。
+  - **做了**（2026-11-03）：`be-protocol` alpha.56（P8.11 一句、向量 `view-accept` 多 8 例，结果 `renewed_read`、`replaced_read`、`adopted_read`）；契约 `contract-infra-authz` alpha.2（`ShardAnswer.read_only = 5`，`buf breaking` 对 alpha.1 通过；它的 `make breaking` 在子模块里取不到 `.git`，改成先 `git archive` 基准）；`be-sdk-go` alpha.57、`be-sdk-python` a47：持有者另记最后一次完整续期的时刻，高风险的有效期从它起算。反向检查在 `foundations-03-data/t2/`：Go 第一轮两处存活（开机 5 秒内的时钟下零值的高风险时刻仍像有效；gRPC 的字段转换没有测试），补了测试后都红在对的测试上；Python 一处红在 `TypeError` 上，换成与 Go 对等的零值变异后红在规则上。COMPAT 写明要按顺序升级：组件先升 SDK，授权成员才答 `read_only`（旧 SDK 不认识这个字段，会把高风险也续上）。
 - **D2 身份作为内部来源**：照第一项的水位来源（P9.13 起）：iam-casdoor 的账号状态流声明 `Watermark`（补取者 `infra/authz`），授权组件用带水位的投影（`projection.Watermarked`）消费；不是新机制，不另记 A。
 - **参数**：`D_src_high` 60 s、`D_src_read` 10 min（D64）、`T_tight` 1 h（安全 03 的起始参数），配置键随授权组件。
 
