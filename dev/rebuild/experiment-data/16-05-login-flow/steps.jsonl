@@ -1,0 +1,20 @@
+{"step": "UI04 the session's token is not on the user surface", "want": 501, "got": 501, "ok": true}
+{"step": "CK-EDGE-01 a request with the session reaches the probe with the session's token", "want": 200, "got": 200, "ok": true}
+{"step": "CK-EDGE-01 without a session the probe gets no token", "want": [401, "TOKEN_INVALID"], "got": [401, "TOKEN_INVALID"], "ok": true}
+{"step": "UI06 a state-changing request without BE-Request", "want": [403, "CSRF_HEADER_REQUIRED"], "got": [403, "CSRF_HEADER_REQUIRED"], "ok": true}
+{"step": "UI21 a top-level GET without BE-Request (a link from an e-mail)", "want": 200, "got": 200, "ok": true}
+{"step": "UI25 features for a live session", "want": 200, "got": 200, "ok": true}
+{"step": "UI25 features without a session", "want": [401, "SESSION_ENDED"], "got": [401, "SESSION_ENDED"], "ok": true}
+{"step": "UI05 six tabs at once all answered", "want": [200, 200, 200, 200, 200, 200], "got": [200, 200, 200, 200, 200, 200], "ok": true}
+{"step": "UI05 one exchange for them", "want": 1, "got": 1, "ok": true}
+{"step": "UI22 the password change through the edge", "want": 204, "got": 204, "ok": true}
+{"step": "UI22 the session that changed it goes on: TOKEN_STALE replayed with a new token", "want": 200, "got": 200, "ok": true}
+{"step": "UI22 precondition: the probe refused the cached token once and the edge exchanged once", "want": [1, 1], "got": [1, 1], "ok": true}
+{"step": "UI23 another session of the account must log in again", "want": [401, "SESSION_ENDED"], "got": [401, "SESSION_ENDED"], "ok": true}
+{"step": "UI23 and the third", "want": [401, "SESSION_ENDED"], "got": [401, "SESSION_ENDED"], "ok": true}
+{"step": "UI19 with iam-casdoor down a cached session goes on", "want": 200, "got": 200, "ok": true}
+{"step": "UI29 a session without a token while iam-casdoor is down", "want": [503, "DEPENDENCY_UNAVAILABLE"], "got": [503, "DEPENDENCY_UNAVAILABLE"], "ok": true}
+{"step": "UI29 the session was kept: after iam-casdoor is back it works", "want": 200, "got": 200, "ok": true}
+{"step": "UI07 logout through the edge", "want": 204, "got": 204, "ok": true}
+{"step": "UI07 the old cookie after logout", "want": [401, "SESSION_ENDED"], "got": [401, "SESSION_ENDED"], "ok": true}
+{"step": "CK-EDGE-07 no cookie, session digest or password in the logs", "want": [], "got": [], "ok": true}
