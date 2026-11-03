@@ -177,6 +177,36 @@
 #### T7 收尾
 
 - **门槛核对**：上面“范围内的预期”每一条有通过的测试；COMPAT、`features.json`、组件索引、交接更新；复盘；实测记录（16-01、16-02）交 kb。
+- **核对结果**（2026-11-03）。“SDK”指 `be-sdk-go` alpha.56 的测试，“剖面”指 `be-acceptance` 1.0.38 的身份剖面（Go 与 Python 两种探针），“浏览器路径”指 `experiment-data/16-05-login-flow`；新写的测试都做过改坏的反向检查（`foundations-02-data/t3`–`t6` 的 mutations）：
+
+| 预期 | 由什么验证 | 结论 |
+| --- | --- | --- |
+| TI01、TI07 伪造 `be-caller`、身份与标签不符 | SDK `grpcx.TestTheCallerIsTheCertificateNotALabel`、`TestConnectionsWithoutAValidIdentityAreRefused`；剖面 CK-ID-04（未获准的组件） | 过 |
+| TI02 别的组件、别的部署的证书 | SDK `grpcx` 的三个证书测试；剖面 CK-ID-04（别的根、别的部署） | 过 |
+| TI03 连到错误的目标 | SDK `grpcx.TestAWrongTargetGetsNothing`；`be-edge` `TestAServerWithAnotherIdentityIsRefused` | 过 |
+| TI04 凭据互相替换 | 向量 `jwt-verify`（31 例，含 `be_sv` 的 5 例）；iam-casdoor 端到端：Casdoor 的 ID 令牌在 `typ` 被拒 | 过 |
+| TI05 公开入口填受信字段 | SDK `launcher.TestOthersSeeNothingAndFieldsFollowTheSegments`（自称的头不进上下文、公开路由没有用户） | 过 |
+| TI06 漏了用户凭据、下游的拒绝 | SDK `calls.TestForwardingWithoutAUserCredentialIsNotSent`、`TestADownstream401ForTheUserIsUnprovable`；剖面 CK-ID-06（Go） | 过（Python 随第 6 项） |
+| TI08 复用连接交替两个用户 | SDK `launcher` 同一测试（同一条连接、四次交替） | 过 |
+| TI10 令牌不带角色与部门 | iam-casdoor `TestTokensPassTheSDKsVerification`；向量 `roles-claim-ignored` | 过（属性的新鲜度归第 3 项） |
+| TI11 不自动接管 | iam-casdoor 端到端：别的签发者的同一 subject 不接管、旧行归配置的签发者 | 过 |
+| TI20 到期、续期、未知密钥 | SDK `identity` 的公钥测试、`grpcx` 的过期证书与轮换；剖面 CK-ID-01（两种探针）；`be-edge` 证书轮换 | 过（长连接的撤销归第 3 项） |
+| TI21 外壳成员共进程 | SDK `shell.TestMembersOfOneShellCallEachOtherAsThemselves` | 过 |
+| UI04 脚本拿不到令牌 | iam-casdoor 端到端与浏览器路径：公开换取路由不存在（501） | 过 |
+| UI05 两个标签页同时 | 浏览器路径：六个同时，一次换取；`be-edge` `TestConcurrentMissesExchangeOnce` | 过 |
+| UI06 缺自定义请求头 | 浏览器路径；`be-edge` 单元与向量 | 过 |
+| UI07 登出后的旧 Cookie | 浏览器路径；iam-casdoor 端到端 | 过 |
+| UI19 身份适配组件重启 | 浏览器路径：停掉时有缓存的会话照常 | 过（`D_src_high` 的部分归第 3 项） |
+| UI20 失效没能传到边缘 | 按构造：缓存条目在令牌到期前 30 秒作废（`be-edge` `TestATokenIsNotUsedInItsLastSeconds`）；拉取失败时照用缓存的路径（`TestEndedSessionsAndLogoutDropTheirTokens`） | 过（没有黑盒地等一个令牌有效期） |
+| UI21 邮件里的链接 | 浏览器路径：不带请求头的 GET 照常 | 过 |
+| UI22 改密码 | 浏览器路径（当前会话透明续上，前提断言：恰好一次 401、一次换取）；iam-casdoor 端到端；剖面 CK-ID-05（Go） | 过（视图里的版本由测试部署代做，第 3 项接上） |
+| UI23 重试仍陈旧、会话已结束 | 浏览器路径（另外两个会话）；向量 `edge-flow` 的 `stale-twice` | 过 |
+| UI25 `features` | 浏览器路径（`be-ops features` 生成，边缘只给活着的会话） | 过 |
+| UI28 下游的 401 | 剖面 CK-ID-06；边缘只为 `TOKEN_STALE` 重放（向量 `edge-flow`） | 过（Go；Python 随第 6 项） |
+| UI29 换取时身份适配组件在重启 | 浏览器路径：503，会话保留，回来后照常 | 过 |
+| UI31 带幂等键的自动重试 | 后端一半：下游 401 答可重试的 503（CK-ID-06）、命令幂等（第一项的 CK-IDEM）；前端一半随前端 | 后端过，前端未做 |
+
+- **还有的尾巴**（不挡门槛，各有去处）：Python SDK 的 P8.25–P8.28 随第 6 项，且要排在第 3 项往视图里写版本之前；授权成员消费账号状态、来源水位覆盖身份、Casdoor 侧变更的全量比较、强制登出与重置第二因素归第 3 项；单元格接上边缘（`infra/traefik`、`infra/edge` 证书）在代表部署下次接入边缘时做；开发换取的上线检查（A101）仍按手册的清单，没有做成自动检查；插件的代价没达到 T4 自定的验收（见 T4）。
 
 ## 全局约束
 
