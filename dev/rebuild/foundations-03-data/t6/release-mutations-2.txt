@@ -1,0 +1,19 @@
+infra/authz 3.0.20 in progress (T6b), second round: the survivors after their tests, and the two mutants that did not compile, rewritten, 2026-11-04: each rule broken by one edit, go test -tags integration ./authz/, the file restored; a crash counts as red.
+red  a smaller domain releases it (CP53)
+       --- FAIL: TestMemberEndToEnd (73.59s)
+               	Error:      	Not equal: 
+               	Messages:   	map[change_key:rel3 new_revision:map[domain:authz.disposition.revision value:1] outcome:applied record:01a1a7fe-da0f-7db1-a92f-806ca4377ba8 security_revisions:[map[domain:authz.security.deployment value:155]]]
+red  a released disposition again
+       --- FAIL: TestMemberEndToEnd (73.59s)
+               	Error:      	Not equal: 
+               	Messages:   	a released disposition is released once: map[change_key:rel4again new_revision:map[domain:authz.disposition.revision value:1] outcome:applied record:01a1a800-1983-70eb-8a15-d62fd64b0b43 security_revisions:[map[domain:authz.security.deployment value:156]]]
+red  nothing is kept held (CP66)
+       --- FAIL: TestMemberEndToEnd (76.21s)
+               	Error:      	Not equal: 
+               	Messages:   	nothing of it within the unit's limit now
+red  a confirmation of another disposition counts
+       --- FAIL: TestMemberEndToEnd (38.38s)
+               	Error:      	Not equal: 
+               	Messages:   	map[detail:the authorization expired before the change could be committed domain:be reason:AUTHORIZATION_VIEW_EXPIRED status:503 title:The authorization view has expired trace_id:c8945719a6cabb9d3af951eb2dd3b77d type:urn:be:be:AUTHORIZATION_VIEW_EXPIRED]
+done
+rerun of the last mutant alone for its assertion: release_integration_test.go:149 expected 202 (a confirmation of another disposition is none), actual 200 applied. The first run of it failed earlier, at an AUTHORIZATION_VIEW_EXPIRED 503 (the request's cutoff passed inside the effect point's transaction): an intermittent timing failure, not this rule

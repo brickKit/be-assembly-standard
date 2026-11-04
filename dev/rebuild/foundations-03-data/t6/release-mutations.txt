@@ -1,0 +1,30 @@
+infra/authz 3.0.20 in progress (T6b), 2026-11-04: each rule broken by one edit, go test -tags integration ./authz/, the file restored; a crash counts as red.
+red  the disposed person releases it (CP44)
+       --- FAIL: TestMemberEndToEnd (73.53s)
+               	Error:      	Not equal: 
+               	Messages:   	map[change_key:rel2 new_revision:map[domain:authz.disposition.revision value:1] outcome:applied record:01a1a7f3-9fa7-7b15-ae5b-dbec2376dff6 security_revisions:[map[domain:authz.security.deployment value:155]]]
+does not compile: a smaller domain releases it (CP53)
+red  any revision
+       --- FAIL: TestMemberEndToEnd (76.21s)
+               	Error:      	Not equal: 
+               	Messages:   	a revision the disposition does not have (final: it binds its key): map[change_key:rel8s new_revision:map[domain:authz.disposition.revision value:1] outcome:applied record:01a1a7f4-b833-7f31-a3ac-4fdd8321e376 security_revisions:[map[domain:authz.security.deployment value:159]]]
+GREEN (survived)  a released disposition again
+red  a renewed held record comes back (CP31)
+       --- FAIL: TestMemberEndToEnd (78.77s)
+               	Error:      	Not equal: 
+does not compile: nothing is kept held (CP66)
+red  an admin's release is not protected (CP63)
+       --- FAIL: TestMemberEndToEnd (76.21s)
+               	Error:      	Not equal: 
+               	Messages:   	map[change_key:rel10 new_revision:map[domain:authz.disposition.revision value:1] outcome:applied record:01a1a7f8-6e61-7e53-a137-ee0515f3781a security_revisions:[map[domain:authz.security.deployment value:162]]]
+red  the confirmation is not used (CP71)
+       --- FAIL: TestMemberEndToEnd (76.17s)
+               	Error:      	Expected value not to be nil.
+               	Messages:   	used when the release applied
+GREEN (survived)  a confirmation of another disposition counts
+red  the disposition stays active
+       --- FAIL: TestMemberEndToEnd (86.28s)
+               	Error:      	Not equal: 
+               	Error:      	Condition never satisfied
+               	Messages:   	the east is given again
+done
