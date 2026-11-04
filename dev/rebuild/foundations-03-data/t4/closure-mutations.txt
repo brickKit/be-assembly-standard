@@ -1,0 +1,57 @@
+infra/authz 3.0.17 in progress (T4g part 1, closure and index), 2026-11-04: each rule broken by one edit, go test -tags integration ./authz/, the file restored; a crash counts as red.
+red  a grant whose role revision ended is not closed
+       --- FAIL: TestMemberEndToEnd (27.09s)
+               	Error:      	Condition never satisfied
+               	Error:      	Received unexpected error:
+red  a record whose unit ended is not closed
+       --- FAIL: TestMemberEndToEnd (26.89s)
+               	Error:      	Condition never satisfied
+               	Messages:   	the closure job keeps the books
+red  a record with nothing left is not closed
+       --- FAIL: TestMemberEndToEnd (26.95s)
+               	Error:      	Condition never satisfied
+               	Messages:   	the closure job keeps the books
+               	Error:      	Received unexpected error:
+red  partly outside is not marked for review
+       --- FAIL: TestMemberEndToEnd (26.86s)
+               	Error:      	Condition never satisfied
+               	Messages:   	partly outside: marked for review
+red  a holding whose unit ended is not closed
+       --- FAIL: TestMemberEndToEnd (27.09s)
+               	Error:      	Condition never satisfied
+               	Error:      	Received unexpected error:
+red  a unit's closure does not go on to its own dependents
+       --- FAIL: TestMemberEndToEnd (26.87s)
+               	Error:      	Condition never satisfied
+               	Messages:   	partly outside: marked for review
+red  an index that is not complete is trusted
+       --- FAIL: TestMemberEndToEnd (27.50s)
+               	Error:      	Condition never satisfied
+               	Messages:   	the domain marked for review
+red  a unit's closure misses what names its superseded records
+       --- FAIL: TestMemberEndToEnd (27.37s)
+               	Error:      	Condition never satisfied
+               	Messages:   	west, under the old ID, has nothing left
+red  a source that tightens registers no closure
+       --- FAIL: TestMemberEndToEnd (26.87s)
+               	Error:      	Condition never satisfied
+               	Messages:   	partly outside: marked for review
+red  a new record is not indexed
+       --- FAIL: TestMemberEndToEnd (26.81s)
+               	Error:      	Condition never satisfied
+               	Messages:   	partly outside: marked for review
+               	Error:      	Received unexpected error:
+red  the view gives a grant whose role revision ended
+       --- FAIL: TestMemberEndToEnd (26.31s)
+               	Error:      	Should be empty, but was [{demo.order demo.order.read map[region:{in [east] []  <nil> <nil> <nil> <nil>}] [id total] [] {2026-01-01T00:00:00.000000Z }  01a1a6c3-e422-7cbf-b6f4-d5f34e3fc971 {"digest":"sha256:315fba0821a55355e6a8e2a121776d80cbe5a3796c54a5e1aed3799696435c95","key":"demo.order","kind":"resource","owner_component":"demo/orders","version":"3.0.0"}}]
+               	Messages:   	its role revision ended: nothing
+red  a superseded unit does not resolve to its successor
+       --- FAIL: TestMemberEndToEnd (17.33s)
+               	Error:      	Not equal: 
+               	Messages:   	still under the renewed unit
+               	Error:      	Not equal: 
+red  a holding of a superseded unit is not one of its successor
+       --- FAIL: TestMemberEndToEnd (17.37s)
+               	Error:      	Not equal: 
+               	Messages:   	efs6: map[detail:row 8 domain:be metadata:map[change_key:efs6] reason:PERMISSION_DENIED status:403 title:Not allowed trace_id:c98b988eb7774e324428132527aae022 type:urn:be:be:PERMISSION_DENIED]
+done

@@ -1,0 +1,18 @@
+infra/authz 3.0.17 in progress (T4 acceptance cases), 2026-11-04: each rule broken by one edit, go test -tags integration ./authz/, the file restored; a crash counts as red.
+red  an applicant who lost eligibility cannot withdraw (row 7, CP91)
+       --- FAIL: TestMemberEndToEnd (19.31s)
+               	Error:      	Not equal: 
+               	Messages:   	d10w: map[detail:row 8 domain:be metadata:map[change_key:d10w] reason:PERMISSION_DENIED status:403 title:Not allowed trace_id:b36e56639812ce83fdf8d7a3c3974266 type:urn:be:be:PERMISSION_DENIED]
+red  anyone may cancel another's pending record (row 8, CP98)
+       --- FAIL: TestMemberEndToEnd (19.31s)
+               	Error:      	Not equal: 
+               	Messages:   	d11c: map[change_key:d11c new_revision:map[domain:authz.record.state value:2] outcome:applied record:01a1a6e0-7eb2-73d8-911c-dba7a83fc0fb security_revisions:[map[domain:authz.security.deployment value:35]]]
+PATTERN MISSING: the derived key has no state revision (CP81)
+done
+round 2, 2026-11-04: the third mutant with its pattern as formatted (gofmt split the line).
+red  the derived key has no state revision (CP81)
+       --- FAIL: TestMemberEndToEnd (33.82s)
+               	Error:      	Not equal: 
+               	Error:      	Not equal: 
+               	Messages:   	a final rejection binds
+done

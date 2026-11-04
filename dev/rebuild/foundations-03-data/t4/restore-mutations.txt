@@ -1,0 +1,31 @@
+infra/authz 3.0.17 in progress (T4g part 3, uncomputable and its restore), 2026-11-04: each rule broken by one edit, go test -tags integration ./authz/, the file restored; a crash counts as red.
+GREEN (survived)  a partly outside restore is not marked for review (row 30)
+GREEN (survived)  a computable held record registers no restore
+red  an applied restore leaves the record held
+       --- FAIL: TestMemberEndToEnd (30.23s)
+               	Error:      	Condition never satisfied
+               	Messages:   	restored
+red  a held record narrowed is not looked at again (CP115)
+       --- FAIL: TestMemberEndToEnd (30.52s)
+               	Error:      	Condition never satisfied
+               	Messages:   	its unit's closure found it computable with the new content and restored it
+               	Error:      	Received unexpected error:
+red  a restore starts from the wrong state (row 3 voids it)
+       --- FAIL: TestMemberEndToEnd (30.15s)
+               	Error:      	Condition never satisfied
+               	Messages:   	restored
+done
+round 2, 2026-11-04: round 1 found a closure storm (a scan going on to every unit, each scanning again) that re-marked the restored grant; fixed (a scan does not cascade) and tested. The review mutant again, the enqueue mutant rewritten (round 1 still called Enqueue), the storm as a mutant.
+red  a partly outside restore is not marked for review (row 30)
+       --- FAIL: TestMemberEndToEnd (31.23s)
+               	Error:      	Should be true
+               	Messages:   	partly outside: to be reviewed
+red  a computable held record registers no restore
+       --- FAIL: TestMemberEndToEnd (20.88s)
+               	Error:      	Received unexpected error:
+               	Error:      	Received unexpected error:
+red  a scan goes on to every unit's closure (the storm)
+       --- FAIL: TestMemberEndToEnd (31.27s)
+               	Error:      	Condition satisfied
+               	Messages:   	the scan covers every unit: it does not go on to each one's closure, which would scan again
+done round 2

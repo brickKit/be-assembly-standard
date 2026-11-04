@@ -1,0 +1,42 @@
+infra/authz 3.0.17 in progress (T4g part 2, accounts and expiry), 2026-11-04: each rule broken by one edit, go test -tags integration ./authz/, the file restored; a crash counts as red.
+does not compile: an account's change registers no closure
+does not compile: a disabled account ends nothing
+does not compile: a frozen account ends its records
+red  a disabled account with a security mark ends its records
+       --- FAIL: TestMemberEndToEnd (28.81s)
+               	Error:      	Not equal: 
+               	Messages:   	disabled as compromised: a disposition, nothing ends
+red  a grant of an ended account is not closed
+       --- FAIL: TestMemberEndToEnd (30.44s)
+               	Error:      	Condition never satisfied
+               	Messages:   	the books of a disabled account
+red  a holding of an ended account is not closed
+       --- FAIL: TestMemberEndToEnd (30.41s)
+               	Error:      	Condition never satisfied
+               	Messages:   	the books of a disabled account
+red  no expiry item is registered
+       --- FAIL: TestMemberEndToEnd (27.57s)
+               	Error:      	Condition never satisfied
+               	Messages:   	expired
+red  an expiry does not end the record
+       --- FAIL: TestMemberEndToEnd (27.44s)
+               	Error:      	Condition never satisfied
+               	Messages:   	expired
+               	Error:      	Received unexpected error:
+done
+round 2, 2026-11-04: the three that did not compile, rewritten.
+red  an account's change registers no closure
+       --- FAIL: TestMemberEndToEnd (30.38s)
+               	Error:      	Condition never satisfied
+               	Messages:   	the books of a disabled account
+               	Error:      	Received unexpected error:
+red  a disabled account ends nothing
+       --- FAIL: TestMemberEndToEnd (30.38s)
+               	Error:      	Condition never satisfied
+               	Messages:   	the books of a disabled account
+               	Error:      	Received unexpected error:
+red  a frozen account ends its records
+       --- FAIL: TestMemberEndToEnd (30.30s)
+               	Error:      	Condition never satisfied
+done round 2
+note: module.go was reformatted after this run (gofmt), so the first pattern of round 2 no longer matches the file as committed; the results above are of the code as it was.
