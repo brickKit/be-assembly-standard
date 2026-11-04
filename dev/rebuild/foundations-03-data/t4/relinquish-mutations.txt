@@ -1,0 +1,24 @@
+infra/authz 3.0.17 in progress (D82 relinquish), 2026-11-04: each rule broken by one edit, go test -tags integration ./authz/, the file restored; a crash counts as red.
+red  no fixed segment: a holder cannot relinquish
+       --- FAIL: TestMemberEndToEnd (34.17s)
+               	Error:      	Condition never satisfied
+               	Messages:   	carol relinquishes her own grant
+red  the fixed segment covers everyone's records
+       --- FAIL: TestMemberEndToEnd (25.92s)
+               	Error:      	Not equal: 
+               	Messages:   	map[detail:row 8 domain:be metadata:map[change_key:rl-11] reason:PERMISSION_DENIED status:403 title:Not allowed trace_id:11f93c0534702e067ff6dc9c5c4f856f type:urn:be:be:PERMISSION_DENIED]
+red  the holder fact is not the record's
+       --- FAIL: TestMemberEndToEnd (34.18s)
+               	Error:      	Condition never satisfied
+               	Messages:   	carol relinquishes her own grant
+red  the listing shows every record
+       --- FAIL: TestMemberEndToEnd (10.76s)
+               	Error:      	Condition never satisfied
+GREEN (survived)  a relinquishment may be a termination or a narrowing
+done
+round 2, 2026-11-04: the survivor against the sharpened case (it carries expected_state_revision, so only the route can refuse it, and its reason is checked).
+red  a relinquishment may be a termination or a narrowing
+       --- FAIL: TestMemberEndToEnd (25.99s)
+               	Error:      	Not equal: 
+               	Messages:   	map[detail:row 4 domain:be metadata:map[change_key:rl-narrow] reason:CHANGE_REVISION_STALE status:409 title:The target changed; preview again trace_id:0e8074d9244a8fd529fdcffa44bc45d2 type:urn:be:be:CHANGE_REVISION_STALE]
+done
