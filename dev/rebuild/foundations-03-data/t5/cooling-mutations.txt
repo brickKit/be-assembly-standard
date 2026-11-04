@@ -1,0 +1,61 @@
+infra/authz 3.0.19 in progress (T5 cooling-off, CP61), 2026-11-04: each rule broken by one edit, go test -tags integration ./authz/, the file restored; a crash counts as red.
+red  an admin whose holding ended within the cooling-off is not recent
+       --- FAIL: TestMemberEndToEnd (67.19s)
+               	Error:      	Not equal: 
+               	Messages:   	Bob's holding ended a moment ago
+               	Error:      	Not equal: 
+does not compile: an admin whose account is not proven now is not recent
+red  the requester's own doing does not count (CP108)
+       --- FAIL: TestMemberEndToEnd (64.62s)
+               	Error:      	Not equal: 
+               	Messages:   	an independent person must confirm
+red  the requester's doing counts forever
+       --- FAIL: TestMemberEndToEnd (64.80s)
+               	Error:      	Not equal: 
+               	Messages:   	Bob's holding ended a moment ago
+red  anyone's doing counts as the requester's
+       --- FAIL: TestMemberEndToEnd (66.27s)
+               	Error:      	Not equal: 
+               	Messages:   	confirmed, but it waits out the cooling-off
+               	Error:      	Received unexpected error:
+red  a veto outside a cooling-off
+       --- FAIL: TestMemberEndToEnd (66.43s)
+               	Error:      	Not equal: 
+               	Messages:   	map[change_key:co7 new_revision:map[domain:authz.record.state value:2] outcome:applied record:01a1a7b0-dead-79ec-bbf5-e9ecffaebe41 security_revisions:[map[domain:authz.security.deployment value:132]]]
+red  no veto
+       --- FAIL: TestMemberEndToEnd (74.12s)
+               	Error:      	Condition never satisfied
+               	Messages:   	map[]
+red  the cooling-off is not recorded
+       --- FAIL: TestMemberEndToEnd (66.35s)
+               	Error:      	Received unexpected error:
+red  the cooling-off is not audited
+       --- FAIL: TestMemberEndToEnd (64.71s)
+               	Error:      	Not equal: 
+               	Messages:   	the admins are told (the audit, without a channel)
+red  no cooling-off at all
+       --- FAIL: TestMemberEndToEnd (63.88s)
+               	Error:      	Not equal: 
+               	Messages:   	confirmed, but it waits out the cooling-off
+               	Error:      	Received unexpected error:
+red  an independent confirmer's widening cools off too
+       --- FAIL: TestMemberEndToEnd (51.17s)
+               	Error:      	Condition never satisfied
+               	Messages:   	confirmed by Bob: applied
+red  othersAvailable ignores CP108
+       --- FAIL: TestMemberEndToEnd (67.16s)
+               	Error:      	Not equal: 
+               	Messages:   	an independent person must confirm
+red  the owner confirmation is not audited as such
+       --- FAIL: TestMemberEndToEnd (67.29s)
+               	Error:      	Not equal: 
+               	Messages:   	every use of the owner's key is told
+red  a bound key answers the bound result (no CP61)
+       --- FAIL: TestMemberEndToEnd (26.37s)
+               	Error:      	Not equal: 
+               	Messages:   	pr2: map[change_key:pr2 new_revision:map[domain:authz.record.state value:1] outcome:awaiting_confirmation record:01a1a7b8-7b9e-7746-b544-a7a15d75a993]
+red  an ended saved record answers as bound
+       --- FAIL: TestMemberEndToEnd (28.81s)
+               	Error:      	Not equal: 
+               	Messages:   	a request whose record ended before it took effect: map[change_key:pr4 new_revision:map[domain:authz.record.state value:1] outcome:awaiting_confirmation record:01a1a7b8-f2e9-7e94-8af2-e6cececb5ed6]
+done

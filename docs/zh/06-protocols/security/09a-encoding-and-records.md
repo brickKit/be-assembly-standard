@@ -307,6 +307,7 @@
 | `record` | `Id` | 条件 | `applied`、`scheduled`，以及保存了记录的 `awaiting_confirmation`（放宽）时必填 |
 | `new_revision` | `RevisionRef` | 条件 | `applied` 时必填 |
 | `security_revisions` | `List<RevisionRef>` | 条件 | `applied` 时必填：被推进的安全修订 |
+| `basis` | `Enum(last_applied)` | 否 | 请求者的资格按来源最后已应用的事实判断（[安全 03 的只减少访问的操作](03-authorization-acceptance-and-revocation.md#只减少访问的操作)）时为 `last_applied`：依据未证明为最新；审计同样标明 |
 
 **变更计划 `change_plan` 的专有字段**：`items: List<PlanItem>`；`previewed_at: Instant`；`expires_at: Instant`；`plan_state: Enum(draft, previewed, confirmed, executing, completed, partially_completed, cancelled, expired)`。`PlanItem = {item_key: Text, request: change_request, item_state: Enum(pending, applied, rejected, needs_review), result: change_result（否）}`。各状态的含义与转换见[安全 08 的批量计划](08-state-and-change-protocol.md#批量计划)。
 

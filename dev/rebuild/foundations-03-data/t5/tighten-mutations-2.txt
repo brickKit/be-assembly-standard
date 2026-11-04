@@ -1,0 +1,14 @@
+infra/authz 3.0.18 in progress (T5e), second round after the tests that cover the first round's survivors, 2026-11-04: each rule broken by one edit, go test -tags integration ./authz/, the file restored; a crash counts as red.
+red  no last applied facts: every stale tightening refused
+       --- FAIL: TestMemberEndToEnd (33.76s)
+               	Error:      	Not equal: 
+               	Messages:   	map[detail:row 11 domain:be metadata:map[change_key:st5] reason:AUTHORIZATION_UNPROVABLE status:503 title:Authorization cannot be proven right now trace_id:52ecbc7e21aba12e082bfba304d2d5bc type:urn:be:be:AUTHORIZATION_UNPROVABLE]
+red  a confirmer of an admin's holding by the last applied facts
+       --- FAIL: TestMemberEndToEnd (33.80s)
+               	Error:      	Not equal: 
+               	Messages:   	map[basis:last_applied change_key:st6c new_revision:map[domain:authz.record.state value:3] outcome:applied record:01a1a78f-9636-71bd-9355-98635c353e52 security_revisions:[map[domain:authz.security.deployment value:111]]]
+red  a saved widening is confirmed with the tightening operation
+       --- FAIL: TestMemberEndToEnd (30.86s)
+               	Error:      	[]int{403, 404} does not contain 201
+               	Messages:   	a saved widening's confirmation is a change: map[expires_at:2026-11-07T17:16:45.293852Z id:01a1a790-296d-79d8-8c6c-65003662dc59]
+done

@@ -1,0 +1,68 @@
+infra/authz 3.0.18 in progress (T5e), 2026-11-04: each rule broken by one edit, go test -tags integration ./authz/, the file restored; a crash counts as red.
+red  a stalled source needs no second person
+       --- FAIL: TestBeyondTight (0.00s)
+               	Error:      	Should be true
+               	Messages:   	stalled: facts from before a rollback
+red  no watermark needs no second person
+       --- FAIL: TestMemberEndToEnd (75.82s)
+               	Error:      	Condition never satisfied
+               	Messages:   	renewed fully again
+       --- FAIL: TestBeyondTight (0.00s)
+red  never beyond T_tight
+       --- FAIL: TestMemberEndToEnd (39.70s)
+               	Error:      	Not equal: 
+               	Messages:   	map[basis:last_applied change_key:st7 new_revision:map[domain:authz.record.state value:2] outcome:applied record:01a1a781-c091-78ce-9c2e-a8b0243288e8 security_revisions:[map[domain:authz.security.deployment value:109]]]
+does not compile: no last applied facts: every stale tightening refused
+red  row 21 ignores the two-person rule
+       --- FAIL: TestMemberEndToEnd (40.21s)
+               	Error:      	Not equal: 
+               	Messages:   	map[basis:last_applied change_key:st7 new_revision:map[domain:authz.record.state value:2] outcome:applied record:01a1a782-651e-7b38-9bad-9249b8305be2 security_revisions:[map[domain:authz.security.deployment value:109]]]
+       --- FAIL: TestTheDecisionTable (0.00s)
+red  confirmers only proven now
+       --- FAIL: TestMemberEndToEnd (39.65s)
+               	Error:      	Not equal: 
+               	Messages:   	map[detail:the confirmer's eligibility cannot be proven now domain:be reason:AUTHORIZATION_UNPROVABLE status:503 title:Authorization cannot be proven right now trace_id:9a237dbd1835b0798f6d2cc467f4759b type:urn:be:be:AUTHORIZATION_UNPROVABLE]
+red  a confirmation is not recorded by the last applied facts
+       --- FAIL: TestMemberEndToEnd (39.63s)
+               	Error:      	Not equal: 
+               	Messages:   	map[detail:the confirmer's eligibility cannot be proven now domain:be reason:AUTHORIZATION_UNPROVABLE status:503 title:Authorization cannot be proven right now trace_id:b8b9f0947f65d1c97cb4f9f0e1d0a449 type:urn:be:be:AUTHORIZATION_UNPROVABLE]
+red  an attached confirmer is judged now only
+       --- FAIL: TestMemberEndToEnd (40.20s)
+               	Error:      	Not equal: 
+               	Messages:   	map[change_key:st7 outcome:processing reason:ADMIN_AVAILABILITY_UNPROVABLE]
+GREEN (survived)  a confirmer of an admin's holding by the last applied facts
+red  a unit never touches an admin
+       --- FAIL: TestMemberEndToEnd (31.73s)
+               	Error:      	Not equal: 
+               	Messages:   	map[basis:last_applied change_key:st6-01a1a785-f227-7c4e-80e0-8821c29f0b00 new_revision:map[domain:authz.record.state value:3] outcome:applied record:01a1a785-f227-7c4e-80e0-8821c29f0b00 security_revisions:[map[domain:authz.security.deployment value:109]]]
+red  only the unit an admin holding sits in, not those above
+       --- FAIL: TestMemberEndToEnd (29.72s)
+               	Error:      	Not equal: 
+               	Messages:   	map[basis:last_applied change_key:st6-01a1a786-7380-74f7-9781-926f461883a0 new_revision:map[domain:authz.record.state value:3] outcome:applied record:01a1a786-7380-74f7-9781-926f461883a0 security_revisions:[map[domain:authz.security.deployment value:109]]]
+red  the basis is not carried
+       --- FAIL: TestMemberEndToEnd (75.88s)
+               	Error:      	Not equal: 
+               	Messages:   	the result says its basis is not proven latest
+               	Error:      	Not equal: 
+red  the audit does not say its basis
+       --- FAIL: TestMemberEndToEnd (66.04s)
+               	Error:      	Not equal: 
+               	Messages:   	so does the audit
+               	Error:      	Not equal: 
+red  the audit names the change operation
+       --- FAIL: TestMemberEndToEnd (63.86s)
+               	Error:      	Not equal: 
+red  the changes take a tightening
+       --- FAIL: TestMemberEndToEnd (28.71s)
+               	Error:      	Not equal: 
+               	Messages:   	map[change_key:st4 new_revision:map[domain:authz.record.state value:2] outcome:applied record:01a1a78a-24c7-7f0a-aeed-beabd40f33cd security_revisions:[map[domain:authz.security.deployment value:108]]]
+red  a tightening checks the change operation
+       --- FAIL: TestMemberEndToEnd (40.20s)
+               	Error:      	Not equal: 
+               	Messages:   	map[detail:no valid authorization view domain:be metadata:map[resource_type:infra.authz.security_record] reason:AUTHORIZATION_VIEW_EXPIRED status:503 title:The authorization view has expired trace_id:4579a63f7af5c00d80445642a33ff368 type:urn:be:be:AUTHORIZATION_VIEW_EXPIRED]
+GREEN (survived)  a saved widening is confirmed with the tightening operation
+red  a tightening is confirmed with the change operation
+       --- FAIL: TestMemberEndToEnd (40.13s)
+               	Error:      	Not equal: 
+               	Messages:   	map[detail:no valid authorization view domain:be metadata:map[resource_type:infra.authz.security_record] reason:AUTHORIZATION_VIEW_EXPIRED status:503 title:The authorization view has expired trace_id:0a378b0728b84cbc9ab20bc293ace4da type:urn:be:be:AUTHORIZATION_VIEW_EXPIRED]
+done

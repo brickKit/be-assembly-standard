@@ -1,0 +1,18 @@
+make: Entering directory '/home/zhijie/Desktop/github/be-assembly-standard'
+make[1]: Entering directory '/home/zhijie/Desktop/github/be-assembly-standard/components/infra/authz'
+make -C ../iam-casdoor seed   # the identity member's seed accounts first; skipped when Casdoor is not reachable
+make[2]: Entering directory '/home/zhijie/Desktop/github/be-assembly-standard/components/infra/iam-casdoor'
+python3 -I scripts/dev_setup.py --users-only
+dev_setup: CASDOOR_URL is not set: the test accounts are not created (skipped)
+make[2]: Leaving directory '/home/zhijie/Desktop/github/be-assembly-standard/components/infra/iam-casdoor'
+go run ./cmd/seed
+seed infra/authz: the unit admin test.unit.admin.cn reads and changes security records
+make[1]: Leaving directory '/home/zhijie/Desktop/github/be-assembly-standard/components/infra/authz'
+make[1]: Entering directory '/home/zhijie/Desktop/github/be-assembly-standard/components/mdm/org'
+go run ./cmd/seed
+seed mdm/org: POST /api/authz/tightenings: 501 map[detail:this version has no POST /api/authz/tightenings domain:be metadata:map[route:POST /api/authz/tightenings] reason:CAPABILITY_UNSUPPORTED status:501 title:This capability is not supported trace_id: type:urn:be:be:CAPABILITY_UNSUPPORTED]
+exit status 1
+make[1]: *** [Makefile:10: seed] Error 1
+make[1]: Leaving directory '/home/zhijie/Desktop/github/be-assembly-standard/components/mdm/org'
+make: *** [Makefile:219: seed-data] Error 2
+make: Leaving directory '/home/zhijie/Desktop/github/be-assembly-standard'
