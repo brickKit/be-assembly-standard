@@ -6,9 +6,8 @@
 # chain lets Podman's bridges through, at every boot; (2) the cell's Docker-built images into root's Podman storage
 # (the same images in every row); (3) `brickkit up` as root (it installs into /etc/containers/systemd), the cell's
 # .env holding the ${VAR}s; then the cell's files go back to their owner; (4) BrickKit's environment check, as root:
-# with the forward unit enabled, briefly with it disabled (FRR-024 expects a warning), and with --units quadlet;
-# (5) once cell-chain.sh's secure stage has written the install claim into config/ (it can't run `up` itself), `up`
-# again so that the authorization member restarts with it. `--again` does only (5), for a claim already written.
+# with the forward unit enabled, briefly with it disabled (FRR-024 expects a warning), and with --units quadlet.
+# The install claim needs no second `up` since infra/authz 3.0.20 (a one-time code the secure stage presents, A130).
 # Outputs go to experiment-data/14-03-quadlet/rootful-setup/. rootful/quadlet-revert.sh undoes all of it.
 set -euo pipefail
 [ "$(id -u)" = 0 ] || { echo "run as root"; exit 1; }
@@ -21,14 +20,6 @@ up() {  # up <output file>: `brickkit up` as root, then the cell's files back to
   chown -R "$OWNER" "$D"
   [ "$rc" = 0 ] || { echo "brickkit up failed ($rc)"; exit "$rc"; }
 }
-claimed() {  # the install claim cells/secure.py writes, then up again
-  local t0; t0=$(date +%s)
-  echo "waiting for the install claim in config/infra-authz.yaml (cell-chain.sh's secure stage)..."
-  until grep -q '^AUTHZ_BOOTSTRAP_ADMIN:' "$D/config/infra-authz.yaml"; do
-    [ $(( $(date +%s) - t0 )) -gt 900 ] && { echo "no install claim after 15 min"; exit 1; }; sleep 2; done
-  up "$OUT/8-up-with-claim.txt"; chown -R "$OWNER" "$OUT"; echo "done: the authorization member runs with the claim"
-}
-[ "${2:-}" = --again ] && { claimed; exit 0; }
 
 cat > /etc/systemd/system/podman-docker-forward.service <<'UNIT'
 [Unit]
@@ -67,5 +58,4 @@ bash "$CHECK" > "$OUT/6-check-env-forward-disabled.txt" 2>&1 || true
 systemctl enable podman-docker-forward.service
 bash "$CHECK" --units quadlet > "$OUT/7-check-env-quadlet.txt" 2>&1 || true
 chown -R "$OWNER" "$OUT"
-claimed
 echo "done: outputs in $OUT"

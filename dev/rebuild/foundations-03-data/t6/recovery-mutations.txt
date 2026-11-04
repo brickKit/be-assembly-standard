@@ -1,0 +1,38 @@
+infra/authz 3.0.20 in progress (T6f), 2026-11-04: each rule broken by one edit, go test -tags integration ./authz/, the file restored; a crash counts as red.
+does not compile: any signature
+red  another deployment's request
+       --- FAIL: TestMemberEndToEnd (81.13s)
+               	Error:      	Not equal: 
+               	Messages:   	map[admin_state:operational recovery_generation:2]
+red  a request used twice
+       --- FAIL: TestMemberEndToEnd (78.59s)
+               	Error:      	Not equal: 
+               	Messages:   	a recovery request is used once: map[admin_state:operational recovery_generation:3]
+red  no new generation
+       --- FAIL: TestMemberEndToEnd (79.11s)
+               	Error:      	Not equal: 
+red  no admin holding made
+       --- FAIL: TestMemberEndToEnd (78.61s)
+               	Error:      	Not equal: 
+               	Error:      	"[]" should have 1 item(s), but has 0
+red  a second holding made
+       --- FAIL: TestMemberEndToEnd (79.17s)
+               	Error:      	"[01a1a848-0c37-75c0-8d1d-db91e4f61fb5 01a1a848-0c40-7015-97f3-0621b29c8109]" should have 1 item(s), but has 2
+red  the replaced admin's widenings go on
+       --- FAIL: TestMemberEndToEnd (79.35s)
+               	Error:      	Not equal: 
+red  the replaced holding is not held
+       --- FAIL: TestMemberEndToEnd (89.21s)
+               	Error:      	Not equal: 
+               	Error:      	Not equal: 
+               	Error:      	Not equal: 
+red  identity-side dispositions are not released
+       --- FAIL: TestMemberEndToEnd (81.76s)
+               	Error:      	Not equal: 
+               	Error:      	Not equal: 
+red  abort does nothing
+       --- FAIL: TestMemberEndToEnd (81.19s)
+               	Error:      	Not equal: 
+               	Messages:   	map[detail:no administrator recovery to abort domain:be reason:REQUEST_INVALID status:400 title:The request is not valid trace_id:8fdb520e5e1ab25659d9e46a2e5bd0c9 type:urn:be:be:REQUEST_INVALID]
+does not compile: operational with the account not active
+done

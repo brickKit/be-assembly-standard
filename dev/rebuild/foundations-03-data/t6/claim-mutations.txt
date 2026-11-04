@@ -1,0 +1,9 @@
+infra/authz 3.0.20 in progress (T6g), 2026-11-04: each rule broken by one edit, go test -tags integration ./authz/, the file restored; a crash counts as red.
+red  anyone claims a principal's claim
+       --- FAIL: TestMemberEndToEnd (3.33s)
+               	Error:      	Not equal: 
+               	Messages:   	not the claimant
+GREEN (survived)  a consumed claim is open (the holdings check stays)
+GREEN (survived)  management already there (the consumed check stays)
+done
+The two survivors are equivalent here: the claim's holding record stays (ended or not), so once claimed 'management already there' holds for good and each check backs the other up. 'Management already there' alone matters when an administrator recovery made a holding before anyone claimed: a member never claimed, which this run is not. Expiry and the generation binding (CP16's restore from a backup) are not tested: the expiry needs the claim open when its time is past, the generation an epoch change (item 4).
