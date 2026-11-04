@@ -15,7 +15,7 @@
     - 下一步：T7（受限的分级管理）；T5、T6 留给 T9 的：CP80、CP92、CP96 的账号停用形态，待补确认。
     - 这一项做出来的（已发布）：`be-protocol` alpha.56–63，`contract-infra-authz` alpha.2，`contract-infra-iam` alpha.2，`be-sdk-go` alpha.57–68，`be-sdk-python` a46–a48，`infra/iam-casdoor` 3.0.17–3.0.20，`infra/authz` 3.0.16–3.0.20，探针 3.2.34–3.2.37、套件 1.0.39–1.0.42。待复核：A120–A130。
   - 挂着的事：
-    - 上层仓库 2026-11-03 推送到 `92386119`（维护者下令）；之后的提交以 `git log origin/main..main` 为准。子仓库发布的版本都已推送并打了标签；没有已推送而未发布的。BrickKit 信箱里 FRB-014（代码地图把组件 ID 当路径）等回复。
+    - 上层仓库 2026-11-04 推送到 `c60cc36e`（维护者下令）；之后的提交以 `git log origin/main..main` 为准。子仓库发布的版本都已推送并打了标签；没有已推送而未发布的。BrickKit 信箱里 FRB-014（代码地图把组件 ID 当路径）等回复。
     - kb PR #61（计划缓存的实测记录与反馈）等 kb 审查；审查意见回来时照 `kb-contribute` 处理。kb PR #63（T5 的空闲轮询与统计检查）已合并。kb PR #64（复盘的反馈：补测的集成测试适合手工定点改坏；故障注入要打到“那一步”、只认故障造成的失败）等审查。kb PR #65（边缘会话层的实测，含真实插件的复测）、#64（又补了“红也要红在那条规则上”）等审查。
     - 注意到但没动：`be-sdk-go` 的 `launcher.TestResponsesAreNotHeldBackOnAKeptAliveConnection` 在 `make test` 的并行负载下偶尔以退出码 1 停止（2026-11-03 一次，单独跑 5 次都过，`foundations-03-data/t3/sdk-go-make-test.txt`）；T9 的“补取前先向 Casdoor 拉取”要 SDK 的补取在写回声之前给来源一个钩子。
     - 移到 T10 的检查（要第二个副本或确定性的打断）：CK-EV-04、CK-EV-02 的两个副本同时编号、CK-WK-05、CK-WK-03 的接管一半；CK-EV-10 进 T8；Python 探针的 `fail`、`hold_ms`、`emit` 与后台工作项随第 6 项补。
