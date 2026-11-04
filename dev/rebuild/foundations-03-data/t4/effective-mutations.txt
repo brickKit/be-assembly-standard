@@ -1,0 +1,91 @@
+infra/authz 3.0.17 in progress (T4f, effective segments), 2026-11-04: each rule broken by one edit, go test -tags integration ./authz/, the file restored.
+red  value sets are not intersected
+       --- FAIL: TestMemberEndToEnd (16.76s)
+               	Error:      	Not equal: 
+               	Messages:   	{east, west} ∩ {east, west} ∩ {east, north}
+               	Error:      	Should be empty, but was [{demo.order demo.order.read map[region:{in [east west] []  <nil> <nil> <nil> <nil>}] [id total] [] {2026-01-01T00:00:00.000000Z }  01a1a6af-9a43-734a-822a-d7308341fef8 {"digest":"sha256:315fba0821a55355e6a8e2a121776d80cbe5a3796c54a5e1aed3799696435c95","key":"demo.order","kind":"resource","owner_component":"demo/orders","version":"3.0.0"}}]
+red  self is within any set
+       --- FAIL: TestAtomIntersection (0.00s)
+           --- FAIL: TestAtomIntersection/self_within_a_set_without_the_grantee:_empty (0.00s)
+                   	Error:      	Should be false
+                   	Messages:   	{Kind:self Values:[] Items:[] Currency: Lo:<nil> LoClosed:<nil> Hi:<nil> HiClosed:<nil>}
+red  a subtree within another keeps the wider
+       --- FAIL: TestAtomIntersection (0.00s)
+           --- FAIL: TestAtomIntersection/a_subtree_within_a_subtree:_the_deeper (0.00s)
+                   	Error:      	Not equal: 
+           --- FAIL: TestAtomIntersection/an_exact_node_within_a_subtree (0.00s)
+red  an interval keeps the looser end
+       --- FAIL: TestAtomIntersection (0.00s)
+           --- FAIL: TestAtomIntersection/intervals:_the_tighter_ends (0.00s)
+                   	Error:      	Not equal: 
+           --- FAIL: TestAtomIntersection/disjoint_intervals:_empty (0.00s)
+does not compile: an empty interval is not empty
+GREEN (survived)  touching ends: an open end closes
+red  intervals in two currencies meet
+       --- FAIL: TestAtomIntersection (0.00s)
+           --- FAIL: TestAtomIntersection/another_currency:_empty (0.00s)
+                   	Error:      	Should be false
+                   	Messages:   	{Kind:interval Values:[] Items:[] Currency:EUR Lo:0x115ff81c300 LoClosed:0x115fede3450 Hi:<nil> HiClosed:<nil>}
+red  a pair outside the table keeps the first atom
+       --- FAIL: TestAtomIntersection (0.00s)
+           --- FAIL: TestAtomIntersection/a_pair_outside_the_table:_empty,_never_more (0.00s)
+                   	Error:      	Should be false
+                   	Messages:   	{Kind:in Values:[a] Items:[] Currency: Lo:<nil> LoClosed:<nil> Hi:<nil> HiClosed:<nil>}
+does not compile: the validity keeps the earlier start
+does not compile: validities that do not overlap meet
+red  a unit may grant what its parent may not
+       --- FAIL: TestUnitLimitsChainToTheRoot (0.00s)
+               	Error:      	Not equal: 
+               	Messages:   	the operations its parent may grant too
+GREEN (survived)  an operation the unit may not grant gives segments
+GREEN (survived)  a cycle of units has no end (no depth guard)
+red  the fields are not intersected
+       --- FAIL: TestSegmentIntersection (0.00s)
+               	Error:      	Not equal: 
+               	Messages:   	the fields in both
+does not compile: the view gives the grant's own segments
+red  a retired key takes part
+       --- FAIL: TestOnlyUsableKeysTakePart (0.00s)
+               	Error:      	Should be false
+               	Messages:   	retired in the registry
+               	Error:      	Should be false
+red  a key its owner no longer defines takes part
+       --- FAIL: TestMemberEndToEnd (24.21s)
+               	Error:      	Should be empty, but was [demo.invoice.export]
+               	Messages:   	the owner no longer defines the key: nothing
+       --- FAIL: TestOnlyUsableKeysTakePart (0.00s)
+red  the effect point proves against the unit's own scope
+       --- FAIL: TestMemberEndToEnd (16.75s)
+               	Error:      	Not equal: 
+               	Messages:   	ef6: map[change_key:ef6 new_revision:map[domain:authz.record.state value:1] outcome:applied record:01a1a6b4-cc62-783b-a300-b229de597af2 security_revisions:[map[domain:authz.security.deployment value:36]]]
+done
+round 2, 2026-11-04: the survivors against the two new cases, the four that did not compile rewritten; a crash (FAIL without --- FAIL) counts as red.
+red  touching ends: an open end closes
+       --- FAIL: TestAtomIntersection (0.00s)
+           --- FAIL: TestAtomIntersection/the_same_lower_end,_one_open:_open (0.00s)
+                   	Error:      	Not equal: 
+red  an operation the unit may not grant gives segments
+       --- FAIL: TestUnitLimitsChainToTheRoot (0.00s)
+               	Error:      	"[{demo.order demo.order.read map[region:{in [east west] []  <nil> <nil> <nil> <nil>}] [id] [] {2026-01-01T00:00:00Z }   null} {demo.order demo.order.export map[region:{all [] []  <nil> <nil> <nil> <nil>}] [] [] {2026-01-01T00:00:00Z }   null}]" should have 1 item(s), but has 2
+               	Messages:   	a scope segment for an operation the unit may not grant gives nothing
+red  a cycle of units has no end (no depth guard)
+red  an empty interval is not empty
+       --- FAIL: TestAtomIntersection (0.00s)
+           --- FAIL: TestAtomIntersection/disjoint_intervals:_empty (0.00s)
+                   	Error:      	Should be false
+                   	Messages:   	{Kind:interval Values:[] Items:[] Currency:EUR Lo:0x184862388990 LoClosed:0x18486278312c Hi:0x184862388980 HiClosed:0x18486278312b}
+red  the validity keeps the earlier start
+       --- FAIL: TestSegmentIntersection (0.00s)
+               	Error:      	Not equal: 
+               	Messages:   	the later start, the earlier end
+               	Error:      	Should be false
+red  validities that do not overlap meet
+       --- FAIL: TestSegmentIntersection (0.00s)
+               	Error:      	Should be false
+               	Messages:   	validities that do not overlap
+red  the view gives the grant's own segments
+       --- FAIL: TestMemberEndToEnd (26.22s)
+               	Error:      	Not equal: 
+               	Messages:   	{east, west} ∩ {east, west} ∩ {east, north}
+               	Error:      	Should be empty, but was [{demo.order demo.order.read map[region:{in [east west] []  <nil> <nil> <nil> <nil>}] [id total] [] {2026-01-01T00:00:00.000000Z }  01a1a6b8-2144-7041-99d4-afa418b6ace7 {"digest":"sha256:315fba0821a55355e6a8e2a121776d80cbe5a3796c54a5e1aed3799696435c95","key":"demo.order","kind":"resource","owner_component":"demo/orders","version":"3.0.0"}}]
+done round 2

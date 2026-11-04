@@ -1,0 +1,38 @@
+infra/authz 3.0.17 in progress (T4e, neutral changes), 2026-11-04: each rule broken by one edit, go test -tags integration ./authz/, the file restored.
+red  a neutral change advances the state revision
+               	Error Trace:	/home/zhijie/Desktop/github/be-assembly-standard/components/infra/authz/authz/neutral_integration_test.go:54
+               	            				/home/zhijie/Desktop/github/be-assembly-standard/components/infra/authz/authz/authz_integration_test.go:343
+               	Error:      	Not equal: 
+               	Messages:   	not a state transition: jobs registered for the record stay valid
+red  a neutral change advances the security revision
+               	Error Trace:	/home/zhijie/Desktop/github/be-assembly-standard/components/infra/authz/authz/neutral_integration_test.go:56
+               	            				/home/zhijie/Desktop/github/be-assembly-standard/components/infra/authz/authz/authz_integration_test.go:343
+               	Error:      	Not equal: 
+red  a neutral change is not audited
+               	Error Trace:	/home/zhijie/Desktop/github/be-assembly-standard/components/infra/authz/authz/neutral_integration_test.go:57
+               	            				/home/zhijie/Desktop/github/be-assembly-standard/components/infra/authz/authz/authz_integration_test.go:343
+               	Error:      	Not equal: 
+               	Messages:   	audited all the same
+does not compile: a neutral change may change more than the name
+red  anyone may make a neutral change
+               	Error Trace:	/home/zhijie/Desktop/github/be-assembly-standard/components/infra/authz/authz/authz_integration_test.go:453
+               	            				/home/zhijie/Desktop/github/be-assembly-standard/components/infra/authz/authz/neutral_integration_test.go:68
+               	Error:      	Not equal: 
+               	Messages:   	n3: map[change_key:n3 new_revision:map[domain:authz.record.state value:1] outcome:applied record:01a1a6a7-927d-7a65-a79f-d728fdb0d006]
+red  a narrowing may rename
+               	Error Trace:	/home/zhijie/Desktop/github/be-assembly-standard/components/infra/authz/authz/authz_integration_test.go:453
+               	            				/home/zhijie/Desktop/github/be-assembly-standard/components/infra/authz/authz/neutral_integration_test.go:73
+               	Error:      	Not equal: 
+               	Messages:   	n4: map[change_key:n4 new_revision:map[domain:authz.record.state value:2] outcome:applied record:01a1a6a7-d906-783a-b771-ab73024eb1ef security_revisions:[map[domain:authz.security.deployment value:29]]]
+red  an ended record may be renamed (row 4)
+               	Error Trace:	/home/zhijie/Desktop/github/be-assembly-standard/components/infra/authz/authz/authz_integration_test.go:453
+               	            				/home/zhijie/Desktop/github/be-assembly-standard/components/infra/authz/authz/neutral_integration_test.go:80
+               	Error:      	Not equal: 
+               	Messages:   	n6: map[change_key:n6 new_revision:map[domain:authz.record.state value:2] outcome:applied record:01a1a6a8-53ef-7498-b17f-a71af3296f7b]
+done
+round 2, 2026-11-04: the mutant that did not compile, rewritten (the comparison kept, its result ignored).
+red  a neutral change may change more than the name
+               	Error Trace:	/home/zhijie/Desktop/github/be-assembly-standard/components/infra/authz/authz/authz_integration_test.go:453
+               	            				/home/zhijie/Desktop/github/be-assembly-standard/components/infra/authz/authz/neutral_integration_test.go:63
+               	Error:      	Not equal: 
+               	Messages:   	n2: map[change_key:n2 new_revision:map[domain:authz.record.state value:1] outcome:applied record:01a1a6a8-8603-7725-96f0-2f47fa884e08]
