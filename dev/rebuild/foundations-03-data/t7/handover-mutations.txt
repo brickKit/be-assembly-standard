@@ -1,0 +1,19 @@
+infra/authz 3.0.21 in progress (T7c), 2026-11-05: each rule broken by one edit, go test -tags integration ./authz/, the file restored; a crash counts as red.
+red  a rebinding need not contain the old grant
+       --- FAIL: TestMemberEndToEnd (8.61s)
+               	Error:      	Not equal: 
+               	Messages:   	t6: map[change_key:t6 new_revision:map[domain:authz.record.state value:1] outcome:applied record:01a1a8d0-855c-7dd5-8713-da60c673b6a1 security_revisions:[map[domain:authz.security.deployment value:14]]]
+red  any manager edits roles
+       --- FAIL: TestMemberEndToEnd (81.43s)
+               	Error:      	Not equal: 
+               	Messages:   	ho16: map[change_key:ho16 new_revision:map[domain:authz.record.state value:1] outcome:applied record:01a1a8d1-ca01-70a9-99da-c338aaa41c9f security_revisions:[map[domain:authz.security.deployment value:233]]]
+red  a holding manages its own unit only, nothing below
+       --- FAIL: TestMemberEndToEnd (6.02s)
+               	Error:      	Not equal: 
+               	Messages:   	h1: map[detail:row 8 domain:be metadata:map[change_key:h1] reason:PERMISSION_DENIED status:403 title:Not allowed trace_id:3e67c3c27fb2a2686722866cc5bc43e2 type:urn:be:be:PERMISSION_DENIED]
+       --- FAIL: TestManagesWith (0.00s)
+red  a grant's tightening takes grant
+       --- FAIL: TestMemberEndToEnd (78.94s)
+               	Error:      	Not equal: 
+               	Messages:   	dl8: map[change_key:dl8 new_revision:map[domain:authz.record.state value:2] outcome:applied record:01a1a8d3-2289-7cf7-abe9-d5eb0901f018 security_revisions:[map[domain:authz.security.deployment value:215]]]
+done
