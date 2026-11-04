@@ -11,7 +11,7 @@
 
 | 组件 ID | 能力 | 范围 | 实现 | 边界卡 | 组件文档 | 必需依赖 | 被谁必需依赖 |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| `infra/iam-casdoor` | 身份认证适配（Casdoor） | 当前重建 | 3.0.18 | [infra.md](../07-components/infra.md#infraiam-casdoor) | [BRICKKIT](../../../components/infra/iam-casdoor/BRICKKIT.md) · [AGENTS](../../../components/infra/iam-casdoor/AGENTS.md) · [design](../../../components/infra/iam-casdoor/docs/design.md) | — | 身份族的全部 51 个使用者（见边界卡） |
+| `infra/iam-casdoor` | 身份认证适配（Casdoor） | 当前重建 | 3.0.19 | [infra.md](../07-components/infra.md#infraiam-casdoor) | [BRICKKIT](../../../components/infra/iam-casdoor/BRICKKIT.md) · [AGENTS](../../../components/infra/iam-casdoor/AGENTS.md) · [design](../../../components/infra/iam-casdoor/docs/design.md) | — | 身份族的全部 51 个使用者（见边界卡） |
 | `infra/iam-keycloak` | 身份认证适配（Keycloak） | 远期 | — | [infra.md](../07-components/infra.md#infraiam-keycloak) | — | — | 身份族的全部 51 个使用者（见边界卡） |
 | `infra/authz` | 授权：权限目录、授予、视图与核验 | 当前重建 | 3.0.17 | [infra.md](../07-components/infra.md#infraauthz) | [BRICKKIT](../../../components/infra/authz/BRICKKIT.md) · [AGENTS](../../../components/infra/authz/AGENTS.md) · [design](../../../components/infra/authz/docs/design.md) | 身份（`infra/iam-*`） | 46 个组件（几乎全部业务组件，见各边界卡） |
 | `infra/authz-static` | 授权的静态配置成员 | 远期 | — | — | — | — | — |
@@ -125,7 +125,7 @@
 | 外壳 | 版本 | 编进的成员 | 文档 |
 | --- | --- | --- | --- |
 | `be/go-core` | 3.0.45 | `test/probe-go@3.2.35`、`test/probe-go2@3.2.35`、`test/probe-go3@3.2.35`、`test/probe-go4@3.2.35`、`erp/inventory@3.0.14`、`erp/credit@3.0.13`、`erp/sales@3.0.20`、`erp/billing@3.0.20` | [BRICKKIT](../../../shell/be/go-core/BRICKKIT.md) · [AGENTS](../../../shell/be/go-core/AGENTS.md) |
-| `be/go-infra` | 3.0.41 | `test/probe-go@3.2.35`、`test/probe-go2@3.2.35`、`test/probe-go3@3.2.35`、`test/probe-go4@3.2.35`、`infra/iam-casdoor@3.0.18`、`infra/authz@3.0.17`、`infra/audit@3.0.13`、`mdm/org@3.0.14`、`mdm/currency@3.0.15`、`mdm/partner@3.0.17`、`mdm/product@3.0.17` | [BRICKKIT](../../../shell/be/go-infra/BRICKKIT.md) · [AGENTS](../../../shell/be/go-infra/AGENTS.md) |
+| `be/go-infra` | 3.0.42 | `test/probe-go@3.2.35`、`test/probe-go2@3.2.35`、`test/probe-go3@3.2.35`、`test/probe-go4@3.2.35`、`infra/iam-casdoor@3.0.19`、`infra/authz@3.0.17`、`infra/audit@3.0.13`、`mdm/org@3.0.14`、`mdm/currency@3.0.15`、`mdm/partner@3.0.17`、`mdm/product@3.0.17` | [BRICKKIT](../../../shell/be/go-infra/BRICKKIT.md) · [AGENTS](../../../shell/be/go-infra/AGENTS.md) |
 | `be/py-render` | 3.0.37 | `test/probe-py@3.2.36`、`test/probe-py2@3.2.36`、`infra/print@3.0.13` | [BRICKKIT](../../../shell/be/py-render/BRICKKIT.md) · [AGENTS](../../../shell/be/py-render/AGENTS.md) |
 
 ## 事件

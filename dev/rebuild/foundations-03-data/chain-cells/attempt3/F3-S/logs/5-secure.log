@@ -1,0 +1,25 @@
+Traceback (most recent call last):
+  File "<frozen runpy>", line 201, in _run_module_as_main
+  File "<frozen runpy>", line 87, in _run_code
+  File "/home/zhijie/Desktop/github/be-assembly-standard/tools/be-acceptance/conformance/cells/__main__.py", line 129, in <module>
+    sys.exit(main())
+             ~~~~^^
+  File "/home/zhijie/Desktop/github/be-assembly-standard/tools/be-acceptance/conformance/cells/__main__.py", line 109, in main
+    print(asyncio.run(secure.secure(sys.argv[2])))
+          ~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/zhijie/.local/share/uv/python/cpython-3.15.0-linux-x86_64-gnu/lib/python3.15/asyncio/runners.py", line 205, in run
+    return runner.run(main)
+           ~~~~~~~~~~^^^^^^
+  File "/home/zhijie/.local/share/uv/python/cpython-3.15.0-linux-x86_64-gnu/lib/python3.15/asyncio/runners.py", line 128, in run
+    return self._loop.run_until_complete(task)
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^
+  File "/home/zhijie/.local/share/uv/python/cpython-3.15.0-linux-x86_64-gnu/lib/python3.15/asyncio/base_events.py", line 724, in run_until_complete
+    return future.result()
+           ~~~~~~~~~~~~~^^
+  File "/home/zhijie/Desktop/github/be-assembly-standard/tools/be-acceptance/conformance/cells/secure.py", line 102, in secure
+    r.raise_for_status()
+    ~~~~~~~~~~~~~~~~~~^^
+  File "/home/zhijie/Desktop/github/be-assembly-standard/tools/be-acceptance/conformance/.venv/lib/python3.15/site-packages/httpx/_models.py", line 829, in raise_for_status
+    raise HTTPStatusError(message, request=request, response=self)
+httpx.HTTPStatusError: Server error '503 Service Unavailable' for url 'http://127.0.0.1:18223/api/authz/records?type=management_unit'
+For more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/503
