@@ -1,0 +1,38 @@
+infra/authz 3.0.18 in progress (T5a confirmations), 2026-11-04: each rule broken by one edit, go test -tags integration ./authz/, the file restored; a crash counts as red.
+red  anyone with the change permission confirms (A123)
+       --- FAIL: TestMemberEndToEnd (25.99s)
+               	Error:      	Not equal: 
+               	Messages:   	map[expires_at:2026-11-07T16:01:31.550100635Z id:01a1a74b-499d-70b3-a3e6-5974c6d4f4fc]
+red  an expired confirmation holds
+       --- FAIL: TestMemberEndToEnd (26.03s)
+               	Error:      	Not equal: 
+               	Messages:   	map[change_key:cf8 new_revision:map[domain:authz.record.state value:2] outcome:applied record:01a1a74b-b4ec-7609-81d9-4f93b36374ec security_revisions:[map[domain:authz.security.deployment value:90]]]
+red  a confirmation for another record holds
+       --- FAIL: TestMemberEndToEnd (26.06s)
+               	Error:      	Not equal: 
+               	Messages:   	map[change_key:cf13 new_revision:map[domain:authz.record.state value:2] outcome:applied record:01a1a74c-20a0-73c1-8eac-971cf4e133f7 security_revisions:[map[domain:authz.security.deployment value:91]]]
+red  a confirmation for another revision holds
+       --- FAIL: TestMemberEndToEnd (25.98s)
+               	Error:      	Not equal: 
+               	Messages:   	map[change_key:cf7 new_revision:map[domain:authz.record.state value:2] outcome:applied record:01a1a74c-8c11-7c83-afc4-e83d8f65d483 security_revisions:[map[domain:authz.security.deployment value:90]]]
+red  the requester's own confirmation holds
+       --- FAIL: TestMemberEndToEnd (26.08s)
+               	Error:      	Not equal: 
+               	Messages:   	map[change_key:cf6 new_revision:map[domain:authz.record.state value:2] outcome:applied record:01a1a74c-f7ef-72c4-80d1-8f99cd2af776 security_revisions:[map[domain:authz.security.deployment value:90]]]
+red  the object's own confirmation holds
+       --- FAIL: TestMemberEndToEnd (26.03s)
+               	Error:      	Not equal: 
+               	Messages:   	map[change_key:cf10 new_revision:map[domain:authz.record.state value:2] outcome:applied record:01a1a74d-636d-70bd-8962-becdba0d9826 security_revisions:[map[domain:authz.security.deployment value:90]]]
+red  a confirmer no longer eligible still counts
+       --- FAIL: TestMemberEndToEnd (26.00s)
+               	Error:      	Not equal: 
+               	Messages:   	map[change_key:cf15 new_revision:map[domain:authz.record.state value:2] outcome:applied record:01a1a74d-cf00-7a31-93f6-7bf2c9f54843 security_revisions:[map[domain:authz.security.deployment value:93]]]
+red  a confirmation is never marked used
+       --- FAIL: TestMemberEndToEnd (25.97s)
+               	Error:      	Expected value not to be nil.
+               	Messages:   	used by the change that applied
+GREEN (survived)  a used confirmation holds again
+done
+note: "a used confirmation holds again" is an equivalent mutant: a tightening confirmation is used only by a change
+that applied, which either ended its target (the next one finds the start state stale, row 4) or moved its content
+revision (the confirmation binds the old one). Kept as a second guard.
