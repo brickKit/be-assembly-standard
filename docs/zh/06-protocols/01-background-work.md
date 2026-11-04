@@ -56,7 +56,7 @@
 | `holder` | 当前持有者：`<组件 ID>/<实例 ID>` |
 | `lease_until` | 租约到期时刻，**用数据库时钟**（`now()`）计算与比较，不用进程时钟 |
 | `attempts`、`max_attempts` | 已尝试的次数与上限 |
-| `run_at` | 最早可执行的时刻（退避用） |
+| `run_at` | 最早可执行的时刻：queue 排入时可以声明（到点才做的工作，例如[安全 08](security/08-state-and-change-protocol.md) 的待生效记录到点进入生效点），缺省为排入的时刻；退避也设它。工作项不提供撤回：到期之前业务状态变了的，处理器运行时按业务状态作废这一项 |
 | `effect_class` | 副作用种类，见下节；由作业声明，不在运行时推断 |
 | `operation_id` | 对外调用使用的幂等键，在开始一次运行的事务中写入：queue 在排入时（工作项身份加作业名）；cron 在物化时间槽时（取不复用的身份）；singleton 的第一段在作业首次物化时生成，之后在提交上一段进度的同一事务中为下一段生成。认领、接管与重新排队都沿用，对方据此去重；只有新的一次运行（singleton 的新一段）才生成新的。一次运行内有多个外部调用时，每个调用用派生的子键（`operation_id` 加调用序号），否则对方会把后面的调用当作重复吞掉。对方按键缓存失败应答时（例如缓存 4xx），`dead` 或 `business_hold` 的重新排队可以另取新键，但只有在这次运行的**每个子调用都已确认结果**（已生效或确认未生效）之后：已生效的子调用在重跑时跳过或沿用原键，含糊错误的子调用先按原键查询对方或由运维核实未生效；记录新旧键的关联。`outcome_unknown` 的重新排队不换键 |
 | `call_results` | 一次运行内每个子调用的结果（子键、已生效、确认未生效、未知）；每个子调用发出**之前**先在一个事务中记为“未知”，得到结果后与进度同事务更新；子键按语义取（调用名加业务参数的摘要），不按子调用的序号；重跑与换键据此判断，“未知”的子调用先按原键查询，不当作“未调用” |
@@ -71,7 +71,7 @@
 
 | 当前状态 | 事件 | 守卫条件 | 结果状态 | 动作 | 发出的事件 | 所需权限 |
 | --- | --- | --- | --- | --- | --- | --- |
-| （无） | 排入或物化 | — | `pending` | queue 与业务事务同事务排入；cron 由调度器按物化水位物化 | — | 业务或调度器 |
+| （无） | 排入或物化 | — | `pending` | queue 与业务事务同事务排入，`run_at` 为声明的最早执行时刻或排入的时刻；cron 由调度器按物化水位物化 | — | 业务或调度器 |
 | （无） | 补跑物化超出 `max_backlog` 的槽 | 补跑策略 `all` | `paused`（`backlog_exceeded`） | 告警 | 工作项暂停的摘要 | 调度器 |
 | `pending`、`retry_wait` | 业务要求停下核对 | 作业声明了业务暂停的条件，或有运维权限的人发起 | `paused`（`business_hold`） | 写审计 | 工作项暂停的摘要 | 作业或运维权限 |
 | `pending` | 认领 | — | `running` | `epoch` 加一、`attempts` 加一，写 `holder`、`lease_until = now() + ttl`、`claim_db_epoch` | — | 工作者 |
@@ -82,7 +82,7 @@
 | `running` | 认领后检查（任何来源状态的认领，包括接管与从 `retry_wait` 认领） | `non_idempotent_external` 且 `outcome_unknown` 为真 | `paused`（`outcome_unknown`） | 告警；不重发 | 工作项暂停的摘要 | 工作者 |
 | `running` | 发出非幂等外部调用之前 | 核对通过 | `running` | 本地事务把 `outcome_unknown` 置真；事务确认后才发出 | — | 持有者 |
 | `running` | 完成 | 核对通过；`local` 与 `emit_only` 的业务写入或发件同事务；外部种类已得到对方确认 | `done` | 一个本地事务：标记完成；非幂等调用同时清除 `outcome_unknown` | `emit_only` 写入的发件 | 持有者 |
-| `running` | 等待结果（作业声明的业务等待，例如依赖的来源暂时无法证明、生效点返回“处理中”） | 未超过作业声明的等待上限 | `retry_wait` | 撤回本次认领的尝试计数（`attempts` 减一），`run_at` 按退避设定；超过等待上限按不可重试的错误处理 | — | 持有者 |
+| `running` | 等待结果（作业声明的业务等待，例如依赖的来源暂时无法证明、生效点返回“处理中”） | 未超过作业声明的等待上限 | `retry_wait` | 撤回本次认领的尝试计数（`attempts` 减一），`run_at` 按已等待的时长退避（再等与已等的一样久，1 秒起，上限 5 分钟）；超过等待上限按不可重试的错误处理 | — | 持有者 |
 | `running` | 可重试的错误 | `attempts < max_attempts`；`non_idempotent_external` 另要求处理器确认调用“未生效”（例如连接在发出前被拒绝，或对方明确答复未受理） | `retry_wait` | `run_at` 按退避表设定；非幂等调用同一事务清除 `outcome_unknown` | — | 持有者 |
 | `running` | `non_idempotent_external` 的错误，不能确认未生效（超时、对方 5xx、应答丢失） | — | `paused`（`outcome_unknown`） | 告警；不重试 | 工作项暂停的摘要 | 持有者 |
 | `running` | `non_idempotent_external` 已置 `outcome_unknown` 后，对方明确答复未受理且重试也一样（不可重试） | — | `dead` | 同一事务清除 `outcome_unknown`，再按下一行处理 | 同下 | 持有者 |
@@ -107,8 +107,7 @@ UPDATE work_item
    SET state = 'running', epoch = epoch + 1, attempts = attempts + 1,
        holder = $me, lease_until = now() + $ttl, claim_db_epoch = current_db_epoch()
  WHERE id = $id
-   AND (   state = 'pending'
-        OR (state = 'retry_wait' AND run_at <= now())
+   AND (   (state IN ('pending', 'retry_wait') AND run_at <= now())
         OR (state = 'running'    AND lease_until <= now()))   -- 接管崩溃者留下的工作
 RETURNING epoch, claim_db_epoch;
 ```

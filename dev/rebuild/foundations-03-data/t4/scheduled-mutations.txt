@@ -1,0 +1,63 @@
+infra/authz 3.0.17 in progress (T4d), 2026-11-04: each rule broken by one edit, go test -tags integration ./authz/, the file restored.
+red  a job's state revision is not compared (row 3)
+               	Error Trace:	/home/zhijie/Desktop/github/be-assembly-standard/components/infra/authz/authz/scheduled_integration_test.go:162
+               	            				/home/zhijie/Desktop/github/be-assembly-standard/components/infra/authz/authz/authz_integration_test.go:336
+               	Error:      	Not equal: 
+               	Messages:   	a void job changes nothing
+GREEN (survived)  a job's start state is not compared (row 3)
+red  the derived key is bound outside the member's namespace
+               	Error Trace:	/home/zhijie/Desktop/github/be-assembly-standard/components/infra/authz/authz/scheduled_integration_test.go:101
+               	            				/home/zhijie/Desktop/github/be-assembly-standard/components/infra/authz/authz/authz_integration_test.go:336
+               	Error:      	Not equal: 
+               	Error Trace:	/home/zhijie/Desktop/github/be-assembly-standard/components/infra/authz/authz/scheduled_integration_test.go:133
+does not compile: a job does not recheck the requester's standing (CP68)
+red  processing completes the job instead of waiting
+               	Error Trace:	/home/zhijie/Desktop/github/be-assembly-standard/components/infra/authz/authz/authz_integration_test.go:396
+               	Error:      	Condition never satisfied
+               	Messages:   	due while the source is quiet: processing, a wait that spends no attempt
+red  no timed work item is registered
+               	Error Trace:	/home/zhijie/Desktop/github/be-assembly-standard/components/infra/authz/authz/scheduled_integration_test.go:98
+               	            				/home/zhijie/Desktop/github/be-assembly-standard/components/infra/authz/authz/authz_integration_test.go:336
+               	Error:      	Condition never satisfied
+               	Messages:   	the scheduled grant takes effect when it is due
+GREEN (survived)  the work item is due a day early (at once)
+red  a job's final rejection leaves the record scheduled
+               	Error Trace:	/home/zhijie/Desktop/github/be-assembly-standard/components/infra/authz/authz/scheduled_integration_test.go:129
+               	            				/home/zhijie/Desktop/github/be-assembly-standard/components/infra/authz/authz/authz_integration_test.go:336
+               	Error:      	Condition never satisfied
+               	Messages:   	the job decided
+red  a future widening applies at once
+               	Error Trace:	/home/zhijie/Desktop/github/be-assembly-standard/components/infra/authz/authz/authz_integration_test.go:452
+               	            				/home/zhijie/Desktop/github/be-assembly-standard/components/infra/authz/authz/scheduled_integration_test.go:90
+               	Error:      	Not equal: 
+               	Messages:   	d1: map[change_key:d1 new_revision:map[domain:authz.record.state value:1] outcome:applied record:01a1a69f-bf5e-781a-a589-db486d71adf5 security_revisions:[map[domain:authz.security.deployment value:19]]]
+red  a predecessor ended before the job voids it instead of rejecting (A122)
+               	Error Trace:	/home/zhijie/Desktop/github/be-assembly-standard/components/infra/authz/authz/scheduled_integration_test.go:153
+               	            				/home/zhijie/Desktop/github/be-assembly-standard/components/infra/authz/authz/authz_integration_test.go:336
+               	Error:      	Condition never satisfied
+               	Messages:   	the three jobs ran
+red  a renewal taking effect when due leaves its predecessor active
+               	Error Trace:	/home/zhijie/Desktop/github/be-assembly-standard/components/infra/authz/authz/scheduled_integration_test.go:159
+               	            				/home/zhijie/Desktop/github/be-assembly-standard/components/infra/authz/authz/authz_integration_test.go:336
+               	Error:      	Not equal: 
+red  a validity that ends before effective_from is accepted
+               	Error Trace:	/home/zhijie/Desktop/github/be-assembly-standard/components/infra/authz/authz/authz_integration_test.go:452
+               	            				/home/zhijie/Desktop/github/be-assembly-standard/components/infra/authz/authz/scheduled_integration_test.go:172
+               	Error:      	Not equal: 
+               	Messages:   	d4: map[change_key:d4 new_revision:map[domain:authz.record.state value:1] outcome:scheduled record:01a1a6a0-cde6-78c9-9177-f470ee103139]
+done
+round 2, 2026-11-04: the work item due at once against the sharpened d1; the requester's standing mutant rewritten to compile.
+red  the work item is due a day early (at once)
+               	Error Trace:	/home/zhijie/Desktop/github/be-assembly-standard/components/infra/authz/authz/scheduled_integration_test.go:96
+               	            				/home/zhijie/Desktop/github/be-assembly-standard/components/infra/authz/authz/authz_integration_test.go:336
+               	Error:      	Not equal: 
+               	            	expected: authz.dueItem{State:"pending", Attempts:0, LastError:""}
+red  a job does not recheck the requester's standing (CP68)
+               	Error Trace:	/home/zhijie/Desktop/github/be-assembly-standard/components/infra/authz/authz/scheduled_integration_test.go:130
+               	            				/home/zhijie/Desktop/github/be-assembly-standard/components/infra/authz/authz/authz_integration_test.go:336
+               	Error:      	Condition never satisfied
+               	Messages:   	the job decided
+done round 2
+note: "a job's start state is not compared (row 3)" is an equivalent mutant: every transition advances the state
+revision (transition() in enact.go, migration 0002), so a record whose state changed since the job was registered
+always has another state revision too, and the revision comparison voids the job. Kept as a second guard.
