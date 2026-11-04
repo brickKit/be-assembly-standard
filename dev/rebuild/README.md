@@ -13,14 +13,14 @@
     - T5 做完（确认记录、受保护操作、确认后的生效、部署所有者确认与冷静期、只减少访问的操作与 `T_tight`；计划的“T5b–T5d 做了”“T5e 做了”“冷静期与 CP61”“T5 的验收”）。第二次连锁发布做完（全部成员在 `be-sdk-go` alpha.68、`be-sdk-python` a48，`infra/authz` 3.0.19，清单见计划的“第二次连锁发布”），两个真机格从空库起全部通过。
     - T6 做完（安全处置的发起、解除与身份侧派生，最后管理员，待恢复，管理员恢复，安装认领；计划的“T6 进度”“T6 的验收”），`infra/authz` 3.0.20 已发布，两个真机格通过。留下的：所有者确认的“解除管理员处置”进冷静期；待补确认（随 T9）；几条要换环境才测得到的写在 T6 的验收里。
     - 下一步：T7（受限的分级管理）；T5、T6 留给 T9 的：CP80、CP92、CP96 的账号停用形态，待补确认。
-    - 这一项做出来的（已发布）：`be-protocol` alpha.56–63，`contract-infra-authz` alpha.2，`contract-infra-iam` alpha.2，`be-sdk-go` alpha.57–68，`be-sdk-python` a46–a48，`infra/iam-casdoor` 3.0.17–3.0.20，`infra/authz` 3.0.16–3.0.20，探针 3.2.34–3.2.37、套件 1.0.39–1.0.42。待复核：A120–A130。
+    - 这一项做出来的（已发布）：`be-protocol` alpha.56–63，`contract-infra-authz` alpha.2，`contract-infra-iam` alpha.2，`be-sdk-go` alpha.57–68，`be-sdk-python` a46–a48，`infra/iam-casdoor` 3.0.17–3.0.20，`infra/authz` 3.0.16–3.0.20，探针 3.2.34–3.2.37、套件 1.0.39–1.0.42。A120–A130 维护者 2026-11-04 确认。
   - 挂着的事：
     - 上层仓库 2026-11-04 推送到 `c60cc36e`（维护者下令）；之后的提交以 `git log origin/main..main` 为准。子仓库发布的版本都已推送并打了标签；没有已推送而未发布的。BrickKit 信箱里 FRB-014（代码地图把组件 ID 当路径）等回复。
     - kb PR #61（计划缓存的实测记录与反馈）等 kb 审查；审查意见回来时照 `kb-contribute` 处理。kb PR #63（T5 的空闲轮询与统计检查）已合并。kb PR #64（复盘的反馈：补测的集成测试适合手工定点改坏；故障注入要打到“那一步”、只认故障造成的失败）等审查。kb PR #65（边缘会话层的实测，含真实插件的复测）、#64（又补了“红也要红在那条规则上”）等审查。
     - 注意到但没动：`be-sdk-go` 的 `launcher.TestResponsesAreNotHeldBackOnAKeptAliveConnection` 在 `make test` 的并行负载下偶尔以退出码 1 停止（2026-11-03 一次，单独跑 5 次都过，`foundations-03-data/t3/sdk-go-make-test.txt`）；T9 的“补取前先向 Casdoor 拉取”要 SDK 的补取在写回声之前给来源一个钩子。
     - 移到 T10 的检查（要第二个副本或确定性的打断）：CK-EV-04、CK-EV-02 的两个副本同时编号、CK-WK-05、CK-WK-03 的接管一半；CK-EV-10 进 T8；Python 探针的 `fail`、`hold_ms`、`emit` 与后台工作项随第 6 项补。
     - 跑套件的环境：`source dev/rebuild/experiment-scripts/itenv.sh`，再把 `BE_ACC_*` 设成对应的 `BE_SDK_TEST_*`（PG_ADMIN、NATS_URL、S3_URL、S3_ACCESS_KEY、S3_SECRET_KEY）。监视长任务时 `pgrep -f '<命令>'` 会匹配到监视脚本自己（2026-11-03 两个监视因此不退出），盯进程号或用 `pgrep -x`。
-- 设计冻结与正式文档迁移已完成（[migration-plan.md](migration-plan.md)）。待复核的 AI 选择：A109（驻留期起始值）、A117、A118（第 2 项 T2）、A120–A130（第 3 项 T2–T6），都在 `docs/zh/02-decisions/09-ai-choices.md`。
+- 设计冻结与正式文档迁移已完成（[migration-plan.md](migration-plan.md)）。待复核的 AI 选择：A109（驻留期起始值）、A117、A118（第 2 项 T2）（A120–A130 维护者 2026-11-04 确认），都在 `docs/zh/02-decisions/09-ai-choices.md`。
 
 ### 实验各步
 
