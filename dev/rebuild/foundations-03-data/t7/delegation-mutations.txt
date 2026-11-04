@@ -1,0 +1,74 @@
+infra/authz 3.0.21 in progress (T7b), 2026-11-04: each rule broken by one edit, go test -tags integration ./authz/, the file restored; a crash counts as red.
+red  a child unit without delegate_management
+       --- FAIL: TestMemberEndToEnd (81.27s)
+               	Error:      	Not equal: 
+               	Messages:   	map[detail:row 18: max_subdelegation_depth is not below the parent unit's (0) domain:be metadata:map[change_key:dl10] reason:CONTAINMENT_NOT_PROVEN status:403 title:The change exceeds what can be proven trace_id:ffd32ee2e3fb511d1c1d362b5dfec512 type:urn:be:be:CONTAINMENT_NOT_PROVEN]
+red  no re-delegation containment
+       --- FAIL: TestMemberEndToEnd (81.28s)
+               	Error:      	Not equal: 
+               	Messages:   	dl3: map[change_key:dl3 new_revision:map[domain:authz.record.state value:1] outcome:awaiting_confirmation record:01a1a8b9-49e5-7ebb-8769-b44c2452362a]
+red  a unit candidate's shape unchecked
+       --- FAIL: TestMemberEndToEnd (78.68s)
+               	Error:      	Not equal: 
+               	Messages:   	dl6: map[change_key:dl6 new_revision:map[domain:authz.record.state value:1] outcome:awaiting_confirmation record:01a1a8ba-83a1-7982-906b-f75134d3cf77]
+red  a holding without delegate_management
+       --- FAIL: TestMemberEndToEnd (78.73s)
+               	Error:      	Not equal: 
+               	Messages:   	dl10h: map[change_key:dl10h new_revision:map[domain:authz.record.state value:1] outcome:awaiting_confirmation record:01a1a8bb-bd84-78fc-89b8-09399799b819]
+red  a role binding takes grant
+       --- FAIL: TestMemberEndToEnd (81.23s)
+               	Error:      	Not equal: 
+               	Messages:   	dl9: map[change_key:dl9 new_revision:map[domain:authz.record.state value:1] outcome:applied record:01a1a8bd-0109-7e1a-a3c0-5b679616c3b5 security_revisions:[map[domain:authz.security.deployment value:216]]]
+red  a grant without its action
+       --- FAIL: TestMemberEndToEnd (81.42s)
+               	Error:      	Not equal: 
+               	Messages:   	dl9: map[change_key:dl9 new_revision:map[domain:authz.record.state value:1] outcome:applied record:01a1a8be-4579-78f0-8680-49a28137bbec security_revisions:[map[domain:authz.security.deployment value:216]]]
+red  a unit renewed under itself
+       --- FAIL: TestMemberEndToEnd (78.81s)
+               	Error:      	Not equal: 
+               	Messages:   	dl16: map[detail:row 18: max_subdelegation_depth is not below the parent unit's (0) domain:be metadata:map[change_key:dl16] reason:CONTAINMENT_NOT_PROVEN status:403 title:The change exceeds what can be proven trace_id:c56bf2c5b22d3347886ab403985342cd type:urn:be:be:CONTAINMENT_NOT_PROVEN]
+red  a cancellation without its action
+       --- FAIL: TestMemberEndToEnd (81.33s)
+               	Error:      	Not equal: 
+               	Messages:   	dl11c: map[change_key:dl11c new_revision:map[domain:authz.record.state value:2] outcome:applied record:01a1a8c0-c3e3-788f-97a0-1979d617a342 security_revisions:[map[domain:authz.security.deployment value:217]]]
+red  a tightening without its action
+       --- FAIL: TestMemberEndToEnd (78.91s)
+               	Error:      	Not equal: 
+               	Messages:   	dl8: map[change_key:dl8 new_revision:map[domain:authz.record.state value:2] outcome:applied record:01a1a8c1-fe9b-7736-82b8-80a881b13d19 security_revisions:[map[domain:authz.security.deployment value:215]]]
+red  a grant's tightening takes delegate_management
+       --- FAIL: TestMemberEndToEnd (81.46s)
+               	Error:      	Not equal: 
+               	Messages:   	dl14: map[change_key:dl14 new_revision:map[domain:authz.record.state value:2] outcome:applied record:01a1a8c3-433e-75ba-b87d-91e6d9df481e security_revisions:[map[domain:authz.security.deployment value:220]]]
+red  a unit's actions not narrowed by those above
+       --- FAIL: TestEffectiveActionsAndDepth (0.00s)
+               	Error:      	elements differ
+               	Messages:   	bind_role is not the group's: the entity's own list does not give it
+       --- FAIL: TestManagesWith (0.00s)
+red  a unit's depth not less than its parent's
+       --- FAIL: TestEffectiveActionsAndDepth (0.00s)
+               	Error:      	Not equal: 
+               	Messages:   	its own 5, but its parent's 3 leaves it 2
+       --- FAIL: TestDelegation (0.00s)
+red  no deployment maximum
+       --- FAIL: TestDelegation (0.00s)
+               	Error:      	"" does not contain "maximum"
+               	Messages:   	deeper than the deployment's maximum
+red  holding any unit gives every action
+       --- FAIL: TestMemberEndToEnd (81.27s)
+               	Error:      	Not equal: 
+               	Messages:   	dl8: map[change_key:dl8 new_revision:map[domain:authz.record.state value:2] outcome:applied record:01a1a8c8-6c19-7368-af7c-342988c769c1 security_revisions:[map[domain:authz.security.deployment value:215]]]
+       --- FAIL: TestManagesWith (0.00s)
+red  a narrowing's shape unchecked
+       --- FAIL: TestMemberEndToEnd (78.81s)
+               	Error:      	Not equal: 
+               	Messages:   	dl15a: map[detail:an internal error occurred; quote the trace id when reporting it domain:be reason:INTERNAL status:500 title:Internal error trace_id:de9e1d09fe2c42328b71efce6c9b187d type:urn:be:be:INTERNAL]
+red  a narrowing deepens
+       --- FAIL: TestMemberEndToEnd (81.36s)
+               	Error:      	Not equal: 
+               	Messages:   	dl15d: map[change_key:dl15d new_revision:map[domain:authz.record.state value:4] outcome:applied record:01a1a8ca-e470-7a2f-afe3-d55400ba091c security_revisions:[map[domain:authz.security.deployment value:220]]]
+does not compile: a narrowing adds an action
+red  the root grants only
+       --- FAIL: TestMemberEndToEnd (5.93s)
+               	Error:      	Not equal: 
+               	Messages:   	u1: map[detail:row 8 domain:be metadata:map[change_key:u1] reason:PERMISSION_DENIED status:403 title:Not allowed trace_id:552b7176b253b4af91cd27e06620441c type:urn:be:be:PERMISSION_DENIED]
+done
