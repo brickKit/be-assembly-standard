@@ -1,0 +1,55 @@
+infra/authz 3.0.20 in progress (T6a), 2026-11-04: each rule broken by one edit, go test -tags integration ./authz/, the file restored; a crash counts as red.
+red  a grant's segments are not suspended
+       --- FAIL: TestMemberEndToEnd (68.78s)
+               	Error:      	Not equal: 
+               	Messages:   	whatever a segment comes from, it is left out when it meets the scope
+red  the fixed segments are not suspended
+       --- FAIL: TestMemberEndToEnd (76.25s)
+               	Error:      	Condition never satisfied
+               	Messages:   	her own records: left out
+red  value sets never disjoint
+       --- FAIL: TestMemberEndToEnd (68.58s)
+               	Error:      	Not equal: 
+               	Error:      	Not equal: 
+               	Messages:   	whatever a segment comes from, it is left out when it meets the scope
+red  value sets always disjoint
+       --- FAIL: TestMemberEndToEnd (77.27s)
+               	Error:      	Not equal: 
+               	Error:      	Not equal: 
+               	Error:      	Not equal: 
+red  grants above the domain are held
+       --- FAIL: TestMemberEndToEnd (71.08s)
+               	Error:      	Not equal: 
+               	Messages:   	governed above the domain
+does not compile: no grant is held
+red  no management holding is held
+       --- FAIL: TestMemberEndToEnd (71.05s)
+               	Error:      	Not equal: 
+               	Messages:   	not held back by the last admin: Alice remains anyway
+red  disposing another admin is not protected
+       --- FAIL: TestMemberEndToEnd (68.72s)
+               	Error:      	Not equal: 
+               	Messages:   	map[change_key:ds10 new_revision:map[domain:authz.disposition.revision value:1] outcome:applied record:01a1a7db-d1a6-79f0-9ee0-3d88f95bb8b5 security_revisions:[map[domain:authz.security.deployment value:147]]]
+does not compile: the scope need not be within the limit
+red  every segment from any domain
+       --- FAIL: TestMemberEndToEnd (66.21s)
+               	Error:      	Not equal: 
+               	Messages:   	every segment is the root's to suspend: map[change_key:ds8 new_revision:map[domain:authz.disposition.revision value:1] outcome:applied record:01a1a7dc-dc50-7052-b6b9-682f49bcce45 security_revisions:[map[domain:authz.security.deployment value:145]]]
+GREEN (survived)  anyone disposes
+red  the disposed person gives up what is held (CP110)
+       --- FAIL: TestMemberEndToEnd (74.70s)
+               	Error:      	Condition never satisfied
+               	Messages:   	map[change_key:ds3 new_revision:map[domain:authz.disposition.revision value:1] outcome:applied record:01a1a7de-fc42-756d-a650-bbeed4665699 security_revisions:[map[domain:authz.security.deployment value:142]]]
+red  a held grant cannot be renewed (CP31)
+       --- FAIL: TestMemberEndToEnd (64.71s)
+               	Error:      	Not equal: 
+               	Messages:   	ds4: map[detail:row 4 domain:be metadata:map[change_key:ds4] reason:CHANGE_REVISION_STALE status:409 title:The target changed; preview again trace_id:a113bdf3a07c26447cc0dbddb7ffb881 type:urn:be:be:CHANGE_REVISION_STALE]
+red  the renewal ends the held predecessor
+       --- FAIL: TestMemberEndToEnd (77.24s)
+               	Error:      	Not equal: 
+               	Messages:   	the release ends it superseded, not the renewal
+               	Error:      	Condition never satisfied
+red  the audit names the tightening operation
+       --- FAIL: TestMemberEndToEnd (68.56s)
+               	Error:      	Not equal: 
+done
