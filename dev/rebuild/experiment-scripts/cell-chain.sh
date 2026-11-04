@@ -23,6 +23,8 @@ mkdir -p "$OUT/logs"; echo $$ > "$OUT/runner.pid"
 envval() { grep "^$1=" "$R/.env" | cut -d= -f2- | tr -d "\"'"; }
 export SEED_PASSWORD; SEED_PASSWORD=$(envval IAM_TEST_PASSWORD)
 export IAM_TEST_PASSWORD="$SEED_PASSWORD" BE_ACC_IAM_TEST_PASSWORD="$SEED_PASSWORD" BE_ACC_CELL="$D"
+# the deployment owner's key (cells/prepare.py writes it): protected changes in the seeds (infra/authz 3.0.18, A124)
+export SEED_OWNER_KEY="$D/.secrets/owner.key.pem"
 export CASDOOR_ADMIN_PASSWORD; CASDOOR_ADMIN_PASSWORD=$(envval CASDOOR_ADMIN_PASSWORD)
 export BE_ACC_PG_ADMIN; BE_ACC_PG_ADMIN="postgres://postgres:$(envval POSTGRES_PASSWORD)@localhost:$PGP/postgres?sslmode=disable"
 export BE_ACC_NATS_URL=nats://localhost:$NP BE_ACC_S3_URL=http://localhost:$SP

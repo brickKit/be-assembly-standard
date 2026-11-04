@@ -1,0 +1,50 @@
+infra/authz 3.0.18 in progress (T5b-T5d), 2026-11-04: each rule broken by one edit, go test -tags integration ./authz/, the file restored; a crash counts as red.
+red  a new unit needs no confirmation
+       --- FAIL: TestMemberEndToEnd (3.39s)
+               	Error:      	Not equal: 
+               	Messages:   	u1: map[change_key:u1 new_revision:map[domain:authz.record.state value:1] outcome:applied record:01a1a758-ecbc-75db-bef4-ab7140cb8317 security_revisions:[map[domain:authz.security.deployment value:7]]]
+red  a holding needs no confirmation
+       --- FAIL: TestMemberEndToEnd (3.50s)
+               	Error:      	Not equal: 
+               	Messages:   	h1: map[change_key:h1 new_revision:map[domain:authz.record.state value:1] outcome:applied record:01a1a758-ffd1-7873-aec1-e0544e9a9b77 security_revisions:[map[domain:authz.security.deployment value:8]]]
+red  tightening another admin's holding needs no confirmation
+       --- FAIL: TestMemberEndToEnd (25.97s)
+               	Error:      	Not equal: 
+               	Messages:   	map[change_key:cf14 new_revision:map[domain:authz.record.state value:3] outcome:applied record:01a1a759-6a75-7325-8761-de24257880c0 security_revisions:[map[domain:authz.security.deployment value:92]]]
+red  the owner's signature is not checked
+       --- FAIL: TestMemberEndToEnd (28.81s)
+               	Error:      	Not equal: 
+               	Messages:   	map[expires_at:2026-11-04T17:17:27.889623Z id:01a1a759-e152-755d-a766-2dbe3e366964]
+red  the owner's signature may stretch a confirmation's life
+       --- FAIL: TestMemberEndToEnd (28.26s)
+               	Error:      	Not equal: 
+               	Messages:   	beyond the 72 hours a confirmation holds: map[detail:the deployment owner's signature does not verify domain:be reason:PERMISSION_DENIED status:403 title:Not allowed trace_id:2cf3422e8dda68b34749e65de73fadbd type:urn:be:be:PERMISSION_DENIED]
+red  the owner's key stands in for an available admin on a widening
+       --- FAIL: TestMemberEndToEnd (26.13s)
+               	Error:      	Not equal: 
+               	Messages:   	an independent person must confirm
+               	Error:      	Not equal: 
+red  a confirmation brings nothing to the effect point
+       --- FAIL: TestMemberEndToEnd (13.44s)
+               	Error:      	Condition never satisfied
+               	Messages:   	confirmed: the member's job applies it
+red  confirmed and effective later is not scheduled
+       --- FAIL: TestMemberEndToEnd (36.38s)
+               	Error:      	Condition never satisfied
+GREEN (survived)  a confirmer cannot reject
+red  the applicant rejects her own request as its confirmer
+       --- FAIL: TestMemberEndToEnd (28.29s)
+               	Error:      	Not equal: 
+               	Messages:   	map[change_key:pr10 new_revision:map[domain:authz.record.state value:2] outcome:applied record:01a1a75c-aa43-735e-8f10-aa3406693443 security_revisions:[map[domain:authz.security.deployment value:98]]]
+red  a job does not look at its record's confirmations
+       --- FAIL: TestMemberEndToEnd (13.49s)
+               	Error:      	Condition never satisfied
+               	Messages:   	confirmed: the member's job applies it
+red  on a saved widening one confirmation that does not hold spoils the rest
+       --- FAIL: TestMemberEndToEnd (36.18s)
+               	Error:      	Condition never satisfied
+               	Messages:   	confirmed by Bob: applied by the job
+done
+note: "a confirmer cannot reject" is equivalent: a rejection's eligibility is the confirmer's, the same fact that
+makes the requester proven, so without row 7 the rejection falls through to row 30 (applied) with the same outcome;
+the flag only names the row.
