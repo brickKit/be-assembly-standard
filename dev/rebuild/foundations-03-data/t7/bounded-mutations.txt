@@ -1,0 +1,80 @@
+infra/authz 3.0.21 in progress (T7a), 2026-11-04: each rule broken by one edit, go test -tags integration ./authz/, the file restored; a crash counts as red.
+red  a grant's containment without its grantee
+       --- FAIL: TestMemberEndToEnd (79.23s)
+               	Error:      	Not equal: 
+               	Messages:   	bd9: map[detail:row 18: owner: unprovable (self with no grantee to stand for) domain:be metadata:map[change_key:bd9] reason:CONTAINMENT_NOT_PROVEN status:403 title:The change exceeds what can be proven trace_id:dba68e814768f4e56acc31201cd06d37 type:urn:be:be:CONTAINMENT_NOT_PROVEN]
+red  self within self not contained
+       --- FAIL: TestMemberEndToEnd (76.73s)
+               	Error:      	Not equal: 
+               	Messages:   	bd13: map[detail:row 18: owner: unprovable (self with no grantee to stand for) domain:be metadata:map[change_key:bd13] reason:CONTAINMENT_NOT_PROVEN status:403 title:The change exceeds what can be proven trace_id:c9bf0117bb02f53f78aade8075e89ce3 type:urn:be:be:CONTAINMENT_NOT_PROVEN]
+       --- FAIL: TestContainmentRules (0.00s)
+red  self not instantiated
+       --- FAIL: TestMemberEndToEnd (79.19s)
+               	Error:      	Not equal: 
+               	Messages:   	bd9: map[detail:row 18: owner: unprovable (self with no grantee to stand for) domain:be metadata:map[change_key:bd9] reason:CONTAINMENT_NOT_PROVEN status:403 title:The change exceeds what can be proven trace_id:a69e4063e08f42c2ca6da26a8c9878b9 type:urn:be:be:CONTAINMENT_NOT_PROVEN]
+       --- FAIL: TestContainmentRules (0.00s)
+red  self with no grantee contained
+       --- FAIL: TestMemberEndToEnd (79.40s)
+               	Error:      	Not equal: 
+               	Messages:   	bd14: map[change_key:bd14 new_revision:map[domain:authz.record.state value:1] outcome:awaiting_confirmation record:01a1a893-fa26-7472-9064-cae411b3aeda]
+       --- FAIL: TestContainmentRules (0.00s)
+red  a unit's limit walked without the grantee
+       --- FAIL: TestUnitLimitsForAGrantee (0.00s)
+               	Error:      	"[]" should have 1 item(s), but has 0
+               	Messages:   	self ∩ {the grantee}
+red  limits memoized across grantees
+       --- FAIL: TestUnitLimitsForAGrantee (0.00s)
+               	Error:      	Should be empty, but was [{demo.order demo.order.read map[region:{self [] []  <nil> <nil> <nil> <nil>}] [id] [] {2026-01-01T00:00:00Z }   null}]
+               	Messages:   	self ∩ {the grantee} for another person: nothing
+               	Error:      	Should be empty, but was [{demo.order demo.order.read map[region:{self [] []  <nil> <nil> <nil> <nil>}] [id] [] {2026-01-01T00:00:00Z }   null}]
+red  no segments-per-grant budget
+       --- FAIL: TestMemberEndToEnd (79.40s)
+               	Error:      	Not equal: 
+               	Messages:   	bb1: map[change_key:bb1 new_revision:map[domain:authz.record.state value:1] outcome:applied record:01a1a897-b7d9-7708-8650-9a6701fd4bc1 security_revisions:[map[domain:authz.security.deployment value:193]]]
+       --- FAIL: TestGrantBudgets (0.00s)
+red  no values budget
+       --- FAIL: TestMemberEndToEnd (79.45s)
+               	Error:      	Not equal: 
+               	Messages:   	bb2: map[change_key:bb2 new_revision:map[domain:authz.record.state value:1] outcome:applied record:01a1a898-f471-71f5-a9c3-289be4c73de9 security_revisions:[map[domain:authz.security.deployment value:193]]]
+       --- FAIL: TestGrantBudgets (0.00s)
+red  no tree items budget
+       --- FAIL: TestMemberEndToEnd (76.80s)
+               	Error:      	Not equal: 
+               	Messages:   	bb3: map[change_key:bb3 new_revision:map[domain:authz.record.state value:1] outcome:applied record:01a1a89a-2693-7ca1-b01a-c56482523f8a security_revisions:[map[domain:authz.security.deployment value:193]]]
+       --- FAIL: TestGrantBudgets (0.00s)
+red  no per-subject budget
+       --- FAIL: TestMemberEndToEnd (79.55s)
+               	Error:      	Not equal: 
+               	Messages:   	bb4: map[change_key:bb4 new_revision:map[domain:authz.record.state value:1] outcome:applied record:01a1a89b-6392-7cc0-b561-a667b1857147 security_revisions:[map[domain:authz.security.deployment value:203]]]
+       --- FAIL: TestSubjectBudget (0.00s)
+red  scheduled grants not counted
+       --- FAIL: TestMemberEndToEnd (79.63s)
+               	Error:      	Not equal: 
+               	Messages:   	bb4: map[change_key:bb4 new_revision:map[domain:authz.record.state value:1] outcome:applied record:01a1a89c-a0e6-7a77-ba3f-3e2634dedcad security_revisions:[map[domain:authz.security.deployment value:203]]]
+red  validity ignored when merging scopes
+       --- FAIL: TestSubjectBudget (0.00s)
+               	Error:      	"" does not contain "over budget"
+               	Messages:   	another validity does not merge
+GREEN (survived)  a renewal counts its predecessor
+red  no budget on a submitted grant
+       --- FAIL: TestMemberEndToEnd (79.34s)
+               	Error:      	Not equal: 
+               	Messages:   	bb1: map[change_key:bb1 new_revision:map[domain:authz.record.state value:1] outcome:applied record:01a1a8a0-67ee-712e-b437-8d1d35c70de1 security_revisions:[map[domain:authz.security.deployment value:193]]]
+GREEN (survived)  no budget on a saved grant coming due
+red  no budget on a restore
+       --- FAIL: TestMemberEndToEnd (81.77s)
+               	Error:      	Not equal: 
+red  a disposition's scope without the disposed person
+       --- FAIL: TestMemberEndToEnd (79.24s)
+               	Error:      	Not equal: 
+               	Messages:   	map[detail:owner: unprovable (self with no grantee to stand for) domain:be metadata:map[change_key:bd-d1] reason:CONTAINMENT_NOT_PROVEN status:403 title:The change exceeds what can be proven trace_id:191307c4c564b9d996a97e6681ec5f25 type:urn:be:be:CONTAINMENT_NOT_PROVEN]
+red  no dimension in a containment rejection
+       --- FAIL: TestMemberEndToEnd (81.69s)
+               	Error:      	"row 18" does not contain "dept"
+               	Messages:   	a1's departments in b2
+               	Error:      	"row 18" does not contain "amount"
+done
+
+Survivors, after this run:
+- "a renewal counts its predecessor": the test's renewal had its predecessor's very segments, which merge with them, so the count did not move. The renewal now lengthens the validity (other scopes); red in bounded-mutations-2.txt.
+- "no budget on a saved grant coming due": equivalent in this version. A grant waiting to take effect (scheduled) counts against its grantee's budget from the moment it is saved, so nothing can fill the budget past it before it is due; grants are never saved awaiting confirmation in this version (only units and holdings are protected). The check stays: security 08 rechecks the budgets at every entry. The search for it found a real gap: a grant a disposition held did not count while held and came back on release without a budget check. The release now keeps it held (restore_pending); red in bounded-mutations-2.txt.
