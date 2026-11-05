@@ -180,7 +180,12 @@ T4a 查出的缺口按“机制在哪里”分三处做，各自先写红的测�
 外壳要先升到探针 3.2.41、审计 3.0.20（演练要用付款）。T11（门槛演练）在 T10 之后。
 
 - **T10b 做了（2026-11-05）**：线协议 alpha.86、be-sdk-go alpha.90（A145）。阶段 `verifying`、`read_only`（`httpx.Route.ReadOnlyOpen`；对外命令在两个阶段于作业之外只查询）；`extcmd.ReconcileService`（匹配是纯函数，对向量；`extcmd.Lister` 可选；结论留存在 `be_external_reconciled`，迁移 0016 还给命令加了 `unrecorded_until`）；`recovery` 包的 `CheckService`（SDK 自带投影、消费者纪元、审计积压三项，组件 `recovery.Checker` 登记检查、对象类型的 `Presence` 与作废空号的 `Void`）；`Definition.Recovery` 对有数据库的组件必填，于是这些组件都要系统面端口。写对账时改了线协议两处原规则：最长处理时间原先按记下的最后一次发送算（恢复点之后的重发没有记录，会误判而重复付款），改为与故障时刻取较晚；保留期从最后一次起算的外部，没有记下最后一次时原先算不出截止，改为取最早一次。途中发现并修了一个缺陷：只查询模式下 `unknown` 的命令查到“不存在”、表决定重发时照样发了（先写红的测试）。变异检查 28 处全部抓到（补了一个“本地已终结、外部也有”的用例之后）。偶发失败一次：测试的 `portNow` 先选端口、之后别的监听在 0 号端口上可能拿到同一个，改为在临时端口范围之外选（推断，单跑与整包都过）。
-- **T10c 要带上的**：每个有数据库的组件加恢复操作（定义的 `system` 资源下 `<前缀>.system.recover`）与 `Definition.Recovery`；清单的 `RECOVERY_PHASE` 枚举加两个值；身份成员在 `read_only` 签发令牌、一次性码等路由标 `ReadOnlyOpen`；`prepare.py` 的键。
+- **T10c 的计划（2026-11-05，AI 定）**：
+  - **整套恢复下跨组件不一致从哪来**：首批部署所有组件的库在同一个实例里，恢复到 T 是同一个事务一致的切面，所以跨组件的差异只来自 T 时还在进行中的过程（协议 04 的确认、取消、释放，交货的出库，协议 05 的认领）；多实例、每组件一个库时切面不同，检查同样要能发现。所以检查要比对两边，跨组件的一项只由一边报告，报告的一边经系统面问另一边。
+  - **T10c-1 线协议与 SDK**（alpha.87、alpha.91）：检查的函数改为拿一个“只读读取器”（每次读取一个总是回滚的事务）、读取之间可以调用其他组件（P14.1 写明）；`recovery.TablePresence(表, 身份列, 版本列)` 现成的“还在不在”；P14.3 写明业务变更与敏感读取的审计 `target` 带对象变更之后的版本（`version`），没有版本的对象不带，恢复工具对不带版本而还在的对象列“无法判断”。
+  - **T10c-2 组件**（每个：升版本、SDK alpha.91、定义的 `system` 资源下加 `<前缀>.system.recover` 并设 `Definition.Recovery`、清单的阶段枚举、`Presence` 登记审计过的每种对象、审计的 `target` 带版本、测试、文档、发布；依赖方的精确依赖跟着改）。按依赖顺序：审计、授权、身份（另：`read_only` 时签发令牌，一次性码等用户面写入标 `ReadOnlyOpen`）、组织、币种、伙伴、产品、信用、库存、销售（检查 `erp.sales.reservations`：未结束的确认、取消、释放过程与出库中的交货列差异；已确认订单的库存与信用分支经各自的 `Query` 应为已提交或已消耗，已取消、已拒绝订单的分支不应还占着）、账单（检查 `erp.billing.claims`：每张发票的认领在销售一侧的状态与发票一致，经销售的 `Ledger`/`Read`；连续单号 `INV` 用 `Void` 登记作废的号）。
+  - **T10c-3**：Go 探针（恢复操作、付款对象的 `Presence`）、外壳 go-infra、go-core、套件 `prepare.py` 登记新键。
+  - 要带上的（T10b 记下的）：每个有数据库的组件加恢复操作（定义的 `system` 资源下 `<前缀>.system.recover`）与 `Definition.Recovery`；清单的 `RECOVERY_PHASE` 枚举加两个值；身份成员在 `read_only` 签发令牌、一次性码等路由标 `ReadOnlyOpen`；`prepare.py` 的键。
 
 - **T10a 做了（2026-11-05）**：线协议 alpha.85：P1.23 加 `verifying`、`read_only`；第 13 章加外部对账（P13.11–P13.13，`be.external.v1.ReconcileService`，向量 `external-reconcile` 的参考模型：对上而终结、写截止、`unknown`、`manual`、外部有本地无、可能已执行待核实）；新的第 14 章（`be.recovery.v1.CheckService`：一致性检查与 SDK 自带的投影、消费者纪元、审计积压三项，`Present` 查对象是否还在，`Numbers`/`AdvanceNumbers` 单号的已用最大值；审计损失由恢复工具按产生序号的空位求）；两份 proto。写向量时我的期望写错过一次（去重保留期内按行序先命中“写截止”），按参考模型改正。
 
