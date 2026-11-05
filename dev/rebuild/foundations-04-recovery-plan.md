@@ -253,7 +253,14 @@
   - **进度（2026-11-05）**：1–11 都发布了：audit 3.0.17、3.0.18（3.0.17 漏声明 `RECOVERY_PHASE`：它原来没有清单测试，3.0.18 加上，`configSchema` 换成 SDK 生成的那段）、authz 3.0.28（测试里身份成员的替身要声明补发）、iam 3.0.24、org 3.0.17、currency 3.0.17、partner 3.0.21、product 3.0.20、credit 3.0.17、inventory 3.0.17、sales 3.0.24、billing 3.0.24。`be-ops` alpha.3：BrickKit 只注入组件配置里写了的键，所以各组件配置写 `RECOVERY_PHASE: $var:RECOVERY_PHASE`，共用变量平时为空值（不删行）。
   - Go 探针也要跟上（外壳里编进了它们，整个进程用 alpha.81，有流没声明补发的成员建不起来）：3.2.39 加 `<前缀>.resend`；**不**声明 `RECOVERY_PHASE`：套件要求 Go 与 Python 探针的清单一样（由 Python SDK 生成），Python 的恢复模式在第 6 项，探针进恢复模式随它。
   - 套件（未发布）：`prepare.py` 登记各补发操作与探针的 `resend`、给 `ops/recover` 签证书、只给清单声明了 `RECOVERY_PHASE` 的组件写那一行（读 `.brickkit/manifests` 缓存，外壳成员的版本取外壳的清单）、共用变量加 `RECOVERY_PHASE: ""`；`spec.py` 让格可以写自己的 `deployment:`（演练的格每次换新的部署身份：一次演练只做到第 5 步，运行档案里的恢复状态删不掉）。
-  - 还剩：探针测试（`make probes`）→ 发布探针 3.2.39 与套件 1.0.47 → 外壳 3.0.52 → 格 F3-S、F3-X → T8e 演练。
+  - 探针 3.2.39、套件 1.0.47、外壳 3.0.52 发布；格 F3-S、F3-X 过（`foundations-04-data/t8-cells/`）。
+- **T8e 演练（2026-11-05，`foundations-04-data/t8e/`，每次的日志在 `attemptN/`）**：格 R4-X（F3-X 的布局，每次换新的部署身份），开归档 → 起格 → 取 T → T 之后再跑业务场景 → `be-ops recover` 第 1–5 步 → 核对行数 → 去掉阶段重启（重新开放是 T10 的）→ 再跑业务场景。前六次各卡在一处，都是真缺口，逐个修了：
+  1. 部署身份要 UUIDv7（演练脚本生成了 v4，安全记录的 schema 不收）；
+  2. `brickkit up` 要格配置里引用的 Casdoor 应用密钥（演练脚本照 `cell-chain.sh` 导出）；
+  3. 打印组件（Python）没有恢复模式，冻结不了：`be-ops` alpha.4 把清单里没声明 `RECOVERY_PHASE` 的独立组件在恢复期间设成 `mode: disable`（带标记，回到运行时只去掉自己写的）；
+  4. pgBackRest 不认 RFC 3339 写法的 T：`pg-backup.sh` 先让数据库把它写成自己的格式；
+  5. 临时实例在热备回放途中（能连接但还在恢复）就被拷贝，开票的表拷回来是空的、各 schema 不是同一时刻：`pg-backup.sh` 等 `pg_is_in_recovery()` 为假；`be-ops` alpha.5 拷回用 `pipefail`（`pg_dump` 失败不再留下空 schema 而报成功）；
+  6. 第 1–5 步与核对都过（T 之后变化的 18 张业务表全部回到 T，证据存储没有回退，消费者都拿到补发、没有缺口），恢复后的业务场景 19 个里 1 个红：组织恢复后纪元变大，销售的部门投影跳过新纪元的事件（SDK 的 `NewerEpoch`）、要等每小时一次的对齐。`erp/sales` 3.0.25 遇到新纪元立即排一次对齐（改坏 2 处都红），开票 3.0.25 只改依赖，外壳 go-core 3.0.53。销售的集成测试顺带暴露同一类环境污染（共用 NATS 上演练留下纪元 2.1 的事件），测试开始时删掉它用到的流。
 
 不在 T8：第 4 步里恢复凭据与所有者确认凭据摘要的恢复（随 T9 的 6.7）；第 5 步里事件签名密钥的轮换与重签（事件现在没有签名，协议 19 的这一条等事件签名加入时再做，记进已知风险）。
 

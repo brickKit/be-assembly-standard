@@ -1,0 +1,51 @@
+..................F                                                      [100%]
+=================================== FAILURES ===================================
+______________ test_mdm_org_department_move_reaches_sales_scopes _______________
+
+bob = User(name='test.bob', cell=Cell(dir=PosixPath('/home/zhijie/Desktop/github/be-assembly-standard/dev/rebuild/experiment...D0QTEK0pyDI0DrX9VffAg', principal='01a1ac1f-13a4-780d-8c9f-be8e0375c1e9', http=<httpx.Client object at 0x73160119fc50>)
+login = <function login.<locals>.get at 0x7316011b3740>
+world = World(le='01a1ac1f-43ce-702c-a117-40de259eeb1f', shanghai='01a1ac1f-7b0a-70ff-97da-45697ae33f2b', beijing='01a1ac1f-7c...-3a9c12615844', 'CS-POST': '01a1ac1f-4463-7702-b142-4346e93c7cf7', 'PROJ-OLD': '01a1ac1f-4465-7079-8b00-2892f8ec4dac'})
+
+    def test_mdm_org_department_move_reaches_sales_scopes(bob, login, world):
+        """A department moved from the east region to the south region in mdm/org: erp/sales rewrites its orders' paths
+        from the event, so the east salesperson stops seeing the order and the one with both regions keeps it."""
+        code = "L3-" + uuid.uuid4().hex[:8].upper()
+        unit = bob.post("mdm/org", "/api/org/units", {"legal_entity_id": world.le, "parent_id": world.departments["SALES-EAST"],
+                                                       "code": code, "name": "「本地测试」L3 " + code})
+        east, both = login("test.sales.cn"), login("test.sales.multi")
+    
+        def sees(user, order_id) -> bool:
+            r = user.call("GET", "erp/sales", f"/api/sales/orders/{order_id}")
+            assert r.status_code in (200, 404), r.text[:200]
+            return r.status_code == 200
+    
+        o = eventually(lambda: order(bob, world, world.large, [service(world, 1)], unit["id"]))  # the unit reaches sales first
+        eventually(lambda: sees(east, o["id"]) and sees(both, o["id"]))
+        bob.post("mdm/org", f"/api/org/units/{unit['id']}/move", {"parent_id": world.departments["SALES-SOUTH"],
+                                                                   "version": unit["version"]})
+>       eventually(lambda: not sees(east, o["id"]))
+
+scenarios/test_trading_chain.py:132: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+check = <function test_mdm_org_department_move_reaches_sales_scopes.<locals>.<lambda> at 0x7316010deb90>
+seconds = 30, every = 0.5
+
+    def eventually(check, seconds: float = 30, every: float = 0.5):
+        """check() until it returns a truthy value; the last AssertionError when time runs out."""
+        deadline, last = time.monotonic() + seconds, None
+        while time.monotonic() < deadline:
+            try:
+                out = check()
+                if out:
+                    return out
+            except AssertionError as e:
+                last = e
+            time.sleep(every)
+>       raise last or AssertionError(f"not true within {seconds} s")
+E       AssertionError: not true within 30 s
+
+scenarios/conftest.py:67: AssertionError
+=========================== short test summary info ============================
+FAILED scenarios/test_trading_chain.py::test_mdm_org_department_move_reaches_sales_scopes
+1 failed, 18 passed in 38.70s

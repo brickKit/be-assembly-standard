@@ -43,6 +43,9 @@ status)
   ;;
 restore-to)
   T=${2:?T}; NAME=${3:?NAME}; PORT=${4:?PORT}
+  # pgBackRest takes PostgreSQL's own form of a time (2026-11-05 14:17:21.743696+00), not RFC 3339's T and Z: the
+  # instance writes T in it, in UTC
+  T=$(ex psql -qAt -c "SET TimeZone = 'UTC'; SELECT '$T'::timestamptz")
   # a recovering instance may not have fewer connections (and the like) than the one that wrote the WAL
   MAXCONN=$(ex psql -qAt -c "SHOW max_connections"); PRELOAD=$(ex psql -qAt -c "SHOW shared_preload_libraries")
   ex psql -qAt -c "SELECT pg_switch_wal()" >/dev/null # the WAL up to now into the archive
@@ -61,7 +64,14 @@ restore-to)
   docker run -d --name "$NAME" -p "$PORT:5432" -v "$NAME-data":/var/lib/postgresql/data \
     -v "$REPO":/var/lib/pgbackrest:ro -v "$CONF":/etc/pgbackrest/pgbackrest.conf:ro "$IMAGE" \
     postgres -c archive_mode=off -c "max_connections=$MAXCONN" -c "shared_preload_libraries=$PRELOAD" >/dev/null
-  for _ in $(seq 1 120); do docker exec "$NAME" pg_isready -U postgres >/dev/null 2>&1 && break; sleep 1; done
+  # ready means accepting connections, which a hot standby still replaying does: wait until the replay to T is done
+  # and the instance promoted (out of recovery), or a copy taken now is a state before T (the T8e drill's billing)
+  for _ in $(seq 1 600); do
+    [ "$(docker exec -u postgres "$NAME" psql -qAt -c 'SELECT NOT pg_is_in_recovery()' 2>/dev/null)" = t ] && break
+    sleep 1
+  done
+  [ "$(docker exec -u postgres "$NAME" psql -qAt -c 'SELECT NOT pg_is_in_recovery()' 2>/dev/null)" = t ] ||
+    { echo "the temporary instance did not finish its recovery to T" >&2; exit 1; }
   docker exec -u postgres "$NAME" psql -qAt -c "SELECT 'restored to ' || '$T' || ', timeline ' || timeline_id FROM pg_control_checkpoint()"
   ;;
 drop-temp)
