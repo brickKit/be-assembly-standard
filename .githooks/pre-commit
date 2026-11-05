@@ -9,5 +9,8 @@ fi
 if [ -x infra/scripts/docs-mirror.py ]; then
   python3 infra/scripts/docs-mirror.py
 fi
+# the component index is generated from the component.yaml files: stale after a release (item 3 found it 9 versions
+# behind, retro-foundations-03.md); make docs-index regenerates it
+python3 infra/scripts/component-index.py --check
 # no build output in Git history (the submodules get the same check through .githooks/submodule, make hooks)
 python3 infra/scripts/no-binaries.py staged
