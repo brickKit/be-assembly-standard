@@ -108,3 +108,4 @@
 还没交的草稿：
 - Linux 的 `CLOCK_MONOTONIC` 在系统休眠期间停走（`CLOCK_BOOTTIME` 才计入）；kb 选主相关文档（07.06 选主、07.10 时间与时钟）按单调时钟计租约时没有提醒这一点。提交前先在 Linux 上验证。
 - Python 的变异检查要关掉字节码缓存（2026-11-04，第 3 项 T5e）：变异与原文件等长、又在同一秒内写入时，解释器认为 `.pyc` 仍然有效，跑的是上一个版本——同一处变异一次“存活”、一次被杀（`foundations-03-data/t5/py-stale-mutations.txt` 与脚本 `mutate-py-stale.py`）；上一个变异的 `.pyc` 留着时还会造成假的“被杀”。做法：`PYTHONDONTWRITEBYTECODE=1`，每处变异前删 `__pycache__`。kb 讲变异测试或测试有效性的地方补一句；提交前先查 kb 有没有。
+- 公共 Go 代理会缓存它自己取模块时的失败（2026-11-05，第 3 项 T7e，`foundations-03-data/t7-cells/attempt2`、`attempt3-F3-X`、`proxy-wait.log`）：刚推送的标签第一次被请求时，proxy.golang.org 自己解析 github.com 失败，之后半小时 `.info` 一直答 404（“Could not resolve host: github.com”），各节点不一致；请求 `@latest` 让它重新取，几分钟后各节点陆续恢复。`golang:*-alpine` 构建镜像里没有 git，`GOPROXY` 的 `direct` 回退因此也失败。kb 讲 Go 依赖获取或 CI 构建的地方补一句（发完先查代理的 `.info`，不是 200 时请求 `@latest`；或构建镜像里带 git）；提交前先查 kb 有没有。
