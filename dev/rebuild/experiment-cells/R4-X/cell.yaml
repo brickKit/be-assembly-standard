@@ -1,12 +1,19 @@
-# Foundations item 4: the recovery drills' cell (protocol 15 with be-ops recover; T8e steps 1-5, T9e steps 1-6). The
-# layout of F3-X (be/go-infra hosts the security members and the master data; the trading chain and print alone); T9e:
-# every member on be-sdk-go alpha.87 (the owners' replay, replaying). Its own deployment, a new one for every drill (the
-# drill script writes it): the run profile keeps a deployment's recovery state, and a drill that stops midway leaves it
-# restoring.
+# Foundations item 4: the recovery drills' cell (protocol 15 with be-ops recover; T8e steps 1-5, T9e steps 1-6, T10e
+# steps 1-10). The layout of F3-X (be/go-infra hosts the security members and the master data; the trading chain and
+# print alone); T10e: the members at their T10 versions (be-sdk-go alpha.91-93: the recovery's checks, verifying and
+# read_only) and the Go probe go2 in be/go-infra (alone it would be held through the recovery: the probes' manifests
+# declare no RECOVERY_PHASE, the Python probe's SDK has no recovery mode yet), whose payments go to the suite's fake
+# payment system on the host
+# (conformance/external/fake.py on its own, port 18990), deduplicated for 24 hours, not irrevocable (the probe writes
+# no evidence, A144). Its own deployment, a new one for every drill (the drill script writes it): the run profile
+# keeps a deployment's recovery state, and a drill that stops midway leaves it restoring.
 cell: R4-X
 row: D
 deployment: 01a1acbd-add1-76e0-82f1-5e7c5b5afd9f
 shells:
-  be/go-infra@3.0.53: [infra/iam-casdoor, infra/authz, infra/audit, mdm/org, mdm/currency, mdm/partner, mdm/product]
-alone: [erp/inventory@3.0.18, erp/credit@3.0.18, erp/sales@3.0.26, erp/billing@3.0.26, infra/print@3.0.14]
+  be/go-infra@3.0.56: [infra/iam-casdoor, infra/authz, infra/audit, mdm/org, mdm/currency, mdm/partner, mdm/product, test/probe-go2]
+alone: [erp/inventory@3.0.19, erp/credit@3.0.19, erp/sales@3.0.27, erp/billing@3.0.28, infra/print@3.0.14]
 chain: []
+settings:
+  test/probe-go2: {PROBE_EXTERNAL_URL: "http://host.docker.internal:18990", PROBE_EXTERNAL_IRREVOCABLE: "false",
+                   PROBE_EXTERNAL_DEDUPE_WINDOW: "24h"}
