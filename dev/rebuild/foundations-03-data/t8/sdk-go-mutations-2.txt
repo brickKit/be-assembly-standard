@@ -1,0 +1,20 @@
+be-sdk-go alpha.71 in progress (T8a), 2026-11-05: each rule broken by one edit; go test -tags integration -p 1 ./authz/ ./list/ ./records/ ./launcher/ (launcher: TestOthersSeeNothingAndFieldsFollowTheSegments only); the file restored; a crash counts as red.
+Second round: the two survivors of the first round after the new vector case (check-renamed-dimension) and the fixed digest test (a cursor that differs only in readable_only); the two mutants that did not compile, rewritten.
+red  an undeclared dimension passes (EN08)
+       --- FAIL: TestSegmentCheckVectors (0.00s)
+               	Error:      	Not equal: 
+               	Messages:   	check-renamed-dimension: <nil>
+red  the narrowing is not in the filter digest
+       --- FAIL: TestReadableOnlyNarrowsToTheRowsThatShowAField (0.24s)
+               	Error:      	Should be true
+               	Messages:   	the narrowing is part of the filter digest: <nil>
+red  a secret field is masked instead of dropped
+       --- FAIL: TestMaskVectors (0.00s)
+               	Error:      	Not equal: 
+               	Messages:   	mask-partly-readable
+       --- FAIL: TestOthersSeeNothingAndFieldsFollowTheSegments (7.88s)
+red  readable_only keeps rows that do not show the field (FX12)
+       --- FAIL: TestReadableOnlyNarrowsToTheRowsThatShowAField (0.24s)
+               	Error:      	"[0190f3a1-0000-7000-8000-000000000001 0190f3a1-0000-7000-8000-000000000002 0190f3a1-0000-7000-8000-000000000003 0190f3a1-0000-7000-8000-000000000004]" should have 3 item(s), but has 4
+               	Messages:   	the three alpha rows
+done

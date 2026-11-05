@@ -1,0 +1,49 @@
+infra/authz 3.0.23 in progress (T8b), 2026-11-05: each rule broken by one edit; go test ./authz/ (unit), and go test -tags integration ./authz/ for the security event; the file restored; a crash counts as red.
+red  a segment missing a dimension enters the view (FX01)
+       --- FAIL: TestOnlyUsableKeysTakePart (0.00s)
+               	Error:      	Should be false
+               	Messages:   	a segment missing the new dimension
+red  all with an empty atom is not empty (FX03)
+       --- FAIL: TestAtomIntersection (0.00s)
+           --- FAIL: TestAtomIntersection/all_with_an_explicit_empty_set:_empty (0.00s)
+                   	Error:      	Should be false
+                   	Messages:   	{Kind:in Values:[] Items:[] Currency: Lo:<nil> LoClosed:<nil> Hi:<nil> HiClosed:<nil>}
+red  an empty atom with all is not empty (FX03)
+       --- FAIL: TestAtomIntersection (0.00s)
+           --- FAIL: TestAtomIntersection/an_explicit_empty_set_with_all:_empty (0.00s)
+                   	Error:      	Should be false
+                   	Messages:   	{Kind:in Values:[] Items:[] Currency: Lo:<nil> LoClosed:<nil> Hi:<nil> HiClosed:<nil>}
+red  an explicit empty set is not empty (FX03)
+       --- FAIL: TestAtomIntersection (0.00s)
+           --- FAIL: TestAtomIntersection/all_with_an_explicit_empty_set:_empty (0.00s)
+                   	Error:      	Should be false
+                   	Messages:   	{Kind:in Values:[] Items:[] Currency: Lo:<nil> LoClosed:<nil> Hi:<nil> HiClosed:<nil>}
+red  an empty tree is not empty (FX03)
+       --- FAIL: TestAtomIntersection (0.00s)
+           --- FAIL: TestAtomIntersection/all_with_an_empty_tree:_empty (0.00s)
+                   	Error:      	Should be false
+                   	Messages:   	{Kind:tree Values:[] Items:[] Currency: Lo:<nil> LoClosed:<nil> Hi:<nil> HiClosed:<nil>}
+red  an empty interval is not empty (FX03)
+       --- FAIL: TestAtomIntersection (0.00s)
+           --- FAIL: TestAtomIntersection/all_with_an_empty_interval:_empty (0.00s)
+                   	Error:      	Should be false
+                   	Messages:   	{Kind:interval Values:[] Items:[] Currency:EUR Lo:0x2e84a5b832b0 LoClosed:0x2e84a5c9a58e Hi:0x2e84a5b832c0 HiClosed:0x2e84a5c9a58f}
+red  an attachment category on no field passes (EN22)
+       --- FAIL: TestSubmissionRules (0.01s)
+               	Error:      	"[]" should have 1 item(s), but has 0
+               	Messages:   	EN22: a category on no field
+red  tightening only on a non-manage operation passes (EN24)
+       --- FAIL: TestSubmissionRules (0.01s)
+               	Error:      	"[]" should have 1 item(s), but has 0
+               	Messages:   	EN24: a read operation
+red  another component as the authority passes (EN21)
+       --- FAIL: TestSubmissionRules (0.01s)
+               	Error:      	"[]" should have 1 item(s), but has 0
+               	Messages:   	EN21: another component as the authority
+red  an owner mismatch is not a security event (EN21, EN23)
+       --- FAIL: TestMemberEndToEnd (89.41s)
+               	Error:      	Not equal: 
+red  the security event is for the wrong rejections
+       --- FAIL: TestMemberEndToEnd (86.91s)
+               	Error:      	Not equal: 
+done

@@ -1,0 +1,61 @@
+...............................................F........................ [ 78%]
+....................                                                     [100%]
+=================================== FAILURES ===================================
+___________ test_audit_records_reach_the_audit_member_with_receipts ____________
+
+world = <besdk.testing.World object at 0x7fcbcfff7380>
+
+    async def test_audit_records_reach_the_audit_member_with_receipts(world):  # P8.19-P8.23
+        name = "py_sec_audit"
+        await pgtest.member(name)
+        env = {**pgtest.member_env(name), **world.env("demo/audited"), "COMPONENT_VERSION": "3.0.0", "STOP_DRAIN_DELAY": "50ms"}
+        base, stop, task = await start_python(Definition("demo/audited", "3.0.0", Audited, migrations={
+            "0001_orders.up.sql": "CREATE TABLE orders (id text PRIMARY KEY);"}), env)
+        try:
+            async with httpx.AsyncClient(base_url=base) as c:
+                assert (await c.post("/api/orders/o1")).status_code == 201
+                assert (await c.post("/api/orders/o1")).status_code != 201, "a failed change leaves no audit record"
+                assert (await c.get("/api/secret")).status_code == 200
+                for _ in range(audit.DENIAL_BUDGET + 5):
+                    assert (await c.post("/api/deny")).status_code == 200
+            a = await pgtest.admin()
+            try:
+                # the denial window is over (as a minute later): the next run appends one summary with the count
+                await a.execute(f"UPDATE {name}.be_audit_denial_budget SET minute = minute - interval '1 minute'")
+                for _ in range(250):
+                    kinds = [(r["category"], r["operation"]) for r in world.audited.values()]
+                    if ("security_denial", "be.audit.denials_over_budget") in kinds:
+                        break
+                    await asyncio.sleep(0.1)
+                rows = await a.fetch(f"SELECT seq, transfer_state FROM {name}.be_audit_log ORDER BY seq")
+            finally:
+                await a.close()
+            kinds = [(r["category"], r["operation"]) for r in world.audited.values()]
+            assert kinds.count(("business_change", "demo.order.create")) == 1, task.out.getvalue()[-3000:]
+            assert kinds.count(("sensitive_read", "demo.order.export")) == 1
+            assert kinds.count(("security_denial", "demo.order.approve")) == audit.DENIAL_BUDGET
+            summary = next(r for r in world.audited.values() if r["operation"] == "be.audit.denials_over_budget")
+            assert summary["changes"]["count"] == "5" and summary["actor"] == ALICE
+            change = next(r for r in world.audited.values() if r["operation"] == "demo.order.create")
+            assert change["target"] == {"type": "demo.order", "id": "o1"} and change["actor"] == ALICE
+            assert [r["seq"] for r in rows] == list(range(1, len(rows) + 1)), "numbered without gaps"
+>           assert {r["transfer_state"] for r in rows} == {"received"} and len(rows) == len(world.audited)
+E           AssertionError: assert ({'pending', 'received'} == {'received'}
+E             
+E             Extra items in the left set:
+E             'pending'
+E             Use -v to get more diff)
+
+tests/test_security_integration.py:92: AssertionError
+=========================== short test summary info ============================
+FAILED tests/test_security_integration.py::test_audit_records_reach_the_audit_member_with_receipts
+1 failed, 91 passed, 173 deselected in 130.40s (0:02:10)
+
+real	2m11.064s
+user	0m12.995s
+sys	0m2.841s
+exit 1
+1 passed, 1 deselected in 6.15s
+1 passed, 1 deselected in 6.07s
+1 failed, 1 deselected in 6.18s
+1 passed, 1 deselected in 6.12s

@@ -1,0 +1,39 @@
+be-sdk-python 3.0.0a49 in progress (T8a), 2026-11-05: each rule broken by one edit; uv run pytest tests/test_authz.py tests/test_records.py tests/test_security.py and -m integration tests/test_authz_sql_integration.py tests/test_lists_integration.py; the file restored; bytecode cache off and cleared before each mutant.
+red  an operation's fields are the view's (AE08)
+       FAILED tests/test_authz.py::test_segment_eval_vectors - AssertionError: ('own...
+red  a masked field is dropped, not None (AE04)
+       FAILED tests/test_authz.py::test_mask_vectors - AssertionError: mask-partly-r...
+red  _masked present when nothing is masked
+       FAILED tests/test_authz.py::test_mask_vectors - AssertionError: mask-all-read...
+red  a secret field is masked instead of dropped
+       FAILED tests/test_authz.py::test_mask_vectors - AssertionError: mask-partly-r...
+red  _masked does not name the masked fields
+       FAILED tests/test_authz.py::test_mask_vectors - AssertionError: mask-partly-r...
+red  a segment that does not fit is kept (FX01)
+       FAILED tests/test_authz.py::test_segments_that_do_not_fit_the_definitions_are_refused
+       FAILED tests/test_security.py::test_protected_routes_verify_the_token_and_decide_by_the_view
+red  the holder never checks segments
+       FAILED tests/test_authz.py::test_segments_that_do_not_fit_the_definitions_are_refused
+       FAILED tests/test_security.py::test_protected_routes_verify_the_token_and_decide_by_the_view
+red  the host does not give the holder its definitions
+       FAILED tests/test_security.py::test_protected_routes_verify_the_token_and_decide_by_the_view
+red  a segment missing a dimension passes the check (EN08)
+       FAILED tests/test_authz.py::test_segment_check_vectors - AssertionError: chec...
+       FAILED tests/test_authz.py::test_segments_that_do_not_fit_the_definitions_are_refused
+red  an undeclared dimension passes (EN08)
+       FAILED tests/test_authz.py::test_segment_check_vectors - AttributeError: 'Non...
+red  a written field need not be readable (EN09)
+       FAILED tests/test_authz.py::test_segment_check_vectors - AssertionError: chec...
+red  an interval end without its closed flag passes (EN10)
+       FAILED tests/test_authz.py::test_segment_check_vectors - AssertionError: chec...
+red  an unknown required feature is ignored (EN05)
+       FAILED tests/test_records.py::test_security_record_vectors - Failed: DID NOT ...
+red  readable_only keeps rows that do not show the field (FX12)
+       FAILED tests/test_lists_integration.py::test_readable_only_narrows_to_the_rows_that_show_a_field
+red  readable_only does not narrow
+       FAILED tests/test_lists_integration.py::test_readable_only_narrows_to_the_rows_that_show_a_field
+red  a narrowed field still cannot sort or filter
+       FAILED tests/test_lists_integration.py::test_readable_only_narrows_to_the_rows_that_show_a_field
+red  the narrowing is not in the filter digest
+       FAILED tests/test_lists_integration.py::test_readable_only_narrows_to_the_rows_that_show_a_field
+done

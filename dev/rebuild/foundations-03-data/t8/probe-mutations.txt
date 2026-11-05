@@ -1,0 +1,27 @@
+probes 3.2.38 in progress (T8c), 2026-11-05: each rule broken by one edit; uv run pytest conformance/tests/test_authz_profile.py::...[go|py]; the file restored; red = the profile's verdict is not 符合.
+red  go: a command's target state is not checked (AE15)
+         CK-AZ-05 失败 — value_set: a move outside the grant: 204 , want 403 PERMISSION_DENIED; value_set: the refused move changed the entry: {'legal_entity': 'LE2', 'dept_path': 'org1/org2', 'owner_id': '0190f3a1-0000-7000-8000
+         CK-AZ-05b 失败 — paged one row at a time: ['01a1aa59-b9e9-7154-860c-166440e465a3', '01a1aa59-f573-754b-b401-e43d97b61178', '01a1aa5a-30e2-7602-80d5-973ab634c7b6', '01a1aa5a-6c5b-743f-81f5-7e112b408d6f', 'e3', 'e4', 'e5']
+       E       AssertionError: test/probe-go authz: 不符合
+red  go: the list shows every field, not the hit segments' (P8.17)
+         CK-AZ-05 失败 — value_set: e1: the single object (200) differs from its list row; value_set: e3: the single object (200) differs from its list row; value_set: e5: the single object (200) differs from its list row; value_
+         CK-AZ-05b 失败 — e4: cost '10' _masked None, readable False
+       E       AssertionError: test/probe-go authz: 不符合
+red  go: the export outputs the page's fields (P8.15)
+         CK-AZ-05b 失败 — the export outputs its own segment's fields, not the page's: {'status': 200, 'body': {'amount': '100', 'approved': False, 'cost': '7', 'currency': 'CNY', 'dept_path': 'org1/org2', 'id': '01a1aa5c-93ae-74
+       E       AssertionError: test/probe-go authz: 不符合
+red  go: the approval does not hold its transaction (CK-AZ-04's driver)
+         CK-AZ-04 失败 — a write outlasting its view: (204, ''), want 503 AUTHORIZATION_VIEW_EXPIRED; the write's effect stayed: approved True
+       E       AssertionError: test/probe-go authz: 不符合
+red  py: a command's target state is not checked (AE15)
+         CK-AZ-05 失败 — value_set: a move outside the grant: 204 , want 403 PERMISSION_DENIED; value_set: the refused move changed the entry: {'legal_entity': 'LE2', 'dept_path': 'org1/org2', 'owner_id': '0190f3a1-0000-7000-8000
+         CK-AZ-05b 失败 — paged one row at a time: ['01a1aa5e-ce4b-7353-8607-2e78da75bc06', '01a1aa5f-09ed-721c-8605-b64a54787dff', '01a1aa5f-457a-7653-b048-f1e2a82d6c0f', '01a1aa5f-813c-7521-87d7-ca5f31855f94', 'e3', 'e4', 'e5']
+       E       AssertionError: test/probe-py authz: 不符合
+red  py: the list shows every field, not the hit segments' (P8.17)
+         CK-AZ-05 失败 — value_set: e1: the single object (200) differs from its list row; value_set: e3: the single object (200) differs from its list row; value_set: e5: the single object (200) differs from its list row; value_
+         CK-AZ-05b 失败 — e4: cost '10' _masked None, readable False
+       E       AssertionError: test/probe-py authz: 不符合
+red  py: the export outputs the page's fields (P8.15)
+         CK-AZ-05b 失败 — the export outputs its own segment's fields, not the page's: {'status': 200, 'body': {'id': '01a1aa61-bc4f-700b-a48f-5f822e327c53', 'number': 'e1', 'legal_entity': 'LE1', 'dept_path': 'org1/org2', 'owner
+       E       AssertionError: test/probe-py authz: 不符合
+done

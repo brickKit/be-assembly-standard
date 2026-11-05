@@ -1,0 +1,67 @@
+be-sdk-go alpha.71 in progress (T8a), 2026-11-05: each rule broken by one edit; go test -tags integration -p 1 ./authz/ ./list/ ./records/ ./launcher/ (launcher: TestOthersSeeNothingAndFieldsFollowTheSegments only); the file restored; a crash counts as red.
+red  an operation's fields are the view's (AE08)
+       --- FAIL: TestSegmentEvalVectors (0.01s)
+               	Error:      	Not equal: 
+               	Messages:   	own-orders-in-le1-u1 r1 the operation's own fields
+               	Error:      	Not equal: 
+red  a masked field is dropped, not null (AE04)
+       --- FAIL: TestMaskVectors (0.00s)
+               	Error:      	Not equal: 
+               	Messages:   	mask-partly-readable
+               	Error:      	Not equal: 
+red  _masked present when nothing is masked
+       --- FAIL: TestMaskVectors (0.00s)
+               	Error:      	Not equal: 
+               	Messages:   	mask-all-readable
+       --- FAIL: TestOthersSeeNothingAndFieldsFollowTheSegments (7.88s)
+does not compile: a secret field is masked instead of dropped
+red  _masked does not name the masked fields
+       --- FAIL: TestMaskVectors (0.00s)
+               	Error:      	Not equal: 
+               	Messages:   	mask-partly-readable
+               	Error:      	Not equal: 
+red  a segment that does not fit is kept (FX01)
+       --- FAIL: TestSegmentsThatDoNotFitTheDefinitionsAreRefused (0.00s)
+               	Error:      	Not equal: 
+               	Messages:   	the segment without the region is not used; the other is
+               	Error:      	Not equal: 
+red  the holder never checks segments
+       --- FAIL: TestSegmentsThatDoNotFitTheDefinitionsAreRefused (0.00s)
+               	Error:      	Not equal: 
+               	Messages:   	the segment without the region is not used; the other is
+               	Error:      	Not equal: 
+red  the launcher does not give the holder its definitions
+       --- FAIL: TestOthersSeeNothingAndFieldsFollowTheSegments (7.87s)
+               	Error:      	Should be empty, but was [map[_masked:[cost] amount:10 cost:<nil> id:0190f3a1-0000-7000-8000-00000000e001] map[_masked:[cost] amount:20 cost:<nil> id:0190f3a1-0000-7000-8000-00000000e002] map[_masked:[cost] amount:30 cost:<nil> id:0190f3a1-0000-7000-8000-00000000e003]]
+               	Messages:   	a segment missing a dimension gives nothing
+               	Error:      	Not equal: 
+red  a segment missing a dimension passes the check (EN08)
+       --- FAIL: TestSegmentCheckVectors (0.00s)
+               	Error:      	Not equal: 
+               	Messages:   	check-missing-dimension: <nil>
+       --- FAIL: TestSegmentsThatDoNotFitTheDefinitionsAreRefused (0.00s)
+GREEN (survived)  an undeclared dimension passes (EN08)
+red  a written field need not be readable (EN09)
+       --- FAIL: TestSegmentCheckVectors (0.00s)
+               	Error:      	Not equal: 
+               	Messages:   	check-write-not-readable: <nil>
+red  an interval end without its closed flag passes (EN10)
+       --- FAIL: TestSegmentCheckVectors (0.00s)
+               	Error:      	Not equal: 
+               	Messages:   	check-interval-without-closed: <nil>
+red  an unknown required feature is ignored (EN05)
+       --- FAIL: TestSecurityRecordVectors (0.01s)
+               	Error:      	Expected error with "record refused" in chain but got nil.
+               	Messages:   	view-unknown-required-feature
+               	Error:      	Expected error with "record refused" in chain but got nil.
+does not compile: readable_only keeps rows that do not show the field (FX12)
+red  readable_only does not narrow
+       --- FAIL: TestReadableOnlyNarrowsToTheRowsThatShowAField (0.26s)
+               	Error:      	"[0190f3a1-0000-7000-8000-000000000001 0190f3a1-0000-7000-8000-000000000002 0190f3a1-0000-7000-8000-000000000003 0190f3a1-0000-7000-8000-000000000004]" should have 3 item(s), but has 4
+               	Messages:   	the three alpha rows
+red  a narrowed field still cannot sort or filter
+       --- FAIL: TestReadableOnlyNarrowsToTheRowsThatShowAField (0.24s)
+               	Error:      	Received unexpected error:
+               	Messages:   	narrowed to the alpha rows, cost sorts and filters
+GREEN (survived)  the narrowing is not in the filter digest
+done
