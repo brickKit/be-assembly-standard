@@ -103,4 +103,5 @@
 ## 任务结束时：知识库反馈
 
 还没交的草稿（Python 的字节码缓存、公共 Go 代理缓存自己的失败、变异不借共用的种子账号三份已交：kb PR #66，2026-11-05，等审查）：
+- 备份工具选型的“不测”推理（2026-11-05，第 4 项 T2a，A135）：自建 PostgreSQL 在 Alpine 基础镜像上，WAL-G 只发 glibc 构建（发布流水线在 Ubuntu 上带 cgo 构建 brotli、libsodium、lzo），要自己构建或换镜像，适配就落后于发行版软件源里的 pgBackRest；交成实测记录的“没有测的候选与理由”，连同冒烟的原始输出（`foundations-04-data/t2a/`）。
 - Linux 的 `CLOCK_MONOTONIC` 在系统休眠期间停走（`CLOCK_BOOTTIME` 才计入）；kb 选主相关文档（07.06 选主、07.10 时间与时钟）按单调时钟计租约时没有提醒这一点。提交前先在 Linux 上验证。

@@ -1,0 +1,11 @@
+RustFS rustfs/rustfs:1.0.0-beta.12 (base resource be-rustfs), 2026-11-05 ~09:56 UTC, boto3 via `uv run --with boto3`:
+create bucket with object lock: ok 200
+put with COMPLIANCE retention 10 min: ok 200
+version id: 69b452a2-c7a1-42f7-b873-2b6e85dbc542
+   {'Mode': 'COMPLIANCE', 'RetainUntilDate': datetime.datetime(2026, 11, 5, 10, 6, 45, tzinfo=tzutc())}
+get retention: ok
+delete that version (must be refused): refused AccessDenied
+shorten retention (must be refused): refused AccessDenied
+bypass governance on a compliance object (must be refused): refused AccessDenied
+object still readable: b'v1'
+bucket objlock-probe-33b219af left in place (its object is locked for 10 min)
