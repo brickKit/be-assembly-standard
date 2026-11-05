@@ -1,0 +1,54 @@
+be-sdk-go alpha.80 in progress (item 4 T7): progress and redelivery (P6.36-P6.40), the events and launcher tests that cover them
+mutants: 16
+red  a run shorter than L counts
+       Error:      	Not equal:
+       Messages:   	short-last-run
+red  the cut is the last handling, not L before it
+       Error:      	Not equal:
+       Messages:   	steady
+       Error:      	Not equal:
+red  the progress is the largest position handled
+       Error:      	"{\"time\":\"2026-11-05T12:30:22.748Z\",\"level\":\"INFO\",\"msg\":\"definitions accepted\",\"component\":\"demo/rdprod\",\"version\":\"3.0.0\",\"event\":\"definitions_accepted\"}\n{\"tim
+       Messages:   	from the progress (the third), not from the largest (the fifth)
+       Error:      	Condition never satisfied
+red  the inbox keeps no source position
+       Error:      	Not equal:
+       Messages:   	the inbox keeps the source position (P6.36)
+       Error:      	Not equal:
+red  a redelivery reuses the event's message identity
+       Error:      	"[]" should have 4 item(s), but has 0
+       Error:      	Condition never satisfied
+       Messages:   	every event once again: the five lost with the backup redelivered
+does not build: a start before the purge is not beyond the retention
+red  a start past the counter is not ahead
+       Error:      	Not equal:
+       Messages:   	past the counter
+red  a start past the fork point is not ahead
+       Error:      	Not equal:
+       Messages:   	past the earlier epoch's fork point
+red  an unknown epoch is not ahead
+       Error:      	Not equal:
+       Messages:   	an epoch it never had
+red  a database that went back is not noticed
+       Error:      	Condition never satisfied
+       Messages:   	every event once again: the five lost with the backup redelivered
+       Error:      	Condition never satisfied
+red  the epoch is never recorded after the redelivery
+       Error:      	Condition never satisfied
+       Messages:   	the epoch recorded once the producer answered
+       Error:      	Condition never satisfied
+red  a read model is not repaired
+       Error:      	Not equal:
+       Messages:   	the read model's repair ran
+       Error:      	Not equal:
+red  the start is the largest progress of the subscriptions
+       Error:      	Not equal:
+       Messages:   	2: b has none; 3: different instances; 5: a has none; the other producer's partition 4 does not count
+GREEN (survived)  a partition an earlier subscription lacks still gets a start
+red  a subscription's start is not recorded
+       Error:      	"{\"time\":\"2026-11-05T12:33:41.295Z\",\"level\":\"INFO\",\"msg\":\"definitions accepted\",\"component\":\"demo/rdprod\",\"version\":\"3.0.0\",\"event\":\"definitions_accepted\"}\n{\"tim
+       Messages:   	from the progress (the third), not from the largest (the fifth)
+       Error:      	Not equal:
+red  the purge notes no position
+       Error:      	Received unexpected error:
+done
