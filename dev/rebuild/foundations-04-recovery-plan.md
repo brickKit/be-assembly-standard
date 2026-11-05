@@ -246,7 +246,10 @@
   - T8b：SDK alpha.81（`frozen` 不跑模块的 `Start`、转发、订阅与作业，`redelivering` 跑模块的 `Start`、转发与订阅；`rt.RecoveryPhase()`；外壳带阶段）；改坏 10 处，第一轮存活 1 处（就绪日志的阶段没人查），补断言后红；
   - T8c：be-postgres 换成带 pgBackRest 的本地构建镜像（`infra/postgres/Dockerfile`），归档默认关、演练时开（开发机的盘），`infra/scripts/pg-backup.sh`；镜像检查认本地构建的服务。冒烟的两个坑：pgBackRest 的检查要 `archive_command` 里有 `pgbackrest` 这个词；临时实例要挂上仓库（它的 `restore_command` 是 archive-get）并且 `max_connections` 不小于原实例（`t8/infra-smoke-output.txt`）；
   - T8d：`be-ops` v3.0.0-alpha.2 的 `recover`；改坏 8 处全红（`t8/ops-mutants.*`）；第 3 步拷回 schema 时成员不停（冻结的成员不干活；审计常与别的成员同一个外壳，停不了别人而留着它），第 5 步换阶段重启时连接池重建；核对阶段现在只认 Docker（Kubernetes 的核对是已知缺口）。
-- **T8e 之前要做的级联**：每个有流的组件升到 SDK alpha.81 时要声明 `Resend`（`<前缀>.system.resend`），格的 `prepare.py` 也要登记这些键；身份成员删错误的注释；格要给 `ops/recover` 签服务证书、建开了对象锁的运行档案桶。
+- **T8e 之前要做的级联（2026-11-05 排定，按依赖顺序，每个：升版本、SDK alpha.81、有流的在定义里加补发操作并设 `Definition.Resend`、单元与集成测试、文档的实现状态一行、lint、发布；依赖方的精确依赖跟着改）**：
+  1. `infra/audit`（只升 SDK）；2. `infra/authz`（只升 SDK）；3. `infra/iam-casdoor`（`infra.iam.account.resend`；删 `iam/evidence.go` 里“写入器会记日志”的错误注释）；4. `mdm/org`、5. `mdm/currency`、6. `mdm/partner`、7. `mdm/product`、8. `erp/credit`、9. `erp/inventory`、10. `erp/sales`、11. `erp/billing`（都是 `<前缀>.system.resend`）；
+  12. 外壳 `go-infra`、`go-core`；13. 套件 `prepare.py` 登记新的键、给 `ops/recover` 签服务证书、建开了对象锁的运行档案桶；14. 格 F3-S、F3-X 跑一遍（还不演练）。
+  授权成员“写意图之前先查键”与 T4e 的审计缺口不并进这一轮（各自单独改）。
 
 不在 T8：第 4 步里恢复凭据与所有者确认凭据摘要的恢复（随 T9 的 6.7）；第 5 步里事件签名密钥的轮换与重签（事件现在没有签名，协议 19 的这一条等事件签名加入时再做，记进已知风险）。
 
