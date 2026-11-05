@@ -1,0 +1,17 @@
+# Foundations item 4, T11: the gate's recovery drill (protocol 15, steps 1-10, its eight drill scenarios). R4-X with
+# infra/audit alone, so that the drill can pause the evidence store alone: an intent-only disablement (its conclusion
+# held in the identity member's evidence outbox) and one only in the alert channel (its intent not taken within 2 s).
+# The Go probe go2 in be/go-infra pays into the suite's fake payment system on the host (port 18990), deduplicated for
+# 65 minutes: the resend deadline's safety margin is at least an hour (protocol 15's parameters), so a payment first
+# sent 5 minutes before the reconciliation is past it (the scenario "a pending payment past the dedupe window").
+# Its own deployment, a new one for every drill (the drill script writes it).
+cell: R4-G
+row: D
+deployment: 01a1ad8c-d293-7868-95a9-02ecd31b8044
+shells:
+  be/go-infra@3.0.60: [infra/iam-casdoor, infra/authz, mdm/org, mdm/currency, mdm/partner, mdm/product, test/probe-go2]
+alone: [infra/audit@3.0.24, erp/inventory@3.0.21, erp/credit@3.0.21, erp/sales@3.0.29, erp/billing@3.0.30, infra/print@3.0.14]
+chain: []
+settings:
+  test/probe-go2: {PROBE_EXTERNAL_URL: "http://host.docker.internal:18990", PROBE_EXTERNAL_IRREVOCABLE: "false",
+                   PROBE_EXTERNAL_DEDUPE_WINDOW: "65m"}
