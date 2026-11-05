@@ -1,0 +1,32 @@
+be-sdk-go alpha.81 in progress (item 4 T8b): recovery mode (P1.22-P1.24), the launcher and shell tests that cover it
+mutants: 10
+GREEN (survived)  a member in a phase is plainly ready
+red  recovery_ready is not routable
+       Error:      	Condition never satisfied
+       Error:      	Condition never satisfied
+red  the self-description has no phase
+       Error:      	"{\"capabilities\":[],\"component_id\":\"demo/rcprod\",\"protocol\":\"3.0.0-alpha.78\",\"sdk\":\"be-sdk-go/3.0.0-alpha.81\",\"version\":\"3.0.0\"}" does not contain "\"recovery_phase\":\"
+red  the user surface serves during a recovery
+       Error:      	Not equal:
+       Error:      	"{\"id\":\"01a1abbd-f332-71e5-b987-bac3ee85509c\"}" does not contain "\"reason\":\"MAINTENANCE\""
+       Error:      	"{\"id\":\"01a1abbd-f332-71e5-b987-bac3ee85509c\"}" does not contain "\"phase\":\"frozen\""
+red  readiness does not say the phase
+       Error:      	Not equal:
+       Error:      	Not equal:
+       Error:      	Input ('ok') needs to be valid json.
+red  frozen forwards and receives
+       Error:      	Not equal:
+       Messages:   	no subscription
+red  jobs run during a recovery
+       Error:      	Not equal:
+       Messages:   	no job
+       Error:      	Not equal:
+red  subscriptions start while frozen
+       Error:      	Not equal:
+       Messages:   	no subscription
+red  redelivering does not forward
+       Error:      	Condition never satisfied
+       Messages:   	the row written while frozen is forwarded and received
+red  a shell does not say its members' phase
+       Error:      	Input ('ok') needs to be valid json.
+done
