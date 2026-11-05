@@ -1,0 +1,30 @@
+be-sdk-go alpha.77 in progress (item 4 T3, second round: the conditional create tested through Append; the log mutant rewritten): runprofile (P12.1-P12.8), unit and integration tests against RustFS
+red  a key may be written twice (no conditional create)
+       Error:      	An error is expected but got nil.
+red  no object lock on the record
+       Error:      	Not equal:
+red  a signer under another trust root is accepted
+       Error:      	"[{be.ops.run_profile_record 1.0 01a1ab2d-d60c-74a4-9363-73f457cbd5f3 generation.authz 01a1ab2d-d60c-7a1b-bebb-43ecdbbfae04 2026-11-05T10:07:50.284662Z {infra/authz infra/authz-1} {\"valu
+       Messages:   	only the genuine record
+red  a changed body is accepted
+       Error:      	"[{be.ops.run_profile_record 1.0 01a1ab2d-d993-7eff-99e3-a1c5a7994a7f generation.authz 01a1ab2d-d994-7334-b1e7-f587ccba3666 2026-11-05T10:07:51.188210Z {infra/authz infra/authz-1} {\"valu
+       Messages:   	only the genuine record
+red  the signature is part of the signed bytes
+       Error:      	Should be empty, but was [run profile: 01a1ab2d-dd12-7f2c-8a4a-ec2a3b77b9fc/generation.authz/2026/11/05/2026-11-05T10:07:52.083221Z-01a1ab2d-dd13-7361-a53e-f72d34e766c7.json: the signatur
+       Error:      	"[]" should have 1 item(s), but has 0
+       Error:      	"[]" should have 1 item(s), but has 0
+red  the generation is the last record, not the largest
+       Error:      	Not equal:
+red  an advance is used without being written to the run profile
+       Error:      	Not equal:
+       Messages:   	the run profile's 5 counts
+       Error:      	Not equal:
+red  an advance ignores the values seen elsewhere
+       Error:      	Not equal:
+       Error:      	Not equal:
+       Messages:   	the run profile's 5 counts
+red  the webhook is not notified
+       Error:      	Condition never satisfied
+red  the double failure is not logged
+       Error:      	"[]" should have 1 item(s), but has 0
+done
