@@ -191,6 +191,13 @@ T4a 查出的缺口按“机制在哪里”分三处做，各自先写红的测�
     - 发现：身份成员的账号操作声明为必需审计却没有写审计记录（记进它的未决问题，不在这一轮补）；
     - 待下次改到时补的文档：币种 3.0.19 的实现状态误写“依赖 `mdm/org` 3.0.20”；九个组件的代码地图没列 `checks.go`（销售还有 `recoverycheck.go`）；账单实现状态说“见未决问题”而未决问题没加“作废号的查询路由”。
   - **T10c-3 做了（2026-11-05）**：Go 探针 3.2.42（恢复操作 `<前缀>.recover`；Python 探针随第 6 项）、套件 `prepare.py` 登记全部组件的恢复操作（`make check` 142、`make probes` 165 全过）；外壳 go-infra 3.0.54、go-core 3.0.55（成员换到 T10 的版本，SDK alpha.92），py-render 3.0.40（Python 探针 3.2.41：pin-check 报它还停在 3.2.38，是 3.2.39–41 发布时漏升的）。
+  - **T10d 的计划（2026-11-05，AI 定）**：恢复工具的第 7–10 步缺两样东西：工具读不到审计存储里的业务记录（只有用户面的查询，要用户凭据）；连续单号已用的最大值没有约定从审计记录的哪里取。拆成：
+    - **T10d-1 线协议 alpha.88**：P14.5 写明签发连续单号的业务变更在审计记录的 `changes.document_number` 带（法人、序列代码、期间、号），恢复工具按序列取 T 之后的最大值，与属主 `Numbers` 的取较大者；SDK 给一个构造它的小函数（alpha.93）。
+    - **T10d-2 审计**：契约 alpha.3 加系统方法 `RecordService.List`（读者同证据存储的 `AUDIT_EVIDENCE_READERS`）：按发生时刻起点与类别列出记录，带来源、来源纪元与产生序号（审计损失按它求空位），按存储位置分页；审计 3.0.22。
+    - **T10d-3 账单 3.0.28**：开具的审计记录带 `document_number`。
+    - **T10d-4 `be-ops` alpha.8**：状态表加 `verifying`、`read_only`，步骤 `reconcile`（切 `verifying` 重启全部成员；对发对外命令的成员调对账，发出记录取自证据存储里 T 之后的 `external_command_issued` 与告警渠道）、`check`（每个有库的成员）、`loss`（审计存储里 T 之后的业务变更、安全变更与敏感读取，按目标问属主 `Present`；不带版本而还在的列“无法判断”；安全变更有证据覆盖的不列；按用户与对象出清单；审计损失按来源的产生序号空位与最大序号之后的窗口）、`open-read`（守卫：`check` 与 `loss` 做过；检查全部通过，否则要 `--approver` 与 `--reason` 记下谁接受了哪些差异；切 `read_only`）、`open`（单号：属主 `Numbers` 与审计里的 `document_number` 取较大者，`AdvanceNumbers`；去掉阶段，回到运行）。“至少一名授权管理员能登录”“全部验证方已刷新公钥集合”这两条守卫本轮只记进开放记录由批准人确认，不自动核验（记为已知缺口）。
+    - **T10e 演练**：照计划。
+    - **T10d-1 到 T10d-3 做了（2026-11-05）**：线协议 alpha.88、SDK alpha.93（`audit.DocumentNumber`）；审计契约 alpha.3 与审计 3.0.22（`RecordService.List`，操作 `infra.audit.record.list`；集成测试抓到“不带类别时空切片成了 NULL、全部被筛掉”）；账单 3.0.28（编号的审计带所签的号；开具有三次审计都记在 `OpIssue` 下，带号的是编号那一次）。
   - 要带上的（T10b 记下的）：每个有数据库的组件加恢复操作（定义的 `system` 资源下 `<前缀>.system.recover`）与 `Definition.Recovery`；清单的 `RECOVERY_PHASE` 枚举加两个值；身份成员在 `read_only` 签发令牌、一次性码等路由标 `ReadOnlyOpen`；`prepare.py` 的键。
 
 - **T10a 做了（2026-11-05）**：线协议 alpha.85：P1.23 加 `verifying`、`read_only`；第 13 章加外部对账（P13.11–P13.13，`be.external.v1.ReconcileService`，向量 `external-reconcile` 的参考模型：对上而终结、写截止、`unknown`、`manual`、外部有本地无、可能已执行待核实）；新的第 14 章（`be.recovery.v1.CheckService`：一致性检查与 SDK 自带的投影、消费者纪元、审计积压三项，`Present` 查对象是否还在，`Numbers`/`AdvanceNumbers` 单号的已用最大值；审计损失由恢复工具按产生序号的空位求）；两份 proto。写向量时我的期望写错过一次（去重保留期内按行序先命中“写截止”），按参考模型改正。
