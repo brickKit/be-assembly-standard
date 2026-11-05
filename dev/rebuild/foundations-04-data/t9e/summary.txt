@@ -1,0 +1,55 @@
+run profile bucket: HTTP 200 (200 made, 409 there)
+DRILL archive BEGIN 17:24:35
+DRILL archive END rc=0
+DRILL cell BEGIN 17:26:35
+DRILL cell END rc=0
+DRILL prepare BEGIN 17:29:26
+DRILL prepare END rc=0
+T=2026-11-05T17:29:30.413159Z
+DRILL after-T BEGIN 17:29:32
+DRILL after-T END rc=0
+after T: revoke 01a1acc0-134d-721d-897c-3a230f3459b5, disable test.revoked, retire 01a1acc0-14a7-70a5-a55f-aa9e0d7d13c8
+DRILL after-T-tighten BEGIN 17:29:42
+DRILL after-T-tighten END rc=0
+DRILL announce BEGIN 17:29:44
+DRILL announce END rc=0
+DRILL freeze BEGIN 17:29:44
+DRILL freeze END rc=0
+DRILL restore-db BEGIN 17:29:55
+DRILL restore-db END rc=0
+DRILL advance BEGIN 17:31:01
+DRILL advance END rc=0
+DRILL redeliver BEGIN 17:31:01
+DRILL redeliver END rc=0
+DRILL replay BEGIN 17:31:13
+DRILL replay END rc=1
+DRILL FAILED replay
+RESUMED at step 6 with be-ops alpha.7
+DRILL replay BEGIN 17:32:53
+DRILL replay END rc=0
+DRILL keys BEGIN 17:32:59
+DRILL keys END rc=0
+CHECK tables that changed after T: 20 (erp_billing.draft_key, erp_billing.invoice, erp_billing.invoice_line, erp_credit.branch, erp_inventory.branch, erp_inventory.branch_line, erp_inventory.consumption, erp_inventory.movement)
+CHECK business tables not back at T: 3 ['erp_sales.org_realign: T 0, restored 1', 'infra_authz.authz_change: T 79, restored 80', 'infra_iam_casdoor.iam_status_evidence: T 0, restored 1']
+CHECK evidence store tables that went back: 0 []
+CHECK the revoked grant: ended (ended)
+CHECK test.revoked: disabled (disabled)
+CHECK the retired unit: retired (retired)
+CHECK live sessions from before: 0 (0)
+CHECK the authorization state: operational (operational)
+CHECK the signing key: 5243d23589c1de1d -> 37ec352848e55fd6 (another)
+CHECK replay: replayed: map[dangling:1 reflected:88]; ignored 28; for review 2; the check: {AdminState:operational Ended:0 Held:0 Review:0 Closed:[] AdminsNotClosed:[] Unprovable:[]}
+DRILL reopen BEGIN 17:32:59
+DRILL reopen END rc=0
+DRILL scenarios-again BEGIN 17:33:11
+DRILL scenarios-again END rc=0
+the WAL archive is off
+test accounts reset in Casdoor
+T9E ALL-DONE
+NOTE (written after the run): "business tables not back at T: 3" counts after the replay (drill.sh counted after
+steps 6 then; fixed since: the count is before the replay). The three rows are the replay's: the revocation's change
+binding (infra_authz.authz_change), the disablement's status evidence (iam_status_evidence), the sales member's
+alignment on the retired unit's event (erp_sales.org_realign). The dangling mdm/org record is a unit created 11 s
+after T by the scenarios and moved out (not in the restored database: dangling, for review, as protocol 15 says);
+test.revoked's disablement reached the evidence store as an intent only (its conclusion was still in the identity
+member's outbox at the freeze and went back with the database): executed last, intent unconfirmed, for review.

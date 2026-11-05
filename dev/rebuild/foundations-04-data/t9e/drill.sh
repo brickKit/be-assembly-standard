@@ -1,7 +1,7 @@
 #!/bin/bash
 # Foundations item 4, T9e: steps 1-6 of a full recovery (protocol 15) on the cell R4-X with be-ops recover. As T8e
 # (t8e/drill.sh), and: before T test.alice lets test.mdm.admin disable accounts (t9e/tighten prepare); after T three
-# tightenings (tighten after): test.mdm.viewer's grant revoked, test.nobody disabled, a unit retired; after step 5 the
+# tightenings (tighten after): test.mdm.viewer's grant revoked, test.revoked disabled, a unit retired; after step 5 the
 # replay (6.2-6.6) and the new signing keys (6.8). Checks: the three tightenings are back after the replay (by their
 # evidence), the sessions from before ended, the signing key new, the authorization state operational. Then the phase
 # off and up again (reopening is T10's) and the scenarios once more: the deployment works with the new keys.
@@ -52,7 +52,7 @@ VIEWER=$(sql "select principal from infra_iam_casdoor.iam_account where username
 export GRANT UNIT
 GRANT=$(sql "select id from infra_authz.authz_record where record_type = 'grant' and state = 'active' and body->>'grantee' = '$VIEWER' order by created_at, id limit 1")
 UNIT=$(sql "select u.id from mdm_org.org_unit u join mdm_org.legal_entity e on e.id = u.legal_entity_id where e.code = 'US01' and u.state = 'active' and not exists (select 1 from mdm_org.org_unit c where c.parent_id = u.id) order by u.code limit 1")
-echo "after T: revoke $GRANT, disable test.nobody, retire $UNIT" >> $O/summary.txt
+echo "after T: revoke $GRANT, disable test.revoked, retire $UNIT" >> $O/summary.txt
 step after-T-tighten $BIN/tighten after
 counts > $O/counts-after.txt
 # the tool's environment: the run profile, ops/recover's certificate of this deployment, the instance, the bus
@@ -66,11 +66,11 @@ step freeze $B freeze --project $D
 step restore-db $B restore-db --project $D
 step advance $B advance --project $D
 step redeliver $B redeliver --project $D
+$B status --project $D > $O/status.txt 2>&1
+counts > $O/counts-restored.txt  # before the replay: step 3's result alone
 KEY_BEFORE=$(sha256sum $D/.secrets/iam/signing-key.pem | cut -c1-16)
 step replay $B replay --project $D
 step keys $B keys --project $D
-$B status --project $D > $O/status.txt 2>&1
-counts > $O/counts-restored.txt
 # the business tables are back at T; the evidence store's (infra_audit) are not lower than after T
 python3 - $O <<'PY' >> $O/summary.txt
 import sys, pathlib
@@ -85,10 +85,10 @@ print(f"CHECK business tables not back at T: {len(wrong)} {wrong[:8]}")
 print(f"CHECK evidence store tables that went back: {len(audit)} {audit[:8]}")
 PY
 # the tightenings are back by their evidence; the sessions from before ended; a new signing key
-NOBODY=$(grep -o '"disabled":"[^"]*"' $O/after-T-tighten.log | cut -d'"' -f4)
+REVOKED=$(grep -o '"disabled":"[^"]*"' $O/after-T-tighten.log | cut -d'"' -f4)
 {
 echo "CHECK the revoked grant: $(sql "select state from infra_authz.authz_record where id = '$GRANT'") (ended)"
-echo "CHECK test.nobody: $(sql "select status from infra_iam_casdoor.iam_account where principal = '$NOBODY'") (disabled)"
+echo "CHECK test.revoked: $(sql "select status from infra_iam_casdoor.iam_account where principal = '$REVOKED'") (disabled)"
 echo "CHECK the retired unit: $(sql "select state from mdm_org.org_unit where id = '$UNIT'") (retired)"
 echo "CHECK live sessions from before: $(sql "select count(*) from infra_iam_casdoor.iam_session where ended_at is null and recovery_generation < (select generation from infra_iam_casdoor.be_recovery_generation)") (0)"
 echo "CHECK the authorization state: $(sql "select admin_state from infra_authz.authz_state") (operational)"
@@ -102,4 +102,7 @@ step reopen bash -c "cd $D && brickkit up"
 step scenarios-again env FROM=scenarios KEEP_UP=1 bash $R/dev/rebuild/experiment-scripts/cell-chain.sh R4-X $O/cell-again
 (cd $D && brickkit down > /dev/null 2>&1)
 bash $R/infra/scripts/pg-backup.sh off >> $O/summary.txt 2>&1
+# Casdoor is outside the recovery group: the account disabled there stays disabled; the test accounts back as seeded
+(cd $R/components/infra/iam-casdoor && CASDOOR_URL=http://localhost:8000 CASDOOR_ADMIN_PASSWORD=$(val CASDOOR_ADMIN_PASSWORD) \
+  IAM_TEST_PASSWORD=$(val IAM_TEST_PASSWORD) python3 -I scripts/dev_setup.py --users-only > /dev/null 2>&1) && echo "test accounts reset in Casdoor" >> $O/summary.txt
 echo "T9E ALL-DONE" >> $O/summary.txt
