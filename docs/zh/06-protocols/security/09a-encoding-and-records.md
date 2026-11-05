@@ -270,6 +270,7 @@
 | `status` | `Enum` | 是 | `active`、`disabled`、`security_frozen` |
 | `security_mark` | `Enum` | 否 | `none`、`compromised`、`suspicious`；停用或冻结时可以带，身份侧处置按它派生（安全 08）；缺省等于 `none` |
 | `security_version` | `Int` | 是 | 账号的安全状态版本：从 1 起只增；改密码与重置密码、重置或移除 MFA 因素、强制登出、停用与冻结时加一。身份成员签发的访问令牌带签发时的版本，入口组件按视图里的版本判断令牌陈旧（[协议 20](../20-frontend.md#登录与会话)） |
+| `confirmation` | `Id` | 否 | 这次状态变更所用的确认记录（`be.security.confirmation`，`target_state` 与 `target_state_version` 是这次的状态与修订）：停用、冻结、重新启用或解冻持有授权管理资格的账号（受保护操作），以及超过 `T_tight` 由第二人确认的停用与冻结，身份成员办理前向授权组件取得并写在这里；授权组件按确认记录的规则核对并标为已使用（[安全 08 的管理员账号的状态变更](08-state-and-change-protocol.md#系统角色与最后管理员)）。没有它、或核对不通过的重新启用与解冻，该账号的授权管理持有资格转为待补确认 |
 
 ## 变更协议
 
