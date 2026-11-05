@@ -161,6 +161,7 @@ T4a 查出的缺口按“机制在哪里”分三处做，各自先写红的测�
 外部对账（第 7 步，比较恢复后的命令与外部记录、写重发截止、把对不上的转 `unknown`）属于 T10，用这里的命令表与查询。
 
 - **T9b-1 做了（2026-11-05）**：线协议 alpha.83 的第 13 章（P13.1–P13.10）、迁移 0015（`be_external_command`、`be_external_attempt`）、向量 `external-command`（Python 参考模型按行序第一条命中，覆盖 EI01–EI05、EI08、EI29–EI31、EI36、EI39、EI40 与重发截止的公式）、能力 `external-commands`。途中改正：恢复阶段里后台工作本来就不运行，所以只查询模式只是部署配置（`EXTERNAL_COMMANDS_QUERY_ONLY`），第 7 步的查询由恢复工具做（T10）。
+- **T9b-2 做了（2026-11-05）**：SDK alpha.89 的包 `extcmd`：组件定义 `ExternalCommands`、模块实现 `extcmd.Provider`（适配器与每种操作的能力）、`rt.External.Request` 在业务事务里写命令；SDK 的单例作业取到期的命令（`FOR UPDATE SKIP LOCKED`，命令行就是认领，`next_at` 是租约）：认领先提交 `sending` 再发、过了截止转 `unknown`；不可撤回的先写发出记录（证据存储或告警渠道，都不成就不发）；发送结果分类转移；`unknown` 先查、只在之前的请求再也不可能落地时同一参考号重发，否则 `manual`；`sending` 过了租约就是接管，转 `unknown` 不重发；`EXTERNAL_COMMANDS_QUERY_ONLY` 只查不发。状态表是纯函数 `Step`，按线协议的向量逐条核对（28 例）。改坏 12 处全红（`t9b/sdk-extcmd*`）。途中：线协议 alpha.84 就地改正 0015（加 `accepted_since`：`accepted` 的时限要从受理算起，借更新时刻每写一次就重算）与 P13.4（发出记录是 `intent`：不在业务事务里，没有提交序号）。
 
 ### T5 的计划（2026-11-05，AI 定）
 
