@@ -19,13 +19,18 @@
       - `infra/authz` 3.0.23–3.0.24、探针 3.2.38（四种维度的条目）、套件 1.0.43（授权剖面 CK-AZ-01..05，两种探针都符合）；
       - 外壳 `be/go-infra` 3.0.48、`be/go-core` 3.0.48、`be/py-render` 3.0.39。
       - 查出并修了四个 SDK 缺陷：组件不核对收到的段、单对象的字段不按操作、命中位为 NULL、不可下推的维度照常编译。两个真机格一次通过。A133 待复核。
-    - 下一步：T9（iam-casdoor 的第 2 项尾巴）；T5、T6 留给 T9 的：CP80、CP92、CP96 的账号停用形态，待补确认。推进方式要求每项做到门槛后汇报：第 3 项的门槛在 T10。
-    - 这一项做出来的（已发布）：`be-protocol` alpha.56–69，`contract-infra-authz` alpha.2，`contract-infra-iam` alpha.2，`be-sdk-go` alpha.57–73，`be-sdk-python` a46–a51，`infra/iam-casdoor` 3.0.17–3.0.20，`infra/authz` 3.0.16–3.0.24，探针 3.2.34–3.2.38、套件 1.0.39–1.0.43。A120–A130 维护者 2026-11-04 确认；A131、A132（T7b、T7d）、A133（T8）待复核。
+    - T9 做完（与 Casdoor 的全量比较、账号操作、账号状态变更的确认 A134；计划的“T9 的拆分”“T9a、T9b 做了”到“T9e”“T9 的验收”）。发布：
+      - `be-protocol` alpha.70（账号状态的 `confirmation`、P9.16 的“回声之前”）；`contract-infra-authz` alpha.3–4（`CheckAccountChange`、第四种回答 `UNPROVABLE`）；
+      - `be-sdk-go` alpha.74–76（`Watermark.Before`、`calls.Request.Credential`、`sectest` 的 `AccountService` 替身）；
+      - `infra/iam-casdoor` 3.0.21–3.0.22、`infra/authz` 3.0.25–3.0.26；外壳 `be/go-infra` 3.0.49、`be/go-core` 3.0.49；套件 1.0.44（真机格的注册表补上身份成员自己的键）。
+      - 查出并修了：冷静期 CP108 把解除处置的申请人算成“自己弄得不可用”；CP92 要“处理中”而契约只能答驳回。真机格第二次全部通过；第一次有一次偶发的 60 秒视图关闭没复现出来（计划的“T9e”）。A134 待复核。
+    - 下一步：T10（收尾与门槛检查），做完向维护者汇报第 3 项的门槛。
+    - 这一项做出来的（已发布）：`be-protocol` alpha.56–70，`contract-infra-authz` alpha.2–4，`contract-infra-iam` alpha.2，`be-sdk-go` alpha.57–76，`be-sdk-python` a46–a51，`infra/iam-casdoor` 3.0.17–3.0.22，`infra/authz` 3.0.16–3.0.26，探针 3.2.34–3.2.38、套件 1.0.39–1.0.44。A120–A130 维护者 2026-11-04 确认；A131、A132（T7b、T7d）、A133（T8）、A134（T9）待复核。
     - 小错，下次改到时改正：`be/py-render` 3.0.39 的 `pyproject.toml` 第 18 行注释写成“the probes 3.2.37 need v3.0.0a51”，应为“探针 3.2.38 要 a51、`infra/print` 3.0.14 要 a48”（批量替换时先换了版本号，注释那条替换没对上）。
   - 挂着的事：
     - 上层仓库 2026-11-04 推送到 `c60cc36e`（维护者下令）；之后的提交以 `git log origin/main..main` 为准。子仓库发布的版本都已推送并打了标签；没有已推送而未发布的。BrickKit 信箱里 FRB-014（代码地图把组件 ID 当路径）等回复。
     - kb PR #61（计划缓存的实测记录与反馈）等 kb 审查；审查意见回来时照 `kb-contribute` 处理。kb PR #63（T5 的空闲轮询与统计检查）已合并。kb PR #64（复盘的反馈：补测的集成测试适合手工定点改坏；故障注入要打到“那一步”、只认故障造成的失败）等审查。kb PR #65（边缘会话层的实测，含真实插件的复测）、#64（又补了“红也要红在那条规则上”）等审查。
-    - 注意到但没动：`be-sdk-go` 的 `launcher.TestResponsesAreNotHeldBackOnAKeptAliveConnection` 在 `make test` 的并行负载下偶尔以退出码 1 停止（2026-11-03 一次，单独跑 5 次都过，`foundations-03-data/t3/sdk-go-make-test.txt`）；T9 的“补取前先向 Casdoor 拉取”要 SDK 的补取在写回声之前给来源一个钩子。
+    - 注意到但没动：`be-sdk-go` 的 `launcher.TestResponsesAreNotHeldBackOnAKeptAliveConnection` 在 `make test` 的并行负载下偶尔以退出码 1 停止（2026-11-03 一次，单独跑 5 次都过，`foundations-03-data/t3/sdk-go-make-test.txt`）。
     - 移到 T10 的检查（要第二个副本或确定性的打断）：CK-EV-04、CK-EV-02 的两个副本同时编号、CK-WK-05、CK-WK-03 的接管一半；CK-EV-10 进 T8；Python 探针的 `fail`、`hold_ms`、`emit` 与后台工作项随第 6 项补。
     - 跑套件的环境：`source dev/rebuild/experiment-scripts/itenv.sh`，再把 `BE_ACC_*` 设成对应的 `BE_SDK_TEST_*`（PG_ADMIN、NATS_URL、S3_URL、S3_ACCESS_KEY、S3_SECRET_KEY）。监视长任务时 `pgrep -f '<命令>'` 会匹配到监视脚本自己（2026-11-03 两个监视因此不退出），盯进程号或用 `pgrep -x`。
 - 设计冻结与正式文档迁移已完成（[migration-plan.md](migration-plan.md)）。待复核的 AI 选择：A109（驻留期起始值）、A117、A118（第 2 项 T2）、A131、A132（第 3 项 T7）（A120–A130 维护者 2026-11-04 确认），都在 `docs/zh/02-decisions/09-ai-choices.md`。
@@ -116,3 +121,4 @@
 - Linux 的 `CLOCK_MONOTONIC` 在系统休眠期间停走（`CLOCK_BOOTTIME` 才计入）；kb 选主相关文档（07.06 选主、07.10 时间与时钟）按单调时钟计租约时没有提醒这一点。提交前先在 Linux 上验证。
 - Python 的变异检查要关掉字节码缓存（2026-11-04，第 3 项 T5e）：变异与原文件等长、又在同一秒内写入时，解释器认为 `.pyc` 仍然有效，跑的是上一个版本——同一处变异一次“存活”、一次被杀（`foundations-03-data/t5/py-stale-mutations.txt` 与脚本 `mutate-py-stale.py`）；上一个变异的 `.pyc` 留着时还会造成假的“被杀”。做法：`PYTHONDONTWRITEBYTECODE=1`，每处变异前删 `__pycache__`。kb 讲变异测试或测试有效性的地方补一句；提交前先查 kb 有没有。
 - 公共 Go 代理会缓存它自己取模块时的失败（2026-11-05，第 3 项 T7e，`foundations-03-data/t7-cells/attempt2`、`attempt3-F3-X`、`proxy-wait.log`）：刚推送的标签第一次被请求时，proxy.golang.org 自己解析 github.com 失败，之后半小时 `.info` 一直答 404（“Could not resolve host: github.com”），各节点不一致；请求 `@latest` 让它重新取，几分钟后各节点陆续恢复。`golang:*-alpine` 构建镜像里没有 git，`GOPROXY` 的 `direct` 回退因此也失败。kb 讲 Go 依赖获取或 CI 构建的地方补一句（发完先查代理的 `.info`，不是 200 时请求 `@latest`；或构建镜像里带 git）；提交前先查 kb 有没有。
+- 变异测试碰真实的外部产品时，测试数据不能借用共用的种子账号（2026-11-05，第 3 项 T9c，`foundations-03-data/t9/iam-mutations-3.txt`）：改坏一条范围检查（“别的签发者的账号不归我管”），动作就真的落到借来用户名的种子账号上（Casdoor 里的 `test.alice` 被禁用），下一个变异红在前提上而不是规则上。做法：被测范围之外的对象指向测试自己建、测完删的一次性数据；一轮变异之后核对共用数据没被动过。kb 讲变异测试的地方补一句；提交前先查 kb 有没有。

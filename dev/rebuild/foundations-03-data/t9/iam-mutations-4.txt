@@ -1,0 +1,51 @@
+infra/iam-casdoor 3.0.22 in progress (T9c, second round after the fence tests and a safer other-issuer account), 2026-11-05: each rule broken by one edit; go test -tags integration ./iam/; the file restored.
+red  the authorization member is not asked
+               	Error:      	"[]" should have 1 item(s), but has 0
+               	Messages:   	the authorization member was asked once
+red  a confirmation required is taken as allowed
+               	Error:      	Not equal: 
+               	Messages:   	map[principal:01a1aabf-0ba4-709b-ac9f-c3c589c4e056 security_version:3 status:active username:brickkit/test.it.accounts]
+red  a refusal is taken as allowed
+               	Error:      	Not equal: 
+               	Messages:   	map[principal:01a1aabf-3c5e-7747-8ef7-694c08ad0d41 security_version:3 status:active username:brickkit/test.it.accounts]
+red  the confirmation does not go out
+               	Error:      	Not equal: 
+red  a confirmation goes out again with later changes
+               	Error:      	Should be false
+               	Messages:   	a confirmation belongs to the change it confirmed
+red  a disablement does not reach Casdoor
+               	Error:      	Not equal: 
+               	Messages:   	forbidden in Casdoor
+red  an enable does not reach Casdoor
+               	Error:      	Not equal: 
+               	Error:      	Not equal: 
+red  the comparison takes the member's own change in flight for a rollback
+               	Error:      	Should be zero, but was 1
+               	Messages:   	left alone within a minute of the freeze
+red  a status change here does not fence the comparison
+               	Error:      	Should be zero, but was 1
+               	Messages:   	left alone within a minute of the freeze
+red  an enable in flight is not fenced
+               	Error:      	Not equal: 
+               	Messages:   	the enable in flight is fenced
+red  a change on another version than the one asked about
+               	Error:      	Not equal: 
+               	Messages:   	200 map[principal:01a1aac0-cefb-79e2-ab79-9ba7ceb43a8a security_version:9 status:active username:brickkit/test.it.accounts]
+red  a reset of the second factors is counted twice
+               	Error:      	Not equal: 
+               	Messages:   	not counted twice
+red  a reset does not remove Casdoor's second factors
+               	Error:      	Not equal: 
+red  a forced logout leaves Casdoor's sessions
+               	Error:      	Should be zero, but was 1
+               	Messages:   	Casdoor's sessions ended
+red  another Casdoor's account is changed
+               	Error:      	Not equal: 
+               	Messages:   	another Casdoor's account is not this member's to change: map[principal:01a1aac1-acda-7dd0-a3f8-1a9cc24e1f4d security_version:2 status:disabled username:brickkit/test.it.accounts
+red  an admin's account status change raises no alert
+               	Error:      	"{\"time\":\"2026-11-05T08:09:44.780Z\",\"level\":\"WARN\",\"msg\":\"the development token exchange is on (IAM_DEV_EXCHANGE): never in a production deployment (A101)\",\"componen
+               	Messages:   	an admin's account status change is a severe alert
+red  a stale view beyond T_tight needs no second person
+               	Error:      	Should be true
+               	Messages:   	beyond T_tight
+done

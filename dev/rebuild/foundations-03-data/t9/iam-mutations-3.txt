@@ -1,0 +1,46 @@
+infra/iam-casdoor 3.0.22 in progress (T9c), 2026-11-05: each rule broken by one edit; go test -tags integration ./iam/; the file restored.
+red  the authorization member is not asked
+               	Error:      	"[]" should have 1 item(s), but has 0
+               	Messages:   	the authorization member was asked once
+red  a confirmation required is taken as allowed
+               	Error:      	Not equal: 
+               	Messages:   	map[principal:01a1aabb-4cf9-7963-80c6-e4472454870e security_version:3 status:active username:brickkit/test.it.accounts]
+red  a refusal is taken as allowed
+               	Error:      	Not equal: 
+               	Messages:   	map[principal:01a1aabb-7c87-7748-b2fa-6215bdc6f2f3 security_version:3 status:active username:brickkit/test.it.accounts]
+does not compile: the confirmation does not go out
+red  a confirmation goes out again with later changes
+               	Error:      	Should be false
+               	Messages:   	a confirmation belongs to the change it confirmed
+red  a disablement does not reach Casdoor
+               	Error:      	Not equal: 
+               	Messages:   	forbidden in Casdoor
+red  an enable does not reach Casdoor
+               	Error:      	Not equal: 
+               	Error:      	Not equal: 
+red  the comparison takes the member's own change in flight for a rollback
+               	Error:      	Should be false
+               	Messages:   	left alone within a minute: [adapter adapter adapter rollback]
+GREEN (survived)  a status change here does not fence the comparison
+GREEN (survived)  an enable in flight is not fenced
+red  a change on another version than the one asked about
+               	Error:      	Not equal: 
+               	Messages:   	200 map[principal:01a1aabc-d681-770d-bc7c-7ee529a46dc5 security_version:8 status:security_frozen username:brickkit/test.it.accounts]
+red  a reset of the second factors is counted twice
+               	Error:      	Not equal: 
+               	Messages:   	not counted twice
+red  a reset does not remove Casdoor's second factors
+               	Error:      	Not equal: 
+red  a forced logout leaves Casdoor's sessions
+               	Error:      	Should be zero, but was 1
+               	Messages:   	Casdoor's sessions ended
+red  another Casdoor's account is changed
+               	Error:      	Not equal: 
+               	Messages:   	another Casdoor's account is not this member's to change: map[detail:a dependency did not answer in time domain:be metadata:map[dependency:casdoor] reason:DEADLINE_EXCEEDED statu
+red  an admin's account status change raises no alert
+               	Error:      	Should NOT be empty, but was 
+               	Messages:   	precondition: Casdoor gave an ID token for test.alice
+red  a stale view beyond T_tight needs no second person
+               	Error:      	Should be true
+               	Messages:   	beyond T_tight
+done

@@ -1,0 +1,33 @@
+infra/authz 3.0.25 in progress (T9d), 2026-11-05: each rule broken by one edit; go test -tags integration ./authz/ -run TestAccountStatusChanges; the file restored.
+red  an admin's account is not protected (CP96)
+               	Error:      	Not equal: 
+               	Error:      	Not equal: 
+red  the two-person rule beyond T_tight is ignored (CP80)
+               	Error:      	Not equal: 
+               	Error:      	Not equal: 
+red  the requester confirms their own request
+               	Error:      	Not equal: 
+               	Messages:   	the confirmer is the requester
+red  a confirmation of another status counts
+               	Error:      	Not equal: 
+               	Messages:   	another status
+red  a used or expired confirmation counts
+               	Error:      	Not equal: 
+               	Messages:   	expired
+red  the account status does not use its confirmation
+               	Error:      	Expected value not to be nil.
+               	Messages:   	used when the account status carrying it was applied
+red  a console re-enable leaves the holding available (CP42)
+               	Error:      	Should be true
+               	Messages:   	confirmation_backfill_pending on the holding
+red  a confirmed re-enable leaves it pending
+               	Error:      	Should be false
+               	Messages:   	a re-enable with a valid confirmation
+GREEN (survived)  a holding pending confirmation still qualifies
+red  a reconfirmation without a confirmation goes through
+               	Error:      	Not equal: 
+               	Messages:   	map[detail:an internal error occurred; quote the trace id when reporting it domain:be reason:INTERNAL status:500 title:Internal error trace_id:99ed1c1c91e8dcb1abb52ca3e58411d3 ty
+red  the owner stands in on a re-enable while another admin is available
+               	Error:      	Not equal: 
+               	Messages:   	not on a re-enable while Bob is available
+done
