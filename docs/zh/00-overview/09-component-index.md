@@ -124,8 +124,8 @@
 
 | 外壳 | 版本 | 编进的成员 | 文档 |
 | --- | --- | --- | --- |
-| `be/go-core` | 3.0.55 | `test/probe-go@3.2.42`、`test/probe-go2@3.2.42`、`test/probe-go3@3.2.42`、`test/probe-go4@3.2.42`、`erp/inventory@3.0.19`、`erp/credit@3.0.19`、`erp/sales@3.0.27`、`erp/billing@3.0.27` | [BRICKKIT](../../../shell/be/go-core/BRICKKIT.md) · [AGENTS](../../../shell/be/go-core/AGENTS.md) |
-| `be/go-infra` | 3.0.54 | `test/probe-go@3.2.42`、`test/probe-go2@3.2.42`、`test/probe-go3@3.2.42`、`test/probe-go4@3.2.42`、`infra/iam-casdoor@3.0.28`、`infra/authz@3.0.32`、`infra/audit@3.0.21`、`mdm/org@3.0.20`、`mdm/currency@3.0.19`、`mdm/partner@3.0.23`、`mdm/product@3.0.22` | [BRICKKIT](../../../shell/be/go-infra/BRICKKIT.md) · [AGENTS](../../../shell/be/go-infra/AGENTS.md) |
+| `be/go-core` | 3.0.56 | `test/probe-go@3.2.42`、`test/probe-go2@3.2.42`、`test/probe-go3@3.2.42`、`test/probe-go4@3.2.42`、`erp/inventory@3.0.19`、`erp/credit@3.0.19`、`erp/sales@3.0.27`、`erp/billing@3.0.28` | [BRICKKIT](../../../shell/be/go-core/BRICKKIT.md) · [AGENTS](../../../shell/be/go-core/AGENTS.md) |
+| `be/go-infra` | 3.0.55 | `test/probe-go@3.2.42`、`test/probe-go2@3.2.42`、`test/probe-go3@3.2.42`、`test/probe-go4@3.2.42`、`infra/iam-casdoor@3.0.28`、`infra/authz@3.0.32`、`infra/audit@3.0.22`、`mdm/org@3.0.20`、`mdm/currency@3.0.19`、`mdm/partner@3.0.23`、`mdm/product@3.0.22` | [BRICKKIT](../../../shell/be/go-infra/BRICKKIT.md) · [AGENTS](../../../shell/be/go-infra/AGENTS.md) |
 | `be/py-render` | 3.0.40 | `test/probe-py@3.2.41`、`test/probe-py2@3.2.41`、`infra/print@3.0.14` | [BRICKKIT](../../../shell/be/py-render/BRICKKIT.md) · [AGENTS](../../../shell/be/py-render/AGENTS.md) |
 
 ## 事件
