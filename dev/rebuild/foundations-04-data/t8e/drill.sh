@@ -33,7 +33,8 @@ sed -i "s/^deployment: .*/deployment: $DEP/" $D/cell.yaml
 code=$(curl -s -o /dev/null -w '%{http_code}' --aws-sigv4 "aws:amz:us-east-1:s3" --user "$(val STORAGE_ACCESS_KEY):$(val STORAGE_SECRET_KEY)" \
   -X PUT -H 'x-amz-bucket-object-lock-enabled: true' http://localhost:9000/be-run-profile)
 echo "run profile bucket: HTTP $code (200 made, 409 there)" >> $O/summary.txt
-(cd $R/tools/be-ops && go build -o $O/be-ops ./cmd/be-ops) || exit 1
+BIN=$(mktemp -d)  # the tool built from source, outside the repository (no build output in it)
+(cd $R/tools/be-ops && go build -o $BIN/be-ops ./cmd/be-ops) || exit 1
 
 step archive bash $R/infra/scripts/pg-backup.sh on
 step cell env KEEP_UP=1 bash $R/dev/rebuild/experiment-scripts/cell-chain.sh R4-X $O/cell
@@ -46,7 +47,7 @@ export RUN_PROFILE_URL=http://localhost:9000 RUN_PROFILE_BUCKET=be-run-profile R
   RUN_PROFILE_SECRET_KEY=$(val STORAGE_SECRET_KEY) SERVICE_TLS_CERT_FILE=$D/.secrets/tls/ops-recover.cert.pem \
   SERVICE_TLS_KEY_FILE=$D/.secrets/tls/ops-recover.key.pem SERVICE_TLS_CA_FILE=$D/.secrets/tls/ca.pem \
   RECOVER_PG_ADMIN="postgres://postgres:$PW@localhost:5432/postgres?sslmode=disable" BUS_URL=nats://localhost:4222
-B="$O/be-ops recover"
+B="$BIN/be-ops recover"
 step announce $B announce --project $D --reason "T8e drill: steps 1-5" --approver "T8e" --at "$T"
 step freeze $B freeze --project $D
 step restore-db $B restore-db --project $D
