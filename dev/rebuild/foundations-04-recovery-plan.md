@@ -250,6 +250,10 @@
   1. `infra/audit`（只升 SDK）；2. `infra/authz`（只升 SDK）；3. `infra/iam-casdoor`（`infra.iam.account.resend`；删 `iam/evidence.go` 里“写入器会记日志”的错误注释）；4. `mdm/org`、5. `mdm/currency`、6. `mdm/partner`、7. `mdm/product`、8. `erp/credit`、9. `erp/inventory`、10. `erp/sales`、11. `erp/billing`（都是 `<前缀>.system.resend`）；
   12. 外壳 `go-infra`、`go-core`；13. 套件 `prepare.py` 登记新的键、给 `ops/recover` 签服务证书、建开了对象锁的运行档案桶；14. 格 F3-S、F3-X 跑一遍（还不演练）。
   授权成员“写意图之前先查键”与 T4e 的审计缺口不并进这一轮（各自单独改）。
+  - **进度（2026-11-05）**：1–11 都发布了：audit 3.0.17、3.0.18（3.0.17 漏声明 `RECOVERY_PHASE`：它原来没有清单测试，3.0.18 加上，`configSchema` 换成 SDK 生成的那段）、authz 3.0.28（测试里身份成员的替身要声明补发）、iam 3.0.24、org 3.0.17、currency 3.0.17、partner 3.0.21、product 3.0.20、credit 3.0.17、inventory 3.0.17、sales 3.0.24、billing 3.0.24。`be-ops` alpha.3：BrickKit 只注入组件配置里写了的键，所以各组件配置写 `RECOVERY_PHASE: $var:RECOVERY_PHASE`，共用变量平时为空值（不删行）。
+  - Go 探针也要跟上（外壳里编进了它们，整个进程用 alpha.81，有流没声明补发的成员建不起来）：3.2.39 加 `<前缀>.resend`；**不**声明 `RECOVERY_PHASE`：套件要求 Go 与 Python 探针的清单一样（由 Python SDK 生成），Python 的恢复模式在第 6 项，探针进恢复模式随它。
+  - 套件（未发布）：`prepare.py` 登记各补发操作与探针的 `resend`、给 `ops/recover` 签证书、只给清单声明了 `RECOVERY_PHASE` 的组件写那一行（读 `.brickkit/manifests` 缓存，外壳成员的版本取外壳的清单）、共用变量加 `RECOVERY_PHASE: ""`；`spec.py` 让格可以写自己的 `deployment:`（演练的格每次换新的部署身份：一次演练只做到第 5 步，运行档案里的恢复状态删不掉）。
+  - 还剩：探针测试（`make probes`）→ 发布探针 3.2.39 与套件 1.0.47 → 外壳 3.0.52 → 格 F3-S、F3-X → T8e 演练。
 
 不在 T8：第 4 步里恢复凭据与所有者确认凭据摘要的恢复（随 T9 的 6.7）；第 5 步里事件签名密钥的轮换与重签（事件现在没有签名，协议 19 的这一条等事件签名加入时再做，记进已知风险）。
 
