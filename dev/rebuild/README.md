@@ -24,7 +24,7 @@
       - `be-sdk-go` alpha.74–76（`Watermark.Before`、`calls.Request.Credential`、`sectest` 的 `AccountService` 替身）；
       - `infra/iam-casdoor` 3.0.21–3.0.22、`infra/authz` 3.0.25–3.0.26；外壳 `be/go-infra` 3.0.49、`be/go-core` 3.0.49；套件 1.0.44（真机格的注册表补上身份成员自己的键）。
       - 查出并修了：冷静期 CP108 把解除处置的申请人算成“自己弄得不可用”；CP92 要“处理中”而契约只能答驳回。真机格第二次全部通过；第一次有一次偶发的 60 秒视图关闭没复现出来（计划的“T9e”）。A134 待复核。
-    - 下一步：T10（收尾与门槛检查），做完向维护者汇报第 3 项的门槛。
+    - T10：门槛核对在 `foundations-03-data/gate.md`，复盘在 [retro-foundations-03.md](retro-foundations-03.md)（M1–M4 已做，M3、M4 待复核）。下一步：交 kb 的四份草稿，向维护者汇报第 3 项的门槛。
     - 这一项做出来的（已发布）：`be-protocol` alpha.56–70，`contract-infra-authz` alpha.2–4，`contract-infra-iam` alpha.2，`be-sdk-go` alpha.57–76，`be-sdk-python` a46–a51，`infra/iam-casdoor` 3.0.17–3.0.22，`infra/authz` 3.0.16–3.0.26，探针 3.2.34–3.2.38、套件 1.0.39–1.0.44。A120–A130 维护者 2026-11-04 确认；A131、A132（T7b、T7d）、A133（T8）、A134（T9）待复核。
     - 小错，下次改到时改正：`be/py-render` 3.0.39 的 `pyproject.toml` 第 18 行注释写成“the probes 3.2.37 need v3.0.0a51”，应为“探针 3.2.38 要 a51、`infra/print` 3.0.14 要 a48”（批量替换时先换了版本号，注释那条替换没对上）。
   - 挂着的事：
@@ -32,6 +32,7 @@
     - kb PR #61（计划缓存的实测记录与反馈）等 kb 审查；审查意见回来时照 `kb-contribute` 处理。kb PR #63（T5 的空闲轮询与统计检查）已合并。kb PR #64（复盘的反馈：补测的集成测试适合手工定点改坏；故障注入要打到“那一步”、只认故障造成的失败）等审查。kb PR #65（边缘会话层的实测，含真实插件的复测）、#64（又补了“红也要红在那条规则上”）等审查。
     - 注意到但没动：`be-sdk-go` 的 `launcher.TestResponsesAreNotHeldBackOnAKeptAliveConnection` 在 `make test` 的并行负载下偶尔以退出码 1 停止（2026-11-03 一次，单独跑 5 次都过，`foundations-03-data/t3/sdk-go-make-test.txt`）。
     - 移到 T10 的检查（要第二个副本或确定性的打断）：CK-EV-04、CK-EV-02 的两个副本同时编号、CK-WK-05、CK-WK-03 的接管一半；CK-EV-10 进 T8；Python 探针的 `fail`、`hold_ms`、`emit` 与后台工作项随第 6 项补。
+    - 变异检查用 `experiment-scripts/mutate.py`（复盘 M2：开跑前核对每处原文、列表不空，记下没编译的，结束时确认还原）。
     - 跑套件的环境：`source dev/rebuild/experiment-scripts/itenv.sh`，再把 `BE_ACC_*` 设成对应的 `BE_SDK_TEST_*`（PG_ADMIN、NATS_URL、S3_URL、S3_ACCESS_KEY、S3_SECRET_KEY）。监视长任务时 `pgrep -f '<命令>'` 会匹配到监视脚本自己（2026-11-03 两个监视因此不退出），盯进程号或用 `pgrep -x`。
 - 设计冻结与正式文档迁移已完成（[migration-plan.md](migration-plan.md)）。待复核的 AI 选择：A109（驻留期起始值）、A117、A118（第 2 项 T2）、A131、A132（第 3 项 T7）（A120–A130 维护者 2026-11-04 确认），都在 `docs/zh/02-decisions/09-ai-choices.md`。
 

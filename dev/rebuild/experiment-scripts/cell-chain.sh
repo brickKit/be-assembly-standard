@@ -48,9 +48,9 @@ stage() {  # stage <name> <command...>; stops the run on failure. FROM=<name> sk
   echo "STAGE $I $name END exit=$rc secs=$(( $(date +%s) - t0 ))" >> "$OUT/status.log"
   if [ $rc -ne 0 ]; then echo "FAILED $name $(date -Is)" >> "$OUT/status.log"; pod_logs; exit $rc; fi
 }
-pod_logs() {  # K row: the cell's logs kept beside the stage logs when a stage fails (cell-logs.sh)
-  [ "$ROW" = K ] || return 0
-  bash "$R/dev/rebuild/experiment-scripts/cell-logs.sh" "$D" "$OUT/logs/pods" K
+pod_logs() {  # every row: the cell's logs kept beside the stage logs when a stage fails (cell-logs.sh); a runner that
+  # takes the cell down afterwards would lose them (T9's first F3-S, D row, retro-foundations-03.md M1)
+  bash "$R/dev/rebuild/experiment-scripts/cell-logs.sh" "$D" "$OUT/logs/containers" "$ROW"
 }
 down_cells() {  # every experiment cell on every engine (projects brickkit-<cell>, namespaces <cell> in minikube)
   # suite E's front doors first: a project network with a container still attached cannot be removed
