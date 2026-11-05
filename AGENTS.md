@@ -14,7 +14,7 @@
 - **这是什么**：BrickEnterprise，ERP 为主、加入 CRM 的组件货架，加上用 BrickKit 把它们装配起来的标准装配项目；也是 BrickKit 的真机验证场：平台问题写出复现报给 BrickKit，绝不在组件里绕过去。
 - **现在处于哪个阶段**：终局设计已冻结（2026-10-15），正式文档在 `docs/zh/`（[索引](docs/zh/README.md)）。按新设计从零重建（D59），旧的 2.x 代码只作参考；进度与计划在 `dev/rebuild/`（开发区）。
 - **组件 ID** 是 `<领域>/<名字>`，仓库 `<领域>-<名字>`；领域与边界见[领域与边界](docs/zh/00-overview/02-domains-and-boundaries.md)。
-- **东西放在哪里**：`components/`、`shell/`（组件与外壳，各是 Git 子模块）；`tools/`（`be-sdk-go`、`be-sdk-python` 是组件运行时，`be-protocol` 是线协议与向量，`be-edge` 是边缘的会话层（Traefik 插件），`be-ops` 装配时生成，`be-acceptance` 参考模型与文档检查）；`registry/`（端口、schema、权限键）；`config/`、`infra/`（基础资源）；`dev/`（进行中的工作）；`archive/`（归档，现行内容不引用）。
+- **东西放在哪里**：`components/`、`shell/`（组件与外壳，各是 Git 子模块）；`tools/`（`be-sdk-go`、`be-sdk-python` 是组件运行时，`be-protocol` 是线协议与向量，`be-edge` 是边缘的会话层（Traefik 插件），`be-ops` 是装配与运维的工具（装配时的生成、整套恢复的 `recover`），`be-acceptance` 参考模型与文档检查）；`registry/`（端口、schema、权限键）；`config/`、`infra/`（基础资源）；`dev/`（进行中的工作）；`archive/`（归档，现行内容不引用）。
 - **两条不变的原则**（[产品](docs/zh/00-overview/01-product.md#两条不变的原则)）：每个组件都是完整的 BrickKit 组件、能单独运行，对其他组件的每次调用都走真实的网络调用（同在一个外壳里也一样）；合并只发生在部署时，外壳把几个进程合成一个，此外什么也不做。
 
 ## 项目约定

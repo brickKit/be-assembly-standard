@@ -1,0 +1,26 @@
+be-ops recover in progress (item 4 T8d): steps 1-5 of a full recovery, go test -tags integration ./internal/recovery/
+mutants: 8
+red  the evidence store's database goes back too
+       Error:      	Not equal:
+       Error:      	Not equal:
+       Messages:   	the evidence store's database did not go back
+red  advance before the databases went back
+       Error:      	An error is expected but got nil.
+       Messages:   	advance before restoring
+red  abandon after the databases went back
+       Error:      	An error is expected but got nil.
+       Messages:   	the databases went back: no giving up
+       Error:      	An error is expected but got nil.
+red  a phase change does not wait for every member
+       Error:      	An error is expected but got nil.
+red  T may be in the future
+       Error:      	An error is expected but got nil.
+       Messages:   	T is in the past
+       Error:      	Received unexpected error:
+red  the authorization generation stays
+       Error:      	Not equal:
+red  the redelivery does not wait for the consumers
+       Error:      	An error is expected but got nil.
+red  the streams are not deleted
+       Error:      	elements differ
+done
