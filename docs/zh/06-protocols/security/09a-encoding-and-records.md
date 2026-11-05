@@ -227,10 +227,10 @@
 | 字段 | 类型 | 必填 | 约束 |
 | --- | --- | --- | --- |
 | `state` | `Enum` | 是 | `active`、`released` |
-| `origin` | `Enum` | 是 | `admin`（处置人提交）、`identity_side`（身份侧信号，治理域为部署全局）、`admin_recovery` |
+| `origin` | `Enum` | 是 | `admin`（处置人提交）、`identity_side`（身份侧信号，治理域为部署全局）、`admin_recovery`、`recovery_review`（整套恢复 6.5 关闭的复核主体，治理域为部署全局，[协议 15](../15-backup-and-recovery.md) 的 6.2、6.5） |
 | `subject_employee` | `Id` | 否 | 处置时关联的员工 |
 | `accounts` | `Set<Id>` | 是 | 处置时的账号 |
-| `suspended_segments` | `Set<Segment>` | 是 | 被暂停的范围；`identity_side` 时为该自然人的全部段 |
+| `suspended_segments` | `Set<Segment>` | 是 | 被暂停的范围；`identity_side`、`recovery_review` 时为该自然人的全部段 |
 | `domain` | `Id` | 是 | 治理域 |
 | `disposer` | `PrincipalRef` | 条件 | `origin = admin` 时必填；`admin_recovery` 时为部署所有者 |
 | `confirmations` | `List<Id>` | 否 | 处置或解除其他授权管理员时的确认 |

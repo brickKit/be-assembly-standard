@@ -1,0 +1,28 @@
+be-sdk-go alpha.85 in progress (item 4 T9c): the replay mutants again after ReplayTx and ParseReplayed were exported
+mutants: 8
+red  a reflected record is re-executed
+       Error:      	Received unexpected error:
+       Error:      	Received unexpected error:
+red  a dangling replay keeps what it wrote
+       Error:      	Should be zero, but was 1
+       Messages:   	nor anything the function wrote before it found the object gone: rolled back
+red  another recorder's record is replayed
+       Error:      	Should be true
+       Messages:   	another recorder's record: <nil>
+red  a cancelled record is replayed
+       Error:      	Should be true
+       Messages:   	a cancelled record is not replayed: <nil>
+red  a replay leaves no change history
+       Error:      	Not equal:
+       Messages:   	the change history has the record's own identity
+       Error:      	Not equal:
+red  any component may replay
+       Error:      	Not equal:
+       Messages:   	only the recovery tool: <nil>
+       Error:      	Not equal:
+red  a replay without an operation starts
+       Error:      	"{\"time\":\"2026-11-05T15:59:05.667Z\",\"level\":\"ERROR\",\"msg\":\"the member could not be built\",\"component\":\"demo/rpowner\",\"version\":\"3.0.0\",\"error\":\"operations used by r
+red  replaying does not forward
+       Error:      	Condition never satisfied
+       Messages:   	forwarded and received while replaying
+done

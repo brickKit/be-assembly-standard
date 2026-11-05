@@ -13,7 +13,7 @@
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | `infra/iam-casdoor` | 身份认证适配（Casdoor） | 当前重建 | 3.0.25 | [infra.md](../07-components/infra.md#infraiam-casdoor) | [BRICKKIT](../../../components/infra/iam-casdoor/BRICKKIT.md) · [AGENTS](../../../components/infra/iam-casdoor/AGENTS.md) · [design](../../../components/infra/iam-casdoor/docs/design.md) | — | 身份族的全部 51 个使用者（见边界卡） |
 | `infra/iam-keycloak` | 身份认证适配（Keycloak） | 远期 | — | [infra.md](../07-components/infra.md#infraiam-keycloak) | — | — | 身份族的全部 51 个使用者（见边界卡） |
-| `infra/authz` | 授权：权限目录、授予、视图与核验 | 当前重建 | 3.0.29 | [infra.md](../07-components/infra.md#infraauthz) | [BRICKKIT](../../../components/infra/authz/BRICKKIT.md) · [AGENTS](../../../components/infra/authz/AGENTS.md) · [design](../../../components/infra/authz/docs/design.md) | 身份（`infra/iam-*`） | 46 个组件（几乎全部业务组件，见各边界卡） |
+| `infra/authz` | 授权：权限目录、授予、视图与核验 | 当前重建 | 3.0.30 | [infra.md](../07-components/infra.md#infraauthz) | [BRICKKIT](../../../components/infra/authz/BRICKKIT.md) · [AGENTS](../../../components/infra/authz/AGENTS.md) · [design](../../../components/infra/authz/docs/design.md) | 身份（`infra/iam-*`） | 46 个组件（几乎全部业务组件，见各边界卡） |
 | `infra/authz-static` | 授权的静态配置成员 | 远期 | — | — | — | — | — |
 | `infra/authz-openfga` | 授权的关系图成员（OpenFGA） | 远期 | — | — | — | — | — |
 | `infra/workflow` | 统一待办（不含流程引擎） | 当前重建 | — | [infra.md](../07-components/infra.md#infraworkflow) | — | 身份（`infra/iam-*`）、`infra/authz` | — |
