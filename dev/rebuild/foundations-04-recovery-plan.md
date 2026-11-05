@@ -142,6 +142,25 @@
 | T5b | `be-sdk-go` 的 `evidence` 包与 SDK 的迁移（证据发件表、变更历史、提交序号的计数行）、转运作业；对审计组件证据存储的集成测试与故障注入（证据存储停着、告警渠道也写不进、提交前崩溃） |
 | T5c | Python SDK 只在代表组件用到时补（D75：Go 先完整） |
 
+- **T5a 做了（2026-11-05）**：`be-protocol` alpha.73（P12.15–P12.18、迁移 0013：`be_evidence_outbox`、`be_change_history`、`be_evidence_counter`；能力 `evidence-writer`）。
+- **T5b 的设计**（`be-sdk-go` alpha.78，动手前先升版本、钉 `be-protocol` alpha.73 与审计契约 alpha.2）：
+  - 新包 `evidence`：`Writer` 持有库、证据存储的客户端（审计组件的 `EvidenceService`，经 `AUDIT_GRPC_URL`）、告警（`runprofile.Store`，可以没有）、组件 ID 与实现实例。
+    - `Intent(ctx, 类别, 主体, 对象, 变更)`：事务外。封装成 `be.evidence.record`（`intent`、无位置），直接 `Append`，等 2 秒；失败就 `Alert`（同一条记录），再失败记双通道失效；返回一个 `Pending`。
+    - `Pending.Effective(ctx, tx)`：事务内锁计数行（`FOR UPDATE`，换纪元时接着数），写变更历史，把 `effective` 结论（带位置）写进证据发件表。
+    - `Pending.Cancelled(ctx)`：自己一个事务，把 `cancelled` 写进证据发件表。
+    - `General(ctx, tx, …)`：事务内写变更历史与 `general` 记录。
+    - `Reflected(ctx, tx, 记录身份)`：变更历史里有没有。
+  - 作业 `be.evidence.transfer`（singleton，几秒一次）：按 `ord` 取没停下的行，一批不超过 500 交 `Append`。“已收下”“重复”的删；“冲突”“不合格”的写 `stopped`、记错误日志；调用失败就留着下次。
+  - 宿主：有库时建 `Writer` 并挂作业，`runtime.Runtime` 加 `Evidence`。运行档案的配置键：`RUN_PROFILE_URL`、`RUN_PROFILE_BUCKET`、`RUN_PROFILE_REGION`、`RUN_PROFILE_ACCESS_KEY`、`RUN_PROFILE_SECRET_KEY`（密钥）、`ALERT_WEBHOOK_URL`，都可以不配；没配运行档案时，告警只能落到双通道失效的日志。
+  - 测试：对真实审计组件或 `sectest` 替身的集成测试。
+    - 正常两段写，变更历史与结论的位置一致、提交序号随提交顺序；
+    - 证据存储停着：意图进告警渠道（RustFS），撤权照常；
+    - 告警渠道也写不进：双通道失效的日志；
+    - 事务失败：写 `cancelled`；
+    - 冲突的行停下；
+    - 并发的两个证据事务，序号的先后等于提交的先后。
+    - `sectest` 加一个证据存储的替身（像 T9 的 `AccountService`）。
+
 ## 全局约束
 
 - 协议 15 的规则在正式文档里，这里不重复；行为与规范不符时先改规范（或向维护者提出），再改代码。
