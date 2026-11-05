@@ -15,7 +15,9 @@ Usage: mutate.py <mutants.py> <out.txt>   (run from the repository the mutants e
 Before anything runs, every mutant's old text must occur exactly once in its file and differ from the new text, and
 the list must not be empty (round 4 of T9 ran a script with no mutant; another left mutants out by a failed grep). A
 red result records the failing assertion's messages, to read that it is red on its rule. Every file is restored from
-memory after its mutant, and checked at the end.
+memory after its mutant, and checked at the end. Progress goes to stdout, one line per mutant ("k/N red ..."), and the
+out file starts with the count: a monitor reports "k of N" from either (a round runs a full suite per mutant, often
+well over 5 minutes: run it in the background with a monitor, user-level instructions).
 """
 import os
 import pathlib
@@ -36,9 +38,10 @@ def main() -> int:
         if text.count(old) != 1 or old == new:
             sys.exit(f"PATTERN MISSING or not unique ({text.count(old)}x): {label}")
     env = {**os.environ, **spec.get("ENV", {})}
-    lines = [spec["TITLE"]]
+    lines = [spec["TITLE"], f"mutants: {len(mutants)}"]
+    print(f"0/{len(mutants)} starting: {spec['TITLE']}", flush=True)
     try:
-        for f, old, new, label in mutants:
+        for k, (f, old, new, label) in enumerate(mutants, 1):
             for d in spec.get("CLEAN", []):
                 for p in pathlib.Path(".").rglob(d):
                     shutil.rmtree(p, ignore_errors=True)
@@ -56,9 +59,11 @@ def main() -> int:
                     lines += ["       " + m for m in msgs]
                 else:
                     lines.append(f"GREEN (survived)  {label}")
-            finally:
+            finally: # every mutant, built or not: the file back, the result and the progress line out
                 pathlib.Path(f).write_text(originals[f])
-            out.write_text("\n".join(lines) + "\n")
+                out.write_text("\n".join(lines) + "\n")
+                last = next(l for l in reversed(lines) if not l.startswith("       "))
+                print(f"{k}/{len(mutants)} {last}", flush=True)
     finally:
         for f, text in originals.items():
             pathlib.Path(f).write_text(text)
