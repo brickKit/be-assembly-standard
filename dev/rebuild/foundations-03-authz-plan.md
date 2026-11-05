@@ -40,7 +40,7 @@
 | T7 | 受限的分级管理：管理上限的包含证明、父职责收紧后的交集与待复核、批量计划、管理员交接 | T4 | ✅ T7a–T7e 做完并发布（`infra/authz` 3.0.22、外壳 `go-infra` 3.0.47、`go-core` 3.0.47），两个真机格通过；验收对照见“T7 的验收”，经过见“T7e 的经过” |
 | T8 | 求值与查询（安全 01、06、07、09a 的首批条目）：对照 SDK 已有的向量与测试补缺；每种维度（值集合、组织树、主体、金额）的越权与范围外不可见：SDK 测试与套件的授权剖面（CK-AZ-01..05 黑盒） | T1 | ✅ T8a–T8e 做完并发布（`infra/authz` 3.0.24、`be-sdk-go` alpha.73、`be-sdk-python` a51、探针 3.2.38、套件 1.0.43、外壳 `go-infra` 3.0.48），两个真机格通过；对照见 `foundations-03-data/t8/coverage.md`，验收见“T8 的验收” |
 | T9 | iam-casdoor 的第 2 项尾巴：Casdoor 侧变更的定期全量比较（`P_pull`，按 `LastChangePasswordTime` 与账号状态）与停用的证据；强制登出与重置第二因素（授权管理的操作） | T3 | ✅ T9a–T9e 做完并发布，两个真机格通过；验收见“T9 的验收” |
-| T10 | 收尾与门槛核对 | 全部 | 🔶 门槛核对做完（`foundations-03-data/gate.md`）；复盘、kb 的反馈与向维护者汇报在做 |
+| T10 | 收尾与门槛核对 | 全部 | ✅ 门槛核对（`foundations-03-data/gate.md`）、复盘（`retro-foundations-03.md`）、kb PR #66；维护者 2026-11-05 定门槛“算过” |
 
 ### T0 结果
 

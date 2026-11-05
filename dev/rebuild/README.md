@@ -8,26 +8,10 @@
 - **现在：底层先行**（维护者 2026-11-02 确认进入；[重建计划](rebuild-plan.md)“顺序”第 3 项，路线第 3 步开头）：事务与消息、登录与身份、权限、审计与整套恢复、冷热数据，以及 Python 补到代表组件需要的剖面，逐项做；每项先写计划，做到[实验计划](experiment-plan.md)“实验之后：底层先行”的验证门槛后汇报、维护者确认后进下一项；实验留给各项的待测在重建计划里列着。之后按依赖顺序重建业务组件。
   - **第一项（事务与消息）完成**（维护者 2026-11-03 确认门槛，批准复盘的 K1，A115、A116 复核确认）：证据在[计划](foundations-01-transactions-plan.md)的 T11，复盘在 [retro-foundations-01.md](retro-foundations-01.md)。
   - **第 2 项（登录与身份）完成**（维护者 2026-11-03 看过门槛汇报后说“继续”；范围维护者 2026-11-03 定）：[计划](foundations-02-identity-plan.md) T1–T7 全部完成，门槛表在 T7，复盘在 [retro-foundations-02.md](retro-foundations-02.md)。做出来的：`be-protocol` alpha.53–55（令牌陈旧 P8.25–P8.28、边缘的会话层第 11 章）；`be-sdk-go` alpha.56；`infra/iam-casdoor` 3.0.16；`be-edge` v3.0.0-alpha.2（新仓库，Traefik 插件）；`be-ops` v3.0.0-alpha.1（`features`）；`be-sdk-python` a45（只动测试部署）；`be-acceptance` 1.0.38（身份剖面）、探针 3.2.33；浏览器路径的端到端（`experiment-data/16-05-*`）。待复核：A117、A118、T3 的范围划分（Casdoor 侧的变更归第 3 项）、复盘的 L1。
-  - **正在做：第 3 项（权限）**（[计划](foundations-03-authz-plan.md)）：
-    - 已做：T0、T1 第一步、T2（D1 只续读取 A120、D3 快照与批量读取是标准系统方法 A121、D2、D4）、T3（身份来源进视图）、T4（T4a–T4g 与验收，计划的“T4 进度”“T4 的验收”）；受授人放弃自己的授予按 D82（维护者 2026-11-04 定）；变更请求换成 09a 的形状后，旧接口的使用者已改（`be-sdk-go` alpha.63 的 `seed`、套件 `secure.py`）。第一次连锁升级（全部 Go 成员 `be-sdk-go` alpha.63、Python 成员 a47，`infra/authz` 3.0.17 等，清单见计划的“连锁升级与发布”）已发布，两个真机格（`F3-S`、`F3-X`）从空库起全部通过；真机运行另查出并修了 `infra/iam-casdoor` 没声明系统面端口（3.0.19，`be-sdk-go` alpha.64 的清单核对从此能查出这类遗漏）与套件格配置缺新键。
-    - T5 做完（确认记录、受保护操作、确认后的生效、部署所有者确认与冷静期、只减少访问的操作与 `T_tight`；计划的“T5b–T5d 做了”“T5e 做了”“冷静期与 CP61”“T5 的验收”）。第二次连锁发布做完（全部成员在 `be-sdk-go` alpha.68、`be-sdk-python` a48，`infra/authz` 3.0.19，清单见计划的“第二次连锁发布”），两个真机格从空库起全部通过。
-    - T6 做完（安全处置的发起、解除与身份侧派生，最后管理员，待恢复，管理员恢复，安装认领；计划的“T6 进度”“T6 的验收”），`infra/authz` 3.0.20 已发布，两个真机格通过。留下的：所有者确认的“解除管理员处置”进冷静期；待补确认（随 T9）；几条要换环境才测得到的写在 T6 的验收里。
-    - T7 做完（受限的分级管理：`self` 两边实例化与预算 T7a、再下放与管理动作 T7b（A131）、交接回收与角色绑定的定向测试 T7c、批量计划 T7d（A132）；计划的“T7a–T7d 做了”“T7 的验收”“T7e 的经过”）。发布 `infra/authz` 3.0.21–3.0.22（3.0.21 把授予的段数预算按整份授予计，真机格挡下了负载用户的多操作授予，3.0.22 改按操作计）、`be-sdk-go` alpha.70（种子的单元带新字段）、`mdm/partner` 3.0.19，以及只改依赖钉的 `erp/credit` 3.0.15、`erp/sales` 3.0.22、`erp/billing` 3.0.22，外壳 `be/go-infra` 3.0.46–3.0.47、`be/go-core` 3.0.47。两个真机格从空库起通过（F3-X 等了半小时公共 Go 代理对它自己一次解析失败的负缓存）。
-    - T8 做完（求值与查询：安全 01、06、07、09a 的首批逐条对照，`foundations-03-data/t8/coverage.md`；计划的“T8 的拆分”“T8a 做了”到“T8 的验收”）。发布：
-      - `be-protocol` alpha.64–69（alpha.64、65 作废：版本字段漏改、带着失败的测试发出）；
-      - `be-sdk-go` alpha.71–73、`be-sdk-python` a49–a51；
-      - `infra/authz` 3.0.23–3.0.24、探针 3.2.38（四种维度的条目）、套件 1.0.43（授权剖面 CK-AZ-01..05，两种探针都符合）；
-      - 外壳 `be/go-infra` 3.0.48、`be/go-core` 3.0.48、`be/py-render` 3.0.39。
-      - 查出并修了四个 SDK 缺陷：组件不核对收到的段、单对象的字段不按操作、命中位为 NULL、不可下推的维度照常编译。两个真机格一次通过。A133 待复核。
-    - T9 做完（与 Casdoor 的全量比较、账号操作、账号状态变更的确认 A134；计划的“T9 的拆分”“T9a、T9b 做了”到“T9e”“T9 的验收”）。发布：
-      - `be-protocol` alpha.70（账号状态的 `confirmation`、P9.16 的“回声之前”）；`contract-infra-authz` alpha.3–4（`CheckAccountChange`、第四种回答 `UNPROVABLE`）；
-      - `be-sdk-go` alpha.74–76（`Watermark.Before`、`calls.Request.Credential`、`sectest` 的 `AccountService` 替身）；
-      - `infra/iam-casdoor` 3.0.21–3.0.22、`infra/authz` 3.0.25–3.0.26；外壳 `be/go-infra` 3.0.49、`be/go-core` 3.0.49；套件 1.0.44（真机格的注册表补上身份成员自己的键）。
-      - 查出并修了：冷静期 CP108 把解除处置的申请人算成“自己弄得不可用”；CP92 要“处理中”而契约只能答驳回。真机格第二次全部通过；第一次有一次偶发的 60 秒视图关闭没复现出来（计划的“T9e”）。A134 待复核。
-    - T10：门槛核对在 `foundations-03-data/gate.md`，复盘在 [retro-foundations-03.md](retro-foundations-03.md)（M1–M4 已做，M3、M4 待复核）。kb 草稿三份已交（PR #66），`CLOCK_MONOTONIC` 一份要先在 Linux 上让机器真的休眠一次验证，留着。下一步：向维护者汇报第 3 项的门槛。
-    - 这一项做出来的（已发布）：`be-protocol` alpha.56–70，`contract-infra-authz` alpha.2–4，`contract-infra-iam` alpha.2，`be-sdk-go` alpha.57–76，`be-sdk-python` a46–a51，`infra/iam-casdoor` 3.0.17–3.0.22，`infra/authz` 3.0.16–3.0.26，探针 3.2.34–3.2.38、套件 1.0.39–1.0.44。A120–A130 维护者 2026-11-04 确认；A131、A132（T7b、T7d）、A133（T8）、A134（T9）待复核。
-    - 小错，下次改到时改正：`be/py-render` 3.0.39 的 `pyproject.toml` 第 18 行注释写成“the probes 3.2.37 need v3.0.0a51”，应为“探针 3.2.38 要 a51、`infra/print` 3.0.14 要 a48”（批量替换时先换了版本号，注释那条替换没对上）。
+  - **第 3 项（权限）完成**（维护者 2026-11-05 看过门槛汇报后定“算过”）：[计划](foundations-03-authz-plan.md) T0–T10 全部完成，各任务的经过与验收在计划里；门槛核对在 `foundations-03-data/gate.md`（没测的 3 条、部分的 27 条按它第 6 节的去处留到以后），复盘在 [retro-foundations-03.md](retro-foundations-03.md)（M1–M4 已做）。做出来的（已发布）：`be-protocol` alpha.56–70，`contract-infra-authz` alpha.2–4，`contract-infra-iam` alpha.2，`be-sdk-go` alpha.57–76，`be-sdk-python` a46–a51，`infra/iam-casdoor` 3.0.17–3.0.22，`infra/authz` 3.0.16–3.0.26，探针 3.2.34–3.2.38，套件 1.0.39–1.0.44，外壳到 `be/go-infra` 3.0.49、`be/go-core` 3.0.49、`be/py-render` 3.0.39。A120–A130 维护者 2026-11-04 确认；A131–A134 与复盘的 M3、M4 待复核。
+  - **正在做：第 4 项（审计与整套恢复）**：先写计划（下一步）。
   - 挂着的事：
+    - 小错，下次改到时改正：`be/py-render` 3.0.39 的 `pyproject.toml` 第 18 行注释写成“the probes 3.2.37 need v3.0.0a51”，应为“探针 3.2.38 要 a51、`infra/print` 3.0.14 要 a48”（批量替换时先换了版本号，注释那条替换没对上）。
     - 上层仓库 2026-11-04 推送到 `c60cc36e`（维护者下令）；之后的提交以 `git log origin/main..main` 为准。子仓库发布的版本都已推送并打了标签；没有已推送而未发布的。BrickKit 信箱里 FRB-014（代码地图把组件 ID 当路径）等回复。
     - kb PR #61（计划缓存的实测记录与反馈）等 kb 审查；审查意见回来时照 `kb-contribute` 处理。kb PR #63（T5 的空闲轮询与统计检查）已合并。kb PR #64（复盘的反馈：补测的集成测试适合手工定点改坏；故障注入要打到“那一步”、只认故障造成的失败）等审查。kb PR #65（边缘会话层的实测，含真实插件的复测）、#64（又补了“红也要红在那条规则上”）等审查。
     - 注意到但没动：`be-sdk-go` 的 `launcher.TestResponsesAreNotHeldBackOnAKeptAliveConnection` 在 `make test` 的并行负载下偶尔以退出码 1 停止（2026-11-03 一次，单独跑 5 次都过，`foundations-03-data/t3/sdk-go-make-test.txt`）。
