@@ -1,0 +1,26 @@
+infra/iam-casdoor 3.0.26 in progress (item 4 T9c): a full recovery's 6.6 (sessions from before end) and no token while it runs
+mutants: 7
+red  a session from before the recovery is used
+       Error:      	Should be true
+       Messages:   	a session from before the recovery: <nil>
+       Error:      	Not equal:
+red  its end is not named recovery
+       Error:      	Not equal:
+red  the start does not end the sessions from before
+       Error:      	Not equal:
+       Messages:   	the member started after the advance ends it
+       Error:      	Condition never satisfied
+red  the sweep's ends are not in the ended stream
+       Error:      	Condition never satisfied
+       Messages:   	the sweep's end in the ended stream
+red  Casdoor's sessions are left
+       Error:      	Should be zero, but was 1
+       Messages:   	the same person's sessions in Casdoor
+red  a token is issued while the recovery runs
+       Error:      	Error "be/SESSION_ENDED: no live session: rpc error: code = Unauthenticated desc = no live session" does not contain "MAINTENANCE"
+       Messages:   	no token while the recovery runs (the caller's side wraps it as a dependency unavailable)
+GREEN (survived)  the start writes while frozen
+done
+
+# The seventh survived: the SDK does not call a module's Start while frozen (P1.23), so the check in iam was dead
+# code; it is removed, and the mutant with it (the frozen restart in the test guards the SDK's behavior).
