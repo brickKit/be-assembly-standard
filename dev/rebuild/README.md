@@ -24,7 +24,7 @@
       - `be-sdk-go` alpha.74–76（`Watermark.Before`、`calls.Request.Credential`、`sectest` 的 `AccountService` 替身）；
       - `infra/iam-casdoor` 3.0.21–3.0.22、`infra/authz` 3.0.25–3.0.26；外壳 `be/go-infra` 3.0.49、`be/go-core` 3.0.49；套件 1.0.44（真机格的注册表补上身份成员自己的键）。
       - 查出并修了：冷静期 CP108 把解除处置的申请人算成“自己弄得不可用”；CP92 要“处理中”而契约只能答驳回。真机格第二次全部通过；第一次有一次偶发的 60 秒视图关闭没复现出来（计划的“T9e”）。A134 待复核。
-    - T10：门槛核对在 `foundations-03-data/gate.md`，复盘在 [retro-foundations-03.md](retro-foundations-03.md)（M1–M4 已做，M3、M4 待复核）。下一步：交 kb 的四份草稿，向维护者汇报第 3 项的门槛。
+    - T10：门槛核对在 `foundations-03-data/gate.md`，复盘在 [retro-foundations-03.md](retro-foundations-03.md)（M1–M4 已做，M3、M4 待复核）。kb 草稿三份已交（PR #66），`CLOCK_MONOTONIC` 一份要先在 Linux 上让机器真的休眠一次验证，留着。下一步：向维护者汇报第 3 项的门槛。
     - 这一项做出来的（已发布）：`be-protocol` alpha.56–70，`contract-infra-authz` alpha.2–4，`contract-infra-iam` alpha.2，`be-sdk-go` alpha.57–76，`be-sdk-python` a46–a51，`infra/iam-casdoor` 3.0.17–3.0.22，`infra/authz` 3.0.16–3.0.26，探针 3.2.34–3.2.38、套件 1.0.39–1.0.44。A120–A130 维护者 2026-11-04 确认；A131、A132（T7b、T7d）、A133（T8）、A134（T9）待复核。
     - 小错，下次改到时改正：`be/py-render` 3.0.39 的 `pyproject.toml` 第 18 行注释写成“the probes 3.2.37 need v3.0.0a51”，应为“探针 3.2.38 要 a51、`infra/print` 3.0.14 要 a48”（批量替换时先换了版本号，注释那条替换没对上）。
   - 挂着的事：
@@ -118,8 +118,5 @@
 
 ## 任务结束时：知识库反馈
 
-还没交的草稿：
+还没交的草稿（Python 的字节码缓存、公共 Go 代理缓存自己的失败、变异不借共用的种子账号三份已交：kb PR #66，2026-11-05，等审查）：
 - Linux 的 `CLOCK_MONOTONIC` 在系统休眠期间停走（`CLOCK_BOOTTIME` 才计入）；kb 选主相关文档（07.06 选主、07.10 时间与时钟）按单调时钟计租约时没有提醒这一点。提交前先在 Linux 上验证。
-- Python 的变异检查要关掉字节码缓存（2026-11-04，第 3 项 T5e）：变异与原文件等长、又在同一秒内写入时，解释器认为 `.pyc` 仍然有效，跑的是上一个版本——同一处变异一次“存活”、一次被杀（`foundations-03-data/t5/py-stale-mutations.txt` 与脚本 `mutate-py-stale.py`）；上一个变异的 `.pyc` 留着时还会造成假的“被杀”。做法：`PYTHONDONTWRITEBYTECODE=1`，每处变异前删 `__pycache__`。kb 讲变异测试或测试有效性的地方补一句；提交前先查 kb 有没有。
-- 公共 Go 代理会缓存它自己取模块时的失败（2026-11-05，第 3 项 T7e，`foundations-03-data/t7-cells/attempt2`、`attempt3-F3-X`、`proxy-wait.log`）：刚推送的标签第一次被请求时，proxy.golang.org 自己解析 github.com 失败，之后半小时 `.info` 一直答 404（“Could not resolve host: github.com”），各节点不一致；请求 `@latest` 让它重新取，几分钟后各节点陆续恢复。`golang:*-alpine` 构建镜像里没有 git，`GOPROXY` 的 `direct` 回退因此也失败。kb 讲 Go 依赖获取或 CI 构建的地方补一句（发完先查代理的 `.info`，不是 200 时请求 `@latest`；或构建镜像里带 git）；提交前先查 kb 有没有。
-- 变异测试碰真实的外部产品时，测试数据不能借用共用的种子账号（2026-11-05，第 3 项 T9c，`foundations-03-data/t9/iam-mutations-3.txt`）：改坏一条范围检查（“别的签发者的账号不归我管”），动作就真的落到借来用户名的种子账号上（Casdoor 里的 `test.alice` 被禁用），下一个变异红在前提上而不是规则上。做法：被测范围之外的对象指向测试自己建、测完删的一次性数据；一轮变异之后核对共用数据没被动过。kb 讲变异测试的地方补一句；提交前先查 kb 有没有。
