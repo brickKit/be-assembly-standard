@@ -285,6 +285,11 @@
 | T9d | `be-ops recover replay`、`sessions`、`keys`（6.2–6.8），清单写进运行档案 | 单元与集成测试 |
 | T9e | 演练：在 T8e 的基础上，T 之后做几件收紧（撤销一个授予、停用一个账号、退役一个部门），恢复后它们按证据重放回来 | 演练记录 |
 
+- **进度（2026-11-05）**：
+  - T9a：协议 alpha.79（P12.19–P12.22、`replaying` 阶段）。
+  - T9b-1：SDK alpha.82（`ReplayService`、`Replayer`/`ReplayFunc`、`ErrDangling` 回滚、`replaying`；改坏 8 处全红，`t9/sdk-mutants.*`），alpha.83 导出 `evidence.ReplayClient`（生成的代码在 internal，工具与组件的测试都要用）。途中：恢复与补发的测试每次轮询新开管理员连接、用光了实例的连接，改成共用一个。
+  - T9c：组织成员 3.0.18 的重放（改坏 3 处全红，第 1 轮 1 处没编译）。**还要做**：身份成员（`account_status` 重新停用或冻结、经 Casdoor；`account_reenable`；`session_revocation`；凭据收紧不重放）、授权成员（自己的收紧与放宽：证据带着候选内容；推迟到 6.5 的那类）、授权成员的来源水位与不变量的系统方法、身份成员的 6.6 与 6.8；之后 T9d 工具、T9e 演练。
+  - 级联：升到 alpha.82/83 的组件清单的 `RECOVERY_PHASE` 取值要加 `replaying`；套件 `prepare.py` 要登记各组件的 `<前缀>.system.replay`（组织的已在 3.0.18）。
 ## 全局约束
 
 - 协议 15 的规则在正式文档里，这里不重复；行为与规范不符时先改规范（或向维护者提出），再改代码。
