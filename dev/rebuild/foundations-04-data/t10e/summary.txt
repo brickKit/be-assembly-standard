@@ -1,0 +1,78 @@
+run profile bucket: HTTP 200 (200 made, 409 there)
+DRILL archive BEGIN 21:10:52
+DRILL archive END rc=0
+DRILL cell BEGIN 21:13:01
+DRILL cell END rc=0
+DRILL prepare BEGIN 21:21:49
+DRILL prepare END rc=0
+DRILL pay-before BEGIN 21:21:51
+DRILL pay-before END rc=0
+DRILL pay-before-final BEGIN 21:21:51
+DRILL pay-before-final END rc=0
+DRILL limit BEGIN 21:21:52
+DRILL limit END rc=0
+DRILL pay-pending BEGIN 21:21:52
+DRILL pay-pending END rc=0
+DRILL pay-pending-waits BEGIN 21:21:52
+DRILL pay-pending-waits END rc=0
+T=2026-11-05T21:21:56.995961Z
+DRILL after-T BEGIN 21:21:59
+DRILL after-T END rc=0
+after T: revoke 01a1ad94-d4c2-7484-830c-e1ef5905ceba, disable test.revoked, retire 01a1ad94-d610-7444-b4e8-fabc57122144
+DRILL after-T-tighten BEGIN 21:22:08
+DRILL after-T-tighten END rc=0
+DRILL pay-after BEGIN 21:22:09
+DRILL pay-after END rc=0
+DRILL pay-after-final BEGIN 21:22:09
+DRILL pay-after-final END rc=0
+DRILL pay-pending-final BEGIN 21:22:11
+DRILL pay-pending-final END rc=0
+failed at 2026-11-05T21:22:57.369342Z
+DRILL announce BEGIN 21:22:57
+DRILL announce END rc=0
+DRILL freeze BEGIN 21:22:57
+DRILL freeze END rc=0
+DRILL restore-db BEGIN 21:23:08
+DRILL restore-db END rc=0
+DRILL advance BEGIN 21:24:20
+DRILL advance END rc=0
+DRILL redeliver BEGIN 21:24:20
+DRILL redeliver END rc=0
+DRILL replay BEGIN 21:24:32
+DRILL replay END rc=0
+DRILL keys BEGIN 21:24:45
+DRILL keys END rc=0
+CHECK tables that changed after T: 20 (erp_billing.draft_key, erp_billing.invoice, erp_billing.invoice_line, erp_credit.branch, erp_inventory.branch, erp_inventory.branch_line, erp_inventory.consumption, erp_inventory.movement)
+CHECK business tables not back at T: 1 ['infra_iam_casdoor.iam_status_evidence: T 0, restored 1']
+CHECK evidence store tables that went back: 0 []
+CHECK the revoked grant: ended (ended)
+CHECK test.revoked: disabled (disabled)
+CHECK the retired unit: retired (retired)
+CHECK live sessions from before: 0 (0)
+CHECK the authorization state: operational (operational)
+CHECK the signing key: a3e25be53e2f04bb -> 31ad3fc7f8f80022 (another)
+CHECK replay: replayed: map[applied:3 dangling:1 reflected:85]; ignored 28; for review 2; the check: {AdminState:operational Ended:0 Held:0 Review:0 Closed:[] AdminsNotClosed:[] Unprovable:[]}
+DRILL reconcile BEGIN 21:24:46
+DRILL reconcile END rc=0
+DRILL check BEGIN 21:24:58
+DRILL check END rc=0
+DRILL loss BEGIN 21:24:59
+DRILL loss END rc=0
+DRILL open-read BEGIN 21:24:59
+DRILL open-read END rc=0
+DRILL open BEGIN 21:25:11
+DRILL open END rc=0
+CHECK the state: state: running (running)
+CHECK r-pending at the probe: succeeded (succeeded), taken by the fake: 1 (1)
+CHECK r-after at the probe: none (none: lost with the recovery), taken: 1 (1)
+CHECK voided invoice numbers: 1 (as many as the invoices issued after T)
+CHECK /home/zhijie/Desktop/github/be-assembly-standard/dev/rebuild/foundations-04-data/t10e/reconcile.log:reconciled 1 adapters: map[external_only:1 matched:1]; without the method: []
+CHECK /home/zhijie/Desktop/github/be-assembly-standard/dev/rebuild/foundations-04-data/t10e/check.log:checked 12 members: pass true; not passed 0; without the method []; failed map[]
+CHECK /home/zhijie/Desktop/github/be-assembly-standard/dev/rebuild/foundations-04-data/t10e/loss.log:the loss: 53 objects asked, map[lost:52]; 0 records name no object; audit loss of 7 sources; not to be entered again: 1
+CHECK /home/zhijie/Desktop/github/be-assembly-standard/dev/rebuild/foundations-04-data/t10e/open-read.log:open for reading; the checks passed: true
+CHECK /home/zhijie/Desktop/github/be-assembly-standard/dev/rebuild/foundations-04-data/t10e/open.log:number series: 3, raised 1 ([{erp/billing 01a1ad94-d4e5-7766-9765-54951736fbe9 INV 2026 35 35}]); without the method []
+DRILL scenarios-again BEGIN 21:25:24
+DRILL scenarios-again END rc=0
+the WAL archive is off
+test accounts reset in Casdoor
+T10E ALL-DONE
