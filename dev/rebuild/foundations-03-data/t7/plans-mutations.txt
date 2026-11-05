@@ -1,0 +1,83 @@
+infra/authz 3.0.21 in progress (T7d), 2026-11-05: each rule broken by one edit, go test -tags integration ./authz/, the file restored; a crash counts as red.
+red  a moved target voids the item (row 3)
+       --- FAIL: TestMemberEndToEnd (84.37s)
+               	Error:      	Not equal: 
+               	Messages:   	each its own state (CP21)
+               	Error:      	Not equal: 
+does not compile: row 17 rejects the item
+red  awaiting confirmation rejects the item
+       --- FAIL: TestMemberEndToEnd (99.21s)
+               	Error:      	Not equal: 
+               	Messages:   	each its own state (CP21)
+               	Error:      	Condition never satisfied
+red  items do not follow their records
+       --- FAIL: TestMemberEndToEnd (99.33s)
+               	Error:      	Condition never satisfied
+               	Messages:   	e follows its record: map[]
+red  an effective record does not apply its item
+       --- FAIL: TestMemberEndToEnd (99.30s)
+               	Error:      	Condition never satisfied
+               	Messages:   	e follows its record: map[]
+red  a plan with rejected items completed
+       --- FAIL: TestMemberEndToEnd (99.68s)
+               	Error:      	Condition never satisfied
+               	Messages:   	the plan ends: map[]
+red  an ended plan leaves its saved records
+       --- FAIL: TestMemberEndToEnd (86.78s)
+               	Error:      	Not equal: 
+               	Messages:   	the unit the plan saved ends with it
+red  items to be reviewed end as terminated
+       --- FAIL: TestMemberEndToEnd (89.45s)
+               	Error:      	Not equal: 
+               	Error:      	Not equal: 
+GREEN (survived)  a run after the expiry goes on
+red  the second confirmer not checked when an item runs
+       --- FAIL: TestMemberEndToEnd (99.37s)
+               	Error:      	Condition never satisfied
+               	Messages:   	d run, its confirmer not qualified: map[]
+red  an item runs again under its first key
+       --- FAIL: TestMemberEndToEnd (86.86s)
+               	Error:      	Not equal: 
+       --- FAIL: TestItemKeyHasTheAttempt (0.00s)
+               	Error:      	Not equal: 
+red  a confirmation of another preview
+       --- FAIL: TestMemberEndToEnd (81.53s)
+               	Error:      	Not equal: 
+               	Messages:   	/01a1a8ee-ad33-7d7e-acb0-1cf1f633ef8e/confirm: map[detail:a plan of more than 3 items is confirmed by another authorization admin, bound to the plan and sha256:14ee5e48e2c99ca06979fb80df745506085727e66723b7c1f42883cbba0bc4f1 outcome:awaiting_confirmation reason:CONFIRMATION_REQUIRED]
+red  no second person above the threshold
+       --- FAIL: TestMemberEndToEnd (81.47s)
+               	Error:      	Not equal: 
+               	Messages:   	/01a1a8ef-f227-7181-8a25-52df50969b43/confirm: map[comparisons:5 expires_at:2026-11-11T23:40:59.821798Z id:01a1a8ef-f227-7181-8a25-52df50969b43 initiator:0190f3a1-0000-7000-8000-0000000000a1 items:[map[attempt:1 item_key:a item_state:pending request:map[candidate:map[governance_unit:01a1a8ee-c0e1-77cb-9f75-10da4cd1c558 grantee:0190f3a1-0000-7000-8000-0000000000a7 record_type:grant segments:[map[atoms:map[region:map[kind:in values:[south]]] operation:demo.order.read read_fields:[id total] resource_type:demo.order valid:map[from:2026-01-01T00:00:00.000000Z]]]] candidate_digest:sha256:63ca32add5c2e69b32121b2ea096ab0fd052c8181ef9191bb01ed4296a0ed1aa change_key: direction:widen]] map[attempt:1 item_key:b item_state:pending request:map[change_key: direction:tighten expected_revision:map[domain:authz.record.revision value:1] expected_state_revision:map[domain:authz.record.state value:1] target:01a1a8ef-f21b-7986-a8c7-20911cde0f73]] map[attempt:1 item_key:c item_state:pending request:map[candidate:map[governance_unit:01a1a8ef-e7a6-7ae3-b8d8-1cc8da7c9af5 grantee:0190f3a1-0000-7000-8000-0000000000c3 record_type:grant segments:[map[atoms:map[region:map[kind:in values:[south]]] operation:demo.order.read read_fields:[id total] resource_type:demo.order valid:map[from:2026-01-01T00:00:00.000000Z]]]] candidate_digest:sha256:f0fe1fc154f7884a218c085a0a857022a5c81e7f84938d23ec4274ee21f6cd2a change_key: direction:widen]] map[attempt:1 item_key:d item_state:pending request:map[change_key: direction:tighten expected_revision:map[domain:authz.record.revision value:1] expected_state_revision:map[domain:authz.record.state value:1] target:01a1a8ef-f220-7b47-9f3b-917083ded876]] map[attempt:1 item_key:e item_state:pending request:map[candidate:map[grantable_operations:[demo.order.read] managed_scope:[map[atoms:map[region:map[kind:in values:[east]]] operation:demo.order.read read_fields:[id total] resource_type:demo.order valid:map[from:2026-01-01T00:00:00.000000Z]]] management_actions:[grant revoke bind_role delegate_management] max_subdelegation_depth:3 name:pl-unit parent:01a1a8ee-c0e1-77cb-9f75-10da4cd1c558 record_type:management_unit] candidate_digest:sha256:542eec18d207b04575d64bb5f8fe608abf38ccd2b3f08bcbe14cc00ce491696e change_key: direction:widen]]] plan_key:pl1 plan_state:confirmed preview_digest:sha256:d824f63eb9b4dcf43b6e8fb476fc04911852388b58b9ad45e8720c7f1dcc955e previewed_at:2026-11-04T23:40:59.821798Z]
+red  the initiator confirms their own plan
+       --- FAIL: TestMemberEndToEnd (83.95s)
+               	Error:      	Not equal: 
+               	Messages:   	the initiator is not the second person: map[expires_at:2026-11-11T23:42:25.531758Z id:01a1a8f1-4100-7ec1-afd6-b2029c713fee]
+red  an item with a saved record runs again
+       --- FAIL: TestMemberEndToEnd (82.53s)
+               	Error:      	Not equal: 
+               	Messages:   	/01a1a8f2-8915-7402-9501-d5fd57d7c509/items/f/review: map[comparisons:2 expires_at:2026-11-11T23:43:49.530902Z id:01a1a8f2-8915-7402-9501-d5fd57d7c509 initiator:0190f3a1-0000-7000-8000-0000000000a1 items:[map[attempt:2 item_key:f item_state:pending record:01a1a8f2-892d-7454-8878-7045d155347e request:map[candidate:map[grantable_operations:[demo.order.read] managed_scope:[map[atoms:map[region:map[kind:in values:[east]]] operation:demo.order.read read_fields:[id total] resource_type:demo.order valid:map[from:2026-01-01T00:00:00.000000Z]]] management_actions:[grant revoke bind_role delegate_management] max_subdelegation_depth:3 name:pl-unit-2 parent:01a1a8f1-547b-7cac-982f-c45c590e85d1 record_type:management_unit] candidate_digest:sha256:82fe2bab915d0116e71f8d43965b46ebdf53216df691f5dd8592720df88a860c change_key: direction:widen] result:map[change_key:plan:01a1a8f2-8915-7402-9501-d5fd57d7c509:f:1 new_revision:map[domain:authz.record.state value:1] outcome:awaiting_confirmation record:01a1a8f2-892d-7454-8878-7045d155347e]] map[attempt:1 item_key:g item_state:needs_review request:map[change_key: direction:tighten expected_revision:map[domain:authz.record.revision value:1] expected_state_revision:map[domain:authz.record.state value:1] target:01a1a8f2-8912-706b-8dcd-cc751cc9b950] result:map[change_key:plan:01a1a8f2-8915-7402-9501-d5fd57d7c509:g:1 detail:row 17 outcome:rejected reason:CHANGE_REVISION_STALE]]] plan_key:pl2 plan_state:executing preview_digest:sha256:e72d43cfe0854ba77bc9d974c2aa099d19233b02a1aaec7fc76dc675df84408e previewed_at:2026-11-04T23:43:49.530902Z]
+red  no comparison budget
+       --- FAIL: TestMemberEndToEnd (83.71s)
+               	Error:      	Not equal: 
+               	Messages:   	cannot display message: bufio.Scanner: token too long
+GREEN (survived)  the target's content revision not recorded
+red  the same plan key again conflicts
+       --- FAIL: TestMemberEndToEnd (81.54s)
+               	Error:      	Not equal: 
+               	Messages:   	: map[detail:plan_key pl1 names another plan domain:be reason:CHANGE_KEY_CONFLICT status:409 title:The change key was used for different content trace_id:712aa308ea8f701c484fa036abcb78cc type:urn:be:be:CHANGE_KEY_CONFLICT]
+red  an item keeps its own change key
+       --- FAIL: TestMemberEndToEnd (83.82s)
+               	Error:      	Not equal: 
+               	Messages:   	: map[id:01a1a8f7-cf26-78f2-84e0-b9ef113bdffe initiator:0190f3a1-0000-7000-8000-0000000000a1 items:[map[attempt:1 item_key:k item_state:pending request:map[candidate:map[governance_unit:01a1a8f6-948a-7c70-8b1d-a3e4ce359c67 grantee:0190f3a1-0000-7000-8000-0000000000a7 record_type:grant segments:[map[atoms:map[region:map[kind:in values:[south]]] operation:demo.order.read read_fields:[id total] resource_type:demo.order valid:map[from:2026-01-01T00:00:00.000000Z]]]] candidate_digest:sha256:2c975f4e3215d959d6d002cb38358b2af489ddf81dbb1330acf4f1f1d2932ef2 change_key:own-key direction:widen]]] plan_key:pl0 plan_state:draft]
+red  a replaced admin's plans run on
+       --- FAIL: TestMemberEndToEnd (86.97s)
+               	Error:      	Not equal: 
+               	Messages:   	her plan's pending item is to be reviewed
+done
+
+After this run:
+- "row 17 rejects the item" did not compile (errs unused); rewritten in plans-mutations-2.txt: red.
+- "a run after the expiry goes on": no test reached a run after the expiry before the expiry job. Added (a review past
+  the expiry: the run ends the plan); red in plans-mutations-2.txt.
+- "the target's content revision not recorded": the test's change after the preview was a narrowing, which moves the
+  state revision too. Added a rename (neutral: the content revision only); red in plans-mutations-2.txt.
