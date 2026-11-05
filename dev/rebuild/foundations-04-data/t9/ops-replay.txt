@@ -1,0 +1,45 @@
+be-ops in progress (item 4 T9d): step 6 (replay: order, calls, alerts, addresses) and 6.8 (keys)
+mutants: 14
+red  the epoch's generation is not compared
+       Error:      	Not equal:
+       Messages:   	by owner; each by (generation, timeline, sequence); intent-only last; a copy once
+red  a cancelled record is replayed
+       Error:      	Not equal:
+       Messages:   	by owner; each by (generation, timeline, sequence); intent-only last; a copy once
+       Error:      	Should be true
+red  the authorization member's intent-only tightenings are not deferred
+       Error:      	Not equal:
+       Messages:   	the authorization member's own, last
+       Error:      	Not equal:
+red  intent-only records go first
+       Error:      	Not equal:
+       Messages:   	by owner; each by (generation, timeline, sequence); intent-only last; a copy once
+       Error:      	Should be true
+red  a failed re-execution's subject is not closed
+       Error:      	Not equal:
+       Messages:   	a failed re-execution's subject is closed with the 6.2 ones
+red  an applied intent-only record is not listed for review
+       Error:      	elements differ
+       Messages:   	failed, intent-only, for review
+does not build: 6.4 is not waited for
+red  an unprovable check passes
+       Error:      	An error is expected but got nil.
+red  an intent signed by another than its recorder is trusted
+       Error:      	"[[123 34 99 97 116 101 103 111 114 121 34 58 34 97 99 99 111 117 110 116 95 115 116 97 116 117 115 34 44 34 105 100 34 58 34 101 49 34 44 34 112 104 97 115 101 34 58 34 105 110 116 101 1
+       Messages:   	only the intent whose signature holds and whose signer is its recorder
+red  an untrusted intent's subject is not closed
+       Error:      	Not equal:
+       Messages:   	the subjects of the untrusted intents (6.2)
+red  the address lacks the version
+       Error:      	Not equal:
+       Messages:   	the aliases and the system ports
+red  the old key file is not kept
+       Error:      	Received unexpected error:
+red  a key file readable by others
+       Error:      	Not equal:
+       Error:      	Not equal:
+red  keys before the replay
+       Error:      	An error is expected but got nil.
+       Messages:   	replay first
+       Error:      	Not equal:
+done
