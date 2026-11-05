@@ -78,3 +78,8 @@ done
 Survivors, after this run:
 - "a renewal counts its predecessor": the test's renewal had its predecessor's very segments, which merge with them, so the count did not move. The renewal now lengthens the validity (other scopes); red in bounded-mutations-2.txt.
 - "no budget on a saved grant coming due": equivalent in this version. A grant waiting to take effect (scheduled) counts against its grantee's budget from the moment it is saved, so nothing can fill the budget past it before it is due; grants are never saved awaiting confirmation in this version (only units and holdings are protected). The check stays: security 08 rechecks the budgets at every entry. The search for it found a real gap: a grant a disposition held did not count while held and came back on release without a budget check. The release now keeps it held (restore_pending); red in bounded-mutations-2.txt.
+
+3.0.22 (2026-11-05): the grant budget is counted per resource type and operation (3.0.21 counted the whole grant; the
+real cell's load user, 47 segments over many operations, was refused). TestGrantBudgets' new case "20 operations,
+one segment each" was red on 3.0.21's count (the old rule as the mutant: "over budget: 20 segments in one grant") and
+is green now; the integration's bb1 (9 segments on one operation) stays red-on-removal (this file's first run).

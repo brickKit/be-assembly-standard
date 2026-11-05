@@ -1,0 +1,93 @@
+🚀 Starting project f3-s (target: docker)
+📋 Component state calculation:
+   ✅ mdm/currency@3.0.16       starting (erp/billing needs it)
+   ✅ mdm/org@3.0.15            starting (erp/billing needs it)
+   ✅ mdm/partner@3.0.19        starting (erp/billing needs it)
+   ✅ mdm/product@3.0.18        starting (erp/inventory needs it)
+   ✅ erp/credit@3.0.15         starting (erp/sales needs it)
+   ✅ erp/inventory@3.0.15      starting (erp/sales needs it)
+   ✅ erp/sales@3.0.22          starting (erp/billing needs it)
+   ✅ infra/print@3.0.14        starting (erp/billing needs it)
+   ✅ erp/billing@3.0.22        starting (top-level)
+   ✅ infra/audit@3.0.14        starting (erp/billing needs it)
+   ✅ infra/authz@3.0.21        starting (erp/billing needs it)
+   ✅ infra/iam-casdoor@3.0.20  starting (erp/billing needs it)
+
+⚠️ Files under config/ may contain plaintext secrets
+   Config items: infra/iam-casdoor@3.0.20 → IAM_TOKEN_ISSUER ($var:IAM_ISSUER)
+   Why it matters: config/*.yaml and config/vars.yaml are meant to be committed to Git, so a secret written there goes into version control with it and can't be removed from the history
+   Suggestions:
+   1. Change it to a reference such as ${MY_TOKEN} (real value in .env) or file://.secrets/token
+   2. .env must be listed in .gitignore
+   3. Items that declare secret: true are ones the component author identified as credentials; the ones that merely have a suspicious name are judged by name only, not by value, so you can ignore them if they really aren't secrets
+📋 Start order (topological sort):
+   1. infra-audit-3-0-14        no dependencies
+   2. infra-authz-3-0-21        no dependencies
+   3. infra-iam-casdoor-3-0-20  no dependencies
+   4. infra-print-3-0-14        no dependencies
+   5. mdm-currency-3-0-16       no dependencies
+   6. mdm-org-3-0-15            no dependencies
+   7. mdm-partner-3-0-19        ← depends on 6
+   8. erp-billing-3-0-22        ← depends on 5, 6, 7
+   9. erp-credit-3-0-15         ← depends on 5, 6, 7
+   10. mdm-product-3-0-18        ← depends on 6
+   11. erp-inventory-3-0-15      ← depends on 6, 10
+   12. erp-sales-3-0-22          ← depends on 5, 6, 7, 10
+
+Can start on their own: infra-audit-3-0-14, infra-authz-3-0-21, infra-iam-casdoor-3-0-20, infra-print-3-0-14, mdm-currency-3-0-16, mdm-org-3-0-15 (no dependencies)
+Only referenced by optional dependencies (turning them off affects no one: mode: disable): erp/credit, erp/inventory, erp/sales, infra/print
+Longest dependency chain (3 levels): mdm-org-3-0-15 → mdm-partner-3-0-19 → erp-billing-3-0-22
+   Components not on this chain start in parallel with it
+
+Dependency graph:
+   erp/sales@3.0.22 → mdm/currency@3.0.16
+                    → mdm/org@3.0.15
+                    → mdm/partner@3.0.19
+                    → mdm/product@3.0.18
+                    → erp/credit@3.0.15 (optional)
+                    → erp/inventory@3.0.15 (optional)
+   erp/inventory@3.0.15 → mdm/org@3.0.15
+                        → mdm/product@3.0.18
+   mdm/product@3.0.18 → mdm/org@3.0.15
+   erp/credit@3.0.15 → mdm/currency@3.0.16
+                     → mdm/org@3.0.15
+                     → mdm/partner@3.0.19
+   erp/billing@3.0.22 → mdm/currency@3.0.16
+                      → mdm/org@3.0.15
+                      → mdm/partner@3.0.19
+                      → erp/sales@3.0.22 (optional)
+                      → infra/print@3.0.14 (optional)
+   mdm/partner@3.0.19 → mdm/org@3.0.15
+📄 Generated: .brickkit/generated/compose.yaml
+
+🔧 Database migrations that run before startup (on failure that component won't start):
+   infra/audit@3.0.14  /infra-audit migrate
+   infra/authz@3.0.21  /infra-authz migrate
+   infra/iam-casdoor@3.0.20  /infra-iam-casdoor migrate
+   infra/print@3.0.14  python -m infra_print migrate
+   mdm/currency@3.0.16  /mdm-currency migrate
+   mdm/org@3.0.15  /mdm-org migrate
+   mdm/partner@3.0.19  /mdm-partner migrate
+   erp/billing@3.0.22  /erp-billing migrate
+   erp/credit@3.0.15  /erp-credit migrate
+   mdm/product@3.0.18  /mdm-product migrate
+   erp/inventory@3.0.15  /erp-inventory migrate
+   erp/sales@3.0.22  /erp-sales migrate
+
+🐳 Starting (docker)...
+   infra-audit-3-0-14           running (healthy)
+   infra-authz-3-0-21           running (healthy)
+   infra-iam-casdoor-3-0-20     running (healthy)
+   infra-print-3-0-14           running (healthy)
+   mdm-currency-3-0-16          running (healthy)
+   mdm-org-3-0-15               running (healthy)
+   mdm-partner-3-0-19           running (healthy)
+   erp-billing-3-0-22           running (healthy)
+   erp-credit-3-0-15            running (healthy)
+   mdm-product-3-0-18           running (healthy)
+   erp-inventory-3-0-15         running (healthy)
+   erp-sales-3-0-22             running (healthy)
+✅ All components started (12)
+
+💡 View the status: brickkit status
+   View the logs: docker compose -p brickkit-f3-s logs -f
