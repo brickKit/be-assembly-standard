@@ -151,7 +151,7 @@
 | `self_review_rule` | `Key` | 否 | 本人自审控制所用的责任规则（D10） |
 | `delegable` | `Bool` | 是 | 能否被个人委托 |
 | `impersonation_allowed` | `Bool` | 是 | 只读扮演会话中能否执行；有副作用的操作必须为 `false` |
-| `audit` | `Enum` | 是 | `none`、`required`；必需审计的落点按[协议 03](../03-audit-durability.md) |
+| `audit` | `Enum` | 是 | `none`、`required`、`strict`（敏感读取与导出的严格档：转运得到回执之后才释放数据）；必需审计的落点按[协议 03](../03-audit-durability.md) |
 
 **字段定义 `FieldDefinition`**
 

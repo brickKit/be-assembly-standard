@@ -1,0 +1,24 @@
+be-sdk-go alpha.88 in progress (item 4 T4e): the audit gaps (AU07, AU08, AU10, AU15, AU22, AU23)
+mutants: 8
+red  restricted fields kept in clear
+       Error:      	"{\"actor\":\"0190f3a1-0000-7000-8000-0000000000a1\",\"category\":\"business_change\",\"changes\":{\"name\":\"Acme\",\"tax_id\":\"B12345678\"},\"id\":\"01a1accd-d94a-78bc-8d4a-0c36e28cc32
+       Messages:   	never in clear, in the record
+       Error:      	"{\"name\": \"Acme\", \"tax_id\": \"B12345678\"}" should not contain "B12345678"
+red  a strict read released without its receipt
+       Error:      	Not equal:
+       Messages:   	the receipt before the release
+       Error:      	Should be true
+red  a conflict taken for a receipt
+       Error:      	Should be true
+       Messages:   	a receipt that is not received is none: <nil>
+red  a read over capacity
+       Error:      	Should be true
+       Error:      	Should be true
+red  the record says required for strict
+       Error:      	Not equal:
+red  strict allowed for any purpose
+       Error:      	An error is expected but got nil.
+does not build: the restricted fields not taken from the definitions
+red  the strict operations not taken from the definitions
+       Error:      	Not equal:
+done
