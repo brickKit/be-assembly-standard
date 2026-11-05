@@ -16,6 +16,9 @@ PW=$(val POSTGRES_PASSWORD)
 # what the cell's configuration refers to (\${...}): brickkit up evaluates it at every phase change, as cell-chain.sh
 casdoor_secret() { docker exec -e PGPASSWORD="$PW" be-postgres psql -U postgres -d brickkit_db -Atc \
   "select client_secret from casdoor.application where client_id = '$1'"; }
+# the object store's keys the probe's config refers to (\${BE_ACC_S3_*}): T10e's first run lacked them (cell-chain.sh
+# exports them for its own run only)
+export BE_ACC_S3_ACCESS_KEY BE_ACC_S3_SECRET_KEY; BE_ACC_S3_ACCESS_KEY=$(val STORAGE_ACCESS_KEY); BE_ACC_S3_SECRET_KEY=$(val STORAGE_SECRET_KEY)
 export BE_ACC_IAM_CLIENT_SECRET BE_ACC_IAM_DEV_CLIENT_SECRET
 BE_ACC_IAM_CLIENT_SECRET=$(casdoor_secret be-iam-client); BE_ACC_IAM_DEV_CLIENT_SECRET=$(casdoor_secret be-iam-dev-client)
 step() { local name=$1; shift; echo "DRILL $name BEGIN $(date -u +%H:%M:%S)" >> $O/summary.txt
@@ -47,6 +50,11 @@ P="python3 -I $O/pay.py"
 export IAM_URL=http://localhost:18200 AUTHZ_URL=http://localhost:18223 ORG_URL=http://localhost:18083
 export BE_ACC_IAM_TEST_PASSWORD; BE_ACC_IAM_TEST_PASSWORD=$(val IAM_TEST_PASSWORD)
 
+# an earlier run's cell down first, then the test accounts as seeded in Casdoor (outside the recovery group): a cell
+# left running unfrozen re-disables in Casdoor what its identity member holds disabled (T10e attempt 2)
+(cd $D && brickkit down > /dev/null 2>&1)
+(cd $R/components/infra/iam-casdoor && CASDOOR_URL=http://localhost:8000 CASDOOR_ADMIN_PASSWORD=$(val CASDOOR_ADMIN_PASSWORD) \
+  IAM_TEST_PASSWORD=$(val IAM_TEST_PASSWORD) python3 -I scripts/dev_setup.py --users-only > /dev/null 2>&1) || exit 1
 step archive bash $R/infra/scripts/pg-backup.sh on
 step cell env KEEP_UP=1 bash $R/dev/rebuild/experiment-scripts/cell-chain.sh R4-X $O/cell
 step prepare $BIN/tighten prepare

@@ -199,6 +199,12 @@ T4a 查出的缺口按“机制在哪里”分三处做，各自先写红的测�
     - **T10e 演练**：照计划。
     - **T10d-1 到 T10d-3 做了（2026-11-05）**：线协议 alpha.88、SDK alpha.93（`audit.DocumentNumber`）；审计契约 alpha.3 与审计 3.0.22（`RecordService.List`，操作 `infra.audit.record.list`；集成测试抓到“不带类别时空切片成了 NULL、全部被筛掉”）；账单 3.0.28（编号的审计带所签的号；开具有三次审计都记在 `OpIssue` 下，带号的是编号那一次）。
     - **T10d-4 做了（2026-11-05）**：`be-ops` alpha.8：状态表加 `verifying`、`read_only`，五个步骤（`verify.go` 宿主机一侧、`verifycalls.go` 部署网络里的调用、`verifyplan.go` 纯函数：发出记录、按对象问属主、判定、审计损失、单号提升）；在部署网络里跑调用的部分从第 6 步抽成通用的 `runCalls`；版本的阶段枚举里没有某个阶段的成员在那个阶段被停下。变异检查 19 处全部抓到（两处补用例之后）。随后套件 1.0.53 登记 `infra.audit.record.list`，外壳 go-infra 3.0.55（审计 3.0.22）、go-core 3.0.56（账单 3.0.28），都是 SDK alpha.93。下一步 T10e 演练。
+    - **T10e 演练**（`foundations-04-data/t10e/`，格 R4-X，第 1–10 步，T 前后三笔付款）：第 4 次全过（前三次各找出一个缺口，见各 `attempt*/NOTE.txt`）：
+      - 第 1 次：演练脚本没导出对象存储的密钥；`be-ops` 把外壳承载的探针当成没有恢复模式（alpha.9：`deploy.yaml` 里外壳下的成员不按自己的清单判断）。
+      - 第 2 次：第 1 次停在 `brickkit up` 之前，那个格的成员没冻结，身份成员按本地的停用把 Casdoor 里刚复原的 `test.revoked` 又停用了；演练改为先拿下旧格再复原账号。
+      - 第 3 次：外壳里清单不声明 `RECOVERY_PHASE` 的探针在别的成员冻结时照常运行（P2.11 把“没设置”当作不用这项资源）；线协议 alpha.89、SDK alpha.94：阶段是进程的状态，外壳交给每个成员；外壳 go-infra 3.0.57、go-core 3.0.58。
+      - 第 4 次：T 前被限流、T 后才发出的付款对上而终结、外部只收到一次；T 后的付款列为外部有本地无、禁止重新录入；收紧都按证据回来、恢复前的会话全部结束、签名密钥换新；损失范围问了 53 个对象、52 个丢失（T 后的场景），审计损失 5 个来源；`INV` 提到 35、作废登记 1 个号；回到运行，场景再跑一遍全过。检查没有全部通过：组织与授权成员的本地审计积压（恢复阶段里作业都不运行，重放写下的审计到开放才送出），以理由接受后开放。`iam_status_evidence` 比 T 多一行是身份成员补取时按 Casdoor（不在恢复组内）的现状记下的停用，设计如此。
+      - 由此：线协议 alpha.90 的 P1.23 让审计转运在 `frozen` 以外的恢复阶段运行；SDK alpha.95 把它与对外命令的只查询循环合成宿主自己的“恢复阶段循环”。
   - 要带上的（T10b 记下的）：每个有数据库的组件加恢复操作（定义的 `system` 资源下 `<前缀>.system.recover`）与 `Definition.Recovery`；清单的 `RECOVERY_PHASE` 枚举加两个值；身份成员在 `read_only` 签发令牌、一次性码等路由标 `ReadOnlyOpen`；`prepare.py` 的键。
 
 - **T10a 做了（2026-11-05）**：线协议 alpha.85：P1.23 加 `verifying`、`read_only`；第 13 章加外部对账（P13.11–P13.13，`be.external.v1.ReconcileService`，向量 `external-reconcile` 的参考模型：对上而终结、写截止、`unknown`、`manual`、外部有本地无、可能已执行待核实）；新的第 14 章（`be.recovery.v1.CheckService`：一致性检查与 SDK 自带的投影、消费者纪元、审计积压三项，`Present` 查对象是否还在，`Numbers`/`AdvanceNumbers` 单号的已用最大值；审计损失由恢复工具按产生序号的空位求）；两份 proto。写向量时我的期望写错过一次（去重保留期内按行序先命中“写截止”），按参考模型改正。
