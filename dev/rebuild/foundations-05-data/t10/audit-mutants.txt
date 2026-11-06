@@ -1,0 +1,24 @@
+infra/audit 3.0.30 (T10c): the audit records as a data class
+mutants: 8
+red  a record sent again after its release is looked up in the archive
+       Error:      	Received unexpected error:
+red  the archived copy answers the receipt
+       Error:      	Received unexpected error:
+red  the chain goes on from the first online record
+       Error:      	Should be zero, but was 1
+       Messages:   	the chain goes on from the first online record
+does not build: the chain starts mid-way only when records were released
+red  the recovery's list refuses a range into the archive
+       Error:      	Not equal:
+       Messages:   	a range into the archive: never a part (<nil>)
+red  the history's operation filter selects archived records
+       Error:      	"[map[id:01a1b2ce-9b9b-73d7-ae68-3567b8529cdc received_at:2024-08-28T21:40:47.139074Z record:map[actor:0190f3a1-0000-7000-8000-0000000000a1 category:business_change id:01a1b2ce-9b9b-73d7-
+       Messages:   	an archived record selected by its operation
+red  the query reads the history
+       Error:      	"[map[id:01a1b2ce-e085-70b6-ba41-e83e3697ea88 received_at:2026-11-06T22:41:04.773824+01:00 record:map[actor:0190f3a1-0000-7000-8000-0000000000a1 category:business_change id:01a1b2ce-e085-
+       Messages:   	two archived and one online
+       Error:      	"[]" should have 1 item(s), but has 0
+red  the reader is registered
+       Error:      	Not equal:
+       Messages:   	{"type":"urn:be:be:QUERY_NOT_COMPLETABLE","title":"The query cannot be completed","status":422,"detail":"the history of infra.audit.records has no reader","reason":"QUERY_NOT_COMPLETABLE"
+done

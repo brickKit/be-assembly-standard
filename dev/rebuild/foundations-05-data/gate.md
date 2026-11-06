@@ -31,7 +31,7 @@
 | TR21 | 单号的唯一性 | 由不分区的登记表保证，登记不随单元转层 | T4 | 有：SDK `TestAClassDeclaration`（唯一登记表不能是类别的表，P15.5） |
 | TR22 | 去重与幂等记录按年龄搬走 | 不允许；按自己的保留规则清理 | T4 | 有：SDK `TestAClassDeclaration`（不转层的种类不能有驻留期与路线）、向量 `tier-plan` 的 `not-tierable` |
 | TR23 | 财务凭证所在的期间未关闭 | 不能封存 | T4 | 部分：阻塞检查的机制（模块登记，SDK `TestABlockedGroupingStaysOpen`）；期间未关闭的真实检查随 T10 |
-| TR24 | 没有法规或合同依据的保留年限 | 标为待确认，上线时由客户确定 | T7 | 部分：SDK alpha.107 `TestTheDestructionConditions`（`pending` 答 retention_pending，从不销毁）；上线检查列出 `pending` 的类别在 T10 |
+| TR24 | 没有法规或合同依据的保留年限 | 标为待确认，上线时由客户确定 | T7 | 有：SDK alpha.107 `TestTheDestructionConditions`（`pending` 答 retention_pending，从不销毁）；alpha.111 部署时给保留期（`TIERING_RETENTION_<类别>`，`TestARetentionGivenAtDeployment`）、没给的启动时各记一条 `tiering_retention_pending`；上线手册的一步（`05-operations/04-go-live.md`）；`infra/audit` 3.0.30 的审计记录声明为 `pending`、由部署给 |
 | TR25 | 30 天前创建、20 天前关闭的订单所在的单元 | 在最近的记录满 N 天之前不释放在线层，默认列表不漏掉它 | T6 | 有：SDK alpha.105 `TestTheReleaseConditions`（最近记录 30 天时 WhyRecentRecords）；默认列表不漏掉它在 T10（TR10） |
 | TR26 | 已释放在线层的单元从同库分区换到对象存储 | 状态保持 `released`，新路线的副本校验后以新清单版本发布，旧路线宽限期后释放 | T8 | 有：同 TR20 的测试（状态保持 released、新清单版本、`route_version` 前移，旧路线的行在条件满足后才删） |
 | TR27 | 单元已封存、尚未发布时收到个人信息擦除 | 在线行按协议 07 擦除，单元重新计算摘要；进行中的转层工作项发布失败并重做 | T7 | 有：SDK alpha.108 `TestAnErasureInASealedUnitRestartsItsTransfer`（在线行置空、摘要重算，擦除前的副本发布被拒，下一次转层发布擦除后的内容） |
@@ -43,7 +43,7 @@
 
 | 编号 | 内容 | 任务 | 状态 |
 | --- | --- | --- | --- |
-| AU17 | 法律保全期间到达保留期：不删除（协议 03；A143 把审计的保留期删除与法律保全放到这一项） | T7、T10 | 未做 |
+| AU17 | 法律保全期间到达保留期：不删除（协议 03；A143 把审计的保留期删除与法律保全放到这一项） | T7、T10 | 有：`infra/audit` 3.0.30 `TestTheAuditRecordsTier`（审计记录封存、转层、释放后，保留期已过、删除已批准，一条记录的法律保全挡住整个单元的删除；解除后才删）|
 | RC08 | T 之后执行的销毁：恢复后重新执行（协议 15） | T7、T9 | 部分：SDK 的销毁重放（同 TR16）；整套恢复里的演练在 T9、T10 |
 | RC11 | 目录指向的冷对象缺失：核对不通过，按协议 11 处理后才开放（协议 15） | T9 | 部分：SDK alpha.110 `TestTheTieringRecoveryCheck`（清单里的对象缺失、温层行不全是差异，读取答暂时不可用）；整套恢复演练里的核对在 T10、T11 |
 | RC24 | 销毁只有意图、本地提交失败：恢复后不自动执行，列入人工复核（协议 15） | T7、T9 | 部分：SDK 的销毁只在决定成立时写结论，否则取消意图（`TestAHoldSetDuringTheDecisionWins`）；只有意图的列复核是恢复工具的通用行为（第 4 项），演练在 T9、T10 |
