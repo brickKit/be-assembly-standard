@@ -1,0 +1,29 @@
+be-sdk-go tiering (T4): declarations, the canonical row, the plan, sealing and the write barrier
+mutants: 10
+red  the barrier refuses every state but open
+       Error:      	Should be true
+       Messages:   	<nil>
+       Error:      	Should be true
+red  a child's write locks its root first
+red  the old row's root counts too
+       Error:      	Should be true
+       Messages:   	<nil>
+red  the seal locks the roots it seals (TR03)
+red  unpublished events block
+       Error:      	Not equal:
+red  the module's blockers block
+       Error:      	Not equal:
+       Error:      	"{\"01a1b23a-1dd5-756e-88f8-365117825775\": [\"events_pending\"]}" does not contain "reservation_open"
+red  only past the residence (TR28)
+       Error:      	"[{{\"g:legal_entity\":\"01a1b23a-250b-7c5b-9aed-7356dfbe0529\",\"period\":\"2025-10\"} map[legal_entity:01a1b23a-250b-7c5b-9aed-7356dfbe0529] 2025-10} {{\"g:legal_entity\":\"01a1b23a-250
+       Messages:   	one legal entity, one month
+red  a residence below N is refused (TR29)
+       Error:      	An error is expected but got nil.
+red  the release waits for the grace
+       Error:      	Not equal:
+       Error:      	Not equal:
+red  a null is not written
+       Error:      	Not equal:
+       Error:      	Received unexpected error:
+       Error:      	Received unexpected error:
+done
