@@ -1,0 +1,51 @@
+be-sdk-go tiering (T7a): holds, approvals, destruction, its replay
+mutants: 14
+red  the decision locks the holds (TR14)
+red  the decision checks again in its transaction (TR14)
+       Error:      	Not equal:
+       Error:      	Not equal:
+       Error:      	Not equal:
+red  a class hold covers the unit
+       Error:      	Not equal:
+       Messages:   	held by its class
+       Error:      	Not equal:
+red  a unit hold covers the unit
+       Error:      	Not equal:
+       Messages:   	held by its unit
+       Error:      	Not equal:
+red  a record hold covers its unit (TR13)
+       Error:      	Not equal:
+       Messages:   	one of its orders is held (TR13)
+       Error:      	Not equal:
+red  a withdrawn approval does not count
+       Error:      	Not equal:
+       Messages:   	a withdrawn approval does not count
+       Error:      	Not equal:
+red  only the declared operation sets holds and approvals
+       Error:      	An error is expected but got nil.
+       Messages:   	bob holds no approval operation
+       Error:      	Not equal:
+red  a hold is lifted once
+       Error:      	Should be true
+       Messages:   	lifted once
+red  the retention must have run
+       Error:      	Not equal:
+       Messages:   	kept ten years
+red  a decision that does not hold cancels its intent
+       Error:      	Not equal:
+       Messages:   	the intent is cancelled
+red  the conclusion is written in the decision
+       Error:      	Not equal:
+       Messages:   	the conclusion in it
+       Error:      	Received unexpected error:
+red  the warm rows go
+       Error:      	Should be zero, but was 6
+       Messages:   	the warm rows are gone
+       Error:      	Should be zero, but was 7
+red  the replay destroys the unit again (TR16)
+       Error:      	Not equal:
+       Error:      	Should be empty, but was [approval]
+       Error:      	Should be zero, but was 1
+red  a destruction moves the catalog version
+       Error:      	Not equal:
+done
