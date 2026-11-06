@@ -1,0 +1,43 @@
+be-sdk-go tiering (T6c): history reads, limits, exports
+mutants: 12
+red  an invisible cold aggregate is left out (TR12)
+       Error:      	"[map[_masked:[total] code:SO-01a1b273 id:01a1b273-0d8c-7032-9e59-34bc12c1db09 lines:2 total:<nil>] map[_masked:[total] code:SO-01a1b273 id:01a1b273-0dc5-765b-a7fc-1d1ac3891386 lines:2 to
+       Messages:   	two entities: an open order and two archived ones each
+       Error:      	Not equal:
+red  the online part is read too
+       Error:      	"[map[_masked:[total] code:SO-01a1b273 id:01a1b273-24b5-78e2-ae95-28e6a3cc3875 lines:2 total:<nil>] map[_masked:[total] code:SO-01a1b273 id:01a1b273-24b6-7e01-b010-2b9a7245fb01 lines:2 to
+       Messages:   	two entities: an open order and two archived ones each
+       Error:      	Expected value not to be nil.
+red  the read's lease ends with it
+       Error:      	Should be zero, but was 1
+       Messages:   	the read's lease ends with it
+red  past the limit a read becomes an export (TR11)
+       Error:      	Received unexpected error:
+       Error:      	Should be true
+       Messages:   	be/DEADLINE_EXCEEDED: the request ran out of time: context deadline exceeded
+red  no export to an object-locked store
+       Error:      	Expected nil, but got: &tiering.Pending{Export:"01a1b273-6ce9-780c-b24c-8558dcc8e2ba"}
+       Error:      	Should be true
+       Messages:   	<nil>
+red  no export without a store
+       Error:      	Expected nil, but got: &tiering.Pending{Export:"01a1b273-8396-7da1-a0cd-ca282993f561"}
+       Error:      	Should be true
+       Messages:   	<nil>
+red  only the requester sees an export
+       Error:      	Should be true
+       Messages:   	another principal: <nil>
+red  an expired export's object is deleted
+       Error:      	Expected error with "tiering: the object is missing" in chain but got nil.
+       Messages:   	the object is gone
+red  cold reads are bounded per member
+       Error:      	Expected error with "context deadline exceeded" in chain but got nil.
+       Messages:   	a third read waits, and its limit runs out
+red  the last failed attempt records the export failed
+       Error:      	Condition never satisfied
+red  an export reads under its requester's authorization
+       Error:      	Not equal:
+       Error:      	Not equal:
+       Messages:   	the export is what a complete read answers
+red  the status says how many rows
+       Error:      	Not equal:
+done
