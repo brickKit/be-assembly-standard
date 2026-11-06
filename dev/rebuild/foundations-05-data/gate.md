@@ -23,8 +23,8 @@
 | TR13 | 保留到期但有法律保全 | 不销毁 | T7 | 有：SDK alpha.107 `TestTheDestructionConditions`（单元、类别或其中一张订单的保全都挡住销毁） |
 | TR14 | 销毁工作检查保全后、删除前设置了保全 | 删除的决定在同一事务内检查，保全生效，不销毁 | T7 | 有：SDK alpha.107 `TestAHoldSetDuringTheDecisionWins`（决定事务对保全表取 SHARE 锁，等未提交的保全，看到后取消意图） |
 | TR15 | 已封存的单元中有人申请个人信息擦除 | 生成新的清单版本；保全中则推迟并告警 | T7 | 有：SDK alpha.108 `TestAnArchivedOrderIsErasedAsANewVersion`（温层与对象两种路线：新清单版本、状态不变、只擦这一张、解冻副本删除；保全中推迟并告警、不写意图）、`TestAHoldSetDuringAnErasureWins` |
-| TR16 | 从备份恢复到销毁之前 | 重新执行销毁 | T7、T9 | 部分：SDK alpha.107 `TestADestructionAfterTheRecoveryPointIsReplayed`（恢复后的库里单元回到 released、行在，重放置为 destroyed，下一次销毁运行删数据；再重放答已体现）；接进整套恢复的核对与演练在 T9、T10 |
-| TR17 | 恢复后发现未发布的冷对象 | 不开放读取；重做或清理 | T9 | 未做 |
+| TR16 | 从备份恢复到销毁之前 | 重新执行销毁 | T7、T9 | 部分：SDK alpha.107 `TestADestructionAfterTheRecoveryPointIsReplayed`（恢复后的库里单元回到 released、行在，重放置为 destroyed，下一次销毁运行删数据；再重放答已体现）；整套恢复演练在 T10、T11 |
+| TR17 | 恢复后发现未发布的冷对象 | 不开放读取；重做或清理 | T9 | 有：SDK alpha.110 `TestTheTieringRecoveryCheck`（不属于任何清单版本的对象与温层行是差异，读取只认清单所以不开放；转层作业重做、孤儿清理按窗口删除） |
 | TR18 | 解冻一个单元 | 只读、有到期时间；不重开写入 | T6 | 有：SDK alpha.105 `TestAThawedUnitReadsFromItsCopy`（对象删掉后仍从副本读、写入照样 RECORD_SEALED、清理不删活着的解冻） |
 | TR19 | 读取旧结构版本的单元 | 经转换器读取，转换结果另行校验 | T8 | 有：SDK alpha.109 `TestAnOlderStructureIsReadThroughItsConverter`（温层与对象两种路线；没有转换器答 QUERY_NOT_COMPLETABLE、可读检查列出版本；转换结果不合类别的结构或丢了定位列被拒；路线更换以现在的结构重写） |
 | TR20 | 从同库分区换到对象存储 | 同一协议完成复制、校验、发布、释放 | T8 | 有：SDK alpha.109 `TestARouteChangeMovesAReleasedUnit`（转层作业把单元从温层换到对象存储：复制、校验、发布，旧版本按宽限期、租约、备份释放） |
@@ -45,7 +45,7 @@
 | --- | --- | --- | --- |
 | AU17 | 法律保全期间到达保留期：不删除（协议 03；A143 把审计的保留期删除与法律保全放到这一项） | T7、T10 | 未做 |
 | RC08 | T 之后执行的销毁：恢复后重新执行（协议 15） | T7、T9 | 部分：SDK 的销毁重放（同 TR16）；整套恢复里的演练在 T9、T10 |
-| RC11 | 目录指向的冷对象缺失：核对不通过，按协议 11 处理后才开放（协议 15） | T9 | 未做 |
+| RC11 | 目录指向的冷对象缺失：核对不通过，按协议 11 处理后才开放（协议 15） | T9 | 部分：SDK alpha.110 `TestTheTieringRecoveryCheck`（清单里的对象缺失、温层行不全是差异，读取答暂时不可用）；整套恢复演练里的核对在 T10、T11 |
 | RC24 | 销毁只有意图、本地提交失败：恢复后不自动执行，列入人工复核（协议 15） | T7、T9 | 部分：SDK 的销毁只在决定成立时写结论，否则取消意图（`TestAHoldSetDuringTheDecisionWins`）；只有意图的列复核是恢复工具的通用行为（第 4 项），演练在 T9、T10 |
 | M1 | 认领纪元：发布核对工作者认领时的代次与纪元，且纪元仍是当前的（模型没覆盖） | T5 | 有：SDK `TestOnlyTheCurrentClaimPublishes`（认领与发布之间纪元变了，发布被拒） |
 | M2 | 擦除的新清单版本：擦除后的副本、重算摘要、旧版本按保全与恢复规则清理（模型没覆盖） | T7 | 未做 |

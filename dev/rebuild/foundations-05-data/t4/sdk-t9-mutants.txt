@@ -1,0 +1,27 @@
+be-sdk-go tiering (T9): the recovery check be.tiering
+mutants: 9
+red  a short warm copy is a difference (RC11)
+       Error:      	"released with 1 online roots left: the daily destruction job deletes them; " does not contain "the warm route has 5 of the manifest's 6 rows"
+red  a missing object is a difference (RC11)
+       Error:      	"" does not contain "sdk-test-01a1b2a2-be90-7d25-b51b-7971b9bc1b19/sales.orders/01a1b2a2-bebd-7af4-97c8-57bb7fa18427/1.1/orders-0.parquet"
+       Messages:   	RC11: an object of the manifest missing
+red  a released unit with online rows is a difference
+       Error:      	Should be true
+       Messages:   	[object_type:"tier_object"  object_id:"sdk-test-01a1b2a2-c6b4-7974-8d96-3ddcba4a1602/sales.orders/01a1b2a2-c6ea-782d-92bc-cac9af057838/99.9/orders-0.parquet"  detail:"of no live manifest 
+red  an object of no live version is a difference (TR17)
+       Error:      	map[string]string{"tier_rows 01a1b2a2-cf01-71ec-82ab-7d84d413e862/7":"1 warm rows of no live manifest version: never read; ", "tier_unit 01a1b2a2-cf01-71ec-82ab-7d84d413e862":"the warm ro
+       Messages:   	TR17: an object of no manifest
+red  exports are not compared
+       Error:      	Not equal:
+       Messages:   	[object_type:"tier_object"  object_id:"sdk-test-01a1b2a2-d75f-7b6d-b0ae-30683e8b77f8/exports/x.ndjson"  detail:"of no live manifest version: an orphan or an unfinished transfer, never rea
+does not build: warm rows of no live version are a difference
+red  the daily job continues a release
+       Error:      	Condition never satisfied
+       Messages:   	the daily destruction job deletes it
+red  an unreadable older structure is a difference (P15.34)
+       Error:      	map[string]string{"tier_object sdk-test-01a1b2a3-354d-718a-a4c1-61111c1654bd/sales.orders/01a1b2a3-3579-784e-b22c-8e5c101d02a7/99.9/orders-0.parquet":"of no live manifest version: an orph
+       Messages:   	P15.34
+red  object units without a store are unprovable
+       Error:      	Not equal:
+       Messages:   	object units and no store
+done
