@@ -1,0 +1,127 @@
+run profile bucket: HTTP 200 (200 made, 409 there)
+DRILL archive BEGIN 22:22:15
+DRILL archive END rc=0 129728 ms
+DRILL cell BEGIN 22:24:25
+DRILL cell END rc=0 169063 ms
+containers: audit brickkit-r4-g-infra-audit-3-0-24-1, sales brickkit-r4-g-erp-sales-3-0-29-1, shell brickkit-r4-g-be-go-infra-3-0-60-1
+DRILL prepare BEGIN 22:27:14
+DRILL prepare END rc=0 1498 ms
+DRILL mfa-before BEGIN 22:27:16
+DRILL mfa-before END rc=0 147 ms
+DRILL mfa-seen BEGIN 22:27:16
+DRILL mfa-seen END rc=0 7467 ms
+DRILL pay-before BEGIN 22:27:23
+DRILL pay-before END rc=0 146 ms
+DRILL pay-before-final BEGIN 22:27:23
+DRILL pay-before-final END rc=0 2475 ms
+DRILL limit BEGIN 22:27:26
+DRILL limit END rc=0 49 ms
+DRILL pay-pending BEGIN 22:27:26
+DRILL pay-pending END rc=0 129 ms
+DRILL pay-pending-waits BEGIN 22:27:26
+DRILL pay-pending-waits END rc=0 1322 ms
+DRILL pay-stale BEGIN 22:27:27
+DRILL pay-stale END rc=0 305 ms
+DRILL pay-stale-waits BEGIN 22:27:28
+DRILL pay-stale-waits END rc=0 2269 ms
+DRILL sales-stop BEGIN 22:27:30
+DRILL sales-stop END rc=0 2161 ms
+DRILL rename BEGIN 22:27:32
+DRILL rename END rc=0 132 ms
+DRILL rename-published BEGIN 22:27:32
+DRILL rename-published END rc=0 55 ms
+DRILL backdate BEGIN 22:27:32
+DRILL backdate END rc=0 165 ms
+scenario 3: unit 01a1add0-c129-73b9-8bf3-130b6060f01f renamed (version 2, event 01a1add3-0f65-7128-bdc5-3e86eaf1b462) while sales is down; dated two days back
+T=2026-11-05T22:27:35.100684Z
+DRILL sales-start BEGIN 22:27:37
+DRILL sales-start END rc=0 142 ms
+DRILL sales-caught-up BEGIN 22:27:37
+DRILL sales-caught-up END rc=0 1116 ms
+DRILL after-T BEGIN 22:27:38
+DRILL after-T END rc=0 9753 ms
+after T: revoke 01a1add0-c07c-7426-86e0-88cc1c061e49, disable test.revoked, retire 01a1add0-c1ea-745d-9169-4d56947f9113, reset test.mdm.viewer's second factor
+DRILL after-T-tighten BEGIN 22:27:48
+DRILL after-T-tighten END rc=0 900 ms
+DRILL password-in-casdoor BEGIN 22:27:49
+DRILL password-in-casdoor END rc=0 357 ms
+DRILL password-seen BEGIN 22:27:49
+DRILL password-seen END rc=0 5345 ms
+DRILL reset-seen BEGIN 22:27:54
+DRILL reset-seen END rc=0 58 ms
+DRILL pay-after BEGIN 22:27:54
+DRILL pay-after END rc=0 536 ms
+DRILL pay-after-final BEGIN 22:27:55
+DRILL pay-after-final END rc=0 292 ms
+DRILL pay-pending-final BEGIN 22:27:55
+DRILL pay-pending-final END rc=0 32992 ms
+DRILL pay-stale-still BEGIN 22:28:28
+DRILL pay-stale-still END rc=0 129 ms
+DRILL intent-only BEGIN 22:28:28
+DRILL intent-only END rc=0 2077 ms
+DRILL alert-only BEGIN 22:28:30
+DRILL alert-only END rc=0 2939 ms
+DRILL crash BEGIN 22:28:33
+DRILL crash END rc=0 435 ms
+failed at 2026-11-05T22:28:34.358723Z
+DRILL store-back BEGIN 22:28:34
+DRILL store-back END rc=0 33 ms
+CHECK intent-only in the store: intent 1, conclusion 0 (1, 0)
+CHECK alert-only in the store: intent 0, conclusion 0 (0, 0)
+DRILL announce BEGIN 22:28:34
+DRILL announce END rc=0 41 ms
+DRILL freeze BEGIN 22:28:34
+DRILL freeze END rc=0 9457 ms
+DRILL restore-db BEGIN 22:28:44
+DRILL restore-db END rc=0 73164 ms
+DRILL advance BEGIN 22:29:57
+DRILL advance END rc=0 173 ms
+DRILL redeliver BEGIN 22:29:57
+DRILL redeliver END rc=0 11870 ms
+CHECK scenario 3 at T: sales has the rename event: 1 (0 right after the restore, unless the redelivery already brought it)
+DRILL replay BEGIN 22:30:09
+DRILL replay END rc=0 13138 ms
+DRILL keys BEGIN 22:30:22
+DRILL keys END rc=0 32 ms
+CHECK tables that changed after T: 20 (erp_billing.draft_key, erp_billing.invoice, erp_billing.invoice_line, erp_credit.branch, erp_inventory.branch, erp_inventory.branch_line, erp_inventory.consumption, erp_inventory.movement)
+CHECK business tables not back at T: 1 ['infra_iam_casdoor.iam_status_evidence: T 0, restored 3']
+CHECK evidence store tables that went back: 0 []
+CHECK scenario 2, the revoked grant: ended (ended)
+CHECK test.revoked: disabled (disabled)
+CHECK scenario 4, test.expired (intent only): disabled (disabled)
+CHECK scenario 5, test.rates (alert channel only): disabled (disabled)
+CHECK the retired unit: retired (retired)
+CHECK live sessions from before: 0 (0)
+CHECK the authorization state: operational (operational)
+CHECK the signing key: 431175ee14165a34 -> decb16d82d36865e (another)
+CHECK scenario 3, sales has the rename event again: 1 (1); its unit at version 2 (2)
+CHECK replay: replayed: map[applied:4 consistent:2 dangling:1 reflected:88]; ignored 28; for review 5; the check: {AdminState:operational Ended:2 Held:0 Review:0 Closed:[] AdminsNotClosed:[] Unprovable:[]}
+DRILL reconcile BEGIN 22:30:23
+DRILL reconcile END rc=0 12083 ms
+DRILL check BEGIN 22:30:35
+DRILL check END rc=0 1047 ms
+DRILL loss BEGIN 22:30:36
+DRILL loss END rc=0 474 ms
+DRILL open-read BEGIN 22:30:36
+DRILL open-read END rc=0 11812 ms
+CHECK scenario 6, test.unit.admin.cn in read_only: new 503 old 503 (new 200, old 401)
+DRILL open BEGIN 22:30:48
+DRILL open END rc=0 13176 ms
+CHECK the state: state: running (running)
+CHECK the recovery took 147160 ms from the announcement to running
+CHECK scenario 1, r-pending at the probe: succeeded (succeeded), taken by the fake: 1 (1)
+CHECK scenarios 1 and 7, r-after at the probe: none (none: lost with the recovery), taken: 1 (1)
+CHECK scenario 8, r-stale at the probe: retry_wait (manual or unknown, never resent), taken: 0 (0); first sent at 22:27:30
+CHECK voided invoice numbers: 1 (as many as the invoices issued after T)
+CHECK /home/zhijie/Desktop/github/be-assembly-standard/dev/rebuild/foundations-04-data/t11/reconcile.log:reconciled 1 adapters: map[deadline:1 external_only:1 matched:1]; without the method: []
+CHECK /home/zhijie/Desktop/github/be-assembly-standard/dev/rebuild/foundations-04-data/t11/check.log:checked 12 members: pass true; not passed 0; without the method []; failed map[]
+CHECK /home/zhijie/Desktop/github/be-assembly-standard/dev/rebuild/foundations-04-data/t11/loss.log:the loss: 53 objects asked, map[lost:52]; 0 records name no object; audit loss of 7 sources; not to be entered again: 1
+CHECK /home/zhijie/Desktop/github/be-assembly-standard/dev/rebuild/foundations-04-data/t11/open-read.log:open for reading; the checks passed: true
+CHECK /home/zhijie/Desktop/github/be-assembly-standard/dev/rebuild/foundations-04-data/t11/open.log:number series: 3, raised 1 ([{erp/billing 01a1add0-c096-76b7-89c3-14dec92b7c5c INV 2026 35 35}]); without the method []
+CHECK 6.7: replayed: map[applied:4 consistent:2 dangling:1 reflected:88]; ignored 28; for review 5; the check: {AdminState:operational Ended:2 Held:0 Review:0 Closed:[] AdminsNotClosed:[] Unprovable:[]}
+DRILL scenarios-again BEGIN 22:31:02
+DRILL scenarios-again END rc=0 10373 ms
+the WAL archive is off
+test accounts reset in Casdoor
+test.unit.admin.cn's password set back
+T11 ALL-DONE

@@ -52,8 +52,14 @@ func main() {
 		must(fmt.Errorf("usage: drilltool prepare|after|intent-only|alert-only"))
 	}
 	iam, authzURL, org := os.Getenv("IAM_URL"), os.Getenv("AUTHZ_URL"), os.Getenv("ORG_URL")
-	accounts, err := seed.Accounts(iam, os.Getenv("BE_ACC_IAM_TEST_PASSWORD"), "test.alice", "test.mdm.admin",
-		"test.mdm.viewer", "test.revoked", "test.expired", "test.rates")
+	// each command signs in only the accounts it uses: one disabled earlier in the drill cannot sign in any more
+	users := map[string][]string{"prepare": {"test.alice", "test.mdm.admin", "test.mdm.viewer", "test.revoked",
+		"test.expired", "test.rates"}, "after": {"test.alice", "test.mdm.admin", "test.mdm.viewer", "test.revoked"},
+		"intent-only": {"test.mdm.admin", "test.expired"}, "alert-only": {"test.mdm.admin", "test.rates"}}[os.Args[1]]
+	if users == nil {
+		must(fmt.Errorf("usage: drilltool prepare|after|intent-only|alert-only"))
+	}
+	accounts, err := seed.Accounts(iam, os.Getenv("BE_ACC_IAM_TEST_PASSWORD"), users...)
 	must(err)
 	alice, admin := accounts["test.alice"], accounts["test.mdm.admin"]
 	asAdmin := seed.NewClient(iam, admin.Token)
@@ -72,7 +78,19 @@ func main() {
 			seed.Segment(account, opDisable, "account"), seed.Segment(account, opReset, "account")})
 		must(err)
 		out["grant"] = g
-		must(asAdmin.WaitGranted("GET", "/api/iam/accounts/"+accounts["test.rates"].Principal, 90*time.Second))
+		// granted once test.mdm.admin sees the accounts (one grant record: its segments reach the view together)
+		deadline := time.Now().Add(90 * time.Second)
+		for {
+			code, _, err := asAdmin.Do("GET", "/api/iam/accounts/"+accounts["test.rates"].Principal, nil)
+			must(err)
+			if code == 200 {
+				break
+			}
+			if time.Now().After(deadline) {
+				must(fmt.Errorf("test.mdm.admin does not see the account within 90 s (last %d)", code))
+			}
+			time.Sleep(time.Second)
+		}
 		out["accounts"] = map[string]string{"test.mdm.viewer": accounts["test.mdm.viewer"].Principal,
 			"test.revoked": accounts["test.revoked"].Principal, "test.expired": accounts["test.expired"].Principal,
 			"test.rates": accounts["test.rates"].Principal}

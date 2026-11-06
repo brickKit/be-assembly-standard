@@ -1,7 +1,7 @@
 """The T11 drill's changes made in Casdoor itself (outside the recovery group, A141): a second factor added to an
 account (before T), a password changed in Casdoor (after T, as a user's own change there would be). As admin, through
 Casdoor's API, as the identity member's tests do. Never prints a password.
-Usage: casdoor.py mfa-email <user> | password <user> (the new password in NEW_PASSWORD) | show <user>
+Usage: casdoor.py mfa-email <user> | mfa-off <user> | password <user> (the new password in NEW_PASSWORD) | show <user>
 env: CASDOOR_URL, CASDOOR_ADMIN_PASSWORD"""
 import http.cookiejar
 import json
@@ -33,8 +33,15 @@ def main(cmd, user):
     u = call(f"/api/get-user?id={ORG}/{user}")["data"]
     if cmd == "mfa-email":
         call(f"/api/update-user?id={ORG}/{user}", {**u, "email": user + "@example.test", "mfaEmailEnabled": True})
+    elif cmd == "mfa-off":  # a drill starts from no second factor (an earlier run may have stopped with one)
+        call(f"/api/update-user?id={ORG}/{user}", {**u, "mfaEmailEnabled": False, "mfaPhoneEnabled": False,
+                                                    "preferredMfaType": "", "totpSecret": "", "recoveryCodes": []})
     elif cmd == "password":
-        call("/api/set-password", form={"userOwner": ORG, "userName": user, "newPassword": os.environ["NEW_PASSWORD"]})
+        try:
+            call("/api/set-password", form={"userOwner": ORG, "userName": user, "newPassword": os.environ["NEW_PASSWORD"]})
+        except SystemExit as e:  # Casdoor refuses the password the account has: it is already set
+            if "must be different" not in str(e):
+                raise
     u = call(f"/api/get-user?id={ORG}/{user}")["data"]
     print(json.dumps({k: u.get(k) for k in ("name", "updatedTime", "lastChangePasswordTime", "mfaEmailEnabled",
                                              "preferredMfaType", "isForbidden")}))

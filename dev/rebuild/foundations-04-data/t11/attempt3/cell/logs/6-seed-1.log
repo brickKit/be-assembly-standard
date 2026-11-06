@@ -1,0 +1,25 @@
+make: Entering directory '/home/zhijie/Desktop/github/be-assembly-standard'
+make[1]: Entering directory '/home/zhijie/Desktop/github/be-assembly-standard/components/infra/authz'
+make -C ../iam-casdoor seed   # the identity member's seed accounts first; skipped when Casdoor is not reachable
+make[2]: Entering directory '/home/zhijie/Desktop/github/be-assembly-standard/components/infra/iam-casdoor'
+python3 -I scripts/dev_setup.py --users-only
+user brickkit/test.alice: updated
+user brickkit/test.bob: updated
+user brickkit/test.mdm.admin: updated
+user brickkit/test.mdm.viewer: updated
+user brickkit/test.rates: updated
+user brickkit/test.sales.cn: updated
+user brickkit/test.sales.es: updated
+user brickkit/test.sales.multi: updated
+user brickkit/test.unit.admin.cn: updated
+user brickkit/test.revoked: updated
+user brickkit/test.expired: updated
+user brickkit/test.nobody: updated
+make[2]: Leaving directory '/home/zhijie/Desktop/github/be-assembly-standard/components/infra/iam-casdoor'
+go run ./cmd/seed
+seed infra/authz: the development exchange refused test.unit.admin.cn (are the seed accounts there? make -C components/infra/iam-casdoor seed): POST /api/iam/dev/token: 401 map[detail:the identity provider refused the login domain:be metadata:map[provider_error:invalid_grant] reason:TOKEN_INVALID status:401 title:The credentials are not valid trace_id:a4fe43b49322cce722ba7b6df50ca2a1 type:urn:be:be:TOKEN_INVALID]
+exit status 1
+make[1]: *** [Makefile:3: seed] Error 1
+make[1]: Leaving directory '/home/zhijie/Desktop/github/be-assembly-standard/components/infra/authz'
+make: *** [Makefile:218: seed-data] Error 2
+make: Leaving directory '/home/zhijie/Desktop/github/be-assembly-standard'

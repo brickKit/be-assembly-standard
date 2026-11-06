@@ -12,8 +12,8 @@
 #     password changed in Casdoor; test.mdm.viewer's second factor (added before T) reset by test.mdm.admin. Casdoor
 #     is outside the recovery group: 6.7 checks them (consistent), the new password signs in
 #   7 a payment executed outside and unknown here: r-after again (external only, not to be entered again)
-#   8 a pending payment past the dedupe window: r-stale refused (429) until the failure, the window 65 minutes, so its
-#     resend deadline (first send + 65 min - 1 h) has passed at the reconciliation
+#   8 a pending payment past the dedupe window: r-stale refused (429) until the failure, the window 61 minutes, so its
+#     resend deadline (first send + 61 min - 1 h) has passed at the reconciliation (attempt 4's 65 minutes left it ahead)
 # The failure: the shell be/go-infra killed while the evidence store is paused (both disablements' conclusions are in
 # the identity member's outbox), then the store resumes and the recovery starts.
 set -u
@@ -64,6 +64,9 @@ export PG_DSN="postgres://postgres:$PW@localhost:5432/be_experiment?sslmode=disa
 for c in R4-X R4-G; do (cd $R/dev/rebuild/experiment-cells/$c && brickkit down > /dev/null 2>&1); done
 (cd $R/components/infra/iam-casdoor && CASDOOR_URL=$CASDOOR_URL CASDOOR_ADMIN_PASSWORD=$CASDOOR_ADMIN_PASSWORD \
   IAM_TEST_PASSWORD=$(val IAM_TEST_PASSWORD) python3 -I scripts/dev_setup.py --users-only > /dev/null 2>&1) || exit 1
+$C mfa-off test.mdm.viewer > $O/mfa-off.log 2>&1 || exit 1
+# dev_setup.py's update-user does not set a password in Casdoor: the one this drill changes is set back by set-password
+NEW_PASSWORD=$(val IAM_TEST_PASSWORD) $C password test.unit.admin.cn > $O/password-reset.log 2>&1 || exit 1
 step archive bash $R/infra/scripts/pg-backup.sh on
 step cell env KEEP_UP=1 bash $R/dev/rebuild/experiment-scripts/cell-chain.sh R4-G $O/cell
 export AUDIT_CONTAINER; AUDIT_CONTAINER=$(container infra-audit); SALES=$(container erp-sales); SHELL_C=$(container go-infra)
@@ -133,6 +136,11 @@ step alert-only $T_TOOL alert-only
 step crash docker kill $SHELL_C
 FAILED_AT=$(date -u +%Y-%m-%dT%H:%M:%S.%6NZ); echo "failed at $FAILED_AT" >> $O/summary.txt
 step store-back docker unpause $AUDIT_CONTAINER
+# scenario 5: the intent in the alert channel (the run profile's alert records of this deployment, P12.16)
+S3U="$(val STORAGE_ACCESS_KEY):$(val STORAGE_SECRET_KEY)"
+alerts=$(curl -s --aws-sigv4 "aws:amz:us-east-1:s3" --user "$S3U" "http://localhost:9000/be-run-profile?list-type=2&prefix=$DEP/alert/" | grep -o "<Key>[^<]*</Key>" | sed 's/<[^>]*>//g')
+mkdir -p $O/alerts; for k in $alerts; do curl -s --aws-sigv4 "aws:amz:us-east-1:s3" --user "$S3U" "http://localhost:9000/be-run-profile/$k" -o $O/alerts/$(basename $k); done
+echo "CHECK scenario 5, the alert channel holds test.rates' intent: $(grep -l "$RATES" $O/alerts/*.json 2>/dev/null | wc -l) (1)" >> $O/summary.txt
 echo "CHECK intent-only in the store: intent $(sql "$(evidence_of account_status intent $EXPIRED)"), conclusion $(sql "$(evidence_of account_status effective $EXPIRED)") (1, 0)" >> $O/summary.txt
 echo "CHECK alert-only in the store: intent $(sql "$(evidence_of account_status intent $RATES)"), conclusion $(sql "$(evidence_of account_status effective $RATES)") (0, 0)" >> $O/summary.txt
 counts > $O/counts-after.txt
@@ -145,14 +153,30 @@ RT0=$(ms)
 step announce $B announce --project $D --reason "T11 drill: the gate, protocol 15's drill scenarios" --approver "T11" --at "$T"
 step freeze $B freeze --project $D
 step restore-db $B restore-db --project $D
+echo "CHECK scenario 3 right after the restore: sales has the rename event: $(sql "select count(*) from erp_sales.be_inbox where event_id = '$RENAME_EVENT'") (0: behind at T)" >> $O/summary.txt
 step advance $B advance --project $D
 step redeliver $B redeliver --project $D
 $B status --project $D > $O/status.txt 2>&1
 counts > $O/counts-restored.txt
-echo "CHECK scenario 3 at T: sales has the rename event: $(sql "select count(*) from erp_sales.be_inbox where event_id = '$RENAME_EVENT'") (0 right after the restore, unless the redelivery already brought it)" >> $O/summary.txt
 KEY_BEFORE=$(sha256sum $D/.secrets/iam/signing-key.pem | cut -c1-16)
 step replay $B replay --project $D
 step keys $B keys --project $D
+rec=$(curl -s --aws-sigv4 "aws:amz:us-east-1:s3" --user "$S3U" "http://localhost:9000/be-run-profile?list-type=2&prefix=$DEP/recovery.step/" | grep -o "<Key>[^<]*</Key>" | sed 's/<[^>]*>//g')
+mkdir -p $O/run-profile; for k in $rec; do curl -s --aws-sigv4 "aws:amz:us-east-1:s3" --user "$S3U" "http://localhost:9000/be-run-profile/$k" -o $O/run-profile/$(basename $k); done
+python3 - $O/run-profile > $O/replay-review.txt <<'PY'
+import json, pathlib, sys
+for f in sorted(pathlib.Path(sys.argv[1]).glob('*.json')):
+    b = json.loads(f.read_text()).get('body', {})
+    if b.get('step') != 'replay':
+        continue
+    rep = b['detail']['report']
+    print('alerts_untrusted', b['detail'].get('alerts_untrusted'))
+    for o in rep['outcomes']:
+        if o['outcome'] != 'reflected' or o.get('intent_only'):
+            print(o['owner'], o['category'], o['phase'], o['outcome'], 'intent_only' if o.get('intent_only') else '', o.get('detail', '')[:120])
+    print('review', len(rep.get('review') or []))
+PY
+sed 's/^/CHECK replay outcome: /' $O/replay-review.txt >> $O/summary.txt
 python3 - $O <<'PY' >> $O/summary.txt
 import sys, pathlib
 o = pathlib.Path(sys.argv[1])
@@ -206,10 +230,24 @@ echo "CHECK voided invoice numbers: $(sql "select count(*) from erp_billing.void
 grep -E '^reconciled|^checked|^the loss|^number series|open for reading|r-stale|r-pending|r-after' $O/reconcile.log $O/check.log $O/loss.log $O/open-read.log $O/open.log | sed 's/^/CHECK /'
 grep -E 'credential|consistent' $O/replay.log | head -8 | sed 's/^/CHECK 6.7: /'
 } >> $O/summary.txt
+# each payment's conclusion at the reconciliation (the run profile's record of step 7)
+rec=$(curl -s --aws-sigv4 "aws:amz:us-east-1:s3" --user "$S3U" "http://localhost:9000/be-run-profile?list-type=2&prefix=$DEP/recovery.step/" | grep -o "<Key>[^<]*</Key>" | sed 's/<[^>]*>//g')
+for k in $rec; do curl -s --aws-sigv4 "aws:amz:us-east-1:s3" --user "$S3U" "http://localhost:9000/be-run-profile/$k" -o $O/run-profile/$(basename $k); done
+python3 - $O/run-profile <<'PY' >> $O/summary.txt
+import json, pathlib, sys
+for f in sorted(pathlib.Path(sys.argv[1]).glob('*.json')):
+    b = json.loads(f.read_text()).get('body', {})
+    if b.get('step') == 'reconcile':
+        for comp, cs in b['detail']['conclusions'].items():
+            for c in cs:
+                print(f"CHECK reconcile {comp} {c['reference']}: {c['conclusion']} {c.get('state', '')} {c.get('resend_deadline', '')}")
+PY
+echo "CHECK expected: r-pending matched (scenario 1), r-after external_only (scenario 7), r-stale past its deadline: unknown or manual, not resent (scenario 8)" >> $O/summary.txt
 step scenarios-again env FROM=scenarios KEEP_UP=1 bash $R/dev/rebuild/experiment-scripts/cell-chain.sh R4-G $O/cell-again
 bash $R/dev/rebuild/experiment-scripts/cell-logs.sh $D $O/logs > /dev/null 2>&1
 (cd $D && brickkit down > /dev/null 2>&1)
 bash $R/infra/scripts/pg-backup.sh off >> $O/summary.txt 2>&1
 (cd $R/components/infra/iam-casdoor && CASDOOR_URL=$CASDOOR_URL CASDOOR_ADMIN_PASSWORD=$CASDOOR_ADMIN_PASSWORD \
   IAM_TEST_PASSWORD=$(val IAM_TEST_PASSWORD) python3 -I scripts/dev_setup.py --users-only > /dev/null 2>&1) && echo "test accounts reset in Casdoor" >> $O/summary.txt
+NEW_PASSWORD=$(val IAM_TEST_PASSWORD) $C password test.unit.admin.cn > /dev/null 2>&1 && echo "test.unit.admin.cn's password set back" >> $O/summary.txt
 echo "T11 ALL-DONE" >> $O/summary.txt

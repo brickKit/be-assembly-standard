@@ -1,0 +1,14 @@
+Attempt 4 (2026-11-05 22:21-22:31 UTC): steps 1-10 through, back to running, the scenarios again passed; the recovery
+took 147 s from the announcement to running. Gaps found:
+1. The evidence transfer does not run in the recovery phases (as the audit transfer did not until alpha.90): the
+   identity member's comparisons in the redelivering phase wrote three console-disablement intents, their conclusions
+   reached the store only in read_only, so the replay saw intent-only records and listed them for review.
+2. The cells configure no run profile for the members that write evidence: test.rates' intent (the store paused)
+   could not go to the alert channel (no RUN_PROFILE_URL); scenario 5 "passed" only because the identity member's
+   comparison found it forbidden in Casdoor (iam_status_evidence +3). replay: alerts_untrusted [] and no alert record.
+3. The development exchange is not open in read_only (503): scenario 6's sign-in could not be checked.
+4. The drill's own: the dedupe window 65 min left r-stale's deadline in the future at the reconciliation (the drill
+   is faster than T10e: 3.5 min from its first send), so the reconciliation wrote a deadline instead of treating it as
+   past; scenario 3's check "at T" ran after the redelivery.
+Passed: scenarios 1, 2, 4 (test.expired intent only: applied, intent unconfirmed, for review), 6.7 (two credential
+tightenings consistent), 3 (sales has the rename again at version 2), 7; checks 12 members pass; loss 53/52.
