@@ -57,7 +57,7 @@
 | --- | --- | --- | --- |
 | G1 规划向量 | 输入数据类别、单元、时间、保全与能力，输出动作与被阻塞的单元；Go 对向量全过（Python 随第 6 项） | T3、T11 | 部分：Go 对向量全过（SDK `TestThePlanVectors`、`TestTheDigestVectors`、`TestTheManifestVectors`）；Python 随第 6 项 |
 | G2 长时间推演 | 真实数据库，多副本与外壳成员同时运行，每个状态迁移点注入崩溃，最终状态一致；数据量让边界条件出现 | T11 | 未做 |
-| G3 冷层往返 | 每种列类型冻结、读回、摘要相等；第三方读取器从文件与清单算出同一个摘要；不可改写的存储拒绝可擦除的数据 | T5、T11 | 部分：每种列类型写成 Parquet 再读回、规范行与表的散列相等（SDK `TestEveryColumnTypeRoundTrips`）；开了对象锁的桶拒绝可擦除的类别（`TestALockedBucketRefusesErasableData`）；第三方读取器从文件与清单算出同一个摘要随 T11 |
+| G3 冷层往返 | 每种列类型冻结、读回、摘要相等；第三方读取器从文件与清单算出同一个摘要；不可改写的存储拒绝可擦除的数据 | T5、T11 | 部分：每种列类型写成 Parquet 再读回、规范行与表的散列相等（SDK `TestEveryColumnTypeRoundTrips`）；开了对象锁的桶拒绝可擦除的类别（`TestALockedBucketRefusesErasableData`）；套件 1.0.59 的转层剖面（探针 3.2.47：每种列类型加 `text[]`、三层、叶子表两列主键，经 SDK 自己的作业在温层与对象存储两条路线封存、转层，读回与在线时相同）；第三方读取器从文件与清单算出同一个摘要随 T11 |
 | G4 冷读一致 | 每个读取实现返回相同的行；封存前后与读回后的列表结果相同 | T6、T11 | 部分：SDK alpha.105 的两种路线按 ID 读回与在线时相同、快照下的列表每单元一次；第三方读取与封存前后列表的对照在 T11 |
 | G5 端到端擦除 | 横跨在线层、冷层、数据集与导出，包括恢复之后的重新执行 | T7、T11 | 部分：SDK alpha.108 的在线（sealed）、温层、对象三处与恢复之后的重新执行（`TestAnErasureAfterTheRecoveryPointIsReplayed`）；数据集与导出、组件端到端在 T10、T11 |
 
