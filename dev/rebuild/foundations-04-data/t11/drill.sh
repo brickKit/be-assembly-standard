@@ -238,7 +238,7 @@ import json, pathlib, sys
 for f in sorted(pathlib.Path(sys.argv[1]).glob('*.json')):
     b = json.loads(f.read_text()).get('body', {})
     if b.get('step') == 'reconcile':
-        for comp, cs in b['detail']['conclusions'].items():
+        for comp, cs in b['detail']['report']['conclusions'].items():  # detail.conclusions is the counts
             for c in cs:
                 print(f"CHECK reconcile {comp} {c['reference']}: {c['conclusion']} {c.get('state', '')} {c.get('resend_deadline', '')}")
 PY
