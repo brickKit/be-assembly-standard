@@ -1,0 +1,26 @@
+be-sdk-go tiering (T5): copy, verify, publish, orphans, the locked bucket
+mutants: 8
+red  an object must match its size and hash
+       Error:      	Error "tiering: the copy does not verify: reading page index of parquet file: decoding column index: rowGroup=0 columnChunk=6/9: decoding thrift payload: 2:FIELD<LIST> → 0/1:LIST<BINARY>:
+red  the content's digest is the sealed one
+       Error:      	Expected error with "tiering: the copy does not verify" in chain but got nil.
+red  a taken-over claim does not publish (TR04)
+       Error:      	Expected error with "tiering: the claim is stale" in chain but got nil.
+       Error:      	Not equal:
+       Messages:   	nothing changed
+red  a claim of another epoch does not publish (M1)
+       Error:      	Expected error with "tiering: the claim is stale" in chain but got nil.
+red  only a sealed unit is published
+       Error:      	Target error should be in err chain:
+       Messages:   	a published unit is not published again
+red  the cleanup keeps what a manifest names
+       Error:      	Not equal:
+       Messages:   	the old worker's two parts and its manifest.json
+       Error:      	Received unexpected error:
+red  a locked bucket refuses erasable data (P15.32)
+       Error:      	An error is expected but got nil.
+red  instants read back as written
+       Error:      	Not equal:
+       Messages:   	row 0
+       Error:      	Not equal:
+done
