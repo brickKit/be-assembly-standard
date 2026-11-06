@@ -48,8 +48,8 @@
 | RC11 | 目录指向的冷对象缺失：核对不通过，按协议 11 处理后才开放（协议 15） | T9 | 部分：SDK alpha.110 `TestTheTieringRecoveryCheck`（清单里的对象缺失、温层行不全是差异，读取答暂时不可用）；整套恢复演练里的核对在 T10、T11 |
 | RC24 | 销毁只有意图、本地提交失败：恢复后不自动执行，列入人工复核（协议 15） | T7、T9 | 部分：SDK 的销毁只在决定成立时写结论，否则取消意图（`TestAHoldSetDuringTheDecisionWins`）；只有意图的列复核是恢复工具的通用行为（第 4 项），演练在 T9、T10 |
 | M1 | 认领纪元：发布核对工作者认领时的代次与纪元，且纪元仍是当前的（模型没覆盖） | T5 | 有：SDK `TestOnlyTheCurrentClaimPublishes`（认领与发布之间纪元变了，发布被拒） |
-| M2 | 擦除的新清单版本：擦除后的副本、重算摘要、旧版本按保全与恢复规则清理（模型没覆盖） | T7 | 未做 |
-| M3 | 恢复时的核对的四种发现（模型没覆盖） | T9 | 未做 |
+| M2 | 擦除的新清单版本：擦除后的副本、重算摘要、旧版本按保全与恢复规则清理（模型没覆盖） | T7 | 有：SDK alpha.108 `TestAnArchivedOrderIsErasedAsANewVersion`（擦除后的副本、新清单版本、重算摘要）；alpha.109 `TestAnErasedVersionsOldObjectsAreReleased`、`TestARouteChangeMovesAReleasedUnit`（旧版本在宽限期、租约与新版本之后的备份都满足后才删） |
+| M3 | 恢复时的核对的四种发现（模型没覆盖） | T9 | 有：SDK alpha.110 `TestTheTieringRecoveryCheck`（目录指向冷层而对象缺失、对象在而清单未发布、已释放仍有在线行）；销毁晚于恢复点由重放处理，alpha.107 `TestADestructionAfterTheRecoveryPointIsReplayed` |
 
 ## 3. 门槛的五层检查
 
