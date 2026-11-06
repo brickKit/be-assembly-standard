@@ -1,0 +1,105 @@
+.........F..F.....F                                                      [100%]
+=================================== FAILURES ===================================
+_______________________ test_sales_es_sees_no_cn01_order _______________________
+
+login = <function login.<locals>.get at 0x72eae58bb950>
+world = World(le='01a1b1e4-00b0-7496-9ad7-3b3bb3a916a9', shanghai='01a1b1e4-384a-7ae2-abf3-f8cb27bb4b81', beijing='01a1b1e4-39...-7cae0264a034', 'CS-POST': '01a1b1e4-0151-7085-95e1-d04eb0f115ff', 'PROJ-OLD': '01a1b1e4-0153-7c0f-aff2-be2cc3482313'})
+
+    def test_sales_es_sees_no_cn01_order(login, world):
+>       es = login("test.sales.es")
+             ^^^^^^^^^^^^^^^^^^^^^^
+
+scenarios/test_scope.py:24: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+name = 'test.sales.es'
+
+    def get(name: str) -> User:
+        if name not in users:
+            r = httpx.post(f"http://127.0.0.1:{cell.host_port('infra/iam-casdoor')}/api/iam/dev/token",
+                           json={"username": name, "password": password}, timeout=30)
+>           assert r.status_code == 200, f"{name} cannot log in: {r.status_code} {r.text[:200]}"
+E           AssertionError: test.sales.es cannot log in: 401 {"type":"urn:be:be:TOKEN_INVALID","title":"The credentials are not valid","status":401,"detail":"the identity provider refused the login","reason":"TOKEN_INVALID","domain":"be","metadata":{"provider_e
+E           assert 401 == 200
+E            +  where 401 = <Response [401 Unauthorized]>.status_code
+
+scenarios/conftest.py:84: AssertionError
+__________________ test_only_the_billing_role_issues_invoices __________________
+
+login = <function login.<locals>.get at 0x72eae58bb950>
+bob = User(name='test.bob', cell=Cell(dir=PosixPath('/home/zhijie/Desktop/github/be-assembly-standard/dev/rebuild/experiment...BSwtJsCsGYPTpE8rvfAAQ', principal='01a1b1e3-d505-7a6a-957e-d02793ea3c91', http=<httpx.Client object at 0x72eae58a7c50>)
+world = World(le='01a1b1e4-00b0-7496-9ad7-3b3bb3a916a9', shanghai='01a1b1e4-384a-7ae2-abf3-f8cb27bb4b81', beijing='01a1b1e4-39...-7cae0264a034', 'CS-POST': '01a1b1e4-0151-7085-95e1-d04eb0f115ff', 'PROJ-OLD': '01a1b1e4-0153-7c0f-aff2-be2cc3482313'})
+
+    def test_only_the_billing_role_issues_invoices(login, bob, world):
+        o = order(bob, world, world.large, [goods(world, 1)])
+        assert bob.post("erp/sales", f"/api/sales/orders/{o['id']}/confirm")["outcome"] == "confirmed"
+        line = bob.get("erp/sales", f"/api/sales/orders/{o['id']}")["lines"][0]
+        bob.post("erp/sales", "/api/sales/deliveries", {"order_id": o["id"], "lines": [{"order_line_id": line["id"], "quantity": "1"}]})
+        inv = bob.post("erp/billing", "/api/billing/invoices", {"order_id": o["id"]})
+        for name in ("test.sales.cn", "test.sales.multi", "test.sales.es"):
+>           r = login(name).call("POST", "erp/billing", f"/api/billing/invoices/{inv['id']}/issue")
+                ^^^^^^^^^^^
+
+scenarios/test_scope.py:58: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+name = 'test.sales.es'
+
+    def get(name: str) -> User:
+        if name not in users:
+            r = httpx.post(f"http://127.0.0.1:{cell.host_port('infra/iam-casdoor')}/api/iam/dev/token",
+                           json={"username": name, "password": password}, timeout=30)
+>           assert r.status_code == 200, f"{name} cannot log in: {r.status_code} {r.text[:200]}"
+E           AssertionError: test.sales.es cannot log in: 401 {"type":"urn:be:be:TOKEN_INVALID","title":"The credentials are not valid","status":401,"detail":"the identity provider refused the login","reason":"TOKEN_INVALID","domain":"be","metadata":{"provider_e
+E           assert 401 == 200
+E            +  where 401 = <Response [401 Unauthorized]>.status_code
+
+scenarios/conftest.py:84: AssertionError
+______________ test_mdm_org_department_move_reaches_sales_scopes _______________
+
+bob = User(name='test.bob', cell=Cell(dir=PosixPath('/home/zhijie/Desktop/github/be-assembly-standard/dev/rebuild/experiment...BSwtJsCsGYPTpE8rvfAAQ', principal='01a1b1e3-d505-7a6a-957e-d02793ea3c91', http=<httpx.Client object at 0x72eae58a7c50>)
+login = <function login.<locals>.get at 0x72eae58bb950>
+world = World(le='01a1b1e4-00b0-7496-9ad7-3b3bb3a916a9', shanghai='01a1b1e4-384a-7ae2-abf3-f8cb27bb4b81', beijing='01a1b1e4-39...-7cae0264a034', 'CS-POST': '01a1b1e4-0151-7085-95e1-d04eb0f115ff', 'PROJ-OLD': '01a1b1e4-0153-7c0f-aff2-be2cc3482313'})
+
+    def test_mdm_org_department_move_reaches_sales_scopes(bob, login, world):
+        """A department moved from the east region to the south region in mdm/org: erp/sales rewrites its orders' paths
+        from the event, so the east salesperson stops seeing the order and the one with both regions keeps it."""
+        code = "L3-" + uuid.uuid4().hex[:8].upper()
+        unit = bob.post("mdm/org", "/api/org/units", {"legal_entity_id": world.le, "parent_id": world.departments["SALES-EAST"],
+                                                       "code": code, "name": "「本地测试」L3 " + code})
+        east, both = login("test.sales.cn"), login("test.sales.multi")
+    
+        def sees(user, order_id) -> bool:
+            r = user.call("GET", "erp/sales", f"/api/sales/orders/{order_id}")
+            assert r.status_code in (200, 404), r.text[:200]
+            return r.status_code == 200
+    
+        o = eventually(lambda: order(bob, world, world.large, [service(world, 1)], unit["id"]))  # the unit reaches sales first
+>       eventually(lambda: sees(east, o["id"]) and sees(both, o["id"]))
+
+scenarios/test_trading_chain.py:129: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+check = <function test_mdm_org_department_move_reaches_sales_scopes.<locals>.<lambda> at 0x72eae56fddd0>
+seconds = 30, every = 0.5
+
+    def eventually(check, seconds: float = 30, every: float = 0.5):
+        """check() until it returns a truthy value; the last AssertionError when time runs out."""
+        deadline, last = time.monotonic() + seconds, None
+        while time.monotonic() < deadline:
+            try:
+                out = check()
+                if out:
+                    return out
+            except AssertionError as e:
+                last = e
+            time.sleep(every)
+>       raise last or AssertionError(f"not true within {seconds} s")
+E       AssertionError: not true within 30 s
+
+scenarios/conftest.py:67: AssertionError
+=========================== short test summary info ============================
+FAILED scenarios/test_scope.py::test_sales_es_sees_no_cn01_order - AssertionE...
+FAILED scenarios/test_scope.py::test_only_the_billing_role_issues_invoices - ...
+FAILED scenarios/test_trading_chain.py::test_mdm_org_department_move_reaches_sales_scopes
+3 failed, 16 passed in 38.83s

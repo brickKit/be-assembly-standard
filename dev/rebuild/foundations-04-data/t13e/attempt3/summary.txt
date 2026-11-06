@@ -1,0 +1,196 @@
+run profile bucket: HTTP 200 (200 made, 409 there)
+DRILL archive BEGIN 17:21:41
+DRILL archive END rc=0 132136 ms
+DRILL cell BEGIN 17:23:53
+DRILL cell END rc=0 171608 ms
+containers: audit brickkit-r4-g-infra-audit-3-0-28-1, sales brickkit-r4-g-erp-sales-3-0-33-1, shell brickkit-r4-g-be-go-infra-3-0-62-1
+DRILL prepare BEGIN 17:26:45
+DRILL prepare END rc=0 1499 ms
+DRILL mfa-before BEGIN 17:26:47
+DRILL mfa-before END rc=0 176 ms
+DRILL mfa-seen BEGIN 17:26:47
+DRILL mfa-seen END rc=0 6430 ms
+DRILL pay-before BEGIN 17:26:53
+DRILL pay-before END rc=0 132 ms
+DRILL pay-before-final BEGIN 17:26:53
+DRILL pay-before-final END rc=0 1924 ms
+DRILL limit BEGIN 17:26:55
+DRILL limit END rc=0 54 ms
+DRILL pay-pending BEGIN 17:26:55
+DRILL pay-pending END rc=0 131 ms
+DRILL pay-pending-waits BEGIN 17:26:55
+DRILL pay-pending-waits END rc=0 1885 ms
+DRILL pay-stale BEGIN 17:26:57
+DRILL pay-stale END rc=0 322 ms
+DRILL pay-stale-waits BEGIN 17:26:58
+DRILL pay-stale-waits END rc=0 2006 ms
+DRILL sales-stop BEGIN 17:27:00
+DRILL sales-stop END rc=0 2156 ms
+DRILL rename BEGIN 17:27:02
+DRILL rename END rc=0 137 ms
+DRILL rename-published BEGIN 17:27:02
+DRILL rename-published END rc=0 60 ms
+DRILL backdate BEGIN 17:27:02
+DRILL backdate END rc=0 304 ms
+scenario 3: unit 01a1b1e4-0115-746c-9cdc-6a44a5a13ebc renamed (version 2, event 01a1b1e6-4db2-7e66-93de-1b9eda91a6f8) while sales is down; dated two days back
+T=2026-11-06T17:27:05.112407Z
+DRILL sales-start BEGIN 17:27:07
+DRILL sales-start END rc=0 134 ms
+DRILL sales-caught-up BEGIN 17:27:07
+DRILL sales-caught-up END rc=0 1112 ms
+DRILL after-T BEGIN 17:27:08
+DRILL after-T END rc=0 10301 ms
+after T: revoke 01a1b1e4-0087-7380-9d1b-4fe7779c8023, disable test.revoked, retire 01a1b1e4-01d0-77ac-96d6-e7291e5f7d97, reset test.mdm.viewer's second factor
+DRILL after-T-tighten BEGIN 17:27:18
+DRILL after-T-tighten END rc=0 649 ms
+DRILL password-in-casdoor BEGIN 17:27:18
+DRILL password-in-casdoor END rc=0 345 ms
+DRILL password-seen BEGIN 17:27:19
+DRILL password-seen END rc=0 4287 ms
+DRILL reset-seen BEGIN 17:27:23
+DRILL reset-seen END rc=0 60 ms
+DRILL pay-after BEGIN 17:27:23
+DRILL pay-after END rc=0 131 ms
+DRILL pay-after-final BEGIN 17:27:23
+DRILL pay-after-final END rc=0 1881 ms
+DRILL pay-pending-final BEGIN 17:27:25
+DRILL pay-pending-final END rc=0 32408 ms
+DRILL pay-stale-still BEGIN 17:27:57
+DRILL pay-stale-still END rc=0 138 ms
+DRILL freeze-release BEGIN 17:27:58
+DRILL freeze-release END rc=0 793 ms
+DRILL double-failure BEGIN 17:27:59
+DRILL double-failure END rc=0 5626 ms
+DRILL rotate BEGIN 17:28:04
+DRILL rotate END rc=0 16 ms
+DRILL reissue BEGIN 17:28:04
+DRILL reissue END rc=0 332 ms
+DRILL reload-next BEGIN 17:28:05
+DRILL reload-next END rc=0 40013 ms
+DRILL leak BEGIN 17:28:45
+DRILL leak END rc=0 20 ms
+DRILL revoke-leaked BEGIN 17:28:45
+DRILL revoke-leaked END rc=0 16 ms
+DRILL revoke-ca BEGIN 17:28:45
+DRILL revoke-ca END rc=0 18 ms
+DRILL reload-without BEGIN 17:28:45
+DRILL reload-without END rc=0 40011 ms
+scenario 11: CA ec6c7a6b652b0f4ff60252aa0adddbc316ee2e4bfa7a7b419c3dd6db551bdcb3 rotated to 7ed4337c6965c8edd8db806464b3afb2b7da87fa70787b871b090be499e4f28c and revoked; leaked credential 9dc7b9a4bb2d2a1c56a811757d5993333f0e27d29a8adb1d9af41a3ee20cecd6 revoked
+DRILL forge BEGIN 17:29:25
+DRILL forge END rc=0 35 ms
+DRILL intent-only BEGIN 17:29:25
+DRILL intent-only END rc=0 376 ms
+DRILL alert-only BEGIN 17:29:25
+DRILL alert-only END rc=0 2634 ms
+DRILL crash BEGIN 17:29:28
+DRILL crash END rc=0 -9 ms
+failed at 2026-11-06T17:29:28.465033Z
+DRILL store-back BEGIN 17:29:28
+DRILL store-back END rc=0 29 ms
+CHECK scenario 5, the alert channel holds test.rates' intent: 1 (1)
+CHECK alert signer: forged 01a1b1e3-fad  issuer=CN=01a1b1e1-45b3-7d68-b3ac-2c4c7ed497e0 CA 20261106T172804Z
+CHECK alert signer: forged 01a1b1e3-fe9  issuer=CN=01a1b1e1-45b3-7d68-b3ac-2c4c7ed497e0 CA 20261106T172409Z
+CHECK alert signer: forged 01a1b1e3-fe9  issuer=CN=01a1b1e1-45b3-7d68-b3ac-2c4c7ed497e0 CA 20261106T172804Z
+CHECK alert signer: b4c4d71f-651a-4633-90d2-42818874427f 01a1b1e4-038 rates issuer=CN=01a1b1e1-45b3-7d68-b3ac-2c4c7ed497e0 CA 20261106T172409Z
+CHECK intent-only in the store: intent 1, conclusion 0 (1, 0)
+CHECK alert-only in the store: intent 0, conclusion 0 (0, 0)
+DRILL announce BEGIN 17:29:28
+DRILL announce END rc=0 41 ms
+DRILL freeze BEGIN 17:29:28
+DRILL freeze END rc=0 9236 ms
+DRILL restore-db BEGIN 17:29:38
+DRILL restore-db END rc=0 74917 ms
+CHECK scenario 3 right after the restore: sales has the rename event: 0 (0: behind at T)
+DRILL advance BEGIN 17:30:53
+DRILL advance END rc=0 -309 ms
+DRILL redeliver BEGIN 17:30:53
+DRILL redeliver END rc=0 11916 ms
+DRILL replay BEGIN 17:31:05
+DRILL replay END rc=0 13333 ms
+DRILL keys BEGIN 17:31:18
+DRILL keys END rc=0 71 ms
+CHECK replay outcome: alerts_untrusted ["01a1b1e1-45b3-7d68-b3ac-2c4c7ed497e0/alert/2026/11/06/2026-11-06T17:29:25.369996Z-01a1b1e8-7a79-7f35-8385-f33ef9f8d26f.json: run profile: 01a1b1e1-45b3-7d68-b3ac-2c4c7ed497e0/alert/2026/11/06/2026-11-06T17:29:25.369996Z-01a1b1e8-7a79-7f35-8385-f33ef9f8d26f.json: the signer's chain does not hold at the receipt: the signer's credential was revoked before this record was received", "01a1b1e1-45b3-7d68-b3ac-2c4c7ed497e0/alert/2026/11/06/2026-11-06T17:29:25.373461Z-01a1b1e8-7a7d-7709-8061-b9bdd8cfce71.json: run profile: 01a1b1e1-45b3-7d68-b3ac-2c4c7ed497e0/alert/2026/11/06/2026-11-06T17:29:25.373461Z-01a1b1e8-7a7d-7709-8061-b9bdd8cfce71.json: the signer's chain does not hold at the receipt: the signer's credential was revoked before this record was received", "01a1b1e1-45b3-7d68-b3ac-2c4c7ed497e0/alert/2026/11/06/2026-11-06T17:29:25.376539Z-01a1b1e8-7a80-7839-b1a8-a97644e030d4.json: run profile: 01a1b1e1-45b3-7d68-b3ac-2c4c7ed497e0/alert/2026/11/06/2026-11-06T17:29:25.376539Z-01a1b1e8-7a80-7839-b1a8-a97644e030d4.json: the writer infra/iam-casdoor is not the signing certificate's identity", "01a1b1e1-45b3-7d68-b3ac-2c4c7ed497e0/alert/2026/11/06/2026-11-06T17:29:27.927855Z-01a1b1e8-8477-7d09-80ae-e819ea15f26d.json: run profile: 01a1b1e1-45b3-7d68-b3ac-2c4c7ed497e0/alert/2026/11/06/2026-11-06T17:29:27.927855Z-01a1b1e8-8477-7d09-80ae-e819ea15f26d.json: the signer's chain does not hold at the receipt: the signer's credential was revoked before this record was received"]
+CHECK replay outcome: trust_not_used []
+CHECK replay outcome: infra/iam-casdoor account_status effective applied  
+CHECK replay outcome: infra/iam-casdoor credential_tightening effective consistent  
+CHECK replay outcome: infra/iam-casdoor credential_tightening_in_product general consistent  
+CHECK replay outcome: infra/iam-casdoor account_status effective failed  rpc error: code = Internal desc = an internal error occurred; quote the trace id when reporting it
+CHECK replay outcome: infra/iam-casdoor account_status effective applied  
+CHECK replay outcome: infra/iam-casdoor account_status intent applied intent_only 
+CHECK replay outcome: mdm/org org_tightening effective dangling  unit 01a1b1e6-8674-74ec-9962-89a78d12bb7f: evidence: an object the change refers to no longer exists
+CHECK replay outcome: mdm/org org_tightening effective applied  
+CHECK replay outcome: infra/authz security_tightening effective applied  
+CHECK replay outcome: infra/authz security_widening general deferred  no active identity-side disposition holds the signals [01a1b1e4-0016-7635-9694-3f3e1987a2fa@01a1b1e7-26b0-7d4b-98d8-a758
+CHECK replay outcome: review 4
+CHECK tables that changed after T: 21 (erp_billing.draft_key, erp_billing.invoice, erp_billing.invoice_line, erp_credit.branch, erp_inventory.branch, erp_inventory.branch_line, erp_inventory.consumption, erp_inventory.movement)
+CHECK business tables not back at T: 1 ['infra_iam_casdoor.iam_status_evidence: T 0, restored 5']
+CHECK evidence store tables that went back: 0 []
+CHECK scenario 2, the revoked grant: ended (ended)
+CHECK test.revoked: disabled (disabled)
+CHECK scenario 4, test.expired (intent only): disabled (disabled)
+CHECK scenario 5, test.rates (alert channel only): disabled (disabled)
+CHECK the retired unit: retired (retired)
+CHECK live sessions from before: 0 (0)
+CHECK the authorization state: operational (operational)
+CHECK scenario 9, test.sales.multi: disabled (security_frozen); identity-side dispositions active 1 (0), released 0 (1 or more)
+CHECK scenario 10, test.sales.es after the replay: disabled (active: its tightening lost, listed in step 9)
+CHECK the signing key: cbdfb4716ab27c2d -> 0733b6227de9a0ad (another)
+CHECK scenario 3, sales has the rename event again: 1 (1); its unit at version 2 (2)
+CHECK replay: ⚠ an alert-channel intent is not trusted (6.2), for review: 01a1b1e1-45b3-7d68-b3ac-2c4c7ed497e0/alert/2026/11/06/2026-11-06T17:29:25.369996Z-01a1b1e8-7a79-7f35-8385-f33ef9f8d26f.json: run profile: 01a1b1e1-45b3-7d68-b3ac-2c4c7ed497e0/alert/2026/11/06/2026-11-06T17:29:25.369996Z-01a1b1e8-7a79-7f35-8385-f33ef9f8d26f.json: the signer's chain does not hold at the receipt: the signer's credential was revoked before this record was received
+CHECK replay: ⚠ an alert-channel intent is not trusted (6.2), for review: 01a1b1e1-45b3-7d68-b3ac-2c4c7ed497e0/alert/2026/11/06/2026-11-06T17:29:25.373461Z-01a1b1e8-7a7d-7709-8061-b9bdd8cfce71.json: run profile: 01a1b1e1-45b3-7d68-b3ac-2c4c7ed497e0/alert/2026/11/06/2026-11-06T17:29:25.373461Z-01a1b1e8-7a7d-7709-8061-b9bdd8cfce71.json: the signer's chain does not hold at the receipt: the signer's credential was revoked before this record was received
+CHECK replay: ⚠ an alert-channel intent is not trusted (6.2), for review: 01a1b1e1-45b3-7d68-b3ac-2c4c7ed497e0/alert/2026/11/06/2026-11-06T17:29:25.376539Z-01a1b1e8-7a80-7839-b1a8-a97644e030d4.json: run profile: 01a1b1e1-45b3-7d68-b3ac-2c4c7ed497e0/alert/2026/11/06/2026-11-06T17:29:25.376539Z-01a1b1e8-7a80-7839-b1a8-a97644e030d4.json: the writer infra/iam-casdoor is not the signing certificate's identity
+CHECK replay: ⚠ an alert-channel intent is not trusted (6.2), for review: 01a1b1e1-45b3-7d68-b3ac-2c4c7ed497e0/alert/2026/11/06/2026-11-06T17:29:27.927855Z-01a1b1e8-8477-7d09-80ae-e819ea15f26d.json: run profile: 01a1b1e1-45b3-7d68-b3ac-2c4c7ed497e0/alert/2026/11/06/2026-11-06T17:29:27.927855Z-01a1b1e8-8477-7d09-80ae-e819ea15f26d.json: the signer's chain does not hold at the receipt: the signer's credential was revoked before this record was received
+CHECK replay: replayed: map[applied:5 consistent:2 dangling:1 deferred:1 failed:1 reflected:92]; ignored 29; for review 4; the check: {AdminState:operational Ended:18 Held:0 Review:0 Closed:[01a1b1e3-fad5-70f2-88fa-da41c5dfbb07 01a1b1e3-fe93-7d7b-bf9a-da43d33e28fc 01a1b1e4-0016-7635-9694-3f3e1987a2fa 01a1b1e4-0384-7184-8588-4e496da2e7c0] AdminsNotClosed:[] Unprovable:[]}
+DRILL reconcile BEGIN 17:31:19
+DRILL reconcile END rc=0 12207 ms
+DRILL check BEGIN 17:31:31
+DRILL check END rc=0 1092 ms
+DRILL loss BEGIN 17:31:32
+DRILL loss END rc=0 520 ms
+DRILL open-read BEGIN 17:31:33
+DRILL open-read END rc=0 12130 ms
+CHECK scenario 6, test.unit.admin.cn in read_only: new 200 old 401 (new 200, old 401; a forged intent named it: not closed, an authorization admin)
+DRILL freeze-again BEGIN 17:31:45
+DRILL freeze-again END rc=0 11743 ms
+CHECK scenario 12, after freezing again: state: restoring done: freeze, restore-db, advance, redeliver, replay, keys  (steps 7 on not done)
+DRILL reconcile-again BEGIN 17:31:57
+DRILL reconcile-again END rc=0 12026 ms
+DRILL check-again BEGIN 17:32:09
+DRILL check-again END rc=0 1154 ms
+DRILL loss-again BEGIN 17:32:10
+DRILL loss-again END rc=0 501 ms
+DRILL open-read-again BEGIN 17:32:11
+DRILL open-read-again END rc=0 12030 ms
+DRILL open BEGIN 17:32:23
+DRILL open END rc=0 13988 ms
+CHECK the state: state: running (running)
+CHECK the recovery took 188421 ms from the announcement to running
+CHECK scenario 1, r-pending at the probe: succeeded (succeeded), taken by the fake: 1 (1)
+CHECK scenarios 1 and 7, r-after at the probe: none (none: lost with the recovery), taken: 1 (1)
+CHECK scenario 8, r-stale at the probe: manual (manual or unknown, never resent), taken: 0 (0); first sent at 17:27:00
+CHECK voided invoice numbers: 1 (as many as the invoices issued after T)
+CHECK /home/zhijie/Desktop/github/be-assembly-standard/dev/rebuild/foundations-04-data/t13e/reconcile.log:reconciled 1 adapters: map[external_only:1 manual:1 matched:1]; without the method: []
+CHECK /home/zhijie/Desktop/github/be-assembly-standard/dev/rebuild/foundations-04-data/t13e/check.log:checked 12 members: pass false; not passed 1; without the method []; failed map[]
+CHECK /home/zhijie/Desktop/github/be-assembly-standard/dev/rebuild/foundations-04-data/t13e/loss.log:the loss: 53 objects asked, map[lost:52]; 0 records name no object; audit loss of 7 sources; not to be entered again: 1; double failures (tightenings without evidence, for review): 1
+CHECK /home/zhijie/Desktop/github/be-assembly-standard/dev/rebuild/foundations-04-data/t13e/open-read.log:open for reading; the checks passed: false; the authorization state: operational
+CHECK /home/zhijie/Desktop/github/be-assembly-standard/dev/rebuild/foundations-04-data/t13e/open.log:number series: 3, raised 1 ([{erp/billing 01a1b1e4-00b0-7496-9ad7-3b3bb3a916a9 INV 2026 35 35}]); without the method []
+CHECK 6.7: ⚠ an alert-channel intent is not trusted (6.2), for review: 01a1b1e1-45b3-7d68-b3ac-2c4c7ed497e0/alert/2026/11/06/2026-11-06T17:29:25.369996Z-01a1b1e8-7a79-7f35-8385-f33ef9f8d26f.json: run profile: 01a1b1e1-45b3-7d68-b3ac-2c4c7ed497e0/alert/2026/11/06/2026-11-06T17:29:25.369996Z-01a1b1e8-7a79-7f35-8385-f33ef9f8d26f.json: the signer's chain does not hold at the receipt: the signer's credential was revoked before this record was received
+CHECK 6.7: ⚠ an alert-channel intent is not trusted (6.2), for review: 01a1b1e1-45b3-7d68-b3ac-2c4c7ed497e0/alert/2026/11/06/2026-11-06T17:29:25.373461Z-01a1b1e8-7a7d-7709-8061-b9bdd8cfce71.json: run profile: 01a1b1e1-45b3-7d68-b3ac-2c4c7ed497e0/alert/2026/11/06/2026-11-06T17:29:25.373461Z-01a1b1e8-7a7d-7709-8061-b9bdd8cfce71.json: the signer's chain does not hold at the receipt: the signer's credential was revoked before this record was received
+CHECK 6.7: ⚠ an alert-channel intent is not trusted (6.2), for review: 01a1b1e1-45b3-7d68-b3ac-2c4c7ed497e0/alert/2026/11/06/2026-11-06T17:29:27.927855Z-01a1b1e8-8477-7d09-80ae-e819ea15f26d.json: run profile: 01a1b1e1-45b3-7d68-b3ac-2c4c7ed497e0/alert/2026/11/06/2026-11-06T17:29:27.927855Z-01a1b1e8-8477-7d09-80ae-e819ea15f26d.json: the signer's chain does not hold at the receipt: the signer's credential was revoked before this record was received
+CHECK 6.7: replayed: map[applied:5 consistent:2 dangling:1 deferred:1 failed:1 reflected:92]; ignored 29; for review 4; the check: {AdminState:operational Ended:18 Held:0 Review:0 Closed:[01a1b1e3-fad5-70f2-88fa-da41c5dfbb07 01a1b1e3-fe93-7d7b-bf9a-da43d33e28fc 01a1b1e4-0016-7635-9694-3f3e1987a2fa 01a1b1e4-0384-7184-8588-4e496da2e7c0] AdminsNotClosed:[] Unprovable:[]}
+CHECK scenario 10, step 9: /home/zhijie/Desktop/github/be-assembly-standard/dev/rebuild/foundations-04-data/t13e/loss.log:the loss: 53 objects asked, map[lost:52]; 0 records name no object; audit loss of 7 sources; not to be entered again: 1; double failures (tightenings without evidence, for review): 1
+CHECK scenario 10, step 9: /home/zhijie/Desktop/github/be-assembly-standard/dev/rebuild/foundations-04-data/t13e/loss-again.log:the loss: 53 objects asked, map[lost:52]; 0 records name no object; audit loss of 7 sources; not to be entered again: 1; double failures (tightenings without evidence, for review): 1
+CHECK trust history: root 7ed4337c6965c8edd8db806464b3afb2b7da87fa70787b871b090be499e4f28c 01a1b1e1-45b3-7d68-b3ac-2c4c7ed497e0 CA 20261106T172804Z
+CHECK reconcile test/probe-go2 r-after: external_only  
+CHECK reconcile test/probe-go2 r-pending: matched succeeded 
+CHECK reconcile test/probe-go2 r-stale: manual manual 
+CHECK reconcile test/probe-go2 r-after: external_only  
+CHECK reconcile test/probe-go2 r-pending: matched succeeded 
+CHECK reconcile test/probe-go2 r-stale: manual manual 
+CHECK expected: r-pending matched (scenario 1), r-after external_only (scenario 7), r-stale past its deadline: unknown or manual, not resent (scenario 8)
+DRILL enable BEGIN 17:32:38
+DRILL enable END rc=0 139 ms
+DRILL scenarios-again BEGIN 17:32:38
+DRILL scenarios-again END rc=1 40253 ms
+DRILL FAILED scenarios-again
+T13E ALL-DONE

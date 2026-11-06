@@ -10,8 +10,8 @@
 // (the alert channel) while test.sales.es is disabled, so neither takes its intent, and waits for the double failure's
 // own record in the evidence store; forge writes three alert-channel records no recovery may execute (P12.4, P12.26):
 // one signed by a revoked credential, one by a credential under a revoked CA, one by another component's valid
-// credential naming the identity member as its writer; enable, after the recovery, enables test.sales.multi again (the
-// scenarios sign it in).
+// credential naming the identity member as its writer; enable, after the recovery, enables test.sales.multi and
+// test.sales.es again (the scenarios sign them in).
 //
 // Usage: drilltool prepare|after|intent-only|alert-only|freeze-release|double-failure|forge|enable
 // env: IAM_URL, AUTHZ_URL, ORG_URL, BE_ACC_IAM_TEST_PASSWORD; after: GRANT, UNIT; intent-only, freeze-release,
@@ -69,8 +69,8 @@ func main() {
 	users := map[string][]string{"prepare": {"test.alice", "test.mdm.admin", "test.mdm.viewer", "test.revoked",
 		"test.expired", "test.rates"}, "after": {"test.alice", "test.mdm.admin", "test.mdm.viewer", "test.revoked"},
 		"intent-only": {"test.mdm.admin", "test.expired"}, "alert-only": {"test.mdm.admin", "test.rates"},
-		"freeze-release": {"test.alice", "test.mdm.admin", "test.sales.multi"},
-		"double-failure": {"test.mdm.admin", "test.sales.es"}, "forge": {}, "enable": {"test.mdm.admin", "test.sales.multi"}}[os.Args[1]]
+		"freeze-release": {"test.alice", "test.mdm.admin"},
+		"double-failure": {"test.mdm.admin", "test.sales.es"}, "forge": {}, "enable": {"test.mdm.admin"}}[os.Args[1]]
 	if users == nil {
 		must(fmt.Errorf("usage: drilltool prepare|after|intent-only|alert-only|freeze-release|double-failure|forge|enable"))
 	}
@@ -134,14 +134,13 @@ func main() {
 	case "intent-only":
 		out = intentOnly(asAdmin, accounts["test.expired"].Principal, disable)
 	case "freeze-release":
-		out = freezeRelease(asAdmin, seed.NewClient(authzURL, alice.Token), accounts["test.sales.multi"].Principal)
+		out = freezeRelease(asAdmin, seed.NewClient(authzURL, alice.Token), principalOf("test.sales.multi"))
 	case "double-failure":
-		out = doubleFailure(asAdmin, accounts["test.sales.es"].Principal, disable)
+		out = doubleFailure(asAdmin, accounts["test.sales.es"].Principal)
 	case "enable": // after the recovery: the frozen account back for the scenarios that sign it in
-		_, err := asAdmin.Must("POST", "/api/iam/accounts/"+accounts["test.sales.multi"].Principal+"/enable",
-			map[string]any{}, "Idempotency-Key", key())
-		must(err)
-		out["enabled"] = accounts["test.sales.multi"].Principal
+		for _, who := range []string{"test.sales.multi", "test.sales.es"} { // scenarios 9 and 10 left them frozen, disabled
+			out[who] = ask(asAdmin, "/api/iam/accounts/"+principalOf(who)+"/enable")
+		}
 	case "alert-only":
 		start := time.Now()
 		must(disable(asAdmin, "test.rates"))
@@ -220,28 +219,30 @@ func freezeRelease(asAdmin, asAlice seed.Client, principal string) map[string]an
 	conn, err := pgx.Connect(context.Background(), os.Getenv("PG_DSN"))
 	must(err)
 	defer conn.Close(context.Background())
-	_, err = asAdmin.Must("POST", "/api/iam/accounts/"+principal+"/freeze", map[string]any{}, "Idempotency-Key", key())
-	must(err)
+	codes := ask(asAdmin, "/api/iam/accounts/"+principal+"/freeze")
 	const active = `SELECT count(*) FROM infra_authz.authz_disposition WHERE subject = $1 AND origin = 'identity_side'
 		AND state = 'active'`
 	poll(conn, 60*time.Second, active, principal)
 	var id string
-	must(conn.QueryRow(context.Background(), `SELECT id FROM infra_authz.authz_disposition WHERE subject = $1
-		AND origin = 'identity_side' AND state = 'active'`, principal).Scan(&id))
-	code, body, err := asAlice.Do("POST", "/api/authz/dispositions/"+id+"/release", map[string]any{"change_key": key()},
-		"Idempotency-Key", key())
+	var revision int64
+	var refs []string // an identity-side release names the signal records it removes (CP107) and binds the revision
+	must(conn.QueryRow(context.Background(), `SELECT id, revision, signal_ref FROM infra_authz.authz_disposition
+		WHERE subject = $1 AND origin = 'identity_side' AND state = 'active'`, principal).Scan(&id, &revision, &refs))
+	code, body, err := asAlice.Do("POST", "/api/authz/dispositions/"+id+"/release", map[string]any{"change_key": key(),
+		"signal_refs": refs, "disposition_revision": map[string]any{"domain": "authz.disposition.revision",
+			"value": fmt.Sprint(revision)}}, "Idempotency-Key", key())
 	must(err)
 	if code != 200 {
 		must(fmt.Errorf("the release answered %d: %s", code, body))
 	}
 	poll(conn, 30*time.Second, `SELECT count(*) FROM infra_authz.authz_disposition WHERE id = $1 AND state = 'released'`, id)
-	return map[string]any{"frozen": principal, "disposition": id, "released": true}
+	return map[string]any{"frozen": principal, "answers": codes, "disposition": id, "signal_refs": refs, "released": true}
 }
 
 // doubleFailure: the evidence store and the object store (the run profile's alert channel) paused; the account
 // disabled (the tightening is not put off for the evidence, P12.8); both back; the double failure's own record (P12.23)
 // reaches the evidence store through the outbox.
-func doubleFailure(asAdmin seed.Client, principal string, disable func(seed.Client, string) error) map[string]any {
+func doubleFailure(asAdmin seed.Client, principal string) map[string]any {
 	conn, err := pgx.Connect(context.Background(), os.Getenv("PG_DSN"))
 	must(err)
 	defer conn.Close(context.Background())
@@ -249,18 +250,17 @@ func doubleFailure(asAdmin seed.Client, principal string, disable func(seed.Clie
 	must(exec.Command("docker", "pause", audit).Run())
 	must(exec.Command("docker", "pause", s3).Run())
 	start := time.Now()
-	err = disable(asAdmin, "test.sales.es")
+	codes := ask(asAdmin, "/api/iam/accounts/"+principal+"/disable")
 	took := time.Since(start)
 	must(exec.Command("docker", "unpause", s3).Run())
 	must(exec.Command("docker", "unpause", audit).Run())
-	must(err)
 	poll(conn, 90*time.Second, `SELECT count(*) FROM infra_audit.audit_evidence WHERE category = 'evidence_double_failure'
 		AND convert_from(record, 'UTF8')::jsonb->'object'->>'id' = $1`, principal)
 	var intents int
 	must(conn.QueryRow(context.Background(), `SELECT count(*) FROM infra_audit.audit_evidence WHERE category = 'account_status'
 		AND phase = 'intent' AND convert_from(record, 'UTF8')::jsonb->'object'->>'id' = $1 AND received_at > $2`,
 		principal, start.Add(-time.Second)).Scan(&intents))
-	return map[string]any{"disabled": principal, "took_ms": took.Milliseconds(), "intents_in_the_store": intents,
+	return map[string]any{"disabled": principal, "answers": codes, "took_ms": took.Milliseconds(), "intents_in_the_store": intents,
 		"double_failure_in_the_store": true}
 }
 
@@ -296,4 +296,36 @@ func forge() map[string]any {
 		out[f.name] = map[string]string{"id": id, "subject": f.subject}
 	}
 	return out
+}
+
+// ask posts an account operation until it answers 200, at most three times: a timeout (504) is an unknown outcome, and
+// asking again is what a client does (the operation on an account already in its target state answers it as it is).
+// T13e attempt 1: Casdoor took 5.5 s to forbid test.sales.multi, the identity member's deadline is 3 s. The answers
+// are returned for the record.
+func ask(c seed.Client, path string) []int {
+	k := key()
+	var codes []int
+	for {
+		code, body, err := c.Do("POST", path, map[string]any{}, "Idempotency-Key", k)
+		must(err)
+		codes = append(codes, code)
+		if code == 200 {
+			return codes
+		}
+		if code < 500 || len(codes) == 3 {
+			must(fmt.Errorf("%s answered %v: %s", path, codes, body))
+		}
+		time.Sleep(3 * time.Second)
+	}
+}
+
+// principalOf reads an account's principal from the identity member's table: a frozen account cannot sign in to say it.
+func principalOf(username string) string {
+	conn, err := pgx.Connect(context.Background(), os.Getenv("PG_DSN"))
+	must(err)
+	defer conn.Close(context.Background())
+	var p string
+	must(conn.QueryRow(context.Background(), `SELECT principal FROM infra_iam_casdoor.iam_account WHERE username = $1`,
+		"brickkit/"+username).Scan(&p))
+	return p
 }

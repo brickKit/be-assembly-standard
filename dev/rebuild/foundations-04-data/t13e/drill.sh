@@ -56,6 +56,11 @@ counts() {
 container() { docker ps -a --filter label=com.docker.compose.project=brickkit-r4-g --format '{{.Names}}' | grep -- "$1" | head -1; }
 # wait until a query answers non-zero (the cell's database), at most $2 seconds
 until_sql() { local q=$1 n=$2; for _ in $(seq 1 "$n"); do [ "$(sql "$q")" != "0" ] && return 0; sleep 1; done; echo "not within ${n}s: $q"; return 1; }
+# until every running container of the cell is healthy, at most $1 seconds (a container paused by a scenario is reported
+# unhealthy for a while after it resumes, and `brickkit up --wait` refuses that: attempt 4)
+until_healthy() { for _ in $(seq 1 "$1"); do
+    [ -z "$(docker ps --filter label=com.docker.compose.project=brickkit-r4-g --filter health=unhealthy --filter health=starting -q)" ] && return 0
+    sleep 1; done; echo "not healthy within $1 s"; docker ps --filter label=com.docker.compose.project=brickkit-r4-g; return 1; }
 evidence_of() { echo "select count(*) from infra_audit.audit_evidence where category = '$1' and phase = '$2' and convert_from(record, 'UTF8')::jsonb->'object'->>'id' = '$3'"; }
 
 DEP=$(python3 -c 'import os, time, uuid; b = bytearray(int(time.time() * 1000).to_bytes(6, "big") + os.urandom(10)); b[6] = b[6] & 0x0F | 0x70; b[8] = b[8] & 0x3F | 0x80; print(uuid.UUID(bytes=bytes(b)))')
@@ -160,21 +165,29 @@ SALESES=$(sql "select principal from infra_iam_casdoor.iam_account where usernam
 step freeze-release $T_TOOL freeze-release
 # scenario 10: a double failure
 step double-failure env S3_CONTAINER=be-rustfs $T_TOOL double-failure
-# scenario 11: the trust domain after T (the members re-read their credential and trust root every 30 s)
-cp $D/.secrets/tls/infra-iam-casdoor.cert.pem $O/old-iam.cert.pem; cp $D/.secrets/tls/infra-iam-casdoor.key.pem $O/old-iam.key.pem
+# scenario 11: the trust domain after T. BrickKit delivers a file:// secret as a copy under .brickkit/generated/secrets
+# (mounted, not restarted): `brickkit up` writes the new files there, the members re-read them within 30 s (attempt 3:
+# without it they kept the previous CA's credential, and scenario 5's genuine intent was signed under the revoked CA)
+KEYS=$BIN/keys; mkdir -p $KEYS  # the copies and the leaked credential: outside the repository (private keys)
+cp $D/.secrets/tls/infra-iam-casdoor.cert.pem $KEYS/old-iam.cert.pem; cp $D/.secrets/tls/infra-iam-casdoor.key.pem $KEYS/old-iam.key.pem
 OLD_CA=$(fp $D/.secrets/trust/ca.cert.pem)
 step rotate TR rotate
 step reissue reissue
+step healthy-next until_healthy 120
+step deliver-next bash -c "cd $D && brickkit up"
 step reload-next sleep 40
-step leak TR issue --component infra/iam-casdoor --name leaked --out $O
-LEAKED_FP=$(fp $O/leaked.cert.pem)
+step leak TR issue --component infra/iam-casdoor --name leaked --out $KEYS
+LEAKED_FP=$(fp $KEYS/leaked.cert.pem)
 step revoke-leaked TR revoke --fingerprint $LEAKED_FP
 step revoke-ca TR revoke --ca --fingerprint $OLD_CA
+step healthy-without until_healthy 120
+step deliver-without bash -c "cd $D && brickkit up"
 step reload-without sleep 40
+echo "CHECK scenario 11, the identity member's credential in its container is the next CA's: $(docker exec $SHELL_C cat /run/brickkit/secrets/infra-iam-casdoor-3-0-35/SERVICE_TLS_CERT_FILE 2>/dev/null | openssl x509 -noout -issuer) (CA $(openssl x509 -in $D/.secrets/trust/ca.cert.pem -noout -subject | sed 's/.*CA //'))" >> $O/summary.txt
 NEW_CA=$(fp $D/.secrets/trust/ca.cert.pem)
 echo "scenario 11: CA $OLD_CA rotated to $NEW_CA and revoked; leaked credential $LEAKED_FP revoked" >> $O/summary.txt
 REVOKEDP=$(sql "select principal from infra_iam_casdoor.iam_account where username = 'brickkit/test.revoked'")
-step forge env $S3ENV DEPLOYMENT_ID=$DEP TLS_CA=$D/.secrets/tls/ca.pem LEAKED=$O/leaked OLD=$O/old-iam \
+step forge env $S3ENV DEPLOYMENT_ID=$DEP TLS_CA=$D/.secrets/tls/ca.pem LEAKED=$KEYS/leaked OLD=$KEYS/old-iam \
   SALES=$D/.secrets/tls/erp-sales FORGE_ADMIN=$ADMINCN FORGE_OTHER=$REVOKEDP $T_TOOL forge
 TR history > $O/trust-history.txt 2>&1
 # scenarios 4 and 5, then the failure: the shell killed while the evidence store is paused
@@ -186,9 +199,9 @@ step store-back docker unpause $AUDIT_CONTAINER
 # scenario 5: the intent in the alert channel (the run profile's alert records of this deployment, P12.16)
 S3U="$(val STORAGE_ACCESS_KEY):$(val STORAGE_SECRET_KEY)"
 alerts=$(curl -s --aws-sigv4 "aws:amz:us-east-1:s3" --user "$S3U" "http://localhost:9000/be-run-profile?list-type=2&prefix=$DEP/alert/" | grep -o "<Key>[^<]*</Key>" | sed 's/<[^>]*>//g')
-mkdir -p $O/alerts; for k in $alerts; do curl -s --aws-sigv4 "aws:amz:us-east-1:s3" --user "$S3U" "http://localhost:9000/be-run-profile/$k" -o $O/alerts/$(basename $k); done
-echo "CHECK scenario 5, the alert channel holds test.rates' intent: $(grep -l "$RATES" $O/alerts/*.json 2>/dev/null | grep -v forged | wc -l) (1)" >> $O/summary.txt
-python3 - $O/alerts "$RATES" > $O/alert-signers.txt <<'PY'
+mkdir -p $O/alerts/$DEP; for k in $alerts; do curl -s --aws-sigv4 "aws:amz:us-east-1:s3" --user "$S3U" "http://localhost:9000/be-run-profile/$k" -o $O/alerts/$DEP/$(basename $k); done
+echo "CHECK scenario 5, the alert channel holds test.rates' intent: $(grep -l "$RATES" $O/alerts/$DEP/*.json 2>/dev/null | grep -v forged | wc -l) (1)" >> $O/summary.txt
+python3 - $O/alerts/$DEP "$RATES" > $O/alert-signers.txt <<'PY'
 import json, pathlib, subprocess, sys
 for f in sorted(pathlib.Path(sys.argv[1]).glob('*.json')):
     r = json.loads(f.read_text())
@@ -219,8 +232,8 @@ KEY_BEFORE=$(sha256sum $D/.secrets/iam/signing-key.pem | cut -c1-16)
 step replay $B replay --project $D
 step keys $B keys --project $D
 rec=$(curl -s --aws-sigv4 "aws:amz:us-east-1:s3" --user "$S3U" "http://localhost:9000/be-run-profile?list-type=2&prefix=$DEP/recovery.step/" | grep -o "<Key>[^<]*</Key>" | sed 's/<[^>]*>//g')
-mkdir -p $O/run-profile; for k in $rec; do curl -s --aws-sigv4 "aws:amz:us-east-1:s3" --user "$S3U" "http://localhost:9000/be-run-profile/$k" -o $O/run-profile/$(basename $k); done
-python3 - $O/run-profile > $O/replay-review.txt <<'PY'
+mkdir -p $O/run-profile/$DEP; for k in $rec; do curl -s --aws-sigv4 "aws:amz:us-east-1:s3" --user "$S3U" "http://localhost:9000/be-run-profile/$k" -o $O/run-profile/$DEP/$(basename $k); done
+python3 - $O/run-profile/$DEP > $O/replay-review.txt <<'PY'
 import json, pathlib, sys
 for f in sorted(pathlib.Path(sys.argv[1]).glob('*.json')):
     b = json.loads(f.read_text()).get('body', {})
@@ -256,7 +269,7 @@ echo "CHECK the retired unit: $(sql "select state from mdm_org.org_unit where id
 echo "CHECK live sessions from before: $(sql "select count(*) from infra_iam_casdoor.iam_session where ended_at is null and recovery_generation < (select generation from infra_iam_casdoor.be_recovery_generation)") (0)"
 echo "CHECK the authorization state: $(sql "select admin_state from infra_authz.authz_state") (operational)"
 echo "CHECK scenario 9, test.sales.multi: $(sql "select status from infra_iam_casdoor.iam_account where principal = '$MULTI'") (security_frozen); identity-side dispositions active $(sql "select count(*) from infra_authz.authz_disposition where subject = '$MULTI' and state = 'active'") (0), released $(sql "select count(*) from infra_authz.authz_disposition where subject = '$MULTI' and state = 'released'") (1 or more)"
-echo "CHECK scenario 10, test.sales.es after the replay: $(sql "select status from infra_iam_casdoor.iam_account where principal = '$SALESES'") (active: its tightening lost, listed in step 9)"
+echo "CHECK scenario 10, test.sales.es after the replay: $(sql "select status from infra_iam_casdoor.iam_account where principal = '$SALESES'") (disabled: Casdoor, outside the recovery group, forbids it and the comparison brings that back; its double failure listed in step 9)"
 echo "CHECK the signing key: $KEY_BEFORE -> $(sha256sum $D/.secrets/iam/signing-key.pem | cut -c1-16) (another)"
 echo "CHECK scenario 3, sales has the rename event again: $(sql "select count(*) from erp_sales.be_inbox where event_id = '$RENAME_EVENT'") (1); its unit at version $(sql "select version from erp_sales.be_projection where record_id = '$RENAMED'") ($UNIT_VERSION)"
 grep -E '^replayed:|⚠|alert' $O/replay.log | sed 's/^/CHECK replay: /'
@@ -276,7 +289,7 @@ def code(pw):
     except urllib.error.HTTPError as e: return e.code
 print("new", code("$NEW_PW"), "old", code(os.environ["BE_ACC_IAM_TEST_PASSWORD"]))
 PY
-echo "CHECK scenario 6, test.unit.admin.cn in read_only: $(cat $O/sign-in.log) (new 200, old 401; a forged intent named it: not closed, an authorization admin)" >> $O/summary.txt
+echo "CHECK scenario 6, test.unit.admin.cn in read_only: $(cat $O/sign-in.log) (new 200, old 401; a forged intent named it: not executed, the account active; 6.5 closes it for review in the authorization member unless it holds an admin holding)" >> $O/summary.txt
 # scenario 12: a difference found while open for reading: frozen again, steps 7-10 again
 step freeze-again $B freeze --project $D --approver "T13e" --reason "T13e drill: a difference found while open for reading (RC75)"
 $B status --project $D > $O/status-refrozen.txt 2>&1
@@ -302,8 +315,8 @@ sed 's/^/CHECK trust history: /' $O/trust-history.txt
 } >> $O/summary.txt
 # each payment's conclusion at the reconciliation (the run profile's record of step 7)
 rec=$(curl -s --aws-sigv4 "aws:amz:us-east-1:s3" --user "$S3U" "http://localhost:9000/be-run-profile?list-type=2&prefix=$DEP/recovery.step/" | grep -o "<Key>[^<]*</Key>" | sed 's/<[^>]*>//g')
-for k in $rec; do curl -s --aws-sigv4 "aws:amz:us-east-1:s3" --user "$S3U" "http://localhost:9000/be-run-profile/$k" -o $O/run-profile/$(basename $k); done
-python3 - $O/run-profile <<'PY' >> $O/summary.txt
+for k in $rec; do curl -s --aws-sigv4 "aws:amz:us-east-1:s3" --user "$S3U" "http://localhost:9000/be-run-profile/$k" -o $O/run-profile/$DEP/$(basename $k); done
+python3 - $O/run-profile/$DEP <<'PY' >> $O/summary.txt
 import json, pathlib, sys
 for f in sorted(pathlib.Path(sys.argv[1]).glob('*.json')):
     b = json.loads(f.read_text()).get('body', {})
