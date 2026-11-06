@@ -32,8 +32,8 @@ SCRIPTS = R / "dev" / "rebuild" / "experiment-scripts"
 
 
 def sh(cmd: str, cwd: pathlib.Path, log: pathlib.Path | None = None) -> None:
-    """A command in bash with the test environment sourced (itenv.sh, iamenv.sh: they read .env, print nothing)."""
-    full = f". {SCRIPTS}/itenv.sh && . {SCRIPTS}/iamenv.sh && {cmd}"
+    """A command in bash with the components' test environment sourced (compenv.sh: it reads .env, prints nothing)."""
+    full = f". {SCRIPTS}/compenv.sh && {cmd}"
     with open(log or os.devnull, "a") as out:
         subprocess.run(["bash", "-c", full], cwd=cwd, stdout=out, stderr=subprocess.STDOUT, check=True,
                        env=dict(os.environ, GOPROXY="direct", GONOSUMDB="github.com/brickKit/*"))
@@ -80,7 +80,15 @@ def bump(v: str) -> str:
 
 
 def version_of(d: pathlib.Path) -> str:
+    """The version in the working tree."""
     return yaml.safe_load((d / "component.yaml").read_text())["metadata"]["version"]
+
+
+def committed_version(d: pathlib.Path) -> str:
+    """The version of the last commit: a run stopped midway leaves the working tree at the new version, which must not
+    be bumped again."""
+    out = subprocess.run(["git", "show", "HEAD:component.yaml"], cwd=d, capture_output=True, text=True, check=True)
+    return yaml.safe_load(out.stdout)["metadata"]["version"]
 
 
 def edit_component(d: pathlib.Path, new: str, moved: dict[str, str]) -> None:
@@ -103,7 +111,8 @@ def status_line(d: pathlib.Path, new: str, line: str) -> None:
     s = p.read_text()
     m = re.search(r"\n(3\.0\.\d+)[（：]", s)
     assert m, f"{p}: no implementation status line"
-    p.write_text(s[:m.start() + 1] + f"{new}：{line}\n\n" + s[m.start() + 1:])
+    sep = "" if line.startswith("（") else "："  # "3.0.24（why）：what" as the existing lines, or "3.0.24：what"
+    p.write_text(s[:m.start() + 1] + f"{new}{sep}{line}\n\n" + s[m.start() + 1:])
 
 
 def release(d: pathlib.Path, subject: str, notes: str, log: pathlib.Path) -> None:
@@ -129,11 +138,17 @@ def main() -> int:
     o = a.parse_args()
     cs = components()
     seq = order(cs)
-    moved = {c: version_of(cs[c]) for c in seq}  # the versions their dependents pin after the run
-    plan = {c: bump(version_of(cs[c])) for c in seq}
-    if o.start:
-        seq = seq[seq.index(o.start):]
-    print(f"UNIFY plan to be-sdk-go {o.sdk}:", ", ".join(f"{c} {plan[c]}" for c in seq), flush=True)
+    if o.start:  # the components before it are done: their released versions are the ones to pin
+        done, seq = seq[:seq.index(o.start)], seq[seq.index(o.start):]
+    else:
+        done = []
+    # a component already released on this SDK (moved with a change of its own) is done too
+    on = [c for c in seq if f"github.com/brickKit/be-sdk-go/v3 {o.sdk}" in
+          subprocess.run(["git", "show", "HEAD:go.mod"], cwd=cs[c], capture_output=True, text=True).stdout]
+    done, seq = done + on, [c for c in seq if c not in on]
+    plan = {c: committed_version(cs[c]) for c in done} | {c: bump(committed_version(cs[c])) for c in seq}
+    print(f"UNIFY plan to be-sdk-go {o.sdk}:", ", ".join(f"{c} {plan[c]}" for c in seq),
+          f"(already on it: {', '.join(on) or 'none'})", flush=True)
     if o.dry_run:
         return 0
     logs = pathlib.Path(o.logs or tempfile.mkdtemp(prefix="sdk-unify-"))
@@ -145,7 +160,7 @@ def main() -> int:
         try:
             print(f"UNIFY {c} BEGIN {new}", flush=True)
             if version_of(d) != new:
-                edit_component(d, new, {k: plan[k] for k in moved if k != c})
+                edit_component(d, new, {k: v for k, v in plan.items() if k != c})
                 status_line(d, new, o.line)
             sh(f"go get github.com/brickKit/be-sdk-go/v3@{o.sdk} && go mod tidy", d, log)
             stage = "unit"

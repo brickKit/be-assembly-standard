@@ -1,0 +1,18 @@
+suite 1.0.58: a secured cell's certificates come from its issuer (be-ops trust, A148)
+mutants: 4
+red  a secured cell uses the issuer
+       monkeypatch.setattr(prepare.testing, "World", lambda *_a: (_ for _ in ()).throw(AssertionError("the test world")))
+       monkeypatch.setattr(prepare.testing, "World", lambda *_a: (_ for _ in ()).throw(AssertionError("the test world")))
+       >   monkeypatch.setattr(prepare.testing, "World", lambda *_a: (_ for _ in ()).throw(AssertionError("the test world")))
+red  a new CA per preparation
+       monkeypatch.setattr(prepare.testing, "World", lambda *_a: (_ for _ in ()).throw(AssertionError("the test world")))
+       E       AssertionError: a new CA per preparation
+       tests/test_cell_config.py:68: AssertionError
+red  the credentials go where the cell mounts them
+       monkeypatch.setattr(prepare.testing, "World", lambda *_a: (_ for _ in ()).throw(AssertionError("the test world")))
+       tests/test_cell_config.py:72: AssertionError
+red  be-ops recover gets its credential
+       monkeypatch.setattr(prepare.testing, "World", lambda *_a: (_ for _ in ()).throw(AssertionError("the test world")))
+       E       AssertionError: assert {'infra/iam-c... 'erp-credit'} == {'infra/iam-c...-credit', ...}
+       tests/test_cell_config.py:71: AssertionError
+done

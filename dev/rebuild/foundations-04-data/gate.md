@@ -53,7 +53,7 @@
 | RC19 | 推理 | 发件表与流的设计：生产者不知道消费者（第 1 项） |
 | RC20 | 推理 | 同上：没有反压，消费者落后只告警（P6.12、RC18） |
 | RC21 | 有 | T11 场景 4：意图进了证据存储、结论没有（行锁让事务等，审计暂停后放开），重放执行并标“意图未确认”；T9e 碰巧也出现过 |
-| RC22 | 部分 | 两处都失败时 SDK 记“双通道失效”（`TestAnAlertIsWrittenAndADoubleFailureIsLogged`）；第 9 步还不读这类日志把时间段列进损失范围。缺：日志到损失范围的通道。去处：第 9 步下次改动（与告警的机器可读部分一起） |
+| RC22 | 有（T13a） | 双通道失效时 SDK 补写一条 `evidence_double_failure` 记录（线协议 P12.23，SDK `TestAnUnreachableStoreDoesNotHoldATighteningBack`），证据存储收下（审计 `TestTheCategoriesAreTheProtocols`），第 9 步列为损失（`be-ops` 的 `TestDoubleFailuresAfterT`、`TestLossCalls`），重放不处理（`TestThePlanGroupsOrdersAndSetsApart`）；记录本身也没送到的时间段只能从日志找，协议 15 记为残余风险 |
 | RC23 | 有 | “已体现”按记录身份（SDK `Reflected`、`TestTheOwnerReplaysItsEvidence`）；`be-ops` 的 `TestTheReplayGoesByCommitSequenceNotByAppendOrder` |
 | RC26 | 有 | 身份成员比较 Casdoor：控制台停用记证据（`comparison` 一段）；T11 第 5 次恢复中比较按 Casdoor 的现状重新停用（`iam_status_evidence` 多 3 行） |
 | RC27 | 有 | `TestTheReplayGoesByCommitSequenceNotByAppendOrder`；参考模型的坏变体 |
@@ -74,24 +74,24 @@
 | RC54 | 有 | 同 RC41（Cookie 对应的会话已结束） |
 | RC56 | 有 | T11 场景 8：去重期 61 分钟、截止已过的 `r-stale` 转 `manual`，外部收 0 次；向量 |
 | RC57 | 有 | 同 RC06 |
-| RC58 | 缺口 | 证据存储本身从备份恢复没有演练（演练里审计库从不回退）；代次取最大值加一有单元（P12.5、`TestAGenerationAdvancesOnlyThroughTheRunProfile`）。去处：信任材料历史一并做（见 RC71 一组） |
+| RC58 | 部分（T13d） | 证据存储从备份恢复后，备份点之后的收紧从告警渠道补回（重放合并证据存储与告警渠道，`be-ops` 的 `TestTheCallsMergeTheStoreAndTheAlerts`），其余列入损失；信任材料只在运行档案（A148），不随证据存储回退；代次取最大值加一（P12.5、`TestAGenerationAdvancesOnlyThroughTheRunProfile`）。证据存储本身从备份恢复没有演练（演练里审计库从不回退） |
 | RC59 | 有 | 告警记录签名不成立不执行、列复核（`runprofile` 的 `TestATamperedOrForeignRecordIsNotUsed`、`be-ops` 的 `TestTheCallsMergeTheStoreAndTheAlerts`）；不关闭管理员（授权 `Check` 的 `AdminsNotClosed`） |
 | RC60 | 有 | `TestPastTheDeadlineNothingIsSent`；向量 |
 | RC61 | 有 | T11 场景 5 |
 | RC62 | 有 | 签名不成立的记录所涉主体进 6.5 的复核主体（`be-ops` 的 `alerts`，`TestTheReplayCallsInOrderAndWaitsForTheSources`） |
-| RC63 | 缺口 | 恢复凭据与确认凭据的摘要在第 4 步按证据恢复：没有实现。去处：管理员恢复与部署所有者凭据的下一次改动（与 RC73） |
+| RC63 | 推理（T13c，A147） | 部署所有者的确认凭据与恢复凭据是部署的密钥文件，不在库里、不在恢复组内，整套恢复不让它们回退，第 4 步没有摘要可恢复；恢复后管理员恢复用的就是文件里的新凭据；协议 15 写明了这种情形 |
 | RC64 | 有 | T11 场景 6：在 Casdoor 里改的密码由比较记证据（`credential_tightening_in_product`），6.7 核对 `consistent` |
 | RC67 | 有 | 强制登出的重放只结束会话（身份成员 `replayLogout`）；6.6 覆盖 |
 | RC69 | 有 | 同 RC60 |
 | RC70 | 部分 | 参考模型与向量有“可能已执行待核实”；演练的探针不是不可撤回的付款（没有发出记录），没有走到。去处：第一个真实的不可撤回适配器 |
-| RC71、RC72、RC80、RC81、RC83、RC86、RC87、RC88 | 缺口（RC72 部分） | 信任材料历史没有做（T9 记下）：运行档案的签名按当前信任根核对，T 之后 CA 或服务证书轮换、吊销时不按历史判断（方向安全：多列复核）。RC72 在同一 CA 下轮换的新证书照常有效。去处：信任材料历史单独一项（证书轮换现在只告警，第 3 项），在第 5 项之前排定 |
-| RC73 | 缺口 | 同 RC63 |
-| RC75 | 缺口 | `be-ops` 的状态表不允许从只读开放重新冻结（`Allowed` 的 `StepFreeze` 只认冻结与恢复中）。去处：`be-ops` 下一版加“重新冻结”，与 RC22 一起 |
+| RC71、RC72、RC80、RC81、RC83、RC86、RC87、RC88 | 有（T13d，A148） | 信任材料历史只记在运行档案（线协议 P12.24–P12.27，向量 `trust-history`）：SDK alpha.101 的 `BuildTrust`、`Holds`，`ListAll` 按收到时刻核验（`TestTheTrustHistoryVectors`、`TestTheTrustHistoryOnCertificates`、`TestTheTrustHistoryInTheStore`：RC81 轮换后旧 CA 下的记录仍有效、RC71/RC80 吊销后收到的无效、RC86 CA 吊销后其下的无效、伪造的轮换不受信）；alpha.102 写入者必须是签名证书的身份（P12.4，`TestATamperedOrForeignRecordIsNotUsed`）；签发者 `be-ops trust`（alpha.14，`internal/trust` 的六个测试：签发与轮换先写运行档案（RC87），吊销先生效、写不进时留存补写（RC88），吊销当前 CA）；第 6 步列出历史不用的信任记录（`TestTheReplayStepRunsTheCallsInTheNetworkAndRecordsTheList`）；RC83 按结构（信任材料不在证据存储）。演练见 T13e。运行时的服务凭据吊销（mTLS 不查吊销）是安全 03 的缺口，不在这一组 |
+| RC73 | 推理（T13c，A147） | 同 RC63：凭据在文件里，不会出现“库里只有意图的轮换” |
+| RC75 | 有（T13a） | `be-ops` alpha.11：核对与只读开放中 `freeze --approver --reason` 重新冻结，回到恢复中、第 7 步起重做（`TestAFreezeAgainFromVerifyingOrReadOnly`） |
 | RC76 | 部分 | 同 RC70 |
 | RC78 | 有 | T11 场景 6（Casdoor 不在恢复组内，A141）：只结束本平台会话、核对凭据收紧仍然有效 |
 | RC79 | 有 | 签名者不是这类记录的记录者判无效（`be-ops` 的 `alerts`：签名成立且签名者就是记录者才重放） |
-| RC84 | 部分 | 授权 `Check` 判最后管理员进待恢复（3.0.30）；部署所有者的管理员恢复在第 3 项有测试；“恢复中第 7–9 步做管理员恢复、只读开放的守卫”没有端到端演练。去处：同 RC63 |
-| RC85 | 缺口 | 同第 4 节的 CP107 |
+| RC84 | 有（T13c） | 授权 `Check` 判最后管理员进待恢复（3.0.30）；部署所有者的管理员恢复（第 3 项的测试）；只读开放的守卫：`be-ops` alpha.13 的 `open-read` 问授权状态，待恢复时拒绝开放（`TestTheStepsOfVerifyingAndOpening`、`TestAdminsCall`） |
+| RC85 | 有（T13b） | 同第 4 节的 CP107 |
 | RC37 | 有 | 身份成员比较 Casdoor 的回退判断（`comparison` 一段：重新停用并告警） |
 | RC55、RC68、RC77、RC82 | 不适用 | 身份产品在恢复组内（作废凭据）的一列；首批部署 Casdoor 不在恢复组内（A141）。去处：有部署把身份产品放进恢复组时 |
 
@@ -133,7 +133,7 @@ AU22 记“部分”。AU05、AU19–AU21 靠向量与单元测试，审计组�
 | CP78 | 有 | 取消作为收紧两段写入证据（授权 3.0.27）、重放后仍是已结束（授权 `TestTheReplayAppliesTheEvidenceAgain`） |
 | CP60 | 有 | 证据存储不可达时收紧照常、证据走告警渠道（SDK `TestAnUnreachableStoreDoesNotHoldATighteningBack`；T11 场景 5）；放宽部分等新代次的分支由管理员恢复的代次推进守着（第 3 项 A129） |
 | AT62 | 部分 | 拿不到新代次时操作不开始：管理员恢复有（第 3 项）；成员切换不在首批（D75） |
-| CP73、CP102、CP107、CP112 | 缺口 | 身份侧处置在整套恢复中的派生与解除：重放后按转变派生、已有生效的不新建，解除只移除自己的记录身份并等身份来源水位越过它的重放位置——授权成员的重放还没有这一路（解除是放宽，按一般记录重放，不看 `signal_ref` 与水位）。去处：授权成员下一次改动（与“意图前先查键”一起） |
+| CP73、CP102、CP107、CP112 | 有（T13b） | 账号状态记录带引起它的证据记录身份（安全 09a 的 `evidence`，身份成员 3.0.33 的 `accountOperations`、`comparison`、`replay` 各一条断言），授权成员以它作 `signal_ref`；解除的证据带处置与 `signal_refs`，重放按 `signal_refs` 找处置、没到齐答 `deferred`，`be-ops` 在 6.4 之后再问（授权成员 3.0.37 的 `identitySideRecovery`：CP73 派生、CP102 解除、推迟后应用、CP112 两个一起移除、CP107 只移除点名的；`be-ops` 的 `TestADeferredRecordIsAskedAgainAfterTheSources`）。T13b 之前解除根本重放不了（证据里没有解除的内容，被当作缺候选的放宽） |
 
 ## 5. 门槛之外的已知缺口（汇报时列出）
 

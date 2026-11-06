@@ -1,0 +1,25 @@
+be-ops alpha.14: the trust domain's issuer (P12.24-P12.27, A148)
+mutants: 9
+red  a credential is published only once its record is taken
+       Error:      	An error is expected but got nil.
+red  a rotation carries the next CA's acceptance
+       Error:      	Should be true
+       Error:      	Received unexpected error:
+       Messages:   	received before the record was written
+red  a revoked CA leaves the trust root at once
+       Error:      	Not equal:
+       Messages:   	the CA left the trust root at once
+       Error:      	Should be false
+red  a record not taken waits in pending
+       Error:      	Received unexpected error:
+red  a flushed record leaves pending
+       Error:      	Should be empty, but was [- 1793982445000000000.json]
+red  the credential carries the derived DNS name
+       Error:      	Not equal:
+does not build: revoking the current CA leaves none
+red  the next CA joins the trust root
+       Error:      	Not equal:
+       Messages:   	both CAs during the acceptance window
+       Error:      	Not equal:
+does not build: the current CA is not retired
+done
