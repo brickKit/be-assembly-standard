@@ -24,6 +24,8 @@ PostgreSQL 的物理备份与预写日志归档用 pgBackRest（A135：Alpine �
 | 正式部署 | 一直开着 | 按上表每日完整备份；恢复到某个时刻要那个时刻之前有一次完整备份、之后的日志连续 |
 | 开发机（`make up` 的 be-postgres） | 默认关着：没有定期的完整备份时，开着的归档会无限增长，开发机的盘有限；关着时日志照旧丢弃 | 演练开始时 `infra/scripts/pg-backup.sh on`（开归档并做一次完整备份），演练完 `off` |
 
+每次备份成功后（`on`、`backup`；单独补记用 `record`），脚本把仓库里最新的那次备份（标签与结束时刻）经 `be-ops recover backup-record` 写进运行档案（类别 `backup`）：组件释放归档单元的在线行，要一次在单元发布之后结束的备份（线协议 P15.21），读的就是这里。脚本要 `BE_OPS_RECORD`（be-ops 的路径）、`BE_OPS_PROJECT`（项目目录）与恢复工具同样的环境（`ops/recover` 的证书、运行档案）；没配时只打一行说明，这时归档单元一直不释放。
+
 `pg-backup.sh restore-to <T> <名字> <端口>` 把实例恢复到 T，放进一个临时实例（自己的卷与端口），be-postgres 不动；整套恢复的第 3 步从它把各组件的 schema 拷回，审计的 schema 不拷（证据存储不回退）。临时实例要与原实例同样的 `max_connections` 等设置，脚本从原实例读出。用完 `drop-temp <名字>`。
 
 ## 什么时候用整套恢复

@@ -5,11 +5,17 @@
 #   pg-backup.sh off                turn the archive off: the WAL is let go again (development machines, disk)
 #   pg-backup.sh backup [full|diff] take a backup (the archive must be on)
 #   pg-backup.sh status             whether the archive is on, and the repository's backups and WAL range
+#   pg-backup.sh record             record the repository's latest backup in the run profile (on and backup do it)
 #   pg-backup.sh restore-to T NAME PORT
 #                                   restore the instance as it was at T (RFC 3339 or PostgreSQL's timestamptz) into a
 #                                   temporary instance: container NAME, its own volume, listening on PORT on the host.
 #                                   be-postgres is not touched; the recovery tool copies schemas back from NAME.
 #   pg-backup.sh drop-temp NAME     remove a temporary instance and its volume
+#
+# The record (be-protocol P15.21): components release an archive unit's online rows only after a backup that finished
+# after the unit was published, read from the run profile's kind backup. With BE_OPS_RECORD (the be-ops binary) and
+# BE_OPS_PROJECT (the BrickKit project's directory) set, and be-ops recover's environment (its certificate and the run
+# profile, the same as for a recovery), record calls `be-ops recover backup-record`; without them it only says so.
 #
 # Off by default on a development machine: a WAL archive kept without regular full backups grows without bound
 # (infra/postgres/pgbackrest/archive.sh). A production deployment keeps it on with scheduled backups.
@@ -20,6 +26,24 @@ ROOT=$(cd "$(dirname "$0")/../.." && pwd)
 CONF=$ROOT/infra/postgres/pgbackrest/pgbackrest.conf
 ex() { docker exec -u postgres "$PG" "$@"; }
 
+# the repository's latest backup into the run profile: its label and when it stopped (RFC 3339, UTC)
+record() {
+  local latest
+  latest=$(ex pgbackrest --stanza=main info --output=json | python3 -c '
+import json, sys, datetime
+b = json.load(sys.stdin)[0]["backup"]
+if b:
+    stop = datetime.datetime.fromtimestamp(b[-1]["timestamp"]["stop"], datetime.timezone.utc)
+    print(b[-1]["label"], stop.strftime("%Y-%m-%dT%H:%M:%SZ"))')
+  [ -n "$latest" ] || { echo "the repository holds no backup: nothing to record" >&2; return 1; }
+  set -- $latest
+  if [ -z "${BE_OPS_RECORD:-}" ] || [ -z "${BE_OPS_PROJECT:-}" ]; then
+    echo "backup $1 (finished $2) not recorded: BE_OPS_RECORD and BE_OPS_PROJECT unset, archive units are not released"
+    return 0
+  fi
+  "$BE_OPS_RECORD" recover backup-record --project "$BE_OPS_PROJECT" --backup "$1" --finished-at "$2"
+}
+
 case "${1:-}" in
 on)
   docker exec "$PG" chown -R postgres:postgres /var/lib/pgbackrest
@@ -28,6 +52,7 @@ on)
   ex psql -qAt -c "SELECT pg_switch_wal()" >/dev/null
   ex pgbackrest --stanza=main check 2>&1 | tail -1
   ex pgbackrest --stanza=main --type=full backup 2>&1 | tail -1
+  record
   ;;
 off)
   ex rm -f /var/lib/pgbackrest/ARCHIVING
@@ -36,6 +61,10 @@ off)
 backup)
   ex test -f /var/lib/pgbackrest/ARCHIVING || { echo "the archive is off: pg-backup.sh on" >&2; exit 1; }
   ex pgbackrest --stanza=main --type="${2:-diff}" backup 2>&1 | tail -1
+  record
+  ;;
+record)
+  record
   ;;
 status)
   if ex test -f /var/lib/pgbackrest/ARCHIVING; then echo "archive: on"; else echo "archive: off"; fi
