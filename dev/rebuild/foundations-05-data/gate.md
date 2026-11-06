@@ -22,7 +22,7 @@
 | TR12 | 撤权后继续翻页冷数据 | 按当前授权检查；不因游标绑定旧快照而保留访问 | T6 | 有：SDK alpha.105 同 TR07 的测试（当前授权过滤一张、掩码到两个字段；租约过期答 QUERY_PLAN_CHANGED）；读历史（在线加冷层）按当前授权、撤权后下一次读不再含被撤的行：SDK alpha.106 `TestAHistoryReadIsCompleteUnderTheCurrentAuthorization`；组件的授权接线在 T10 |
 | TR13 | 保留到期但有法律保全 | 不销毁 | T7 | 有：SDK alpha.107 `TestTheDestructionConditions`（单元、类别或其中一张订单的保全都挡住销毁） |
 | TR14 | 销毁工作检查保全后、删除前设置了保全 | 删除的决定在同一事务内检查，保全生效，不销毁 | T7 | 有：SDK alpha.107 `TestAHoldSetDuringTheDecisionWins`（决定事务对保全表取 SHARE 锁，等未提交的保全，看到后取消意图） |
-| TR15 | 已封存的单元中有人申请个人信息擦除 | 生成新的清单版本；保全中则推迟并告警 | T7 | 未做 |
+| TR15 | 已封存的单元中有人申请个人信息擦除 | 生成新的清单版本；保全中则推迟并告警 | T7 | 有：SDK alpha.108 `TestAnArchivedOrderIsErasedAsANewVersion`（温层与对象两种路线：新清单版本、状态不变、只擦这一张、解冻副本删除；保全中推迟并告警、不写意图）、`TestAHoldSetDuringAnErasureWins` |
 | TR16 | 从备份恢复到销毁之前 | 重新执行销毁 | T7、T9 | 部分：SDK alpha.107 `TestADestructionAfterTheRecoveryPointIsReplayed`（恢复后的库里单元回到 released、行在，重放置为 destroyed，下一次销毁运行删数据；再重放答已体现）；接进整套恢复的核对与演练在 T9、T10 |
 | TR17 | 恢复后发现未发布的冷对象 | 不开放读取；重做或清理 | T9 | 未做 |
 | TR18 | 解冻一个单元 | 只读、有到期时间；不重开写入 | T6 | 有：SDK alpha.105 `TestAThawedUnitReadsFromItsCopy`（对象删掉后仍从副本读、写入照样 RECORD_SEALED、清理不删活着的解冻） |
@@ -34,7 +34,7 @@
 | TR24 | 没有法规或合同依据的保留年限 | 标为待确认，上线时由客户确定 | T7 | 部分：SDK alpha.107 `TestTheDestructionConditions`（`pending` 答 retention_pending，从不销毁）；上线检查列出 `pending` 的类别在 T10 |
 | TR25 | 30 天前创建、20 天前关闭的订单所在的单元 | 在最近的记录满 N 天之前不释放在线层，默认列表不漏掉它 | T6 | 有：SDK alpha.105 `TestTheReleaseConditions`（最近记录 30 天时 WhyRecentRecords）；默认列表不漏掉它在 T10（TR10） |
 | TR26 | 已释放在线层的单元从同库分区换到对象存储 | 状态保持 `released`，新路线的副本校验后以新清单版本发布，旧路线宽限期后释放 | T8 | 未做 |
-| TR27 | 单元已封存、尚未发布时收到个人信息擦除 | 在线行按协议 07 擦除，单元重新计算摘要；进行中的转层工作项发布失败并重做 | T7 | 未做 |
+| TR27 | 单元已封存、尚未发布时收到个人信息擦除 | 在线行按协议 07 擦除，单元重新计算摘要；进行中的转层工作项发布失败并重做 | T7 | 有：SDK alpha.108 `TestAnErasureInASealedUnitRestartsItsTransfer`（在线行置空、摘要重算，擦除前的副本发布被拒，下一次转层发布擦除后的内容） |
 | TR28 | 一个单元的订单都已关闭、满足封存条件，但最晚的关闭在 5 个月前（驻留期 12 个月） | 不选为候选，留在在线层 | T4 | 有：SDK `TestSealingAndTheWriteBarrier`（五个月前关闭的不封存）、向量 `tier-plan` 的 `residence-not-reached` |
 | TR29 | 客户把已完成单据的驻留期从 12 个月改为 6 个月；另一次试图改为 30 天 | 下一轮选出新满足条件的单元，已发布的单元不变；30 天低于下限 N，被拒绝 | T4 | 有：SDK `TestAClassDeclaration`（短于 N 拒绝）、向量 `tier-plan` 的 `residence-shortened`、`residence-below-n` |
 | TR30 | 单元过了驻留期 30 天，仍有一张订单的预占未结束 | 不封存；告警并列出这张订单与未结束的预占 | T4 | 有：阻塞时整个分组不封存、原因记在单元（SDK `TestABlockedGroupingStaysOpen`）；到期 30 天仍阻塞的告警 `tiering_blocked`（`TestTheCandidatesJobSealsAndAlerts`）、规划的告警（向量 `blocked-alert`） |
@@ -59,7 +59,7 @@
 | G2 长时间推演 | 真实数据库，多副本与外壳成员同时运行，每个状态迁移点注入崩溃，最终状态一致；数据量让边界条件出现 | T11 | 未做 |
 | G3 冷层往返 | 每种列类型冻结、读回、摘要相等；第三方读取器从文件与清单算出同一个摘要；不可改写的存储拒绝可擦除的数据 | T5、T11 | 部分：每种列类型写成 Parquet 再读回、规范行与表的散列相等（SDK `TestEveryColumnTypeRoundTrips`）；开了对象锁的桶拒绝可擦除的类别（`TestALockedBucketRefusesErasableData`）；第三方读取器从文件与清单算出同一个摘要随 T11 |
 | G4 冷读一致 | 每个读取实现返回相同的行；封存前后与读回后的列表结果相同 | T6、T11 | 部分：SDK alpha.105 的两种路线按 ID 读回与在线时相同、快照下的列表每单元一次；第三方读取与封存前后列表的对照在 T11 |
-| G5 端到端擦除 | 横跨在线层、冷层、数据集与导出，包括恢复之后的重新执行 | T7、T11 | 未做 |
+| G5 端到端擦除 | 横跨在线层、冷层、数据集与导出，包括恢复之后的重新执行 | T7、T11 | 部分：SDK alpha.108 的在线（sealed）、温层、对象三处与恢复之后的重新执行（`TestAnErasureAfterTheRecoveryPointIsReplayed`）；数据集与导出、组件端到端在 T10、T11 |
 
 ## 4. 汇总
 
