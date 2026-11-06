@@ -26,14 +26,14 @@
 | TR16 | 从备份恢复到销毁之前 | 重新执行销毁 | T7、T9 | 部分：SDK alpha.107 `TestADestructionAfterTheRecoveryPointIsReplayed`（恢复后的库里单元回到 released、行在，重放置为 destroyed，下一次销毁运行删数据；再重放答已体现）；接进整套恢复的核对与演练在 T9、T10 |
 | TR17 | 恢复后发现未发布的冷对象 | 不开放读取；重做或清理 | T9 | 未做 |
 | TR18 | 解冻一个单元 | 只读、有到期时间；不重开写入 | T6 | 有：SDK alpha.105 `TestAThawedUnitReadsFromItsCopy`（对象删掉后仍从副本读、写入照样 RECORD_SEALED、清理不删活着的解冻） |
-| TR19 | 读取旧结构版本的单元 | 经转换器读取，转换结果另行校验 | T8 | 未做 |
-| TR20 | 从同库分区换到对象存储 | 同一协议完成复制、校验、发布、释放 | T8 | 未做 |
+| TR19 | 读取旧结构版本的单元 | 经转换器读取，转换结果另行校验 | T8 | 有：SDK alpha.109 `TestAnOlderStructureIsReadThroughItsConverter`（温层与对象两种路线；没有转换器答 QUERY_NOT_COMPLETABLE、可读检查列出版本；转换结果不合类别的结构或丢了定位列被拒；路线更换以现在的结构重写） |
+| TR20 | 从同库分区换到对象存储 | 同一协议完成复制、校验、发布、释放 | T8 | 有：SDK alpha.109 `TestARouteChangeMovesAReleasedUnit`（转层作业把单元从温层换到对象存储：复制、校验、发布，旧版本按宽限期、租约、备份释放） |
 | TR21 | 单号的唯一性 | 由不分区的登记表保证，登记不随单元转层 | T4 | 有：SDK `TestAClassDeclaration`（唯一登记表不能是类别的表，P15.5） |
 | TR22 | 去重与幂等记录按年龄搬走 | 不允许；按自己的保留规则清理 | T4 | 有：SDK `TestAClassDeclaration`（不转层的种类不能有驻留期与路线）、向量 `tier-plan` 的 `not-tierable` |
 | TR23 | 财务凭证所在的期间未关闭 | 不能封存 | T4 | 部分：阻塞检查的机制（模块登记，SDK `TestABlockedGroupingStaysOpen`）；期间未关闭的真实检查随 T10 |
 | TR24 | 没有法规或合同依据的保留年限 | 标为待确认，上线时由客户确定 | T7 | 部分：SDK alpha.107 `TestTheDestructionConditions`（`pending` 答 retention_pending，从不销毁）；上线检查列出 `pending` 的类别在 T10 |
 | TR25 | 30 天前创建、20 天前关闭的订单所在的单元 | 在最近的记录满 N 天之前不释放在线层，默认列表不漏掉它 | T6 | 有：SDK alpha.105 `TestTheReleaseConditions`（最近记录 30 天时 WhyRecentRecords）；默认列表不漏掉它在 T10（TR10） |
-| TR26 | 已释放在线层的单元从同库分区换到对象存储 | 状态保持 `released`，新路线的副本校验后以新清单版本发布，旧路线宽限期后释放 | T8 | 未做 |
+| TR26 | 已释放在线层的单元从同库分区换到对象存储 | 状态保持 `released`，新路线的副本校验后以新清单版本发布，旧路线宽限期后释放 | T8 | 有：同 TR20 的测试（状态保持 released、新清单版本、`route_version` 前移，旧路线的行在条件满足后才删） |
 | TR27 | 单元已封存、尚未发布时收到个人信息擦除 | 在线行按协议 07 擦除，单元重新计算摘要；进行中的转层工作项发布失败并重做 | T7 | 有：SDK alpha.108 `TestAnErasureInASealedUnitRestartsItsTransfer`（在线行置空、摘要重算，擦除前的副本发布被拒，下一次转层发布擦除后的内容） |
 | TR28 | 一个单元的订单都已关闭、满足封存条件，但最晚的关闭在 5 个月前（驻留期 12 个月） | 不选为候选，留在在线层 | T4 | 有：SDK `TestSealingAndTheWriteBarrier`（五个月前关闭的不封存）、向量 `tier-plan` 的 `residence-not-reached` |
 | TR29 | 客户把已完成单据的驻留期从 12 个月改为 6 个月；另一次试图改为 30 天 | 下一轮选出新满足条件的单元，已发布的单元不变；30 天低于下限 N，被拒绝 | T4 | 有：SDK `TestAClassDeclaration`（短于 N 拒绝）、向量 `tier-plan` 的 `residence-shortened`、`residence-below-n` |

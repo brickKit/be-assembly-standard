@@ -1,0 +1,43 @@
+be-sdk-go tiering (T8): route changes, old versions released, older structures
+mutants: 13
+red  the transfer job moves units to the first route
+       Error:      	Condition never satisfied
+       Messages:   	the transfer job moves it
+red  the route version moves with the route
+       Error:      	"1" is not greater than "1"
+       Messages:   	the route version moves with the route
+red  old versions wait for the grace
+       Error:      	[]string(nil) does not contain "grace"
+       Error:      	Not equal:
+       Messages:   	an export reading the old route
+red  old versions wait for the older leases
+       Error:      	Not equal:
+       Messages:   	an export reading the old route
+       Error:      	Not equal:
+does not build: old versions wait for a backup after the new one
+red  the old warm rows go
+       Error:      	Should be zero, but was 6
+does not build: the old objects go
+red  a released old version is recorded
+       Error:      	Not equal:
+       Error:      	Not equal:
+red  a converted root keeps its locate columns
+       Error:      	An error is expected but got nil.
+       Messages:   	a converted root without its locate column is refused
+       Error:      	An error is expected but got nil.
+red  a converted row is the class's structure
+       Error:      	An error is expected but got nil.
+       Messages:   	a converted row with a column the class no longer has is refused
+       Error:      	An error is expected but got nil.
+red  an older structure goes through its converter (TR19)
+       Error:      	Should be true
+       Messages:   	no converter: <nil>
+       Error:      	map[string]error{} does not contain "1"
+red  objects are decoded in their own structure
+       Error:      	Should be true
+       Messages:   	no converter: be/DEPENDENCY_UNAVAILABLE: an archived record cannot be read now: tiering: orders's column 6 is "remark", the file's "note"
+       Error:      	Error "be/DEPENDENCY_UNAVAILABLE: an archived record cannot be read now: tiering: orders's column 6 is \"remark\", the file's \"note\"" does not contain "legal_entity"
+red  the readability check reads the older structures
+       Error:      	map[string]error{} does not contain "1"
+       Error:      	map[string]error{} does not contain "1"
+done
