@@ -25,7 +25,9 @@ cpu() { local id; id=$(docker inspect -f '{{.Id}}' "$1"); awk '/^usage_usec/ {pr
 q() { docker exec -u postgres "$1" psql -qAt -v ON_ERROR_STOP=1 -d "${3:-postgres}" -c "$2"; }
 # pgBackRest's user+sys (ms) from busybox time -p's lines on stderr
 tcpu() { awk '/^user|^sys/ {s += $2} END {print int(s * 1000)}' "$1"; }
-cleanup() { for c in $(docker ps -a --format '{{.Names}}' | grep "^$P-"); do docker rm -f "$c" >/dev/null; done
+cleanup() { mkdir -p "$O/containers"  # every container's log kept before it goes (a failure is read from them)
+  for c in $(docker ps -a --format '{{.Names}}' | grep "^$P-"); do docker logs "$c" > "$O/containers/$c.log" 2>&1; done
+  for c in $(docker ps -a --format '{{.Names}}' | grep "^$P-"); do docker rm -f "$c" >/dev/null; done
   for v in $(docker volume ls -q | grep "^$P-"); do docker volume rm -f "$v" >/dev/null; done; }
 trap cleanup EXIT
 cat > "$W/pgbackrest.conf" <<'EOF'
@@ -59,6 +61,11 @@ change() { local n=$1 db=$2 sch=$3 mod=$4; q "$n" "UPDATE $sch.t SET b = b + 1, 
 sum() { q "$1" "SELECT sum(b) FROM $3.t" "$2"; }
 backup() { local n=$P-$1; docker exec -u postgres "$n" sh -c 'time -p pgbackrest --stanza=main --type=full backup' 2> "$W/bt"; }
 repo_mb() { docker run --rm -v "$P-$1-repo":/r:ro --entrypoint du "$IMAGE" -sm /r | cut -f1; }
+# the WAL up to now switched out and archived: the segment just ended is in the repository (a fixed wait was not
+# enough at 1 GB: the restore ran out of WAL before T, "recovery ended before configured recovery target was reached")
+archived() { local seg; seg=$(q "$1" "SELECT pg_walfile_name(pg_switch_wal())")
+  for _ in $(seq 1 1200); do [ "$(q "$1" "SELECT coalesce(last_archived_wal >= '$seg', false) FROM pg_stat_archiver")" = t ] && return 0; sleep 0.5; done
+  echo "the archive did not reach $seg in 10 minutes" >&2; return 1; }
 pgtime() { q "$1" "SET TimeZone = 'UTC'; SELECT now()"; }
 # in place: stop, restore with --delta to T, start, wait until promoted
 inplace() { local n=$P-$1 t=$2
@@ -109,7 +116,7 @@ run() { local L=$1 r=$2 b0 bc=0 t0 rc=0 cms=0 ccpu=0 at
   declare -A AT; while read -r n db s; do AT["$n/$db/$s"]=$(sum "$n" "$db" "$s"); done < <(parts $L)
   sleep 1; at=$(pgtime $P-$(insts $L | cut -d' ' -f1)); sleep 1
   while read -r n db s; do change "$n" "$db" "$s" 100; done < <(parts $L)
-  for i in $(insts $L); do q $P-$i "SELECT pg_switch_wal()" >/dev/null; done; sleep 2
+  for i in $(insts $L); do archived $P-$i; done  # the WAL through T in the archive before restoring to T
   t0=$(ms)
   case $L in
     split) inplace split "$at"; rc=$(cat "$W/rc-split") ;;
@@ -133,8 +140,9 @@ run() { local L=$1 r=$2 b0 bc=0 t0 rc=0 cms=0 ccpu=0 at
 }
 
 echo "BENCH setup $MB MB $(date +%H:%M:%S)"; setup; echo "BENCH setup done $(date +%H:%M:%S)"
-LAYOUTS=(shared perdb split multi)
+read -r -a LAYOUTS <<< "${LAYOUTS:-shared perdb split multi}"  # env LAYOUTS: a subset, e.g. to reproduce one
 for r in $(seq 1 "$ROUNDS"); do
-  for k in 0 1 2 3; do run "${LAYOUTS[$(( (k + r - 1) % 4 ))]}" "$r"; done  # the order rotates each round
+  nlayouts=${#LAYOUTS[@]}  # not n: run() reads parts into n
+  for k in $(seq 0 $(( nlayouts - 1 ))); do run "${LAYOUTS[$(( (k + r - 1) % nlayouts ))]}" "$r"; done  # the order rotates each round
 done
 echo "BENCH $MB MB ALL-DONE"

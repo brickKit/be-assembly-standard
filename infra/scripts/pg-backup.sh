@@ -48,8 +48,18 @@ restore-to)
   T=$(ex psql -qAt -c "SET TimeZone = 'UTC'; SELECT '$T'::timestamptz")
   # a recovering instance may not have fewer connections (and the like) than the one that wrote the WAL
   MAXCONN=$(ex psql -qAt -c "SHOW max_connections"); PRELOAD=$(ex psql -qAt -c "SHOW shared_preload_libraries")
-  ex psql -qAt -c "SELECT pg_switch_wal()" >/dev/null # the WAL up to now into the archive
-  sleep 2
+  # the WAL up to now switched out, and the restore waits until the archive holds the segment just ended: a fixed wait
+  # is not enough after much writing (the archive compresses one segment at a time; T11d at 1 GB ran out of WAL before T)
+  # recovery to a time stops at the first commit after it: on a database with no write since T there is none, and
+  # the recovery ends before its target (FATAL). A transaction that only takes an ID commits now, after T.
+  ex psql -qAt -c "SELECT txid_current()" >/dev/null
+  SEG=$(ex psql -qAt -c "SELECT pg_walfile_name(pg_switch_wal())")
+  for _ in $(seq 1 1200); do
+    [ "$(ex psql -qAt -c "SELECT coalesce(last_archived_wal >= '$SEG', false) FROM pg_stat_archiver")" = t ] && break
+    sleep 0.5
+  done
+  [ "$(ex psql -qAt -c "SELECT coalesce(last_archived_wal >= '$SEG', false) FROM pg_stat_archiver")" = t ] ||
+    { echo "the WAL archive has not reached $SEG within 10 minutes: T may not be restorable" >&2; exit 1; }
   docker rm -f "$NAME" >/dev/null 2>&1 || true
   docker volume rm -f "$NAME-data" >/dev/null 2>&1 || true
   docker volume create "$NAME-data" >/dev/null
