@@ -17,7 +17,7 @@
 | TR07 | 宽限期内列出全部历史订单 | 每个单元只出现一次 | T6 | 有：SDK alpha.105 `TestAListUnderASnapshotReadsEachOrderOnce`（快照前与快照后发布的单元，四张订单各读一次） |
 | TR08 | 按 ID 读取已转层的订单 | 经定位索引读冷层 | T6 | 有：SDK alpha.105 `TestReadsByKeyFromEveryRoute`（温层与对象两种路线，与在线时的规范行相同） |
 | TR09 | 目录指向冷层但对象缺失 | 返回暂时无法读取并告警，不说不存在 | T6 | 有：SDK alpha.105 `TestAMissingObjectIsUnavailableNotAbsent`（DEPENDENCY_UNAVAILABLE，不是 NOT_FOUND）；告警在 T9 的核对里补 |
-| TR10 | 默认列表“未收款发票” | 包含很早创建、仍未关闭的发票 | T6 | 未做 |
+| TR10 | 默认列表“未收款发票” | 包含很早创建、仍未关闭的发票 | T6 | 有：`erp/sales` 3.0.35 `TestSalesEndToEnd` 的 tiering 一步（订单列表的默认范围：500 天前创建、仍未结束的在，已结束且超出 N 天的不在、已归档的不在；`history=true` 都在）|
 | TR11 | 冷读取不能完整完成 | 返回异步任务或明确的不能完成，不返回部分数据 | T6 | 有：SDK alpha.106 `TestAHistoryPastTheLimitBecomesAnExport`（超过时限答导出、不答部分；导出按运行时的授权、只给请求者、预签名地址读到的与完整的同步读相同）、`TestAHistoryThatCannotBeExportedIsNotCompletable`（无存储、对象锁、无导出、无读取器答 QUERY_NOT_COMPLETABLE） |
 | TR12 | 撤权后继续翻页冷数据 | 按当前授权检查；不因游标绑定旧快照而保留访问 | T6 | 有：SDK alpha.105 同 TR07 的测试（当前授权过滤一张、掩码到两个字段；租约过期答 QUERY_PLAN_CHANGED）；读历史（在线加冷层）按当前授权、撤权后下一次读不再含被撤的行：SDK alpha.106 `TestAHistoryReadIsCompleteUnderTheCurrentAuthorization`；组件的授权接线在 T10 |
 | TR13 | 保留到期但有法律保全 | 不销毁 | T7 | 有：SDK alpha.107 `TestTheDestructionConditions`（单元、类别或其中一张订单的保全都挡住销毁） |

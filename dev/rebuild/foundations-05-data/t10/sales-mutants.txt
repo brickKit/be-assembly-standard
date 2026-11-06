@@ -1,0 +1,27 @@
+erp/sales 3.0.35 (T10d): the ended orders as a data class
+mutants: 7
+red  an archived order is read by its key
+       Error:      	Not equal:
+       Messages:   	map[detail:order not found domain:be reason:NOT_FOUND status:404 title:Not found trace_id:8dc4f5eb8ebdc8db46e33b78e4a2cc3c type:urn:be:be:NOT_FOUND]
+red  the default list's range (TR10)
+       Error:      	Should be false
+       Messages:   	TR10: ended, created long ago: past the default range
+red  an open process keeps the order online (TR30)
+       Error:      	Not equal:
+       Messages:   	TR30
+       Error:      	Should be zero, but was 2
+red  the list reads the history
+       Error:      	Not equal:
+       Messages:   	the history reads the archived order
+       Error:      	Not equal:
+red  the history's filters select archived orders
+       Error:      	Not equal:
+       Messages:   	the filters select the archived orders too
+red  the reader is registered
+       Error:      	Not equal:
+       Messages:   	map[detail:the history of erp.sales.orders has no reader domain:be reason:QUERY_NOT_COMPLETABLE status:422 title:The query cannot be completed trace_id:236e0cafb56f49f455924c7c156130fc ty
+red  an archived order keeps its lines
+       Error:      	Not equal:
+       Messages:   	read by its key from the archive, as it was
+       Error:      	Not equal:
+done

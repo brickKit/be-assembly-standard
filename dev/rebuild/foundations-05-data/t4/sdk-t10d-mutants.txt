@@ -1,0 +1,21 @@
+be-sdk-go tiering (T10d): a leaf's composite key, the columns check, text arrays
+mutants: 9
+red  an array with a null element is refused
+       Error:      	Expected error with "tiering: value not allowed for its column type" in chain but got nil.
+GREEN (survived)  each element is NFC
+red  a parent keeps a single-column key
+       Error:      	An error is expected but got nil.
+red  a table has one kind of key
+       Error:      	An error is expected but got nil.
+red  an undeclared column refuses the start
+       Error:      	Error "sales.orders: the declaration is not the tables (P15.1): orders.extra is text in the database, declared " does not contain "orders.extra (text) is not declared"
+red  a column of another type refuses the start
+       Error:      	An error is expected but got nil.
+red  a declared column the table lacks refuses the start
+       Error:      	An error is expected but got nil.
+red  a read maps a parent's rows to their roots
+       Error:      	"[]" should have 4 item(s), but has 0
+       Messages:   	the third level under its root
+       Error:      	"[]" should have 4 item(s), but has 0
+GREEN (survived)  an object's text array is read back as one
+done
