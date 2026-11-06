@@ -1,0 +1,167 @@
+#!/usr/bin/env python3
+"""One be-sdk-go version across the system (the rule: one version of a library in the whole system, every component
+moved together): every component on be-sdk-go/v3, in dependency order, then the Go probes and the Go shells. Foundations
+item 4 did this four times by hand-copied scripts (its retro R4).
+
+Usage: sdk-unify.py --sdk v3.0.0-alpha.N --line "<design.md status line, Chinese>" --notes "<release notes, Chinese>"
+                    --subject "<commit subject, English; {version} is the component's>" [--dry-run] [--from ID]
+
+For each component: the last digit of its version up; its exact dependencies on the components moved before it set to
+their new versions; `go get` the SDK, `go mod tidy`; `go vet`, the unit tests, the integration tests (`-p 1`, the
+environment of itenv.sh and iamenv.sh, secrets never printed); a status line at the top of docs/design.md's
+implementation status; `brickkit lint`; commit, push, `brickkit release --notes-file`. A failure stops the run there:
+fix it and go on with --from ID (the components before it are done). Still by hand after it: the Go probe (probes/go
+to the SDK, its version up, variants.py, `make check`, `make probes`, brickkit release for go…go4, the suite's v1.0.x
+tag), the shells be/go-infra and be/go-core (members' versions, the probe, the SDK; tests; release), `make
+docs-index`, `make version-check` and the parent repository's commit.
+--dry-run prints the order and the versions and changes nothing. Output: one line per step ("UNIFY <id> ..."), and
+"UNIFY ALL-DONE" (or "UNIFY FAILED <id> <stage>") last: run it in the background with a monitor (f-longrun).
+"""
+import argparse
+import os
+import pathlib
+import re
+import subprocess
+import sys
+import tempfile
+
+import yaml
+
+R = pathlib.Path(__file__).resolve().parents[3]
+SCRIPTS = R / "dev" / "rebuild" / "experiment-scripts"
+
+
+def sh(cmd: str, cwd: pathlib.Path, log: pathlib.Path | None = None) -> None:
+    """A command in bash with the test environment sourced (itenv.sh, iamenv.sh: they read .env, print nothing)."""
+    full = f". {SCRIPTS}/itenv.sh && . {SCRIPTS}/iamenv.sh && {cmd}"
+    with open(log or os.devnull, "a") as out:
+        subprocess.run(["bash", "-c", full], cwd=cwd, stdout=out, stderr=subprocess.STDOUT, check=True,
+                       env=dict(os.environ, GOPROXY="direct", GONOSUMDB="github.com/brickKit/*"))
+
+
+def components() -> dict[str, pathlib.Path]:
+    """The components on be-sdk-go/v3 (the rebuilt ones; the 2.x ones are on v0 and not part of the system)."""
+    out = {}
+    for gomod in sorted((R / "components").glob("*/*/go.mod")):
+        if "github.com/brickKit/be-sdk-go/v3 " in gomod.read_text():
+            d = gomod.parent
+            out[f"{d.parent.name}/{d.name}"] = d
+    return out
+
+
+def deps(d: pathlib.Path) -> list[str]:
+    m = yaml.safe_load((d / "component.yaml").read_text())
+    out = []
+    for e in (m.get("dependencies") or {}).get("components") or []:
+        ref = e["id"] if isinstance(e, dict) else e
+        out.append(ref.split("@")[0])
+    return out
+
+
+def order(cs: dict[str, pathlib.Path]) -> list[str]:
+    """Dependency order; the security members (infra/*) first, then master data, then the rest, alphabetically
+    among equals."""
+    layer = {"infra": 0, "mdm": 1}
+    rest, done = sorted(cs, key=lambda c: (layer.get(c.split("/")[0], 2), c)), []
+    while rest:
+        for c in rest:
+            if all(d not in cs or d in done for d in deps(cs[c])):
+                done.append(c)
+                rest.remove(c)
+                break
+        else:
+            sys.exit(f"a dependency cycle among {rest}")
+    return done
+
+
+def bump(v: str) -> str:
+    a, b, c = v.split(".")
+    return f"{a}.{b}.{int(c) + 1}"
+
+
+def version_of(d: pathlib.Path) -> str:
+    return yaml.safe_load((d / "component.yaml").read_text())["metadata"]["version"]
+
+
+def edit_component(d: pathlib.Path, new: str, moved: dict[str, str]) -> None:
+    defs = [p for p in d.rglob("*.go") if p.name in ("definition.go", "audit.go") and "contract" not in p.parts
+            and "cmd" not in p.parts]
+    s = defs[0].read_text()
+    s, n = re.subn(r'(\n\tVersion\s+= )"[0-9.]+"', r'\1"' + new + '"', s, count=1)
+    assert n == 1, defs[0]
+    defs[0].write_text(s)
+    c = (d / "component.yaml").read_text()
+    c, n = re.subn(r"(\n  version: )[0-9.]+", r"\g<1>" + new, c, count=1)
+    assert n == 1, d
+    for other, v in moved.items():
+        c = re.sub(r"(- (?:id: )?" + re.escape(other) + r")@[0-9.]+", r"\1@" + v, c)
+    (d / "component.yaml").write_text(c)
+
+
+def status_line(d: pathlib.Path, new: str, line: str) -> None:
+    p = d / "docs" / "design.md"
+    s = p.read_text()
+    m = re.search(r"\n(3\.0\.\d+)[（：]", s)
+    assert m, f"{p}: no implementation status line"
+    p.write_text(s[:m.start() + 1] + f"{new}：{line}\n\n" + s[m.start() + 1:])
+
+
+def release(d: pathlib.Path, subject: str, notes: str, log: pathlib.Path) -> None:
+    with tempfile.NamedTemporaryFile("w", suffix=".txt", delete=False) as msg, \
+            tempfile.NamedTemporaryFile("w", suffix=".md", delete=False) as nf:
+        msg.write(subject + "\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\n")
+        nf.write(notes + "\n")
+    sh(f"brickkit lint && git add -A && git commit -q -F {msg.name} && git push -q && brickkit release --notes-file "
+       f"{nf.name}", d, log)
+    if "✅ Released" not in log.read_text():
+        raise RuntimeError("brickkit release did not say Released")
+
+
+def main() -> int:
+    a = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    a.add_argument("--sdk", required=True)
+    a.add_argument("--line", required=True)
+    a.add_argument("--notes", required=True)
+    a.add_argument("--subject", required=True)
+    a.add_argument("--from", dest="start")
+    a.add_argument("--dry-run", action="store_true")
+    a.add_argument("--logs", help="where each component's log goes (default: a new temporary directory)")
+    o = a.parse_args()
+    cs = components()
+    seq = order(cs)
+    moved = {c: version_of(cs[c]) for c in seq}  # the versions their dependents pin after the run
+    plan = {c: bump(version_of(cs[c])) for c in seq}
+    if o.start:
+        seq = seq[seq.index(o.start):]
+    print(f"UNIFY plan to be-sdk-go {o.sdk}:", ", ".join(f"{c} {plan[c]}" for c in seq), flush=True)
+    if o.dry_run:
+        return 0
+    logs = pathlib.Path(o.logs or tempfile.mkdtemp(prefix="sdk-unify-"))
+    logs.mkdir(parents=True, exist_ok=True)
+    print(f"UNIFY logs in {logs}", flush=True)
+    for c in seq:
+        d, new, log = cs[c], plan[c], logs / f"{c.replace('/', '-')}.log"
+        stage = "edit"
+        try:
+            print(f"UNIFY {c} BEGIN {new}", flush=True)
+            if version_of(d) != new:
+                edit_component(d, new, {k: plan[k] for k in moved if k != c})
+                status_line(d, new, o.line)
+            sh(f"go get github.com/brickKit/be-sdk-go/v3@{o.sdk} && go mod tidy", d, log)
+            stage = "unit"
+            sh("go vet ./... && go test -count=1 ./...", d, log)
+            stage = "integration"
+            sh("go test -count=1 -p 1 -tags integration ./...", d, log)
+            stage = "release"
+            release(d, o.subject.format(version=new), o.notes, log)
+            print(f"UNIFY {c} END {new}", flush=True)
+        except (subprocess.CalledProcessError, RuntimeError, AssertionError) as e:
+            print(f"UNIFY FAILED {c} {stage}: {e} (log {log}; go on with --from {c})", flush=True)
+            return 1
+    print("UNIFY next by hand: the Go probe, the shells, make docs-index and version-check (see the usage)", flush=True)
+    print("UNIFY ALL-DONE", flush=True)
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())
