@@ -37,7 +37,7 @@
 | TR27 | 单元已封存、尚未发布时收到个人信息擦除 | 在线行按协议 07 擦除，单元重新计算摘要；进行中的转层工作项发布失败并重做 | T7 | 未做 |
 | TR28 | 一个单元的订单都已关闭、满足封存条件，但最晚的关闭在 5 个月前（驻留期 12 个月） | 不选为候选，留在在线层 | T4 | 有：SDK `TestSealingAndTheWriteBarrier`（五个月前关闭的不封存）、向量 `tier-plan` 的 `residence-not-reached` |
 | TR29 | 客户把已完成单据的驻留期从 12 个月改为 6 个月；另一次试图改为 30 天 | 下一轮选出新满足条件的单元，已发布的单元不变；30 天低于下限 N，被拒绝 | T4 | 有：SDK `TestAClassDeclaration`（短于 N 拒绝）、向量 `tier-plan` 的 `residence-shortened`、`residence-below-n` |
-| TR30 | 单元过了驻留期 30 天，仍有一张订单的预占未结束 | 不封存；告警并列出这张订单与未结束的预占 | T4 | 部分：阻塞时整个分组不封存、原因记在单元（SDK `TestABlockedGroupingStaysOpen`）、规划的告警（向量 `blocked-alert`）；告警由候选作业发出，随 T4 的作业 |
+| TR30 | 单元过了驻留期 30 天，仍有一张订单的预占未结束 | 不封存；告警并列出这张订单与未结束的预占 | T4 | 有：阻塞时整个分组不封存、原因记在单元（SDK `TestABlockedGroupingStaysOpen`）；到期 30 天仍阻塞的告警 `tiering_blocked`（`TestTheCandidatesJobSealsAndAlerts`）、规划的告警（向量 `blocked-alert`） |
 
 ## 2. 转来的与参考模型没覆盖的
 
