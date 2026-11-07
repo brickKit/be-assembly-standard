@@ -1,0 +1,55 @@
+be-sdk-python work (T4a of foundations item 6): one rule of chapter 07 broken per mutant
+mutants: 19
+red  P7.6: the claim epoch must still be current
+red  P7.6: a commit checks the holder's own epoch
+red  P7.5: a live lease is never taken over
+       E           AssertionError: a live lease is not taken over
+       tests/test_work_integration.py:94: AssertionError
+red  P7.24: an item is not claimed before its run_at
+       E           AssertionError: not before its backoff
+       tests/test_work_integration.py:219: AssertionError
+red  P7.5: a claim counts an attempt
+       E           AssertionError: assert (Run(id='01a1b706-a671-7762-896b-75153ab18614', job='demo.q', kind='queue', attempts=0, max_attempts=10, operation_id='01a1b706-a671-7762-896b-75153ab18614:demo.q', 
+       tests/test_work_integration.py:76: AssertionError
+red  P7.8: a stop gives the lease and the attempt back
+       E           AssertionError: {'state': 'running', 'attempts': 1, 'epoch': 1, 'pause_reason': None, ...}
+       tests/test_work_integration.py:130: AssertionError
+red  P7.12: a non-idempotent item whose call may have been sent is paused at its next claim
+       E           AssertionError: assert Run(id='01a1b706-bbc0-703d-a572-7a35a410f41c', job='demo.pay', kind='queue', attempts=2, max_attempts=10, operation_id='01a1b706-bbc0-703d-a572-7a35a410f41c:demo.pay
+       tests/test_work_integration.py:178: AssertionError
+red  P7.12: a failure after a possible send pauses the item
+       E               AssertionError: broken
+       tests/test_work_integration.py:195: AssertionError
+red  P7.13: the attempts run out into dead
+       E           AssertionError: assert 'retry_wait' == 'dead'
+       tests/test_work_integration.py:222: AssertionError
+red  P7.13: the dead letter in the transaction that marks the item dead
+       E           AssertionError: the dead letter, same tx
+       tests/test_work_integration.py:223: AssertionError
+red  P7.13: a permanent failure is dead at once
+       E           AssertionError: a permanent failure is dead at once
+       tests/test_work_integration.py:228: AssertionError
+red  P7.13: a business wait spends no attempt
+       E               AssertionError: a wait spends no attempt
+       tests/test_work_integration.py:248: AssertionError
+red  P7.13: a wait past max_wait is permanent
+       E           AssertionError: past its max_wait
+       tests/test_work_integration.py:257: AssertionError
+red  P7.13: the retry waits its backoff
+       E               AssertionError: broken
+       tests/test_work_integration.py:195: AssertionError
+red  P7.17: a completed singleton starts its next run without the old progress
+       tests/test_work_integration.py:289: AssertionError
+red  P7.17: a checkpoint commits the progress
+       E           AssertionError: from the committed segment
+       tests/test_work_integration.py:286: AssertionError
+red  P7.21: a commit wakes a worker
+       >       raise AssertionError(what or "never")
+       E       AssertionError: woken by the commit, not the 10 s poll
+       tests/test_work_integration.py:56: AssertionError
+red  P7.23: a poll wakes one worker
+       E           AssertionError: 20 claims in 1.1 s at a 0.25 s poll with 4 workers (not one per worker)
+       tests/test_work_integration.py:388: AssertionError
+red  a run past its deadline fails as retryable
+       tests/test_work_integration.py:305: AssertionError
+done

@@ -1,0 +1,34 @@
+be-sdk-python cron (T4b of foundations item 6): one rule of P7.15, P7.16, P7.23 broken per mutant
+mutants: 10
+red  P7.15: day of month or day of week when both are restricted
+       E       AssertionError: assert [{'slot': '20...3T12:00:00Z'}] == [{'slot': '20...7T12:00:00Z'}]
+       tests/test_work_cron.py:26: AssertionError
+       FAILED tests/test_work_cron.py::test_slots[dom-or-dow] - AssertionError: asse...
+red  P7.15: a repeated local time runs the first time
+       E       AssertionError: assert [{'slot': '20...6T01:30:00Z'}] == [{'slot': '20...6T01:30:00Z'}]
+       tests/test_work_cron.py:26: AssertionError
+red  P7.15: a skipped local time runs after the jump
+       E       AssertionError: assert [{'slot': '20...0T00:30:00Z'}] == [{'slot': '20...0T00:30:00Z'}]
+       tests/test_work_cron.py:26: AssertionError
+red  P7.15: 7 is Sunday
+       E           ValueError: cron '0 8 * * 7': '7' outside 0-6
+       FAILED tests/test_work_cron.py::test_slots[sunday-as-7] - ValueError: cron '0...
+red  P7.16: the interval is (after, until]
+       E       AssertionError: assert [{'slot': '20...5T03:00:00Z'}] == [{'slot': '20...5T04:00:00Z'}]
+       tests/test_work_cron.py:26: AssertionError
+red  P7.16: all: beyond max_backlog paused
+       E       AssertionError: assert {'pending': [...18T12:00:00Z'} == {'pending': [...18T12:00:00Z'}
+       tests/test_work_cron.py:33: AssertionError
+red  P7.16: none runs only a slot due within the minute
+       E       AssertionError: assert ([Slot(id='20...17T11:00:00Z') == ([], [], '202...17T11:00:00Z')
+       tests/test_work_cron.py:57: AssertionError
+red  P7.16: the watermark moves to the last due slot
+       E       AssertionError: assert {'pending': [...17T06:00:30Z'} == {'pending': [...17T11:00:00Z'}
+       tests/test_work_cron.py:33: AssertionError
+red  P7.23: no transaction before the next slot
+       E           AssertionError: once to learn the next slot (next 1 January), then no transaction until it
+       tests/test_work_cron_integration.py:79: AssertionError
+red  P7.16: a job seen first starts at now, no history
+       E           AssertionError: first seen: no history
+       tests/test_work_cron_integration.py:54: AssertionError
+done

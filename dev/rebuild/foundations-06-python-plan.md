@@ -28,7 +28,7 @@
 | T1 | 门槛核对表 [`foundations-06-data/gate.md`](foundations-06-data/gate.md)：每个剖面的每项检查（Python 一列）、每个转来的条目、每条所有成员都要做的义务各一行“未做”，各任务完成时改成测试名（第 4 项复盘 R3） | T0 | T0 | 表里每行有去处；没有一行要靠猜 | ✅ 2026-11-07（A1–A4、B1–B11、C1–C12、D1–D3、E1–E3、F1–F4、G1–G4、H1–H6） |
 | T2 | 要先定的（AI 定、记台账，真正要维护者定的才问）：T2a 能力的范围（逐个能力：做、不做的理由与触发条件）；T2b Python 的 Parquet 库（调研加实测，结果交 kb）；T2c CPU 重活（Parquet 编解码、摘要、渲染）在哪里算（kb 的“asyncio 的 CPU 重活”：进程池）；T2d 协议副本的换法（一次换到现行，还是逐章换） | 正式文档的首批范围、kb | T1 | 每个决定写进本计划与 `09-ai-choices.md`；实测有原始数据 | ✅ T2a、T2d 2026-11-07（A164、A165，见“T2 的决定”）；T2b、T2c 只有转层用到，挪到 T10 开头定 |
 | T3 | SDK 底座：协议副本换到现行、迁移 0013–0024、已实现能力的向量照样过；P1.23 的恢复阶段（进程级的阶段开关：用户面答 `MAINTENANCE`，转发、订阅、作业按阶段停）；`AGENTS.md`；`features.json`；pin-check 加“Python 成员只用一个 `be-sdk` 版本” | 线协议第 01、05、06 章 | T2 | `make test` 与 `make test-integration` 过；新能力先写红的测试；改坏检查 | ✅ 2026-11-07（见“T3 的结果”） |
-| T4 | 后台工作项（第 07 章，含定时）：认领、租约与纪元、副作用种类、SDK 自带作业的登记与恢复规则（第 4 项复盘 R1 的表）；幂等键（P4.21–P4.25）与分区维护（A164）；Python 探针的 `probe.steps`；后台工作剖面对 Python 跑 | 第 07 章、P1.23 | T3 | 剖面 CK-WK-01…10 对 Python 通过（与 Go 一样的“移到 T10”的除外，写明）；SDK 的作业登记检查（照 be-sdk-go 的宿主登记测试） | ⬜ |
+| T4 | 后台工作项（第 07 章，含定时）：认领、租约与纪元、副作用种类、SDK 自带作业的登记与恢复规则（第 4 项复盘 R1 的表）；幂等键（P4.21–P4.25）与分区维护（A164）；Python 探针的 `probe.steps`；后台工作剖面对 Python 跑 | 第 07 章、P1.23 | T3 | 剖面 CK-WK-01…10 对 Python 通过（与 Go 一样的“移到 T10”的除外，写明）；SDK 的作业登记检查（照 be-sdk-go 的宿主登记测试） | ✅ 2026-11-07（见“T4 的结果”） |
 | T5 | 事件的其余：补发 `ResendService`、消费者库回退后的补发（P6.36–P6.40）；探针的 `fail`、`hold_ms`、`emit`；事件剖面对 Python 在两种运输上跑 | 第 06 章 | T3 | 剖面 CK-EV、CK-BUS 对 Python 通过 | ⬜ |
 | T6 | 长时间推演（S1，第一条端到端路径通了就写）：Python 成员多副本、外壳里两个成员，作业与事件在崩溃点上注入故障、终态核对；之后每个任务往里加自己的崩溃点 | 第 5 项复盘 S1 | T4、T5 | 推演跑一轮 30 分钟通过，原始数据在 `foundations-06-data/` | ⬜ |
 | T7 | 水位来源（第 09 章的来源一侧）：探针的 `_wm` 流与 `WatermarkService/Pull`；水位来源剖面对 Python 跑 | 第 09 章 | T5 | CK-WM-01…04 对 Python 通过 | ⬜ |
@@ -81,3 +81,11 @@
 - **AGENTS.md**：`be-sdk-python` 的代码地图（L7 转来）。
 - **pin-check**：加“部署的 Python 模块只钉一个 `be-sdk` 标签”，对现状报出 `infra/print` 停在 a48（SF29），这次一起换掉。
 - **连锁发版**：`infra/print` 3.0.16（a52，清单声明 `RECOVERY_PHASE`）；两种探针的清单是同一份，Python 一侧读了这个键后也要声明，Go 探针 3.2.50（只改清单）、Python 探针 3.2.43（a52）；套件 1.0.66（`make check` 168、`make probes` 192 全过）；外壳 `be/go-infra` 3.0.70、`be/go-core` 3.0.70、`be/py-render` 3.0.43（`foundations-06-data/t3/shells.sh`）；`erp/billing` 依赖打印，3.0.43 换到 `infra/print` 3.0.16，`be/go-core` 再到 3.0.71。pin-check 0、`make version-check`、`make gates` 全过。
+
+## T4 的结果（2026-11-07）
+
+- **be-sdk-python a53**：`besdk.work`（排入、认领、租约与纪元、提交的认领核对、停止时交还租约与尝试、副作用种类、失败与退避、业务等待、死信、单例与分段进度、时限、提交后唤醒、一个轮询叫醒一个工作者、晚到期的项、每个副本的定时、运维的重新排队与标为已解决、清理）；`besdk.work.cron`（向量 `cron-slots` 16 个全过，水位锁、补跑策略、到下一个槽之前不开事务）；`besdk.idem`（向量 `idempotency` 22 个全过，认领、命令与结果同一事务，并发同键只执行一次）；`besdk.db.partitions`。宿主给有数据库的成员一个运行器（`rt.work`）、模块的作业（`jobs(j)`）与 SDK 自带的四个作业，每个作业在 `besdk/sdkjobs.py` 写明恢复阶段的行为，结构检查守住；作业只在正常运行时跑。
+- **改坏检查**：运行器与认领 19 处全红（`foundations-06-data/t4/mutants-t4a.txt`，另有两处是等价改坏，写明后去掉）；cron 10 处，第一次有一处活下来（`none` 策略：向量唯一的 `none` 用例恰好在一分钟以内，与 `latest` 结果相同），补了 SDK 测试后全红（`mutants-t4b.txt`）。**给线协议**：`cron-slots` 向量缺“`none` 且最后一个到期槽早于一分钟”的用例，下次发协议时补。
+- **顺带查出**：`test_bus_ready_integration` 的夹具 `serve()` 写反了，从来没跑迁移；成员启动时要登记 SDK 作业，它就红了。按夹具的意图改成先迁移（断言不动）。P7.20（每个作业的指标）与 Go 一样未做，`features.json` 写明。
+- **探针**：Python 探针 3.2.44 补上后台工作项（每种副作用一个作业、`probe.minutely`、`probe.steps`），转发也改用作业 `probe.relay`（与 Go 探针相同；原来自己的转发表不再用、按只加不删留着）；套件 1.0.67 的后台工作剖面对两种探针都跑，Python 探针第一次就“符合”；`make check` 168、`make probes` 193 全过。
+- **连锁**：`infra/print` 3.0.17（a53）、`erp/billing` 3.0.44、外壳 `be/go-core` 3.0.72、`be/py-render` 3.0.44（`foundations-06-data/t4/shells.sh`）；pin-check 0、`make version-check` 过。

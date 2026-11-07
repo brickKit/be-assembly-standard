@@ -31,18 +31,18 @@
 
 | 行 | 要证明 | 任务 | 状态 |
 | --- | --- | --- | --- |
-| C1 | CK-WK-01 回滚没有工作项；接管后 `operation_id` 不变 | T4 | 未做 |
-| C2 | CK-WK-02 租约到期被接管，代次加一 | T4 | 未做 |
-| C3 | CK-WK-03 恢复代次推进后旧认领失效 | T4 | 未做 |
-| C4 | CK-WK-04 停止时释放租约 | T4 | 未做 |
-| C5 | CK-WK-06 local 作业效果只有一次 | T4 | 未做 |
-| C6 | CK-WK-07 非幂等调用发出后崩溃转 paused | T4 | 未做 |
-| C7 | CK-WK-08 退避重试与死信 | T4 | 未做 |
-| C8 | CK-WK-09 singleton 换持有者后从已提交的进度继续 | T4 | 未做 |
-| C9 | CK-WK-10 清理不删未到保留期的、dead、paused | T4 | 未做 |
-| C10 | SDK 自带的作业都被宿主登记、都有恢复阶段的规则（照 be-sdk-go 的 `TestTheHostRegistersEverySDKJob`） | T4 | 未做 |
-| C11 | 幂等键（P4.21–P4.25，A164）：向量 `idempotency`、并发同键只执行一次、清理作业 `be.idempotency.cleanup` | T4 | 未做 |
-| C12 | 分区维护（P5.21–P5.23，A164）：声明的表按月预建，SDK 自带作业 | T4 | 未做 |
+| C1 | CK-WK-01 回滚没有工作项；接管后 `operation_id` 不变 | T4 | 有：套件 1.0.67 的后台工作剖面对 Python 探针 3.2.44（be-sdk-python a53）“符合”（`tests/test_work_profile.py::test_the_probe_conforms_to_the_work_profile[py]`）；SDK `test_work_integration::test_identities_and_the_rollback` |
+| C2 | CK-WK-02 租约到期被接管，代次加一 | T4 | 有：套件 1.0.67 的后台工作剖面对 Python 探针 3.2.44（be-sdk-python a53）“符合”（`tests/test_work_profile.py::test_the_probe_conforms_to_the_work_profile[py]`）；SDK `test_a_taken_over_holder_commits_nothing` |
+| C3 | CK-WK-03 恢复代次推进后旧认领失效 | T4 | 有：套件 1.0.67 的后台工作剖面对 Python 探针 3.2.44（be-sdk-python a53）“符合”（`tests/test_work_profile.py::test_the_probe_conforms_to_the_work_profile[py]`）；SDK `test_a_taken_over_holder_commits_nothing`（推进恢复代次后旧认领提交被拒） |
+| C4 | CK-WK-04 停止时释放租约 | T4 | 有：套件 1.0.67 的后台工作剖面对 Python 探针 3.2.44（be-sdk-python a53）“符合”（`tests/test_work_profile.py::test_the_probe_conforms_to_the_work_profile[py]`）；SDK `test_stop_gives_the_lease_and_the_attempt_back` |
+| C5 | CK-WK-06 local 作业效果只有一次 | T4 | 有：套件 1.0.67 的后台工作剖面对 Python 探针 3.2.44（be-sdk-python a53）“符合”（`tests/test_work_profile.py::test_the_probe_conforms_to_the_work_profile[py]`）；SDK `test_a_local_effect_happens_once_after_a_crash` |
+| C6 | CK-WK-07 非幂等调用发出后崩溃转 paused | T4 | 有：套件 1.0.67 的后台工作剖面对 Python 探针 3.2.44（be-sdk-python a53）“符合”（`tests/test_work_profile.py::test_the_probe_conforms_to_the_work_profile[py]`）；SDK `test_a_non_idempotent_call_is_never_sent_twice` |
+| C7 | CK-WK-08 退避重试与死信 | T4 | 有：套件 1.0.67 的后台工作剖面对 Python 探针 3.2.44（be-sdk-python a53）“符合”（`tests/test_work_profile.py::test_the_probe_conforms_to_the_work_profile[py]`）；SDK `test_retries_then_dead_with_its_dead_letter` |
+| C8 | CK-WK-09 singleton 换持有者后从已提交的进度继续 | T4 | 有：套件 1.0.67 的后台工作剖面对 Python 探针 3.2.44（be-sdk-python a53）“符合”（`tests/test_work_profile.py::test_the_probe_conforms_to_the_work_profile[py]`）；SDK `test_a_singleton_continues_from_its_committed_progress` |
+| C9 | CK-WK-10 清理不删未到保留期的、dead、paused | T4 | 有：套件 1.0.67 的后台工作剖面对 Python 探针 3.2.44（be-sdk-python a53）“符合”（`tests/test_work_profile.py::test_the_probe_conforms_to_the_work_profile[py]`）；SDK `test_work_integration`（清理随 `be.work.cleanup`）与剖面的 CK-WK-10 |
+| C10 | SDK 自带的作业都被宿主登记、都有恢复阶段的规则（照 be-sdk-go 的 `TestTheHostRegistersEverySDKJob`） | T4 | 有：`test_sdkjobs`（宿主登记每个造作业的函数、每个 `be.` 作业都有恢复规则、多一条少一条都失败；删掉一个登记会红）；`test_recovery_phases_integration`（各阶段不跑作业，改坏会红） |
+| C11 | 幂等键（P4.21–P4.25，A164）：向量 `idempotency`、并发同键只执行一次、清理作业 `be.idempotency.cleanup` | T4 | 有：`test_idem`（向量 22 个）、`test_idem_integration`（重放、换请求被拒、并发同键只执行一次、失败不留、过期重新认领、清理只删过期） |
+| C12 | 分区维护（P5.21–P5.23，A164）：声明的表按月预建，SDK 自带作业 | T4 | 有：`test_partitions_integration::test_the_job_keeps_the_months_ahead`（运行角色经作业补上缺的分区、脱离的分区使维护失败） |
 
 ## D. 水位来源（第 09 章的来源一侧）
 
