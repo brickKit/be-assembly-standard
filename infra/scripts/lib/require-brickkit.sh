@@ -2,7 +2,7 @@
 # 核对 PATH 上的 brickkit 是本项目要求的版本；不是就点名二进制路径并退出 2。
 #
 # 为什么要查：~/go/bin 里还留着旧的 v0.4.6，PATH 把 ~/go/bin 放在前面时它会遮住 ~/.local/bin 的新版。
-# 旧 CLI 大多大声失败（未知命令），但 ship.sh 的 brickkit release 会照样跑完，发布就交给了旧 CLI，
+# 旧 CLI 大多大声失败（未知命令），但有的命令会照样跑完（例如 brickkit release），交给了旧 CLI 也
 # 没有任何报错。所以每个会调 brickkit 的入口脚本开头都先过这一关。
 #
 # 用法：

@@ -170,8 +170,12 @@ def test_disabled_target_fails_early(tmp):  # 修复轮 M-8
 
 
 # ---------- 用假 brickkit / docker / curl 跑完整流程 ----------
+# The fake answers the version the project requires (lib/require-brickkit.sh), so the tests follow its upgrades.
+REQUIRED_BK = next(line.split('"')[1].removeprefix("BrickKit CLI ")
+                   for line in (SCRIPT.parent / "lib" / "require-brickkit.sh").read_text().splitlines()
+                   if line.startswith("BRICKKIT_REQUIRED="))
 FAKE_BRICKKIT = """#!/bin/sh
-[ "$1" = version ] && { echo "BrickKit CLI ${FAKE_BK_VERSION:-v1.4.0}"; exit 0; }
+[ "$1" = version ] && { echo "BrickKit CLI ${FAKE_BK_VERSION:-@REQUIRED_BK@}"; exit 0; }
 echo "brickkit $*" >> "$FAKE_CALLS"
 case "$1 $2" in
   "local status") echo "Local mode: ${FAKE_LOCAL_MODE:-off}" ;;
@@ -182,7 +186,7 @@ case "$1 $2" in
     echo $$ > "$FAKE_FOCUS_PID"; exec sleep 300 ;;
 esac
 exit 0
-"""
+""".replace("@REQUIRED_BK@", REQUIRED_BK)
 FAKE_DOCKER = r"""#!/bin/sh
 echo "docker $*" >> "$FAKE_CALLS"
 case "$1" in

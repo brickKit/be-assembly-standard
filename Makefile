@@ -142,7 +142,7 @@ test-db-init:  ## 建/刷新本地测试专用库 brickkit_test_db（跟真机�
 	@bash infra/scripts/test-db-init.sh $(ID)
 .PHONY: test-db-init
 
-##@ 组件接入、真机验证与发布（integrate / verify / permissions 自己拿项目锁，见 infra/scripts/project-lock.sh）
+##@ 组件接入与真机验证（integrate / verify / permissions 自己拿项目锁，见 infra/scripts/project-lock.sh）
 integrate:  ## 接入一个组件或外壳：dev-env/db-init → add 或 upgrade → 填 config → 同步 deploy.teardown.yaml → lint → up --dry-run。make integrate ID=<id> [VERSION=2.0.0] [INTEGRATE_OUT=<日志目录>]（db-init 的详细输出进日志，终端只打结果行）
 	@test -n "$(ID)" || { echo "用法：make integrate ID=<scope>/<name> [VERSION=<版本>]（外壳 ID=be/<name>，版本默认 1.0.0）"; exit 2; }
 	@bash $(S)/integrate.sh "$(ID)" $(VERSION)
@@ -151,9 +151,6 @@ verify:  ## 真机验证一个组件或外壳：build → 只起闭包 → 迁�
 	@test -n "$(ID)" || { echo "用法：make verify ID=<scope>/<name> [ROUTE='<METHOD> <路径>'] [FOCUS=1] [KEEP=1] [FORCE_BUILD=1] [SEED=1] [OUT=<目录>]"; exit 2; }
 	@ROUTE="$(ROUTE)" FOCUS="$(FOCUS)" KEEP="$(KEEP)" FORCE_BUILD="$(FORCE_BUILD)" SEED="$(SEED)" OUT="$(OUT)" bash $(S)/verify-component.sh "$(ID)"
 
-ship:  ## 【只有控制者】发布：发布前门禁（openapi-additive-scan、config-key-scan --strict，只看本组件）→ 推 main → 契约包 tag → brickkit release → v tag → 外壳视角拉取检查。make ship DIR=components/<id>|shell/be/<name> NOTES=<说明文件> [DRY_RUN=1]
-	@test -n "$(DIR)" -a -n "$(NOTES)" || { echo "用法：make ship DIR=<components/<scope>/<name> | shell/be/<name>> NOTES=<发布说明文件> [DRY_RUN=1]"; exit 2; }
-	@bash $(S)/ship.sh $(if $(DRY_RUN),--dry-run,) "$(DIR)" "$(NOTES)"
 
 teardown-sync:  ## 让 deploy.teardown.yaml 与 deploy.yaml 一致（target、components；不带 vars:）。make teardown-sync [CHECK=1] 只核对
 	@bash $(S)/project-lock.sh -- python3 $(S)/teardown-sync.py $(if $(CHECK),--check,)
@@ -170,7 +167,7 @@ _permissions-locked:
 	  removed="$$(git diff HEAD -- registry/permissions.tsv | grep '^-[^-]' || true)"; \
 	  if [ -n "$$removed" ]; then echo "✗ registry/permissions.tsv 只增不删，下面这些已有行被改或删了（键是持久标识，退役用 deprecated 列）："; echo "$$removed"; exit 1; fi; \
 	  echo "✓ registry/permissions.tsv 相对 HEAD 只有新增（git diff HEAD -- registry/ 看改动）"
-.PHONY: integrate verify ship teardown-sync permissions _permissions-locked
+.PHONY: integrate verify teardown-sync permissions _permissions-locked
 
 ##@ 拆回验证
 # 同一份 brickkit.yaml，`--ignore-shells` 让所有成员忽略 servedBy、各自独立成容器；
@@ -189,7 +186,7 @@ teardown-down:  ## 停掉拆回验证的容器
 # The Go gates of the 0.x be-acceptance (import, SystemClient, bare-route, event and OpenAPI
 # breaking changes, data-scope tests, dependency versions, config keys) moved to its legacy/v0
 # branch with the old code (D59); conformance suites and gates return with the rebuilt tools.
-gates: docs-boundary docs-diagrams docs-mirror docs-links docs-ids docs-closure docs-index-check infra-images security-schemas no-binaries protocol-coverage-go layout-check  ## Document gates (boundary, mirror, links, IDs, closure), infra image pins, security schemas, no build output in any repository, the components' layout + brickkit up --dry-run
+gates: docs-boundary docs-diagrams docs-mirror docs-links docs-ids docs-closure docs-index-check infra-images security-schemas no-binaries protocol-coverage-go layout-check scripts-test  ## Document gates (boundary, mirror, links, IDs, closure), infra image pins, security schemas, no build output in any repository, the components' layout, the scripts' own tests + brickkit up --dry-run
 	@echo "▸ brickkit up --dry-run"
 	@bash $(S)/lib/require-brickkit.sh
 	@brickkit up --dry-run
@@ -198,6 +195,10 @@ gates: docs-boundary docs-diagrams docs-mirror docs-links docs-ids docs-closure 
 layout-check:  ## 已重建的组件（Go 与 Python）按业务模块分层、每层一份说明（docs/zh/01-conventions/05-ai-navigation.md 的布局检查）
 	@PYTHONDONTWRITEBYTECODE=1 python3 $(S)/layout-check.py
 .PHONY: layout-check
+
+scripts-test:  ## 父仓库脚本自己的测试（infra/scripts/tests/ 下的全部文件，各按自己的写法跑）
+	@bash $(S)/tests/run-all.sh
+.PHONY: scripts-test
 
 version-check: pin-check  ## 扫全部 submodule（组件、外壳、工具仓库）：HEAD 是否领先最新 tag（兼容 2.0.0 与 v2.0.0 双 tag）；并查精确依赖
 	@bash infra/scripts/version-check.sh

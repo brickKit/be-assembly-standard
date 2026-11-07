@@ -48,8 +48,8 @@ if flock -n "$BE_PROJECT_LOCK" true; then ok "子进程退出后锁可再获取"
 
 # 6. 子进程被信号杀死：退出码 128+信号；INT / HUP 同样转发（非交互 shell 的后台子进程默认忽略 INT，也要能停）
 for sig in TERM INT HUP; do
-  # 前台调用时 INT 是默认处理；用 & 起的后台进程在非交互 shell 里会忽略 INT，所以显式恢复（模拟终端里直接运行）
-  env --default-signal=INT bash "$LOCK_SH" -- sleep 30 >/dev/null 2>&1 & holder=$!
+  # 前台调用时 INT、HUP 是默认处理；用 & 起的后台进程在非交互 shell 里会忽略 INT，nohup 下会忽略 HUP，所以显式恢复（模拟终端里直接运行）
+  env --default-signal=INT,HUP bash "$LOCK_SH" -- sleep 30 >/dev/null 2>&1 & holder=$!
   sleep 0.5
   kill -$sig $holder
   timeout 10 tail --pid=$holder -f /dev/null; wait $holder; rc=$?

@@ -320,10 +320,14 @@ def test_integrate_refuses_missing_schemas_tsv(tmp):  # 修复轮 M-10：integra
     assert not (tmp / "calls").exists(), (tmp / "calls").read_text()
 
 
+# The fake answers the version the project requires (lib/require-brickkit.sh), so the tests follow its upgrades.
+REQUIRED_BK = next(line.split('"')[1].removeprefix("BrickKit CLI ")
+                   for line in (SCRIPT.parent / "lib" / "require-brickkit.sh").read_text().splitlines()
+                   if line.startswith("BRICKKIT_REQUIRED="))
 FAKE_BK = """#!/bin/sh
-[ "$1" = version ] && { echo "BrickKit CLI ${FAKE_BK_VERSION:-v1.4.0}"; exit 0; }
+[ "$1" = version ] && { echo "BrickKit CLI ${FAKE_BK_VERSION:-%s}"; exit 0; }
 echo "brickkit $*" >> "$FAKE_CALLS"
-"""
+""" % REQUIRED_BK
 
 
 def integrate(tmp: pathlib.Path, root: pathlib.Path, **extra) -> subprocess.CompletedProcess:
