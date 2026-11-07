@@ -207,6 +207,10 @@
 
 先 `erp/billing`（账单的生命周期只在组件内，与 `erp/sales` 同型），再 `erp/credit` 与 `erp/inventory`（两者的分支是协议 04 参与方的同一台状态机，SF03：要不要把参与方的生命周期表放进 SDK——SDK 不得有规范之外的行为，要先在 be-protocol 写规范与向量，再写 Go 的实现、两个组件改用它；这一步单独设计），最后 `infra/authz`（决策表 `core.Decide` 已经是一张表，看记录状态的写入是不是都经 `Transition`、处置与解除能不能做成向生效点登记的种类，SF05）。不再做“前后考试”：`erp/sales` 与 `infra/authz` 两次都表明分层或集中不会让找全的读量变少，收益在检查拦住的东西上（见上）。
 
+#### `erp/credit` 与 `erp/inventory` 的 L1b（SF01–SF03）
+
+维护者 2026-11-07 定：参与方的状态机进 SDK。计划在 [reserve-participant-plan.md](reserve-participant-plan.md)（R0–R6）。
+
 #### `erp/billing` 的 L1b（SF04）
 
 账单的状态（`draft`、`confirmed`、`issued`、`void`）与开具后的正式化（`pending`、`done`）：判断在 `invoices`（修改、作废）、`issue`（确认认领、编号、正式化、继续作业）、`print`（只打已开具的）、`recoverycheck`（读）；写入在 `invoices.SetVoid`、`issue` 的三条 `UPDATE`。设计文档的状态表只列允许的迁移，拒绝与重复（已开具的作废、已作废的再作废、非已开具的打印、作废的再开具）只在代码里。
