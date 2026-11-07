@@ -211,6 +211,10 @@
 
 维护者 2026-11-07 定：参与方的状态机进 SDK。计划在 [reserve-participant-plan.md](reserve-participant-plan.md)（R0–R6），2026-11-07 做完：be-protocol 第 16 章（alpha.115–116）、be-sdk-go alpha.117 的 `reserve`、`erp/credit` 与 `erp/inventory` 3.0.32 改用它（新旧代码的事件序列相同），全系统换到 alpha.117；SF01–SF03 已修。
 
+#### `infra/authz` 的 L1b（SF05）
+
+2026-11-07 做完，3.0.44：决策表本来就是一张（`core.Decide`，安全 08 的 30 行，逐行测试）；状态的写入本来也只有 `Transition` 一处，但它不核对迁移。先在 `Transition` 里临时记下集成测试的每次迁移（25 种），再照安全 08 的“状态迁移”与“结果对记录状态的作用”写成表（`internal/effectpoint/lifecycle.go`，带暂停原因与结束原因），`Transition` 与新记录的插入按它核对，表外的报错；设计文档同一张表，单元测试逐行比较，那 25 种都在表里；`authz/structure_test.go` 守住唯一的写入与登记的插入（探针各红一次）。生效点不再拆包（AI 定，待复核，理由在结构问题 SF05）。外壳 `be/go-infra` 3.0.69。
+
 #### `erp/billing` 的 L1b（SF04）
 
 账单的状态（`draft`、`confirmed`、`issued`、`void`）与开具后的正式化（`pending`、`done`）：判断在 `invoices`（修改、作废）、`issue`（确认认领、编号、正式化、继续作业）、`print`（只打已开具的）、`recoverycheck`（读）；写入在 `invoices.SetVoid`、`issue` 的三条 `UPDATE`。设计文档的状态表只列允许的迁移，拒绝与重复（已开具的作废、已作废的再作废、非已开具的打印、作废的再开具）只在代码里。
