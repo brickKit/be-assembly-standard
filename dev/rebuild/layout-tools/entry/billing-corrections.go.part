@@ -1,0 +1,13 @@
+
+// Corrections answers the corrections route of the contract: not in this version (D75); the invoice is read and the
+// caller's right on its legal entity checked first, so an invoice the caller may not see stays unseen.
+func Corrections(m *core.Base, c *httpx.Context) error {
+	inv, err := core.ReadInvoice(m, c.Ctx(), c.Param("id"))
+	if err != nil {
+		return err
+	}
+	if _, _, err := core.Check(c, c.Operation(), inv.LegalEntityID); err != nil {
+		return err
+	}
+	return errs.New(errs.ReasonCapabilityUnsupported, "corrections are not in this version of erp/billing")
+}
