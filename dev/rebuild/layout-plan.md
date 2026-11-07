@@ -81,13 +81,40 @@
 
 | # | 任务 | 依据 | 依赖 | 验收 | 状态 |
 | --- | --- | --- | --- | --- | --- |
-| L1 | **试点 `erp/sales`**：按上面的设计重排（版本升到 3.0.39），行为不变；写各层的 `AGENTS.md`；集成测试搬进 `itest/` 并写索引 | 设计 A160–A162 | — | 单元与集成测试全过（与重排前同样的用例数）；`go vet`；`brickkit lint`；每个模块 `AGENTS.md` 的文件清单与目录一致；一个新会话只读文档能答出“改报价的取价改哪里、测在哪” | ⬜ |
+| L1 | **试点 `erp/sales`**：按上面的设计重排（版本升到 3.0.39），行为不变；写各层的 `AGENTS.md`；集成测试搬进 `itest/` 并写索引 | 设计 A160–A162 | — | 单元与集成测试全过（与重排前同样的用例数）；`go vet`；`brickkit lint`；每个模块 `AGENTS.md` 的文件清单与目录一致；一个新会话只读文档能答出“改报价的取价改哪里、测在哪” | ✅ 2026-11-07（见“L1 的结果”；分支 `layout`，未发布，等 L2） |
 | L2 | **维护者看试点**：结构、文档的写法、测试的组织；照意见改，定稿 | L1 | L1 | 维护者确认 | ⬜ |
 | L3 | **规范与检查**：改[标准布局](../../docs/zh/01-conventions/05-ai-navigation.md#组件仓库的标准布局与代码地图)、[测试与验证](../../docs/zh/01-conventions/02-testing-and-validation.md)、[改动配方](../../docs/zh/01-conventions/11-change-recipes.md)（加功能放哪个模块、加模块要做什么）；写 `make layout-check`（A163）并进 `make gates`；`brickkit-component` 与新组件的样板按新结构 | L2 | L2 | 检查对试点通过、对其余未改的组件报错；改坏 4 处全红 | ⬜ |
 | L4 | **铺开到其余 Go 组件**，按大小从小到大（先熟练、后难）：`mdm/currency`、`mdm/partner`、`mdm/product`、`erp/credit`、`mdm/org`、`infra/audit`、`erp/inventory`、`erp/billing`、`infra/iam-casdoor`、`infra/authz`；每个升最后一位版本、行为不变、测试全过、发布 | L3 | L3 | 每个组件：测试全过、`make layout-check` 通过、发布；全部做完后外壳 `be/go-infra`、`be/go-core` 换上新版本、`make version-check` 全过 | ⬜ |
 | L5 | **Python 的 `infra/print`**：同样的分层（Python 子包、`AGENTS.md`、`itest/`） | L3 | L3 | 测试全过、布局检查通过、发布、外壳 `be/py-render` | ⬜ |
 | L6 | **真机格**：从空库起跑一个单跑格与一个外壳格（建格、种子两遍、L3 场景），确认重排没有改变行为 | L4、L5 | L4、L5 | 两个格全过 | ⬜ |
 | L7 | **SDK 与工具里的大包**：评估 `be-sdk-go` 里文件超过约 15 个的包（`tiering/` 等）与 `be-ops` 的 `internal/recovery/`：公开的接口不变，能否在包内按职责分 `internal/` 子包、配同样的每层说明；结论与做法写在这里 | L3 | L3 | 写出结论；要改的照同样的验收 | ⬜ |
+
+## L1 的结果（2026-11-07）
+
+`erp/sales` 3.0.39，分支 `layout`：入口 `sales/` 5 个文件（定义、组装、gRPC 转发、恢复核对、单元测试），`internal/` 下 12 个包（8 个业务模块、4 个共用），`itest/` 11 个文件；每个目录一份 `AGENTS.md` 与 `CLAUDE.md`。单元与集成测试全过（用例与步骤 29 个，与重排前同一份名单）；`go vet`（含 `integration`）、`gofmt`、`brickkit lint` 干净；文件清单的原型检查（`filemap-check.py`，见下）对试点通过、改坏两处（删一行文件、缺一份 `CLAUDE.md`）都报错。
+
+与上面设计不同的地方（原因）：
+
+- **资源与操作的定义没有分到各模块**，是 `internal/core` 的一张表（`core.Definitions()`）：`erp/sales` 的三种单据共用一张字段表（`documentFields`）与同一套维度，拆开要重复；模块只引用操作的常量。A160 照此写。
+- **归档（冷热分层）并进了 `orders`**（`orders/archive.go`）：数据类别读订单、订单的历史列表在订单的列表里，分开两个包会互相引用。
+- **共用的放在 `core`、`documents`、`masterdata`、`ledger`**；`core` 里有组件 ID、依赖 ID、事件类型、错误原因、审计与发件表的写法、记录类型。
+- 订单表不是“只经属主写”：订单行同时是台账，交货、出账、确认各在订单行锁下写自己的列（与原来一样，只是写明了）；`internal/AGENTS.md` 照实写。
+
+考试（一个只许读 `AGENTS.md` 与 `docs/` 的子代理，六道找代码的题：改取价、取消时加通知、交货列表加筛选、取消中的订单拒绝认领、部门移动、只跑交货的测试）：六道都找对了文件、函数与测试；它指出七处要猜的地方，已改：认领的“订单不可出账”守卫没写（补进 `docs/flows/delivery-and-billing.md` 与模块说明）、“通知意图”指什么（本组件不通知人，订阅订单事件）、交货列表的字段在哪声明、`make test` 两处说法、取价顺序哪几步在哪个函数、各步不是子测试、`docs/design.md` 的交货表缺列。
+
+顺带发现、**另起版本修**（本版只改结构）：集成测试没有覆盖草稿订单的取消，也没有覆盖出账来源对未确认或取消中的订单答 `order_not_billable`（两条都写进了 `itest/AGENTS.md` 的“没有覆盖的”）。
+
+顺带发现、已在本版修：`Makefile` 的 `test-integration` 原来是 `./sales/`，测试搬走后它会一个集成测试也不跑——改成 `./itest/`。`docs/design.md`、`docs/rules/pricing.md` 里指向旧文件的地方一并改了。
+
+做法（铺开时照用）：一个可重放的脚本从仓库的 `HEAD` 起做完整个重排（会话临时目录里的 `sales-pipeline.sh`；L3 时把通用的部分搬进 `tools/`）：
+
+1. 预拆：把要去不同包的声明按包挪进各自的文件（`mvdecl`，按 Go 的语法树挪声明连同注释）；
+2. 按类型的改写（`restructure`，基于 `go/types`）：`Module` 的方法改成先收 `*core.Base` 的函数、被别的包用到的名字导出（导出的字段带 `json:"-"`，不改编码）、跨包的引用加包名；
+3. 挪进 `internal/<包>/`，`goimports` 补导入（自定义别名要先给，否则它会选错同名的包）；
+4. 入口的 `module.go`、`checks.go`、`services.go` 手写一次；
+5. 集成测试搬进 `itest/`，按步骤拆文件。
+
+每一步后编译；最后 `go vet`、全部测试、对测试名单。改名后的说明注释第一个词跟着改（`doccap.py`）。
 
 ## 全局约束
 
