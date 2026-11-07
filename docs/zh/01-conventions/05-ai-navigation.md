@@ -190,7 +190,7 @@ Python 组件（第一个是 `infra/print`）的布局同一套，只是语言�
 
 ### 布局检查
 
-`make layout-check`（在 `make gates` 里）对每个已重建的 Go 组件核对：入口包、`internal/` 与其下每个包、`itest/` 都有 `AGENTS.md` 与只含 `@AGENTS.md` 的 `CLAUDE.md`；每份说明的“文件”一节与目录里的 `.go` 文件一一对应；入口包只有上面列出的文件；集成测试只在 `itest/`；`internal/AGENTS.md` 模块表的依赖与 `go list` 的实际导入相同；组件根的代码地图列出每个模块。
+`make layout-check`（在 `make gates` 里）对每个已重建的组件核对（Go 与 Python）：入口包、`internal/` 与其下每个包、`itest/` 都有 `AGENTS.md` 与只含 `@AGENTS.md` 的 `CLAUDE.md`；每份说明的“文件”一节与目录里的 `.go` 文件一一对应；入口包只有上面列出的文件；集成测试只在 `itest/`；`internal/AGENTS.md` 模块表的依赖与 `go list` 的实际导入相同；组件根的代码地图列出每个模块。Python 组件同样核对：入口包只有 `__init__.py`、`__main__.py`、`module.py`（资源目录除外），每个业务子包与 `itest/` 有两份说明、“文件”一节与 `.py` 文件一一对应，标了 `integration` 的测试只在 `itest/`，入口的 `AGENTS.md` 有模块表、依赖与实际的导入相同。
 
 ## 每次会话读多少
 

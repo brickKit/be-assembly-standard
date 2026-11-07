@@ -1,4 +1,5 @@
-"""layout-check.py: a rebuilt Go component is laid out by business module, with a description in every layer."""
+"""layout-check.py: a rebuilt Go or Python component is laid out by business module, with a description in every
+layer."""
 import importlib.util
 import pathlib
 
@@ -16,7 +17,7 @@ def agents(files: list[str], extra: str = "") -> str:
 def layer(d: pathlib.Path, files: list[str], extra: str = "") -> None:
     d.mkdir(parents=True, exist_ok=True)
     for f in files:
-        (d / f).write_text("package x\n")
+        (d / f).write_text("" if f.endswith(".py") else "package x\n")
     (d / "AGENTS.md").write_text(agents(files, extra))
     (d / "CLAUDE.md").write_text("@AGENTS.md\n")
 
@@ -97,3 +98,47 @@ def test_a_module_missing_from_the_maps_fails(tmp_path):
     errs = layout_check.check("erp/sales", d, lambda _d: {"orders": {"core"}, "core": set(), "ledger": set()})
     assert "erp/sales: internal/ledger has no row in internal/AGENTS.md's 模块" in errs
     assert "erp/sales: AGENTS.md does not link internal/ledger/AGENTS.md" in errs
+
+
+def py_component(root: pathlib.Path) -> pathlib.Path:
+    d = root / "components/infra/print"
+    d.mkdir(parents=True)
+    (d / "component.yaml").write_text("apiVersion: v1\nmetadata:\n  id: infra/print\n  version: 3.0.15\n")
+    (d / "pyproject.toml").write_text('[tool.hatch.build.targets.wheel]\npackages = ["infra_print"]\n')
+    (d / "AGENTS.md").write_text("# infra/print\n\n[templates](infra_print/templates/AGENTS.md) "
+                                 "[rendering](infra_print/rendering/AGENTS.md)\n")
+    table = ("\n## 模块\n\n| 包 | 一句话 | 依赖 |\n| --- | --- | --- |\n| `rendering` | renders | `templates` |\n"
+             "| `templates` | versions | — |\n")
+    for f, body in {"__init__.py": "", "__main__.py": "", "module.py": "from infra_print.rendering import render\n"}.items():
+        (d / "infra_print").mkdir(exist_ok=True)
+        (d / "infra_print" / f).write_text(body)
+    (d / "infra_print/AGENTS.md").write_text(agents(["__init__.py", "__main__.py", "module.py"], table).replace(".go", ".py"))
+    (d / "infra_print/CLAUDE.md").write_text("@AGENTS.md\n")
+    layer(d / "infra_print/templates", ["__init__.py", "store.py"])
+    layer(d / "infra_print/rendering", ["__init__.py", "render.py"])
+    (d / "infra_print/rendering/render.py").write_text("from infra_print.templates.store import Store\n")
+    layer(d / "itest", ["test_print_integration.py"])
+    (d / "itest/test_print_integration.py").write_text("import pytest\n\npytestmark = pytest.mark.integration\n")
+    (d / "tests").mkdir()
+    (d / "tests/test_rendering.py").write_text("def test_x():\n    pass\n")
+    return d
+
+
+def test_a_laid_out_python_component_passes(tmp_path):
+    d = py_component(tmp_path)
+    assert layout_check.check("infra/print", d) == []
+    assert [cid for cid, _ in layout_check.components(tmp_path)] == ["infra/print"]
+
+
+def test_a_python_component_out_of_its_layout_fails(tmp_path):
+    d = py_component(tmp_path)
+    (d / "infra_print/renderer.py").write_text("")  # business in the entry package
+    (d / "tests/test_print_integration.py").write_text("import pytest\n\n@pytest.mark.integration\ndef test_y():\n    pass\n")
+    (d / "infra_print/templates/store.py").write_text("from infra_print.rendering import render\n")  # a dependency the table does not say
+    (d / "infra_print/rendering/CLAUDE.md").unlink()
+    errs = layout_check.check("infra/print", d)
+    assert any("infra_print/renderer.py: the entry package only assembles" in e for e in errs), errs
+    assert any("tests/test_print_integration.py: integration tests are in itest/" in e for e in errs), errs
+    assert any("says templates depends on [], it imports ['rendering']" in e for e in errs), errs
+    assert any("infra_print/rendering/CLAUDE.md is missing" in e for e in errs), errs
+    assert any("infra_print/renderer.py is not in infra_print/AGENTS.md" in e for e in errs), errs
