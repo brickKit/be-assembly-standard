@@ -203,6 +203,22 @@
 - 额度占用 `order_exposure` 在预占、释放、消耗三处直接写，要收进 `limits` 的几个函数，并比对发件表事件的先后与版本号不变。
 这一类设计值得专门做，不和机械的分层混在一起。
 
+#### 顺序（2026-11-07，AI 定）
+
+先 `erp/billing`（账单的生命周期只在组件内，与 `erp/sales` 同型），再 `erp/credit` 与 `erp/inventory`（两者的分支是协议 04 参与方的同一台状态机，SF03：要不要把参与方的生命周期表放进 SDK——SDK 不得有规范之外的行为，要先在 be-protocol 写规范与向量，再写 Go 的实现、两个组件改用它；这一步单独设计），最后 `infra/authz`（决策表 `core.Decide` 已经是一张表，看记录状态的写入是不是都经 `Transition`、处置与解除能不能做成向生效点登记的种类，SF05）。不再做“前后考试”：`erp/sales` 与 `infra/authz` 两次都表明分层或集中不会让找全的读量变少，收益在检查拦住的东西上（见上）。
+
+#### `erp/billing` 的 L1b（SF04）
+
+账单的状态（`draft`、`confirmed`、`issued`、`void`）与开具后的正式化（`pending`、`done`）：判断在 `invoices`（修改、作废）、`issue`（确认认领、编号、正式化、继续作业）、`print`（只打已开具的）、`recoverycheck`（读）；写入在 `invoices.SetVoid`、`issue` 的三条 `UPDATE`。设计文档的状态表只列允许的迁移，拒绝与重复（已开具的作废、已作废的再作废、非已开具的打印、作废的再开具）只在代码里。
+
+| # | 任务 | 验收 | 状态 |
+| --- | --- | --- | --- |
+| B1 | **补测试缺口**：生命周期里业务流程走不到的格（各状态上的修改、作废、开具、打印、继续作业）在集成测试里各有一步，锁住现在的回答（含拒绝的原文） | 新测试在当前代码上第一次就过 | ⬜ |
+| B2 | **账单的生命周期一张表**（`internal/invoices/lifecycle.go`）：阶段（`draft`、`confirmed`、`issued`＝已编号、正式化未完成、`formalized`＝已编号且正式化完成、`void`）× 命令（修改、作废、开具请求、认领确认、认领到期、编号、正式化、打印、继续作业）→ 拒绝（原文）、忽略、照做、变成；`Decide`、`PhaseOf`；`Transition` 是 `invoice.state`、`formalization` 唯一的写入（带前置状态的条件更新，事件与审计照旧）；全部调用方改成查表 | 全矩阵单元测试；单元与集成测试全过；发件表的事件序列与改之前相同 | ⬜ |
+| B3 | **文档对表**：`docs/design.md` 的状态表改成与代码同一张表（每格带规则编号 BL-xx），单元测试逐格比较；规则目录的每个编号都有测试写明 | 改文档一格、改代码一格、删一个编号，各红一次 | ⬜ |
+| B4 | **结构检查**（`billing/structure_test.go`，照 `erp/sales`）：`lifecycle.go` 以外不比较账单状态、不写 `invoice.state` 与 `formalization`；别处 SQL 读账单状态的登记到函数 | 每条各改坏一次都红 | ⬜ |
+| B5 | **说明**：各层 `AGENTS.md` 写“账单的状态只在这里”与“加状态或命令时怎样做”；版本发布 | `make layout-check`、`brickkit lint`、发布 | ⬜ |
+
 ### 铺开期间的版本
 
 每个组件分层后照常发布；**外壳 `be/go-core`、`be/go-infra` 与依赖方的钉版本在 L4 全部做完后统一换一次**（L4b，不为每个组件各发一次外壳）。所以到 L4b 之前 `make pin-check` 只会因为“依赖方或外壳钉着分层之前的版本”而红。依赖方（`erp/sales`、`erp/credit`、`erp/inventory`、`erp/billing` 对主数据与彼此的依赖）也在 L4b 统一换（原来写 `erp/billing` 对 `erp/sales` 的依赖在它分层的那一版换；之后主数据组件也都发了新版本，统一到末尾一次做）。
