@@ -33,7 +33,7 @@
 | T6 | 长时间推演（S1，第一条端到端路径通了就写）：Python 成员多副本、外壳里两个成员，作业与事件在崩溃点上注入故障、终态核对；之后每个任务往里加自己的崩溃点 | 第 5 项复盘 S1 | T4、T5 | 推演跑一轮 30 分钟通过，原始数据在 `foundations-06-data/` | ✅ 2026-11-07（见“T6 的结果”） |
 | T7 | 水位来源（第 09 章的来源一侧，P9.13–P9.18）与它必须声明的记录读取 `RecordService`（P9.30–P9.33：水位来源的流必须声明，2026-11-07 读条款时补进范围；消费一侧仍不在首批）：探针的 `_wm` 流、`WatermarkService/Pull` 与记录读取；水位来源剖面对 Python 跑 | 第 09 章 | T5 | CK-WM-01…03 对 Python 通过；向量 `watermark-pull-check` | ✅ 2026-11-07（见“T7 的结果”） |
 | T8 | 证据与运行档案（第 12 章）、对外命令（第 13 章，含幂等键 P4.21–P4.25 若付款要用）：探针的付款去掉 A144 的例外；对外命令剖面对 Python 跑 | 第 12、13 章，A144 | T4 | 对外命令剖面对 Python 通过；推演加对外命令的崩溃点 | ✅ 2026-11-07（见“T8 的结果”） |
-| T9 | 恢复核对（第 14 章）与恢复操作：`CheckService`、`ReconcileService`、`<前缀>.recover`；`infra/print` 换上新 SDK，补恢复阶段与核对（模板按版本答“还在不在”）；外壳 `be/py-render` | 第 14 章、P1.23 | T8 | SDK 测试；`infra/print` 的集成测试；一次整套恢复演练里 Python 成员参加各阶段而不是被停下 | ⬜ |
+| T9 | 恢复核对（第 14 章）与恢复操作：`CheckService`、`ReconcileService`、`<前缀>.recover`；`infra/print` 换上新 SDK，补恢复阶段与核对（模板按版本答“还在不在”）；外壳 `be/py-render` | 第 14 章、P1.23 | T8 | SDK 测试；`infra/print` 的集成测试；一次整套恢复演练里 Python 成员参加各阶段而不是被停下 | ✅ 2026-11-07（见“T9 的结果”；整套恢复演练里 Python 成员参加各阶段随 T11 的真机格，门槛 F4） |
 | T10 | 转层（第 15 章）：先定 T2b、T2c；T10a 规划、摘要、清单的向量（第 5 项门槛 G1 的 Python 部分）；T10b 目录、封存与写屏障；T10c 复制校验发布、释放；T10d 读取、保全、销毁与擦除、路线更换、恢复核对；探针的归档；转层剖面对 Python 跑；推演加转层的崩溃点 | 第 15 章、第 5 项 gate.md 的 G1 | T6、T9 | 向量全过；转层剖面对 Python 通过；第三方读取器读 Python 写的冷层算出同一摘要；推演通过 | ⬜ |
 | T11 | 真机格（S4：新脚本先在开着的格上逐步跑）：Python 成员单跑与进外壳两格，业务链 L3 与套件剖面；整套恢复演练里 Python 成员参加 | 实验计划的格 | T9、T10 | 两格全过；演练通过 | ⬜ |
 | T12 | 收尾：`gate.md` 逐条核对；SF27 的 Python 部分（互通测试换现行 Go SDK）；COMPAT；复盘；kb（T2b 的实测、这一项的反馈） | 全部 | 全部 | 门槛表全部“有”或写明转出 | ⬜ |
@@ -124,4 +124,14 @@
 - **推演**（a58：对外命令的 6 个崩溃点；每个订单在同一事务里另请求一笔付款，外部系统是不去重的表）：30 分钟 5050 个订单、89 次强杀、23/23 个崩溃点、0 个问题；15 笔付款进了 `manual`，都是认领与发出之间崩溃、外部一次也没收到（`t8/sim.log`）。a58 不改行为（崩溃点平时不做事），部署的成员留在 a57。
 - **连锁**：`infra/print` 3.0.21，`erp/billing`、`be/go-core`、`be/py-render` 经 `python-cascade.sh`（SDK a57、探针 3.2.48）。
 - **留给后面的**：Python 探针仍声明运行档案与转层的键而不读（Go 探针的归档要它们，A144 的这一半随 T10 的转层去掉）；推演里证据的崩溃点（意图、结论）没有加：推演的成员不写证据，T9 的 `infra/print` 也不写，等第一个写证据的 Python 组件。
+
+## T9 的结果（2026-11-07）
+
+- **be-sdk-python a59**：整套恢复的核对 `be.recovery.v1.CheckService`（`besdk/recovery`）：`Check`（SDK 自带的投影、消费者纪元、审计积压三项与组件登记的检查，每次读都在总是回滚的事务里，跑不起来的答 `unprovable`），`Present`（按组件登记的对象存在问题答 `present`、`older`、`absent`；没登记的类型答 `CAPABILITY_UNSUPPORTED`），`Numbers` 与 `AdvanceNumbers`（连续单号的已用最大值，只提不降，跨过的空号由属主在同一事务作废；`besdk/db/docno.py` 补了 `continuous_maxima`、`raise_continuous`）。和 Go 一样，有数据库的成员都要声明 `Definition.recovery`；SDK 自己的测试里带数据库的成员因此都接上了测试部署的服务身份与操作（`besdk.testing.recovering`）。
+- **测试**：与 be-sdk-go 同名的 3 个集成测试，改坏 8 处全红；“没声明恢复操作起不来”一个。
+- **顺带查出、修好的**：`EnvSource` 读文件不关；测试部署的 JWKS 服务器不关监听套接字；启动器在开端口之前退出时不收拾已建的系统面与出站通道；`test_ahead_and_beyond_the_retention` 假定 6 个随机事件里分区 0 至少分到两个（约九次一次只分到一个，T9 的整套运行里撞上两次），改为一直发到两个分区都有两行。
+- **注意到但没动**：`test_db_hosting` 的“数据库凭据错误退出”在 pytest 里结束时打出 `Error in sys.excepthook`（不让测试失败）；同样的路径在 pytest 之外跑，退出干净。修了上面三处之后仍在，像是 pytest 的事件循环收尾与 gRPC 对象的回收顺序。
+- **`infra/print` 3.0.22**：声明 `infra.print.system.recover`，模板按当前版本答“还在不在”（审计的模板编辑以它设成当前的版本为目标）；集成测试以恢复工具的身份问、以别的组件的身份被拒。套件 `prepare.py` 加了这个键（`authz-keys-check` 两向核对）。
+- **探针**：Python 探针 3.2.49（a59，`CheckService` 由 SDK 挂上）；套件 1.0.72。
+- **留给 T11**：一次整套恢复演练里 Python 成员参加各阶段（门槛 F4）。
 

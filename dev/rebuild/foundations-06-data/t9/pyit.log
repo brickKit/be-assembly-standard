@@ -1,0 +1,36 @@
+........................................................................ [ 43%]
+.........F.............................................................. [ 87%]
+.....................                                                    [100%]
+=================================== FAILURES ===================================
+_____________________ test_ahead_and_beyond_the_retention ______________________
+
+    async def test_ahead_and_beyond_the_retention():  # P6.38, P6.12
+        d, pool, p = await source("py_rs2")
+        try:
+            original = await published("py_rs2", d, p)
+            e = await epoch_of("py_rs2")
+            last0 = max(int(m.headers["ce-beseq"]) for m in original if m.headers["ce-bepartition"] == "0")
+            out = Recording()
+            r = Resender(d, p, out, "demo/py_rs2", IMPL, LOG)
+            resp = await r.Resend(request({0: (IMPL, e, last0 + 5), 1: (IMPL, "999.1", 1)}), None)
+            assert list(resp.ahead) == [0, 1], "past the counter; an epoch the partition never had"
+            assert resp.resent == 0 and out.sent == []
+    
+            a = await pgtest.admin()
+            await a.execute("UPDATE py_rs2.be_outbox SET published_at = now() - interval '30 days' WHERE partition = 0 "
+                            "AND seq <= 2")
+            await a.close()
+>           assert await purge(d, retention=3600) == 2
+E           assert 1 == 2
+
+tests/test_resend_integration.py:101: AssertionError
+=========================== short test summary info ============================
+FAILED tests/test_resend_integration.py::test_ahead_and_beyond_the_retention
+1 failed, 164 passed, 319 deselected in 219.01s (0:03:39)
+Error in sys.excepthook:
+
+Original exception was:
+Error in sys.excepthook:
+
+Original exception was:
+PYIT EXIT 1

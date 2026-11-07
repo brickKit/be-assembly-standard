@@ -66,8 +66,8 @@
 | 行 | 要证明 | 任务 | 状态 |
 | --- | --- | --- | --- |
 | F1 | P1.23 各阶段的运行：用户面答 `MAINTENANCE`，转发、订阅、作业（含 SDK 自带的）按阶段停或运行：SDK 测试 | T3 | 有（用户面、转发、订阅、审计转运、就绪与自述、外壳）：`test_recovery_phases_integration::test_the_recovery_phases`、`test_shell::test_a_shell_in_recovery`、`test_a_member_without_a_phase_runs_in_the_shells_phase`；改坏 4 处（冻结时照样转发、照样订阅、忽略 `read_only_open`、外壳端口不带阶段）都红；作业一半随 T4 |
-| F2 | `CheckService`（P14.1）与 `ReconcileService` 的登记、只许恢复工具：SDK 测试；探针的 `<前缀>.recover` | T9 | 未做 |
-| F3 | `infra/print` 的恢复阶段与核对（模板按版本答“还在不在”） | T9 | 未做 |
+| F2 | `CheckService`（P14.1）与 `ReconcileService` 的登记、只许恢复工具：SDK 测试；探针的 `<前缀>.recover` | T9 | 有：be-sdk-python a59 的 `CheckService`（3 个集成测试：检查、对象是否还在、单号；改坏 8 处全红），有数据库的成员都要声明 `Definition.recovery`（`test_a_member_with_a_database_declares_its_recovery_operation`）；`ReconcileService` 随 a57（T8）；只许恢复工具由 `infra/print` 的集成测试核对（别的组件答 `PERMISSION_DENIED`）；Python 探针 3.2.48 起声明 `<前缀>.recover`，3.2.49 在 a59 上答 `CheckService` |
+| F3 | `infra/print` 的恢复阶段与核对（模板按版本答“还在不在”） | T9 | 有：`infra/print` 3.0.22（操作 `infra.print.system.recover`，`test_a_full_recoverys_checks`：当前版本答还在、更高的答更低、不存在的答不在、别的组件被拒）；恢复阶段在 3.0.18 起声明 `RECOVERY_PHASE`，阶段行为由 SDK（T3） |
 | F4 | 一次整套恢复演练里 Python 成员参加各阶段，不被停下 | T11 | 未做 |
 
 ## G. 转层（第 15 章）
