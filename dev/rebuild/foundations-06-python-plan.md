@@ -137,7 +137,7 @@
 
 ## T10 的进度（进行中，2026-11-07 夜）
 
-- **T2b（Parquet 库）**：适配初筛（`foundations-06-data/t10/parquet-bench/`）：`fastparquet` 没有 cp315 的二进制包（依赖 `thriftpy2`），筛掉；`polars` 2.1.0 写不出 UUID 与 JSON 两种逻辑类型（与 Go 写的文件结构不同）；`pyarrow` 26.0.1 与 `duckdb` 2.0.0（经 Arrow 取数据，交回 Python 要 `pytz`）都写得出与 Go 相同的逻辑类型。装好的体积：pyarrow 166 MB、polars 180 MB、duckdb 67 MB（另要 pyarrow）。性能实测（`run.sh`，性能模式、三者按轮交替）排在夜间写屏障测量之后自动起跑（`after-barrier.sh`）。注意：套件的第三方读取器 `tierread.py` 用 pyarrow，SDK 也用 pyarrow 时读写共用一套实现，独立性靠 Go 写的文件与 pyarrow 读的互通测试保留。
+- **T2b（Parquet 库）**：适配初筛（`foundations-06-data/t10/parquet-bench/`）：`fastparquet` 没有 cp315 的二进制包（依赖 `thriftpy2`），筛掉；`polars` 2.1.0 写不出 UUID 与 JSON 两种逻辑类型（与 Go 写的文件结构不同）；`pyarrow` 26.0.1 与 `duckdb` 2.0.0（经 Arrow 取数据，交回 Python 要 `pytz`）都写得出与 Go 相同的逻辑类型。装好的体积：pyarrow 166 MB、polars 180 MB、duckdb 67 MB（另要 pyarrow）。性能实测（`run.sh`，性能模式、三者按轮交替）还没测：原定接在夜间写屏障测量之后自动起跑，维护者 2026-11-08 00:15 两项一起取消、留到下次（跑法写在交接 `README.md`）。注意：套件的第三方读取器 `tierread.py` 用 pyarrow，SDK 也用 pyarrow 时读写共用一套实现，独立性靠 Go 写的文件与 pyarrow 读的互通测试保留。
 - **T10a 完成**：`besdk/tiering/rows.py`、`manifest.py`、`plan.py`，向量 tier-digest 17、tier-manifest 2、tier-plan 21 全过（a60 未发布，本地提交）。
 - **T10b、T10c 完成**（本地提交）：目录、封存、写屏障（`catalog.py`、`member.py`、`barrier.py`）；复制、对象存储、Parquet、发布、释放（`store.py`、`parquet.py`、`transfer.py`、`release.py`），集成测试：封存 5、转层 5、释放 1。
 - **T10d 已写、未测**（2026-11-08 00:30 前暂停，维护者叫停；本地提交，未发布）：`reads.py`（按键读、快照与租约、冷单元、解冻）、`reroute.py`（重写、换路线、旧版本释放、结构转换、`check_readable`）、`holds.py`、`destroy.py`（含重放、`continue_releases`）、`erase.py`（含重放与 `be.tiering.erase`）、`history.py`（历史读取、导出与清理）、`check.py`（恢复核对 be.tiering）；`authz.Subject.decider`（Go 的 `Decider`）；`transfer.Passthrough`（StaleClaim、Verification 与擦除的 `_Held` 穿过目录事务原样抛出）。只验证了能导入。
