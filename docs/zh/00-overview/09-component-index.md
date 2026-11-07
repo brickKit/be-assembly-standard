@@ -19,7 +19,7 @@
 | `infra/workflow` | 统一待办（不含流程引擎） | 当前重建 | — | [infra.md](../07-components/infra.md#infraworkflow) | — | 身份（`infra/iam-*`）、`infra/authz` | — |
 | `infra/notification` | 通知意图、偏好与通道路由 | 当前重建 | — | [infra.md](../07-components/infra.md#infranotification) | — | 身份（`infra/iam-*`）、`infra/authz` | — |
 | `infra/attachment` | 附件元数据、处理状态与授权协作 | 当前重建 | — | [infra.md](../07-components/infra.md#infraattachment) | — | 身份（`infra/iam-*`）、`infra/authz` | `hrm/expense` |
-| `infra/print` | 单据与标签渲染 | 当前重建 | 3.0.15 | [infra.md](../07-components/infra.md#infraprint) | [BRICKKIT](../../../components/infra/print/BRICKKIT.md) · [AGENTS](../../../components/infra/print/AGENTS.md) · [design](../../../components/infra/print/docs/design.md) | 身份（`infra/iam-*`）、`infra/authz` | — |
+| `infra/print` | 单据与标签渲染 | 当前重建 | 3.0.16 | [infra.md](../07-components/infra.md#infraprint) | [BRICKKIT](../../../components/infra/print/BRICKKIT.md) · [AGENTS](../../../components/infra/print/AGENTS.md) · [design](../../../components/infra/print/docs/design.md) | 身份（`infra/iam-*`）、`infra/authz` | — |
 | `infra/audit` | 业务审计的集中保存与查询；兼任独立证据存储 | 当前重建 | 3.0.36 | [infra.md](../07-components/infra.md#infraaudit) | [BRICKKIT](../../../components/infra/audit/BRICKKIT.md) · [AGENTS](../../../components/infra/audit/AGENTS.md) · [design](../../../components/infra/audit/docs/design.md) | 身份（`infra/iam-*`）、`infra/authz` | — |
 | `infra/bff-mobile` | 移动端展示聚合 | 当前重建 | — | [infra.md](../07-components/infra.md#infrabff-mobile) | — | 身份（`infra/iam-*`） | `frontend/mobile` |
 | `infra/dlq-monitor` | 死信观察、处理与审计 | 远期 | — | [infra.md](../07-components/infra.md#infradlq-monitor) | — | 身份（`infra/iam-*`）、`infra/authz` | — |
@@ -53,7 +53,7 @@
 | `erp/finance` | 总账、应收应付（含预收、预付、员工借款）、付款认领、核销、外币重估与期末暂估、维度目录与递延、会计期间；应付内部的供应商票据匹配 | 当前重建 | — | [erp-finance.md](../07-components/erp-finance.md#erpfinance) | — | `mdm/org`、`mdm/partner`、`mdm/currency`、身份（`infra/iam-*`）、`infra/authz` | `erp/consolidation` |
 | `erp/credit` | 信用政策、额度与信用占用 | 当前重建 | 3.0.33 | [erp-finance.md](../07-components/erp-finance.md#erpcredit) | [BRICKKIT](../../../components/erp/credit/BRICKKIT.md) · [AGENTS](../../../components/erp/credit/AGENTS.md) · [design](../../../components/erp/credit/docs/design.md) | `mdm/partner`、`mdm/org`、`mdm/currency`、身份（`infra/iam-*`）、`infra/authz` | — |
 | `erp/costing` | 存货计价与成本子账；暂估、到岸成本、工单成本与差异、退货冲回 | 当前重建 | — | [erp-finance.md](../07-components/erp-finance.md#erpcosting) | — | `erp/inventory`、`mdm/product`、`mdm/org`、`mdm/currency`、身份（`infra/iam-*`）、`infra/authz` | — |
-| `erp/billing` | 客户账单与商业发票 | 当前重建 | 3.0.42 | [erp-finance.md](../07-components/erp-finance.md#erpbilling) | [BRICKKIT](../../../components/erp/billing/BRICKKIT.md) · [AGENTS](../../../components/erp/billing/AGENTS.md) · [design](../../../components/erp/billing/docs/design.md) | `mdm/partner`、`mdm/org`、`mdm/currency`、身份（`infra/iam-*`）、`infra/authz` | — |
+| `erp/billing` | 客户账单与商业发票 | 当前重建 | 3.0.43 | [erp-finance.md](../07-components/erp-finance.md#erpbilling) | [BRICKKIT](../../../components/erp/billing/BRICKKIT.md) · [AGENTS](../../../components/erp/billing/AGENTS.md) · [design](../../../components/erp/billing/docs/design.md) | `mdm/partner`、`mdm/org`、`mdm/currency`、身份（`infra/iam-*`）、`infra/authz` | — |
 | `erp/payment` | 收付款业务与银行／渠道对账 | 当前重建 | — | [erp-finance.md](../07-components/erp-finance.md#erppayment) | — | `mdm/partner`、`mdm/org`、`mdm/currency`、身份（`infra/iam-*`）、`infra/authz` | — |
 | `erp/consolidation` | 集团结构、抵销、外币报表折算与合并报表（D72） | 远期 | — | [erp-finance.md](../07-components/erp-finance.md#erpconsolidation) | — | `erp/finance`、`mdm/org`、`mdm/currency`、身份（`infra/iam-*`）、`infra/authz` | — |
 | `erp/tax` | 税计算 | 远期 | — | [erp-finance.md](../07-components/erp-finance.md#erptax) | — | `mdm/org`、`mdm/partner`、`mdm/product`、身份（`infra/iam-*`）、`infra/authz` | — |
@@ -124,9 +124,9 @@
 
 | 外壳 | 版本 | 编进的成员 | 文档 |
 | --- | --- | --- | --- |
-| `be/go-core` | 3.0.69 | `test/probe-go@3.2.49`、`test/probe-go2@3.2.49`、`test/probe-go3@3.2.49`、`test/probe-go4@3.2.49`、`erp/inventory@3.0.33`、`erp/credit@3.0.33`、`erp/sales@3.0.42`、`erp/billing@3.0.42` | [BRICKKIT](../../../shell/be/go-core/BRICKKIT.md) · [AGENTS](../../../shell/be/go-core/AGENTS.md) |
-| `be/go-infra` | 3.0.69 | `test/probe-go@3.2.49`、`test/probe-go2@3.2.49`、`test/probe-go3@3.2.49`、`test/probe-go4@3.2.49`、`infra/iam-casdoor@3.0.41`、`infra/authz@3.0.44`、`infra/audit@3.0.36`、`mdm/org@3.0.32`、`mdm/currency@3.0.31`、`mdm/partner@3.0.35`、`mdm/product@3.0.34` | [BRICKKIT](../../../shell/be/go-infra/BRICKKIT.md) · [AGENTS](../../../shell/be/go-infra/AGENTS.md) |
-| `be/py-render` | 3.0.42 | `test/probe-py@3.2.42`、`test/probe-py2@3.2.42`、`infra/print@3.0.15` | [BRICKKIT](../../../shell/be/py-render/BRICKKIT.md) · [AGENTS](../../../shell/be/py-render/AGENTS.md) |
+| `be/go-core` | 3.0.71 | `test/probe-go@3.2.50`、`test/probe-go2@3.2.50`、`test/probe-go3@3.2.50`、`test/probe-go4@3.2.50`、`erp/inventory@3.0.33`、`erp/credit@3.0.33`、`erp/sales@3.0.42`、`erp/billing@3.0.43` | [BRICKKIT](../../../shell/be/go-core/BRICKKIT.md) · [AGENTS](../../../shell/be/go-core/AGENTS.md) |
+| `be/go-infra` | 3.0.70 | `test/probe-go@3.2.50`、`test/probe-go2@3.2.50`、`test/probe-go3@3.2.50`、`test/probe-go4@3.2.50`、`infra/iam-casdoor@3.0.41`、`infra/authz@3.0.44`、`infra/audit@3.0.36`、`mdm/org@3.0.32`、`mdm/currency@3.0.31`、`mdm/partner@3.0.35`、`mdm/product@3.0.34` | [BRICKKIT](../../../shell/be/go-infra/BRICKKIT.md) · [AGENTS](../../../shell/be/go-infra/AGENTS.md) |
+| `be/py-render` | 3.0.43 | `test/probe-py@3.2.43`、`test/probe-py2@3.2.43`、`infra/print@3.0.16` | [BRICKKIT](../../../shell/be/py-render/BRICKKIT.md) · [AGENTS](../../../shell/be/py-render/AGENTS.md) |
 
 ## 事件
 

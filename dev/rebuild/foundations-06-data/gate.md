@@ -6,10 +6,10 @@
 
 | 行 | 要证明 | 任务 | 状态 |
 | --- | --- | --- | --- |
-| A1 | 核心剖面（`profile/checks.py`：CK-CF-03、CK-LC-08、10、12、14、CK-DB-09、CK-EV-09、CK-OBS-01…05）对 Python 探针单跑与外壳 | T3 | 未做 |
-| A2 | 身份剖面 CK-ID-01…06 对 Python | T3 | 未做 |
-| A3 | 授权剖面 CK-AZ-01…05 对 Python | T3 | 未做 |
-| A4 | Python SDK 已实现的能力对现行协议的向量全过（协议副本换到现行，`make protocol-check`） | T3 | 未做 |
+| A1 | 核心剖面（`profile/checks.py`：CK-CF-03、CK-LC-08、10、12、14、CK-DB-09、CK-EV-09、CK-OBS-01…05）对 Python 探针单跑与外壳 | T3 | 有：套件 1.0.66 的 `make probes`（192 个全过，Python 探针 3.2.43 在 be-sdk-python a52 上，`tests/test_profile.py`） |
+| A2 | 身份剖面 CK-ID-01…06 对 Python | T3 | 有：同上（`tests/test_identity_profile.py`） |
+| A3 | 授权剖面 CK-AZ-01…05 对 Python | T3 | 有：同上（`tests/test_authz_profile.py`） |
+| A4 | Python SDK 已实现的能力对现行协议的向量全过（协议副本换到现行，`make protocol-check`） | T3 | 有：a52 的协议副本是 alpha.116；`make test` 176 个、`make test-integration` 94 个全过；补上的是错误原因 `RECORD_SEALED`（含 `BE001`）与 `MAINTENANCE` |
 
 ## B. 事件（第 06 章）
 
@@ -64,7 +64,7 @@
 
 | 行 | 要证明 | 任务 | 状态 |
 | --- | --- | --- | --- |
-| F1 | P1.23 各阶段的运行：用户面答 `MAINTENANCE`，转发、订阅、作业（含 SDK 自带的）按阶段停或运行：SDK 测试 | T3 | 未做 |
+| F1 | P1.23 各阶段的运行：用户面答 `MAINTENANCE`，转发、订阅、作业（含 SDK 自带的）按阶段停或运行：SDK 测试 | T3 | 有（用户面、转发、订阅、审计转运、就绪与自述、外壳）：`test_recovery_phases_integration::test_the_recovery_phases`、`test_shell::test_a_shell_in_recovery`、`test_a_member_without_a_phase_runs_in_the_shells_phase`；改坏 4 处（冻结时照样转发、照样订阅、忽略 `read_only_open`、外壳端口不带阶段）都红；作业一半随 T4 |
 | F2 | `CheckService`（P14.1）与 `ReconcileService` 的登记、只许恢复工具：SDK 测试；探针的 `<前缀>.recover` | T9 | 未做 |
 | F3 | `infra/print` 的恢复阶段与核对（模板按版本答“还在不在”） | T9 | 未做 |
 | F4 | 一次整套恢复演练里 Python 成员参加各阶段，不被停下 | T11 | 未做 |
@@ -84,7 +84,7 @@
 | --- | --- | --- | --- |
 | H1 | 长时间推演（第 5 项复盘 S1）：Python 多副本、外壳两个成员，崩溃点、终态核对，30 分钟一轮通过 | T6 | 未做 |
 | H2 | 真机格：Python 成员单跑与进外壳两格，业务链 L3 与套件剖面；新脚本先在开着的格上逐步跑（S4） | T11 | 未做 |
-| H3 | SF27 的 Python 部分：互通测试的 Go 小程序换上现行的 Go SDK | T12 | 未做 |
-| H4 | `be-sdk-python` 的 `AGENTS.md`（分层 L7 转来） | T3 | 未做 |
-| H5 | Python 成员只用一个 `be-sdk` 版本的检查（pin-check） | T3 | 未做 |
+| H3 | SF27 的 Python 部分：互通测试的 Go 小程序换上现行的 Go SDK | T3 | 有：三个小程序换到 be-sdk-go alpha.117（协议 alpha.116，`test_the_go_interop_helpers_pin_the_same_protocol`）；`goevents` 按 Go 现行的要求补了恢复操作、补发操作与授权定义，测试给它 `world` 的服务身份；互通与安全的集成测试 9 个全过 |
+| H4 | `be-sdk-python` 的 `AGENTS.md`（分层 L7 转来） | T3 | 有：`AGENTS.md` 与 `CLAUDE.md`（a52） |
+| H5 | Python 成员只用一个 `be-sdk` 版本的检查（pin-check） | T3 | 有：`pin-check.py` 的 `one_python_sdk`（3 个单元测试）；对现状报出 `infra/print` 停在 a48（SF29），T3 的连锁发版后为 0 |
 | H6 | `features.json` 如实：做了的“已验证”，范围外的“未实现”且写明理由（T2a） | T12 | 未做 |

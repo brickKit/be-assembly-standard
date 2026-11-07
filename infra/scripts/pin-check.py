@@ -21,6 +21,9 @@ across the system together, and be-ops stayed at alpha.116 when everything else 
 did not list it). be-edge's tests (tools/be-edge/tests) count too: they check the plugin against the SDK's identity
 stand-ins, so they use the version the system runs. be-sdk-python's interop helpers do not: they pin the Go SDK of
 the protocol the Python SDK implements (it catches up in foundations item 6).
+The deployed Python modules require one be-sdk version the same way: each Python component and the Python probe
+pins a tag in [tool.uv.sources], a Python shell pins its process's SDK in override-dependencies (and the same tag
+in its sources); infra/print ran alone on a48 while the probes and the shell were on a51, and nothing said so.
 Only rebuilt components count (major version 3); the 2.x leftovers and the frozen shells are skipped.
 Usage: pin-check.py [root]   (exits 1 when a reference is stale)"""
 from __future__ import annotations
@@ -117,6 +120,34 @@ def one_sdk(root: pathlib.Path) -> list[str]:
             for v, fs in sorted(found.items()) if v != common for f in fs]
 
 
+OVERRIDE_TAG = re.compile(r"^be-sdk\s*@\s*git\+\S+@(\S+)$")
+
+
+def one_python_sdk(root: pathlib.Path) -> list[str]:
+    """The deployed Python modules (components, the Python probe, the Python shells) all pin the same be-sdk tag."""
+    found: dict[str, list[str]] = {}
+    out = []
+    files = [*root.glob("components/*/*/pyproject.toml"), *root.glob("shell/be/*/pyproject.toml"),
+             root / "tools/be-acceptance/probes/py/pyproject.toml"]
+    for f in sorted(files):
+        if not f.exists() or str(f.parent.relative_to(root)) in FROZEN:
+            continue
+        data = tomllib.loads(f.read_text())
+        rel = str(f.relative_to(root))
+        tag = data.get("tool", {}).get("uv", {}).get("sources", {}).get("be-sdk", {}).get("tag", "")
+        for o in data.get("tool", {}).get("uv", {}).get("override-dependencies", []):
+            if (m := OVERRIDE_TAG.match(o.replace(" ", ""))) and m.group(1) != tag:
+                out.append(f"{rel}: the override pins be-sdk {m.group(1)}, the sources {tag}; the shell's process runs "
+                           "the override")
+        if tag:
+            found.setdefault(tag, []).append(rel)
+    if len(found) > 1:
+        common = max(found, key=lambda v: len(found[v]))
+        out += [f"{f}: be-sdk {v}, the rest of the system is on {common}; upgrade it with the others"
+                for v, fs in sorted(found.items()) if v != common for f in fs]
+    return out
+
+
 SDK_TAG = re.compile(r"^v?3\.0\.0a(\d+)$")
 
 
@@ -141,7 +172,7 @@ def suite_sdk(root: pathlib.Path) -> list[str]:
 
 def main() -> int:
     root = pathlib.Path(sys.argv[1] if len(sys.argv) > 1 else pathlib.Path(__file__).resolve().parents[2])
-    stale = check(root) + suite_sdk(root) + one_sdk(root)
+    stale = check(root) + suite_sdk(root) + one_sdk(root) + one_python_sdk(root)
     for s in stale:
         print(f"stale: {s}")
     print(f"pin-check: {len(stale)} stale reference(s)")

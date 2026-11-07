@@ -88,3 +88,44 @@ def test_the_edge_tests_count(tmp_path):
     sdk_gomod(tmp_path, "tools/be-edge/tests", "v3.0.0-alpha.56")
     out = pin_check.one_sdk(tmp_path)
     assert len(out) == 1 and "tools/be-edge/tests/go.mod" in out[0]
+
+
+def py_member(root: pathlib.Path, rel: str, tag: str) -> None:
+    d = root / rel
+    d.mkdir(parents=True, exist_ok=True)
+    (d / "pyproject.toml").write_text(f'[project]\nname = "m"\nversion = "3.0.0"\ndependencies = ["be-sdk>={tag[1:]}"]\n'
+                                      f'[tool.uv.sources]\nbe-sdk = {{ git = "https://x/be-sdk-python", tag = "{tag}" }}\n')
+
+
+def py_shell(root: pathlib.Path, rel: str, tag: str) -> None:
+    d = root / rel
+    d.mkdir(parents=True, exist_ok=True)
+    (d / "pyproject.toml").write_text(f'[project]\nname = "s"\nversion = "3.0.0"\ndependencies = ["be-sdk"]\n'
+                                      f'[tool.uv]\noverride-dependencies = ["be-sdk @ git+https://x/be-sdk-python@{tag}"]\n'
+                                      f'[tool.uv.sources]\nbe-sdk = {{ git = "https://x/be-sdk-python", tag = "{tag}" }}\n')
+
+
+def test_one_python_sdk_passes(tmp_path):
+    py_member(tmp_path, "components/infra/print", "v3.0.0a52")
+    py_member(tmp_path, "tools/be-acceptance/probes/py", "v3.0.0a52")
+    py_shell(tmp_path, "shell/be/py-render", "v3.0.0a52")
+    assert pin_check.one_python_sdk(tmp_path) == []
+
+
+def test_a_python_member_on_an_older_sdk_fails(tmp_path):
+    py_member(tmp_path, "components/infra/print", "v3.0.0a48")
+    py_member(tmp_path, "tools/be-acceptance/probes/py", "v3.0.0a51")
+    py_shell(tmp_path, "shell/be/py-render", "v3.0.0a51")
+    out = pin_check.one_python_sdk(tmp_path)
+    assert len(out) == 1 and "components/infra/print/pyproject.toml" in out[0] and "v3.0.0a48" in out[0]
+
+
+def test_a_shell_whose_override_differs_from_its_source_fails(tmp_path):
+    py_member(tmp_path, "tools/be-acceptance/probes/py", "v3.0.0a52")
+    d = tmp_path / "shell/be/py-render"
+    d.mkdir(parents=True)
+    (d / "pyproject.toml").write_text('[project]\nname = "s"\nversion = "3.0.0"\ndependencies = ["be-sdk"]\n'
+                                      '[tool.uv]\noverride-dependencies = ["be-sdk @ git+https://x/be-sdk-python@v3.0.0a51"]\n'
+                                      '[tool.uv.sources]\nbe-sdk = { git = "https://x/be-sdk-python", tag = "v3.0.0a52" }\n')
+    out = pin_check.one_python_sdk(tmp_path)
+    assert any("override" in o for o in out), out
