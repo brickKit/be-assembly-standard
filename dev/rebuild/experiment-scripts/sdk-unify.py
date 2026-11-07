@@ -12,8 +12,10 @@ environment of itenv.sh and iamenv.sh, secrets never printed); a status line at 
 implementation status; `brickkit lint`; commit, push, `brickkit release --notes-file`. A failure stops the run there:
 fix it and go on with --from ID (the components before it are done). Still by hand after it: the Go probe (probes/go
 to the SDK, its version up, variants.py, `make check`, `make probes`, brickkit release for go…go4, the suite's v1.0.x
-tag), the shells be/go-infra and be/go-core (members' versions, the probe, the SDK; tests; release), `make
-docs-index`, `make version-check` and the parent repository's commit.
+tag), the shells be/go-infra and be/go-core (members' versions, the probe, the SDK; tests; release), the recovery
+tool tools/be-ops (the SDK, `go test -race ./...`, the integration tests of internal/recovery, an annotated tag
+v3.0.0-alpha.N+1), `make docs-index`, `make version-check` (pin-check's one-SDK check names whatever was left
+behind) and the parent repository's commit.
 --dry-run prints the order and the versions and changes nothing. Output: one line per step ("UNIFY <id> ..."), and
 "UNIFY ALL-DONE" (or "UNIFY FAILED <id> <stage>") last: run it in the background with a monitor (f-longrun).
 """

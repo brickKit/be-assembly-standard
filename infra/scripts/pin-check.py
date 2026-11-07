@@ -15,6 +15,10 @@ A Python component's pyproject.toml beside its component.yaml must agree with it
 The conformance suite (tools/be-acceptance/conformance) pins the Python SDK too: its test deployment (besdk.testing)
 stands in for the identity provider and the members the probes talk to, so it is never older than the SDK any Python
 probe pins (the suite stayed at a20 while the probes were at a44, and its tokens lacked what newer SDKs require).
+Every deployed Go module requires one be-sdk-go/v3 version: the components, the shells, the Go probe and the recovery
+tool be-ops (it runs in the deployment's network and writes the run profile the members read); the SDK is upgraded
+across the system together, and be-ops stayed at alpha.116 when everything else moved to alpha.117 (the unify tool
+did not list it). The test fixtures of other tools (be-sdk-python's interop tests, be-edge's tests) are not deployed.
 Only rebuilt components count (major version 3); the 2.x leftovers and the frozen shells are skipped.
 Usage: pin-check.py [root]   (exits 1 when a reference is stale)"""
 from __future__ import annotations
@@ -91,6 +95,26 @@ def check(root: pathlib.Path) -> list[str]:
     return stale
 
 
+SDK_REQUIRE = re.compile(r"^\s*(?:require\s+)?github\.com/brickKit/be-sdk-go/v3 (v\S+)(?!.*// indirect)", re.M)
+
+
+def one_sdk(root: pathlib.Path) -> list[str]:
+    """The deployed Go modules all require the same be-sdk-go/v3 version."""
+    files = [*root.glob("components/*/*/go.mod"), *root.glob("shell/be/*/go.mod"),
+             root / "tools/be-ops/go.mod", root / "tools/be-acceptance/probes/go/go.mod"]
+    found = {}
+    for f in sorted(files):
+        if not f.exists() or str(f.parent.relative_to(root)) in FROZEN:
+            continue
+        if m := SDK_REQUIRE.search(f.read_text()):
+            found.setdefault(m.group(1), []).append(str(f.relative_to(root)))
+    if len(found) < 2:
+        return []
+    common = max(found, key=lambda v: len(found[v]))
+    return [f"{f}: be-sdk-go {v}, the rest of the system is on {common}; upgrade it with the others"
+            for v, fs in sorted(found.items()) if v != common for f in fs]
+
+
 SDK_TAG = re.compile(r"^v?3\.0\.0a(\d+)$")
 
 
@@ -115,7 +139,7 @@ def suite_sdk(root: pathlib.Path) -> list[str]:
 
 def main() -> int:
     root = pathlib.Path(sys.argv[1] if len(sys.argv) > 1 else pathlib.Path(__file__).resolve().parents[2])
-    stale = check(root) + suite_sdk(root)
+    stale = check(root) + suite_sdk(root) + one_sdk(root)
     for s in stale:
         print(f"stale: {s}")
     print(f"pin-check: {len(stale)} stale reference(s)")

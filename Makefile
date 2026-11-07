@@ -195,7 +195,7 @@ gates: docs-boundary docs-diagrams docs-mirror docs-links docs-ids docs-closure 
 	@brickkit up --dry-run
 .PHONY: gates
 
-layout-check:  ## 已重建的 Go 组件按业务模块分层、每层一份说明（docs/zh/01-conventions/05-ai-navigation.md 的布局检查）
+layout-check:  ## 已重建的组件（Go 与 Python）按业务模块分层、每层一份说明（docs/zh/01-conventions/05-ai-navigation.md 的布局检查）
 	@PYTHONDONTWRITEBYTECODE=1 python3 $(S)/layout-check.py
 .PHONY: layout-check
 
