@@ -1,0 +1,46 @@
+be-sdk-python redelivery (T5 of foundations item 6): one rule of P6.12, P6.36-P6.40 broken per mutant
+mutants: 14
+red  P6.37: a run that did not last L gives no cut
+       E       AssertionError: assert {SourceKey(co...ne=1, seq=20)} == {SourceKey(co...ne=1, seq=14)}
+       tests/test_progress.py:20: AssertionError
+       FAILED tests/test_progress.py::test_progress[short-last-run] - AssertionError...
+red  P6.37: only rows handled by the cut count
+       E       AssertionError: assert {SourceKey(co...ne=1, seq=15)} == {SourceKey(co...ine=1, seq=9)}
+       tests/test_progress.py:20: AssertionError
+       FAILED tests/test_progress.py::test_progress[steady] - AssertionError: assert...
+red  P6.37: the database reading respects the cut
+       except TimeoutError:
+       E   asyncpg.exceptions.UndefinedFunctionError: operator does not exist: timestamp with time zone <= interval
+       except TimeoutError:
+red  P6.38: no start and a purged partition is beyond the retention
+       E           AssertionError: no start, and the partition was purged
+       tests/test_resend_integration.py:112: AssertionError
+red  P6.38: a start past the counter is ahead
+       E           AssertionError: past the counter; an epoch the partition never had
+       tests/test_resend_integration.py:94: AssertionError
+red  P6.38: an epoch the partition never had is ahead
+       E           AssertionError: past the counter; an epoch the partition never had
+       tests/test_resend_integration.py:94: AssertionError
+red  P6.38: a redelivered message has its own message ID
+       E           AssertionError: a message ID of their own
+       tests/test_resend_integration.py:75: AssertionError
+red  P6.38: another implementation instance's position starts at the first row kept
+       E           AssertionError: both partitions have rows
+       tests/test_resend_integration.py:67: AssertionError
+red  P6.12: the purge notes the largest position
+       E           AssertionError: the purge notes the largest position it deleted
+       tests/test_resend_integration.py:106: AssertionError
+red  P6.39: the smallest progress of the subscriptions
+       E               AssertionError: partition 0: the smaller of s1's 5 and s2's 3; 1: s2 has none there
+       tests/test_redelivery_integration.py:96: AssertionError
+red  P6.39: a partition one subscription has no progress on starts at the first row kept
+       E               AssertionError: partition 0: the smaller of s1's 5 and s2's 3; 1: s2 has none there
+       tests/test_redelivery_integration.py:96: AssertionError
+red  P6.39: a different epoch means the database went back
+       E               AssertionError: the database went back
+       tests/test_redelivery_integration.py:92: AssertionError
+red  P6.39: settle only once every producer answered
+red  P6.40: the partitions a redelivery cannot cover are recorded
+       E               AssertionError: assert [] == [('s1', 1, 'b...d_retention')]
+       tests/test_redelivery_integration.py:99: AssertionError
+done

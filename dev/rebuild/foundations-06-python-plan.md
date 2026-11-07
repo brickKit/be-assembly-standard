@@ -29,7 +29,7 @@
 | T2 | 要先定的（AI 定、记台账，真正要维护者定的才问）：T2a 能力的范围（逐个能力：做、不做的理由与触发条件）；T2b Python 的 Parquet 库（调研加实测，结果交 kb）；T2c CPU 重活（Parquet 编解码、摘要、渲染）在哪里算（kb 的“asyncio 的 CPU 重活”：进程池）；T2d 协议副本的换法（一次换到现行，还是逐章换） | 正式文档的首批范围、kb | T1 | 每个决定写进本计划与 `09-ai-choices.md`；实测有原始数据 | ✅ T2a、T2d 2026-11-07（A164、A165，见“T2 的决定”）；T2b、T2c 只有转层用到，挪到 T10 开头定 |
 | T3 | SDK 底座：协议副本换到现行、迁移 0013–0024、已实现能力的向量照样过；P1.23 的恢复阶段（进程级的阶段开关：用户面答 `MAINTENANCE`，转发、订阅、作业按阶段停）；`AGENTS.md`；`features.json`；pin-check 加“Python 成员只用一个 `be-sdk` 版本” | 线协议第 01、05、06 章 | T2 | `make test` 与 `make test-integration` 过；新能力先写红的测试；改坏检查 | ✅ 2026-11-07（见“T3 的结果”） |
 | T4 | 后台工作项（第 07 章，含定时）：认领、租约与纪元、副作用种类、SDK 自带作业的登记与恢复规则（第 4 项复盘 R1 的表）；幂等键（P4.21–P4.25）与分区维护（A164）；Python 探针的 `probe.steps`；后台工作剖面对 Python 跑 | 第 07 章、P1.23 | T3 | 剖面 CK-WK-01…10 对 Python 通过（与 Go 一样的“移到 T10”的除外，写明）；SDK 的作业登记检查（照 be-sdk-go 的宿主登记测试） | ✅ 2026-11-07（见“T4 的结果”） |
-| T5 | 事件的其余：补发 `ResendService`、消费者库回退后的补发（P6.36–P6.40）；探针的 `fail`、`hold_ms`、`emit`；事件剖面对 Python 在两种运输上跑 | 第 06 章 | T3 | 剖面 CK-EV、CK-BUS 对 Python 通过 | ⬜ |
+| T5 | 事件的其余：补发 `ResendService`、消费者库回退后的补发（P6.36–P6.40）；探针的 `fail`、`hold_ms`、`emit`；事件剖面对 Python 在两种运输上跑 | 第 06 章 | T3 | 剖面 CK-EV、CK-BUS 对 Python 通过 | ✅ 2026-11-07（见“T5 的结果”） |
 | T6 | 长时间推演（S1，第一条端到端路径通了就写）：Python 成员多副本、外壳里两个成员，作业与事件在崩溃点上注入故障、终态核对；之后每个任务往里加自己的崩溃点 | 第 5 项复盘 S1 | T4、T5 | 推演跑一轮 30 分钟通过，原始数据在 `foundations-06-data/` | ⬜ |
 | T7 | 水位来源（第 09 章的来源一侧）：探针的 `_wm` 流与 `WatermarkService/Pull`；水位来源剖面对 Python 跑 | 第 09 章 | T5 | CK-WM-01…04 对 Python 通过 | ⬜ |
 | T8 | 证据与运行档案（第 12 章）、对外命令（第 13 章，含幂等键 P4.21–P4.25 若付款要用）：探针的付款去掉 A144 的例外；对外命令剖面对 Python 跑 | 第 12、13 章，A144 | T4 | 对外命令剖面对 Python 通过；推演加对外命令的崩溃点 | ⬜ |
@@ -89,3 +89,10 @@
 - **顺带查出**：`test_bus_ready_integration` 的夹具 `serve()` 写反了，从来没跑迁移；成员启动时要登记 SDK 作业，它就红了。按夹具的意图改成先迁移（断言不动）。P7.20（每个作业的指标）与 Go 一样未做，`features.json` 写明。
 - **探针**：Python 探针 3.2.44 补上后台工作项（每种副作用一个作业、`probe.minutely`、`probe.steps`），转发也改用作业 `probe.relay`（与 Go 探针相同；原来自己的转发表不再用、按只加不删留着）；套件 1.0.67 的后台工作剖面对两种探针都跑，Python 探针第一次就“符合”；`make check` 168、`make probes` 193 全过。
 - **连锁**：`infra/print` 3.0.17（a53）、`erp/billing` 3.0.44、外壳 `be/go-core` 3.0.72、`be/py-render` 3.0.44（`foundations-06-data/t4/shells.sh`）；pin-check 0、`make version-check` 过。
+
+## T5 的结果（2026-11-07）
+
+- **be-sdk-python a54**：收件表记来源位置、订阅记运行段（P6.36）；进度（P6.37，向量 `inbox-progress` 全过）；生产者的补发 `be.source.v1.ResendService`（P6.38，有流的成员必须声明 `Definition.resend`，与 Go 相同）；清理记下清到的位置；消费者库回退后向见过的每个生产者要补发、记缺口、全部答完才更新纪元（P6.39、P6.40；读模型的快照修复属于投影的消费一侧，不在首批）。消息有了与事件身份分开的去重身份（`msg_id`）。协议的 gRPC 代码由 `scripts/gen.py` 从协议副本的 `proto/` 生成进 `besdk/_gen`（A166）。改坏 14 处全红。
+- **测试跟着改的**：有流的 Python 成员现在必须有服务身份与补发操作，互通与恢复阶段两个测试里的生产者补上（和 Go 的互通小程序在 T3 补的一样）。
+- **探针**：Python 探针 3.2.45：写入的 `fail`、`hold_ms`，消费时的 `emit`，补发操作；套件 1.0.68 的事件剖面对两种探针、两种运输都跑，Python 探针“符合”；`make probes` 195 全过。
+- **连锁**：`infra/print` 3.0.18、`erp/billing` 3.0.45、外壳 `be/go-core` 3.0.73、`be/py-render` 3.0.45；连锁写成了可复用的 `foundations-06-data/python-cascade.sh`（带参数：SDK、探针与打印的版本）。

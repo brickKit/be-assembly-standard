@@ -15,17 +15,17 @@
 
 | 行 | 要证明 | 任务 | 状态 |
 | --- | --- | --- | --- |
-| B1 | CK-EV-01 回滚没有发件行 | T5 | 未做 |
-| B2 | CK-EV-02 位置连续、长事务晚编号 | T5 | 未做 |
-| B3 | CK-EV-03 恢复代次推进后新纪元 | T5 | 未做 |
-| B4 | CK-EV-05 补发保留内的行仍在 | T5 | 未做 |
-| B5 | CK-EV-06 摘要不符的凭证检查 | T5 | 未做 |
-| B6 | CK-EV-07 跳数上限（探针的 `emit`） | T5 | 未做 |
-| B7 | CK-EV-08 投递两次、效果一次 | T5 | 未做 |
-| B8 | CK-BUS-09 运输按保留删除 | T5 | 未做 |
-| B9 | CK-BUS-10 运输晚到时等、一直没有时 0 退出、被拒 78 | T5 | 未做 |
-| B10 | 上面 B1–B9 在两种运输（JetStream、PostgreSQL 队列）上都跑 | T5 | 未做 |
-| B11 | 补发 `ResendService`（P6.38）与消费者库回退后的补发（P6.36、P6.37、P6.39、P6.40）：SDK 测试 | T5 | 未做 |
+| B1 | CK-EV-01 回滚没有发件行 | T5 | 有：套件 1.0.68 的事件剖面对 Python 探针 3.2.45（be-sdk-python a54）在 JetStream 与 PostgreSQL 队列上都“符合”（`tests/test_events_profile.py`） |
+| B2 | CK-EV-02 位置连续、长事务晚编号 | T5 | 有：套件 1.0.68 的事件剖面对 Python 探针 3.2.45（be-sdk-python a54）在 JetStream 与 PostgreSQL 队列上都“符合”（`tests/test_events_profile.py`） |
+| B3 | CK-EV-03 恢复代次推进后新纪元 | T5 | 有：套件 1.0.68 的事件剖面对 Python 探针 3.2.45（be-sdk-python a54）在 JetStream 与 PostgreSQL 队列上都“符合”（`tests/test_events_profile.py`） |
+| B4 | CK-EV-05 补发保留内的行仍在 | T5 | 有：套件 1.0.68 的事件剖面对 Python 探针 3.2.45（be-sdk-python a54）在 JetStream 与 PostgreSQL 队列上都“符合”（`tests/test_events_profile.py`） |
+| B5 | CK-EV-06 摘要不符的凭证检查 | T5 | 有：套件 1.0.68 的事件剖面对 Python 探针 3.2.45（be-sdk-python a54）在 JetStream 与 PostgreSQL 队列上都“符合”（`tests/test_events_profile.py`） |
+| B6 | CK-EV-07 跳数上限（探针的 `emit`） | T5 | 有：套件 1.0.68 的事件剖面对 Python 探针 3.2.45（be-sdk-python a54）在 JetStream 与 PostgreSQL 队列上都“符合”（`tests/test_events_profile.py`） |
+| B7 | CK-EV-08 投递两次、效果一次 | T5 | 有：套件 1.0.68 的事件剖面对 Python 探针 3.2.45（be-sdk-python a54）在 JetStream 与 PostgreSQL 队列上都“符合”（`tests/test_events_profile.py`） |
+| B8 | CK-BUS-09 运输按保留删除 | T5 | 有：套件 1.0.68 的事件剖面对 Python 探针 3.2.45（be-sdk-python a54）在 JetStream 与 PostgreSQL 队列上都“符合”（`tests/test_events_profile.py`） |
+| B9 | CK-BUS-10 运输晚到时等、一直没有时 0 退出、被拒 78 | T5 | 有：套件 1.0.68 的事件剖面对 Python 探针 3.2.45（be-sdk-python a54）在 JetStream 与 PostgreSQL 队列上都“符合”（`tests/test_events_profile.py`） |
+| B10 | 上面 B1–B9 在两种运输（JetStream、PostgreSQL 队列）上都跑 | T5 | 有：套件 1.0.68 的事件剖面对 Python 探针 3.2.45（be-sdk-python a54）在 JetStream 与 PostgreSQL 队列上都“符合”（`tests/test_events_profile.py`） |
+| B11 | 补发 `ResendService`（P6.38）与消费者库回退后的补发（P6.36、P6.37、P6.39、P6.40）：SDK 测试 | T5 | 有：SDK `test_progress`（向量 `inbox-progress`）、`test_resend_integration`、`test_redelivery_integration`；改坏 14 处全红（`foundations-06-data/t5/mutants-t5.txt`；第一次有一处活下来：两个订阅的进度相同，补成一个落后两步）。读模型按快照修复不在首批（A164），`features.json` 写明 |
 
 ## C. 后台工作（第 07 章）
 
