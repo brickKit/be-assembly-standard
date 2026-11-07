@@ -48,10 +48,10 @@
 
 | 行 | 要证明 | 任务 | 状态 |
 | --- | --- | --- | --- |
-| D1 | CK-WM-01 没列出的补取者被拒；补取答出来源的声明 | T7 | 未做 |
-| D2 | CK-WM-02 回声与长事务、分页 | T7 | 未做 |
-| D3 | CK-WM-03 连续位置上的行被换掉、超出计数、已清理、别的纪元（SK17） | T7 | 未做 |
-| D4 | 来源的记录读取（P9.30–P9.33）：`Read` 每个身份一项、`Snapshot` 按身份分页、页标记绑定实例与纪元、声明谁作答；水位流必须声明、补取者都在读者里 | T7 | 未做 |
+| D1 | CK-WM-01 没列出的补取者被拒；补取答出来源的声明 | T7 | 有：套件 1.0.70 的水位来源剖面对 Python 探针 3.2.47 “符合”；SDK 测试 `test_only_the_declared_pullers_may_pull` |
+| D2 | CK-WM-02 回声与长事务、分页 | T7 | 有：剖面“符合”；SDK 测试 `test_a_pull_echoes_after_the_changes_before_it`、`test_a_pull_pages_with_the_echo_on_the_last_page` |
+| D3 | CK-WM-03 连续位置上的行被换掉、超出计数、已清理、别的纪元（SK17） | T7 | 有：剖面“符合”；向量 `watermark-pull-check` 14 例；SDK 测试 `test_the_pull_checks_the_row_at_the_position` |
+| D4 | 来源的记录读取（P9.30–P9.33）：`Read` 每个身份一项、`Snapshot` 按身份分页、页标记绑定实例与纪元、声明谁作答；水位流必须声明、补取者都在读者里 | T7 | 有：SDK 测试 7 个（与 Go 的同名，另加“一次读取只看一个快照”：去掉 REPEATABLE READ 就红）；套件的剖面不测记录读取（Go 也是 SDK 测试证明） |
 
 ## E. 证据与对外命令（第 12、13 章）
 
