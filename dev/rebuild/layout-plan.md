@@ -87,7 +87,7 @@
 | L1b | 四个复杂组件的 L1b（见“L1b 的铺开”） | L1b（`erp/sales`） | L4b | 照 `erp/sales` 的 L1b-1 至 L1b-6 | ⬜ |
 | L5 | **Python 的 `infra/print`**：同样的分层（Python 子包、`AGENTS.md`、`itest/`） | L3 | L3 | 测试全过、布局检查通过、发布、外壳 `be/py-render` | ⬜ |
 | L6 | **真机格**：从空库起跑一个单跑格与一个外壳格（建格、种子两遍、L3 场景），确认重排没有改变行为 | L4b、L5 | L4b、L5 | 两个格全过 | ⬜ |
-| L7 | **SDK 与工具里的大包**：评估 `be-sdk-go` 里文件超过约 15 个的包（`tiering/` 等）与 `be-ops` 的 `internal/recovery/`：公开的接口不变，能否在包内按职责分 `internal/` 子包、配同样的每层说明；结论与做法写在这里 | L3 | L3 | 写出结论；要改的照同样的验收 | ⬜ |
+| L7 | **SDK 与工具里的大包**：评估 `be-sdk-go` 里文件超过约 15 个的包（`tiering/` 等）、`be-sdk-python` 的 `besdk/`（54 个文件，一层平铺加几个子包）与 `be-ops` 的 `internal/recovery/`：公开的接口不变，能否在包内按职责分 `internal/` 子包、配同样的每层说明；结论与做法写在这里 | L3 | L3 | 写出结论；要改的照同样的验收 | ⬜ |
 
 ## 做法（每个组件照这个做）
 
@@ -209,7 +209,7 @@
 
 #### `erp/credit` 与 `erp/inventory` 的 L1b（SF01–SF03）
 
-维护者 2026-11-07 定：参与方的状态机进 SDK。计划在 [reserve-participant-plan.md](reserve-participant-plan.md)（R0–R6）。
+维护者 2026-11-07 定：参与方的状态机进 SDK。计划在 [reserve-participant-plan.md](reserve-participant-plan.md)（R0–R6），2026-11-07 做完：be-protocol 第 16 章（alpha.115–116）、be-sdk-go alpha.117 的 `reserve`、`erp/credit` 与 `erp/inventory` 3.0.32 改用它（新旧代码的事件序列相同），全系统换到 alpha.117；SF01–SF03 已修。
 
 #### `erp/billing` 的 L1b（SF04）
 

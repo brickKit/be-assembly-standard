@@ -32,11 +32,11 @@
 | --- | --- | --- | --- | --- | --- |
 | R0 | **补测试缺口**（两个组件，各一版）：协议 04 的每个格（墓碑上迟到的预占、过期后确认、已终结的再取消、消耗超出、内容冲突、查询不留墓碑……）在集成测试里各有一步，锁住现在的回答与事件 | 协议 04 的状态迁移表、RS01–RS20 | — | 新测试在当前代码上第一次就过；两个组件的格互相对照，不同的地方列出来（要么是缺陷，要么是规范该写明的差异） | ✅ 2026-11-07：`erp/credit` 3.0.31、`erp/inventory` 3.0.31 各加集成测试步骤 `participant`，在当前代码上第一次就过（库存的一条断言是测试自己算错了起点，改的是预期的写法，不是行为）；对照见下“R0 的结果” |
 | R1 | **规范与向量**（be-protocol）：新章、向量 `reserve-participant`、能力 `reserve-participant`；装配项目协议 04 链过去，本页只留业务的部分 | 协议 04；R0 列出的差异 | R0 | `make` 里规范的检查过（编号连续、能力覆盖每条规则、向量的模式）；向量覆盖迁移表的每一格 | ✅ 2026-11-07：be-protocol alpha.115：第 16 章 P16.1–P16.12、向量 `reserve-participant`（97 例，`reserve_test.go` 从命令一侧独立重算并检查每个状态遇到每个命令）、能力 `reserve-participant`（属主 sdk）、兼容矩阵一行；协议 04 与协议 18 的章节表链过去。R0 的差异写进规范：消耗的拒绝怎样答出去由组件的契约定（原因：没有分支、分支没有确认、超出剩余） |
-| R2 | **Go 的实现**（be-sdk-go）：包、迁移、表与驱动、接口；对向量的测试；一个最小的示例参与方跑完全部命令（集成测试，真实 PostgreSQL）；功能矩阵 `verified` | R1 | R1 | 单元与集成测试全过；向量全过；合并安全；功能矩阵的检查过；剖析一次预占与确认的耗时（底层的热路径） | ⬜ |
-| R3 | **`erp/credit` 改用它**：分支的通用列迁到 SDK 的表（迁移带数据），组件留下金额、额度与引用；`limits` 收拢订单占用的写入（SF02）；结构检查（组件里不再写分支状态） | R2 | R2 | 单元与集成测试全过；新旧代码跑同一套集成测试，发件表与审计的事件序列相同 | ⬜ |
-| R4 | **`erp/inventory` 改用它**：同上，留下行、缺货与出库；出库消耗走 SDK 的消耗 | R2 | R2 | 同上 | ⬜ |
-| R5 | **级联**：SDK 的新版本照“同一个库在整个系统里只用一个版本”换到全部组件与外壳；`erp/sales` 的协调者不变（契约不变）；外壳 `be/go-core` 换上两个组件 | R3、R4 | R3、R4 | `make version-check`、`pin-check` 全绿；外壳构建与测试过 | ⬜ |
-| R6 | **说明与登记**：两个组件的说明（分支的规则在 SDK）；结构问题 SF01、SF02、SF03 移到“已修”；规范 06 的“状态与不变量集中一处”加一句“同一协议的同一份状态机放在 SDK” | R5 | R5 | `make layout-check`、文档检查；`layout-plan.md` 的 L1b 一节更新 | ⬜ |
+| R2 | **Go 的实现**（be-sdk-go）：包、迁移、表与驱动、接口；对向量的测试；一个最小的示例参与方跑完全部命令（集成测试，真实 PostgreSQL）；功能矩阵 `verified` | R1 | R1 | 单元与集成测试全过；向量全过；合并安全；功能矩阵的检查过；剖析一次预占与确认的耗时（底层的热路径） | ✅ 2026-11-07：be-protocol alpha.116（迁移 `0024_reserve`：`be_reserve_branch`、`be_reserve_consumption`；P16.13），be-sdk-go alpha.117 的包 `reserve`：`lifecycle.go`（`Decide`，一张表，对协议向量全过）、`reserve.go`（`Kind` 给锁资源、归还、发事件；`Hold`、`Confirm`、`Cancel`、`Query`、`Consume` 都在组件的事务里，`ExpireDue` 自开事务；`Answer` 报冲突、拒绝、重复）；集成测试用一个示例参与方跑完一生、墓碑与终态、到期、12 个并发预占抢 5 件只成 5 个、取消与消耗同时落在同一批分支上不死锁、别的种类的分支；功能矩阵 `verified`（P16.9 待）；全套集成测试过（对象存储的四个包第一次缺环境变量，补上 `itenv.sh` 重跑全过）。量了一次：预占加确认两个事务 1.9–2.8 毫秒（平衡模式，本机 PostgreSQL；三次 2.79、2.32、1.90），离谱的没有 |
+| R3 | **`erp/credit` 改用它**：分支的通用列迁到 SDK 的表（迁移带数据），组件留下金额、额度与引用；`limits` 收拢订单占用的写入（SF02）；结构检查（组件里不再写分支状态） | R2 | R2 | 单元与集成测试全过；新旧代码跑同一套集成测试，发件表与审计的事件序列相同 | ✅ 2026-11-07：`erp/credit` 3.0.32：`branches` 改用 `reserve`（`take` 写组件自己的分支行与超限事实）；订单占用收进 `limits/exposure.go` 的 `TakeOrder`、`ConsumeOrder`、`GiveBackOrder`（SF02）；迁移 `0002_reserve` 带数据；`credit/structure_test.go`（不写 SDK 的分支表、别处不写订单占用，探针各红一次）；集成测试两处夹具的 `UPDATE branch SET hold_expires_at` 改指 `be_reserve_branch`（表搬了，不是改预期）；新旧代码的发件表与审计序列 68 行相同 |
+| R4 | **`erp/inventory` 改用它**：同上，留下行、缺货与出库；出库消耗走 SDK 的消耗 | R2 | R2 | 同上 | ✅ 2026-11-07：`erp/inventory` 3.0.32：`branches` 改用 `reserve`、出库经 `reserve.Consume`（`issueFrom` 做出库本身，`Answer.Repeated` 答上一次的流水）；加锁顺序统一成先余额、后分支；迁移 `0002_reserve` 带数据；`inventory/structure_test.go`；新旧代码的序列 82 行相同。SDK 为此加了 `Answer.Repeated`（发布前） |
+| R5 | **级联**：SDK 的新版本照“同一个库在整个系统里只用一个版本”换到全部组件与外壳；`erp/sales` 的协调者不变（契约不变）；外壳 `be/go-core` 换上两个组件 | R3、R4 | R3、R4 | `make version-check`、`pin-check` 全绿；外壳构建与测试过 | ✅ 2026-11-07：`sdk-unify.py` 把 11 个组件换到 alpha.117 并发布（`infra/audit` 3.0.36、`infra/authz` 3.0.43、`infra/iam-casdoor` 3.0.41、`mdm/currency` 3.0.31、`mdm/org` 3.0.32、`mdm/partner` 3.0.35、`mdm/product` 3.0.34、`erp/credit` 3.0.33、`erp/inventory` 3.0.33、`erp/sales` 3.0.42、`erp/billing` 3.0.41，每个都跑了单元与集成测试）；工具改了两处：已在新 SDK 上的组件，依赖这一轮要发版的照样参加（只换钉版本）；版本常量在 `internal/core` 的也找得到（第一次停在 `infra/authz`）。Go 探针 3.2.49（`make check` 168、`make probes` 192 全过，套件 v1.0.65），外壳 `be/go-infra` 3.0.68、`be/go-core` 3.0.68；`version-check`、`pin-check` 全绿。脚本与日志在 `reserve-participant-data/r5/` |
+| R6 | **说明与登记**：两个组件的说明（分支的规则在 SDK）；结构问题 SF01、SF02、SF03 移到“已修”；规范 06 的“状态与不变量集中一处”加一句“同一协议的同一份状态机放在 SDK” | R5 | R5 | `make layout-check`、文档检查；`layout-plan.md` 的 L1b 一节更新 | ✅ 2026-11-07：两个组件的说明（分支的规则在 SDK）；规范 06 的“状态与不变量集中一处”加“同一协议的同一份状态机在 SDK”；结构问题 SF01、SF02、SF03 移到“已修”；`layout-plan.md` 的 L1b 一节更新。还差一件随下一次协议发版做：be-protocol 的 `COMPAT.md` 第 2 节加一行“be-sdk-go alpha.117 实现 alpha.116” |
 
 ## R0 的结果（2026-11-07）
 
@@ -52,6 +52,8 @@
 | 分支上另有的 | 可用额度的快照 | 确认时刻、缺货的明细 |
 
 所以 SDK 的消耗答一个结果（照做、拒绝及原因、冲突），由组件按自己的契约答出去；拒绝的文字由组件给。
+
+读代码另外核对（R2 设计接口时）：两个参与方的加锁顺序不同。`erp/credit` 先锁额度行、再锁分支；`erp/inventory` 的每个命令（预占之外的确认、取消、到期、出库）都先锁分支行、再锁余额行。各自一致，所以都不会死锁（一度以为库存的出库与取消顺序相反，读全之后不是）。P16.11 定为先资源、后分支（与信用相同；新分支先写下分支行，别人看不到它）；R4 让库存改用 SDK 后统一成先余额、后分支。
 
 真机的验证（建格、种子两遍、确认订单的场景）随 `layout-plan.md` 的 L6 一起做。
 

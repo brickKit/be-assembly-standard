@@ -7,7 +7,7 @@ Usage: sdk-unify.py --sdk v3.0.0-alpha.N --line "<design.md status line, Chinese
                     --subject "<commit subject, English; {version} is the component's>" [--dry-run] [--from ID]
 
 For each component: the last digit of its version up; its exact dependencies on the components moved before it set to
-their new versions; `go get` the SDK, `go mod tidy`; `go vet`, the unit tests, the integration tests (`-p 1`, the
+their new versions (a component already released on the SDK still moves when something it depends on moves); `go get` the SDK, `go mod tidy`; `go vet`, the unit tests, the integration tests (`-p 1`, the
 environment of itenv.sh and iamenv.sh, secrets never printed); a status line at the top of docs/design.md's
 implementation status; `brickkit lint`; commit, push, `brickkit release --notes-file`. A failure stops the run there:
 fix it and go on with --from ID (the components before it are done). Still by hand after it: the Go probe (probes/go
@@ -92,11 +92,12 @@ def committed_version(d: pathlib.Path) -> str:
 
 
 def edit_component(d: pathlib.Path, new: str, moved: dict[str, str]) -> None:
-    defs = [p for p in d.rglob("*.go") if p.name in ("definition.go", "audit.go") and "contract" not in p.parts
-            and "cmd" not in p.parts]
-    s = defs[0].read_text()
-    s, n = re.subn(r'(\n\tVersion\s+= )"[0-9.]+"', r'\1"' + new + '"', s, count=1)
-    assert n == 1, defs[0]
+    # the version constant: in the entry package's definition.go, or internal/core/names.go when the modules use it
+    version = re.compile(r'(\n\tVersion\s+= )"[0-9.]+"')
+    defs = [p for p in sorted(d.rglob("*.go")) if not p.name.endswith("_test.go") and "contract" not in p.parts
+            and "cmd" not in p.parts and version.search(p.read_text())]
+    assert len(defs) == 1, f"{d}: the Version constant in {defs}"
+    s, n = version.subn(r'\1"' + new + '"', defs[0].read_text(), count=1)
     defs[0].write_text(s)
     c = (d / "component.yaml").read_text()
     c, n = re.subn(r"(\n  version: )[0-9.]+", r"\g<1>" + new, c, count=1)
@@ -145,6 +146,16 @@ def main() -> int:
     # a component already released on this SDK (moved with a change of its own) is done too
     on = [c for c in seq if f"github.com/brickKit/be-sdk-go/v3 {o.sdk}" in
           subprocess.run(["git", "show", "HEAD:go.mod"], cwd=cs[c], capture_output=True, text=True).stdout]
+    # ... unless something it depends on moves in this run: then it moves too, for its pins
+    moving = set(c for c in seq if c not in on)
+    changed = True
+    while changed:
+        changed = False
+        for c in list(on):
+            if any(d in moving for d in deps(cs[c])):
+                on.remove(c)
+                moving.add(c)
+                changed = True
     done, seq = done + on, [c for c in seq if c not in on]
     plan = {c: committed_version(cs[c]) for c in done} | {c: bump(committed_version(cs[c])) for c in seq}
     print(f"UNIFY plan to be-sdk-go {o.sdk}:", ", ".join(f"{c} {plan[c]}" for c in seq),
