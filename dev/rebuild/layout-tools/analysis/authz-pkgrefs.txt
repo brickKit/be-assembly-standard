@@ -1,0 +1,236 @@
+== accountchange.go
+   confirm.go: ConfirmationValidity basisOwner confirmIn
+   decide.go: proven unprovable
+   definition.go: OpChange OpTighten Version
+   module.go: Module New
+   submit.go: advance
+   target.go: uuidText
+== budget.go
+   change.go: plan
+   decide.go: facts
+   module.go: Module
+   security.go: grantBody
+== change.go
+   decide.go: ByUser Tighten Widen decide facts keyBoundElse keyBoundSame keyFree outApplied outAppliedReview outAwaitingSaved outRejected outScheduled verdict
+   definition.go: ID OpChange OpDispose OpRelease OpRelinquish OpTighten Records Version
+   disposition.go: isDisposition nonNil plannedDisposition
+   module.go: Module New
+   release.go: plannedRelease releaseIn
+   replay.go: replayFacts
+   scheduled.go: firing
+   target.go: target
+== checks.go
+   disposition.go: dispositionType
+   module.go: Module
+== claim.go
+   closure.go: indexSources
+   definition.go: Dispositions Holder ID OpChange OpDispRead OpDispose OpRead OpRelease OpTighten Records
+   delegate.go: allActions
+   module.go: Module New
+   security.go: grantBody holdingBody unitBody
+   submit.go: advance
+== closure.go
+   definition.go: Holder ID OpChange Records
+   effect.go: sameUnit
+   effective.go: limits newLimits
+   module.go: Module New
+   scheduled.go: JobDue firing triggerRestore
+   security.go: active covers grantBody holdingBody unitBody
+   target.go: lockTarget target
+   view.go: state
+== confirm.go
+   change.go: contentDomain request revisionRef
+   cooling.go: madeUnavailableBy
+   decide.go: confirmInvalid confirmValid disproven facts proof proven unprovable
+   definition.go: ID OpChange OpRelease OpTighten
+   effect.go: holdingsOf
+   module.go: Module New
+   release.go: lockDisposition
+   scheduled.go: JobDue firing triggerConfirmed
+   target.go: affectsAdmins lockTarget target uuidText
+== cooling.go
+   decide.go: proven
+   definition.go: ID OpChange
+   module.go: Module
+   security.go: active
+   target.go: target
+== decide.go
+== definition.go
+   claim.go: DefaultClaimValidity
+   delegate.go: DefaultMaxUnitDepth
+   module.go: Module New
+   plan.go: DefaultPlanConfirmAbove DefaultPlanMaxAge
+== delegate.go
+   effect.go: sameUnit
+   effective.go: common
+   facts.go: standing
+   security.go: unitBody
+== disposition.go
+   change.go: changeResult entry plan request revisionRef
+   confirm.go: useConfirmations
+   decide.go: Tighten facts in
+   definition.go: Holder ID OpDispRead OpDispose SecurityDomain
+   effect.go: roleTemplate sameUnit
+   effective.go: isClosed limits tighterBound windowIntersect
+   facts.go: invalid standing
+   module.go: Module New answer
+   security.go: active covers decimalCompare grantBody holdingBody unitBody
+   target.go: lockTarget
+== effect.go
+   definition.go: Holder ID
+   effective.go: limit
+   module.go: Module
+   security.go: active contained holdingBody notContained resourceOf roleBody unitBody
+   submit.go: advance registry
+== effective.go
+   security.go: contained covers decimalCompare unitBody
+== enact.go
+   change.go: changeResult entry plan revisionRef stateDomain
+   closure.go: indexSources
+   confirm.go: useConfirmations
+   decide.go: Neutral Tighten Widen outAppliedReview outAwaitingSaved outAwaitingUnsaved outKeptHeld outProcessing outRejected outRejectedRetryable outScheduled outVoid verdict
+   definition.go: ID SecurityDomain
+   module.go: Module New
+   scheduled.go: JobDue firing triggerConfirmed triggerScheduled
+   target.go: recordUnit target
+== facts.go
+   change.go: candidateDigest changeResult entry plan window
+   cooling.go: CoolingOff admin
+   decide.go: Neutral RestoreUncomputable Terminate Tighten Widen disproven facts proven unprovable
+   definition.go: ID
+   delegate.go: ActBindRole ActDelegate ActGrant actionFor delegation underItself unitShape
+   disposition.go: isDisposition
+   effect.go: errRejected roleTemplate sameUnit
+   effective.go: limit limits
+   module.go: Module
+   pending.go: adminState stateOperational
+   plan.go: planItem
+   requester.go: endedAdminHoldings
+   scheduled.go: triggerConfirmed triggerRestore
+   security.go: covers grantBody holdingBody roleBody unitBody
+   target.go: affectsAdmins coversAll lockTarget narrows recordHolder recordUnit renames target
+== module.go
+   change.go: changeResult current request
+   decide.go: Tighten
+   definition.go: AccountStream Accounts Holder ID MaxSourceHigh MaxSourceRead OpAccountCheck OpChange OpClaim OpDispRead OpDispose OpRead OpRelease OpRelinquish OpReplay OpSubmit OpTighten OpVerify
+   recoverystep.go: RecoveryTool
+   security.go: record
+   submit.go: parseRegistry registry
+   target.go: uuidText
+== pending.go
+   decide.go: proven unprovable
+   definition.go: ID OpChange OpDispRead
+   disposition.go: adminHoldingsOf
+   module.go: Module
+== plan.go
+   budget.go: overBudget
+   change.go: contentDomain request revisionRef stateDomain
+   decide.go: Neutral Tighten Widen
+   definition.go: ID
+   disposition.go: isDisposition
+   effect.go: holdingsOf roleTemplate
+   effective.go: limits newLimits
+   facts.go: candidateOf standing
+   module.go: Module New
+   planrun.go: JobPlanExpiry planArgs
+   security.go: grantBody unitBody
+   target.go: lockTarget target
+== planhttp.go
+   change.go: request
+   confirm.go: basisOwner confirmIn
+   decide.go: proven
+   definition.go: ID OpChange OpRead
+   effect.go: holdingsOf
+   enact.go: nullable
+   module.go: Module New
+   plan.go: itemCheck itemNeedsReview itemsOf lockPlan planCancelled planCompleted planConfirmed planExecuting planExpired planIn planItem planItemIn planPartial planPreviewed planRow
+   planrun.go: JobPlan planArgs
+== planrun.go
+   change.go: changeResult entry evidenceChange request requestDigest revisionValue
+   confirm.go: ownerName
+   decide.go: ByJob Tighten disproven unprovable verdict
+   definition.go: ID OpChange Records Version
+   enact.go: nullable
+   module.go: Module
+   plan.go: itemApplied itemNeedsReview itemPending itemRejected lockPlan planCompleted planConfirmed planExecuting planExpired planItem planPartial planPreviewed planRow
+   scheduled.go: errProcessing
+   submit.go: advance
+== recovery.go
+   closure.go: indexSources
+   confirm.go: ownerName
+   definition.go: Holder OpChange
+   disposition.go: adminHoldingsOf
+   module.go: Module New
+   planrun.go: reviewReplaced
+   security.go: holdingBody unitBody
+   submit.go: advance
+   target.go: lockTarget
+== recoverystep.go
+   closure.go: sources
+   decide.go: disproven
+   definition.go: ID OpDispose
+   disposition.go: adminHoldingsOf dispositionType nonNil
+   module.go: Module New
+   pending.go: adminState
+   requester.go: endedAdminHoldings
+   target.go: affectsAdmins lockTarget uuidText
+== release.go
+   budget.go: grantOverBudget
+   change.go: changeResult entry plan request revisionRef
+   confirm.go: ConfirmationValidity basisHolding basisOwner confirmIn ownerName useConfirmations
+   decide.go: RestoreHold confirmInvalid confirmValid disproven facts unprovable
+   definition.go: ID OpRelease SecurityDomain
+   disposition.go: dispositionDomain dispositionType nonNil
+   effective.go: limits newLimits
+   facts.go: invalid standing
+   module.go: Module New answer
+   security.go: grantBody holdingBody
+   signal.go: releaseSignals
+   target.go: lockTarget target uuidText
+== replay.go
+   change.go: candidateDigest entry request requestDigest revisionRef
+   decide.go: ByUser Tighten Widen facts proven
+   definition.go: ID
+   disposition.go: dispositionDomain
+   facts.go: candidateOf
+   module.go: Module New
+   release.go: releaseIn
+== requester.go
+   decide.go: disproven facts proof proven unprovable
+   definition.go: ID Records
+   disposition.go: nonNil
+   effect.go: sameUnit
+   module.go: Module
+   security.go: active holdingBody unitBody
+   target.go: target
+== scheduled.go
+   change.go: changeResult entry request
+   closure.go: JobClosure JobExpiry
+   decide.go: ByJob RestoreUncomputable Widen
+   definition.go: ID
+   module.go: Module New
+   planrun.go: JobPlan JobPlanExpiry
+== security.go
+   definition.go: ID
+== signal.go
+   definition.go: ID OpDispose
+   disposition.go: dispositionIn dispositionType nonNil
+   module.go: Module New
+   release.go: dispositionRow
+   submit.go: advance
+== submit.go
+   definition.go: Definition OpSubmit
+   module.go: Module New
+== target.go
+   cooling.go: CoolingOff
+   definition.go: Holder ID
+   delegate.go: unitShape
+   effect.go: sameUnit
+   security.go: active contained grantBody holdingBody unitBody
+== view.go
+   definition.go: Definition Holder ID OpRead OpRelinquish Records SecurityDomain ShardDomain
+   disposition.go: activeDispositions suspended
+   effective.go: newLimits
+   module.go: Module New
+   security.go: active grantBody holdingBody record resourceOf
+   submit.go: registry
