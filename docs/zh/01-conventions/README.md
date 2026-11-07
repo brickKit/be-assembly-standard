@@ -17,6 +17,7 @@
 | [09-ai-coding.md](09-ai-coding.md) | 代码怎样写才便于 AI 修改：何时用设计模式、已定的模式、长函数的注释、人要审什么、整体重写 |
 | [10-development-workflow.md](10-development-workflow.md) | 改动的循环（每次改动都走）、动手之前的自问、提交、真机运行、版本与发布 |
 | [11-change-recipes.md](11-change-recipes.md) | 各类改动在改动的循环每一步要注意什么：加字段、加接口、加或改事件、调用别的组件、加表、新建组件 |
+| [12-structure-findings.md](12-structure-findings.md) | 结构问题登记：代码与文档的组织方式会让改动漏改、改错、互相冲突的地方，待处理的与已修的（教训与防止再犯的规则） |
 
 **按任务找**：
 
@@ -27,6 +28,7 @@
 | 写测试、决定要证明什么、冻结前的复核 | [测试与验证](02-testing-and-validation.md) |
 | 权限或数据一致性的反例 | [验收矩阵](validation/authorization-matrix.md)、[数据与一致性矩阵](validation/data-and-consistency-matrix.md) |
 | 写或拆一份文档、写组件的文档 | [文档规则](03-documentation.md) |
+| 设计新组件、给组件加状态或模块、改规范之前；发现一处结构问题要记下来 | [结构问题登记](12-structure-findings.md) |
 | 画图、写状态迁移表或决策表 | [图与表的规范](04-diagrams-and-tables.md) |
 | 写 `AGENTS.md`、代码地图、术语表，或想知道一次会话该读什么 | [AI 导航与信息定位](05-ai-navigation.md) |
 | 写后端组件的代码、合进外壳 | [组件实现约定](06-component-implementation.md) |

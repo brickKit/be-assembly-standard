@@ -50,6 +50,7 @@
 | 开始做一个组件；先做什么；一次会话做多少 | [开发流程](docs/zh/01-conventions/10-development-workflow.md)、[每次会话读多少](docs/zh/01-conventions/05-ai-navigation.md#每次会话读多少) |
 | 写新组件；仓库布局；改 `component.yaml` | [标准布局](docs/zh/01-conventions/05-ai-navigation.md#组件仓库的标准布局与代码地图)、`brickkit-component` 技能（[SKILL.md](.claude/skills/brickkit-component/SKILL.md)） |
 | 组件里的代码在哪；加功能放哪个模块；每层的 `AGENTS.md` 写什么；集成测试放哪；加一个状态（订单、预占……）会碰到哪些规则 | 组件根 `AGENTS.md` 的代码地图（模块表）；[标准布局](docs/zh/01-conventions/05-ai-navigation.md#组件仓库的标准布局与代码地图)、[状态与不变量集中一处](docs/zh/01-conventions/06-component-implementation.md#状态与不变量集中一处)、[改动配方](docs/zh/01-conventions/11-change-recipes.md)；`make layout-check` |
+| 设计新组件、改结构之前看已知的结构问题；发现一处结构问题（会让改动漏改、改错、互相冲突的组织方式）要记下来 | [结构问题登记](docs/zh/01-conventions/12-structure-findings.md) |
 | 端口、schema、数据库角色、权限键；配置键；读配置；连数据库或消息系统 | [协议 19](docs/zh/06-protocols/19-config-secrets-registries-release.md)、[协议 14 的数据库](docs/zh/06-protocols/14-data-foundations.md#数据库)、[运行时](docs/zh/01-conventions/06-component-implementation.md#运行时是唯一入口) |
 | 框架与库 | [锁定的技术栈](docs/zh/04-foundations/07-component-protocol-and-languages.md#锁定的技术栈) |
 | 谁能调用；权限键；资源定义 | [安全 06](docs/zh/06-protocols/security/06-security-contracts-and-capabilities.md)、[安全 09a](docs/zh/06-protocols/security/09a-encoding-and-records.md) |

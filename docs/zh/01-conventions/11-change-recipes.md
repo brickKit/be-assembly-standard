@@ -69,6 +69,6 @@
 
 | 步 | 要做的与要守的 |
 | --- | --- |
-| ① 意图 | 走 `brickkit-component` 技能；布局按 [AI 导航的标准布局](05-ai-navigation.md#组件仓库的标准布局与代码地图)（入口包只组装、业务在 `internal/` 的模块里、集成测试在 `itest/`、每层一份说明），照一个已重建的同语言组件（`erp/sales` 最完整）；有生命周期或不变量的，按[状态与不变量集中一处](06-component-implementation.md#状态与不变量集中一处)；身份、端口、schema 先在 `registry/` 追加（[注册表](../../../registry/README.zh.md)）；开工前按边界卡写 `docs/design.md`（[组件的文档](03-documentation.md#组件的文档)）；上游缺的能力先列出来，先改上游 |
+| ① 意图 | 先读[结构问题登记](12-structure-findings.md)的“待处理”，别把同一类问题带进新组件；走 `brickkit-component` 技能；布局按 [AI 导航的标准布局](05-ai-navigation.md#组件仓库的标准布局与代码地图)（入口包只组装、业务在 `internal/` 的模块里、集成测试在 `itest/`、每层一份说明），照一个已重建的同语言组件（`erp/sales` 最完整）；有生命周期或不变量的，按[状态与不变量集中一处](06-component-implementation.md#状态与不变量集中一处)；身份、端口、schema 先在 `registry/` 追加（[注册表](../../../registry/README.zh.md)）；开工前按边界卡写 `docs/design.md`（[组件的文档](03-documentation.md#组件的文档)）；上游缺的能力先列出来，先改上游 |
 | ② 考设计 | 不跳过 |
 | ⑥ 核对 | 重新生成组件索引（`make docs-index`）；要进外壳的，外壳的成员清单与依赖锁随它的第一个版本一起改 |
