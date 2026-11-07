@@ -1,0 +1,17 @@
+# Foundations item 5, T10e (foundations-05-tiering-plan.md): the tiering in a real deployment, every member alone. The
+# business chain on be-sdk-go alpha.115 with its two data classes (infra/audit's records, erp/sales's ended orders, both
+# on the warm route) and the Go probe go alone with its archive on the object store. The settings make the tiering due
+# within minutes: the candidates job every minute, no grace after a publish (the residence is reached by dating the
+# rows back, tiering.sh). Its own deployment, a new one for every run (the run script writes it): the backup records
+# the releases wait for go into the run profile under it.
+cell: T5-S
+row: D
+deployment: 01a1b53c-d4e5-7ce7-9f34-f0cbdb89a128
+alone: [infra/iam-casdoor@3.0.37, infra/authz@3.0.40, infra/audit@3.0.32, mdm/org@3.0.28, mdm/currency@3.0.27,
+        mdm/partner@3.0.31, mdm/product@3.0.30, erp/inventory@3.0.27, erp/credit@3.0.27, erp/sales@3.0.36,
+        erp/billing@3.0.36, infra/print@3.0.14, test/probe-go@3.2.47]
+chain: []
+settings:
+  infra/audit: {TIERING_WINDOW: "* * * * *", TIERING_GRACE: "0s", AUDIT_CHAIN_CHECK_INTERVAL: "20s"}
+  erp/sales: {TIERING_WINDOW: "* * * * *", TIERING_GRACE: "0s"}
+  test/probe-go: {TIERING_WINDOW: "* * * * *", TIERING_GRACE: "0s", TIERING_ROUTE_PROBE_ARCHIVE: "object-parquet"}

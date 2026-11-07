@@ -1,0 +1,18 @@
+=== RUN   TestTheLongSimulation
+SIM the routes swap: a to the warm route, b to the object store
+SIM 1m tier_sim_a docs=450 units=destroyed:44,published:25,released:242 tier_sim_b docs=439 units=destroyed:44,published:46,released:205,sealed:10 writes=1815 refused=324 reads=9797 erasures=72 queued=30 holds=6 crashes=20 points=20/30 kills=0 transient=0 failures=0
+SIM 2m tier_sim_a docs=884 units=destroyed:91,published:23,released:489,sealed:8 tier_sim_b docs=878 units=destroyed:99,published:18,released:456,sealed:9 writes=3774 refused=415 reads=18719 erasures=152 queued=66 holds=12 crashes=45 points=27/30 kills=2 transient=0 failures=0
+SIM the crashes and the workload stop; the jobs finish
+SIM tier_sim_a: 884 documents checked, 515 copies verified
+SIM 3m tier_sim_a docs=884 units=destroyed:96,released:515 tier_sim_b docs=879 units=destroyed:103,released:484 writes=3776 refused=415 reads=20312 erasures=152 queued=66 holds=12 crashes=47 points=27/30 kills=2 transient=0 failures=0
+SIM tier_sim_b: 879 documents checked, 484 copies verified
+SIM 3m tier_sim_a docs=884 units=destroyed:96,released:515 tier_sim_b docs=879 units=destroyed:103,released:484 writes=3776 refused=415 reads=20312 erasures=152 queued=66 holds=12 crashes=47 points=27/30 kills=2 transient=0 failures=0
+SIM crash points reached: claim/commit=2 claim/done=2 copy.manifest/done=2 copy.object/done=2 copy.rows/commit=1 copy.rows/done=2 destroy.decide/commit=2 destroy.decide/done=2 destroy.object/done=2 destroy.purge/commit=2 destroy.purge/done=2 erase.find/done=2 orphans.delete/commit=1 orphans.delete/done=1 publish/commit=2 publish/done=2 release.decide/commit=2 release.decide/done=2 release.delete/commit=2 release.delete/done=2 releaseold.decide/done=1 releaseold.delete/commit=2 releaseold.delete/done=2 releaseold.object/done=1 rewrite.route/done=1 seal/commit=1 seal/done=2
+SIM FAILURE crash points never reached: [erase.sealed/commit erase.sealed/done orphans.object/done]
+    sim_test.go:746: crash points never reached: [erase.sealed/commit erase.sealed/done orphans.object/done]
+SIM RESULT failures=1
+--- FAIL: TestTheLongSimulation (184.12s)
+FAIL
+FAIL	github.com/brickKit/be-sdk-go/v3/tiering	184.138s
+FAIL
+SIMRUN ALL-DONE rc=1

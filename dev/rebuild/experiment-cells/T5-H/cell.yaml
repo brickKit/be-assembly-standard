@@ -1,0 +1,16 @@
+# Foundations item 5, T10e (foundations-05-tiering-plan.md): the tiering in a real deployment, every Go member in a
+# shell (the H2 split): be/go-infra hosts the security members, the master data and the Go probe go2 (its archive on the
+# warm route), be/go-core the trading chain; print alone. infra/audit's records and erp/sales's ended orders tier as
+# shell members. The settings and the run as T5-S's.
+cell: T5-H
+row: D
+deployment: 01a1b541-e3d7-7903-8c66-9c5dd27e8243
+shells:
+  be/go-infra@3.0.65: [infra/iam-casdoor, infra/authz, infra/audit, mdm/org, mdm/currency, mdm/partner, mdm/product, test/probe-go2]
+  be/go-core@3.0.64: [erp/inventory, erp/credit, erp/sales, erp/billing]
+alone: [infra/print@3.0.14]
+chain: []
+settings:
+  infra/audit: {TIERING_WINDOW: "* * * * *", TIERING_GRACE: "0s", AUDIT_CHAIN_CHECK_INTERVAL: "20s"}
+  erp/sales: {TIERING_WINDOW: "* * * * *", TIERING_GRACE: "0s"}
+  test/probe-go2: {TIERING_WINDOW: "* * * * *", TIERING_GRACE: "0s"}

@@ -1,0 +1,79 @@
+🚀 Starting project t5-h (target: docker)
+📋 Component state calculation:
+   ✅ be/go-core@3.0.64         starting (top-level)
+   ✅ be/go-infra@3.0.65        starting (top-level)
+   ✅ mdm/currency@3.0.27       starting (erp/billing needs it)
+   ✅ mdm/org@3.0.28            starting (erp/billing needs it)
+   ✅ mdm/partner@3.0.31        starting (erp/billing needs it)
+   ✅ mdm/product@3.0.30        starting (erp/inventory needs it)
+   ✅ erp/credit@3.0.27         starting (erp/sales needs it)
+   ✅ erp/inventory@3.0.27      starting (erp/sales needs it)
+   ✅ erp/sales@3.0.36          starting (erp/billing needs it)
+   ✅ infra/print@3.0.14        starting (erp/billing needs it)
+   ✅ erp/billing@3.0.36        starting (top-level)
+   ✅ infra/audit@3.0.32        starting (erp/billing needs it)
+   ✅ infra/authz@3.0.40        starting (erp/billing needs it)
+   ✅ infra/iam-casdoor@3.0.37  starting (erp/billing needs it)
+   ✅ test/probe-go2@3.2.47     starting (top-level)
+
+⚠️ Files under config/ may contain plaintext secrets
+   Config items: infra/iam-casdoor@3.0.37 → IAM_TOKEN_ISSUER ($var:IAM_ISSUER)
+   Why it matters: config/*.yaml and config/vars.yaml are meant to be committed to Git, so a secret written there goes into version control with it and can't be removed from the history
+   Suggestions:
+   1. Change it to a reference such as ${MY_TOKEN} (real value in .env) or file://.secrets/token
+   2. .env must be listed in .gitignore
+   3. Items that declare secret: true are ones the component author identified as credentials; the ones that merely have a suspicious name are judged by name only, not by value, so you can ignore them if they really aren't secrets
+📋 Start order (topological sort):
+   1. be-go-infra-3-0-65  no dependencies  (hosts mdm/currency@3.0.27, mdm/org@3.0.28, mdm/partner@3.0.31, mdm/product@3.0.30, infra/audit@3.0.32, infra/authz@3.0.40, infra/iam-casdoor@3.0.37, test/probe-go2@3.2.47)
+   2. be-go-core-3-0-64   ← depends on 1  (hosts erp/credit@3.0.27, erp/inventory@3.0.27, erp/sales@3.0.36, erp/billing@3.0.36)
+   3. infra-print-3-0-14  no dependencies
+
+Can start on their own: be-go-infra-3-0-65, infra-print-3-0-14 (no dependencies)
+Only referenced by optional dependencies (turning them off affects no one: mode: disable): erp/credit, erp/inventory, erp/sales, infra/print
+Longest dependency chain (2 levels): be-go-infra-3-0-65 → be-go-core-3-0-64
+   Components not on this chain start in parallel with it
+
+Dependency graph:
+   erp/sales@3.0.36 → mdm/currency@3.0.27
+                    → mdm/org@3.0.28
+                    → mdm/partner@3.0.31
+                    → mdm/product@3.0.30
+                    → erp/credit@3.0.27 (optional)
+                    → erp/inventory@3.0.27 (optional)
+   erp/inventory@3.0.27 → mdm/org@3.0.28
+                        → mdm/product@3.0.30
+   mdm/product@3.0.30 → mdm/org@3.0.28
+   erp/credit@3.0.27 → mdm/currency@3.0.27
+                     → mdm/org@3.0.28
+                     → mdm/partner@3.0.31
+   erp/billing@3.0.36 → mdm/currency@3.0.27
+                      → mdm/org@3.0.28
+                      → mdm/partner@3.0.31
+                      → erp/sales@3.0.36 (optional)
+                      → infra/print@3.0.14 (optional)
+   mdm/partner@3.0.31 → mdm/org@3.0.28
+📄 Generated: .brickkit/generated/compose.yaml
+
+🔧 Database migrations that run before startup (on failure that component won't start):
+   infra/audit@3.0.32  /infra-audit migrate
+   infra/authz@3.0.40  /infra-authz migrate
+   infra/iam-casdoor@3.0.37  /infra-iam-casdoor migrate
+   infra/print@3.0.14  python -m infra_print migrate
+   mdm/currency@3.0.27  /mdm-currency migrate
+   mdm/org@3.0.28  /mdm-org migrate
+   mdm/partner@3.0.31  /mdm-partner migrate
+   erp/billing@3.0.36  /erp-billing migrate
+   erp/credit@3.0.27  /erp-credit migrate
+   mdm/product@3.0.30  /mdm-product migrate
+   erp/inventory@3.0.27  /erp-inventory migrate
+   erp/sales@3.0.36  /erp-sales migrate
+   test/probe-go2@3.2.47  /probe-go migrate
+
+🐳 Starting (docker)...
+   be-go-core-3-0-64            running (healthy)
+   be-go-infra-3-0-65           running (healthy)
+   infra-print-3-0-14           running (healthy)
+✅ All components started (3)
+
+💡 View the status: brickkit status
+   View the logs: docker compose -p brickkit-t5-h logs -f
