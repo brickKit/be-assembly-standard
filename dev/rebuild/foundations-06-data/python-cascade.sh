@@ -3,6 +3,8 @@
 # be/go-core on that billing, be/py-render on the SDK, the Python probes and infra/print. Each: version up, pins, tests,
 # lint, commit, push, brickkit release. (From t3/shells.sh and t4/shells.sh.)
 # Usage: PYSDK=v3.0.0aNN PYPROBES=3.2.NN PRINT=3.0.NN python-cascade.sh <out dir>
+#        [CORE_SUBJECT="<English>" CORE_NOTE="<Chinese>"]: what else changed in be/go-core beforehand (staged, not
+#        released: e.g. its Go members moved to a new be-sdk-go), added to its commit subject and release notes
 # Output in <out dir>/cascade.log; "CASCADE ALL-DONE" or "CASCADE FAILED <step>".
 set -u
 : "${PYSDK:?}" "${PYPROBES:?}" "${PRINT:?}"
@@ -48,7 +50,8 @@ echo "CASCADE $step BEGIN $old -> $NEW"
   go get github.com/brickKit/erp-billing/v3@v$BILLING
   go mod tidy && go vet ./... && go test -count=1 ./...
   grep -q "version: $NEW" component.yaml && grep -q "\"$NEW\"" main.go && grep -q "erp/billing@$BILLING" component.yaml
-  release $step "be/go-core $NEW: erp/billing $BILLING" "\`erp/billing\` $BILLING（依赖 \`infra/print\` $PRINT）。"
+  release $step "be/go-core $NEW: erp/billing $BILLING${CORE_SUBJECT:+; $CORE_SUBJECT}" \
+    "\`erp/billing\` $BILLING（依赖 \`infra/print\` $PRINT）。${CORE_NOTE:-}"
 ) || { echo "CASCADE FAILED $step"; exit 1; }
 echo "CASCADE $step END $NEW"
 step=py-render; d=$R/shell/be/py-render; old=$(sed -n 's/^  version: //p' $d/component.yaml); NEW=$(bump $old)
