@@ -213,11 +213,11 @@
 
 | # | 任务 | 验收 | 状态 |
 | --- | --- | --- | --- |
-| B1 | **补测试缺口**：生命周期里业务流程走不到的格（各状态上的修改、作废、开具、打印、继续作业）在集成测试里各有一步，锁住现在的回答（含拒绝的原文） | 新测试在当前代码上第一次就过 | ⬜ |
-| B2 | **账单的生命周期一张表**（`internal/invoices/lifecycle.go`）：阶段（`draft`、`confirmed`、`issued`＝已编号、正式化未完成、`formalized`＝已编号且正式化完成、`void`）× 命令（修改、作废、开具请求、认领确认、认领到期、编号、正式化、打印、继续作业）→ 拒绝（原文）、忽略、照做、变成；`Decide`、`PhaseOf`；`Transition` 是 `invoice.state`、`formalization` 唯一的写入（带前置状态的条件更新，事件与审计照旧）；全部调用方改成查表 | 全矩阵单元测试；单元与集成测试全过；发件表的事件序列与改之前相同 | ⬜ |
-| B3 | **文档对表**：`docs/design.md` 的状态表改成与代码同一张表（每格带规则编号 BL-xx），单元测试逐格比较；规则目录的每个编号都有测试写明 | 改文档一格、改代码一格、删一个编号，各红一次 | ⬜ |
-| B4 | **结构检查**（`billing/structure_test.go`，照 `erp/sales`）：`lifecycle.go` 以外不比较账单状态、不写 `invoice.state` 与 `formalization`；别处 SQL 读账单状态的登记到函数 | 每条各改坏一次都红 | ⬜ |
-| B5 | **说明**：各层 `AGENTS.md` 写“账单的状态只在这里”与“加状态或命令时怎样做”；版本发布 | `make layout-check`、`brickkit lint`、发布 | ⬜ |
+| B1 | **补测试缺口**：生命周期里业务流程走不到的格（各状态上的修改、作废、开具、打印、继续作业）在集成测试里各有一步，锁住现在的回答（含拒绝的原文） | 新测试在当前代码上第一次就过 | ✅ `itest/lifecycle_integration_test.go`（步 `lifecycle`，排在最后）：已确认、已开具（正式化未完成与已完成）、作废的账单拒绝修改；已确认的作废并释放认领；已开具的不能作废；再作废答作废的账单；只有已开具的打印；在 3.0.39 的代码上第一次跑就全过，拒绝的原文逐字相同 |
+| B2 | **账单的生命周期一张表**（`internal/invoices/lifecycle.go`）：阶段（`draft`、`confirmed`、`issued`＝已编号、正式化未完成、`formalized`＝已编号且正式化完成、`void`）× 命令（修改、作废、开具请求、认领确认、认领到期、编号、正式化、打印、继续作业）→ 拒绝（原文）、忽略、照做、变成；`Decide`、`PhaseOf`；`Transition` 是 `invoice.state`、`formalization` 唯一的写入（带前置状态的条件更新，事件与审计照旧）；全部调用方改成查表 | 全矩阵单元测试；单元与集成测试全过；发件表的事件序列与改之前相同 | ✅ 5 阶段 × 9 命令，`Decide`、`PhaseOf`、`PhaseOfStored`、`Transition`；作废后的释放、确认后的继续、编号后的事实与正式化工作项留在调用方、同一事务；全矩阵与“已开具与作废的不回头”两个单元测试；新旧代码各跑一遍集成测试（旧代码配上 B1 的新步骤），发件表与审计的 69 行序列完全相同 |
+| B3 | **文档对表**：`docs/design.md` 的状态表改成与代码同一张表（每格带规则编号 BL-xx），单元测试逐格比较；规则目录的每个编号都有测试写明 | 改文档一格、改代码一格、删一个编号，各红一次 | ✅ 设计文档“账单的状态”与规则目录 IN01–IN09；改文档一格、改代码一格、删一格、两处测试都去掉一个编号，各红一次 |
+| B4 | **结构检查**（`billing/structure_test.go`，照 `erp/sales`）：`lifecycle.go` 以外不比较账单状态、不写 `invoice.state` 与 `formalization`；别处 SQL 读账单状态的登记到函数 | 每条各改坏一次都红 | ✅ `billing/structure_test.go`：表以外写 `state` 或 `formalization`、在 Go 里读 `core.Invoice` 的这两个字段、SQL 的条件读它们而没登记、登记了却不再读，四种改坏各红一次；登记的只有恢复核对的 `ClaimsCheck`（它按阶段算应有的认领，改用 `invoices.PhaseOfStored`） |
+| B5 | **说明**：各层 `AGENTS.md` 写“账单的状态只在这里”与“加状态或命令时怎样做”；版本发布 | `make layout-check`、`brickkit lint`、发布 | ✅ 各层说明；`erp/billing` 3.0.40、外壳 `be/go-core` 3.0.67 已发布；结构问题 SF04 移到“已修” |
 
 ### 铺开期间的版本
 
