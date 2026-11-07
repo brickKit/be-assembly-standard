@@ -81,3 +81,10 @@ def test_the_frozen_shell_and_test_fixtures_do_not_count(tmp_path):
     sdk_gomod(tmp_path, "tools/be-sdk-python/tests/interop/gochain", "v3.0.0-alpha.73")
     sdk_gomod(tmp_path, "components/mdm/org", "v3.0.0-alpha.90", indirect=True)
     assert pin_check.one_sdk(tmp_path) == []
+
+
+def test_the_edge_tests_count(tmp_path):
+    sdk_tree(tmp_path, "v3.0.0-alpha.117")
+    sdk_gomod(tmp_path, "tools/be-edge/tests", "v3.0.0-alpha.56")
+    out = pin_check.one_sdk(tmp_path)
+    assert len(out) == 1 and "tools/be-edge/tests/go.mod" in out[0]

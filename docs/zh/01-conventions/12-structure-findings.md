@@ -15,7 +15,6 @@
 | SF11 | `erp/sales` | 通用的小函数放在业务模块里：`confirmations.Deref`（取指针的值）被 `deliveries` 引用 | 交货要为一个小工具依赖确认模块，模块的依赖表因此多一条，读的人以为交货依赖确认的业务 | 同上 | 待清理：挪进 `core` | 不属于某个业务的工具放 `core` |
 | SF12 | `erp/sales` 的审计 | 提交确认（订单进入“确认中”）不审计，确认的结果（确认、拒绝、取消）审计 | 审计协议列了“确认订单”，没说提交本身算不算；现在的做法是事实，没有依据 | 2026-11-07 把订单的生命周期写成表时 | 待定：对照协议 03 决定提交要不要审计 | 生命周期表的每个“变成”格写明审计与否（已经这样做） |
 | SF13 | 集成测试的命令 | 没有检查保证 `make test-integration` 真的跑到了集成测试（下面的 SF18 修了现有的，没有加检查） | 测试搬家或改名之后，命令指向一个没有集成测试的包，照样“通过” | 2026-11-07 | 待做：一个检查，集成测试的命令跑到的测试数为零就失败 | 门禁“没跑到测试”算失败 |
-| SF27 | 跨语言与边缘的测试 | `be-sdk-python` 的互通测试（`tests/interop/` 下的 Go 小程序）用 be-sdk-go alpha.73，`be-edge` 的测试（`tests/`，用 SDK 的 `sectest`）用 alpha.56；系统里其余的 Go 模块是 alpha.117 | 互通测试测的是 Python SDK 与一个旧的 Go SDK 能不能互通，现在的 Go SDK 改了线上的行为，互通测试照样通过；边缘对着旧的身份替身测 | 2026-11-07 加“只用一个 SDK 版本”的检查时列出全部 `go.mod` | 待做：随 `be-sdk-python`、`be-edge` 下一次有功能的发布一起升（只改测试也要发版，会连带全部 Python 组件升 SDK），升完把这两处也加进 pin-check 的“只用一个 SDK 版本” | 测另一个实现的测试，对着系统里现行的那个版本 |
 
 ## 已修
 
@@ -41,6 +40,7 @@
 | SF25 | 升 SDK 的范围 | 系统一起升到 be-sdk-go alpha.117 时，恢复工具 `be-ops` 留在 alpha.116：批量升级的工具（`sdk-unify.py`）只列组件、外壳与探针，也没有检查发现不同的版本 | 恢复工具在部署网络里调用成员、写成员读的运行档案，SDK 与成员不同时，线上的格式或规则可能对不上 | 2026-11-07 给 `be-ops` 写 `AGENTS.md` 时看到 `go.mod` | `be-ops` 3.0.0-alpha.17 升到 alpha.117；pin-check 新增一条：部署的 Go 模块（组件、外壳、Go 探针、`be-ops`）只用一个 be-sdk-go 版本（对 alpha.116 的 `be-ops` 跑过，报错）；`sdk-unify.py` 的手工步骤加上 `be-ops` | `make version-check` 里的 pin-check |
 | SF26 | `be-ops` 的 `import-scan` | 检查“不依赖任何组件仓库”只放行 be-sdk-go，而工具早就用着 be-protocol 与两个组件发布的契约模块，这条检查一直是红的，没人跑 | 检查长期红着，真的引入组件代码时也分不出来 | 同上 | `be-ops` 3.0.0-alpha.17：放行 SDK、线协议与契约模块（`contract-*`、`*/contract`），组件的代码仍然拦（拿 `erp-sales`、`infra-audit` 的包路径试过） | 检查红着就修或删，不留着 |
 | SF28 | 父仓库的脚本测试 | `infra/scripts/tests/` 里三种写法（pytest、自己跑的 Python 脚本、`.sh`），没有一个 `make` 目标把它们全跑一遍，门禁也不跑；其中三份红了很久（重建开始时已记成“已知、暂不处理”）：`test_config_fill.py` 21/25 与 `test_verify_deploy.py` （假的 `brickkit` 答 v1.4.0，项目要求 v1.12.2，被版本检查拒绝），`test_ship_dryrun.sh`（`ship.sh` 调用的旧验收程序已不存在） | 改脚本的人不知道有测试、也不知道怎样跑；坏了很久没人发现，测试失去作用 | 2026-11-07 给 pin-check 加检查后跑整个目录 | 2026-11-07：`make scripts-test`（`infra/scripts/tests/run-all.sh`，各按自己的写法跑，一个失败或一个测试也没找到就红）进 `make gates`，12 个文件全过；两份测试的假 `brickkit` 改成答 `lib/require-brickkit.sh` 要求的版本（前提跟着项目走，断言不动）；`ship.sh`、它的测试与 `make ship` 删掉（发布用 `brickkit release --notes-file`）；`test_project_lock.sh` 显式恢复 HUP 的默认处理（在 `nohup` 下跑时它继承了忽略 HUP） | 新的脚本测试放进这个目录就进门禁；测试的前提（工具的版本）从项目里读，不写死 |
+| SF27 | 跨语言与边缘的测试 | `be-edge` 的测试（`tests/`，用 SDK 的 `sectest`）用 be-sdk-go alpha.56，`be-sdk-python` 的互通测试（`tests/interop/` 下的 Go 小程序）用 alpha.73；系统里其余的 Go 模块是 alpha.117 | 边缘对着旧的身份替身测，现在的 SDK 改了行为，测试照样通过 | 2026-11-07 加“只用一个 SDK 版本”的检查时列出全部 `go.mod` | `be-edge` 3.0.0-alpha.3：测试模块换上 alpha.117，`make check` 与 `make traefik` （真实的 Traefik 容器）都过；pin-check 的“只用一个 SDK 版本”把它算进去。Python 的互通小程序不换：它钉的是 Python SDK（a51）所实现的协议同期的 Go SDK，拿现在的 Go SDK 测，测的是第 6 项还没做的条款；随第 6 项 Python SDK 追上协议时一起换（写进第 6 项的计划） | 测另一个实现的测试，对着系统里现行的版本；有意钉旧版本的，在检查里写明为什么不算 |
 
 ## 已知风险与待定
 

@@ -18,7 +18,9 @@ probe pins (the suite stayed at a20 while the probes were at a44, and its tokens
 Every deployed Go module requires one be-sdk-go/v3 version: the components, the shells, the Go probe and the recovery
 tool be-ops (it runs in the deployment's network and writes the run profile the members read); the SDK is upgraded
 across the system together, and be-ops stayed at alpha.116 when everything else moved to alpha.117 (the unify tool
-did not list it). The test fixtures of other tools (be-sdk-python's interop tests, be-edge's tests) are not deployed.
+did not list it). be-edge's tests (tools/be-edge/tests) count too: they check the plugin against the SDK's identity
+stand-ins, so they use the version the system runs. be-sdk-python's interop helpers do not: they pin the Go SDK of
+the protocol the Python SDK implements (it catches up in foundations item 6).
 Only rebuilt components count (major version 3); the 2.x leftovers and the frozen shells are skipped.
 Usage: pin-check.py [root]   (exits 1 when a reference is stale)"""
 from __future__ import annotations
@@ -101,7 +103,7 @@ SDK_REQUIRE = re.compile(r"^\s*(?:require\s+)?github\.com/brickKit/be-sdk-go/v3 
 def one_sdk(root: pathlib.Path) -> list[str]:
     """The deployed Go modules all require the same be-sdk-go/v3 version."""
     files = [*root.glob("components/*/*/go.mod"), *root.glob("shell/be/*/go.mod"),
-             root / "tools/be-ops/go.mod", root / "tools/be-acceptance/probes/go/go.mod"]
+             root / "tools/be-ops/go.mod", root / "tools/be-acceptance/probes/go/go.mod", root / "tools/be-edge/tests/go.mod"]
     found = {}
     for f in sorted(files):
         if not f.exists() or str(f.parent.relative_to(root)) in FROZEN:
