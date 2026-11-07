@@ -61,8 +61,11 @@ obs-down:     ; @bash $(S)/optional.sh obs down      ## 关闭可观测性 5 件
         nginx-up nginx-down obs-up obs-down
 
 ##@ 全局册子
-registry-check:  ## 校验端口册与 schema 册自洽
+registry-check: authz-keys-check  ## 校验端口册与 schema 册自洽；格的授权登记表与组件定义一致
 	@bash $(S)/registry-check.sh
+
+authz-keys-check:  ## 套件里格的授权登记表（cells/prepare.py）与每个已重建组件定义的资源、操作一致（两个方向）
+	@PYTHONDONTWRITEBYTECODE=1 python3 $(S)/authz-keys-check.py
 
 docs-boundary:  ## 正式文档不得链接 dev/ 或 archive/
 	@python3 infra/scripts/docs-boundary.py
@@ -117,7 +120,7 @@ security-schemas:  ## The security records' JSON Schemas in be-protocol are exac
 
 design-models:  ## Run every reference model in be-acceptance (about 15 minutes)
 	@$(MAKE) -C tools/be-acceptance models
-.PHONY: pin-check registry-check docs-boundary docs-diagrams docs-mirror docs-links docs-ids docs-closure docs-index docs-index-check infra-images security-schemas design-models
+.PHONY: pin-check registry-check authz-keys-check docs-boundary docs-diagrams docs-mirror docs-links docs-ids docs-closure docs-index docs-index-check infra-images security-schemas design-models
 
 ##@ 校验
 lint:  ## brickKit 自身的三层 + 文档检查（严格模式）
@@ -186,7 +189,7 @@ teardown-down:  ## 停掉拆回验证的容器
 # The Go gates of the 0.x be-acceptance (import, SystemClient, bare-route, event and OpenAPI
 # breaking changes, data-scope tests, dependency versions, config keys) moved to its legacy/v0
 # branch with the old code (D59); conformance suites and gates return with the rebuilt tools.
-gates: docs-boundary docs-diagrams docs-mirror docs-links docs-ids docs-closure docs-index-check infra-images security-schemas no-binaries protocol-coverage-go layout-check scripts-test  ## Document gates (boundary, mirror, links, IDs, closure), infra image pins, security schemas, no build output in any repository, the components' layout, the scripts' own tests + brickkit up --dry-run
+gates: docs-boundary docs-diagrams docs-mirror docs-links docs-ids docs-closure docs-index-check infra-images security-schemas no-binaries protocol-coverage-go layout-check scripts-test authz-keys-check  ## Document gates (boundary, mirror, links, IDs, closure), infra image pins, security schemas, no build output in any repository, the components' layout, the scripts' own tests, the cells' authorization tables + brickkit up --dry-run
 	@echo "▸ brickkit up --dry-run"
 	@bash $(S)/lib/require-brickkit.sh
 	@brickkit up --dry-run
