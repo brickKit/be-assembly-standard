@@ -189,11 +189,15 @@ teardown-down:  ## 停掉拆回验证的容器
 # The Go gates of the 0.x be-acceptance (import, SystemClient, bare-route, event and OpenAPI
 # breaking changes, data-scope tests, dependency versions, config keys) moved to its legacy/v0
 # branch with the old code (D59); conformance suites and gates return with the rebuilt tools.
-gates: docs-boundary docs-diagrams docs-mirror docs-links docs-ids docs-closure docs-index-check infra-images security-schemas no-binaries protocol-coverage-go  ## Document gates (boundary, mirror, links, IDs, closure), infra image pins, security schemas, no build output in any repository + brickkit up --dry-run
+gates: docs-boundary docs-diagrams docs-mirror docs-links docs-ids docs-closure docs-index-check infra-images security-schemas no-binaries protocol-coverage-go layout-check  ## Document gates (boundary, mirror, links, IDs, closure), infra image pins, security schemas, no build output in any repository, the components' layout + brickkit up --dry-run
 	@echo "▸ brickkit up --dry-run"
 	@bash $(S)/lib/require-brickkit.sh
 	@brickkit up --dry-run
 .PHONY: gates
+
+layout-check:  ## 已重建的 Go 组件按业务模块分层、每层一份说明（docs/zh/01-conventions/05-ai-navigation.md 的布局检查）；ALL=1 连还没分层的一起查
+	@PYTHONDONTWRITEBYTECODE=1 python3 $(S)/layout-check.py $(if $(ALL),--all)
+.PHONY: layout-check
 
 version-check: pin-check  ## 扫全部 submodule（组件、外壳、工具仓库）：HEAD 是否领先最新 tag（兼容 2.0.0 与 v2.0.0 双 tag）；并查精确依赖
 	@bash infra/scripts/version-check.sh
