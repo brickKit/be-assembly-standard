@@ -23,7 +23,7 @@ import sys
 ROOT = pathlib.Path(__file__).resolve().parents[2]
 ENTRY_FILES = {"definition.go", "module.go", "services.go", "checks.go"}
 # Not laid out yet; each leaves this set when it is (the set goes when it is empty).
-PENDING = {"infra/audit", "erp/inventory",
+PENDING = {"erp/inventory",
            "erp/billing", "infra/iam-casdoor", "infra/authz"}
 
 
