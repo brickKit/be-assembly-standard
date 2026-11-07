@@ -27,101 +27,118 @@
 
 ## 设计（AI 定，待复核）
 
-依据：kb `01-architecture/04-application-architecture/00-decisions.md` 的 D2（按业务模块切，不按技术层）与 D5（边界靠检查，不靠文档）；`01-fundamentals/13-ai-friendly-architecture.md`（上下文局部性、可预测的结构、护栏即代码）。
+依据：kb `01-architecture/04-application-architecture/00-decisions.md` 的 D2（按业务模块切，不按技术层）与 D5（边界靠检查，不靠文档）；`01-fundamentals/13-ai-friendly-architecture.md`（上下文局部性、可预测的结构、护栏即代码）。定稿的规则在规范 05 的[标准布局](../../docs/zh/01-conventions/05-ai-navigation.md#组件仓库的标准布局与代码地图)，这里只记设计的来由与铺开时的取舍。
 
 ### 目录（A160）
 
 ```text
 <仓库>/
-├── AGENTS.md            第 1 层：组件做什么；业务模块表（模块 → 目录 → 负责什么）；阅读顺序；测试在哪
+├── AGENTS.md            第 1 层：组件做什么；目录表、业务模块表、“想改什么从哪里开始”；测试在哪
 ├── <包>/                第 2 层：组件的入口与组装（包名不变，main.go 与外壳照旧只引用它）
-│   ├── AGENTS.md        怎样把模块组装起来、跨模块的规则
-│   ├── definition.go    身份、版本、依赖、配置键、事件流；资源与操作从各模块收集
-│   ├── module.go        只组装：建各模块、登记路由、作业、订阅、核对
+│   ├── AGENTS.md        怎样把模块组装起来
+│   ├── definition.go    端口、迁移、配置键、组件定义（名字、资源与操作从 internal/core 收集）
+│   ├── module.go        只组装：建 core.Base，登记路由、作业、订阅、启动、重放
+│   ├── services.go      系统面的登记与转发；checks.go 恢复核对
 │   └── migrations/      表（整个组件一套，不按模块拆：迁移顺序是全组件的）
 ├── internal/            第 2 层：业务。Go 的 internal 只给本仓库引用，别的组件编译期就引用不了（落实决定 0101）
-│   ├── AGENTS.md        模块之间怎样依赖（一张表）、共用的放哪
-│   ├── <业务模块>/       第 3 层：一个业务模块一个包（例：quotation/、order/、confirmation/、delivery/）
-│   │   ├── AGENTS.md    这个模块负责什么、拥有的表与路由与事件与操作、规则的出处、文件、依赖谁、被谁用、测试
-│   │   ├── *.go         它自己的资源与操作也声明在这里，入口包收集
+│   ├── AGENTS.md        模块表（一句话、依赖）与分层、共同的写法
+│   ├── <业务模块>/       第 3 层：一个业务模块一个包
+│   │   ├── AGENTS.md    负责与不负责、文件、依赖与被依赖、规则在哪、测试
+│   │   ├── *.go
 │   │   └── *_test.go    这个模块的单元测试
-│   └── <共用的>/         第 3 层：模块共用、不属于任何一个业务模块的（单据的公共部分、上游的取证、记录与事件的写法）
+│   └── core/ 等共用的    第 3 层：名字、资源与操作的定义（一张表）、记录与事件的写法、Base；上游的取证（masterdata）
 ├── itest/               集成测试（构建标签 integration）：按业务流程分文件
-│   └── AGENTS.md        测试索引：每个文件测哪条流程、覆盖哪些规则与编号（RS、TR、AU…）、怎样单独跑
-├── cmd/seed/            照旧
+│   └── AGENTS.md        测试索引：每个文件测哪条流程、被测的模块、步的顺序、怎样跑
+├── cmd/                 照旧
 └── docs/                照旧（design.md 等：规则的正文；AGENTS.md 只指过去，不重复）
 ```
 
-- **模块怎样切**：按业务能力（一个聚合或一条业务流程），每个模块有自己拥有的表与路由；模块之间只经对方导出的接口调用，依赖无环、方向写在模块的 `AGENTS.md` 里。切分以“改一个典型需求只动一个模块”为准；拿不准时宁可少切（kb D2 的翻转：过早划的边界改起来贵）。
-- **包的大小**：入口包只放组装；一个模块超过约 12 个文件或有两块各自的规则时再拆。
-- **Go 的限制**：模块不能反过来引用入口包（会成环），所以各模块自己声明资源与操作、入口包收集；共享的类型放在 `internal/` 下共用的包里。
+- **模块怎样切**：按业务能力（一个聚合或一条业务流程），每个模块有自己拥有的表与路由；以“改一个典型需求只动一个模块”为准，拿不准时宁可少切（kb D2 的翻转：过早划的边界改起来贵）。
+- **资源与操作的定义是 `internal/core` 的一张表**（L1 改的：`erp/sales` 三种单据共用一张字段表与同一套维度，分到各模块要重复）；模块只引用操作的常量。模块不能反过来引用入口包，所以名字也在 `core`。
+- **依赖只朝下**：模块的函数先收 `*core.Base`，模块之间直接调对方导出的函数，只引用比自己低的层；低层要通知高层时经 `Base` 上由入口接好的函数（`infra/authz` 的 `RecordMoved`），按种类分派到几个模块的路由单独成一个小模块（`infra/authz` 的 `confirmroutes`）。规则写进了规范 05。
+- **`core` 之下可以有不依赖它的基础包**（`infra/iam-casdoor` 的 `provider`、`keys`）：规范要不要明写、检查要不要核对分层，见结构问题 SF08。
+- **包的大小**：入口包只放组装；一个模块超过约 12 个文件或有两块各自的规则时再拆。拆不开的（`infra/authz` 的生效点）照实写进模块说明与结构问题登记（SF05）。
 
 ### 每层的说明（A161）
 
 - 每个有代码的目录一份 `AGENTS.md`（同目录 `CLAUDE.md` 只写 `@AGENTS.md`：Claude Code 读到这个目录的文件时会自动带上它，正好是“进入下一层之前先读”）。
 - 内容固定的几节，只写这一层的：**一句话**；**负责什么、不负责什么（去哪找）**；**文件**（每个文件一行）；**依赖与被依赖**；**规则在哪**（指 `docs/` 的节，不抄）；**测试**（哪个测试测什么）。每份控制在一屏左右。
-- 仓库根的 `AGENTS.md` 的代码地图缩成模块表，不再列全部文件。
+- 仓库根的 `AGENTS.md` 的代码地图缩成目录表、模块表与“想改”表，不再列全部文件。
 
 ### 测试的结构（A162）
 
-- **单元测试**跟着模块：放在模块目录里，只测这个模块。
-- **集成测试**集中在仓库根的 `itest/`，按业务流程分文件（一条流程一个文件，现有的大文件按步骤拆开），共用的启动与替身在 `itest/` 的公共文件里；`itest/AGENTS.md` 是测试索引：文件 → 流程 → 覆盖的规则编号 → 怎样单独跑一条。
-- 组件的 `Makefile` 照旧：`make test`、`make test-integration`。
+- **单元测试**跟着模块：放在模块目录里，只测这个模块；测试的辅助函数只在自己的包里用（各包各一份，SF22）。
+- **集成测试**集中在仓库根的 `itest/`，按业务流程分文件，共用的启动与替身在 `itest/` 的公共文件里；原来一个大函数的，按段落拆成 `fixture` 的步骤。`itest/AGENTS.md` 是测试索引：文件 → 步 → 流程 → 被测的模块，步的顺序与能不能单独跑。
+- 组件的 `Makefile`：`make test`、`make test-integration`（`./itest/`）。
 
 ### 检查（A163）
 
-- 父仓库加一个布局检查（`make layout-check`，进 `make gates`）：
-  - 已重建的组件，入口包、`internal/` 与其下每个包、`itest/` 的目录里有 `AGENTS.md` 与 `CLAUDE.md`；
-  - `AGENTS.md` 的“文件”一节与目录里实际的 `.go` 文件一一对应（多了、少了都报，地图不会悄悄过时）；
-  - 入口包里只放组装文件（白名单按规范列出），业务都在 `internal/` 下；
-  - 模块之间的依赖无环、只走声明的方向（`go list` 取依赖，对照模块 `AGENTS.md` 的“依赖”一节）。
-- 改坏检查：每条检查各改坏一次，必须报错。
+`make layout-check`（`infra/scripts/layout-check.py`，进 `make gates`，7 个测试：合格的过，六种改坏各报错）对每个已重建的 Go 组件核对：入口包、`internal/` 与其下每个包、`itest/` 都有 `AGENTS.md` 与只含 `@AGENTS.md` 的 `CLAUDE.md`；每份说明的“文件”一节与目录里的 `.go` 文件一一对应；入口包只有组装文件；集成测试只在 `itest/`；`internal/AGENTS.md` 模块表的依赖与 `go list` 的实际导入相同；组件根的代码地图列出每个模块。铺开期间未分层的组件列在 `PENDING` 里不查，L4 做完后连同 `ALL=1` 一起删掉。
 
 ## 任务
 
 | # | 任务 | 依据 | 依赖 | 验收 | 状态 |
 | --- | --- | --- | --- | --- | --- |
-| L1 | **试点 `erp/sales`**：按上面的设计重排（版本升到 3.0.39），行为不变；写各层的 `AGENTS.md`；集成测试搬进 `itest/` 并写索引 | 设计 A160–A162 | — | 单元与集成测试全过（与重排前同样的用例数）；`go vet`；`brickkit lint`；每个模块 `AGENTS.md` 的文件清单与目录一致；一个新会话只读文档能答出“改报价的取价改哪里、测在哪” | ✅ 2026-11-07（见“L1 的结果”；分支 `layout`，未发布，等 L2） |
+| L1 | **试点 `erp/sales`**：按上面的设计重排（3.0.39），行为不变；写各层的 `AGENTS.md`；集成测试搬进 `itest/` 并写索引 | A160–A162 | — | 单元与集成测试全过（与重排前同样的用例数）；`go vet`；`brickkit lint`；每个模块 `AGENTS.md` 的文件清单与目录一致；一个新会话只读文档能答出“改报价的取价改哪里、测在哪” | ✅ 2026-11-07（见“L1 的结果”） |
 | L2 | **维护者看试点**：结构、文档的写法、测试的组织；照意见改，定稿 | L1 | L1 | 维护者确认 | ✅ 维护者 2026-11-07“先按这样铺开”：全部 Go 组件与 `infra/print` 做 L1；状态与不变量复杂的（`erp/inventory`、`erp/billing`、`erp/credit`、`infra/authz`）再做 L1b；铺开到 `infra/authz` 时用一道窄题前后各考一次 |
-| L3 | **规范与检查**：改[标准布局](../../docs/zh/01-conventions/05-ai-navigation.md#组件仓库的标准布局与代码地图)、[测试与验证](../../docs/zh/01-conventions/02-testing-and-validation.md)、[改动配方](../../docs/zh/01-conventions/11-change-recipes.md)（加功能放哪个模块、加模块要做什么）；写 `make layout-check`（A163）并进 `make gates`；`brickkit-component` 与新组件的样板按新结构 | L2 | L2 | 检查对试点通过、对其余未改的组件报错；改坏 4 处全红 | ✅ 2026-11-07：规范 05（标准布局：Go 与 Python 的树、模块怎样切、每层的说明、布局检查）、06（新节“状态与不变量集中一处”）、02（测试放在哪、测试索引）、11（加一个功能放哪个模块、加一个状态或命令）；根 `AGENTS.md` 的查找路由加一行；`infra/scripts/layout-check.py` 与它的 7 个测试（合格的过，六种改坏各报错），`make layout-check` 进 `make gates`，还没分层的组件列在 `PENDING`（`ALL=1` 时一起查：其余 10 个组件共报 183 处）；`erp/sales` 3.0.40 已发布。样板：新组件照 `erp/sales`（规范 11 的“新建一个组件”）；`brickkit-component` 技能是 BrickKit 的通用做法，本项目的布局以规范为准，不改它 |
-| L4 | **铺开到其余 Go 组件**，按大小从小到大（先熟练、后难）：`mdm/currency`、`mdm/partner`、`mdm/product`、`erp/credit`、`mdm/org`、`infra/audit`、`erp/inventory`、`erp/billing`、`infra/iam-casdoor`、`infra/authz`；每个升最后一位版本、行为不变、测试全过、发布 | L3 | L3 | 每个组件：测试全过、`make layout-check` 通过、发布；全部做完后外壳 `be/go-infra`、`be/go-core` 换上新版本、`make version-check` 全过 | 🔄 已做：`mdm/currency` 3.0.29（`currencies`、`rates`、`source`、`core`；集成测试拆成 5 步，断言前后 83 条）；`mdm/partner` 3.0.33（`partners`、`roles`、`source`、`core`；7 步，断言 54 条）；`mdm/product` 3.0.32（`products`、`categories`、`units`、`source`、`core`；8 步，断言 58 条）；`erp/credit` 3.0.29（L1：`limits`、`branches`、`masterdata`、`core`；8 步，断言 65 条）。`mdm/org` 3.0.30（`entities`、`units`、`tightening`、`replay`、`source`、`core`；11 步，断言 124 条）。`infra/audit` 3.0.34（`intake`、`chain`、`evidence`、`reading`、`archive`、`core`；端到端拆 6 步，另两个测试照旧，断言 176 条）。`erp/inventory` 3.0.29（`warehouses`、`stock`、`movements`、`numbering`、`branches`、`issue`、`masterdata`、`core`；10 步，断言 97 条）。`erp/billing` 3.0.38（`invoices`、`issue`、`print`、`recoverycheck`、`masterdata`、`core`；步骤分 6 个文件，断言 122 条）。`infra/iam-casdoor` 3.0.39（`login`、`sessions`、`accounts`、`reconcile`、`replay`，下面 `core`、`provider`、`keys`：`core.Base` 带着 Casdoor 客户端与密钥环，所以这两个包在 `core` 之下；`store` 的方法跟着类型进 `core`；断言 289 条）。**还剩 `infra/authz`**（见下）。**顺序调整（2026-11-07）**：先把其余组件的 L1 做完，再集中做四个复杂组件的 L1b（见下“L1b 的铺开”） |
+| L3 | **规范与检查**：改标准布局、测试与验证、改动配方；写 `make layout-check`（A163）并进 `make gates` | L2 | L2 | 检查对试点通过、对未改的组件报错；改坏全红 | ✅ 2026-11-07：规范 05（标准布局：Go 与 Python 的树、模块怎样切、每层的说明、布局检查）、06（新节“状态与不变量集中一处”）、02（测试放在哪、测试索引）、11（加一个功能放哪个模块、加一个状态或命令）；根 `AGENTS.md` 的查找路由加一行；检查与它的测试（当时其余 10 个组件共报 183 处）；`erp/sales` 3.0.40 已发布。样板：新组件照 `erp/sales`（规范 11 的“新建一个组件”）；`brickkit-component` 技能是 BrickKit 的通用做法，本项目的布局以规范为准，不改它 |
+| L4 | **铺开到其余 Go 组件**，从小到大（先熟练、后难）；每个升最后一位版本、行为不变、测试全过、发布 | L3 | L3 | 每个组件：测试全过、断言条数前后相同、`make layout-check` 通过、发布 | ✅ 2026-11-07，10 个组件（见“L4 的结果”）；`PENDING` 已删 |
+| L4b | **铺开的收尾**：依赖方（`erp/sales`、`erp/credit`、`erp/inventory`、`erp/billing` 对主数据与彼此）与外壳 `be/go-core`、`be/go-infra` 的钉版本统一换一次（见“铺开期间的版本”）；其余 11 个组件的合并安全测试扩到 `internal/` 下全部包（SF24，同一版一起发）；`infra/audit` 补 `Makefile`（SF09） | L4 | L4 | `make version-check`（含 `pin-check`）全过；每个组件的合并安全测试对 `internal/` 里放一个违规的探针会红；外壳构建通过 | ⬜ |
+| L1b | 四个复杂组件的 L1b（见“L1b 的铺开”） | L1b（`erp/sales`） | L4b | 照 `erp/sales` 的 L1b-1 至 L1b-6 | ⬜ |
 | L5 | **Python 的 `infra/print`**：同样的分层（Python 子包、`AGENTS.md`、`itest/`） | L3 | L3 | 测试全过、布局检查通过、发布、外壳 `be/py-render` | ⬜ |
-| L6 | **真机格**：从空库起跑一个单跑格与一个外壳格（建格、种子两遍、L3 场景），确认重排没有改变行为 | L4、L5 | L4、L5 | 两个格全过 | ⬜ |
+| L6 | **真机格**：从空库起跑一个单跑格与一个外壳格（建格、种子两遍、L3 场景），确认重排没有改变行为 | L4b、L5 | L4b、L5 | 两个格全过 | ⬜ |
 | L7 | **SDK 与工具里的大包**：评估 `be-sdk-go` 里文件超过约 15 个的包（`tiering/` 等）与 `be-ops` 的 `internal/recovery/`：公开的接口不变，能否在包内按职责分 `internal/` 子包、配同样的每层说明；结论与做法写在这里 | L3 | L3 | 写出结论；要改的照同样的验收 | ⬜ |
 
-## L1 的结果（2026-11-07）
+## 做法（每个组件照这个做）
 
-`erp/sales` 3.0.39，分支 `layout`：入口 `sales/` 5 个文件（定义、组装、gRPC 转发、恢复核对、单元测试），`internal/` 下 12 个包（8 个业务模块、4 个共用），`itest/` 11 个文件；每个目录一份 `AGENTS.md` 与 `CLAUDE.md`。单元与集成测试全过（用例与步骤 29 个，与重排前同一份名单）；`go vet`（含 `integration`）、`gofmt`、`brickkit lint` 干净；文件清单的原型检查（`filemap-check.py`，见下）对试点通过、改坏两处（删一行文件、缺一份 `CLAUDE.md`）都报错。
+工具在 `layout-tools/`（说明见它的 `README.md`）；每个组件一个可重放的流水线（`layout-tools/pipelines/<组件>-pipeline.sh`），从仓库的 `HEAD` 起做完整个重排：
 
-与上面设计不同的地方（原因）：
+1. **定模块表与分层**：小组件读代码地图就够；文件互相牵连的（`infra/authz`），先用 `pkgrefs`（每个文件用到别的文件的哪些包级名字与 `Module` 的方法）与 `partition2.py`（给一种分法，算包之间的依赖与环）试分法，到无环为止，动手前写下模块表。只看包级名字会漏掉方法调用（`infra/authz` 第一次的分法就因此漏了两个环）。
+2. **预拆**：把要去不同包的声明按包挪进各自的文件（`mvdecl`，按语法树挪声明连同注释；一个文件里同名的两个声明只挪得动一个，先改名）；被几个模块用的名字、工具函数、存储的方法挪进 `core`；导出后会与类型重名的方法先改名（`-rename`，或预拆时改）；`var ( … )` 块先拆开（`splitvars.py`）。
+3. **按类型的改写**（`restructure`）：`Module` 的方法改成先收 `*core.Base` 的函数、被别的包用到的名字导出（导出的字段带 `json:"-"`，不改编码，见 SF07）、跨包的引用加包名；方法值报出来手接。
+4. 挪进 `internal/<包>/`，`goimports` 补导入（自定义别名要先给：`aliases.py`，否则它会选错同名的包，例如 `pgx` v3、`jwt` v3、`alecthomas/assert`）；`Module` 除了运行时还带别的字段的，一起放进 `core.Base`。
+5. **入口**的 `module.go`、`services.go`（`checks.go`）手写一次（`layout-tools/entry/`）。
+6. **集成测试**搬进 `itest/`；原来一个大函数的，按段落拆成 `fixture` 的步骤（每条语句照搬，步骤之间共用的变量收进 `fixture`）。入口包里测的是某个模块函数的单元测试，跟着那个函数进模块。
+7. 每一步后编译；最后 `go vet`（含 `integration`）、全部测试、前后对断言条数与测试名单；改名后的说明注释第一个词跟着改（`doccap.py`）；`Makefile` 的 `test-integration` 改成 `./itest/`（SF18）；写各层的说明，`make layout-check`、`brickkit lint`。
+8. 旧代码的测试在干净的 worktree 里跑（`git stash` 留下未跟踪的新目录，会让旧代码编译失败、看起来像红）。
 
-- **资源与操作的定义没有分到各模块**，是 `internal/core` 的一张表（`core.Definitions()`）：`erp/sales` 的三种单据共用一张字段表（`documentFields`）与同一套维度，拆开要重复；模块只引用操作的常量。A160 照此写。
+## L1 的结果（`erp/sales`，2026-11-07）
+
+`erp/sales` 3.0.39，分支 `layout`：入口 `sales/` 5 个文件（定义、组装、gRPC 转发、恢复核对、单元测试），`internal/` 下 12 个包（8 个业务模块、4 个共用），`itest/` 11 个文件；每个目录一份 `AGENTS.md` 与 `CLAUDE.md`。单元与集成测试全过（用例与步骤 29 个，与重排前同一份名单）；`go vet`（含 `integration`）、`gofmt`、`brickkit lint` 干净；文件清单的原型检查（`filemap-check.py`）对试点通过、改坏两处（删一行文件、缺一份 `CLAUDE.md`）都报错。
+
+与最初的设计不同的地方（已改进上面的设计）：
+
+- **资源与操作的定义没有分到各模块**，是 `internal/core` 的一张表（`core.Definitions()`）。
 - **归档（冷热分层）并进了 `orders`**（`orders/archive.go`）：数据类别读订单、订单的历史列表在订单的列表里，分开两个包会互相引用。
 - **共用的放在 `core`、`documents`、`masterdata`、`ledger`**；`core` 里有组件 ID、依赖 ID、事件类型、错误原因、审计与发件表的写法、记录类型。
-- 订单表不是“只经属主写”：订单行同时是台账，交货、出账、确认各在订单行锁下写自己的列（与原来一样，只是写明了）；`internal/AGENTS.md` 照实写。
+- 订单表不是“只经属主写”：订单行同时是台账，交货、出账、确认各在订单行锁下写自己的列（与原来一样，只是写明了；L1b 把台账收进了 `ledger`）。
 
 考试（一个只许读 `AGENTS.md` 与 `docs/` 的子代理，六道找代码的题：改取价、取消时加通知、交货列表加筛选、取消中的订单拒绝认领、部门移动、只跑交货的测试）：六道都找对了文件、函数与测试；它指出七处要猜的地方，已改：认领的“订单不可出账”守卫没写（补进 `docs/flows/delivery-and-billing.md` 与模块说明）、“通知意图”指什么（本组件不通知人，订阅订单事件）、交货列表的字段在哪声明、`make test` 两处说法、取价顺序哪几步在哪个函数、各步不是子测试、`docs/design.md` 的交货表缺列。
 
-顺带发现、**另起版本修**（本版只改结构）：集成测试没有覆盖草稿订单的取消，也没有覆盖出账来源对未确认或取消中的订单答 `order_not_billable`（两条都写进了 `itest/AGENTS.md` 的“没有覆盖的”）。
+顺带发现：集成测试没有覆盖草稿订单的取消、出账来源对未确认或取消中的订单答 `order_not_billable`（L1b-1 补上）；`Makefile` 的 `test-integration` 原来是 `./sales/`，测试搬走后一个集成测试也不跑（本版改成 `./itest/`）；`docs/design.md`、`docs/rules/pricing.md` 里指向旧文件的地方一并改了。
 
-顺带发现、已在本版修：`Makefile` 的 `test-integration` 原来是 `./sales/`，测试搬走后它会一个集成测试也不跑——改成 `./itest/`。`docs/design.md`、`docs/rules/pricing.md` 里指向旧文件的地方一并改了。
+## L4 的结果（2026-11-07）
 
-做法（铺开时照用）：一个可重放的脚本从仓库的 `HEAD` 起做完整个重排（会话临时目录里的 `sales-pipeline.sh`；L3 时把通用的部分搬进 `tools/`）：
+| 组件 | 版本 | 模块（共用的在后） | 集成测试 | 断言 | 这个组件特有的 |
+| --- | --- | --- | --- | --- | --- |
+| `mdm/currency` | 3.0.29 | `currencies`、`rates`、`source`；`core` | 拆成 5 步 | 83 | |
+| `mdm/partner` | 3.0.33 | `partners`、`roles`、`source`；`core` | 7 步 | 54 | |
+| `mdm/product` | 3.0.32 | `products`、`categories`、`units`、`source`；`core` | 8 步 | 58 | |
+| `erp/credit` | 3.0.29 | `limits`、`branches`、`masterdata`；`core` | 8 步 | 65 | 只做 L1；分支的生命周期留给 L1b（SF01、SF02） |
+| `mdm/org` | 3.0.30 | `entities`、`units`、`tightening`、`replay`、`source`；`core` | 11 步 | 124 | 证据模块叫 `tightening`，不与 SDK 的 `evidence` 同名（SF20） |
+| `infra/audit` | 3.0.34 | `intake`、`chain`、`evidence`、`reading`、`archive`；`core` | 端到端拆 6 步，另两个测试照旧 | 176 | 组件定义从 `audit.go` 拆出；读取模块叫 `reading`；没有 `Makefile`（SF09） |
+| `erp/inventory` | 3.0.29 | `warehouses`、`stock`、`movements`、`numbering`、`branches`、`issue`、`masterdata`；`core` | 10 步 | 97 | `stock.Key` 的字面量改成带字段名（SF23） |
+| `erp/billing` | 3.0.38 | `invoices`、`issue`、`print`、`recoverycheck`、`masterdata`；`core` | 步骤分 6 个文件 | 122 | 更正的路由从入口的闭包挪进 `invoices`（SF19）；打印测试的辅助各包一份（SF22） |
+| `infra/iam-casdoor` | 3.0.39 | `login`、`sessions`、`accounts`、`reconcile`、`replay`；`core`，下面 `provider`、`keys` | 按模块分文件 | 289 | `core.Base` 带着 Casdoor 客户端与密钥环，所以这两个包在 `core` 之下（SF08）；存储的方法跟着类型进 `core`（SF21）；`Version` 在 `core`（SF10） |
+| `infra/authz` | 3.0.42 | `effectpoint`、`view`、`definitions`、`plans`、`accounts`、`claim`、`restore`、`adminrecovery`、`confirmroutes`；`core` | 原来就是 24 步的端到端加 5 个独立测试，按流程分文件，写索引 | 953（测试函数 34） | 见下 |
 
-1. 预拆：把要去不同包的声明按包挪进各自的文件（`mvdecl`，按 Go 的语法树挪声明连同注释）；
-2. 按类型的改写（`restructure`，基于 `go/types`）：`Module` 的方法改成先收 `*core.Base` 的函数、被别的包用到的名字导出（导出的字段带 `json:"-"`，不改编码）、跨包的引用加包名；
-3. 挪进 `internal/<包>/`，`goimports` 补导入（自定义别名要先给，否则它会选错同名的包）；
-4. 入口的 `module.go`、`checks.go`、`services.go` 手写一次；
-5. 集成测试搬进 `itest/`，按步骤拆文件。
+`infra/authz` 的取舍：
 
-每一步后编译；最后 `go vet`、全部测试、对测试名单。改名后的说明注释第一个词跟着改（`doccap.py`）。
-
-铺开时（L4）每个组件照这个做，另外：
-
-- 集成测试原来是一个大函数的，按段落拆成 `fixture` 的步骤（每条语句照搬，步骤之间共用的变量收进 `fixture`），拆完数一遍前后的断言条数；
-- 入口包里测的是某个模块函数的单元测试，跟着那个函数进模块；
-- `Module` 除了运行时还带别的字段的，一起放进 `core.Base`；
-- 旧代码的测试在干净的 worktree 里跑（`git stash` 留下未跟踪的新目录，会让旧代码编译失败、看起来像红）。
+- 36 个文件几乎彼此全连（SF05）。生效点（变更、事实、决策、写入、确认、冷静期、处置与解除、身份侧处置、待恢复、闭包、预算、再下放）是同一套记录状态与同一张决策表，处置与解除是生效点计划（`Plan`）的一部分、入口又按种类调它们，所以合成一个包 `effectpoint`（17 个业务文件，说明里分组）；其余按“谁调生效点”分：`view`、`definitions`（不依赖生效点）、`plans`、`accounts`、`claim`、`restore`（整套恢复的 6.3 与 6.4–6.5）、`adminrecovery`、`confirmroutes`。分层：`confirmroutes`、`adminrecovery` → `plans`、`accounts`、`claim`、`restore`、`view` → `effectpoint` → `definitions`、`core`。
+- 两处依赖反过来：生效点迁移记录后原来直接调计划的 `followRecord`，改成经 `Base.RecordMoved`（入口接到 `plans.FollowRecord`）；确认路由原来在生效点里按种类调计划与账号的确认，单独成 `confirmroutes`。
+- 只在一处用的名字跟着模块（`plans` 的作业名与默认值、`claim` 与再下放的默认值、`restore.RecoveryTool`），被几处用的进 `core`（名字、注册表、状态修订、`UUIDText`、`ReplayFacts`）。
+- 顺带修了：`Makefile` 补 `test`、`test-integration`；合并安全的测试扩到 `internal/`（SF24：分层以来各组件都只查入口包，放一个违规的探针验证过会红）；集成测试文件里过时的运行命令（`./member/`）。
+- 考试（L2 定的“一道窄题前后各考一次”）：见下“`infra/authz` 的考试”。
 
 ## L1b：让规则集中、冲突自己暴露（维护者 2026-11-07 批准）
 
@@ -174,19 +191,13 @@
 - 额度占用 `order_exposure` 在预占、释放、消耗三处直接写，要收进 `limits` 的几个函数，并比对发件表事件的先后与版本号不变。
 这一类设计值得专门做，不和机械的分层混在一起。
 
-### 剩下的：`infra/authz`（L4 的最后一个）
+### 铺开期间的版本
 
-36 个非测试文件、1.4 万行（含测试）。`layout-tools/pkgrefs` 的结果（`layout-tools/analysis/authz-pkgrefs.txt`：每个文件用到哪些别的文件的名字）显示这些文件几乎彼此全连、成环：`change`、`disposition`、`confirm`、`release` 互相引用，`facts.go` 用到 15 个文件，`plan`、`recovery`、`requester` 也各连十来个。只有 `security.go`（只用定义）、`effective.go`（只用 `security`）、`submit.go` 在底部。
-
-所以它不能照前面的流水线机械地切：要先读懂业务（授予的变更：提交、确认、执行、冷却、释放、计划；生效的授予与闭包；判定；整套恢复的步骤），把被到处引用的小函数与类型理到 `core`（或几个底层包），再按“改一个典型需求只动一个模块”定模块，宁可少切（例如先切成 `engine`（判定与生效）、`changes`（变更的生命周期）、`recovery` 三块，再看要不要细分）。这一步值得在一个新会话里专门做，并在动手前写下模块表与分层。
-
-### 铺开期间的版本（L4）
-
-每个组件分层后照常发布；**外壳 `be/go-core`、`be/go-infra` 与依赖方的钉版本在 L4 全部做完后统一换一次**（不为每个组件各发一次外壳）。所以 L4 期间 `make pin-check` 只会因为“依赖方或外壳钉着分层之前的版本”而红。依赖方（`erp/sales`、`erp/credit`、`erp/inventory`、`erp/billing` 对主数据与彼此的依赖）也在末尾统一换一次（原来写 `erp/billing` 对 `erp/sales` 的依赖在它分层的那一版换；之后主数据组件也都发了新版本，各依赖方都要换，统一到末尾一次做）。
+每个组件分层后照常发布；**外壳 `be/go-core`、`be/go-infra` 与依赖方的钉版本在 L4 全部做完后统一换一次**（L4b，不为每个组件各发一次外壳）。所以到 L4b 之前 `make pin-check` 只会因为“依赖方或外壳钉着分层之前的版本”而红。依赖方（`erp/sales`、`erp/credit`、`erp/inventory`、`erp/billing` 对主数据与彼此的依赖）也在 L4b 统一换（原来写 `erp/billing` 对 `erp/sales` 的依赖在它分层的那一版换；之后主数据组件也都发了新版本，统一到末尾一次做）。
 
 ## 全局约束
 
-- **只改结构，不改行为**：每个组件的重排是一次单独的版本，不夹带行为的修改；测试锁住旧行为（kb D7 的“迁移与改行为不放在同一次变更里”）。发现的缺陷记下来，另起版本修。
+- **只改结构，不改行为**：每个组件的重排是一次单独的版本，不夹带行为的修改；测试锁住旧行为（kb D7 的“迁移与改行为不放在同一次变更里”）。发现的缺陷记进结构问题登记（`docs/zh/01-conventions/12-structure-findings.md`），另起版本修；测试、检查与构建上的缺口（`Makefile`、合并安全的范围）可以同版修。
 - 版本：动手前升最后一位；契约（`contract/`）、路由、事件、表一概不变，所以依赖方不受影响。
 - 每个组件的提交与发布照常（英文提交信息、`brickkit release --notes-file` 的中文说明）。
 - 长任务（全部组件的集成测试、真机格）放后台配监视。

@@ -1,0 +1,304 @@
+== accountchange.go
+   confirm.go: ConfirmationValidity basisOwner confirmIn m.confirmerEligible m.othersAvailable
+   core_names.go: OpChange OpTighten Version
+   core_state.go: advance uuidText
+   decide.go: proven unprovable
+   module.go: Module New
+   pending.go: m.judgeAdmins
+   release.go: m.confirmerBasis
+== budget.go
+   change.go: plan
+   decide.go: facts
+   module.go: Module
+   security.go: grantBody
+== change.go
+   core_names.go: ID OpChange OpDispose OpRelease OpRelinquish OpTighten Records Version
+   decide.go: ByUser Tighten Widen decide facts keyBoundElse keyBoundSame keyFree outApplied outAppliedReview outAwaitingSaved outRejected outScheduled replayFacts verdict
+   disposition.go: isDisposition nonNil plannedDisposition
+   enact.go: m.enact
+   facts.go: m.factsOf
+   module.go: Module New
+   pending.go: m.judgeAdmins
+   release.go: plannedRelease releaseIn
+   scheduled.go: firing
+   target.go: target
+== checks.go
+   disposition.go: dispositionType
+   module.go: Module
+== claim.go
+   closure.go: indexSources
+   core_names.go: Dispositions Holder ID OpChange OpDispRead OpDispose OpRead OpRelease OpTighten Records
+   core_state.go: advance
+   delegate.go: allActions
+   module.go: Module New
+   security.go: grantBody holdingBody unitBody
+== closure.go
+   core_names.go: Holder ID OpChange Records
+   core_state.go: state
+   effect.go: m.units sameUnit
+   effective.go: limits newLimits
+   enact.go: m.transition
+   module.go: Module New
+   pending.go: m.judgeAdmins
+   scheduled.go: JobDue firing triggerRestore
+   security.go: active covers grantBody holdingBody unitBody
+   target.go: lockTarget target
+== confirm.go
+   change.go: request revisionRef
+   cooling.go: madeUnavailableBy
+   core_names.go: ID OpChange OpTighten
+   core_state.go: uuidText
+   decide.go: confirmInvalid confirmValid disproven facts proof proven unprovable
+   effect.go: holdingsOf m.units
+   module.go: Module New
+   requester.go: m.accountOf
+   routes.go: m.holderFacts
+   scheduled.go: JobDue firing triggerConfirmed
+   target.go: affectsAdmins lockTarget target
+== confirmroutes.go
+   accountchange.go: m.accountPayloadHTTP m.confirmAccount
+   change.go: contentDomain revisionRef
+   confirm.go: confirmIn m.admitConfirmation m.bindingOf m.confirm
+   core_names.go: OpChange OpRelease OpTighten
+   module.go: Module New
+   planhttp.go: m.confirmPlan
+   release.go: lockDisposition m.confirmDisposition m.dispositionBinding
+   target.go: lockTarget
+== cooling.go
+   confirm.go: m.confirmerEligible
+   core_names.go: ID OpChange
+   decide.go: proven
+   module.go: Module
+   requester.go: m.accountOf
+   security.go: active
+   target.go: target
+== core_names.go
+== core_registry.go
+   module.go: Module
+== core_state.go
+== decide.go
+== definition.go
+   core_names.go: DefaultClaimValidity DefaultMaxUnitDepth DefaultPlanConfirmAbove DefaultPlanMaxAge DefaultSourceHigh DefaultSourceRead DefaultTight Definitions GRPCPort ID OpRecover OpReplay Version
+   module.go: Module New
+== delegate.go
+   effect.go: sameUnit
+   effective.go: common
+   facts.go: standing
+   security.go: unitBody
+== disposition.go
+   change.go: changeResult entry m.change plan request revisionRef
+   confirm.go: m.confirmationsOf useConfirmations
+   core_names.go: Holder ID OpDispRead OpDispose SecurityDomain
+   decide.go: Tighten facts in
+   effect.go: m.applied roleTemplate sameUnit
+   effective.go: isClosed limits tighterBound windowIntersect
+   enact.go: m.transition
+   facts.go: invalid m.contains standing
+   module.go: Module New
+   routes.go: answer
+   security.go: active covers decimalCompare grantBody holdingBody unitBody
+   target.go: lockTarget
+== effect.go
+   core_names.go: Holder ID
+   core_registry.go: m.registryNow
+   core_state.go: advance
+   effective.go: limit
+   module.go: Module
+   security.go: active contained holdingBody notContained resourceOf roleBody unitBody
+== effective.go
+   security.go: contained covers decimalCompare unitBody
+== enact.go
+   change.go: changeResult entry plan revisionRef stateDomain
+   closure.go: indexSources m.closeAfter m.expireAt
+   confirm.go: useConfirmations
+   cooling.go: m.coolOff
+   core_names.go: ID SecurityDomain
+   decide.go: Neutral Tighten Widen outAppliedReview outAwaitingSaved outAwaitingUnsaved outKeptHeld outProcessing outRejected outRejectedRetryable outScheduled outVoid verdict
+   disposition.go: m.dispose
+   effect.go: m.applied m.audited
+   module.go: Module New
+   release.go: m.release
+   scheduled.go: JobDue firing triggerConfirmed triggerScheduled
+   target.go: recordUnit target
+== facts.go
+   budget.go: m.budgetOf
+   change.go: candidateDigest changeResult entry plan window
+   confirm.go: m.confirmationsOf m.confirmerEligible
+   cooling.go: CoolingOff admin m.recentlyUnavailable m.vetoes
+   core_names.go: ID
+   decide.go: Neutral RestoreUncomputable Terminate Tighten Widen disproven facts proven unprovable
+   delegate.go: ActBindRole ActDelegate ActGrant actionFor delegation underItself unitShape
+   disposition.go: isDisposition m.disposing
+   effect.go: errRejected holdingsOf m.units m.within roleTemplate sameUnit
+   effective.go: limit limits newLimits
+   module.go: Module
+   pending.go: adminState stateOperational
+   plan.go: planItem
+   release.go: m.releasing
+   requester.go: endedAdminHoldings m.adminsAfter m.eligibility
+   scheduled.go: triggerConfirmed triggerRestore
+   security.go: covers grantBody holdingBody roleBody unitBody
+   target.go: affectsAdmins coversAll lockTarget narrows recordHolder recordUnit renames target
+== module.go
+   accountchange.go: m.accountChanged m.reconfirmHTTP
+   claim.go: m.claimHTTP m.recordClaim
+   closure.go: JobClosure JobExpiry m.closeAfter m.closure m.expiry
+   confirmroutes.go: m.confirmHTTP m.ownerPayloadHTTP
+   core_names.go: AccountStream Accounts JobPlan JobPlanExpiry MaxSourceHigh MaxSourceRead OpAccountCheck OpChange OpClaim OpDispRead OpDispose OpRead OpRelease OpRelinquish OpReplay OpSubmit OpTighten OpVerify RecoveryTool
+   core_registry.go: m.registryNow registry
+   disposition.go: m.disposeHTTP m.dispositionsHTTP
+   pending.go: m.adminStateHTTP m.judgeAdmins
+   planhttp.go: m.cancelPlanHTTP m.confirmPlanHTTP m.createPlanHTTP m.getPlanHTTP m.previewPlanHTTP m.reviewItemHTTP
+   planrun.go: m.expirePlan m.followRecord m.runPlan
+   recovery.go: m.recoveryHTTP
+   release.go: m.releaseHTTP
+   replay.go: m.replay
+   routes.go: m.changeByKey m.changeHTTP m.recordsHTTP m.relinquishHTTP m.tightenHTTP
+   scheduled.go: JobDue MaxProcessingWait m.due
+   signal.go: m.identitySignal
+== pending.go
+   core_names.go: ID OpChange OpDispRead
+   decide.go: proven unprovable
+   disposition.go: adminHoldingsOf
+   module.go: Module
+   requester.go: m.accountOf m.adminsAfter
+== plan.go
+   budget.go: overBudget
+   change.go: contentDomain request revisionRef stateDomain
+   core_names.go: ID JobPlanExpiry
+   decide.go: Neutral Tighten Widen
+   disposition.go: isDisposition
+   effect.go: roleTemplate
+   effective.go: limits
+   facts.go: candidateOf m.standingOf standing
+   module.go: Module New
+   planrun.go: planArgs
+   security.go: grantBody unitBody
+   target.go: lockTarget target
+== planhttp.go
+   change.go: request
+   confirm.go: basisOwner confirmIn m.confirmerEligible m.othersAvailable
+   core_names.go: ID JobPlan OpChange OpRead
+   decide.go: proven
+   effect.go: holdingsOf
+   enact.go: nullable
+   facts.go: m.standingOf
+   module.go: Module New
+   plan.go: itemCheck itemNeedsReview itemsOf lockPlan m.draft m.preview m.previewItem planCancelled planCompleted planConfirmed planExecuting planExpired planIn planItem planItemIn planPartial planPreviewed planRow
+   planrun.go: m.endPlan planArgs
+   release.go: m.confirmerBasis
+== planrun.go
+   change.go: changeResult entry evidenceChange m.denied m.effect request requestDigest revisionValue
+   confirm.go: m.confirmerEligible ownerName
+   core_names.go: ID JobPlan OpChange Records Version
+   core_state.go: advance
+   decide.go: ByJob Tighten disproven unprovable verdict
+   enact.go: m.transition nullable
+   module.go: Module
+   plan.go: itemApplied itemNeedsReview itemPending itemRejected lockPlan planCompleted planConfirmed planExecuting planExpired planItem planPartial planPreviewed planRow
+   scheduled.go: errProcessing
+== recovery.go
+   closure.go: indexSources
+   confirm.go: m.publicKey ownerName
+   core_names.go: Holder OpChange
+   core_state.go: advance
+   disposition.go: adminHoldingsOf
+   effect.go: m.units
+   enact.go: m.transition
+   module.go: Module New
+   pending.go: m.judgeAdmins
+   planrun.go: reviewReplaced
+   release.go: m.releaseDisposition
+   security.go: holdingBody unitBody
+   target.go: lockTarget
+== recoverystep.go
+   closure.go: m.accountEnded m.keepBooks m.world sources
+   core_names.go: ID OpDispose
+   core_state.go: uuidText
+   decide.go: disproven
+   disposition.go: adminHoldingsOf dispositionType nonNil
+   effect.go: m.units
+   module.go: Module New
+   pending.go: adminState m.judgeAdmins
+   replay.go: m.replay
+   requester.go: endedAdminHoldings m.adminsAfter
+   signal.go: m.globalDisposition
+   target.go: affectsAdmins lockTarget
+== release.go
+   budget.go: grantOverBudget
+   change.go: changeResult entry m.change plan request revisionRef
+   confirm.go: ConfirmationValidity basisHolding basisOwner confirmIn m.confirmerEligible m.othersAvailable m.ownerKey ownerName useConfirmations
+   core_names.go: ID OpRelease SecurityDomain
+   core_state.go: uuidText
+   decide.go: RestoreHold confirmInvalid confirmValid disproven facts unprovable
+   disposition.go: dispositionDomain dispositionType nonNil
+   effect.go: m.applied m.audited m.units
+   effective.go: limits newLimits
+   enact.go: m.transition
+   facts.go: invalid standing
+   module.go: Module New
+   routes.go: answer
+   security.go: grantBody holdingBody
+   signal.go: releaseSignals
+   target.go: lockTarget target
+== replay.go
+   change.go: candidateDigest entry m.effect request requestDigest revisionRef
+   core_names.go: ID
+   decide.go: ByUser Tighten Widen
+   disposition.go: dispositionDomain
+   facts.go: candidateOf
+   module.go: Module New
+   release.go: releaseIn
+== requester.go
+   core_names.go: ID Records
+   decide.go: disproven facts proof proven unprovable
+   disposition.go: nonNil
+   effect.go: sameUnit
+   module.go: Module
+   security.go: active holdingBody unitBody
+   target.go: target
+== routes.go
+   change.go: changeResult current m.change m.changeAs request
+   core_names.go: Holder ID OpChange OpRead OpRelinquish OpTighten
+   core_state.go: uuidText
+   decide.go: Tighten
+   module.go: Module New
+   security.go: record
+== scheduled.go
+   change.go: changeResult entry m.denied m.effect request
+   core_names.go: ID
+   decide.go: ByJob RestoreUncomputable Widen
+   module.go: Module New
+== security.go
+   core_names.go: ID
+== signal.go
+   core_names.go: ID OpDispose
+   core_state.go: advance
+   disposition.go: dispositionIn dispositionType m.inScope nonNil
+   effect.go: m.units
+   enact.go: m.transition
+   module.go: Module New
+   release.go: dispositionRow
+== submit.go
+   core_names.go: OpSubmit
+   core_registry.go: m.registryNow registry
+   core_state.go: advance
+   definition.go: Definition
+   module.go: Module New
+== target.go
+   cooling.go: CoolingOff
+   core_names.go: Holder ID
+   core_state.go: uuidText
+   delegate.go: unitShape
+   effect.go: sameUnit
+   security.go: active contained grantBody holdingBody unitBody
+== view.go
+   core_names.go: Holder ID OpRead OpRelinquish Records SecurityDomain ShardDomain
+   core_registry.go: m.registryNow registry
+   core_state.go: readState state
+   definition.go: Definition
+   disposition.go: activeDispositions suspended
+   effect.go: m.units
+   effective.go: newLimits
+   module.go: Module New
+   security.go: active grantBody holdingBody record resourceOf

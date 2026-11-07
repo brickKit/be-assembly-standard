@@ -12,8 +12,7 @@ For each component under components/ whose component.yaml is at 3.x and which ha
     what `go list` says the package imports from internal/;
   - the component's AGENTS.md links every package under internal/ (internal/<pkg>/AGENTS.md).
 
-Usage: layout-check.py [--all]. PENDING are the components not laid out yet; they are listed, not checked, unless
---all is given.
+Usage: layout-check.py
 """
 import pathlib
 import re
@@ -22,8 +21,6 @@ import sys
 
 ROOT = pathlib.Path(__file__).resolve().parents[2]
 ENTRY_FILES = {"definition.go", "module.go", "services.go", "checks.go"}
-# Not laid out yet; each leaves this set when it is (the set goes when it is empty).
-PENDING = {"infra/authz"}
 
 
 def components(root: pathlib.Path) -> list[tuple[str, pathlib.Path]]:
@@ -133,20 +130,14 @@ def check(cid: str, d: pathlib.Path, imports=go_imports) -> list[str]:
 
 
 def main(argv: list[str]) -> int:
-    every = "--all" in argv
-    errs, pending, ok = [], [], []
+    errs, ok = [], []
     for cid, d in components(ROOT):
-        if cid in PENDING and not every:
-            pending.append(cid)
-            continue
         e = check(cid, d)
         errs += e
         if not e:
             ok.append(cid)
     for cid in ok:
         print(f"✅ {cid}")
-    if pending:
-        print(f"⏳ not laid out yet ({len(pending)}): {', '.join(pending)}")
     for e in errs:
         print(f"❌ {e}")
     return 1 if errs else 0

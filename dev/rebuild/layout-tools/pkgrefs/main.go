@@ -27,6 +27,8 @@ func main() {
 				case *ast.FuncDecl:
 					if d.Recv == nil {
 						declared[d.Name.Name] = filepath.Base(name)
+					} else if recvIsModule(d.Recv) {
+						declared["m."+d.Name.Name] = filepath.Base(name)
 					}
 				case *ast.GenDecl:
 					for _, s := range d.Specs {
@@ -51,6 +53,16 @@ func main() {
 			f := p.Files[name]
 			uses := map[string]map[string]bool{}
 			ast.Inspect(f, func(n ast.Node) bool {
+				if se, ok := n.(*ast.SelectorExpr); ok {
+					if x, ok := se.X.(*ast.Ident); ok && x.Name == "m" {
+						if from, ok := declared["m."+se.Sel.Name]; ok && from != filepath.Base(name) {
+							if uses[from] == nil {
+								uses[from] = map[string]bool{}
+							}
+							uses[from]["m."+se.Sel.Name] = true
+						}
+					}
+				}
 				if id, ok := n.(*ast.Ident); ok && id.Obj == nil {
 					if from, ok := declared[id.Name]; ok && from != filepath.Base(name) {
 						if uses[from] == nil {
@@ -77,4 +89,17 @@ func main() {
 			}
 		}
 	}
+}
+
+// recvIsModule: a method of Module (the flat package's receiver), by value or pointer.
+func recvIsModule(r *ast.FieldList) bool {
+	if r == nil || len(r.List) != 1 {
+		return false
+	}
+	t := r.List[0].Type
+	if st, ok := t.(*ast.StarExpr); ok {
+		t = st.X
+	}
+	id, ok := t.(*ast.Ident)
+	return ok && id.Name == "Module"
 }
