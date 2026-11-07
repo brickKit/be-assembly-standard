@@ -43,7 +43,7 @@ func main() {
 	mapping := flag.String("map", "", "file:pkg,...; pkg empty = the entry package")
 	recv := flag.String("recv", "Module", "the receiver type whose methods become functions")
 	apply := flag.Bool("apply", false, "write the edits")
-	renameFlag := flag.String("rename", "", "old=new,...: methods renamed as they become functions (a type has the name)")
+	renameFlag := flag.String("rename", "", "old=new,...: methods and package-level names renamed (a name that collides once exported)")
 	tests := flag.Bool("tests", false, "include the test files (the in-package test variant)")
 	tags := flag.String("tags", "", "build tags")
 	entryName := flag.String("entry", "", "the entry package's name, to qualify its objects used from new packages")
@@ -164,7 +164,7 @@ func main() {
 	}
 	nameOf := func(obj types.Object) string {
 		name := obj.Name()
-		if r, ok := renames[name]; ok && isRecvMethod(obj) {
+		if r, ok := renames[name]; ok && (isRecvMethod(obj) || obj.Parent() == p.Types.Scope()) {
 			name = r
 		}
 		if needExport[obj] {
