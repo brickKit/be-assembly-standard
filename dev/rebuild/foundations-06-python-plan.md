@@ -34,7 +34,7 @@
 | T7 | 水位来源（第 09 章的来源一侧，P9.13–P9.18）与它必须声明的记录读取 `RecordService`（P9.30–P9.33：水位来源的流必须声明，2026-11-07 读条款时补进范围；消费一侧仍不在首批）：探针的 `_wm` 流、`WatermarkService/Pull` 与记录读取；水位来源剖面对 Python 跑 | 第 09 章 | T5 | CK-WM-01…03 对 Python 通过；向量 `watermark-pull-check` | ✅ 2026-11-07（见“T7 的结果”） |
 | T8 | 证据与运行档案（第 12 章）、对外命令（第 13 章，含幂等键 P4.21–P4.25 若付款要用）：探针的付款去掉 A144 的例外；对外命令剖面对 Python 跑 | 第 12、13 章，A144 | T4 | 对外命令剖面对 Python 通过；推演加对外命令的崩溃点 | ✅ 2026-11-07（见“T8 的结果”） |
 | T9 | 恢复核对（第 14 章）与恢复操作：`CheckService`、`ReconcileService`、`<前缀>.recover`；`infra/print` 换上新 SDK，补恢复阶段与核对（模板按版本答“还在不在”）；外壳 `be/py-render` | 第 14 章、P1.23 | T8 | SDK 测试；`infra/print` 的集成测试；一次整套恢复演练里 Python 成员参加各阶段而不是被停下 | ✅ 2026-11-07（见“T9 的结果”；整套恢复演练里 Python 成员参加各阶段随 T11 的真机格，门槛 F4） |
-| T10 | 转层（第 15 章）：先定 T2b、T2c；T10a 规划、摘要、清单的向量（第 5 项门槛 G1 的 Python 部分）；T10b 目录、封存与写屏障；T10c 复制校验发布、释放；T10d 读取、保全、销毁与擦除、路线更换、恢复核对；探针的归档；转层剖面对 Python 跑；推演加转层的崩溃点 | 第 15 章、第 5 项 gate.md 的 G1 | T6、T9 | 向量全过；转层剖面对 Python 通过；第三方读取器读 Python 写的冷层算出同一摘要；推演通过 | ⬜ |
+| T10 | 转层（第 15 章）：先定 T2b、T2c；T10a 规划、摘要、清单的向量（第 5 项门槛 G1 的 Python 部分）；T10b 目录、封存与写屏障；T10c 复制校验发布、释放；T10d 读取、保全、销毁与擦除、路线更换、恢复核对；探针的归档；转层剖面对 Python 跑；推演加转层的崩溃点 | 第 15 章、第 5 项 gate.md 的 G1 | T6、T9 | 向量全过；转层剖面对 Python 通过；第三方读取器读 Python 写的冷层算出同一摘要；推演通过 | 🟡 2026-11-09 代码、测试与门槛 G1–G4 都有（be-sdk-python a60、探针 3.2.50、套件 1.0.73，见“T10 的进度”）；只剩 T2b/T2c 的实测与定案 |
 | T11 | 真机格（S4：新脚本先在开着的格上逐步跑）：Python 成员单跑与进外壳两格，业务链 L3 与套件剖面；整套恢复演练里 Python 成员参加 | 实验计划的格 | T9、T10 | 两格全过；演练通过 | ⬜ |
 | T12 | 收尾：`gate.md` 逐条核对；SF27 的 Python 部分（互通测试换现行 Go SDK）；COMPAT；复盘；kb（T2b 的实测、这一项的反馈） | 全部 | 全部 | 门槛表全部“有”或写明转出 | ⬜ |
 
@@ -135,12 +135,15 @@
 - **探针**：Python 探针 3.2.49（a59，`CheckService` 由 SDK 挂上）；套件 1.0.72。
 - **留给 T11**：一次整套恢复演练里 Python 成员参加各阶段（门槛 F4）。
 
-## T10 的进度（进行中，2026-11-07 夜）
+## T10 的进度（代码与门槛完成 2026-11-09；T2b/T2c 待实测）
 
 - **T2b（Parquet 库）**：适配初筛（`foundations-06-data/t10/parquet-bench/`）：`fastparquet` 没有 cp315 的二进制包（依赖 `thriftpy2`），筛掉；`polars` 2.1.0 写不出 UUID 与 JSON 两种逻辑类型（与 Go 写的文件结构不同）；`pyarrow` 26.0.1 与 `duckdb` 2.0.0（经 Arrow 取数据，交回 Python 要 `pytz`）都写得出与 Go 相同的逻辑类型。装好的体积：pyarrow 166 MB、polars 180 MB、duckdb 67 MB（另要 pyarrow）。性能实测（`run.sh`，性能模式、三者按轮交替）还没测：原定接在夜间写屏障测量之后自动起跑，维护者 2026-11-08 00:15 两项一起取消、留到下次（跑法写在交接 `README.md`）。注意：套件的第三方读取器 `tierread.py` 用 pyarrow，SDK 也用 pyarrow 时读写共用一套实现，独立性靠 Go 写的文件与 pyarrow 读的互通测试保留。
-- **T10a 完成**：`besdk/tiering/rows.py`、`manifest.py`、`plan.py`，向量 tier-digest 17、tier-manifest 2、tier-plan 21 全过（a60 未发布，本地提交）。
-- **T10b、T10c 完成**（本地提交）：目录、封存、写屏障（`catalog.py`、`member.py`、`barrier.py`）；复制、对象存储、Parquet、发布、释放（`store.py`、`parquet.py`、`transfer.py`、`release.py`），集成测试：封存 5、转层 5、释放 1。
-- **T10d 已写、未测**（2026-11-08 00:30 前暂停，维护者叫停；本地提交，未发布）：`reads.py`（按键读、快照与租约、冷单元、解冻）、`reroute.py`（重写、换路线、旧版本释放、结构转换、`check_readable`）、`holds.py`、`destroy.py`（含重放、`continue_releases`）、`erase.py`（含重放与 `be.tiering.erase`）、`history.py`（历史读取、导出与清理）、`check.py`（恢复核对 be.tiering）；`authz.Subject.decider`（Go 的 `Decider`）；`transfer.Passthrough`（StaleClaim、Verification 与擦除的 `_Held` 穿过目录事务原样抛出）。只验证了能导入。
-- **接着做**：`routes.py`（Go 的 `routes.go`：保全、审批、导出状态的标准路由）→ 照 Go 移植这些模块的集成测试（reads、reroute、destroy、erase、export_erasure、history、check、cleanup、consistency、moved、nested，约 40 个）→ 宿主接线 → 探针的归档与转层剖面 → 推演的崩溃点 → a60 发布与级联 → 按 Parquet 实测定 T2b/T2c。
-- 移植顺序：T10b 目录、封存、写屏障 → T10c 复制、对象存储、Parquet、发布、释放 → T10d 读取、历史与导出、保全、销毁、擦除、换路线、恢复核对、标准路由 → 宿主接线 → 探针的归档与转层剖面 → 推演加转层的崩溃点。
+- **T10a 完成**：`besdk/tiering/rows.py`、`manifest.py`、`plan.py`，向量 tier-digest 17、tier-manifest 2、tier-plan 21 全过（a60）。
+- **T10b、T10c 完成**（a60）：目录、封存、写屏障（`catalog.py`、`member.py`、`barrier.py`）；复制、对象存储、Parquet、发布、释放（`store.py`、`parquet.py`、`transfer.py`、`release.py`），集成测试：封存 5、转层 5、释放 1。
+- **T10d 完成**（2026-11-09，a60）：`reads.py`、`reroute.py`、`holds.py`、`destroy.py`、`erase.py`、`history.py`、`check.py`、`routes.py`；`authz.Subject.decider`；`transfer.Passthrough`。照 Go 移植的集成测试 47 个全过（reads 5、reroute 4、destroy 3、erase 5、export_erasure 1、history 8、check 1、cleanup 1、consistency 1、moved 3、nested 2，加 T10b/c 的 11 与启动器的 2）；一次就全绿，抽三处变异（擦除不置空、销毁决定不锁 hold 表、历史读取不判可见）都被抓到。崩溃点的钩子是同步的：moved 的两个测试在钩子里用线程开自己的事件循环与连接扮演另一个写入者或请求。
+- **宿主接线完成**（同上）：`Definition.tiering`；`migrate` 入口装写屏障（`migrate.execute`，对应 Go 的 `MigrateConfig.Exec`）；宿主建目录、登记 8 个转层作业与它们在恢复阶段的规则、从运行档案读最近的备份、标准路由、模块的阻断（`tiering(registry)`）、销毁与擦除的重放、恢复核对排在组件自己的之前；`test_sdkjobs` 原来只认字面量的作业名，漏了用常量命名的 `be.tiering.erase`、`be.tiering.export`，改成也解析模块级常量；`features.json` 的 tiering 改为 implemented（P15.23 与 Go 一样待定）。
+- **探针的归档与转层剖面**（2026-11-09）：Python 探针 3.2.50 加数据类别 `probe.archive`（`probe_py/archive.py`、迁移 `0009_archive`、两条路由，与 Go 探针的 `archive.go` 相同），原来为清单对齐而声明的运行档案与转层的键改由 SDK 读，生成的 `configSchema` 逐字不变；套件 1.0.73 的转层剖面加 Python 这一对（py 走对象存储、py2 走温层），第三方读取器算出的摘要等于封存的（门槛 G2、G3）。`make probes` 里事件剖面 CK-EV-02 的 pgqueue-py 格偶发“检查失效：StopIteration”，单独重跑通过：自检的变异在长事务所在分区没有先提交的行时崩溃，把裁判的“重跑”藏住了；套件 1.0.73 让变异在找不到可交换的行时不改（裁判照常报原因）。
+- **推演**（2026-11-09）：`make simulation-tiering`（`tests/sim/test_tiering_simulation.py`、副本 `tests/sim/tierchild.py`），照 Go 的 `tiering/sim_test.go`：两个成员一个走对象存储、一个走温层、中途互换；四个副本（两个承载两个成员）轮流在 30 个崩溃点结束自己、不时被杀；父进程写、改、关闭、擦除（请求与排队的重做）、保全、记备份、按键读并对照。30 分钟一轮通过（门槛 G4）：23808 份文档、13683 份副本、353 次崩溃、22 次强杀、失败 0，没有撞出缺陷；日志 `foundations-06-data/t10/sim/sim-30min.log`。
+- **发布**（2026-11-09）：be-sdk-python a60（SDK 单元 390、集成 212 全过），Python 探针 3.2.50、套件 1.0.73，`infra/print` 3.0.23，级联到 `erp/billing`、`be/go-core`、`be/py-render`（`python-cascade.sh`）。
+- **还差**：T2b/T2c 的实测（Parquet 库与线程还是进程池，跑法在交接 `README.md`），之后写 A 决定与 kb 的实测记录；结论若改选，SDK 再发一版。
 

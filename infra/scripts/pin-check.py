@@ -67,7 +67,8 @@ def python(root: pathlib.Path, manifest: pathlib.Path, version: str) -> list[str
     for dep in data["project"].get("dependencies", []):
         if SDK.match(dep):
             tag = data.get("tool", {}).get("uv", {}).get("sources", {}).get("be-sdk", {}).get("tag", "")
-            if dep.replace(" ", "") != f"be-sdk>={tag.removeprefix('v')}":
+            # an extra is part of the requirement, not of the minimum (the probe's be-sdk[tiering]: pyarrow)
+            if re.sub(r"\[[^\]]*\]", "", dep.replace(" ", "")) != f"be-sdk>={tag.removeprefix('v')}":
                 out.append(f"{rel}: {dep}, the pinned tag is {tag}; declare be-sdk>={tag.removeprefix('v')} (P1.21)")
     return out
 

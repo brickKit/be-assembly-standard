@@ -59,7 +59,7 @@
 | --- | --- | --- | --- |
 | E1 | 对外命令剖面（`tests/test_external_profile.py`：结果不明先查、按去重与否决定重发、不重复付款、不可撤回的没有发出记录就不发）对 Python 探针 | T8 | 有：套件 1.0.71 对两种探针都跑，Python 探针 3.2.48 “符合”；不可撤回一段先关证据存储（不发）、再开（发出记录先到、才付款）——测试部署有了证据存储，原来“这里没有证据存储”的前提不再成立 |
 | E2 | 证据写入与重放（第 12 章）的 SDK 测试；运行档案的读写对向量 | T8 | 有：be-sdk-python a57：证据 7 个集成测试 + 4 个摘要向量 + 恢复阶段里的转运；运行档案 5 个集成测试（真实对象存储的对象锁）+ 27 个向量 + 证书上的信任历史 2 个；改坏 24 处全红，其中 2 处是补了证书上的测试之后才红（见计划“T8 的结果”） |
-| E3 | 两个探针的清单相同，A144 的例外去掉 | T8 | 有：Python 探针 3.2.48 读付款的键，`EXTERNAL_COMMANDS_QUERY_ONLY` 由 SDK 随对外命令加上；`make check` 的清单测试过（运行档案与转层的键仍由 Python 探针声明不读，等 T10 的转层） |
+| E3 | 两个探针的清单相同，A144 的例外去掉 | T8 | 有：Python 探针 3.2.48 读付款的键，`EXTERNAL_COMMANDS_QUERY_ONLY` 由 SDK 随对外命令加上；`make check` 的清单测试过；3.2.50 起运行档案与转层的键由 SDK 随 `Definition.tiering` 读，探针不再自己声明，生成的 `configSchema` 与原来逐字相同 |
 
 ## F. 恢复（P1.23、第 14 章）
 
@@ -74,10 +74,10 @@
 
 | 行 | 要证明 | 任务 | 状态 |
 | --- | --- | --- | --- |
-| G1 | 规划、摘要、清单的向量对 Python 全过（第 5 项门槛 G1 的 Python 部分） | T10a | 未做 |
-| G2 | 转层剖面（`tests/test_tiering_profile.py`）对 Python 探针的归档 | T10 | 未做 |
-| G3 | 第三方读取器（`tierread.py`）读 Python 写的冷层，算出同一个摘要 | T10 | 未做 |
-| G4 | 长时间推演里加转层的崩溃点，终态一致 | T10 | 未做 |
+| G1 | 规划、摘要、清单的向量对 Python 全过（第 5 项门槛 G1 的 Python 部分） | T10a | 有：be-sdk-python a60，tier-digest 17、tier-manifest 2、tier-plan 21 全过 |
+| G2 | 转层剖面（`tests/test_tiering_profile.py`）对 Python 探针的归档 | T10 | 有：套件 1.0.73 的 `test_the_python_probe_tiers_its_archive`（py 走对象存储、py2 走温层；封存、复制、发布后按键读出的根与每层子表与在线时相同，未关闭的留在在线）通过 |
+| G3 | 第三方读取器（`tierread.py`）读 Python 写的冷层，算出同一个摘要 | T10 | 有：同上的测试里，两条路线上读取器从清单与 Parquet 对象（或温层的行）算出的摘要等于封存时的、读出的行相同。注意：Python 写 Parquet 与读取器都用 pyarrow，读写独立性由 Go 探针那一半保留 |
+| G4 | 长时间推演里加转层的崩溃点，终态一致 | T10 | 有：`make simulation-tiering`（照 be-sdk-go 的 `tiering/sim_test.go`）30 分钟：23808 份文档全部按写入读回或按规则销毁，13683 份副本校验通过，恢复核对通过，没有卡住的工作项，30 个崩溃点全部到过（353 次崩溃、22 次强杀），失败 0（`foundations-06-data/t10/sim/sim-30min.log`） |
 
 ## H. 推演、真机格与转来的
 
