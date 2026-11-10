@@ -1,0 +1,15 @@
+# Foundations item 6, T11 (foundations-06-python-plan.md): the Python members in a real deployment, every member alone.
+# The business chain at its current releases (be-sdk-go alpha.119), infra/print 3.0.24 and the Python probe py 3.2.51
+# alone (be-sdk-python a61), the probe's archive on the object store. The run (foundations-06-data/t11/run.sh): from an
+# empty database to the L3 scenarios; the probe's archive tiered, read back and released; the recovery checks of the
+# Python members (CheckService: be.tiering, print's templates); the core profile of the probe. Its own deployment, a
+# new one for every run (the run script writes it).
+cell: T6-S
+row: D
+deployment: 01a1c4f4-54e4-7838-b004-193a8d5337fc
+alone: [infra/iam-casdoor@3.0.42, infra/authz@3.0.45, infra/audit@3.0.37, mdm/org@3.0.33, mdm/currency@3.0.32,
+        mdm/partner@3.0.36, mdm/product@3.0.35, erp/inventory@3.0.34, erp/credit@3.0.34, erp/sales@3.0.43,
+        erp/billing@3.0.52, infra/print@3.0.24, test/probe-py@3.2.51]
+chain: []
+settings:
+  test/probe-py: {TIERING_WINDOW: "* * * * *", TIERING_GRACE: "0s", TIERING_ROUTE_PROBE_ARCHIVE: "object-parquet"}

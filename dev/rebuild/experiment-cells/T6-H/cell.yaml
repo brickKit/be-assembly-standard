@@ -1,0 +1,13 @@
+# Foundations item 6, T11 (foundations-06-python-plan.md): the Python members in a real deployment, in shells (the H2
+# split): be/go-infra hosts the security members and the master data, be/go-core the trading chain, be/py-render
+# infra/print and the Python probe py2 (its archive on the warm route) in one Python process. The run as T6-S's.
+cell: T6-H
+row: D
+deployment: 01a1c4f8-ff89-7a72-b704-9c64864de6eb
+shells:
+  be/go-infra@3.0.71: [infra/iam-casdoor, infra/authz, infra/audit, mdm/org, mdm/currency, mdm/partner, mdm/product]
+  be/go-core@3.0.79: [erp/inventory, erp/credit, erp/sales, erp/billing]
+  be/py-render@3.0.51: [infra/print, test/probe-py2]
+chain: []
+settings:
+  test/probe-py2: {TIERING_WINDOW: "* * * * *", TIERING_GRACE: "0s"}

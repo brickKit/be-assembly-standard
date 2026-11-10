@@ -35,7 +35,7 @@
 | T8 | 证据与运行档案（第 12 章）、对外命令（第 13 章，含幂等键 P4.21–P4.25 若付款要用）：探针的付款去掉 A144 的例外；对外命令剖面对 Python 跑 | 第 12、13 章，A144 | T4 | 对外命令剖面对 Python 通过；推演加对外命令的崩溃点 | ✅ 2026-11-07（见“T8 的结果”） |
 | T9 | 恢复核对（第 14 章）与恢复操作：`CheckService`、`ReconcileService`、`<前缀>.recover`；`infra/print` 换上新 SDK，补恢复阶段与核对（模板按版本答“还在不在”）；外壳 `be/py-render` | 第 14 章、P1.23 | T8 | SDK 测试；`infra/print` 的集成测试；一次整套恢复演练里 Python 成员参加各阶段而不是被停下 | ✅ 2026-11-07（见“T9 的结果”；整套恢复演练里 Python 成员参加各阶段随 T11 的真机格，门槛 F4） |
 | T10 | 转层（第 15 章）：先定 T2b、T2c；T10a 规划、摘要、清单的向量（第 5 项门槛 G1 的 Python 部分）；T10b 目录、封存与写屏障；T10c 复制校验发布、释放；T10d 读取、保全、销毁与擦除、路线更换、恢复核对；探针的归档；转层剖面对 Python 跑；推演加转层的崩溃点 | 第 15 章、第 5 项 gate.md 的 G1 | T6、T9 | 向量全过；转层剖面对 Python 通过；第三方读取器读 Python 写的冷层算出同一摘要；推演通过 | ✅ 2026-11-10（be-sdk-python a60–a61、探针 3.2.50–3.2.51、套件 1.0.73–1.0.74；门槛 G1–G4；T2b、T2c 实测定案 A168、A169；见“T10 的进度”） |
-| T11 | 真机格（S4：新脚本先在开着的格上逐步跑）：Python 成员单跑与进外壳两格，业务链 L3 与套件剖面；整套恢复演练里 Python 成员参加 | 实验计划的格 | T9、T10 | 两格全过；演练通过 | ⬜ |
+| T11 | 真机格（S4：新脚本先在开着的格上逐步跑）：Python 成员单跑与进外壳两格，业务链 L3 与套件剖面；整套恢复演练里 Python 成员参加 | 实验计划的格 | T9、T10 | 两格全过；演练通过 | ✅ 2026-11-10（套件 1.0.75；见“T11 的结果”） |
 | T12 | 收尾：`gate.md` 逐条核对；SF27 的 Python 部分（互通测试换现行 Go SDK）；COMPAT；复盘；kb（T2b 的实测、这一项的反馈） | 全部 | 全部 | 门槛表全部“有”或写明转出 | ⬜ |
 
 每个任务按改动的循环做（意图 → 考设计 → 契约 → 先写红的测试 → 实现 → 核对 → 发布）；测试写在实现之后的，照 K1 做改坏检查（`experiment-scripts/mutate.py`，Python 要关字节码缓存）。测试里的枚举值取自定义处（R8）。Python 的协议实现以线协议的条款与向量为准，不照抄 Go 的实现；两边行为不同时，不符合向量的一方是缺陷（SK05）。
@@ -147,4 +147,22 @@
 - **推演**（2026-11-09）：`make simulation-tiering`（`tests/sim/test_tiering_simulation.py`、副本 `tests/sim/tierchild.py`），照 Go 的 `tiering/sim_test.go`：两个成员一个走对象存储、一个走温层、中途互换；四个副本（两个承载两个成员）轮流在 30 个崩溃点结束自己、不时被杀；父进程写、改、关闭、擦除（请求与排队的重做）、保全、记备份、按键读并对照。30 分钟一轮通过（门槛 G4）：23808 份文档、13683 份副本、353 次崩溃、22 次强杀、失败 0，没有撞出缺陷；日志 `foundations-06-data/t10/sim/sim-30min.log`。
 - **发布**（2026-11-09）：be-sdk-python a60（SDK 单元 390、集成 212 全过），Python 探针 3.2.50、套件 1.0.73，`infra/print` 3.0.23，级联到 `erp/billing`、`be/go-core`、`be/py-render`（`python-cascade.sh`）。
 - **a61 的级联**（2026-11-10）：be-sdk-python a61（单元 391、集成 212 全过），探针 3.2.51、套件 1.0.74（`make check` 168、`make probes` 198 全过），`infra/print` 3.0.24，`erp/billing`、`be/go-core`、`be/py-render` 再升一次。
+
+
+## T11 的设计（2026-11-10，AI 定，待复核）
+
+- **两个真机格**（`experiment-cells/T6-S`、`T6-H`，脚本 `foundations-06-data/t11/run.sh` 与 `tier.py`；全部组件取现行发布：be-sdk-go alpha.119、be-sdk-python a61）：
+  - T6-S：全部单跑，`infra/print` 3.0.24 与 Python 探针 `py` 3.2.51 各自一个容器，探针的归档走对象存储；
+  - T6-H：`be/go-infra`、`be/go-core` 按 H2 拆分，`be/py-render` 3.0.51 在一个 Python 进程里承载 `infra/print` 与探针 `py2`（归档走温层）。
+  - 每格：从空库建到 L3（`infra/print` 渲染发票）；探针造一份 400 天前关闭的归档与一份未关闭的，等探针自己的作业封存、复制、发布，读回比对；记一次备份、让释放到期，等释放、核对在线行已删、再读回；在部署网络里经 `be-ops recover verify-calls` 调 `infra/print` 与探针的恢复核对（全部 `pass`，探针有 `be.tiering`）；最后跑套件的核心剖面（`cells profile`：探针与外壳各一份报告，并停下格）。
+  - 套件里只驱动 Go 的剖面（事件、后台工作、水位来源、对外命令、转层）不在格里重跑：它们由套件自己的部署跑（`make probes`，各任务已对 Python 通过），格里的“套件剖面”是核心剖面，它是唯一按格（单跑与外壳）出报告的。
+- **整套恢复演练**（门槛 F4；格 `T6-R`，T6-H 的布局，探针 `py2` 付款到套件的假支付系统；脚本 `t11/drill.sh`）：建格到 L3，T 之前付一笔 `r-before`；T 之后再跑一遍 L3、付 `r-after`、探针写一行；故障是杀掉 Python 外壳；然后 `be-ops recover` 第 1–10 步。要看到：每次换阶段全部成员都报出该阶段、没有成员因“没有恢复模式”被停下；冻结时两个 Python 成员的用户面答 `MAINTENANCE`；第 7 步对探针的付款下结论（`r-before` 对上、`r-after` 只在外部）；第 8 步 `infra/print` 与探针的核对通过；表回到 T；开放之后 L3 再跑一遍。第 4 项演练的八个场景是 Go 成员的，这里不重做。
+- **途中改的**：套件 1.0.75——格给每个探针授予付款（原来只给 Go，A144 在 T8 已去掉）；单跑的探针声明 `RECOVERY_PHASE` 时接上共享变量（Go 3.2.50、Python 3.2.43 起声明，之前的格里单跑的探针都早于它，T6-S 第一次建格时撞到）。
+
+## T11 的结果（2026-11-10）
+
+- **两格**（`foundations-06-data/t11/summary.txt`，平衡电源模式，正确性运行）：T6-S 建格到 L3 193 秒，T6-H 281 秒；探针的归档单元 S 在对象存储、H 在温层，发布后与释放后读回都是 0 处差异，释放后已关闭的归档在线行为 0；`be-ops recover verify-calls` 调 `infra/print`（`be.projections`、`be.audit_backlog`）与探针（另加 `be.consumer_epoch`、`be.tiering`）全部 `pass`；核心剖面：T6-S 的探针，T6-H 的探针与 `be/go-infra`、`be/go-core`、`be/py-render` 都“符合”（报告在各格的 `reports/`）。
+- **演练**（`t11/drill/summary.txt`）：故障是杀掉 `be/py-render`；冻结时它以 `frozen` 重新起来，此后每次换阶段 13 个成员都报出该阶段，没有一个被停下；冻结时探针与 `infra/print` 答 `MAINTENANCE`（503）；第 7 步：`r-after` 判为只在外部（T 之后付的，随恢复丢失；假支付系统收过 1 次），`r-before` 在 T 之前已完成、不列；第 8 步两个成员的核对全过；T 之后改变的 19 张表恢复后 0 张与 T 不符（Python 一侧是探针的 `probe_writes`）；`infra/print` 的模板与 T 时相同；从宣布到开放 608 秒；开放后 L3 再过。脚本里原写的“r-before 对上”是我的预期错了（它在 T 时已是终态），改正了说明，原始输出保留原样。
+- **途中**：失败的三次在 `t11/attempts/`（`NOTE.txt`）：套件少了单跑探针的 `RECOVERY_PHASE`（1.0.75 修，加了测试，还原修改时红）与付款的授予（演练里 Python 探针的付款证明）；两处是我的脚本漏导出变量。
+- **注意到但没动**：恢复数据库这一步用了 527 秒（第 4 项 T13e 是 73 秒），备份 183 秒（原 131 秒）：`pg-backup.sh` 备份与恢复的是整个实例，开发机上的实例里现在有 `brickkit_db` 1.4 GB、`be_sdk_test` 1 GB、`be_experiment` 0.8 GB 和第 13 步留下的 `be_e6_*` 等库，时间随整个实例增长，与 Python 成员无关。生产里一个实例只放一个部署的库；开发机上要不要清掉旧的测试库，留给收尾时提。
 

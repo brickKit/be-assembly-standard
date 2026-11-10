@@ -68,7 +68,7 @@
 | F1 | P1.23 各阶段的运行：用户面答 `MAINTENANCE`，转发、订阅、作业（含 SDK 自带的）按阶段停或运行：SDK 测试 | T3 | 有（用户面、转发、订阅、审计转运、就绪与自述、外壳）：`test_recovery_phases_integration::test_the_recovery_phases`、`test_shell::test_a_shell_in_recovery`、`test_a_member_without_a_phase_runs_in_the_shells_phase`；改坏 4 处（冻结时照样转发、照样订阅、忽略 `read_only_open`、外壳端口不带阶段）都红；作业一半随 T4 |
 | F2 | `CheckService`（P14.1）与 `ReconcileService` 的登记、只许恢复工具：SDK 测试；探针的 `<前缀>.recover` | T9 | 有：be-sdk-python a59 的 `CheckService`（3 个集成测试：检查、对象是否还在、单号；改坏 8 处全红），有数据库的成员都要声明 `Definition.recovery`（`test_a_member_with_a_database_declares_its_recovery_operation`）；`ReconcileService` 随 a57（T8）；只许恢复工具由 `infra/print` 的集成测试核对（别的组件答 `PERMISSION_DENIED`）；Python 探针 3.2.48 起声明 `<前缀>.recover`，3.2.49 在 a59 上答 `CheckService` |
 | F3 | `infra/print` 的恢复阶段与核对（模板按版本答“还在不在”） | T9 | 有：`infra/print` 3.0.22（操作 `infra.print.system.recover`，`test_a_full_recoverys_checks`：当前版本答还在、更高的答更低、不存在的答不在、别的组件被拒）；恢复阶段在 3.0.18 起声明 `RECOVERY_PHASE`，阶段行为由 SDK（T3） |
-| F4 | 一次整套恢复演练里 Python 成员参加各阶段，不被停下 | T11 | 未做 |
+| F4 | 一次整套恢复演练里 Python 成员参加各阶段，不被停下 | T11 | 有：格 T6-R（`be/py-render` 承载 `infra/print` 与探针 `py2`）的 `be-ops recover` 第 1–10 步，故障是杀掉 Python 外壳：frozen、redelivering、replaying、verifying、read_only 与开放后 13 个成员都报出该阶段，没有成员被停下；冻结时两个 Python 成员的用户面答 `MAINTENANCE`；第 7 步对探针 T 之后的付款判为只在外部；第 8 步两个成员的核对全部 `pass`（探针含 `be.tiering`）；表回到 T（0 张不符，探针 T 之后写的一行没了）；开放后 L3 再过（`t11/drill/summary.txt`） |
 
 ## G. 转层（第 15 章）
 
@@ -84,7 +84,7 @@
 | 行 | 要证明 | 任务 | 状态 |
 | --- | --- | --- | --- |
 | H1 | 长时间推演（第 5 项复盘 S1）：Python 多副本、外壳两个成员，崩溃点、终态核对，30 分钟一轮通过 | T6 | 有：第一轮撞出 P6.20 的缺口（A167，两种 SDK 一起修），修复后 30 分钟一轮通过：4309 个订单、89 次强杀、17/17 个崩溃点、0 个问题（`t6/sim.log`） |
-| H2 | 真机格：Python 成员单跑与进外壳两格，业务链 L3 与套件剖面；新脚本先在开着的格上逐步跑（S4） | T11 | 未做 |
+| H2 | 真机格：Python 成员单跑与进外壳两格，业务链 L3 与套件剖面；新脚本先在开着的格上逐步跑（S4） | T11 | 有：T6-S（全部单跑）与 T6-H（`be/py-render` 承载 `infra/print` 与 `py2`）从空库到 L3 全过；探针的归档在对象存储（S）与温层（H）上发布、释放，两次读回 0 处差异，释放后在线行为 0；`infra/print` 与探针的恢复核对全部 `pass`；核心剖面对探针与三个外壳“符合”（`t11/T6-S/`、`T6-H/`、`summary.txt`）。S4：新脚本先在 T6-S 上跑，撞出的两处（套件 1.0.75 的格配置、我的脚本）修好后两格从空库重跑（`t11/attempts/NOTE.txt`） |
 | H3 | SF27 的 Python 部分：互通测试的 Go 小程序换上现行的 Go SDK | T3 | 有：三个小程序换到 be-sdk-go alpha.117（协议 alpha.116，`test_the_go_interop_helpers_pin_the_same_protocol`）；`goevents` 按 Go 现行的要求补了恢复操作、补发操作与授权定义，测试给它 `world` 的服务身份；互通与安全的集成测试 9 个全过 |
 | H4 | `be-sdk-python` 的 `AGENTS.md`（分层 L7 转来） | T3 | 有：`AGENTS.md` 与 `CLAUDE.md`（a52） |
 | H5 | Python 成员只用一个 `be-sdk` 版本的检查（pin-check） | T3 | 有：`pin-check.py` 的 `one_python_sdk`（3 个单元测试）；对现状报出 `infra/print` 停在 a48（SF29），T3 的连锁发版后为 0 |

@@ -1,0 +1,76 @@
+run profile bucket: HTTP 200 (200 made, 409 there); deployment 01a1c504-f57d-77ac-9ad3-a364c8a60afa
+DRILL archive BEGIN 10:33:19
+DRILL archive END rc=0 184816 ms
+DRILL cell BEGIN 10:36:24
+DRILL cell END rc=0 172555 ms
+Python shell: brickkit-t6-r-be-py-render-3-0-51-1
+DRILL pay-before BEGIN 10:39:17
+DRILL pay-before END rc=0 124 ms
+DRILL pay-before-final BEGIN 10:39:17
+DRILL pay-before-final END rc=0 1304 ms
+T=2026-11-10T10:39:20.914226Z
+DRILL after-T BEGIN 10:39:22
+DRILL after-T END rc=0 9773 ms
+DRILL pay-after BEGIN 10:39:32
+DRILL pay-after END rc=0 130 ms
+DRILL pay-after-final BEGIN 10:39:32
+DRILL pay-after-final END rc=0 1914 ms
+DRILL probe-write BEGIN 10:39:34
+DRILL probe-write END rc=0 124 ms
+DRILL crash BEGIN 10:39:34
+DRILL crash END rc=0 256 ms
+failed at 2026-11-10T10:39:35.225920Z (the Python shell killed)
+DRILL announce BEGIN 10:39:35
+DRILL announce END rc=0 42 ms
+DRILL freeze BEGIN 10:39:35
+DRILL freeze END rc=0 13707 ms
+DRILL freeze-phase BEGIN 10:39:49
+DRILL freeze-phase END rc=0 8 ms
+DRILL maintenance BEGIN 10:39:49
+DRILL maintenance END rc=0 23 ms
+DRILL restore-db BEGIN 10:39:49
+DRILL restore-db END rc=0 526771 ms
+DRILL advance BEGIN 10:48:35
+DRILL advance END rc=0 285 ms
+DRILL redeliver BEGIN 10:48:36
+DRILL redeliver END rc=0 13265 ms
+DRILL replay BEGIN 10:48:49
+DRILL replay END rc=0 13682 ms
+DRILL keys BEGIN 10:49:03
+DRILL keys END rc=0 59 ms
+DRILL reconcile BEGIN 10:49:03
+DRILL reconcile END rc=0 12566 ms
+DRILL check BEGIN 10:49:15
+DRILL check END rc=0 952 ms
+DRILL loss BEGIN 10:49:16
+DRILL loss END rc=0 558 ms
+DRILL open-read BEGIN 10:49:17
+DRILL open-read END rc=0 12370 ms
+DRILL open BEGIN 10:49:29
+DRILL open END rc=0 13536 ms
+CHECK freeze: every member reports the phase "frozen" (13) 
+CHECK restore-db: 
+CHECK advance: 
+CHECK redeliver: every member reports the phase "redelivering" (13) 
+CHECK replay: every member reports the phase "replaying" (13) 
+CHECK open-read: every member reports the phase "read_only" (13) 
+CHECK open: every member reports the phase "" (13) 
+CHECK tables that changed after T: 19, the Python members' 1 (test_probe_py2.probe_writes)
+CHECK tables not back at T: 0 []
+CHECK reconcile test/probe-py2 r-after: external_only 
+CHECK step 8 infra/print be.projections: pass 
+CHECK step 8 infra/print be.audit_backlog: pass 
+CHECK step 8 test/probe-py2 be.projections: pass 
+CHECK step 8 test/probe-py2 be.consumer_epoch: pass 
+CHECK step 8 test/probe-py2 be.audit_backlog: pass 
+CHECK step 8 test/probe-py2 be.tiering: pass 
+CHECK the state: state: running (running)
+CHECK the recovery took 607964 ms from the announcement to running
+CHECK r-before at the probe: succeeded (succeeded), taken by the fake: 1 (1)
+CHECK r-after at the probe: none (none: lost with the recovery), taken: 1 (1)
+CHECK print's templates now: 1 templates, 1 versions (as at T: infra_print.schema_migrations 1 infra_print.template 1 infra_print.template_version 1 )
+CHECK expected: every phase reported by every member, none stopped; r-before matched, r-after external_only; print's and the probe's checks pass
+DRILL scenarios-again BEGIN 10:49:43
+DRILL scenarios-again END rc=0 9793 ms
+the WAL archive is off
+T11 DRILL ALL-DONE

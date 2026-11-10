@@ -1,0 +1,16 @@
+# Foundations item 6, T11 (foundations-06-python-plan.md): a full recovery with the Python members taking part (gate F4).
+# T6-H's layout: be/py-render hosts infra/print and the Python probe py2, which pays into the suite's fake payment
+# system on the host (port 18990), deduplicated for 24 hours, not irrevocable. The drill (foundations-06-data/t11/
+# drill.sh): steps 1-10 of be-ops recover; every Python member reports each phase (none stopped), answers step 8's
+# checks and step 7's reconciliation. Its own deployment, a new one for every drill (the drill script writes it).
+cell: T6-R
+row: D
+deployment: 01a1c504-f57d-77ac-9ad3-a364c8a60afa
+shells:
+  be/go-infra@3.0.71: [infra/iam-casdoor, infra/authz, infra/audit, mdm/org, mdm/currency, mdm/partner, mdm/product]
+  be/go-core@3.0.79: [erp/inventory, erp/credit, erp/sales, erp/billing]
+  be/py-render@3.0.51: [infra/print, test/probe-py2]
+chain: []
+settings:
+  test/probe-py2: {PROBE_EXTERNAL_URL: "http://host.docker.internal:18990", PROBE_EXTERNAL_IRREVOCABLE: "false",
+                   PROBE_EXTERNAL_DEDUPE_WINDOW: "24h"}
