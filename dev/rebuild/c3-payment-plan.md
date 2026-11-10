@@ -10,7 +10,7 @@
   - 支付与银行适配器（`integration/payment-*`、`integration/bank-*`）：不在当前重建；缺时只能线下登记。
   - `infra/workflow`（C7）：缺时审批在本组件页面里。
   - `erp/sales`：订单读取（`OrderService.Read`，任一组件）已有，收款带订单参考时可以核对。
-- 仓库：`brickKit/erp-payment` 还没有（2026-11-10 维护者同意建；第一次建被 Claude Code 的自动模式拦下，等维护者放行或自己建）。
+- 仓库：`brickKit/erp-payment`（2026-11-10 维护者同意后建，挂在 `components/erp/payment`）。
 
 ## 任务
 
