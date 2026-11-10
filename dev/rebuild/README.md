@@ -6,7 +6,7 @@
 
 - **现在：按依赖顺序重建其余组件**（维护者 2026-11-10 定；推进方式见根 `AGENTS.md`）：计划 [components-plan.md](components-plan.md)，13 个组件 C1–C13 与阶段收尾 C14；C0 的仓库动作已执行（结果在计划里）。
   - **C1 `mdm/employee` 完成**（2026-11-10，子计划 [c1-employee-plan.md](c1-employee-plan.md)，数据在 `c1-data/`）：`mdm/employee` 3.0.3、`infra/authz` 3.0.48，全系统 be-sdk-go alpha.121，套件 1.0.78，格 `C1-H` 从空库到 L3。收尾定了结构问题 SF06–SF08、SF10–SF13（SF06、SF13 已修，其余写了何时做，`docs/zh/01-conventions/12-structure-findings.md`）。
-  - **下一步：C2**（[components-plan.md](components-plan.md)）：先列它需要、而源头还没做的能力（`mdm/partner` 的供应商角色）。
+  - **正在做：C2 `erp/purchase`**（子计划 [c2-purchase-plan.md](c2-purchase-plan.md)）：P0（首批范围）开始；源头要补 `mdm/partner` 的供应商角色、`erp/inventory` 的采购收货入库与退货出库（P0b）。
   - 每个组件开工先列出它需要、而已重建的源头组件还没做的能力，先回源头补；连锁发布用 `experiment-scripts/sdk-unify.py --moved <ID>`；外壳用 `c1-data/shells-e6.sh` 的写法（子 shell 单独执行再看退出码：`( … ) ||` 里 `set -e` 不生效）。
   - 下次改到这些组件时一起做（结构问题登记里写着）：`erp/sales` 的 `Deref` 挪进 `core`、提交确认也审计；各组件的版本常量挪进 `internal/core`、删掉不序列化类型的 `json:"-"`。
 - **底层先行六项完成**（2026-11-02 至 11-10，维护者逐项确认门槛）。各项的经过、发布与验收在计划里，门槛核对在各自的 `foundations-0N-data/gate.md`，复盘的改进都已批准并落实：
