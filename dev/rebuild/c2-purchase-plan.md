@@ -20,6 +20,12 @@
 | P1 | 设计文档 `docs/design.md`（照 `erp/sales` 的结构：生命周期一张表、规则目录），考设计 | P0、P0b | 文档与考试记录 | ✅ 2026-11-10（组件仓库的 `docs/design.md`；仓库 `brickKit/erp-purchase` 维护者同意后建；订单的生命周期一张表、规则 PO01–PO12，申请 PR01–PR05；首批的状态改成草稿、待审批、已批准、已完成、已关闭、已取消，收货进度是行上的量（同销售）；考设计两份 8/8，补了两处“没写”，`c2-data/exam-p1/result.md`） |
 | P2 | 契约（用户面与系统面、事件、权限键与资源定义）；注册表（仓库 `erp-purchase` 已在 C0 建、端口与 schema 已登记）与套件的授权登记表跟上 | P1 | 契约生成、`make registry-check`、`make authz-keys-check` | ✅ 2026-11-10（契约在组件仓库，`contract/v3.0.0-alpha.1`：用户面 30 条路由、系统面 `MatchService.Basis` 与 `FactService.Read`、四个完整状态事件与四个增量事实；申请的规则补成 PR01–PR06；权限键与资源定义随 P3 的组件定义，套件的授权表与 `authz-keys-check` 那时跟上） |
 | P3 | 实现（拆成子步）：申请、订单与修订、审批、收货（经库存）、服务验收、采购退货、事件与收货计价依据、匹配依据查询；标准布局与测试索引；先写红的测试 | P2 | L1–L2 与集成测试、改坏检查、`make layout-check` | ⬜ |
+| P3a | 骨架：照 `erp/sales` 的布局（入口包 `purchase/`、`internal/`、`itest/`、迁移、清单、`BRICKKIT.md`、各层 `AGENTS.md`），组件定义（资源与操作、三个维度、流、订阅：部门事件与库存的流水事件），本版不做的路由答“能力不支持”，`contract_test.go`；部门投影照 `erp/sales` 的 `orgunits` | P2 | `go test ./...`、`brickkit lint`、`make layout-check` | ⬜ |
+| P3b | 采购政策与申请（PR01–PR06）；单号；资格取证 | P3a | 集成测试先写红的 | ⬜ |
+| P3c | 订单的生命周期（一张表，PO01–PO06、PO10–PO12）：新建与申请转订单、修改、提交、批准、驳回、修订、关闭、取消；列表与数据范围 | P3b | 同上 | ⬜ |
+| P3d | 收货（PO07）：收货单、收货计价依据与撤回、经库存的系统面入库、恢复作业、按库存的流水事件补齐已收；库存的替身 | P3c | 同上；验证故事“回调丢失按入库事实补齐”“超收被拒” | ⬜ |
+| P3e | 服务验收（PO08）与采购退货（PO09） | P3d | 同上 | ⬜ |
+| P3f | 系统面 `MatchService`、`FactService`；恢复核对；整体的改坏检查与 `make layout-check` | P3e | 同上 | ⬜ |
 | P4 | 种子数据（供应商、每个法人的申请与订单、各种状态、够翻页；跑两遍不变） | P3 | 格里 `make seed-data` 两遍 | ⬜ |
 | P5 | 发布与连锁：外壳 `be/go-core` 加成员、套件的格与 L3（采购到入库；收货回调丢失按入库事实补齐；超收被拒）；一致性考试 | P3、P4 | 格从空库到 L3 全过；`make version-check`、`make gates` | ⬜ |
 
