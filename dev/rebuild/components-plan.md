@@ -33,7 +33,7 @@
 | C0 | 仓库动作：旧代码挪到 `legacy/`、主分支重新开始、改名、新建、注册表追加、`.gitmodules`（下面“C0 的动作”） | 重建计划的原则 1–4 | — | 维护者确认后执行，结果写在本节末尾 | ✅ 2026-11-10（维护者“执行”；新仓库在各自开工时建） |
 | C1 | `mdm/employee`：员工、任职、员工与账号的映射；种子数据（每个法人有员工、够翻页） | 边界卡 `mdm.md`、协议 14 | C0 | 组件的 L1–L2 与集成测试、改坏检查；真机格从空库到 L3 | ✅ 2026-11-10：`mdm/employee` 3.0.3、`infra/authz` 3.0.48（关联的确认、按人判断、任职绑定），全系统 be-sdk-go alpha.121；子计划 [c1-employee-plan.md](c1-employee-plan.md) |
 | C2 | `erp/purchase`：采购的单据链（申请、订单、收货、退货），与库存、开票的事件 | 边界卡 `erp.md`、业务流程 | C0 | 同上；采购到入库的 L3 场景 | ✅ 2026-11-10：`erp/purchase` 3.0.1，格 C2-P 从空库到 L3（子计划 [c2-purchase-plan.md](c2-purchase-plan.md)；源头补了 `mdm/partner` 3.0.40、`erp/inventory` 3.0.37、`mdm/product` 3.0.38、`infra/iam-casdoor` 3.0.44） |
-| C3 | `erp/payment`：收付款、核销；对外支付走对外命令（第 13 章） | 边界卡、协议 15 的对外命令 | C0 | 同上；收款核销开票的 L3 | ⬜ |
+| C3 | `erp/payment`：收付款、核销；对外支付走对外命令（第 13 章） | 边界卡、协议 15 的对外命令 | C0 | 同上；收款核销开票的 L3 | 进行中：子计划 [c3-payment-plan.md](c3-payment-plan.md)（P0 起草；仓库等建） |
 | C4 | `erp/finance`：总账、凭证、期间与关账；消费开票、付款、库存的过账事件 | 边界卡、业务流程 | C2、C3 | 同上；从订单到凭证的 L3 | ⬜ |
 | C5 | `erp/costing`：存货成本（消费库存移动） | 边界卡 | C0 | 同上 | ⬜ |
 | C6 | `crm/opportunity`：商机到销售订单 | 边界卡 `crm.md` | C0 | 同上；商机赢单到订单的 L3 | ⬜ |
