@@ -20,6 +20,7 @@ ROW=$(sed -n 's/^row: *//p' "$D/cell.yaml"); ROW=${ROW:-D}
 INCLUSTER=; grep -q '^base: *cluster' "$D/cell.yaml" && INCLUSTER=1
 mkdir -p "$OUT/logs"; echo $$ > "$OUT/runner.pid"
 . "$R/dev/rebuild/experiment-scripts/cellenv.sh" "$D"  # the passwords, BE_ACC_*, Casdoor's client secrets (PGP, NP, SP)
+[ -n "${BE_OPS:-}" ] || build_be_ops "$(mktemp -d)"  # outside the output directory (no binaries in the repository); prepare issues a secured cell's certificates with be-ops (C1 E6: unset once)
 I=0
 stage() {  # stage <name> <command...>; stops the run on failure. FROM=<name> skips the stages before that one (a run
   # that failed there resumes on the cell as it is)

@@ -189,7 +189,7 @@ teardown-down:  ## 停掉拆回验证的容器
 # The Go gates of the 0.x be-acceptance (import, SystemClient, bare-route, event and OpenAPI
 # breaking changes, data-scope tests, dependency versions, config keys) moved to its legacy/v0
 # branch with the old code (D59); conformance suites and gates return with the rebuilt tools.
-gates: docs-boundary docs-diagrams docs-mirror docs-links docs-ids docs-closure docs-index-check infra-images security-schemas no-binaries protocol-coverage-go layout-check scripts-test authz-keys-check  ## Document gates (boundary, mirror, links, IDs, closure), infra image pins, security schemas, no build output in any repository, the components' layout, the scripts' own tests, the cells' authorization tables + brickkit up --dry-run
+gates: docs-boundary docs-diagrams docs-mirror docs-links docs-ids docs-closure docs-index-check infra-images security-schemas no-binaries protocol-coverage-go layout-check scripts-test authz-keys-check integration-targets  ## Document gates (boundary, mirror, links, IDs, closure), infra image pins, security schemas, no build output in any repository, the components' layout, the scripts' own tests, the cells' authorization tables, every component's make test-integration reaching tests + brickkit up --dry-run
 	@echo "▸ brickkit up --dry-run"
 	@bash $(S)/lib/require-brickkit.sh
 	@brickkit up --dry-run
@@ -198,6 +198,10 @@ gates: docs-boundary docs-diagrams docs-mirror docs-links docs-ids docs-closure 
 layout-check:  ## 已重建的组件（Go 与 Python）按业务模块分层、每层一份说明（docs/zh/01-conventions/05-ai-navigation.md 的布局检查）
 	@PYTHONDONTWRITEBYTECODE=1 python3 $(S)/layout-check.py
 .PHONY: layout-check
+
+integration-targets:  ## 每个已重建组件的 make test-integration 都跑到集成测试（列出、不运行；结构问题 SF13）
+	@PYTHONDONTWRITEBYTECODE=1 python3 $(S)/integration-targets-check.py
+.PHONY: integration-targets
 
 scripts-test:  ## 父仓库脚本自己的测试（infra/scripts/tests/ 下的全部文件，各按自己的写法跑）
 	@bash $(S)/tests/run-all.sh

@@ -6,11 +6,13 @@ set -u
 R=/home/zhijie/Desktop/github/be-assembly-standard; O=$(dirname "$(realpath "$0")")
 echo $$ > $O/shells-e6.pid
 export GOPROXY=direct GONOSUMDB='github.com/brickKit/*' GOFLAGS=-mod=mod GOWORK=off
-declare -A V=([infra/audit]=3.0.38 [infra/authz]=3.0.47 [infra/iam-casdoor]=3.0.43 [mdm/currency]=3.0.33 [mdm/org]=3.0.35
-  [mdm/employee]=3.0.2 [mdm/partner]=3.0.38 [mdm/product]=3.0.37 [erp/credit]=3.0.36 [erp/inventory]=3.0.36
+declare -A V=([infra/audit]=3.0.38 [infra/authz]=3.0.48 [infra/iam-casdoor]=3.0.43 [mdm/currency]=3.0.33 [mdm/org]=3.0.35
+  [mdm/employee]=3.0.3 [mdm/partner]=3.0.38 [mdm/product]=3.0.37 [erp/credit]=3.0.36 [erp/inventory]=3.0.36
   [erp/sales]=3.0.45 [erp/billing]=3.0.54)
-PROBE=3.2.52; SDK=v3.0.0-alpha.121; declare -A NEWV=([go-infra]=3.0.74 [go-core]=3.0.81)
-# SHELLS (default both): the shells to do; go-infra alone redid 3.0.73 as 3.0.74 (see the end of this file)
+PROBE=3.2.52; SDK=v3.0.0-alpha.121; declare -A NEWV=([go-infra]=3.0.76 [go-core]=3.0.81)
+# SHELLS (default both): the shells to do; go-infra alone redid 3.0.73 as 3.0.74 (see the end of this file), and
+# took mdm/employee 3.0.3 (the consistency exam's fixes) as 3.0.75, and infra/authz 3.0.48 (an appointment not
+# applied yet is retryable) as 3.0.76
 for shell in ${SHELLS:-go-infra go-core}; do
   d=$R/shell/be/$shell; old=$(sed -n 's/^  version: //p' $d/component.yaml); NEW=${NEWV[$shell]}
   echo "SHELLS $shell BEGIN $old -> $NEW"
