@@ -227,6 +227,7 @@ test-cross:  ## 组件局部测试：只跑 ID 一个组件，强依赖 gRPC 指
 # every seed is idempotent, so the repeats cost a few requests. Needs the components and the identity member up, and
 # SEED_PASSWORD (the test users' password); the addresses default to the cell's host ports (see each cmd/seed).
 seed-data:  ## 灌重建后组件的种子数据（测试账号、授权、主数据与交易链的组件），可重复跑；需要 SEED_PASSWORD 等（docs/zh/03-seed-data.md）
+	@$(MAKE) -C components/infra/iam-casdoor seed   # the test accounts first (made or reset; skipped without CASDOOR_URL)
 	@$(MAKE) -C components/infra/authz seed
 	@$(MAKE) -C components/mdm/org seed
 	@$(MAKE) -C components/mdm/employee seed
@@ -237,6 +238,7 @@ seed-data:  ## 灌重建后组件的种子数据（测试账号、授权、主�
 	@$(MAKE) -C components/erp/credit seed
 	@$(MAKE) -C components/erp/sales seed
 	@$(MAKE) -C components/erp/billing seed
+	@$(MAKE) -C components/erp/purchase seed
 .PHONY: seed-data
 
 seed-data-clean:  ## 主数据组件没有清除命令：说明怎样重置（docs/zh/03-seed-data.md）

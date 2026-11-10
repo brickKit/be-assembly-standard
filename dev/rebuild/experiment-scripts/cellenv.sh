@@ -16,6 +16,7 @@ PGP=${INCLUSTER:+15432}; PGP=${PGP:-5432}; NP=${INCLUSTER:+14222}; NP=${NP:-4222
 export SEED_PASSWORD; SEED_PASSWORD=$(envval IAM_TEST_PASSWORD)
 export IAM_TEST_PASSWORD="$SEED_PASSWORD" BE_ACC_IAM_TEST_PASSWORD="$SEED_PASSWORD"
 export CASDOOR_ADMIN_PASSWORD; CASDOOR_ADMIN_PASSWORD=$(envval CASDOOR_ADMIN_PASSWORD)
+export CASDOOR_URL=http://localhost:8000  # the base Casdoor: make seed-data makes or resets the test accounts there first
 export BE_ACC_PG_ADMIN="postgres://postgres:$PW@localhost:$PGP/postgres?sslmode=disable"
 export BE_ACC_NATS_URL=nats://localhost:$NP BE_ACC_S3_URL=http://localhost:$SP
 export BE_ACC_S3_ACCESS_KEY BE_ACC_S3_SECRET_KEY; BE_ACC_S3_ACCESS_KEY=$(envval STORAGE_ACCESS_KEY); BE_ACC_S3_SECRET_KEY=$(envval STORAGE_SECRET_KEY)

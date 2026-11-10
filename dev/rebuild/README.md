@@ -6,9 +6,10 @@
 
 - **现在：按依赖顺序重建其余组件**（维护者 2026-11-10 定；推进方式见根 `AGENTS.md`）：计划 [components-plan.md](components-plan.md)，13 个组件 C1–C13 与阶段收尾 C14；C0 的仓库动作已执行（结果在计划里）。
   - **C1 `mdm/employee` 完成**（2026-11-10，子计划 [c1-employee-plan.md](c1-employee-plan.md)，数据在 `c1-data/`）：`mdm/employee` 3.0.3、`infra/authz` 3.0.48，全系统 be-sdk-go alpha.121，套件 1.0.78，格 `C1-H` 从空库到 L3。收尾定了结构问题 SF06–SF08、SF10–SF13（SF06、SF13 已修，其余写了何时做，`docs/zh/01-conventions/12-structure-findings.md`）。
-  - **正在做：C2 `erp/purchase`**（子计划 [c2-purchase-plan.md](c2-purchase-plan.md)，数据在 `c2-data/`）：P0–P3 做完（源头补了 `mdm/partner` 3.0.39、`erp/inventory` 3.0.37；设计、契约 alpha.1、实现的六个子步，组件仓库 `main` 上，还没发版）；下一步 P4 种子，再 P5 发布（契约 `contract/v3.0.0-alpha.2` 先发：`Acceptance` 加了 `version`）、外壳 `be/go-core` 加成员、套件的格与 L3、一致性考试。
-  - 顺带记下：`erp/sales` 的产品替身用裸 gRPC 状态答 `NO_CONVERSION`、它的测试没走到这条路：下次动 `erp/sales` 时改替身并补“单位不能换算被拒”。
-  - 每个组件开工先列出它需要、而已重建的源头组件还没做的能力，先回源头补；连锁发布用 `experiment-scripts/sdk-unify.py --moved <ID>`；外壳用 `c1-data/shells-e6.sh` 的写法（子 shell 单独执行再看退出码：`( … ) ||` 里 `set -e` 不生效）。
+  - **C2 `erp/purchase` 完成**（2026-11-10，子计划 [c2-purchase-plan.md](c2-purchase-plan.md)，数据在 `c2-data/`）：`erp/purchase` 3.0.1（契约 alpha.3），源头 `mdm/partner` 3.0.40、`erp/inventory` 3.0.37→3.0.38、`mdm/product` 3.0.38、`infra/iam-casdoor` 3.0.44 与连锁，外壳 `be/go-infra` 3.0.79、`be/go-core` 3.0.84，套件 1.0.80，格 `C2-P` 从空库到 L3（24 个）。`make seed-data` 现在先跑 Casdoor 的测试账号（格的环境有 `CASDOOR_URL`）。新登记 SF30（生命周期表的核对适合进 SDK）。
+  - **下一个：C3**（见组件计划）。
+  - 顺带记下：`erp/sales` 的产品替身用裸 gRPC 状态答 `NO_CONVERSION`、它的测试没走到这条路：下次动 `erp/sales` 时改替身并补“单位不能换算被拒”。采购账号没有主数据的读取授予（主数据各组件的种子没给），前端要时去源头补。
+  - 每个组件开工先列出它需要、而已重建的源头组件还没做的能力，先回源头补；连锁发布用 `experiment-scripts/sdk-unify.py --moved <ID>`（正在做、还没发版的组件也以 `--moved` 传入，免得被连锁发布；它的依赖自己改）；外壳用 `c1-data/shells-e6.sh` 的写法（子 shell 单独执行再看退出码：`( … ) ||` 里 `set -e` 不生效）。
   - 下次改到这些组件时一起做（结构问题登记里写着）：`erp/sales` 的 `Deref` 挪进 `core`、提交确认也审计；各组件的版本常量挪进 `internal/core`、删掉不序列化类型的 `json:"-"`。
 - **底层先行六项完成**（2026-11-02 至 11-10，维护者逐项确认门槛）。各项的经过、发布与验收在计划里，门槛核对在各自的 `foundations-0N-data/gate.md`，复盘的改进都已批准并落实：
 
@@ -25,7 +26,7 @@
   现在各组件、外壳、SDK 与套件的版本以组件索引与 `make version-check` 为准。
 - **代表部署实验（D41）做完了**（2026-10-17 至 11-02）。结论在[实验报告](experiment-report.md)（最后是“结论汇总”与“限制与未测”），已提炼进正式文档：[部署模式](../../docs/zh/00-overview/guides/deployment-modes.md)、决定 D80（默认有根 Podman，开机实测后由无根改定）与 D81（Podman 上交付用 Quadlet 单元，2026-11-02 复测 BrickKit v1.12.0 之后）与 A112–A114（默认全部单跑、不加连接池代理、NATS；维护者 2026-11-02 复核）、各篇的修订（[第 14 步计划](step14-plan.md)第 3 节）。复盘：[整个实验](retro-experiment.md)、[第 12 步](retro-step12.md)、[第 13 步](retro-step13.md)。
 - 设计冻结与正式文档迁移已完成（[migration-plan.md](migration-plan.md)）。
-- **待复核**：AI 选择 A109、A117、A118、A160–A169（`docs/zh/02-decisions/09-ai-choices.md`）；计划里标着“AI 定，待复核”的：C1 的 E0 范围、第 6 项 T11 的设计、员工与关联只按法人限定（`mdm/employee` 设计的未决问题）、C1 的 E4d（处置按自然人，超出 E0 首批）与 E4e 的做法（管理持有在闭包前的可用性、任职终点不随视图下发）、种子的设计与 L3 的两条员工场景，见 `c1-employee-plan.md`；C1 收尾对 SF08、SF10、SF12 的决定（结构问题登记）。
+- **待复核**：AI 选择 A109、A117、A118、A160–A169（`docs/zh/02-decisions/09-ai-choices.md`）；计划里标着“AI 定，待复核”的：C2 的 P0 首批范围与 P4c 种子的分布（`c2-purchase-plan.md`）、L3 的“答复丢失”推到阶段末的套件 C；C1 的 E0 范围、第 6 项 T11 的设计、员工与关联只按法人限定（`mdm/employee` 设计的未决问题）、C1 的 E4d（处置按自然人，超出 E0 首批）与 E4e 的做法（管理持有在闭包前的可用性、任职终点不随视图下发）、种子的设计与 L3 的两条员工场景，见 `c1-employee-plan.md`；C1 收尾对 SF08、SF10、SF12 的决定（结构问题登记）。
 - **挂着的事**：
   - 推送：上层仓库最近一次推送是 2026-11-10 的 `58cfa656`（维护者下令），之后的提交以 `git log origin/main..main` 为准；子仓库发布的版本都已推送并打了标签；`erp-purchase` 的开发提交已推到它的 `main`（未打版本标签）。
   - 下次发协议时：`COMPAT.md` 第 2 节补 be-sdk-go alpha.119、be-sdk-python a55–a62 实现 alpha.117；`cron-slots` 向量补“`none` 且最后一个到期槽早于一分钟”的用例。
