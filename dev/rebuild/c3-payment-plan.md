@@ -1,6 +1,6 @@
 # C3：`erp/payment` 的子计划
 
-阶段“按依赖顺序重建其余组件”的第三个组件（[components-plan.md](components-plan.md) 的 C3）。照 C2 的做法（[c2-purchase-plan.md](c2-purchase-plan.md)）：先定首批范围与源头要补的能力，按改动的循环做，每一步先写红的测试，改坏检查，发布，真机格从空库到 L3。数据与改坏检查放 `c3-data/`。
+阶段“按依赖顺序重建其余组件”的第三个组件（[components-plan.md](components-plan.md) 的 C3）。**2026-11-10 维护者定：先做 C4 `erp/finance`，本计划等它之后再接着做**（收付款的事实要按财务定义的会计事实契约发布，付款认领与核销在财务）；到那时重读 P0 草稿，财务有了的能力（认领、建议、会计事实契约）挪进首批。照 C2 的做法（[c2-purchase-plan.md](c2-purchase-plan.md)）：先定首批范围与源头要补的能力，按改动的循环做，每一步先写红的测试，改坏检查，发布，真机格从空库到 L3。数据与改坏检查放 `c3-data/`。
 
 ## 依据与牵动
 
