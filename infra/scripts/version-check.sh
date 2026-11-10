@@ -84,7 +84,21 @@ for p in "${paths[@]}"; do
   for t in "${headtags[@]}"; do
     [[ "$(git -C "$p" cat-file -t "$t" 2>&1)" != "tag" ]] && lightweight="$lightweight $t"
   done
-  if [[ -n "$lightweight" ]]; then
+  # a Go component from major version 2 on (module path .../vN): Go takes only the v-tag, which brickkit release makes
+  # with release.goModule: true. Without it a release has its bare tag only and a shell's go get answers "unknown
+  # revision" (C1 E6: mdm/employee 3.0.1)
+  gomod=""
+  if [[ -f "$p/go.mod" && -f "$p/component.yaml" ]] && head -1 "$p/go.mod" | grep -qE '/v[2-9][0-9]*$'; then
+    if ! grep -qE '^  goModule: true' "$p/component.yaml"; then
+      gomod="清单没有 release.goModule: true"
+    elif ! printf '%s\n' "${headtags[@]}" | grep -q '^v'; then
+      gomod="HEAD 没有 Go 读的 v 标签"
+    fi
+  fi
+  if [[ -n "$gomod" ]]; then
+    echo "${C_RED}✗ $p：Go 模块（主版本 2 起）：$gomod——外壳 go get 报 unknown revision${C_OFF}"
+    bad=1
+  elif [[ -n "$lightweight" ]]; then
     echo "${C_RED}✗ $p：${lightweight# } 是轻量 tag（应为带注解的 \`git tag -a\`）——git submodule status 会显得像是漂移${C_OFF}"
     bad=1
   else
