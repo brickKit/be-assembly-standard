@@ -1,0 +1,50 @@
+erp/purchase 3.0.0 (C2 P3d): receipts through erp/inventory (PO07, PO12), the valuation basis, the movements
+mutants: 14
+red  PO07: the policy's over-receipt percent
+       Error:      	Not equal:
+       Messages:   	map[detail:line 01a1c6e8-197f-7c4e-93f2-c556d181f269: 96 more is over the 10% allowed domain:erp/purchase reason:OVER_RECEIPT status:409 title:More than the order line allows with the leg
+red  PO07: what is receiving counts
+       Error:      	Not equal:
+       Messages:   	map[business_date:2026-11-11 id:01a1c6e8-399b-7390-9d52-7eb4e997558b legal_entity_id:01a1c6e8-2ad7-7dc5-a43b-bb1325af5850 lines:[map[base_quantity:60 batch:<nil> id:01a1c6e8-399b-7a48-91c
+       Error:      	Not equal:
+red  PO07: only an approved order
+       Error:      	Not equal:
+       Error:      	Not equal:
+       Messages:   	map[business_date:2026-11-11 id:01a1c6e8-80f6-7086-b99d-995db67f1d4b legal_entity_id:01a1c6e8-55b6-7da3-ba12-466aae2398f4 lines:[map[base_quantity:12 batch:<nil> id:01a1c6e8-80f6-7900-932
+red  PO07: goods lines only
+       Error:      	Not equal:
+       Messages:   	map[detail:an internal error occurred; quote the trace id when reporting it domain:be reason:INTERNAL status:500 title:Internal error trace_id:56db08eabaac0e9811f06d98eeddefe6 type:urn:be
+red  05b: the basis is per base unit
+       Error:      	Not equal:
+red  a refused receipt gives back what it was receiving
+       Error:      	Not equal:
+       Error:      	Not equal:
+       Messages:   	map[detail:a receipt of the order is under way: it is closed when the receipt ends domain:erp/purchase reason:STATE_CONFLICT status:409 title:The record's state does not allow this trace_
+red  05b: a refused receipt's bases are withdrawn
+       Error:      	Received unexpected error:
+       Messages:   	erp.purchase_receipt.valuation_basis_withdrawn.v1 with basis_fact_id 01a1c6e9-4734-73f1-b826-3306bcd5a3ee
+red  a refusal fails the receipt, not leaves it receiving
+       Error:      	Not equal:
+       Messages:   	map[business_date:2026-11-11 id:01a1c6e9-7840-7be9-97be-e9d5913a825a legal_entity_id:01a1c6e9-4d58-76c3-8156-7df9f60ac58c lines:[map[base_quantity:12 batch:<nil> id:01a1c6e9-7842-771a-90d
+       Error:      	Not equal:
+red  an unknown answer leaves the receipt receiving
+       Error:      	Not equal:
+       Messages:   	map[detail:be/DEPENDENCY_UNAVAILABLE: a dependency is unavailable: rpc error: code = Unavailable desc = the stand-in is down domain:erp/purchase metadata:map[receipt_id:01a1c6e9-8cc9-7c2c
+red  the synchronous path sends the receipt
+       Error:      	Not equal:
+       Messages:   	map[business_date:2026-11-11 id:01a1c6e9-a177-76f7-bbf0-9d5c7aa1292e legal_entity_id:01a1c6e9-9372-7e0f-b91d-5b4bcc4bb351 lines:[map[base_quantity:60 batch:<nil> id:01a1c6e9-a17a-7cf9-9b6
+red  each movement counts once
+       Error:      	Not equal:
+       Error:      	Not equal:
+       Messages:   	map[detail:line 01a1c6e9-aa51-76b8-baf4-ab734d52bb27: 96 more is over the 10% allowed domain:erp/purchase reason:OVER_RECEIPT status:409 title:More than the order line allows with the leg
+red  the movement events settle a receipt (the story)
+       Error:      	Condition never satisfied
+       Messages:   	erp/inventory's movement settles the receipt
+red  PO12: an order received whole completes
+       Error:      	Not equal:
+       Error:      	Not equal:
+red  PO10: not closed while receiving
+       Error:      	Not equal:
+       Messages:   	POST /api/purchase/orders/01a1c6ea-95ed-7e15-b367-398f8e19720f/close: map[approved_by:0190f3a1-0000-7000-8000-0000000000a1 business_date:2026-11-11 created_at:2026-11-10T19:23:45.005708Z 
+       Error:      	Not equal:
+done

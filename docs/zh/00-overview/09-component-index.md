@@ -146,7 +146,7 @@
 | `erp.delivery.changed.v1` | `erp/sales` | — |
 | `erp.delivery.posted.v1` | `erp/sales` | — |
 | `erp.inventory_branch.changed.v1` | `erp/inventory` | — |
-| `erp.inventory_movement.recorded.v1` | `erp/inventory` | — |
+| `erp.inventory_movement.recorded.v1` | `erp/inventory` | `erp/purchase` |
 | `erp.invoice.changed.v1` | `erp/billing` | — |
 | `erp.invoice.issued.v1` | `erp/billing` | — |
 | `erp.price_list.changed.v1` | `erp/sales` | — |
