@@ -24,7 +24,7 @@
 # 外壳（shell/be/<name>/）和组件一样是独立仓库、登记为 submodule，由上面同一个
 # 循环检查：tag 在外壳自己的仓库里，是裸 `<版本>`（如 1.0.0），没有 v 前缀 tag。
 #
-# 刚重启、主分支只有 “Restart main for the final design” 一个提交的仓库也不查（见循环里的判断）。
+# 刚重启或新建、主分支只有那个说明 README 提交的仓库也不查（见循环里的判断）。
 # 有意冻结、还没有发布过的仓库不查（重建计划定的“不动、实验后再定”）；要动它时从这里删掉，发布时照常打 tag。
 FROZEN=(shell/be/go-backoffice)
 set -uo pipefail
@@ -58,12 +58,13 @@ for p in "${paths[@]}"; do
     echo "⚠ $p 尚未 checkout（submodule init 未跑），跳过"
     continue
   fi
-  # a repository restarted for the final design (its old code on legacy/, main is one README commit): nothing to release
-  # until its first 3.x commit; from then on it is checked like any other
-  if [[ "$(git -C "$p" log -1 --format=%s)" == "Restart main for the final design" ]]; then
-    echo "- $p：已重启（旧代码在 legacy/ 分支），3.0.0 还没有开工，不查"
-    continue
-  fi
+  # a repository restarted or just created for the final design (main is one README commit: the old code on legacy/, or
+  # none): nothing to release until its first 3.x commit; from then on it is checked like any other
+  case "$(git -C "$p" log -1 --format=%s)" in
+    "Restart main for the final design"|"Start the repository for the final design")
+      echo "- $p：重启或新建，只有说明 README，3.0.0 还没有开工，不查"
+      continue ;;
+  esac
   desc="$(git -C "$p" describe --tags 2>&1)"
   if [[ $? -ne 0 ]]; then
     echo "${C_RED}✗ $p：没有任何 tag（$desc）${C_OFF}"
