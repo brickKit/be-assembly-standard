@@ -9,7 +9,7 @@
 | 组件 | 必需依赖（组件索引） | 仓库现状 | 语言 |
 | --- | --- | --- | --- |
 | `mdm/employee` | `mdm/org`、身份、授权 | 无仓库 | Go |
-| `erp/purchase` | 四个主数据、身份、授权 | 无仓库（端口已登记） | Go |
+| `erp/purchase` | 四个主数据、身份、授权 | `brickKit/erp-purchase`（2026-11-10 建，维护者同意） | Go |
 | `erp/payment` | `mdm/partner`、`mdm/org`、`mdm/currency`、身份、授权 | 无仓库 | Go |
 | `erp/finance` | `mdm/org`、`mdm/partner`、`mdm/currency`、身份、授权 | 旧代码 v2.0.0 在 `main` | Go |
 | `erp/costing` | `erp/inventory`、`mdm/product`、`mdm/org`、`mdm/currency`、身份、授权 | 无仓库 | Go |

@@ -27,7 +27,6 @@
 - **待复核**：AI 选择 A109、A117、A118、A160–A169（`docs/zh/02-decisions/09-ai-choices.md`）；计划里标着“AI 定，待复核”的：C1 的 E0 范围、第 6 项 T11 的设计、员工与关联只按法人限定（`mdm/employee` 设计的未决问题）、C1 的 E4d（处置按自然人，超出 E0 首批）与 E4e 的做法（管理持有在闭包前的可用性、任职终点不随视图下发）、种子的设计与 L3 的两条员工场景，见 `c1-employee-plan.md`；C1 收尾对 SF08、SF10、SF12 的决定（结构问题登记）。
 - **挂着的事**：
   - 推送：上层仓库最近一次推送是 2026-11-10 的 `58cfa656`（维护者下令），之后的提交以 `git log origin/main..main` 为准；子仓库发布的版本都已推送并打了标签。
-  - C2 等维护者：新仓库 `brickKit/erp-purchase` 的 `gh repo create` 被权限拦下（2026-11-10），维护者建好或放行之后，推说明 README 的初始提交、`git submodule add`，接着 P1 的设计文档。
   - 下次发协议时：`COMPAT.md` 第 2 节补 be-sdk-go alpha.119、be-sdk-python a55–a62 实现 alpha.117；`cron-slots` 向量补“`none` 且最后一个到期槽早于一分钟”的用例。
   - BrickKit：信箱里 FRB-014（代码地图把组件 ID 当路径，`brickkit lint` 的一条警告）等回复。
   - kb：PR #61、#64、#65、#66、#68、#70、#71 等审查；审查意见回来时照 `kb-contribute` 处理。还没交的草稿见下面“任务结束时：知识库反馈”。
