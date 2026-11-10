@@ -72,6 +72,12 @@ test-probe-go2	test/probe-go2	8602	9602	standalone	探针 test/probe-go 的变�
 test-probe-go3	test/probe-go3	8603	9603	standalone	同上
 test-probe-go4	test/probe-go4	8604	9604	standalone	同上
 test-probe-py2	test/probe-py2	8605	9605	standalone	探针 test/probe-py 的变体，同上
+# ===== 重建新增（2026-11-10，按依赖顺序重建其余组件 components-plan.md）：外壳列照实验的分配（基础外壳承载主数据，交易外壳承载交易与财务）=====
+mdm-employee	mdm/employee	8227	9227	go-infra	-
+erp-payment	erp/payment	8228	9228	go-core	-
+erp-costing	erp/costing	8229	9229	go-core	-
+frontend-pc	frontend/pc	80	-	standalone	D17：取代 frontend/standard；slot:frontend族共用80；exposePort=28090（决策107）
+frontend-mobile	frontend/mobile	80	-	standalone	D17：从 frontend/standard 拆出的移动端；与 frontend/pc 同时部署，exposePort 在它开工时定
 # ===== 外壳自身（shell/be/<name>/ 下的 brickKit 外壳，各自独立仓库、以 submodule 挂载；见 registry/README.zh.md）=====
 _shell-go-core	be/go-core	8090	-	standalone	外壳自己的 /healthz 端口（deployment.port），不是任何成员的端口；成员仍用自己的服务名和端口寻址，brickKit 把成员服务名设成外壳服务的网络别名
 _shell-go-backoffice	be/go-backoffice	8116	-	standalone	同上
@@ -79,7 +85,7 @@ _shell-go-infra	be/go-infra	8224	-	standalone	同上
 _shell-py-render	be/py-render	8402	-	standalone	同上
 # ===== 独立容器 =====
 infra-bff-mobile	infra/bff-mobile	8500	-	standalone	GraphQL over HTTP，不暴露gRPC；exposePort=28500（决策107）
-frontend-standard	frontend/standard	80	-	standalone	slot:frontend族共用80；exposePort=28090（决策107）
+frontend-standard	frontend/standard	80	-	standalone	retired 2026-11-10：改名为 frontend/pc（D17，同一仓库改名后复用）；名字不再分配
 frontend-advanced	frontend/advanced	80	-	standalone	同上，槽位互斥永不共存
 frontend-industry	frontend/{industry}	80	-	standalone	同上
 frontend-customer	frontend/{customer}	80	-	standalone	同上，Fork件

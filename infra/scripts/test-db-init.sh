@@ -41,7 +41,7 @@ fi
 { cat "$PW_FILE"; cat tools/be-ops/build/test-db-init.sql; } | docker exec -i be-postgres psql -v ON_ERROR_STOP=1 -U postgres -f - >/dev/null
 
 # 已建组件里真的有数据库的那 12 个——infra-bff-mobile（§6.5 铁律二严禁
-# 直连 DB）和 frontend-standard（无数据）没有 schema，天然跳过。
+# 直连 DB）和 frontend-*（无数据）没有 schema，天然跳过。
 COMPONENTS=(
 	mdm/customer mdm/product erp/inventory erp/finance erp/sales
 	infra/authz infra/iam-casdoor infra/workflow infra/notification

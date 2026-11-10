@@ -30,7 +30,7 @@
 
 | # | 要做到什么 | 依据 | 依赖 | 验收 | 状态 |
 | --- | --- | --- | --- | --- | --- |
-| C0 | 仓库动作：旧代码挪到 `legacy/`、主分支重新开始、改名、新建、注册表追加、`.gitmodules`（下面“C0 的动作”） | 重建计划的原则 1–4 | — | 维护者确认后执行，结果写在本节末尾 | ⬜ 等维护者确认 |
+| C0 | 仓库动作：旧代码挪到 `legacy/`、主分支重新开始、改名、新建、注册表追加、`.gitmodules`（下面“C0 的动作”） | 重建计划的原则 1–4 | — | 维护者确认后执行，结果写在本节末尾 | ✅ 2026-11-10（维护者“执行”；新仓库在各自开工时建） |
 | C1 | `mdm/employee`：员工、任职、员工与账号的映射；种子数据（每个法人有员工、够翻页） | 边界卡 `mdm.md`、协议 14 | C0 | 组件的 L1–L2 与集成测试、改坏检查；真机格从空库到 L3 | ⬜ |
 | C2 | `erp/purchase`：采购的单据链（申请、订单、收货、退货），与库存、开票的事件 | 边界卡 `erp.md`、业务流程 | C0 | 同上；采购到入库的 L3 场景 | ⬜ |
 | C3 | `erp/payment`：收付款、核销；对外支付走对外命令（第 13 章） | 边界卡、协议 15 的对外命令 | C0 | 同上；收款核销开票的 L3 | ⬜ |
@@ -57,7 +57,7 @@ C1–C3、C5–C9 只依赖已重建的组件与 C0，可以按编号顺序一�
 
 **完成标准**：13 个组件都发布、在组件索引里有版本；C14 的格与演练通过；容器关掉；走不通的尝试留下的东西清理掉。
 
-## C0 的动作（等维护者确认）
+## C0 的动作（维护者 2026-11-10 确认“执行”）
 
 现状 2026-11-10 查过：下列旧仓库的工作区干净、与远端一致，远端都还没有 `legacy/` 分支。
 
@@ -80,3 +80,12 @@ C1–C3、C5–C9 只依赖已重建的组件与 C0，可以按编号顺序一�
 **D. 注册表**（`registry/`，只追加）：端口与 schema 追加 `mdm/employee`、`erp/payment`、`erp/costing`、`frontend/pc`、`frontend/mobile`（`erp/purchase`、`infra/attachment` 已有端口）；`frontend/standard` 的行标为退役；权限键在各组件的定义里登记（`make authz-keys-check`）。
 
 **E. `.gitmodules`**：新建的仓库各加一个子模块；`frontend/standard` 换成 `frontend/pc`。子模块指针只经 `git submodule` 改。
+
+### C0 的结果（2026-11-10）
+
+- **A**：7 个仓库的旧代码各在新分支（推送）：`erp-finance` `legacy/v2` 在 `4a2ee5a`，`crm-opportunity` 在 `255a87a`，`infra-workflow` 在 `0f76e60`，`infra-notification` 在 `d207ce9`，`integration-im-dingtalk` 在 `ce794c9`，`infra-bff-mobile` 在 `b074a1f`，`frontend-pc` `legacy/v1` 在 `607a204`；各自的 `main` 加了一个 “Restart main for the final design” 提交，只留说明 README（指向边界卡与 `legacy/` 分支）。没有改写历史、没有强推，旧标签都在。
+- **B**：GitHub 上 `frontend-standard` 改名为 `frontend-pc`（旧名跳转）；子模块路径 `components/frontend/standard` → `components/frontend/pc`（`git mv`，子模块名照 `mdm-partner` 的先例保留原名），远端地址改为 `frontend-pc`。现行内容里按旧名说现状的两处注释（`infra/scripts/test-db-init.sh`、`infra/traefik/traefik.yml`）改了；正式文档里“原 `frontend/standard` 拆成……”的设计说明照旧。
+- **D**：`registry/ports.tsv` 追加 `mdm/employee` 8227/9227（go-infra）、`erp/payment` 8228/9228、`erp/costing` 8229/9229（go-core）、`frontend/pc`、`frontend/mobile`；`frontend/standard` 标为退役；`schemas.tsv` 追加三个 schema。`make registry-check` 过（75 个在用、4 个退役）。
+- **检查跟着补的**：`version-check.sh` 原来把刚重启的仓库报成“HEAD 领先最新标签”；加一条：HEAD 就是重启那个提交的仓库不查（有了第一个 3.x 提交就照常查）。`make gates`、`make version-check` 全过。
+- **C、E**：新仓库与它们的子模块在各自的任务开工时建。
+
