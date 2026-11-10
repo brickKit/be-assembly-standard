@@ -88,4 +88,4 @@
 | H3 | SF27 的 Python 部分：互通测试的 Go 小程序换上现行的 Go SDK | T3 | 有：三个小程序换到 be-sdk-go alpha.117（协议 alpha.116，`test_the_go_interop_helpers_pin_the_same_protocol`）；`goevents` 按 Go 现行的要求补了恢复操作、补发操作与授权定义，测试给它 `world` 的服务身份；互通与安全的集成测试 9 个全过 |
 | H4 | `be-sdk-python` 的 `AGENTS.md`（分层 L7 转来） | T3 | 有：`AGENTS.md` 与 `CLAUDE.md`（a52） |
 | H5 | Python 成员只用一个 `be-sdk` 版本的检查（pin-check） | T3 | 有：`pin-check.py` 的 `one_python_sdk`（3 个单元测试）；对现状报出 `infra/print` 停在 a48（SF29），T3 的连锁发版后为 0 |
-| H6 | `features.json` 如实：做了的“已验证”，范围外的“未实现”且写明理由（T2a） | T12 | 未做 |
+| H6 | `features.json` 如实：做了的“已验证”，范围外的“未实现”且写明理由（T2a） | T12 | 有：be-sdk-python a62 逐项核对：范围外的 7 项“未实现”写明 A164 的理由；水位与记录读取的来源一侧“已实现”、消费一侧列为待做；转层“已实现”（与 Go 相同）；改掉过时的待验证说明（outbox 的清理早已实现，证据转运在恢复各阶段有测试）；只由套件验证的几条（真实镜像 P1.13、P1.16、P1.17，P13.9）仍列为待验证，因为证据只收 SDK 自己的测试 |
