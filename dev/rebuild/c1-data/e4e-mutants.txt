@@ -1,0 +1,30 @@
+infra/authz 3.0.46 E4e: records bound to appointments
+mutants: 9
+red  the view leaves out a grant whose binding does not hold
+       Error:      	Condition never satisfied
+       Messages:   	the active appointment's grant gives access, the planned one's not yet
+red  a planned appointment gives nothing yet
+       Error:      	Condition never satisfied
+       Messages:   	the active appointment's grant gives access, the planned one's not yet
+       Error:      	Received unexpected error:
+does not build: an unlinked account gets nothing through the appointment
+red  only an account linked to the appointment's employee is bound
+       Error:      	Not equal:
+       Messages:   	ap4: map[change_key:ap4 new_revision:map[domain:authz.record.state value:1] outcome:applied record:01a1c654-7427-7e12-8d66-a245bf8843e5 security_revisions:[map[domain:authz.security.deplo
+red  an ended appointment is never bound
+       Error:      	Not equal:
+       Messages:   	ap6: map[change_key:ap6 new_revision:map[domain:authz.record.state value:1] outcome:applied record:01a1c654-97b2-76c8-9007-fcfa1b5de63d security_revisions:[map[domain:authz.security.deplo
+red  a grant's appointment is indexed as its source
+       Error:      	Condition never satisfied
+       Messages:   	the closure books it
+red  an ended link closes what the account held through the employee's appointments
+       Error:      	Condition never satisfied
+       Messages:   	the closure books the grant and the holding
+red  an appointment that moved is closed
+       Error:      	Condition never satisfied
+       Messages:   	the closure books it
+red  a holding bound to an ended binding is booked ended
+       Error:      	Condition never satisfied
+       Messages:   	the closure books the grant and the holding
+done
+note: mutant 3 is one layer of a check made twice on purpose (see the spec's comment): not a result
