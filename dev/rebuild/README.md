@@ -24,7 +24,7 @@
   现在各组件、外壳、SDK 与套件的版本以组件索引与 `make version-check` 为准。
 - **代表部署实验（D41）做完了**（2026-10-17 至 11-02）。结论在[实验报告](experiment-report.md)（最后是“结论汇总”与“限制与未测”），已提炼进正式文档：[部署模式](../../docs/zh/00-overview/guides/deployment-modes.md)、决定 D80（默认有根 Podman，开机实测后由无根改定）与 D81（Podman 上交付用 Quadlet 单元，2026-11-02 复测 BrickKit v1.12.0 之后）与 A112–A114（默认全部单跑、不加连接池代理、NATS；维护者 2026-11-02 复核）、各篇的修订（[第 14 步计划](step14-plan.md)第 3 节）。复盘：[整个实验](retro-experiment.md)、[第 12 步](retro-step12.md)、[第 13 步](retro-step13.md)。
 - 设计冻结与正式文档迁移已完成（[migration-plan.md](migration-plan.md)）。
-- **待复核**：AI 选择 A109、A117、A118、A160–A169（`docs/zh/02-decisions/09-ai-choices.md`）；计划里标着“AI 定，待复核”的：C1 的 E0 范围、第 6 项 T11 的设计、员工与关联只按法人限定（`mdm/employee` 设计的未决问题）。
+- **待复核**：AI 选择 A109、A117、A118、A160–A169（`docs/zh/02-decisions/09-ai-choices.md`）；计划里标着“AI 定，待复核”的：C1 的 E0 范围、第 6 项 T11 的设计、员工与关联只按法人限定（`mdm/employee` 设计的未决问题）、C1 的 E4d（处置按自然人，超出 E0 首批）与 E4e 的做法（管理持有在闭包前的可用性、任职终点不随视图下发），见 `c1-employee-plan.md`。
 - **挂着的事**：
   - 推送：上层仓库最近一次推送是 2026-11-10 的 `acd300ff`（维护者下令），之后的提交以 `git log origin/main..main` 为准；子仓库发布的版本都已推送并打了标签。
   - 下次发协议时：`COMPAT.md` 第 2 节补 be-sdk-go alpha.119、be-sdk-python a55–a62 实现 alpha.117；`cron-slots` 向量补“`none` 且最后一个到期槽早于一分钟”的用例。
