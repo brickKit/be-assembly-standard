@@ -1,0 +1,80 @@
+erp/purchase 3.0.0 (C2 P3c): the order's lifecycle (PO01-PO06, PO10, PO11), requisitions into orders (PR06), departments
+mutants: 20
+red  PO01: the supplier may be bought from
+       Error:      	Not equal:
+       Messages:   	map[approved_by:<nil> business_date:2026-11-11 created_at:2026-11-10T19:09:19.094173Z currency:CNY department_id:<nil> id:01a1c6dd-5f76-75a5-851f-18815083eacd legal_entity_id:01a1c6dd-5cd
+       Error:      	Not equal:
+red  PO01: a goods line names its warehouse
+       Error:      	Not equal:
+       Messages:   	map[detail:an internal error occurred; quote the trace id when reporting it domain:be reason:INTERNAL status:500 title:Internal error trace_id:20e21105fc9274b500eeec22cbc61e84 type:urn:be
+       Error:      	Not equal:
+red  PO01: the amount is rounded to the currency
+       Error:      	Not equal:
+       Error:      	Not equal:
+       Error:      	Not equal:
+red  PO02: only a draft changes
+       Error:      	Not equal:
+       Messages:   	PATCH /api/purchase/orders/01a1c6dd-9a9d-790f-ae6e-8a4caa6c276a: map[approved_by:<nil> business_date:2026-11-11 created_at:2026-11-10T19:09:34.237018Z currency:CNY department_id:<nil> id:
+       Error:      	Not equal:
+red  PO03: the submitter is recorded and a policy without approval approves
+       Error:      	Not equal:
+       Error:      	Not equal:
+       Messages:   	map[approved_by:0190f3a1-0000-7000-8000-0000000000a1 business_date:2026-11-11 created_at:2026-11-10T19:09:39.520307Z currency:CNY department_id:01a1c6dd-acd3-704c-844f-5bcc91298a43 id:01a
+red  PO04: not approved by its submitter
+       Error:      	Not equal:
+       Messages:   	map[approved_by:0190f3a1-0000-7000-8000-0000000000a1 business_date:2026-11-11 created_at:2026-11-10T19:09:44.848708Z currency:CNY department_id:01a1c6dd-c195-74c1-a7d9-3e5d6a0f730e id:01a
+       Error:      	Not equal:
+red  PO05: a rejection goes back to draft
+       Error:      	Not equal:
+       Error:      	Not equal:
+       Messages:   	map[detail:only a draft order is submitted; this one is cancelled domain:erp/purchase reason:STATE_CONFLICT status:409 title:The record's state does not allow this trace_id:e6afb8d7cfc83d
+red  PO05: a rejection has its reason
+       Error:      	Not equal:
+       Messages:   	map[approved_by:<nil> business_date:2026-11-11 created_at:2026-11-10T19:09:52.322786Z currency:CNY department_id:01a1c6dd-decb-7ac5-9f7a-afe8186a8500 id:01a1c6dd-e143-70c0-b8ce-0a58205570
+       Error:      	Not equal:
+red  PO06: a revision keeps the supplier
+       Error:      	Not equal:
+       Messages:   	map[detail:the supplier is not eligible: partner_suspended domain:erp/purchase reason:NOT_ELIGIBLE status:409 title:A supplier or product may not be used for a purchase in this legal enti
+red  PO06: a kept line keeps its product
+       Error:      	Not equal:
+       Messages:   	map[detail:an internal error occurred; quote the trace id when reporting it domain:be reason:INTERNAL status:500 title:Internal error trace_id:636d4838c609f84488113fa01fb7e302 type:urn:be
+red  PO06: a revision counts one more
+       Error:      	Not equal:
+red  PO10: an approved order is closed
+       Error:      	Not equal:
+       Messages:   	map[detail:only an approved order is closed; this one is approved domain:erp/purchase reason:STATE_CONFLICT status:409 title:The record's state does not allow this trace_id:c2e139e654304b
+red  PO11: a closed order is not cancelled
+       Error:      	Not equal:
+       Messages:   	POST /api/purchase/orders/01a1c6de-2dba-7a9c-a491-565f320ec6e5/cancel: map[approved_by:0190f3a1-0000-7000-8000-0000000000b2 business_date:2026-11-11 created_at:2026-11-10T19:10:11.898419Z
+       Error:      	Not equal:
+red  PR06: a cancelled order gives back
+       Error:      	Not equal:
+       Error:      	Not equal:
+red  PR06: a requisition line of the same legal entity
+       Error:      	Not equal:
+       Messages:   	map[approved_by:<nil> business_date:2026-11-11 created_at:2026-11-10T19:10:19.941803Z currency:CNY department_id:<nil> id:01a1c6de-4d26-71cf-98d7-07f236c4c5a5 legal_entity_id:01a1c6de-49c
+       Error:      	Not equal:
+GREEN (survived)  PR06: a requisition line of the same product
+red  PR06: never more than the line asks (the table's CHECK stays: the answer is no longer REQUISITION_LINE_NOT_USABLE)
+       Error:      	Not equal:
+       Messages:   	map[detail:an internal error occurred; quote the trace id when reporting it domain:be reason:INTERNAL status:500 title:Internal error trace_id:253096c46f6d54709aa8d23a0704a2f8 type:urn:be
+       Error:      	Not equal:
+red  PR06: all ordered closes, some given back reopens
+       Error:      	Not equal:
+       Error:      	Not equal:
+       Messages:   	map[detail:PR-SH-2026-000001: erp/purchase/STATE_CONFLICT: everything of the requisition was ordered domain:erp/purchase reason:REQUISITION_LINE_NOT_USABLE status:409 title:The requisitio
+red  a department's move rewrites the orders' copied path
+       Error:      	Condition never satisfied
+       Messages:   	the department's move rewrites the copied path of orders and requisitions
+GREEN (survived)  the list filters by supplier
+done
+erp/purchase 3.0.0 (C2 P3c): rerun of the two survivors (another product in the same unit; a supplier with no orders)
+mutants: 2
+red  PR06: a requisition line of the same product
+       Error:      	Not equal:
+       Messages:   	map[approved_by:<nil> business_date:2026-11-11 created_at:2026-11-10T19:11:45.470778Z currency:CNY department_id:<nil> id:01a1c6df-9b3f-7326-a5ee-ebae6d730fad legal_entity_id:01a1c6df-979
+       Error:      	Not equal:
+red  the list filters by supplier
+       Error:      	Should be empty, but was [map[approved_by:0190f3a1-0000-7000-8000-0000000000b2 business_date:2026-11-11 created_at:2026-11-10T19:11:49.960899Z currency:CNY department_id:<nil> id:01a1c6df
+       Messages:   	no order of the suspended supplier
+done
