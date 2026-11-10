@@ -13,7 +13,7 @@ M = [
  ("no rate applied", "internal/ledger/posting.go", "out[i].BaseAmount = core.Times(l.Amount, *rate, baseScale)", "out[i].BaseAmount = l.Amount"),
  ("late fact not postponed", "internal/periods/periods.go", "\t\tif p.State == Open {\n\t\t\treturn date, nil", "\t\tif p.State == Open || true {\n\t\t\treturn date, nil"),
  ("missing mapping gives up", "internal/intake/receive.go", "return work.Wait(err)", "return work.Permanent(err)"),
- ("no receivable.formed", "internal/openitems/openitems.go", "if err != nil || n.Kind != \"receivable\" {", "if true {"),
+ ("no receivable.formed", "internal/openitems/openitems.go", "if err != nil || state != \"open\" {", "if true {"),
  ("receivable at net", "internal/intake/invoice.go", "Currency: inv.Currency, Amount: inv.Totals.Gross,", "Currency: inv.Currency, Amount: inv.Totals.Net,"),
  ("due date not the invoice's", "internal/intake/invoice.go", "due := inv.InvoiceDate", "due := \"2030-01-01\""),
  ("Read answers nothing", "internal/facts/facts.go", "WHERE fact_id = ANY($1::uuid[])`, asked)", "WHERE false AND fact_id = ANY($1::uuid[])`, asked)"),
