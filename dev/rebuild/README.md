@@ -28,7 +28,6 @@
 - **挂着的事**：
   - 推送：上层仓库最近一次推送是 2026-11-10 的 `acd300ff`（维护者下令），之后的提交以 `git log origin/main..main` 为准；子仓库发布的版本都已推送并打了标签。
   - 下次发协议时：`COMPAT.md` 第 2 节补 be-sdk-go alpha.119、be-sdk-python a55–a62 实现 alpha.117；`cron-slots` 向量补“`none` 且最后一个到期槽早于一分钟”的用例。
-  - 授权成员“写意图之前先查键”：同一个变更键重放时意图在锁外先写、键的绑定在锁下才查到，留下一条“已取消”的意图（语义对，浪费证据写入）。改法：写意图之前不加锁先查一次键的绑定。排在授权成员的下一版——C1 的 E4 就会动它，一起做。
   - BrickKit：信箱里 FRB-014（代码地图把组件 ID 当路径，`brickkit lint` 的一条警告）等回复。
   - kb：PR #61、#64、#65、#66、#68、#70、#71 等审查；审查意见回来时照 `kb-contribute` 处理。还没交的草稿见下面“任务结束时：知识库反馈”。
   - 注意到但没动（偶发，单独重跑都过）：be-sdk-go 的 `launcher.TestResponsesAreNotHeldBackOnAKeptAliveConnection`（`make test` 的并行负载下，2026-11-03）、`events/pgqueue` 的 `TestAPublishWakesAnIdleReaderWithoutWaitingForThePoll`（与别的包并行时，2026-11-10）、启动器的 `TestRecoveryPhases`（满载时一次 10 秒内没就绪）。
