@@ -5,6 +5,11 @@ item 4 did this four times by hand-copied scripts (its retro R4).
 
 Usage: sdk-unify.py --sdk v3.0.0-alpha.N --line "<design.md status line, Chinese>" --notes "<release notes, Chinese>"
                     --subject "<commit subject, English; {version} is the component's>" [--dry-run] [--from ID]
+                    [--moved ID ...]
+
+--moved ID: a component already released with a change of its own (its new version committed): every component that
+depends on it moves for its pins, and theirs in turn. With --sdk the version they are all on, that is the cascade of
+one component's release alone (C1 E0b: mdm/org 3.0.34's positions moved partner, product and the ERP members).
 
 For each component: the last digit of its version up; its exact dependencies on the components moved before it set to
 their new versions (a component already released on the SDK still moves when something it depends on moves); `go get` the SDK, `go mod tidy`; `go vet`, the unit tests, the integration tests (`-p 1`, the
@@ -136,6 +141,7 @@ def main() -> int:
     a.add_argument("--notes", required=True)
     a.add_argument("--subject", required=True)
     a.add_argument("--from", dest="start")
+    a.add_argument("--moved", action="append", default=[], help="a component released already; its dependents move")
     a.add_argument("--dry-run", action="store_true")
     a.add_argument("--logs", help="where each component's log goes (default: a new temporary directory)")
     o = a.parse_args()
@@ -148,8 +154,15 @@ def main() -> int:
     # a component already released on this SDK (moved with a change of its own) is done too
     on = [c for c in seq if f"github.com/brickKit/be-sdk-go/v3 {o.sdk}" in
           subprocess.run(["git", "show", "HEAD:go.mod"], cwd=cs[c], capture_output=True, text=True).stdout]
-    # ... unless something it depends on moves in this run: then it moves too, for its pins
-    moving = set(c for c in seq if c not in on)
+    # ... unless something it depends on moves in this run, or was released before it (--moved): then it moves too,
+    # for its pins; a --moved component itself is done at its committed version
+    for c in o.moved:
+        assert c in cs, f"--moved {c}: not a component"
+        if c in on:
+            on.remove(c)
+        seq = [x for x in seq if x != c]
+        done = done + [c]
+    moving = set(c for c in seq if c not in on) | set(o.moved)
     changed = True
     while changed:
         changed = False
