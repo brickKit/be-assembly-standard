@@ -1,0 +1,57 @@
+erp/purchase 3.0.0 (C2 P3b): the purchase policy and requisitions (PR01-PR05)
+mutants: 14
+GREEN (survived)  a policy changes on its version
+red  the starting policy needs approval
+       Error:      	Not equal:
+red  PR02: a policy without approval approves at once
+       Error:      	Not equal:
+red  PR03: not approved by its submitter
+       Error:      	Not equal:
+       Messages:   	map[department_id:01a1c6d4-6baa-7a87-b77c-bfc901956991 id:01a1c6d4-6d84-7878-b3b1-bd5d6f2c30f3 legal_entity_id:01a1c6d4-6baa-7a83-8116-31bfd25de171 lines:[map[id:01a1c6d4-6d9c-782f-8236-8
+       Error:      	Not equal:
+red  PR01: only a draft changes
+       Error:      	Not equal:
+       Messages:   	PATCH /api/purchase/requisitions/01a1c6d4-75b3-7ba3-ae69-0403051a1ca3: map[department_id:<nil> id:01a1c6d4-75b3-7ba3-ae69-0403051a1ca3 legal_entity_id:01a1c6d4-73cb-7085-985a-b82daef94b9a
+       Error:      	Not equal:
+red  PR04: a rejection has its reason
+       Error:      	Not equal:
+       Messages:   	map[department_id:<nil> id:01a1c6d4-7ea7-74f9-bfca-cc620d517138 legal_entity_id:01a1c6d4-7cbf-723d-93a5-f51b51b4dc8c lines:[map[id:01a1c6d4-7ea7-7e13-a455-6097377d46c2 needed_date:<nil> o
+       Error:      	Not equal:
+red  PR01: a unit converts to the base unit
+       Error:      	Not equal:
+       Messages:   	map[department_id:<nil> id:01a1c6d4-8695-74e8-a879-8a6d66c7267e legal_entity_id:01a1c6d4-84a3-7ad1-aa78-939f4d1250fa lines:[map[id:01a1c6d4-8696-72cc-8237-bafdfde938f9 needed_date:<nil> o
+       Error:      	Not equal:
+red  PR01: the department is of the legal entity
+       Error:      	Not equal:
+       Messages:   	map[department_id:01a1c6d4-8d25-784b-8d62-9f6dd6854ee2 id:01a1c6d4-8eeb-7723-90e4-a30519cb8acc legal_entity_id:01a1c6d4-8d25-784a-b4fb-580e320a8c31 lines:[map[id:01a1c6d4-8eeb-79a6-b3ec-1
+       Error:      	Not equal:
+red  PR01: a draft changes on its version
+       Error:      	Not equal:
+       Messages:   	map[department_id:<nil> id:01a1c6d4-97a4-70ac-a1b5-747e3101c6cf legal_entity_id:01a1c6d4-95e3-7c97-bf75-a399f8e3b9b3 lines:[map[id:01a1c6d4-97bf-77bb-8183-6edb86464857 needed_date:2026-12
+       Error:      	Not equal:
+red  PR03: approving again answers it as it is
+       Error:      	Not equal:
+       Messages:   	map[detail:x domain:erp/purchase reason:STATE_CONFLICT status:409 title:The record's state does not allow this trace_id:b172e97c515765f8beb5787f8c429f5a type:urn:be:erp/purchase:STATE_CON
+red  PR05: a rejected requisition is not cancelled
+       Error:      	Not equal:
+       Messages:   	POST /api/purchase/requisitions/01a1c6d4-a7ab-7adf-9648-10c3ebf436b3/cancel: map[department_id:<nil> id:01a1c6d4-a7ab-7adf-9648-10c3ebf436b3 legal_entity_id:01a1c6d4-a5b0-7999-b594-18a188
+       Error:      	Not equal:
+red  PR05: an approved requisition nothing was ordered from is cancelled
+       Error:      	Not equal:
+       Messages:   	map[detail:x domain:erp/purchase reason:STATE_CONFLICT status:409 title:The record's state does not allow this trace_id:b5cf9598c9c0b5dd94d393c23e2dd3df type:urn:be:erp/purchase:STATE_CON
+GREEN (survived)  what one may not see does not exist
+red  the list filters by state
+       Error:      	"[map[department_id:<nil> id:01a1c6d4-c075-74aa-b18a-dd737105caeb legal_entity_id:01a1c6d4-be33-77d4-b12e-4561f8ad14b0 lines:[map[id:01a1c6d4-c075-7c3f-8eb8-6b6211c29607 needed_date:2026-
+       Messages:   	map[next_cursor: requisitions:[map[department_id:<nil> id:01a1c6d4-c075-74aa-b18a-dd737105caeb legal_entity_id:01a1c6d4-be33-77d4-b12e-4561f8ad14b0 lines:[map[id:01a1c6d4-c075-7c3f-8eb8-6
+done
+erp/purchase 3.0.0 (C2 P3b): rerun of the two survivors (a stale version above 0; a reader of another legal entity)
+mutants: 2
+red  a policy changes on its version
+       Error:      	Not equal:
+       Messages:   	map[approval:required legal_entity_id:01a1c6d5-4fdb-7072-ae26-d94043c73f81 over_receipt_percent:5 version:2]
+       Error:      	Not equal:
+red  what one may not see does not exist
+       Error:      	Not equal:
+       Messages:   	map[detail:the authorization cannot be proven right now domain:be reason:AUTHORIZATION_UNPROVABLE status:503 title:Authorization cannot be proven right now trace_id:86d030e79787a52b588830
+       Error:      	Not equal:
+done
