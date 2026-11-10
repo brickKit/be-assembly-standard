@@ -39,7 +39,7 @@
 | 组件 ID | 能力 | 范围 | 实现 | 边界卡 | 组件文档 | 必需依赖 | 被谁必需依赖 |
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | `erp/sales` | 报价、计价与销售订单；实物与服务共同基础 | 当前重建 | 3.0.46 | [erp-trade.md](../07-components/erp-trade.md#erpsales) | [BRICKKIT](../../../components/erp/sales/BRICKKIT.md) · [AGENTS](../../../components/erp/sales/AGENTS.md) · [design](../../../components/erp/sales/docs/design.md) | `mdm/partner`、`mdm/product`、`mdm/org`、`mdm/currency`、身份（`infra/iam-*`）、`infra/authz` | `erp/intercompany` |
-| `erp/purchase` | 采购申请、订单与到货 | 当前重建 | 设计中 | [erp-trade.md](../07-components/erp-trade.md#erppurchase) | [design](../../../components/erp/purchase/docs/design.md) | `mdm/partner`、`mdm/product`、`mdm/org`、`mdm/currency`、身份（`infra/iam-*`）、`infra/authz` | `erp/intercompany` |
+| `erp/purchase` | 采购申请、订单与到货 | 当前重建 | 3.0.0 | [erp-trade.md](../07-components/erp-trade.md#erppurchase) | [BRICKKIT](../../../components/erp/purchase/BRICKKIT.md) · [AGENTS](../../../components/erp/purchase/AGENTS.md) · [design](../../../components/erp/purchase/docs/design.md) | `mdm/partner`、`mdm/product`、`mdm/org`、`mdm/currency`、身份（`infra/iam-*`）、`infra/authz` | `erp/intercompany` |
 | `erp/inventory` | 库存数量、预占与物理变动（唯一写入者） | 当前重建 | 3.0.37 | [erp-trade.md](../07-components/erp-trade.md#erpinventory) | [BRICKKIT](../../../components/erp/inventory/BRICKKIT.md) · [AGENTS](../../../components/erp/inventory/AGENTS.md) · [design](../../../components/erp/inventory/docs/design.md) | `mdm/product`、`mdm/org`、身份（`infra/iam-*`）、`infra/authz` | `erp/costing`、`erp/manufacturing`、`erp/planning`、`erp/quality`、`erp/warehouse` |
 | `erp/contract` | 客户合同、客户与供应商的框架协议、订阅与周期出账计划（D70） | 远期 | — | [erp-trade.md](../07-components/erp-trade.md#erpcontract) | — | `mdm/partner`、`mdm/product`、`mdm/org`、`mdm/currency`、身份（`infra/iam-*`）、`infra/authz` | — |
 | `erp/intercompany` | 公司间规则、对开单据与内部往来对账（D72） | 远期 | — | [erp-trade.md](../07-components/erp-trade.md#erpintercompany) | — | `erp/sales`、`erp/purchase`、`mdm/partner`、`mdm/org`、身份（`infra/iam-*`）、`infra/authz` | — |
@@ -151,6 +151,14 @@
 | `erp.invoice.issued.v1` | `erp/billing` | — |
 | `erp.price_list.changed.v1` | `erp/sales` | — |
 | `erp.price_list_item.changed.v1` | `erp/sales` | — |
+| `erp.purchase_acceptance.recorded.v1` | `erp/purchase` | — |
+| `erp.purchase_order.changed.v1` | `erp/purchase` | — |
+| `erp.purchase_receipt.changed.v1` | `erp/purchase` | — |
+| `erp.purchase_receipt.valuation_basis.v1` | `erp/purchase` | — |
+| `erp.purchase_receipt.valuation_basis_withdrawn.v1` | `erp/purchase` | — |
+| `erp.purchase_requisition.changed.v1` | `erp/purchase` | — |
+| `erp.purchase_return.changed.v1` | `erp/purchase` | — |
+| `erp.purchase_return.posted.v1` | `erp/purchase` | — |
 | `erp.quotation.changed.v1` | `erp/sales` | — |
 | `erp.sales_order.changed.v1` | `erp/sales` | — |
 | `erp.sales_order.confirmation_ended.v1` | `erp/sales` | — |
@@ -164,7 +172,7 @@
 | `mdm.exchange_rate.published.v1` | `mdm/currency` | — |
 | `mdm.legal_entity.changed.v1` | `mdm/org` | `mdm/employee` |
 | `mdm.org_position.changed.v1` | `mdm/org` | `mdm/employee` |
-| `mdm.org_unit.changed.v1` | `mdm/org` | `erp/sales`、`mdm/employee` |
+| `mdm.org_unit.changed.v1` | `mdm/org` | `erp/purchase`、`erp/sales`、`mdm/employee` |
 | `mdm.partner.changed.v1` | `mdm/partner` | — |
 | `mdm.partner_role.changed.v1` | `mdm/partner` | — |
 | `mdm.product.changed.v1` | `mdm/product` | — |
