@@ -225,6 +225,7 @@ test-cross:  ## 组件局部测试：只跑 ID 一个组件，强依赖 gRPC 指
 seed-data:  ## 灌重建后组件的种子数据（测试账号、授权、主数据与交易链的组件），可重复跑；需要 SEED_PASSWORD 等（docs/zh/03-seed-data.md）
 	@$(MAKE) -C components/infra/authz seed
 	@$(MAKE) -C components/mdm/org seed
+	@$(MAKE) -C components/mdm/employee seed
 	@$(MAKE) -C components/mdm/currency seed
 	@$(MAKE) -C components/mdm/partner seed
 	@$(MAKE) -C components/mdm/product seed
