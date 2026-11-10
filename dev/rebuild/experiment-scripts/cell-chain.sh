@@ -18,24 +18,8 @@ ROW=$(sed -n 's/^row: *//p' "$D/cell.yaml"); ROW=${ROW:-D}
 # step 10 B7: a cell with `base: cluster` has the base resources in the K row's cluster, on other host ports
 # (cluster-create.sh, base-cluster/base-cluster.sh)
 INCLUSTER=; grep -q '^base: *cluster' "$D/cell.yaml" && INCLUSTER=1
-PGP=${INCLUSTER:+15432}; PGP=${PGP:-5432}; NP=${INCLUSTER:+14222}; NP=${NP:-4222}; SP=${INCLUSTER:+19000}; SP=${SP:-9000}
 mkdir -p "$OUT/logs"; echo $$ > "$OUT/runner.pid"
-envval() { grep "^$1=" "$R/.env" | cut -d= -f2- | tr -d "\"'"; }
-export SEED_PASSWORD; SEED_PASSWORD=$(envval IAM_TEST_PASSWORD)
-export IAM_TEST_PASSWORD="$SEED_PASSWORD" BE_ACC_IAM_TEST_PASSWORD="$SEED_PASSWORD" BE_ACC_CELL="$D"
-# the deployment owner's key (cells/prepare.py writes it): protected changes in the seeds (infra/authz 3.0.18, A124)
-export SEED_OWNER_KEY="$D/.secrets/owner.key.pem"
-export CASDOOR_ADMIN_PASSWORD; CASDOOR_ADMIN_PASSWORD=$(envval CASDOOR_ADMIN_PASSWORD)
-export BE_ACC_PG_ADMIN; BE_ACC_PG_ADMIN="postgres://postgres:$(envval POSTGRES_PASSWORD)@localhost:$PGP/postgres?sslmode=disable"
-export BE_ACC_NATS_URL=nats://localhost:$NP BE_ACC_S3_URL=http://localhost:$SP
-export BE_ACC_S3_ACCESS_KEY BE_ACC_S3_SECRET_KEY; BE_ACC_S3_ACCESS_KEY=$(envval STORAGE_ACCESS_KEY); BE_ACC_S3_SECRET_KEY=$(envval STORAGE_SECRET_KEY)
-# the identity member's Casdoor applications: their client secrets live in Casdoor's own tables (local dev Casdoor)
-casdoor_secret() {  # from whichever PostgreSQL holds Casdoor's schema: Docker's, or the cluster's (B7)
-  local q="select client_secret from casdoor.application where client_id = '$1'"
-  if [ -n "$INCLUSTER" ]; then kubectl --context bek -n be-base exec deploy/be-postgres -- psql -U postgres -d brickkit_db -Atc "$q"
-  else docker exec -e PGPASSWORD="$(envval POSTGRES_PASSWORD)" be-postgres psql -U postgres -d brickkit_db -Atc "$q"; fi; }
-export BE_ACC_IAM_CLIENT_SECRET BE_ACC_IAM_DEV_CLIENT_SECRET
-BE_ACC_IAM_CLIENT_SECRET=$(casdoor_secret be-iam-client); BE_ACC_IAM_DEV_CLIENT_SECRET=$(casdoor_secret be-iam-dev-client)
+. "$R/dev/rebuild/experiment-scripts/cellenv.sh" "$D"  # the passwords, BE_ACC_*, Casdoor's client secrets (PGP, NP, SP)
 I=0
 stage() {  # stage <name> <command...>; stops the run on failure. FROM=<name> skips the stages before that one (a run
   # that failed there resumes on the cell as it is)

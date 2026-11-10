@@ -12,19 +12,15 @@
 #             in the deployment's network with the ops/recover certificate: every check passes, the probe's be.tiering
 #   profile   the suite's core profile of the probe and the shells (cells profile; it stops the cell)
 # Then the cell's logs and down. Output: <cell>/ per cell, summary.txt ("T11 ALL-DONE" last).
-# CELLS picks the cells (T6-S T6-H); FROM=<stage> resumes the first cell at that stage (its deployment kept).
+# CELLS picks the cells (T6-S T6-H); FROM=<stage> resumes the first cell at that stage (its deployment kept). A failed
+# cell stays up (retrospective 6, P4), the summary's last lines say how to resume or stop it; DOWN=1 stops it anyway.
 set -u
 R=/home/zhijie/Desktop/github/be-assembly-standard; O=$(dirname "$(realpath "$0")")
 echo $$ > $O/run.pid; [ -n "${FROM:-}" ] || : > $O/summary.txt
-E=$R/.env; val() { grep "^$1=" $E | cut -d= -f2- | tr -d "\"'"; }
-PW=$(val POSTGRES_PASSWORD)
+. $R/dev/rebuild/experiment-scripts/cellenv.sh  # PW, BE_ACC_*, build_be_ops, recover_env (retrospective 6, P3)
 sql() { docker exec -e PGPASSWORD="$PW" be-postgres psql -U postgres -d be_experiment -Atc "$1"; }
-export BE_ACC_IAM_TEST_PASSWORD; BE_ACC_IAM_TEST_PASSWORD=$(val IAM_TEST_PASSWORD)
-export BE_ACC_PG_ADMIN="postgres://postgres:$PW@localhost:5432/postgres?sslmode=disable" BE_ACC_NATS_URL=nats://localhost:4222 \
-  BE_ACC_S3_URL=http://localhost:9000 BE_ACC_S3_ACCESS_KEY="$(val STORAGE_ACCESS_KEY)" BE_ACC_S3_SECRET_KEY="$(val STORAGE_SECRET_KEY)"
 BIN=$(mktemp -d)  # be-ops built from source, outside the repository (no build output in it); left in /tmp
-(cd $R/tools/be-ops && CGO_ENABLED=0 go build -o $BIN/be-ops ./cmd/be-ops) || { echo "be-ops build failed" >> $O/summary.txt; echo "T11 ALL-DONE" >> $O/summary.txt; exit 1; }
-export BE_OPS=$BIN/be-ops  # a secured cell's certificates come from its issuer (prepare.py)
+build_be_ops $BIN || { echo "be-ops build failed" >> $O/summary.txt; echo "T11 ALL-DONE" >> $O/summary.txt; exit 1; }
 CONF=$R/tools/be-acceptance/conformance
 TIER="uv run --project $CONF python $O/tier.py"
 export PYTHONDONTWRITEBYTECODE=1
@@ -50,18 +46,14 @@ for C in ${CELLS:-T6-S T6-H}; do
   STAGES="chain before units-published published backup units-released online-rows released checkin check check-result profile"
   todo() { [ -z "${FROM:-}" ] && return 0; case " $STAGES " in *" $FROM "*) ;; *) return 0 ;; esac
     local s; for s in $STAGES; do [ "$s" = "$FROM" ] && return 0; [ "$s" = "$1" ] && return 1; done; }
+  with_recover() { ( recover_env $D; "$@" ); }  # be-ops recover's environment for this cell only
   run() {
     todo chain && { step chain env KEEP_UP=1 bash $R/dev/rebuild/experiment-scripts/cell-chain.sh $C $OC/chain || return 1; }
     todo before && { step before $TIER before $D $OC || return 1; }
     todo units-published && { step units-published until_units $PS published 600 || return 1; }
     todo published && { step published $TIER compare $D $OC published || return 1; }
     sql "SELECT state || ' ' || route || ' ' || count(*) FROM $PS.be_tier_unit GROUP BY state, route" > $OC/units.txt
-    todo backup && { step backup env RUN_PROFILE_URL=http://localhost:9000 RUN_PROFILE_BUCKET=be-run-profile \
-      RUN_PROFILE_ACCESS_KEY="$(val STORAGE_ACCESS_KEY)" RUN_PROFILE_SECRET_KEY="$(val STORAGE_SECRET_KEY)" \
-      SERVICE_TLS_CERT_FILE=$D/.secrets/tls/ops-recover.cert.pem SERVICE_TLS_KEY_FILE=$D/.secrets/tls/ops-recover.key.pem \
-      SERVICE_TLS_CA_FILE=$D/.secrets/tls/ca.pem BUS_URL=nats://localhost:4222 \
-      RECOVER_PG_ADMIN="postgres://postgres:$PW@localhost:5432/postgres?sslmode=disable" \
-      $BIN/be-ops recover backup-record --project $D --backup "t11-$lc" --finished-at "$(date -u +%Y-%m-%dT%H:%M:%S.%NZ)" || return 1
+    todo backup && { step backup with_recover $BIN/be-ops recover backup-record --project $D --backup "t11-$lc" --finished-at "$(date -u +%Y-%m-%dT%H:%M:%S.%NZ)" || return 1
       sql "UPDATE $PS.be_work_item SET run_at = now() WHERE id = 'be.tiering.release' AND state = 'pending'"; }
     todo units-released && { step units-released until_units $PS released 300 || return 1; }
     todo online-rows && { step online-rows sql "SELECT count(*) FROM $PS.probe_archive WHERE closed_at IS NOT NULL" || return 1
@@ -93,7 +85,11 @@ sys.exit(1 if bad or rep.get('failed') or rep.get('unimplemented') else 0)" || r
   echo "$C rc=$rc" >> $O/summary.txt
   bash $R/dev/rebuild/experiment-scripts/cell-logs.sh $D $OC/containers D > /dev/null 2>&1
   [ -d $D/reports ] && cp -r $D/reports $OC/
-  (cd $D && brickkit down > /dev/null 2>&1)
-  [ $rc -eq 0 ] || break  # the next cell would meet the same problem
+  if [ $rc -eq 0 ] || [ "${DOWN:-}" = 1 ]; then (cd $D && brickkit down > /dev/null 2>&1)
+  else  # left up for the fix and the resume; the next cell would meet the same problem
+    failed=$(grep "^$C FAILED " $O/summary.txt | tail -1 | cut -d' ' -f3)
+    echo "$C left up: resume with CELLS=$C FROM=$failed bash $O/run.sh, or stop with (cd $D && brickkit down)" >> $O/summary.txt
+    break
+  fi
 done
 echo "T11 ALL-DONE" >> $O/summary.txt

@@ -11,20 +11,14 @@
 set -u
 R=/home/zhijie/Desktop/github/be-assembly-standard; O=$(dirname "$(realpath "$0")")/drill; D=$R/dev/rebuild/experiment-cells/T6-R
 mkdir -p $O; echo $$ > $O/run.pid; : > $O/summary.txt
-E=$R/.env; val() { grep "^$1=" $E | cut -d= -f2- | tr -d "\"'"; }
-PW=$(val POSTGRES_PASSWORD)
+. $R/dev/rebuild/experiment-scripts/cellenv.sh  # PW, BE_ACC_*, Casdoor's client secrets, build_be_ops, recover_env (P3)
+val() { envval "$@"; }
 sql() { docker exec -e PGPASSWORD="$PW" be-postgres psql -U postgres -d be_experiment -Atc "$1"; }
 ms() { date -u +%s%3N; }
-# what the cell's config refers to (brickkit up at every phase change needs them, as cell-chain.sh exports them)
-casdoor_secret() { docker exec -e PGPASSWORD="$PW" be-postgres psql -U postgres -d brickkit_db -Atc \
-  "select client_secret from casdoor.application where client_id = '$1'"; }
-export BE_ACC_S3_ACCESS_KEY BE_ACC_S3_SECRET_KEY; BE_ACC_S3_ACCESS_KEY=$(val STORAGE_ACCESS_KEY); BE_ACC_S3_SECRET_KEY=$(val STORAGE_SECRET_KEY)
-export BE_ACC_IAM_CLIENT_SECRET BE_ACC_IAM_DEV_CLIENT_SECRET
-BE_ACC_IAM_CLIENT_SECRET=$(casdoor_secret be-iam-client); BE_ACC_IAM_DEV_CLIENT_SECRET=$(casdoor_secret be-iam-dev-client)
 done_mark() { echo "T11 DRILL ALL-DONE" >> $O/summary.txt; }
 step() { local name=$1; shift; local t0; t0=$(ms); echo "DRILL $name BEGIN $(date -u +%H:%M:%S)" >> $O/summary.txt
   "$@" > $O/$name.log 2>&1; local rc=$?; echo "DRILL $name END rc=$rc $(( $(ms) - t0 )) ms" >> $O/summary.txt
-  if [ $rc -ne 0 ]; then echo "DRILL FAILED $name" >> $O/summary.txt; finish; exit 1; fi; }
+  if [ $rc -ne 0 ]; then echo "DRILL FAILED $name" >> $O/summary.txt; left_up; exit 1; fi; }
 counts() {
   sql "SELECT table_schema || '.' || table_name || ' ' ||
     (xpath('/row/c/text()', query_to_xml(format('SELECT count(*) AS c FROM %I.%I', table_schema, table_name), false, true, '')))[1]::text
@@ -48,8 +42,16 @@ maintenance() { local tok=$TOK p q  # taken before the freeze: the identity memb
 finish() {
   bash $R/dev/rebuild/experiment-scripts/cell-logs.sh $D $O/logs > /dev/null 2>&1
   (cd $D && brickkit down > /dev/null 2>&1)
-  kill $FAKE 2>/dev/null
+  kill ${FAKE:-} 2>/dev/null
   bash $R/infra/scripts/pg-backup.sh off >> $O/summary.txt 2>&1
+  done_mark; }
+# a failed drill leaves the cell, the WAL archive and the recovery's state as they are, for the look at them (P4); the
+# deployment is a new one every drill, so the next drill starts afresh. DOWN=1 stops everything anyway.
+left_up() {
+  [ "${DOWN:-}" = 1 ] && { finish; return; }
+  bash $R/dev/rebuild/experiment-scripts/cell-logs.sh $D $O/logs > /dev/null 2>&1
+  kill ${FAKE:-} 2>/dev/null
+  echo "left up: the cell T6-R and the WAL archive; stop with (cd $D && brickkit down) and bash $R/infra/scripts/pg-backup.sh off" >> $O/summary.txt
   done_mark; }
 
 DEP=$(python3 -c 'import os, time, uuid; b = bytearray(int(time.time() * 1000).to_bytes(6, "big") + os.urandom(10)); b[6] = b[6] & 0x0F | 0x70; b[8] = b[8] & 0x3F | 0x80; print(uuid.UUID(bytes=bytes(b)))')
@@ -58,9 +60,8 @@ code=$(curl -s -o /dev/null -w '%{http_code}' --aws-sigv4 "aws:amz:us-east-1:s3"
   -X PUT -H 'x-amz-bucket-object-lock-enabled: true' http://localhost:9000/be-run-profile)
 echo "run profile bucket: HTTP $code (200 made, 409 there); deployment $DEP" >> $O/summary.txt
 BIN=$(mktemp -d)  # be-ops built from source, outside the repository; static: the calls run in alpine
-(cd $R/tools/be-ops && CGO_ENABLED=0 go build -o $BIN/be-ops ./cmd/be-ops) || { echo "DRILL FAILED be-ops build" >> $O/summary.txt; done_mark; exit 1; }
-export BE_OPS=$BIN/be-ops  # the cell's certificates: its issuer
-export IAM_URL=http://localhost:18200 BE_ACC_IAM_TEST_PASSWORD; BE_ACC_IAM_TEST_PASSWORD=$(val IAM_TEST_PASSWORD)
+build_be_ops $BIN || { echo "DRILL FAILED be-ops build" >> $O/summary.txt; done_mark; exit 1; }
+export IAM_URL=http://localhost:18200
 export PYTHONDONTWRITEBYTECODE=1
 python3 -I $R/tools/be-acceptance/conformance/external/fake.py --port 18990 > $O/fake.log 2>&1 &
 FAKE=$!
@@ -88,11 +89,8 @@ tok = post(os.environ['IAM_URL'] + '/api/iam/dev/token', {'username': 'test.bob'
 print(post('http://localhost:18605/api/probe/write', {'bytes': 10}, tok))"
 counts > $O/counts-after.txt
 step crash docker kill $PY
-FAILED_AT=$(date -u +%Y-%m-%dT%H:%M:%S.%6NZ); echo "failed at $FAILED_AT (the Python shell killed)" >> $O/summary.txt
-export RUN_PROFILE_URL=http://localhost:9000 RUN_PROFILE_BUCKET=be-run-profile RUN_PROFILE_ACCESS_KEY=$(val STORAGE_ACCESS_KEY) \
-  RUN_PROFILE_SECRET_KEY=$(val STORAGE_SECRET_KEY) SERVICE_TLS_CERT_FILE=$D/.secrets/tls/ops-recover.cert.pem \
-  SERVICE_TLS_KEY_FILE=$D/.secrets/tls/ops-recover.key.pem SERVICE_TLS_CA_FILE=$D/.secrets/tls/ca.pem \
-  RECOVER_PG_ADMIN="postgres://postgres:$PW@localhost:5432/postgres?sslmode=disable" BUS_URL=nats://localhost:4222
+FAILED_AT=$(date -u +%Y-%m-%dT%H:%M:%S.%6NZ); echo "the failure at $FAILED_AT (the Python shell killed)" >> $O/summary.txt
+recover_env $D
 B="$BIN/be-ops recover"
 TOK=$(bob_token)
 RT0=$(ms)

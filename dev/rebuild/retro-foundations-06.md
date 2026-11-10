@@ -21,20 +21,20 @@
 | T11 | 恢复数据库 527 秒（第 4 项是 73 秒）：开发机的实例里留着 `be_sdk_test` 1 GB、第 13 步的 `be_e6_*` 等与部署无关的库，整实例备份与恢复都随它们变慢 | 读演练的计时 | 演练多约 8 分钟；不影响结论 | `t11/drill/summary.txt`、计划“T11 的结果” |
 | T2b、T2c | kb 推荐 CPU 重活放进程池，实测在“输入已在本进程里”时更差 | 实测（按“不知道就测”） | 无：按实测定（A169），反馈已交 kb PR #71 | 计划“T10 的结果” |
 
-## 2. 改进（待维护者批）
+## 2. 改进（维护者 2026-11-10 全部批准，都已做）
 
 | # | 类 | 改法 | 依据 | 状态 |
 | --- | --- | --- | --- | --- |
-| P1 | 检查 | 套件 `tests/test_cell_config.py` 加一条：用仓库里**每个探针变体的真实清单**（`probes/*/component.yaml`）单跑、放进外壳各配一次，`prepare.unset_keys` 为空。探针一声明新键而格不跟上，`make check` 就红，不用等真机格 | 上表第 1 行；现有的测试只用替身清单 | 待批 |
-| P2 | 规范 | 去掉一条决定或例外时（A144 这类），`rg` 它的编号，把代码与注释里每一处一起改掉或删掉，结果写进那次的提交说明；写进 `docs/zh/01-conventions/10-development-workflow.md` 的“核对”一步 | 上表第 2 行 | 待批 |
-| P3 | 工具 | 格的运行环境集中到一个文件 `experiment-scripts/cellenv.sh`（`.env` 里的值、`BE_ACC_*`、Casdoor 的客户端密钥、`BE_OPS`），`cell-chain.sh`、各项的格脚本与演练脚本都 `source` 它，不再各抄一份 | 上表第 3 行；第 5 项 T10e 同类 | 待批 |
-| P4 | 工具（S4 的补全） | 格脚本失败时**不关格**（只在成功或显式 `DOWN=1` 时 `brickkit down`），失败行写出接着跑的命令（`FROM=<阶段>`）；监视照样报失败。这样 S4 的“在开着的格上接着跑”才做得到 | 上表第 3 行 | 待批 |
-| P5 | 规范 | `be-sdk-python` 与 `be-sdk-go` 的 `AGENTS.md`：完成一项能力时，`rg` 这项能力名与任务号，`features.json` 里提到它的待验证说明一起改；待验证说明不写“随第 N 步、随某任务”这种会过时的去处，写缺什么 | 上表第 4 行；Go 的 `features.json` 里也还有“第 4 步”的说明 | 待批 |
-| P6 | 环境 | 开发机的 PostgreSQL 实例清掉与现行部署无关的旧测试库（第 13 步的 `be_e6_*` 等），或演练改用只含格的库的独立实例；先列出各库最后一次被谁用，再问维护者删不删 | 上表第 5 行 | 待批（删库要维护者定） |
+| P1 | 检查 | 套件 `tests/test_cell_config.py` 加一条：用仓库里**每个探针变体的真实清单**（`probes/*/component.yaml`）单跑、放进外壳各配一次，`prepare.unset_keys` 为空。探针一声明新键而格不跟上，`make check` 就红，不用等真机格 | 上表第 1 行；现有的测试只用替身清单 | 维护者 2026-11-10 批准；**已做**：套件 1.0.76 的 `test_every_probe_as_it_is_now_gets_every_key_it_declares`（读 `probes/*/component.yaml`，单跑进一个有安全成员的格，`unset_keys` 为空）；去掉 1.0.75 的 `RECOVERY_PHASE` 修改时红 |
+| P2 | 规范 | 去掉一条决定或例外时（A144 这类），`rg` 它的编号，把代码与注释里每一处一起改掉或删掉，结果写进那次的提交说明；写进 `docs/zh/01-conventions/10-development-workflow.md` 的“核对”一步 | 上表第 2 行 | 维护者 2026-11-10 批准；**已做**：写进开发流程 ⑥ 核对（`docs/zh/01-conventions/10-development-workflow.md`） |
+| P3 | 工具 | 格的运行环境集中到一个文件 `experiment-scripts/cellenv.sh`（`.env` 里的值、`BE_ACC_*`、Casdoor 的客户端密钥、`BE_OPS`），`cell-chain.sh`、各项的格脚本与演练脚本都 `source` 它，不再各抄一份 | 上表第 3 行；第 5 项 T10e 同类 | 维护者 2026-11-10 批准；**已做**：`experiment-scripts/cellenv.sh`（另有 `build_be_ops`、`recover_env`）；`cell-chain.sh` 与 T11 的 `run.sh`、`drill.sh` 都 `source` 它；干净的 shell 里每个变量都设上，T6-S 用改过的 `cell-chain.sh` 从空库到 L3 九个阶段全过。之前各项的脚本是记录，不改 |
+| P4 | 工具（S4 的补全） | 格脚本失败时**不关格**（只在成功或显式 `DOWN=1` 时 `brickkit down`），失败行写出接着跑的命令（`FROM=<阶段>`）；监视照样报失败。这样 S4 的“在开着的格上接着跑”才做得到 | 上表第 3 行 | 维护者 2026-11-10 批准；**已做**：T11 的 `run.sh` 失败时不关格，写出 `CELLS=… FROM=<阶段>` 与关格的命令（`DOWN=1` 照旧关）；`drill.sh` 失败时留下格与 WAL 归档并写出收拾的命令；在关着的格上从 profile 接着跑验证过（失败、格不关、写出接着跑的一行） |
+| P5 | 规范 | `be-sdk-python` 与 `be-sdk-go` 的 `AGENTS.md`：完成一项能力时，`rg` 这项能力名与任务号，`features.json` 里提到它的待验证说明一起改；待验证说明不写“随第 N 步、随某任务”这种会过时的去处，写缺什么 | 上表第 4 行；Go 的 `features.json` 里也还有“第 4 步”的说明 | 维护者 2026-11-10 批准；**已做**：be-sdk-go alpha.120、be-sdk-python a63 的 `AGENTS.md`（改动清单第 2 条）；两边 `features.json` 里写着“第 4 步”“随某任务”的说明改成现状（只改文档，部署的仍是 alpha.119 与 a61） |
+| P6 | 环境 | 开发机的 PostgreSQL 实例清掉与现行部署无关的旧测试库（第 13 步的 `be_e6_*` 等），或演练改用只含格的库的独立实例；先列出各库最后一次被谁用，再问维护者删不删 | 上表第 5 行 | 维护者 2026-11-10 批准并选定：删了 `be_e6_*` 13 个、`be_experiment_audit`、`be_idle_bench`，清了 `be_sdk_test` 里集成测试留下的 381 个 schema（再 `VACUUM FULL`）；实例从 4 GB 多到 2.6 GB。之后两个 SDK 的集成测试抽跑通过（`events/pgqueue` 和别的包并行时 `TestAPublishWakesAnIdleReaderWithoutWaitingForThePoll` 失败一次，单独连跑两次都过，注意到但没动） |
 
 ## 3. 沉淀
 
-- **项目的规范与检查**：P1–P6 待维护者批；批了的再做、再在原来的错误上验证会红。
+- **项目的规范与检查**：P1–P6 维护者 2026-11-10 批准，都已做（见上表）；新加的检查 P1 在原来的错误上验证过会红。
 - **kb知识库**：这一项的实测与反馈已在 kb PR #71（Parquet 库、asyncio 的 CPU 重活放线程还是进程、写屏障的 `search_path` 代价）；没有新的通用知识要交（上表其余是本项目的流程问题）。挂着的 `CLOCK_MONOTONIC` 草稿不属于这一项，仍在交接里。
 - **记忆**：没有新增（P2、P5 批了就进项目规范，不进记忆）。
 - **不记的**：T11 的三次失败各自的细节（P1、P3、P4 管它们这一类）。
