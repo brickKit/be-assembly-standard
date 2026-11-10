@@ -17,7 +17,7 @@
 | P1 | 设计文档 `docs/design.md`（生命周期与规则目录；凭证、未清项、核销、认领、期间），考设计 | P0、P0b | 文档与考试记录 || ✅ 2026-11-10（组件仓库 `ebaccdb`、`01eeaef`：会计事实与资金事实的共享契约由本组件定义（来源各发各的类型，按 `FINANCE_FACT_SOURCES` 订阅）；付款认领照协议 05 的表 CL01–CL09，供应商票据 SI01–SI05，凭证与期间 VC01–VC04、PD01–PD02；首批没有关账批次，期间本地关闭；考设计两份，补了 10 处“没写”，`c4-data/exam-p1/result.md`） |
 | P2 | 契约（用户面、系统面：认领、查询；事件；会计事实共享契约）；注册表与套件的授权登记表跟上 | P1 | 契约生成、`make registry-check`、`make authz-keys-check` || ✅ 2026-11-10（组件仓库 `a83b013`，`contract/v3.0.0-alpha.1`：用户面 35 条路由（关账批次、外币重估、放行台账答“能力不支持”）；系统面 `ClaimService`（认领、续期、确认、释放、读取、到期未清项）与 `FactService.Read`；共享契约 `events/shared/` 的会计事实与资金事实；自己的事件 9 种；`make lint`、`gen-check`、`build` 通过；注册表已有端口与 schema；授权表随 P3 的组件定义跟上） |
 | P3 | 实现（拆子步）；标准布局与测试索引；先写红的测试 | P2 | L1–L2 与集成测试、改坏检查、`make layout-check` | ⬜ |
-| P3a | 骨架：照 `erp/purchase` 的布局（入口 `finance/`、`internal/`、`itest/`、迁移、清单、`BRICKKIT.md`、各层说明），组件定义（资源与操作、维度、流），本版不做的路由答“能力不支持”，`contract_test.go`；生命周期表照采购的 `core/lifecycle.go`（SF30：以后进 SDK） | P2 | `go test ./...`、`brickkit lint`、`make layout-check` | ⬜ |
+| P3a | 骨架：照 `erp/purchase` 的布局（入口 `finance/`、`internal/`、`itest/`、迁移、清单、`BRICKKIT.md`、各层说明），组件定义（资源与操作、维度、流），本版不做的路由答“能力不支持”，`contract_test.go`；生命周期表照采购的 `core/lifecycle.go`（SF30：以后进 SDK） | P2 | `go test ./...`、`brickkit lint`、`make layout-check` || ✅ 2026-11-10（组件仓库 `8a95509`：入口、`core`（法人与部门两个维度，没有负责人维度；生命周期表照采购）、`masterdata`（法人、部门、伙伴、币种）、`orgunits`、清单、各层说明、`itest/` 的框架与主数据替身；35 条路由先都答“能力不支持”；`go test`、集成测试、`brickkit lint`、`layout-check` 通过） |
 | P3b | 科目表、过账规则与映射、期间（PD01、PD02）；过账引擎（规则键 + 角色金额 → 凭证，本位币换算，连续凭证号）；手工凭证（VC01–VC04）；余额查询 | P3a | 集成测试先写红的 | ⬜ |
 | P3c | 应收形成：订阅出账的已出账（出账的替身发事件），形成应收与凭证，发布应收已形成；迟到顺延；`FactService.Read` | P3b | 同上；验证故事“迟到的事实顺延” | ⬜ |
 | P3d | 供应商票据与匹配（SI01–SI05，采购 `MatchService` 的替身）：应付、凭证、票据单价确认 | P3b | 同上 | ⬜ |
