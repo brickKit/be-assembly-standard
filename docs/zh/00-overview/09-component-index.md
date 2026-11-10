@@ -149,7 +149,7 @@
 | `erp.inventory_branch.changed.v1` | `erp/inventory` | — |
 | `erp.inventory_movement.recorded.v1` | `erp/inventory` | `erp/purchase` |
 | `erp.invoice.changed.v1` | `erp/billing` | — |
-| `erp.invoice.issued.v1` | `erp/billing` | — |
+| `erp.invoice.issued.v1` | `erp/billing` | `erp/finance` |
 | `erp.open_item.settled.v1` | `erp/finance` | — |
 | `erp.price_list.changed.v1` | `erp/sales` | — |
 | `erp.price_list_item.changed.v1` | `erp/sales` | — |
