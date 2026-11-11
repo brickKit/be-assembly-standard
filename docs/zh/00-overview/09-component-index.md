@@ -54,7 +54,7 @@
 | `erp/credit` | 信用政策、额度与信用占用 | 当前重建 | 3.0.38 | [erp-finance.md](../07-components/erp-finance.md#erpcredit) | [BRICKKIT](../../../components/erp/credit/BRICKKIT.md) · [AGENTS](../../../components/erp/credit/AGENTS.md) · [design](../../../components/erp/credit/docs/design.md) | `mdm/partner`、`mdm/org`、`mdm/currency`、身份（`infra/iam-*`）、`infra/authz` | — |
 | `erp/costing` | 存货计价与成本子账；暂估、到岸成本、工单成本与差异、退货冲回 | 当前重建 | — | [erp-finance.md](../07-components/erp-finance.md#erpcosting) | — | `erp/inventory`、`mdm/product`、`mdm/org`、`mdm/currency`、身份（`infra/iam-*`）、`infra/authz` | — |
 | `erp/billing` | 客户账单与商业发票 | 当前重建 | 3.0.57 | [erp-finance.md](../07-components/erp-finance.md#erpbilling) | [BRICKKIT](../../../components/erp/billing/BRICKKIT.md) · [AGENTS](../../../components/erp/billing/AGENTS.md) · [design](../../../components/erp/billing/docs/design.md) | `mdm/partner`、`mdm/org`、`mdm/currency`、身份（`infra/iam-*`）、`infra/authz` | — |
-| `erp/payment` | 收付款业务与银行／渠道对账 | 当前重建 | 设计中 | [erp-finance.md](../07-components/erp-finance.md#erppayment) | [design](../../../components/erp/payment/docs/design.md) | `mdm/partner`、`mdm/org`、`mdm/currency`、身份（`infra/iam-*`）、`infra/authz` | — |
+| `erp/payment` | 收付款业务与银行／渠道对账 | 当前重建 | 3.0.0 | [erp-finance.md](../07-components/erp-finance.md#erppayment) | [BRICKKIT](../../../components/erp/payment/BRICKKIT.md) · [AGENTS](../../../components/erp/payment/AGENTS.md) · [design](../../../components/erp/payment/docs/design.md) | `mdm/partner`、`mdm/org`、`mdm/currency`、身份（`infra/iam-*`）、`infra/authz` | — |
 | `erp/consolidation` | 集团结构、抵销、外币报表折算与合并报表（D72） | 远期 | — | [erp-finance.md](../07-components/erp-finance.md#erpconsolidation) | — | `erp/finance`、`mdm/org`、`mdm/currency`、身份（`infra/iam-*`）、`infra/authz` | — |
 | `erp/tax` | 税计算 | 远期 | — | [erp-finance.md](../07-components/erp-finance.md#erptax) | — | `mdm/org`、`mdm/partner`、`mdm/product`、身份（`infra/iam-*`）、`infra/authz` | — |
 | `erp/budget` | 预算编制与控制，占用沿用预占分支 | 远期 | — | [erp-finance.md](../07-components/erp-finance.md#erpbudget) | — | `mdm/org`、`mdm/currency`、身份（`infra/iam-*`）、`infra/authz` | — |
@@ -151,6 +151,9 @@
 | `erp.invoice.changed.v1` | `erp/billing` | — |
 | `erp.invoice.issued.v1` | `erp/billing` | `erp/finance` |
 | `erp.open_item.settled.v1` | `erp/finance` | — |
+| `erp.payment.accounting_fact.v1` | `erp/payment` | — |
+| `erp.payment.fund_fact.v1` | `erp/payment` | — |
+| `erp.payment_request.changed.v1` | `erp/payment` | — |
 | `erp.price_list.changed.v1` | `erp/sales` | — |
 | `erp.price_list_item.changed.v1` | `erp/sales` | — |
 | `erp.purchase_acceptance.recorded.v1` | `erp/purchase` | — |
@@ -162,6 +165,7 @@
 | `erp.purchase_return.changed.v1` | `erp/purchase` | — |
 | `erp.purchase_return.posted.v1` | `erp/purchase` | — |
 | `erp.quotation.changed.v1` | `erp/sales` | — |
+| `erp.receipt.changed.v1` | `erp/payment` | — |
 | `erp.receivable.cleared.v1` | `erp/finance` | — |
 | `erp.receivable.formed.v1` | `erp/finance` | — |
 | `erp.receivable.reduced.v1` | `erp/finance` | — |
@@ -181,7 +185,7 @@
 | `mdm.exchange_rate.published.v1` | `mdm/currency` | — |
 | `mdm.legal_entity.changed.v1` | `mdm/org` | `mdm/employee` |
 | `mdm.org_position.changed.v1` | `mdm/org` | `mdm/employee` |
-| `mdm.org_unit.changed.v1` | `mdm/org` | `erp/finance`、`erp/purchase`、`erp/sales`、`mdm/employee` |
+| `mdm.org_unit.changed.v1` | `mdm/org` | `erp/finance`、`erp/payment`、`erp/purchase`、`erp/sales`、`mdm/employee` |
 | `mdm.partner.changed.v1` | `mdm/partner` | — |
 | `mdm.partner_role.changed.v1` | `mdm/partner` | — |
 | `mdm.product.changed.v1` | `mdm/product` | — |

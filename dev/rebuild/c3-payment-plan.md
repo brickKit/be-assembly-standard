@@ -21,6 +21,12 @@
 | P1 | 设计文档 `docs/design.md`（照 `erp/purchase` 的结构：生命周期一张表、规则目录），考设计 | P0、仓库 | 文档与考试记录 | ✅ 2026-11-11（设计四张生命周期表：付款申请 PR01–PR08、收款单 RC01–RC02、调拨与收付 BE01–BE04、对账单行 BR01–BR04；考设计两份，处理见 `c3-data/exam-p1/result.md`：加了“放行”（确认认领在人去银行之前）、调拨按协议 05 成对经在途（源头 `erp/finance` 3.0.2，P0b 补）、从对账单行生成科目收付等） |
 | P2 | 契约（用户面与系统面、事件、权限键与资源定义）；注册表与套件的授权登记表跟上 | P1 | 契约生成、`make registry-check`、`make authz-keys-check` | ✅ 2026-11-11（组件仓库 `a71d313`，`contract/v3.0.0-alpha.1`：用户面 37 条路由；系统面 `FactService.Read`；事件 4 种，资金事实与会计事实的 schema 只是指向财务共享契约 `$id` 的 `$ref`——为此财务契约 `contract/v3.0.0-alpha.3` 加了包 `events`（`embed` 共享 schema，给来源的测试加载），不复制；`make check`、`openapi-spec-validator`、`check-jsonschema` 通过；注册表已有端口 8228/9228 与 schema；授权表随 P3 的组件定义跟上） |
 | P3 | 实现（拆子步）；标准布局与测试索引；先写红的测试 | P2 | L1–L2 与集成测试、改坏检查、`make layout-check` | ⬜ |
+| P3a | 骨架：照 `erp/finance` 的布局（入口 `payment/`、`internal/`、`itest/`、迁移、清单、`BRICKKIT.md`、各层说明），组件定义（资源与操作、维度、流），路由先都答“能力不支持”，`contract_test.go`；集成测试的框架与替身（`mdm/org`、`mdm/partner`、`mdm/currency`、`erp/finance` 的 `ClaimService`、`erp/sales` 的订单读取）；套件的授权登记表 | P2 | `go test ./...`、集成测试、`brickkit lint`、`make layout-check`、`make authz-keys-check` || ✅ 2026-11-11（组件仓库 `e893985`：入口 `payment/`（37 条路由先答“能力不支持”）、`core`（法人与部门两个维度；银行账号是受限字段，读取键 `erp.payment.bank_account.number`，设计与契约说明随之改，不另设操作）、`masterdata`、`facts`、`orgunits`（照财务）、迁移、清单、各层说明；`itest/` 的框架与替身（财务与销售的替身先是空壳）；依赖只有契约模块（财务契约 alpha.3、销售契约 alpha.3）；套件的授权登记表、端口、生产者加收付款（套件仓库，标签随 P5）；`go test`、集成测试、`brickkit lint`、`make layout-check`、`make authz-keys-check` 通过） |
+| P3b | 公司银行账户（受限的账号字段）、收款单（RC01–RC02）、资金事实与 `FactService.Read` | P3a | 集成测试先写红的；改坏检查 || ⬜ |
+| P3c | 付款建议与付款申请（PR01–PR08：认领、放行确认、执行与逐行实付、退回、取消、续期与失效） | P3b | 同上；“提交时可用余额不够整张不提交”“同一执行重复提交只付一次” || ⬜ |
+| P3d | 资金调拨与科目收付（BE01–BE04：转出经在途、到账；手续费、利息） | P3b | 同上 || ⬜ |
+| P3e | 对账单行与对账（BR01–BR04：去重、自动与手工匹配、差错、生成科目收付） | P3c、P3d | 同上；“对账发现漏登记的到账” || ⬜ |
+| P3f | 恢复核对、整体的改坏检查、`make layout-check` | P3e | 同上 || ⬜ |
 | P4 | 种子数据 | P3 | 格里 `make seed-data` 两遍 | ⬜ |
 | P5 | 发布与连锁：外壳 `be/go-core` 加成员、套件的格与 L3、一致性考试 | P3、P4 | 格从空库到 L3 全过；`make version-check`、`make gates` | ⬜ |
 
