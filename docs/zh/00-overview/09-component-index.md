@@ -52,7 +52,7 @@
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | `erp/finance` | 总账、应收应付（含预收、预付、员工借款）、付款认领、核销、外币重估与期末暂估、维度目录与递延、会计期间；应付内部的供应商票据匹配 | 当前重建 | 3.0.6 | [erp-finance.md](../07-components/erp-finance.md#erpfinance) | [BRICKKIT](../../../components/erp/finance/BRICKKIT.md) · [AGENTS](../../../components/erp/finance/AGENTS.md) · [design](../../../components/erp/finance/docs/design.md) | `mdm/org`、`mdm/partner`、`mdm/currency`、身份（`infra/iam-*`）、`infra/authz` | `erp/consolidation` |
 | `erp/credit` | 信用政策、额度与信用占用 | 当前重建 | 3.0.38 | [erp-finance.md](../07-components/erp-finance.md#erpcredit) | [BRICKKIT](../../../components/erp/credit/BRICKKIT.md) · [AGENTS](../../../components/erp/credit/AGENTS.md) · [design](../../../components/erp/credit/docs/design.md) | `mdm/partner`、`mdm/org`、`mdm/currency`、身份（`infra/iam-*`）、`infra/authz` | — |
-| `erp/costing` | 存货计价与成本子账；暂估、到岸成本、工单成本与差异、退货冲回 | 当前重建 | 设计中 | [erp-finance.md](../07-components/erp-finance.md#erpcosting) | [design](../../../components/erp/costing/docs/design.md) | `erp/inventory`、`mdm/product`、`mdm/org`、`mdm/currency`、身份（`infra/iam-*`）、`infra/authz` | — |
+| `erp/costing` | 存货计价与成本子账；暂估、到岸成本、工单成本与差异、退货冲回 | 当前重建 | 3.0.0 | [erp-finance.md](../07-components/erp-finance.md#erpcosting) | [BRICKKIT](../../../components/erp/costing/BRICKKIT.md) · [AGENTS](../../../components/erp/costing/AGENTS.md) · [design](../../../components/erp/costing/docs/design.md) | `erp/inventory`、`mdm/product`、`mdm/org`、`mdm/currency`、身份（`infra/iam-*`）、`infra/authz` | — |
 | `erp/billing` | 客户账单与商业发票 | 当前重建 | 3.0.58 | [erp-finance.md](../07-components/erp-finance.md#erpbilling) | [BRICKKIT](../../../components/erp/billing/BRICKKIT.md) · [AGENTS](../../../components/erp/billing/AGENTS.md) · [design](../../../components/erp/billing/docs/design.md) | `mdm/partner`、`mdm/org`、`mdm/currency`、身份（`infra/iam-*`）、`infra/authz` | — |
 | `erp/payment` | 收付款业务与银行／渠道对账 | 当前重建 | 3.0.5 | [erp-finance.md](../07-components/erp-finance.md#erppayment) | [BRICKKIT](../../../components/erp/payment/BRICKKIT.md) · [AGENTS](../../../components/erp/payment/AGENTS.md) · [design](../../../components/erp/payment/docs/design.md) | `mdm/partner`、`mdm/org`、`mdm/currency`、身份（`infra/iam-*`）、`infra/authz` | — |
 | `erp/consolidation` | 集团结构、抵销、外币报表折算与合并报表（D72） | 远期 | — | [erp-finance.md](../07-components/erp-finance.md#erpconsolidation) | — | `erp/finance`、`mdm/org`、`mdm/currency`、身份（`infra/iam-*`）、`infra/authz` | — |
@@ -140,6 +140,7 @@
 | `be.session.ended.v1` | `infra/iam-casdoor` | — |
 | `erp.accounting_period.changed.v1` | `erp/finance` | — |
 | `erp.billable.changed.v1` | `erp/sales` | — |
+| `erp.costing.accounting_fact.v1` | `erp/costing` | — |
 | `erp.credit_branch.changed.v1` | `erp/credit` | — |
 | `erp.credit_limit.changed.v1` | `erp/credit` | — |
 | `erp.credit_limit.exceeded.v1` | `erp/credit` | — |
@@ -147,7 +148,7 @@
 | `erp.delivery.changed.v1` | `erp/sales` | — |
 | `erp.delivery.posted.v1` | `erp/sales` | — |
 | `erp.inventory_branch.changed.v1` | `erp/inventory` | — |
-| `erp.inventory_movement.recorded.v1` | `erp/inventory` | `erp/purchase` |
+| `erp.inventory_movement.recorded.v1` | `erp/inventory` | `erp/costing`、`erp/purchase` |
 | `erp.invoice.changed.v1` | `erp/billing` | — |
 | `erp.invoice.issued.v1` | `erp/billing` | `erp/finance` |
 | `erp.open_item.settled.v1` | `erp/finance` | — |
@@ -159,8 +160,8 @@
 | `erp.purchase_acceptance.recorded.v1` | `erp/purchase` | — |
 | `erp.purchase_order.changed.v1` | `erp/purchase` | — |
 | `erp.purchase_receipt.changed.v1` | `erp/purchase` | — |
-| `erp.purchase_receipt.valuation_basis.v1` | `erp/purchase` | — |
-| `erp.purchase_receipt.valuation_basis_withdrawn.v1` | `erp/purchase` | — |
+| `erp.purchase_receipt.valuation_basis.v1` | `erp/purchase` | `erp/costing` |
+| `erp.purchase_receipt.valuation_basis_withdrawn.v1` | `erp/purchase` | `erp/costing` |
 | `erp.purchase_requisition.changed.v1` | `erp/purchase` | — |
 | `erp.purchase_return.changed.v1` | `erp/purchase` | — |
 | `erp.purchase_return.posted.v1` | `erp/purchase` | — |
@@ -173,8 +174,8 @@
 | `erp.sales_order.changed.v1` | `erp/sales` | — |
 | `erp.sales_order.confirmation_ended.v1` | `erp/sales` | — |
 | `erp.stock_position.changed.v1` | `erp/inventory` | — |
-| `erp.supplier_invoice.price_confirmed.v1` | `erp/finance` | — |
-| `erp.supplier_invoice.price_reversed.v1` | `erp/finance` | — |
+| `erp.supplier_invoice.price_confirmed.v1` | `erp/finance` | `erp/costing` |
+| `erp.supplier_invoice.price_reversed.v1` | `erp/finance` | `erp/costing` |
 | `erp.voucher.posted.v1` | `erp/finance` | — |
 | `erp.warehouse.changed.v1` | `erp/inventory` | — |
 | `infra.iam.account_status_changed.v1` | `infra/iam-casdoor` | — |
