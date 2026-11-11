@@ -17,8 +17,8 @@
 | # | 要做到什么 | 依赖 | 验收 | 状态 |
 | --- | --- | --- | --- | --- |
 | P0 | 读全依据，列出首批范围：每个能力做或不做（不做的写理由与触发条件），要维护者定的业务问题一次问一个 | — | 本计划“P0 的结果” | ✅ 2026-11-11（C4 之后重定：认领与付款建议挪进首批；AI 定，待复核） |
-| P0b | 源头补能力（P0 定了之后列；现在看没有必须先补的） | P0 | — | ✅ 2026-11-11：不用补。财务的 `ClaimService`（`DueItems` 按 `payable`、`credit_balance` 列，`Claim` 的数量按未清项的币种）、`mdm/currency` 的 `Snapshot`、`EffectiveRate`（外币收付的汇率快照）、`erp/sales` 的 `OrderService.Read`（收款的订单参考）都已有；首批付款的币种 = 账户币种 = 未清项的币种 |
-| P1 | 设计文档 `docs/design.md`（照 `erp/purchase` 的结构：生命周期一张表、规则目录），考设计 | P0、仓库 | 文档与考试记录 | ⬜ |
+| P0b | 源头补能力（P0 定了之后列；现在看没有必须先补的） | P0 | — | ✅ 2026-11-11：考设计之后补了一项：`erp/finance` 3.0.2 的资金调拨改成成对的 `fund_transfer_out`、`fund_transfer_in`（协议 05，经在途资金；组件仓库已发布，外壳随 P5）。其余不用补：财务的 `ClaimService`（`DueItems` 按 `payable`、`credit_balance` 列，`Claim` 的数量按未清项的币种）、`mdm/currency` 的 `Snapshot`、`EffectiveRate`（外币收付的汇率快照）、`erp/sales` 的 `OrderService.Read`（收款的订单参考）都已有；首批付款的币种 = 账户币种 = 未清项的币种 |
+| P1 | 设计文档 `docs/design.md`（照 `erp/purchase` 的结构：生命周期一张表、规则目录），考设计 | P0、仓库 | 文档与考试记录 | ✅ 2026-11-11（设计四张生命周期表：付款申请 PR01–PR08、收款单 RC01–RC02、调拨与收付 BE01–BE04、对账单行 BR01–BR04；考设计两份，处理见 `c3-data/exam-p1/result.md`：加了“放行”（确认认领在人去银行之前）、调拨按协议 05 成对经在途（源头 `erp/finance` 3.0.2，P0b 补）、从对账单行生成科目收付等） |
 | P2 | 契约（用户面与系统面、事件、权限键与资源定义）；注册表与套件的授权登记表跟上 | P1 | 契约生成、`make registry-check`、`make authz-keys-check` | ⬜ |
 | P3 | 实现（拆子步）；标准布局与测试索引；先写红的测试 | P2 | L1–L2 与集成测试、改坏检查、`make layout-check` | ⬜ |
 | P4 | 种子数据 | P3 | 格里 `make seed-data` 两遍 | ⬜ |
