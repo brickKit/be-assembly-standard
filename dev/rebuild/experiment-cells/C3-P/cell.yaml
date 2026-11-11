@@ -1,0 +1,14 @@
+# Assembly phase "rebuild the remaining components" (components-plan.md), C3: erp/payment joins be/go-core (P5), with
+# erp/finance 3.0.2 (the transfers in pairs) and infra/iam-casdoor 3.0.47 (the cashier), in the H2 shell layout of
+# C4-F: from an empty database to L3 with the payment scenarios (a receipt clears the receivable, a payment request
+# claims and settles the payable, the applicant not the approver), the seeds twice (the second run must change
+# nothing); erp/finance subscribes to erp/payment's facts (cells/prepare.py).
+# be/go-core 3.0.89 (erp/payment 3.0.1) after the consistency exam.
+cell: C3-P
+row: D
+deployment: 01a1c6f0-2c20-7a00-8c00-00000000c3c3
+shells:
+  be/go-infra@3.0.82: [infra/iam-casdoor, infra/authz, infra/audit, mdm/org, mdm/employee, mdm/currency, mdm/partner, mdm/product]
+  be/go-core@3.0.89: [erp/inventory, erp/credit, erp/sales, erp/billing, erp/purchase, erp/finance, erp/payment]
+  be/py-render@3.0.51: [infra/print, test/probe-py2]
+chain: []

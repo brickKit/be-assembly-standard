@@ -1,0 +1,50 @@
+.............F...............                                            [100%]
+=================================== FAILURES ===================================
+______________ test_payment_finance_receipt_clears_the_receivable ______________
+
+bob = User(name='test.bob', cell=Cell(dir=PosixPath('/home/zhijie/Desktop/github/be-assembly-standard/dev/rebuild/experiment...-IhjYzJaWwhZsem0s_nCg', principal='01a1cc11-4d86-7577-a2da-7b9618ada689', http=<httpx.Client object at 0x746e448af390>)
+world = World(le='01a1cc11-a24a-7236-9ba9-abe6d4718a5e', shanghai='01a1cc12-81db-74b5-8752-ffb0180d03a4', beijing='01a1cc12-86...-533ad24b73f1', 'CS-POST': '01a1cc11-a5f6-7954-b0ca-551ba6fabd66', 'PROJ-OLD': '01a1cc11-a603-7e69-8e05-0cd5fa7223c3'})
+basic = '01a1cc20-b2f4-754d-921e-ce8fd4a358cc'
+
+    def test_payment_finance_receipt_clears_the_receivable(bob, world, basic):
+        """RC01, ST03: the money received for an issued invoice settles its receivable whole."""
+        exposed = exposure(bob, world, world.large)
+        o = order(bob, world, world.large, [goods(world, 1)])
+        ans = bob.post("erp/sales", f"/api/sales/orders/{o['id']}/confirm")
+        line = ans["order"]["lines"][0]
+        bob.post("erp/sales", "/api/sales/deliveries", {"order_id": o["id"], "lines": [{"order_line_id": line["id"], "quantity": "1"}]})
+        inv = bob.post("erp/billing", "/api/billing/invoices", {"order_id": o["id"]})
+        issued = bob.post("erp/billing", f"/api/billing/invoices/{inv['id']}/issue")
+        gross = Decimal(issued["totals"]["gross"])
+        item = open_item(bob, world, world.large, inv["id"])
+        r = bob.post("erp/payment", "/api/payment/receipts", {"legal_entity_id": world.le, "bank_account_id": basic,
+                     "amount": str(gross), "received_on": date.today().isoformat(), "bank_reference": f"L3-{uuid.uuid4().hex[:10]}",
+                     "payer_id": world.large})
+        assert r["state"] == "received" and r["fact_id"], r
+>       settled = eventually(lambda: (x := bob.get("erp/finance", f"/api/finance/open-items/{item['id']}"))
+                             and Decimal(x["settled"]) == gross and x)
+
+scenarios/test_payment.py:54: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+check = <function test_payment_finance_receipt_clears_the_receivable.<locals>.<lambda> at 0x746e446d4bf0>
+seconds = 30, every = 0.5
+
+    def eventually(check, seconds: float = 30, every: float = 0.5):
+        """check() until it returns a truthy value; the last AssertionError when time runs out."""
+        deadline, last = time.monotonic() + seconds, None
+        while time.monotonic() < deadline:
+            try:
+                out = check()
+                if out:
+                    return out
+            except AssertionError as e:
+                last = e
+            time.sleep(every)
+>       raise last or AssertionError(f"not true within {seconds} s")
+E       AssertionError: not true within 30 s
+
+scenarios/conftest.py:67: AssertionError
+=========================== short test summary info ============================
+FAILED scenarios/test_payment.py::test_payment_finance_receipt_clears_the_receivable
+1 failed, 28 passed in 55.22s
