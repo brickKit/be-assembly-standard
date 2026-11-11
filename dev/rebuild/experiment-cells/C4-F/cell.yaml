@@ -1,0 +1,14 @@
+# Assembly phase "rebuild the remaining components" (components-plan.md), C4: erp/finance joins be/go-core (P5), with
+# erp/purchase 3.0.2 (the match basis it needs) and infra/iam-casdoor 3.0.46 (the finance accounts), in the H2 shell
+# layout of C2-P: from an empty database to L3 with the finance scenarios (the issued invoice into a receivable and a
+# voucher, a supplier invoice matched against the receipt and posted, the approver not the maker, the accountant's
+# legal entity), the seeds twice (the second run must change nothing). be/go-core 3.0.87 (erp/finance 3.0.1) after the
+# consistency exam.
+cell: C4-F
+row: D
+deployment: 01a1c6f0-2c20-7a00-8c00-00000000c4c4
+shells:
+  be/go-infra@3.0.81: [infra/iam-casdoor, infra/authz, infra/audit, mdm/org, mdm/employee, mdm/currency, mdm/partner, mdm/product]
+  be/go-core@3.0.87: [erp/inventory, erp/credit, erp/sales, erp/billing, erp/purchase, erp/finance]
+  be/py-render@3.0.51: [infra/print, test/probe-py2]
+chain: []

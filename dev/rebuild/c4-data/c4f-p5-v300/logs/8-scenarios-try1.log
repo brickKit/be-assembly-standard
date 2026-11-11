@@ -1,0 +1,63 @@
+.....................F.....                                              [100%]
+=================================== FAILURES ===================================
+__________ test_sales_inventory_credit_billing_print_order_to_invoice __________
+
+bob = User(name='test.bob', cell=Cell(dir=PosixPath('/home/zhijie/Desktop/github/be-assembly-standard/dev/rebuild/experiment...ivrWbsKlX4e-xCEmZbtBQ', principal='01a1cb96-6ebd-745f-9ae6-65204844f096', http=<httpx.Client object at 0x75d02f79ed50>)
+world = World(le='01a1cb96-ab87-7d86-ab65-24b70c15c39a', shanghai='01a1cb97-13f1-71b2-8171-b23f7daf1630', beijing='01a1cb97-15...-466ac8ec9eaa', 'CS-POST': '01a1cb96-ac63-73ce-a2f7-9d01339f5a40', 'PROJ-OLD': '01a1cb96-ac65-7b1b-a27a-80c4402d8d0c'})
+
+    def test_sales_inventory_credit_billing_print_order_to_invoice(bob, world):
+        """An order goes from confirmation to a printed invoice: the holds are taken, the delivery issues the stock, the
+        invoice claims the billable amount, and the order completes once billing formalizes."""
+        on_hand, reserved = position(bob, world, world.shanghai, world.goods["id"])
+        exposed = exposure(bob, world, world.large)
+    
+        o = order(bob, world, world.large, [goods(world, 3), service(world, 1)])
+        ans = bob.post("erp/sales", f"/api/sales/orders/{o['id']}/confirm")
+        assert ans["outcome"] == "confirmed", ans
+        gross = Decimal(ans["order"]["totals"]["gross"])
+        assert position(bob, world, world.shanghai, world.goods["id"]) == (on_hand, reserved + 3), "inventory holds the goods"
+        assert exposure(bob, world, world.large) == exposed + gross, "credit holds the order's gross"
+    
+        line = next(x for x in ans["order"]["lines"] if x["kind"] == "goods")
+        d = bob.post("erp/sales", "/api/sales/deliveries", {"order_id": o["id"], "lines": [{"order_line_id": line["id"], "quantity": "3"}]})
+        assert d["state"] == "posted", d
+        assert position(bob, world, world.shanghai, world.goods["id"]) == (on_hand - 3, reserved), "the delivery issued the hold"
+    
+        inv = bob.post("erp/billing", "/api/billing/invoices", {"order_id": o["id"]})
+        assert inv["state"] == "draft" and Decimal(inv["totals"]["gross"]) == gross, inv
+        issued = bob.post("erp/billing", f"/api/billing/invoices/{inv['id']}/issue")
+        assert issued["state"] == "issued" and issued["number"].startswith("INV-CN01-"), issued
+    
+        pdf = bob.call("POST", "erp/billing", f"/api/billing/invoices/{inv['id']}/print", idempotent=False)
+        assert pdf.status_code == 200 and pdf.headers["content-type"].startswith("application/pdf"), pdf.text[:200]
+        assert pdf.content.startswith(b"%PDF"), "infra/print rendered a PDF"
+    
+        done = eventually(lambda: (o2 := bob.get("erp/sales", f"/api/sales/orders/{o['id']}"))["state"] == "completed" and o2)
+        assert all(Decimal(x["delivered_quantity"]) == Decimal(x["quantity"]) for x in done["lines"] if x["kind"] == "goods")
+>       eventually(lambda: exposure(bob, world, world.large) == exposed)  # the completed order holds no credit
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+scenarios/test_trading_chain.py:70: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+check = <function test_sales_inventory_credit_billing_print_order_to_invoice.<locals>.<lambda> at 0x75d02f412e50>
+seconds = 30, every = 0.5
+
+    def eventually(check, seconds: float = 30, every: float = 0.5):
+        """check() until it returns a truthy value; the last AssertionError when time runs out."""
+        deadline, last = time.monotonic() + seconds, None
+        while time.monotonic() < deadline:
+            try:
+                out = check()
+                if out:
+                    return out
+            except AssertionError as e:
+                last = e
+            time.sleep(every)
+>       raise last or AssertionError(f"not true within {seconds} s")
+E       AssertionError: not true within 30 s
+
+scenarios/conftest.py:67: AssertionError
+=========================== short test summary info ============================
+FAILED scenarios/test_trading_chain.py::test_sales_inventory_credit_billing_print_order_to_invoice
+1 failed, 26 passed in 44.86s
