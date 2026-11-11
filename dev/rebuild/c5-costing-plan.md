@@ -18,11 +18,11 @@
 | --- | --- | --- | --- | --- |
 | P0 | 读全依据，列出首批范围：每个能力做或不做（不做的写理由与触发条件），要维护者定的业务问题一次问一个 | — | 本计划“P0 的结果” | 草稿（下面，AI 定，待复核） |
 | P0b | 源头补能力（见“P0 的结果”的“源头要补的”） | P0 | 各源头的集成测试与发布 | ✅ 2026-11-11：库存 3.0.39（按计价序号读流水）、财务 3.0.4（成本的六条规则键）；第 3 项查完（销售退货没有来源，移到“不在首批”）；连锁：采购 3.0.3、财务 3.0.5、销售 3.0.49、账单 3.0.58、收付款 3.0.4、外壳 `be/go-core` 3.0.93（`c5-data/cascade-p0b/`、`c5-data/shells-p0b.sh`）；`make version-check`、`make authz-keys-check` 通过 |
-| P1 | 设计文档 `docs/design.md`，考设计 | P0、仓库 | 文档与考试记录 | 进行中：仓库 `brickKit/erp-costing` 2026-11-11 已建（只有 README 的初始提交，挂在 `components/erp/costing`）；设计先起草在 `c5-data/design/design.md`，考完设计搬进仓库；考设计 `c5-data/exam-p1/` |
+| P1 | 设计文档 `docs/design.md`，考设计 | P0、仓库 | 文档与考试记录 | ✅ 2026-11-11：仓库 `brickKit/erp-costing` 建好（第一次建仓库的命令被 Claude Code 的自动权限检查拦下，维护者加了允许规则）；设计（组件仓库 `73942c9`）：计价进度与成本层两张生命周期表、规则 PO01、VS01–VS05、LY01–LY05、AD01–AD02、IS01–IS02、RT01–RT02、CF01；考设计两份（`c5-data/exam-p1/result.md`）：先进先出的单位按票据确认的先后分配（IC24）、新纪元从 1 起的接法（协议 05）、采购退货按协议拒绝（本组件系统面 `ReturnLimit`，采购随 P5 改）等；源头补了一项：`erp/finance` 3.0.6 的票据单价确认带票据日期（契约 alpha.4 给确认与冲回加 `business_date`），连锁 `erp/payment` 3.0.5、外壳 `be/go-core` 3.0.94（`c5-data/cascade-p0c/`、`shells-p0c.sh`）。`make version-check` 在组件 3.0.0 发布前只报 `erp/costing` 没有标签（同 C2、C3，P5 验收） |
 | P2 | 契约（用户面、系统面、事件；成本事实按财务的会计事实契约）；注册表与套件的授权登记表跟上 | P1 | 契约生成、`make registry-check`、`make authz-keys-check` | ⬜ |
 | P3 | 实现（拆子步）；标准布局与测试索引；先写红的测试 | P2 | L1–L2 与集成测试、改坏检查、`make layout-check` | ⬜ |
 | P4 | 种子数据 | P3 | 格里 `make seed-data` 两遍 | ⬜ |
-| P5 | 发布与连锁：外壳 `be/go-core` 加成员、套件的格与 L3、一致性考试 | P3、P4 | 格从空库到 L3 全过；`make version-check`、`make gates` | ⬜ |
+| P5 | 发布与连锁：外壳 `be/go-core` 加成员、套件的格与 L3、一致性考试；`erp/purchase` 退货前问本组件的可退数量（RT01，可选依赖） | P3、P4 | 格从空库到 L3 全过；`make version-check`、`make gates` | ⬜ |
 
 **完成标准**：组件发布、在组件索引里有版本；P0 定为“做”的能力都有测试；不做的写进设计文档的实现状态；格通过；容器关掉。
 
