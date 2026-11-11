@@ -240,6 +240,7 @@ seed-data:  ## 灌重建后组件的种子数据（测试账号、授权、主�
 	@$(MAKE) -C components/erp/billing seed
 	@$(MAKE) -C components/erp/purchase seed
 	@$(MAKE) -C components/erp/finance seed
+	@$(MAKE) -C components/erp/payment seed
 .PHONY: seed-data
 
 seed-data-clean:  ## 主数据组件没有清除命令：说明怎样重置（docs/zh/03-seed-data.md）

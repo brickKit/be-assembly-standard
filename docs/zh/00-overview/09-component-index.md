@@ -11,7 +11,7 @@
 
 | 组件 ID | 能力 | 范围 | 实现 | 边界卡 | 组件文档 | 必需依赖 | 被谁必需依赖 |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| `infra/iam-casdoor` | 身份认证适配（Casdoor） | 当前重建 | 3.0.46 | [infra.md](../07-components/infra.md#infraiam-casdoor) | [BRICKKIT](../../../components/infra/iam-casdoor/BRICKKIT.md) · [AGENTS](../../../components/infra/iam-casdoor/AGENTS.md) · [design](../../../components/infra/iam-casdoor/docs/design.md) | — | 身份族的全部 51 个使用者（见边界卡） |
+| `infra/iam-casdoor` | 身份认证适配（Casdoor） | 当前重建 | 3.0.47 | [infra.md](../07-components/infra.md#infraiam-casdoor) | [BRICKKIT](../../../components/infra/iam-casdoor/BRICKKIT.md) · [AGENTS](../../../components/infra/iam-casdoor/AGENTS.md) · [design](../../../components/infra/iam-casdoor/docs/design.md) | — | 身份族的全部 51 个使用者（见边界卡） |
 | `infra/iam-keycloak` | 身份认证适配（Keycloak） | 远期 | — | [infra.md](../07-components/infra.md#infraiam-keycloak) | — | — | 身份族的全部 51 个使用者（见边界卡） |
 | `infra/authz` | 授权：权限目录、授予、视图与核验 | 当前重建 | 3.0.48 | [infra.md](../07-components/infra.md#infraauthz) | [BRICKKIT](../../../components/infra/authz/BRICKKIT.md) · [AGENTS](../../../components/infra/authz/AGENTS.md) · [design](../../../components/infra/authz/docs/design.md) | 身份（`infra/iam-*`） | 46 个组件（几乎全部业务组件，见各边界卡） |
 | `infra/authz-static` | 授权的静态配置成员 | 远期 | — | — | — | — | — |
