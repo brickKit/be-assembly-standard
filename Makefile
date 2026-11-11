@@ -234,6 +234,7 @@ seed-data:  ## 灌重建后组件的种子数据（测试账号、授权、主�
 	@$(MAKE) -C components/mdm/currency seed
 	@$(MAKE) -C components/mdm/partner seed
 	@$(MAKE) -C components/mdm/product seed
+	@$(MAKE) -C components/erp/costing seed-policies   # the valuation methods, before any movement is valued (PO01)
 	@$(MAKE) -C components/erp/inventory seed
 	@$(MAKE) -C components/erp/credit seed
 	@$(MAKE) -C components/erp/sales seed
@@ -241,6 +242,7 @@ seed-data:  ## 灌重建后组件的种子数据（测试账号、授权、主�
 	@$(MAKE) -C components/erp/purchase seed
 	@$(MAKE) -C components/erp/finance seed
 	@$(MAKE) -C components/erp/payment seed
+	@$(MAKE) -C components/erp/costing seed            # waits for the valuation of the movements above
 .PHONY: seed-data
 
 seed-data-clean:  ## 主数据组件没有清除命令：说明怎样重置（docs/zh/03-seed-data.md）
