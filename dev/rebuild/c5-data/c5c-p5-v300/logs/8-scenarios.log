@@ -1,0 +1,72 @@
+F...............................                                         [100%]
+=================================== FAILURES ===================================
+_________ test_purchase_costing_finance_basis_then_invoice_replaces_it _________
+
+bob = User(name='test.bob', cell=Cell(dir=PosixPath('/home/zhijie/Desktop/github/be-assembly-standard/dev/rebuild/experiment...oz8rCLRhTrmLq6dRP3WAw', principal='01a1ccec-33ad-71e9-a45b-35f172778fce', http=<httpx.Client object at 0x791253a9b4d0>)
+login = <function login.<locals>.get at 0x7912539a2e50>
+world = World(le='01a1ccec-8a21-79cc-a49e-e46f97ad3bc6', shanghai='01a1cced-880e-7db1-8039-eb7ac3fdf182', beijing='01a1cced-8c...-3f3edf795179', 'CS-POST': '01a1ccec-8e41-792b-82e6-fa14a6393a8a', 'PROJ-OLD': '01a1ccec-8e4f-7bba-bc33-a75b0dae1596'})
+
+    def test_purchase_costing_finance_basis_then_invoice_replaces_it(bob, login, world):
+        """LY01, LY02, AD01, CF01: the receipt's layer takes the order's price (the valuation basis) and posts inventory
+        against goods received not invoiced; the posted supplier invoice at a higher price replaces it, the difference of
+        the units in stock is an adjustment up; erp/finance posts both cost facts."""
+        lead, finance_lead = login("test.buyer.lead"), login("test.finance.lead")
+        orders = bob.get("erp/purchase", f"/api/purchase/orders?legal_entity_id={world.le}&state=completed&limit=50")["orders"]
+        supplier = next(o["supplier_id"] for o in orders if o["currency"] == "CNY")
+        o = approved_order(bob, lead, world, supplier, 5)
+        r = receive(bob, o, "5")
+        assert r.status_code == 200, r.text
+        movement = r.json()["lines"][0]["movement_ids"][0]
+    
+        lay = layer(bob, movement, source="basis")
+        assert Decimal(lay["unit_cost"]) == 10 and lay["quantity"] == "5", lay
+        receipt = eventually(lambda: facts(bob, movement).get("inventory_receipt"))
+        assert receipt["amounts"] == {"inventory": "50.00", "grni": "50.00"}, receipt
+    
+        line = o["lines"][0]["id"]
+        si = bob.post("erp/finance", "/api/finance/supplier-invoices", {
+            "legal_entity_id": world.le, "supplier_id": supplier, "supplier_number": f"L3-COST-{o['number']}",
+            "invoice_date": o["business_date"], "due_date": o["business_date"], "currency": "CNY",
+            "lines": [{"order_line_id": line, "quantity": "5", "unit_price": "12", "tax": "7.80"}]})
+        path = f"/api/finance/supplier-invoices/{si['id']}"
+        assert bob.post("erp/finance", f"{path}/match")["state"] == "mismatch", "the price is above the order's"
+        finance_lead.post("erp/finance", f"{path}/approve-difference", {"reason": "L3 价格上调"})
+        assert bob.post("erp/finance", f"{path}/post")["state"] == "posted"
+    
+        lay = layer(bob, movement, source="invoice")
+        assert Decimal(lay["unit_cost"]) == 12, lay
+        up = eventually(lambda: facts(bob, movement).get("cost_adjustment_up"))
+        assert up["trigger"]["kind"] == "invoice", up
+        assert Decimal(up["amounts"]["grni"]) == Decimal("10.00"), up
+    
+        def vouchers():
+            page = bob.get("erp/finance", f"/api/finance/vouchers?legal_entity_id={world.le}&limit=200")["vouchers"]
+            mine = [v for v in page if v["source"]["id"] == movement and v["state"] == "posted"]
+            return mine if len(mine) == 2 else None
+>       posted = eventually(vouchers)
+                 ^^^^^^^^^^^^^^^^^^^^
+
+scenarios/test_costing.py:87: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+check = <function test_purchase_costing_finance_basis_then_invoice_replaces_it.<locals>.vouchers at 0x79125384be20>
+seconds = 30, every = 0.5
+
+    def eventually(check, seconds: float = 30, every: float = 0.5):
+        """check() until it returns a truthy value; the last AssertionError when time runs out."""
+        deadline, last = time.monotonic() + seconds, None
+        while time.monotonic() < deadline:
+            try:
+                out = check()
+                if out:
+                    return out
+            except AssertionError as e:
+                last = e
+            time.sleep(every)
+>       raise last or AssertionError(f"not true within {seconds} s")
+E       AssertionError: not true within 30 s
+
+scenarios/conftest.py:67: AssertionError
+=========================== short test summary info ============================
+FAILED scenarios/test_costing.py::test_purchase_costing_finance_basis_then_invoice_replaces_it
+1 failed, 31 passed in 66.99s (0:01:06)

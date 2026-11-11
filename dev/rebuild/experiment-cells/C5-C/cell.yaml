@@ -1,0 +1,14 @@
+# Assembly phase "rebuild the remaining components" (components-plan.md), C5: erp/costing joins be/go-core (P5), with
+# erp/purchase 3.0.4 (it asks erp/costing before a return) and its cascade (erp/finance 3.0.7, erp/payment 3.0.6), in
+# the H2 shell layout of C3-P: from an empty database to L3 with the costing scenarios (a receipt valued by its basis
+# and replaced by the posted supplier invoice, the cost facts posted in erp/finance, the valuation following the stock,
+# a FIFO purchase return limited to the layer in stock), the seeds twice (the second run must change nothing).
+# be/go-core 3.0.96 (erp/costing 3.0.1) after the consistency exam.
+cell: C5-C
+row: D
+deployment: 01a1c6f0-2c20-7a00-8c00-00000000c5c5
+shells:
+  be/go-infra@3.0.82: [infra/iam-casdoor, infra/authz, infra/audit, mdm/org, mdm/employee, mdm/currency, mdm/partner, mdm/product]
+  be/go-core@3.0.96: [erp/inventory, erp/credit, erp/sales, erp/billing, erp/purchase, erp/finance, erp/payment, erp/costing]
+  be/py-render@3.0.51: [infra/print, test/probe-py2]
+chain: []
