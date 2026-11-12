@@ -1,0 +1,47 @@
+erp/payment 3.0.11: approvals on the flow kernel (C7 P4)
+mutants: 15
+red  PR03 the principal approver
+       Error:      	Not equal:
+       Messages:   	submit: map[detail:the payment policy of legal entity 01a1cf85-1c74-7ab5-9f12-2ec65b029fc6 names no approver domain:erp/payment reason:NO_APPROVER_CONFIGURED status:409 title:The legal en
+       Error:      	Not equal:
+red  PR03 submitting starts the approval
+       Error:      	Not equal:
+       Messages:   	approve: map[detail:the task is not pending, or its instance has ended domain:be reason:TASK_NOT_PENDING status:409 title:The task is not pending, or its instance has ended trace_id:768b7
+       Error:      	Not equal:
+red  PR03 a rejection's claims released
+       Error:      	Condition never satisfied
+       Messages:   	released by the work queued with the decision (3.0.11: the decision's transaction calls no one)
+red  PR03 the decider is the approver
+       Error:      	Not equal:
+red  PR03 the rejection's comment is the reason
+       Error:      	Not equal:
+       Error:      	Not equal:
+red  PR04, PR05 the release check
+       Error:      	Not equal:
+       Messages:   	release: map[amount:101 applicant_id:0190f3a1-0000-7000-8000-0000000000a1 approver_id:0190f3a1-0000-7000-8000-0000000000b2 bank_account_id:01a1cf85-db78-7471-a1e3-299873e54010 bank_refere
+       Error:      	Not equal:
+red  PR05 the release check at the execution
+       Error:      	Not equal:
+       Messages:   	execute: map[amount:51 applicant_id:0190f3a1-0000-7000-8000-0000000000a1 approver_id:0190f3a1-0000-7000-8000-0000000000b2 bank_account_id:01a1cf86-03aa-754b-bbf9-73d08da0e5ea bank_referen
+does not build: PR04 the releaser is not the applicant
+red  PR07 cancelling withdraws
+       Error:      	Not equal:
+       Error:      	Not equal:
+red  PR03 rejecting an approved request supersedes
+       Error:      	Not equal:
+       Error:      	Not equal:
+       Messages:   	map[detail:an internal error occurred; quote the trace id when reporting it domain:be reason:INTERNAL status:500 title:Internal error trace_id:0446d8ab797538bc0d20efce482ac3bd type:urn:be
+red  BE02 posted by its decider
+       Error:      	Not equal:
+red  BE02 the rate taken at the submission
+       Error:      	Not equal:
+GREEN (survived)  BE04 cancelling a submitted entry withdraws
+red  PR03 a rejection says why
+       Error:      	Not equal:
+       Messages:   	map[candidates:[] component:erp/payment decision:map[at:2026-11-12T11:31:43.583259Z by:0190f3a1-0000-7000-8000-0000000000b2 comment:<nil> decision:reject] document:map[component:erp/payme
+       Error:      	Not equal:
+red  P17.7 the digest has the amount
+       Error:      	Not equal:
+       Messages:   	release: map[amount:101 applicant_id:0190f3a1-0000-7000-8000-0000000000a1 approver_id:0190f3a1-0000-7000-8000-0000000000b2 bank_account_id:01a1cf87-2f91-77d7-a641-baab3a9a5a12 bank_refere
+       Error:      	Not equal:
+done

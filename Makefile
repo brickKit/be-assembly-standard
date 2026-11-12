@@ -242,6 +242,7 @@ seed-data:  ## 灌重建后组件的种子数据（测试账号、授权、主�
 	@$(MAKE) -C components/erp/purchase seed
 	@$(MAKE) -C components/erp/finance seed
 	@$(MAKE) -C components/erp/payment seed
+	@$(MAKE) -C components/infra/workflow seed
 	@$(MAKE) -C components/erp/costing seed            # waits for the valuation of the movements above
 	@$(MAKE) -C components/crm/opportunity seed        # after erp/sales: its quote requests become sales' drafts
 .PHONY: seed-data
