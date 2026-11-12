@@ -1,0 +1,27 @@
+🔨 Building be/go-core@3.0.105 → be-go-core:3.0.105
+✅ Built be/go-core@3.0.105 → be-go-core:3.0.105
+🔨 Building be/go-infra@3.0.85 → be-go-infra:3.0.85
+❌ Error: docker failed to run
+   Command: docker build -t be-go-infra:3.0.85 -f /tmp/brickkit-build-2420155286/Dockerfile --label io.brickkit.build=local --label io.brickkit.component=be/go-infra --label io.brickkit.shell.members=infra/audit@3.0.40,infra/authz@3.0.50,infra/iam-casdoor@3.0.49,infra/workflow@3.0.1,mdm/currency@3.0.35,mdm/employee@3.0.7,mdm/org@3.0.37,mdm/partner@3.0.42,mdm/product@3.0.40,test/probe-go2@3.2.54,test/probe-go3@3.2.54,test/probe-go4@3.2.54,test/probe-go@3.2.54 --label io.brickkit.version=3.0.85 /tmp/brickkit-build-2420155286
+   Output: #8 [build 2/6] WORKDIR /src
+      #8 CACHED
+      #9 [build 3/6] COPY go.mod go.sum ./
+      #9 DONE 0.1s
+      #10 [build 4/6] RUN go mod download
+      #10 7.469 go: github.com/brickKit/mdm-partner/v3@v3.0.42: unable to resolve git version: failed to execute git version: exec: "git": executable file not found in $PATH
+      #10 ERROR: process "/bin/sh -c go mod download" did not complete successfully: exit code: 1
+      ------
+      > [build 4/6] RUN go mod download:
+      7.469 go: github.com/brickKit/mdm-partner/v3@v3.0.42: unable to resolve git version: failed to execute git version: exec: "git": executable file not found in $PATH
+      ------
+      Dockerfile:5
+      --------------------
+      3 |     WORKDIR /src
+      4 |     COPY go.mod go.sum ./
+      5 | >>> RUN go mod download
+      6 |     COPY . .
+      7 |     RUN CGO_ENABLED=0 go build -trimpath -o /shell .
+      --------------------
+      ERROR: failed to build: failed to solve: process "/bin/sh -c go mod download" did not complete successfully: exit code: 1
+   Component: be/go-infra@3.0.85
+{"time":"2026-11-12T13:13:47.532061862+01:00","level":"ERROR","message":"Command failed","command":"brickkit build","elapsed_ms":58501,"error_code":"ENGINE_FAILED","error":"ENGINE_FAILED: Error: docker failed to run; Command=docker build -t be-go-infra:3.0.85 -f /tmp/brickkit-build-2420155286/Dockerfile --label io.brickkit.build=local --label io.brickkit.component=be/go-infra --label io.brickkit.shell.members=infra/audit@3.0.40,infra/authz@3.0.50,infra/iam-casdoor@3.0.49,infra/workflow@3.0.1,mdm/currency@3.0.35,mdm/employee@3.0.7,mdm/org@3.0.37,mdm/partner@3.0.42,mdm/product@3.0.40,test/probe-go2@3.2.54,test/probe-go3@3.2.54,test/probe-go4@3.2.54,test/probe-go@3.2.54 --label io.brickkit.version=3.0.85 /tmp/brickkit-build-2420155286; Output=#8 [build 2/6] WORKDIR /src / #8 CACHED / #9 [build 3/6] COPY go.mod go.sum ./ / #9 DONE 0.1s / #10 [build 4/6] RUN go mod download / #10 7.469 go: github.com/brickKit/mdm-partner/v3@v3.0.42: unable to resolve git version: failed to execute git version: exec: \"git\": executable file not found in $PATH / #10 ERROR: process \"/bin/sh -c go mod download\" did not complete successfully: exit code: 1 / ------ / > [build 4/6] RUN go mod download: / 7.469 go: github.com/brickKit/mdm-partner/v3@v3.0.42: unable to resolve git version: failed to execute git version: exec: \"git\": executable file not found in $PATH / ------ / Dockerfile:5 / -------------------- / 3 |     WORKDIR /src / 4 |     COPY go.mod go.sum ./ / 5 | >>> RUN go mod download / 6 |     COPY . . / 7 |     RUN CGO_ENABLED=0 go build -trimpath -o /shell . / -------------------- / ERROR: failed to build: failed to solve: process \"/bin/sh -c go mod download\" did not complete successfully: exit code: 1; Component=be/go-infra@3.0.85","exit_code":1}

@@ -1,0 +1,22 @@
+Traceback (most recent call last):
+  File "<frozen runpy>", line 201, in _run_module_as_main
+  File "<frozen runpy>", line 87, in _run_code
+  File "/home/zhijie/Desktop/github/be-assembly-standard/tools/be-acceptance/conformance/cells/__main__.py", line 129, in <module>
+    sys.exit(main())
+             ~~~~^^
+  File "/home/zhijie/Desktop/github/be-assembly-standard/tools/be-acceptance/conformance/cells/__main__.py", line 109, in main
+    print(asyncio.run(secure.secure(sys.argv[2])))
+          ~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/zhijie/.local/share/uv/python/cpython-3.15.0-linux-x86_64-gnu/lib/python3.15/asyncio/runners.py", line 205, in run
+    return runner.run(main)
+           ~~~~~~~~~~^^^^^^
+  File "/home/zhijie/.local/share/uv/python/cpython-3.15.0-linux-x86_64-gnu/lib/python3.15/asyncio/runners.py", line 128, in run
+    return self._loop.run_until_complete(task)
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^
+  File "/home/zhijie/.local/share/uv/python/cpython-3.15.0-linux-x86_64-gnu/lib/python3.15/asyncio/base_events.py", line 724, in run_until_complete
+    return future.result()
+           ~~~~~~~~~~~~~^^
+  File "/home/zhijie/Desktop/github/be-assembly-standard/tools/be-acceptance/conformance/cells/secure.py", line 127, in secure
+    raise RuntimeError(f"granting the load user failed: {r.status_code} {r.text[:300]}")
+RuntimeError: granting the load user failed: 400 {"type":"urn:be:be:REQUEST_INVALID","title":"The request is not valid","status":400,"detail":"resource type infra.workflow is not registered in this deployment","reason":"REQUEST_INVALID","domain":"be","metadata":{"change_key":"cell-load-user"},"trace_id":"a36ac1153ac08f96539c5612d7c820e1"}
+
