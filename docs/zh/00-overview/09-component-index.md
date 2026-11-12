@@ -17,7 +17,7 @@
 | `infra/authz-static` | 授权的静态配置成员 | 远期 | — | — | — | — | — |
 | `infra/authz-openfga` | 授权的关系图成员（OpenFGA） | 远期 | — | — | — | — | — |
 | `infra/workflow` | 统一待办（不含流程引擎） | 当前重建 | 3.0.5 | [infra.md](../07-components/infra.md#infraworkflow) | [BRICKKIT](../../../components/infra/workflow/BRICKKIT.md) · [AGENTS](../../../components/infra/workflow/AGENTS.md) · [design](../../../components/infra/workflow/docs/design.md) | 身份（`infra/iam-*`）、`infra/authz` | — |
-| `infra/notification` | 通知意图、偏好与通道路由 | 当前重建 | — | [infra.md](../07-components/infra.md#infranotification) | — | 身份（`infra/iam-*`）、`infra/authz` | — |
+| `infra/notification` | 通知意图、偏好与通道路由 | 当前重建 | 设计中 | [infra.md](../07-components/infra.md#infranotification) | [design](../../../components/infra/notification/docs/design.md) | 身份（`infra/iam-*`）、`infra/authz` | — |
 | `infra/attachment` | 附件元数据、处理状态与授权协作 | 当前重建 | — | [infra.md](../07-components/infra.md#infraattachment) | — | 身份（`infra/iam-*`）、`infra/authz` | `hrm/expense` |
 | `infra/print` | 单据与标签渲染 | 当前重建 | 3.0.24 | [infra.md](../07-components/infra.md#infraprint) | [BRICKKIT](../../../components/infra/print/BRICKKIT.md) · [AGENTS](../../../components/infra/print/AGENTS.md) · [design](../../../components/infra/print/docs/design.md) | 身份（`infra/iam-*`）、`infra/authz` | — |
 | `infra/audit` | 业务审计的集中保存与查询；兼任独立证据存储 | 当前重建 | 3.0.42 | [infra.md](../07-components/infra.md#infraaudit) | [BRICKKIT](../../../components/infra/audit/BRICKKIT.md) · [AGENTS](../../../components/infra/audit/AGENTS.md) · [design](../../../components/infra/audit/docs/design.md) | 身份（`infra/iam-*`）、`infra/authz` | — |
