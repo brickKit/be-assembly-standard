@@ -1,0 +1,25 @@
+be-sdk-go flow kernel (P17.4-P17.18)
+mutants: 9
+red  P17.8: the initiator's person is not left out
+       Error:      	Not equal:
+       Messages:   	the initiator's person is left out: eve is the same person (P17.8)
+does not build: P17.12: self-approval by person not checked
+red  P17.10: one who left the position still decides
+       Error:      	Not equal:
+       Error:      	Not equal:
+       Error:      	"[VERSION_CONFLICT SELF_APPROVAL NOT_ASSIGNEE NOT_FOUND TASK_NOT_PENDING]" should have 6 item(s), but has 5
+does not build: P17.10: a changed revision is not refused
+red  P17.6: the end hook is not called
+       Error:      	Not equal:
+       Messages:   	the end hook changed the document in the same transaction (P17.6)
+       Error:      	Not equal:
+red  P17.7: a changed approval basis releases
+       Error:      	An error is expected but got nil.
+does not build: P17.8: a resolved paused task stays paused
+red  P17.6: an ended instance's open tasks stay open
+       Error:      	Not equal:
+       Messages:   	withdrawn: its open task superseded
+red  P17.10: a refused check has no security record
+       Error:      	"[NOT_FOUND]" should have 6 item(s), but has 1
+       Messages:   	every refused check has its security record
+done
