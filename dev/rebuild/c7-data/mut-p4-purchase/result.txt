@@ -1,0 +1,38 @@
+erp/purchase 3.0.7: approvals on the flow kernel (C7 P4)
+mutants: 14
+red  PO03 a policy that wants an approval starts a task
+       Error:      	Not equal:
+       Error:      	Not equal:
+       Messages:   	POST /api/purchase/orders/01a1cf78-8d26-7688-b9e6-b10fc7fa70e9/revise: map[approved_by:0190f3a1-0000-7000-8000-0000000000a1 business_date:2026-11-12 created_at:2026-11-12T11:15:46.598154Z
+red  PO03 the principal approver
+       Error:      	Not equal:
+       Messages:   	map[detail:the purchase policy of legal entity 01a1cf78-9780-7898-9e8e-4e65bf17e566 wants an approval and names no approver domain:erp/purchase reason:NO_APPROVER_CONFIGURED status:409 ti
+red  policy: a position or a principal, not both
+       Error:      	Not equal:
+       Messages:   	map[approval:required approver_position_id:01a1cf78-a20e-733c-9d12-a32341e20967 approver_principal:0190f3a1-0000-7000-8000-0000000000b2 over_receipt_percent:0]: map[detail:an internal err
+red  PO05 the rejection's comment is the reason
+       Error:      	Not equal:
+       Error:      	Not equal:
+red  PO04 the decider is the approver
+       Error:      	Not equal:
+       Error:      	Not equal:
+red  PO08 the release check
+       Error:      	Not equal:
+       Messages:   	map[accepted_by:0190f3a1-0000-7000-8000-0000000000a1 business_date:2026-11-12 id:01a1cf79-8655-7796-be9a-c9e736406a1e legal_entity_id:01a1cf79-81d6-7c39-948e-f6f55900e52c lines:[map[amoun
+       Error:      	Not equal:
+GREEN (survived)  PO07 the release check
+GREEN (survived)  PR06 the release check
+does not build: PO11 cancelling withdraws
+red  PO06 a revision supersedes
+       Error:      	Not equal:
+       Messages:   	map[detail:an internal error occurred; quote the trace id when reporting it domain:be reason:INTERNAL status:500 title:Internal error trace_id:49f8a9444749c42ab7180cddb64e2f99 type:urn:be
+GREEN (survived)  P17.7 the digest has the unit price
+red  PO05 a rejection says why
+       Error:      	Not equal:
+       Messages:   	map[candidates:[] component:erp/purchase decision:map[at:2026-11-12T11:18:10.578755Z by:0190f3a1-0000-7000-8000-0000000000b2 comment:<nil> decision:reject] document:map[component:erp/purc
+       Error:      	Not equal:
+red  PR04 the rejection's comment is the reason
+       Error:      	Not equal:
+       Error:      	Not equal:
+GREEN (survived)  PO04 the old route's version
+done
