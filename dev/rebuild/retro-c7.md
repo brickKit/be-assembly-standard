@@ -29,7 +29,17 @@ C1–C6 没有单独的复盘；最近的是 `retro-foundations-06.md`。它的�
 
 ## 3. 批准与落实
 
-R1–R5 都要维护者批（改规范、SDK 的检查、格的脚本、用户级技能）；本次没有应用，留给下一次会话开头。
+维护者 2026-11-12 全部批准（R1–R5）。落实：
+
+| # | 落实 | 验证 |
+| --- | --- | --- |
+| R1 | 改动配方加一节“给 SDK 加一项组件要用的能力”：先改协议；发布 SDK 之前拿一个真实组件接到能跑通一条集成测试；钩子在组件的事务里时不外调（排工作项、取证提前）——学到的第一条随它写进配方 | 文档 |
+| R2 | 线协议 P8.7 写明操作键的写法（be-protocol alpha.123）；be-sdk-go alpha.127 的 `Definitions.Validate` 拒绝不合的键（`authz/opkey_test.go`）；装配项目协议 19 的命名格式改写（原例子 `erp.sales.confirm` 本身不合）；全系统换 alpha.127 | 用本地 SDK 核对 18 个 Go 组件的定义：**撞出一个**，`erp/inventory` 的 `erp.inventory.adjustment.create` 挂在流水资源上（从没可用过，套件特意跳过它）。库存 3.0.43 换成 `erp.inventory.movement.adjust`、旧键退役；套件 1.0.90。SDK 自己的测试替身（外壳、转层）也有三处不合，一并改了 |
+| R3 | `experiment-scripts/proxy-check.sh`，`cell-chain.sh` 在 build 之前的一步 `proxy`：外壳钉住的 brickKit 模块逐个查公共代理的 `.info`，每分钟一次、最多等 `PROXY_WAIT` 分钟（默认 45），取不到就报出模块名并失败 | C7-W 的 39 个模块全部取得到；换成不存在的版本时报 404 并失败 |
+| R4 | be-sdk-go alpha.127 的 `seed.WaitGranted` 注释：只有读路由、读先查操作的组件用 `UntilGranted` 读到 200 | 注释 |
+| R5 | kb知识库反馈 PR #79（`watch.sh` 加只看启动后新增内容的选项） | 等知识库处理 |
+
+顺带发现：前几次全系统换 SDK 的 `--line` 带了 `{version}：`，脚本照原样写进了 18 个组件 design.md 的 71 行实现状态。已清掉（随 alpha.127 那次提交），`sdk-unify.py` 现在拒绝含 `{version}` 的 `--line`。
 
 ## 4. 学到的东西放在哪里
 

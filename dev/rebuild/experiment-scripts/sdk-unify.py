@@ -119,6 +119,8 @@ def status_line(d: pathlib.Path, new: str, line: str) -> None:
     s = p.read_text()
     m = re.search(r"\n(3\.0\.\d+)[（：]", s)
     assert m, f"{p}: no implementation status line"
+    # the line follows the version the script writes; a "{version}" in it is not filled in (C7: 71 lines carried one)
+    assert "{version}" not in line, "--line: the version is written before it; leave {version} out"
     sep = "" if line.startswith("（") else "："  # "3.0.24（why）：what" as the existing lines, or "3.0.24：what"
     p.write_text(s[:m.start() + 1] + f"{new}{sep}{line}\n\n" + s[m.start() + 1:])
 

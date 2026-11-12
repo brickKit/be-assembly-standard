@@ -102,6 +102,9 @@ build() {  # every row's images come from Docker (the same images in every row):
   fi
   (cd "$D" && brickkit build)
 }
+# C7 retro R3: the public Go proxy serves every module the Go shells pin (a cached failed fetch otherwise shows up only
+# as "git not found" inside the build); waits up to PROXY_WAIT minutes
+[ "$ROW" = L ] || stage proxy bash "$R/dev/rebuild/experiment-scripts/proxy-check.sh" "$D"
 [ "$ROW" = L ] || stage build build  # the L row runs from source: no images
 # after the build: a shell's new version exists only then
 [ -n "$ROOTQ" ] || case $ROW in P|LP|K) stage images images ;; esac
