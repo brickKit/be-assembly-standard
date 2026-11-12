@@ -1,0 +1,114 @@
+🚀 Starting project c6-o (target: docker)
+📋 Component state calculation:
+   ✅ be/go-core@3.0.98         starting (top-level)
+   ✅ be/go-infra@3.0.82        starting (top-level)
+   ✅ be/py-render@3.0.51       starting (top-level)
+   ✅ mdm/currency@3.0.33       starting (crm/opportunity needs it)
+   ✅ mdm/org@3.0.35            starting (crm/opportunity needs it)
+   ✅ mdm/partner@3.0.40        starting (crm/opportunity needs it)
+   ✅ crm/opportunity@3.0.0     starting (top-level)
+   ✅ mdm/product@3.0.38        starting (erp/inventory needs it)
+   ✅ erp/credit@3.0.38         starting (erp/sales needs it)
+   ✅ erp/inventory@3.0.39      starting (erp/costing needs it)
+   ✅ erp/sales@3.0.50          starting (erp/billing needs it)
+   ✅ infra/print@3.0.24        starting (erp/billing needs it)
+   ✅ erp/billing@3.0.59        starting (top-level)
+   ✅ erp/costing@3.0.1         starting (erp/purchase needs it)
+   ✅ erp/purchase@3.0.5        starting (erp/finance needs it)
+   ✅ erp/finance@3.0.8         starting (erp/payment needs it)
+   ✅ erp/payment@3.0.8         starting (top-level)
+   ✅ infra/audit@3.0.38        starting (crm/opportunity needs it)
+   ✅ infra/authz@3.0.48        starting (crm/opportunity needs it)
+   ✅ infra/iam-casdoor@3.0.47  starting (crm/opportunity needs it)
+   ✅ mdm/employee@3.0.3        starting (infra/authz needs it)
+   ✅ test/probe-py2@3.2.51     starting (top-level)
+
+⚠️ Files under config/ may contain plaintext secrets
+   Config items: infra/iam-casdoor@3.0.47 → IAM_TOKEN_ISSUER ($var:IAM_ISSUER)
+   Why it matters: config/*.yaml and config/vars.yaml are meant to be committed to Git, so a secret written there goes into version control with it and can't be removed from the history
+   Suggestions:
+   1. Change it to a reference such as ${MY_TOKEN} (real value in .env) or file://.secrets/token
+   2. .env must be listed in .gitignore
+   3. Items that declare secret: true are ones the component author identified as credentials; the ones that merely have a suspicious name are judged by name only, not by value, so you can ignore them if they really aren't secrets
+📋 Start order (topological sort):
+   1. be-go-infra-3-0-82   no dependencies  (hosts mdm/currency@3.0.33, mdm/org@3.0.35, mdm/partner@3.0.40, mdm/product@3.0.38, infra/audit@3.0.38, infra/authz@3.0.48, infra/iam-casdoor@3.0.47, mdm/employee@3.0.3)
+   2. be-go-core-3-0-98    ← depends on 1  (hosts crm/opportunity@3.0.0, erp/credit@3.0.38, erp/inventory@3.0.39, erp/sales@3.0.50, erp/billing@3.0.59, erp/costing@3.0.1, erp/purchase@3.0.5, erp/finance@3.0.8, erp/payment@3.0.8)
+   3. be-py-render-3-0-51  no dependencies  (hosts infra/print@3.0.24, test/probe-py2@3.2.51)
+
+Can start on their own: be-go-infra-3-0-82, be-py-render-3-0-51 (no dependencies)
+Only referenced by optional dependencies (turning them off affects no one: mode: disable): erp/costing, erp/credit, erp/finance, erp/purchase, erp/sales, infra/print
+Longest dependency chain (2 levels): be-go-infra-3-0-82 → be-go-core-3-0-98
+   Components not on this chain start in parallel with it
+
+Dependency graph:
+   erp/sales@3.0.50 → mdm/currency@3.0.33
+                    → mdm/org@3.0.35
+                    → mdm/partner@3.0.40
+                    → mdm/product@3.0.38
+                    → erp/credit@3.0.38 (optional)
+                    → erp/inventory@3.0.39 (optional)
+   erp/purchase@3.0.5 → mdm/currency@3.0.33
+                      → mdm/org@3.0.35
+                      → mdm/partner@3.0.40
+                      → mdm/product@3.0.38
+                      → erp/inventory@3.0.39 (optional)
+                      → erp/costing@3.0.1 (optional)
+   erp/costing@3.0.1 → mdm/currency@3.0.33
+                     → mdm/org@3.0.35
+                     → erp/inventory@3.0.39
+   erp/inventory@3.0.39 → mdm/org@3.0.35
+                        → mdm/product@3.0.38
+   mdm/product@3.0.38 → mdm/org@3.0.35
+   erp/payment@3.0.8 → mdm/currency@3.0.33
+                     → mdm/org@3.0.35
+                     → mdm/partner@3.0.40
+                     → erp/finance@3.0.8 (optional)
+                     → erp/sales@3.0.50 (optional)
+   erp/finance@3.0.8 → mdm/currency@3.0.33
+                     → mdm/org@3.0.35
+                     → mdm/partner@3.0.40
+                     → erp/purchase@3.0.5 (optional)
+   erp/credit@3.0.38 → mdm/currency@3.0.33
+                     → mdm/org@3.0.35
+                     → mdm/partner@3.0.40
+   erp/billing@3.0.59 → mdm/currency@3.0.33
+                      → mdm/org@3.0.35
+                      → mdm/partner@3.0.40
+                      → erp/sales@3.0.50 (optional)
+                      → infra/print@3.0.24 (optional)
+   crm/opportunity@3.0.0 → mdm/currency@3.0.33
+                         → mdm/org@3.0.35
+                         → mdm/partner@3.0.40
+   mdm/partner@3.0.40 → mdm/org@3.0.35
+   mdm/employee@3.0.3 → mdm/org@3.0.35
+📄 Generated: .brickkit/generated/compose.yaml
+
+🔧 Database migrations that run before startup (on failure that component won't start):
+   infra/audit@3.0.38  /infra-audit migrate
+   infra/authz@3.0.48  /infra-authz migrate
+   infra/iam-casdoor@3.0.47  /infra-iam-casdoor migrate
+   infra/print@3.0.24  python -m infra_print migrate
+   mdm/currency@3.0.33  /mdm-currency migrate
+   mdm/org@3.0.35  /mdm-org migrate
+   mdm/employee@3.0.3  /mdm-employee migrate
+   mdm/partner@3.0.40  /mdm-partner migrate
+   crm/opportunity@3.0.0  /crm-opportunity migrate
+   erp/billing@3.0.59  /erp-billing migrate
+   erp/credit@3.0.38  /erp-credit migrate
+   erp/finance@3.0.8  /erp-finance migrate
+   erp/payment@3.0.8  /erp-payment migrate
+   mdm/product@3.0.38  /mdm-product migrate
+   erp/inventory@3.0.39  /erp-inventory migrate
+   erp/costing@3.0.1  /erp-costing migrate
+   erp/purchase@3.0.5  /erp-purchase migrate
+   erp/sales@3.0.50  /erp-sales migrate
+   test/probe-py2@3.2.51  python -m probe_py migrate
+
+🐳 Starting (docker)...
+   be-go-core-3-0-98            running (healthy)
+   be-go-infra-3-0-82           running (healthy)
+   be-py-render-3-0-51          running (healthy)
+✅ All components started (3)
+
+💡 View the status: brickkit status
+   View the logs: docker compose -p brickkit-c6-o logs -f

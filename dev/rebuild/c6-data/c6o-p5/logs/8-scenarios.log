@@ -1,0 +1,48 @@
+................F.................                                       [100%]
+=================================== FAILURES ===================================
+______________ test_opportunity_sales_quote_request_to_won_order _______________
+
+bob = User(name='test.bob', cell=Cell(dir=PosixPath('/home/zhijie/Desktop/github/be-assembly-standard/dev/rebuild/experiment...rcEdfSTdsBhTu3US9W4Dw', principal='01a1ceef-b78d-7077-9a00-7ce5f9cc5144', http=<httpx.Client object at 0x7ac521108a50>)
+world = World(le='01a1ceef-f513-7e74-adc5-a4c4b130eb17', shanghai='01a1cef0-4f34-775e-a47e-db5218db1961', beijing='01a1cef0-50...-346bbaf75cb7', 'CS-POST': '01a1ceef-f5d5-7e7d-96af-b4eee2aa28c2', 'PROJ-OLD': '01a1ceef-f5d8-7879-9c20-0475f0215527'})
+
+    def test_opportunity_sales_quote_request_to_won_order(bob, world: World):
+        """OP05, OP08, QR01-QR05: the request becomes one quotation draft in erp/sales (no lines, the requested products,
+        the opportunity and the request on it); completed, sent and accepted it is an order carrying the opportunity; the
+        order confirmed, the opportunity is won by the order's net total, by no user."""
+        o = bob.post("crm/opportunity", OPP, {
+            "legal_entity_id": world.le, "customer_id": world.large, "name": "L3 商机到订单", "amount": "5000",
+            "lines": [{"product_id": world.goods["id"], "quantity": "2", "unit": world.goods["base_unit"]}]})
+        assert o["stage"] == "qualification" and o["currency"] == "CNY", o
+        req = bob.post("crm/opportunity", f"{OPP}/{o['id']}/quote-requests")
+        assert req["state"] == "requested", req
+    
+        def draft():
+            page = bob.get("erp/sales", f"/api/sales/quotations?legal_entity_id={world.le}&limit=200")["quotations"]
+            return next((q for q in page if q["quote_request_id"] == req["id"]), None)
+>       q = eventually(draft)
+            ^^^^^^^^^^^^^^^^^
+
+scenarios/test_opportunity.py:38: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+check = <function test_opportunity_sales_quote_request_to_won_order.<locals>.draft at 0x7ac52116b530>
+seconds = 30, every = 0.5
+
+    def eventually(check, seconds: float = 30, every: float = 0.5):
+        """check() until it returns a truthy value; the last AssertionError when time runs out."""
+        deadline, last = time.monotonic() + seconds, None
+        while time.monotonic() < deadline:
+            try:
+                out = check()
+                if out:
+                    return out
+            except AssertionError as e:
+                last = e
+            time.sleep(every)
+>       raise last or AssertionError(f"not true within {seconds} s")
+E       AssertionError: not true within 30 s
+
+scenarios/conftest.py:67: AssertionError
+=========================== short test summary info ============================
+FAILED scenarios/test_opportunity.py::test_opportunity_sales_quote_request_to_won_order
+1 failed, 33 passed in 63.88s (0:01:03)

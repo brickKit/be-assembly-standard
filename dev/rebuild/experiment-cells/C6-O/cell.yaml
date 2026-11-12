@@ -1,0 +1,14 @@
+# Assembly phase "rebuild the remaining components" (components-plan.md), C6: crm/opportunity joins be/go-core (P5),
+# with erp/sales 3.0.50 (it answers quote requests) and its cascade (erp/billing 3.0.59, erp/payment 3.0.8), in the
+# H2 shell layout of C5-C: from an empty database to L3 with the opportunity scenarios (a quote request becomes a sales
+# quotation draft, the accepted quotation's order confirmed wins the opportunity; a salesperson sees his own), the
+# seeds twice (the second run must change nothing).
+# be/go-core 3.0.99 (crm/opportunity 3.0.1, erp/sales 3.0.51) after the consistency exam.
+cell: C6-O
+row: D
+deployment: 01a1c6f0-2c20-7a00-8c00-00000000c6c6
+shells:
+  be/go-infra@3.0.82: [infra/iam-casdoor, infra/authz, infra/audit, mdm/org, mdm/employee, mdm/currency, mdm/partner, mdm/product]
+  be/go-core@3.0.99: [erp/inventory, erp/credit, erp/sales, erp/billing, erp/purchase, erp/finance, erp/payment, erp/costing, crm/opportunity]
+  be/py-render@3.0.51: [infra/print, test/probe-py2]
+chain: []
