@@ -37,7 +37,7 @@
 | C4 | `erp/finance`：总账、凭证、期间与关账；消费开票、付款、库存的过账事件 | 边界卡、业务流程 | C2（C3 改为在它之后：维护者 2026-11-10 定，原因见 C3 一行） | 同上；从订单到凭证的 L3 | ✅ 2026-11-11：`erp/finance` 3.0.1（契约 alpha.2），格 C4-F 从空库到 L3（子计划 [c4-finance-plan.md](c4-finance-plan.md)；源头补了 `erp/purchase` 3.0.2（匹配依据带订单的基本单位数量）、`infra/iam-casdoor` 3.0.46（两个财务账号）；外壳 `be/go-infra` 3.0.81、`be/go-core` 3.0.87；套件 1.0.81） |
 | C5 | `erp/costing`：存货成本（消费库存移动） | 边界卡 | C0 | 同上 | ✅ 2026-11-12：`erp/costing` 3.0.1（契约 alpha.2），格 C5-C 从空库到 L3（子计划 [c5-costing-plan.md](c5-costing-plan.md)；源头补了 `erp/inventory` 3.0.39（按计价序号读流水）、`erp/finance` 3.0.4、3.0.6（成本的规则键、票据日期）；`erp/purchase` 3.0.4 起退货前问可退数量；外壳 `be/go-core` 3.0.96；套件 1.0.83） |
 | C6 | `crm/opportunity`：商机到销售订单 | 边界卡 `crm.md` | C0 | 同上；商机赢单到订单的 L3 | ✅ 2026-11-12（子计划 [c6-opportunity-plan.md](c6-opportunity-plan.md)）：`crm/opportunity` 3.0.2、`erp/sales` 3.0.51、外壳 `be/go-core` 3.0.101、套件 1.0.84；格 C6-O 从空库到 L3 34 全过 |
-| C7 | `infra/workflow`：统一待办（不含流程引擎） | 边界卡 `infra.md`、支撑能力指南 | C0 | 同上；待办的数据范围（协议的安全 07） | ⬜ |
+| C7 | `infra/workflow`：统一待办（不含流程引擎） | 边界卡 `infra.md`、支撑能力指南 | C0 | 同上；待办的数据范围（协议的安全 07） | 进行中（子计划 [c7-workflow-plan.md](c7-workflow-plan.md)；维护者 2026-11-12 定连 SDK 的流程内核一起做，采购与收付款的审批迁上去；P0 草稿） |
 | C8 | `infra/notification`：通知意图、偏好与通道路由 | 同上 | C0 | 同上 | ⬜ |
 | C9 | `infra/attachment`：附件元数据、处理状态与授权协作 | 同上 | C0 | 同上 | ⬜ |
 | C10 | `integration/im-dingtalk`：钉钉投递（外部系统用模拟器） | 边界卡 | C8 | 同上；外部调用走对外命令或幂等 | ⬜ |
