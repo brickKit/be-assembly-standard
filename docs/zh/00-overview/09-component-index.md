@@ -16,7 +16,7 @@
 | `infra/authz` | 授权：权限目录、授予、视图与核验 | 当前重建 | 3.0.48 | [infra.md](../07-components/infra.md#infraauthz) | [BRICKKIT](../../../components/infra/authz/BRICKKIT.md) · [AGENTS](../../../components/infra/authz/AGENTS.md) · [design](../../../components/infra/authz/docs/design.md) | 身份（`infra/iam-*`） | 46 个组件（几乎全部业务组件，见各边界卡） |
 | `infra/authz-static` | 授权的静态配置成员 | 远期 | — | — | — | — | — |
 | `infra/authz-openfga` | 授权的关系图成员（OpenFGA） | 远期 | — | — | — | — | — |
-| `infra/workflow` | 统一待办（不含流程引擎） | 当前重建 | — | [infra.md](../07-components/infra.md#infraworkflow) | — | 身份（`infra/iam-*`）、`infra/authz` | — |
+| `infra/workflow` | 统一待办（不含流程引擎） | 当前重建 | 设计中 | [infra.md](../07-components/infra.md#infraworkflow) | [design](../../../components/infra/workflow/docs/design.md) | 身份（`infra/iam-*`）、`infra/authz` | — |
 | `infra/notification` | 通知意图、偏好与通道路由 | 当前重建 | — | [infra.md](../07-components/infra.md#infranotification) | — | 身份（`infra/iam-*`）、`infra/authz` | — |
 | `infra/attachment` | 附件元数据、处理状态与授权协作 | 当前重建 | — | [infra.md](../07-components/infra.md#infraattachment) | — | 身份（`infra/iam-*`）、`infra/authz` | `hrm/expense` |
 | `infra/print` | 单据与标签渲染 | 当前重建 | 3.0.24 | [infra.md](../07-components/infra.md#infraprint) | [BRICKKIT](../../../components/infra/print/BRICKKIT.md) · [AGENTS](../../../components/infra/print/AGENTS.md) · [design](../../../components/infra/print/docs/design.md) | 身份（`infra/iam-*`）、`infra/authz` | — |
