@@ -74,7 +74,7 @@
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | `crm/lead` | 线索获取、去重与转化 | 远期 | — | [crm.md](../07-components/crm.md#crmlead) | — | `mdm/partner`、身份（`infra/iam-*`）、`infra/authz` | — |
 | `crm/customer` | 销售归属、共享、公海与关系 | 远期 | — | [crm.md](../07-components/crm.md#crmcustomer) | — | `mdm/partner`、`mdm/employee`、身份（`infra/iam-*`）、`infra/authz` | — |
-| `crm/opportunity` | 商机生命周期与预测 | 当前重建 | 设计中 | [crm.md](../07-components/crm.md#crmopportunity) | [design](../../../components/crm/opportunity/docs/design.md) | `mdm/partner`、`mdm/org`、`mdm/currency`、身份（`infra/iam-*`）、`infra/authz` | — |
+| `crm/opportunity` | 商机生命周期与预测 | 当前重建 | 3.0.0 | [crm.md](../07-components/crm.md#crmopportunity) | [BRICKKIT](../../../components/crm/opportunity/BRICKKIT.md) · [AGENTS](../../../components/crm/opportunity/AGENTS.md) · [design](../../../components/crm/opportunity/docs/design.md) | `mdm/partner`、`mdm/org`、`mdm/currency`、身份（`infra/iam-*`）、`infra/authz` | — |
 | `crm/activity` | 跟进、拜访与活动时间线 | 远期 | — | [crm.md](../07-components/crm.md#crmactivity) | — | `mdm/partner`、身份（`infra/iam-*`）、`infra/authz` | — |
 | `crm/campaign` | 营销活动与归因 | 远期 | — | [crm.md](../07-components/crm.md#crmcampaign) | — | 身份（`infra/iam-*`）、`infra/authz` | — |
 | `crm/case` | 客户服务、工单与服务目标 | 远期 | — | [crm.md](../07-components/crm.md#crmcase) | — | `mdm/partner`、`mdm/org`、身份（`infra/iam-*`）、`infra/authz` | — |
@@ -138,6 +138,11 @@
 | 事件 | 发布者 | 订阅者 |
 | --- | --- | --- |
 | `be.session.ended.v1` | `infra/iam-casdoor` | — |
+| `crm.opportunity.changed.v1` | `crm/opportunity` | — |
+| `crm.opportunity.lost.v1` | `crm/opportunity` | — |
+| `crm.opportunity.quote_requested.v1` | `crm/opportunity` | `erp/sales` |
+| `crm.opportunity.stage_changed.v1` | `crm/opportunity` | — |
+| `crm.opportunity.won.v1` | `crm/opportunity` | — |
 | `erp.accounting_period.changed.v1` | `erp/finance` | — |
 | `erp.billable.changed.v1` | `erp/sales` | — |
 | `erp.costing.accounting_fact.v1` | `erp/costing` | — |
@@ -165,14 +170,14 @@
 | `erp.purchase_requisition.changed.v1` | `erp/purchase` | — |
 | `erp.purchase_return.changed.v1` | `erp/purchase` | — |
 | `erp.purchase_return.posted.v1` | `erp/purchase` | — |
-| `erp.quotation.changed.v1` | `erp/sales` | — |
-| `erp.quote_request.rejected.v1` | `erp/sales` | — |
+| `erp.quotation.changed.v1` | `erp/sales` | `crm/opportunity` |
+| `erp.quote_request.rejected.v1` | `erp/sales` | `crm/opportunity` |
 | `erp.receipt.changed.v1` | `erp/payment` | — |
 | `erp.receivable.cleared.v1` | `erp/finance` | — |
 | `erp.receivable.formed.v1` | `erp/finance` | — |
 | `erp.receivable.reduced.v1` | `erp/finance` | — |
 | `erp.receivable.reopened.v1` | `erp/finance` | — |
-| `erp.sales_order.changed.v1` | `erp/sales` | — |
+| `erp.sales_order.changed.v1` | `erp/sales` | `crm/opportunity` |
 | `erp.sales_order.confirmation_ended.v1` | `erp/sales` | — |
 | `erp.stock_position.changed.v1` | `erp/inventory` | — |
 | `erp.supplier_invoice.price_confirmed.v1` | `erp/finance` | `erp/costing` |
@@ -193,4 +198,3 @@
 | `mdm.product.changed.v1` | `mdm/product` | — |
 | `mdm.product_category.changed.v1` | `mdm/product` | — |
 | `mdm.rate_type.changed.v1` | `mdm/currency` | — |
-| `crm.opportunity.quote_requested.v1` | —（没有已重建的组件发布） | `erp/sales` |
