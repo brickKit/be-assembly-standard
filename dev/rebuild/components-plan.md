@@ -38,7 +38,7 @@
 | C5 | `erp/costing`：存货成本（消费库存移动） | 边界卡 | C0 | 同上 | ✅ 2026-11-12：`erp/costing` 3.0.1（契约 alpha.2），格 C5-C 从空库到 L3（子计划 [c5-costing-plan.md](c5-costing-plan.md)；源头补了 `erp/inventory` 3.0.39（按计价序号读流水）、`erp/finance` 3.0.4、3.0.6（成本的规则键、票据日期）；`erp/purchase` 3.0.4 起退货前问可退数量；外壳 `be/go-core` 3.0.96；套件 1.0.83） |
 | C6 | `crm/opportunity`：商机到销售订单 | 边界卡 `crm.md` | C0 | 同上；商机赢单到订单的 L3 | ✅ 2026-11-12（子计划 [c6-opportunity-plan.md](c6-opportunity-plan.md)）：`crm/opportunity` 3.0.2、`erp/sales` 3.0.51、外壳 `be/go-core` 3.0.101、套件 1.0.84；格 C6-O 从空库到 L3 34 全过 |
 | C7 | `infra/workflow`：统一待办（不含流程引擎） | 边界卡 `infra.md`、支撑能力指南 | C0 | 同上；待办的数据范围（协议的安全 07） | ✅ 2026-11-12（子计划 [c7-workflow-plan.md](c7-workflow-plan.md)，复盘 [retro-c7.md](retro-c7.md)）：SDK 的流程内核（线协议第 17 章，alpha.118–122；be-sdk-go alpha.122–126）；采购 3.0.10、收付款 3.0.15 的审批走内核（政策的审批人：岗位或指定个人；以人为单位的职责分离；放行核对）；统一待办 `infra/workflow` 3.0.4（外壳 go-infra 3.0.88）；格 C7-W 从空库到 L3 36 全过 |
-| C8 | `infra/notification`：通知意图、偏好与通道路由 | 同上 | C0 | 同上 | 进行中（子计划 [c8-notification-plan.md](c8-notification-plan.md)；P0 首批范围草稿） |
+| C8 | `infra/notification`：通知意图、偏好与通道路由 | 同上 | C0 | 同上 | 进行中（子计划 [c8-notification-plan.md](c8-notification-plan.md)；P0 ✅，维护者定流程内核发审批待办的意图一起做） |
 | C9 | `infra/attachment`：附件元数据、处理状态与授权协作 | 同上 | C0 | 同上 | ⬜ |
 | C10 | `integration/im-dingtalk`：钉钉投递（外部系统用模拟器） | 边界卡 | C8 | 同上；外部调用走对外命令或幂等 | ⬜ |
 | C11 | `infra/bff-mobile`：移动端展示聚合（Go，gqlgen 挂在 Gin 上，A108） | 边界卡、协议 20 | C1–C8 中它聚合的组件 | 同上 | ⬜ |
