@@ -50,7 +50,7 @@ def main() -> int:
                 if subprocess.run(spec["BUILD"], env=env, capture_output=True).returncode != 0:
                     lines.append(f"does not build: {label}")
                     continue
-                r = subprocess.run(spec["TEST"], env=env, capture_output=True, text=True)
+                r = subprocess.run(spec["TEST"], env=env, capture_output=True, text=True, errors="replace")  # a mutant may print broken UTF-8
                 text = r.stdout + r.stderr
                 if r.returncode != 0:
                     msgs = [l.strip()[:200] for l in text.splitlines()

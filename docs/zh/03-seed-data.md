@@ -148,6 +148,7 @@
 | `erp/finance` | 没有清除：凭证、应收与核销的事实已经发出，凭证号连续、凭证不删除（更正用冲销），应收指着账单 | 只用于开发库：删掉 `erp_finance` schema 与流 `erp.finance`，连同上一行的四个组件与 `erp/purchase` 一起重置后重灌（应收来自账单的已出账，票据按采购的订单匹配） |
 | `erp/payment` | 没有清除：资金事实与会计事实已经发给财务、财务据此核销与过账；单据只冲正、退回、取消，不删除 | 只用于开发库：删掉 `erp_payment` schema 与流 `erp.payment`，连同 `erp/finance` 与它上面那几行一起重置后重灌 |
 | `infra/workflow` | 没有自己的业务数据：待办里的任务是 `erp/purchase`、`erp/payment` 的种子留下的待审批单据发布的投影；种子只建角色（“待办维护”给种子用户，“我的待办”给 `test.buyer.lead`、`test.finance.lead`、`test.buyer.cn`、`test.cashier.cn`） | 删掉 `infra_workflow` schema 后重建，再让发布方补发（或重灌发布方） |
+| `infra/notification` | 没有自己的业务数据：站内消息是发送方的意图写成的（`erp/purchase`、`erp/payment` 的种子留下的待审批单据，经流程内核发给审批人）；种子只建角色（“通知维护”给种子用户，含被拒的意图；“我的消息”给 `test.buyer.lead`、`test.finance.lead`、`test.buyer.cn`、`test.cashier.cn`） | 删掉 `infra_notification` schema 后重建，再让发送方补发（或重灌发送方） |
 | `infra/print` | 没有种子：随组件提供的账单模板在启动时按摘要登记（迁移之外唯一的数据）；打印快照记在 `erp/billing` 的账单上 | 删掉 `infra_print` schema 后重建，模板随启动重新登记 |
 
 ## 怎样使用

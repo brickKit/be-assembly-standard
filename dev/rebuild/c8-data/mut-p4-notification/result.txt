@@ -1,0 +1,53 @@
+infra/notification 3.0.0: intents, delivery, inbox, preferences (C8 P4)
+mutants: 19
+red  NT02 the sender is the envelope's source
+       Error:      	Condition never satisfied
+       Messages:   	the refused intents are listed
+GREEN (survived)  P18.9 a duplicate is not delivered again
+red  NT04 an older sequence is dropped
+       Error:      	Condition never satisfied
+       Messages:   	test/buy's intent 01a1d1bc-f182-7975-9989-bce98a84fc0b ended
+red  NT04 a newer sequence withdraws the messages
+       Error:      	Not equal:
+       Messages:   	withdrawn by the newer one
+       Error:      	Not equal:
+red  NT04 the largest sequence is recorded
+       Error:      	Not equal:
+       Messages:   	an older sequence arriving late is dropped
+       Error:      	Should be empty, but was [false]
+red  NT04 a withdraw intent delivers nothing
+       Error:      	Condition never satisfied
+       Messages:   	test/buy's intent 01a1d1bd-89d7-750c-9138-45b6428613a8 ended
+red  NT02 each refusal's security record
+       Error:      	"0" is not greater than or equal to "4"
+       Messages:   	each refusal has its security record
+red  NT02 an expiry before the occurrence
+       Error:      	Condition never satisfied
+       Messages:   	the refused intents are listed
+GREEN (survived)  NT07 a mandatory category ignores the preference
+GREEN (survived)  NT05 one delivery per principal
+does not build: NT06 an incomplete projection is not used
+red  NT06 nobody holds it: unresolvable
+       Error:      	Not equal:
+red  NT05 the expiry
+       Error:      	Condition never satisfied
+       Messages:   	test/pay's intent 01a1d1be-9ff2-7f1c-ad7c-5b90b8e11cfe ended
+does not build: NT05 a waiting position keeps the intent pending
+red  NT08 my messages only
+       Error:      	Not equal:
+       Messages:   	one message, though bob is named twice
+       Error:      	Not equal:
+red  NT08 another one's message answers 404
+       Error:      	Not equal:
+       Messages:   	bob's message
+red  NT08 the first moment stays
+       Error:      	Not equal:
+       Messages:   	the first moment stays
+red  NT08 marking all read is mine only
+       Error:      	Should not be zero, but was 0
+       Messages:   	bob's are not marked
+red  NT09 a mandatory category cannot be changed
+       Error:      	Not equal:
+       Messages:   	security_alert/in_app: map[preferences:[map[category:approval_task channel:in_app default:true enabled:false mandatory:false] map[category:due_reminder channel:in_app default:true enabled
+       Error:      	Not equal:
+done
