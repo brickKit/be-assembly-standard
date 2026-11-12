@@ -36,7 +36,7 @@
 | C3 | `erp/payment`：收付款、核销；对外支付走对外命令（第 13 章） | 边界卡、协议 15 的对外命令 | C0 | 同上；收款核销开票的 L3 | ✅ 2026-11-11：`erp/payment` 3.0.3（契约 alpha.2），格 C3-P 从空库到 L3（子计划 [c3-payment-plan.md](c3-payment-plan.md)；源头补了 `erp/finance` 3.0.2→3.0.3（调拨成对经在途；契约 alpha.3 的共享 schema 包）、`infra/iam-casdoor` 3.0.47（出纳）；外壳 `be/go-infra` 3.0.82、`be/go-core` 3.0.92；套件 1.0.82） |
 | C4 | `erp/finance`：总账、凭证、期间与关账；消费开票、付款、库存的过账事件 | 边界卡、业务流程 | C2（C3 改为在它之后：维护者 2026-11-10 定，原因见 C3 一行） | 同上；从订单到凭证的 L3 | ✅ 2026-11-11：`erp/finance` 3.0.1（契约 alpha.2），格 C4-F 从空库到 L3（子计划 [c4-finance-plan.md](c4-finance-plan.md)；源头补了 `erp/purchase` 3.0.2（匹配依据带订单的基本单位数量）、`infra/iam-casdoor` 3.0.46（两个财务账号）；外壳 `be/go-infra` 3.0.81、`be/go-core` 3.0.87；套件 1.0.81） |
 | C5 | `erp/costing`：存货成本（消费库存移动） | 边界卡 | C0 | 同上 | ✅ 2026-11-12：`erp/costing` 3.0.1（契约 alpha.2），格 C5-C 从空库到 L3（子计划 [c5-costing-plan.md](c5-costing-plan.md)；源头补了 `erp/inventory` 3.0.39（按计价序号读流水）、`erp/finance` 3.0.4、3.0.6（成本的规则键、票据日期）；`erp/purchase` 3.0.4 起退货前问可退数量；外壳 `be/go-core` 3.0.96；套件 1.0.83） |
-| C6 | `crm/opportunity`：商机到销售订单 | 边界卡 `crm.md` | C0 | 同上；商机赢单到订单的 L3 | ⬜ |
+| C6 | `crm/opportunity`：商机到销售订单 | 边界卡 `crm.md` | C0 | 同上；商机赢单到订单的 L3 | 进行中（子计划 [c6-opportunity-plan.md](c6-opportunity-plan.md)；P0 草稿） |
 | C7 | `infra/workflow`：统一待办（不含流程引擎） | 边界卡 `infra.md`、支撑能力指南 | C0 | 同上；待办的数据范围（协议的安全 07） | ⬜ |
 | C8 | `infra/notification`：通知意图、偏好与通道路由 | 同上 | C0 | 同上 | ⬜ |
 | C9 | `infra/attachment`：附件元数据、处理状态与授权协作 | 同上 | C0 | 同上 | ⬜ |
