@@ -16,11 +16,11 @@
 | `crm/opportunity` | `mdm/partner`、身份、授权 | 旧代码 v2.0.0 在 `main` | Go |
 | `infra/workflow` | 身份、授权 | 旧代码 v2.0.1 在 `main` | Go |
 | `infra/notification` | 身份、授权 | 旧代码 v2.0.0 在 `main` | Go |
-| `infra/attachment` | 身份、授权 | 无仓库（端口已登记） | Go |
+| `infra/attachment` | 身份、授权 | `brickKit/infra-attachment`（2026-11-12 建，维护者同意） | Go |
 | `integration/im-dingtalk` | — | 旧代码 v2.0.0 在 `main` | Go |
 | `infra/bff-mobile` | 身份 | 旧代码 2.0.0（TypeScript）在 `main` | Go（A108） |
 | `frontend/pc` | 身份 | `frontend-standard` 旧代码 v1.0.1，改名后复用（D17） | 前端技术栈（协议 20） |
-| `frontend/mobile` | `infra/bff-mobile`、身份 | 无仓库 | 前端技术栈（协议 20） |
+| `frontend/mobile` | `infra/bff-mobile`、身份 | `brickKit/frontend-mobile`（2026-11-12 建，维护者同意） | 前端技术栈（协议 20） |
 
 语言是 AI 按锁定的技术栈与 A108 的初判，每个组件开工时按它的边界卡核对；与边界卡不一致的先问。远期、留位、评估的组件不在这一阶段。
 
