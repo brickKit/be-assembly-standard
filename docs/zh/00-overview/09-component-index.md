@@ -74,7 +74,7 @@
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | `crm/lead` | 线索获取、去重与转化 | 远期 | — | [crm.md](../07-components/crm.md#crmlead) | — | `mdm/partner`、身份（`infra/iam-*`）、`infra/authz` | — |
 | `crm/customer` | 销售归属、共享、公海与关系 | 远期 | — | [crm.md](../07-components/crm.md#crmcustomer) | — | `mdm/partner`、`mdm/employee`、身份（`infra/iam-*`）、`infra/authz` | — |
-| `crm/opportunity` | 商机生命周期与预测 | 当前重建 | 3.0.1 | [crm.md](../07-components/crm.md#crmopportunity) | [BRICKKIT](../../../components/crm/opportunity/BRICKKIT.md) · [AGENTS](../../../components/crm/opportunity/AGENTS.md) · [design](../../../components/crm/opportunity/docs/design.md) | `mdm/partner`、`mdm/org`、`mdm/currency`、身份（`infra/iam-*`）、`infra/authz` | — |
+| `crm/opportunity` | 商机生命周期与预测 | 当前重建 | 3.0.2 | [crm.md](../07-components/crm.md#crmopportunity) | [BRICKKIT](../../../components/crm/opportunity/BRICKKIT.md) · [AGENTS](../../../components/crm/opportunity/AGENTS.md) · [design](../../../components/crm/opportunity/docs/design.md) | `mdm/partner`、`mdm/org`、`mdm/currency`、身份（`infra/iam-*`）、`infra/authz` | — |
 | `crm/activity` | 跟进、拜访与活动时间线 | 远期 | — | [crm.md](../07-components/crm.md#crmactivity) | — | `mdm/partner`、身份（`infra/iam-*`）、`infra/authz` | — |
 | `crm/campaign` | 营销活动与归因 | 远期 | — | [crm.md](../07-components/crm.md#crmcampaign) | — | 身份（`infra/iam-*`）、`infra/authz` | — |
 | `crm/case` | 客户服务、工单与服务目标 | 远期 | — | [crm.md](../07-components/crm.md#crmcase) | — | `mdm/partner`、`mdm/org`、身份（`infra/iam-*`）、`infra/authz` | — |
@@ -124,7 +124,7 @@
 
 | 外壳 | 版本 | 编进的成员 | 文档 |
 | --- | --- | --- | --- |
-| `be/go-core` | 3.0.99 | `test/probe-go@3.2.52`、`test/probe-go2@3.2.52`、`test/probe-go3@3.2.52`、`test/probe-go4@3.2.52`、`erp/inventory@3.0.39`、`erp/credit@3.0.38`、`erp/sales@3.0.51`、`erp/billing@3.0.60`、`erp/purchase@3.0.5`、`erp/finance@3.0.8`、`erp/payment@3.0.9`、`erp/costing@3.0.1`、`crm/opportunity@3.0.1` | [BRICKKIT](../../../shell/be/go-core/BRICKKIT.md) · [AGENTS](../../../shell/be/go-core/AGENTS.md) |
+| `be/go-core` | 3.0.101 | `test/probe-go@3.2.52`、`test/probe-go2@3.2.52`、`test/probe-go3@3.2.52`、`test/probe-go4@3.2.52`、`erp/inventory@3.0.39`、`erp/credit@3.0.38`、`erp/sales@3.0.51`、`erp/billing@3.0.60`、`erp/purchase@3.0.5`、`erp/finance@3.0.8`、`erp/payment@3.0.9`、`erp/costing@3.0.1`、`crm/opportunity@3.0.2` | [BRICKKIT](../../../shell/be/go-core/BRICKKIT.md) · [AGENTS](../../../shell/be/go-core/AGENTS.md) |
 | `be/go-infra` | 3.0.82 | `test/probe-go@3.2.52`、`test/probe-go2@3.2.52`、`test/probe-go3@3.2.52`、`test/probe-go4@3.2.52`、`infra/iam-casdoor@3.0.47`、`infra/authz@3.0.48`、`infra/audit@3.0.38`、`mdm/org@3.0.35`、`mdm/employee@3.0.3`、`mdm/currency@3.0.33`、`mdm/partner@3.0.40`、`mdm/product@3.0.38` | [BRICKKIT](../../../shell/be/go-infra/BRICKKIT.md) · [AGENTS](../../../shell/be/go-infra/AGENTS.md) |
 | `be/py-render` | 3.0.51 | `test/probe-py@3.2.51`、`test/probe-py2@3.2.51`、`infra/print@3.0.24` | [BRICKKIT](../../../shell/be/py-render/BRICKKIT.md) · [AGENTS](../../../shell/be/py-render/AGENTS.md) |
 
