@@ -129,3 +129,18 @@ def test_a_shell_whose_override_differs_from_its_source_fails(tmp_path):
                                       '[tool.uv.sources]\nbe-sdk = { git = "https://x/be-sdk-python", tag = "v3.0.0a52" }\n')
     out = pin_check.one_python_sdk(tmp_path)
     assert any("override" in o for o in out), out
+
+
+def test_a_go_component_without_go_module_release_is_named(tmp_path):
+    """2026-11-13: integration/im-dingtalk 3.0.0 was released with only the bare tag 3.0.0, no v3.0.0 for the shells."""
+    component(tmp_path, "components/integration/im-dingtalk", "integration/im-dingtalk", "3.0.0",
+              gomod="module github.com/brickKit/integration-im-dingtalk/v3\n")
+    component(tmp_path, "components/erp/sales", "erp/sales", "3.0.12", body="release:\n  goModule: true\n",
+              gomod="module github.com/brickKit/erp-sales/v3\n")
+    component(tmp_path, "components/infra/print", "infra/print", "3.0.3")  # no go.mod: not a Go module
+    component(tmp_path, "shell/be/go-infra", "be/go-infra", "3.0.93", body="shell:\n  members: []\n",
+              gomod="module github.com/brickKit/be-go-infra/v3\n")  # a shell: an image, not a dependency
+    component(tmp_path, "components/old/thing", "old/thing", "2.1.0", gomod="module example.com/old\n")  # not rebuilt
+    assert pin_check.go_module_release(tmp_path) == [
+        "components/integration/im-dingtalk/component.yaml: a Go module without release.goModule: true "
+        "(brickkit release tags only the bare version; the shells cannot fetch it)"]

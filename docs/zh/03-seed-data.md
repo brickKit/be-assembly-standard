@@ -150,6 +150,7 @@
 | `infra/workflow` | 没有自己的业务数据：待办里的任务是 `erp/purchase`、`erp/payment` 的种子留下的待审批单据发布的投影；种子只建角色（“待办维护”给种子用户，“我的待办”给 `test.buyer.lead`、`test.finance.lead`、`test.buyer.cn`、`test.cashier.cn`） | 删掉 `infra_workflow` schema 后重建，再让发布方补发（或重灌发布方） |
 | `infra/notification` | 没有自己的业务数据：站内消息是发送方的意图写成的（`erp/purchase`、`erp/payment` 的种子留下的待审批单据，经流程内核发给审批人）；种子只建角色（“通知维护”给种子用户，含被拒的意图；“我的消息”给 `test.buyer.lead`、`test.finance.lead`、`test.buyer.cn`、`test.cashier.cn`） | 删掉 `infra_notification` schema 后重建，再让发送方补发（或重灌发送方） |
 | `infra/attachment` | 没有自己的业务数据：附件属于属主的记录（`erp/purchase` 的种子给 CN01 前三张已批准、前三张已完成的订单各传一份合同 PDF）；种子只建角色（“附件”：确认上传与严格下载，给种子用户、`test.buyer.lead`、`test.finance.lead`、`test.buyer.cn`、`test.cashier.cn`；能对哪条记录做什么由属主签发的凭证限定） | 删掉 `infra_attachment` schema 与桶里本组件的前缀后，重跑属主的种子 |
+| `integration/im-dingtalk` | 没有自己的业务数据：绑定只能由用户本人经钉钉授权建立，种子建不了；种子只建角色（“绑定我的钉钉”给 `test.buyer.lead`、`test.finance.lead`、`test.buyer.cn`、`test.cashier.cn`；“钉钉渠道维护”给种子用户：列出与结束绑定、查看隔离的回调）。格里由 L3 对模拟钉钉绑定 `test.buyer.lead` | 删掉 `integration_im_dingtalk` schema 后重建，用户重新绑定 |
 | `infra/print` | 没有种子：随组件提供的账单模板在启动时按摘要登记（迁移之外唯一的数据）；打印快照记在 `erp/billing` 的账单上 | 删掉 `infra_print` schema 后重建，模板随启动重新登记 |
 
 ## 怎样使用

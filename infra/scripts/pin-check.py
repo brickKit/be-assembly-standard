@@ -101,6 +101,22 @@ def check(root: pathlib.Path) -> list[str]:
     return stale
 
 
+GO_MODULE_RELEASE = re.compile(r"^release:\s*\n(?:[ \t]+.*\n)*?[ \t]+goModule:\s*true\s*$", re.M)
+
+
+def go_module_release(root: pathlib.Path) -> list[str]:
+    """A rebuilt Go component releases its module tag too (release.goModule: true): with the bare tag alone the shells
+    cannot fetch it (2026-11-13, integration/im-dingtalk 3.0.0)."""
+    out = []
+    for p in manifests(root):
+        text = p.read_text()
+        shell = re.search(r"^shell:", text, re.M)  # a shell is an image, never another module's dependency
+        if (p.parent / "go.mod").exists() and meta(p)[1].startswith("3.") and not shell and not GO_MODULE_RELEASE.search(text):
+            out.append(f"{p.relative_to(root)}: a Go module without release.goModule: true "
+                       "(brickkit release tags only the bare version; the shells cannot fetch it)")
+    return out
+
+
 SDK_REQUIRE = re.compile(r"^\s*(?:require\s+)?github\.com/brickKit/be-sdk-go/v3 (v\S+)(?!.*// indirect)", re.M)
 
 
@@ -173,7 +189,7 @@ def suite_sdk(root: pathlib.Path) -> list[str]:
 
 def main() -> int:
     root = pathlib.Path(sys.argv[1] if len(sys.argv) > 1 else pathlib.Path(__file__).resolve().parents[2])
-    stale = check(root) + suite_sdk(root) + one_sdk(root) + one_python_sdk(root)
+    stale = check(root) + suite_sdk(root) + one_sdk(root) + one_python_sdk(root) + go_module_release(root)
     for s in stale:
         print(f"stale: {s}")
     print(f"pin-check: {len(stale)} stale reference(s)")
