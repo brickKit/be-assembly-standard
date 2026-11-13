@@ -105,7 +105,7 @@
 
 | 组件 ID | 能力 | 范围 | 实现 | 边界卡 | 组件文档 | 必需依赖 | 被谁必需依赖 |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| `integration/im-dingtalk` | 钉钉消息与回调 | 当前重建 | — | — | — | — | — |
+| `integration/im-dingtalk` | 钉钉消息与回调 | 当前重建 | 设计中 | — | [design](../../../components/integration/im-dingtalk/docs/design.md) | — | — |
 | `integration/edi` | 供应链数据交换 | 远期 | — | — | — | — | — |
 | `integration/print-agent` | 客户现场的打印代理 | 远期 | — | — | — | — | — |
 
