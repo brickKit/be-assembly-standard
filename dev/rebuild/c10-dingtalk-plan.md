@@ -32,8 +32,8 @@
 | --- | --- | --- | --- | --- |
 | P0 | 读全依据，定首批范围 | — | 上面一节 | ✅ 2026-11-13（AI 定，待复核） |
 | P1 | 设计：线协议的渠道成员一章与动作事件、意图的动作字段、第 17 章的授权签发与动作的收下、第 13 章的本地放弃时刻；通知组件的渠道路由；渠道成员的设计（规则编号）；考设计 | P0 | 文档与考试记录（`c10-data/exam-p1/`） | ✅ 2026-11-13：考设计 9 条必须改、13 条建议改，全部处理（`c10-data/exam-p1/result.md`），渠道成员的设计整份重写 |
-| P2 | 契约：线协议（条款、schema、向量、能力、`be.channel.v1` 的 proto）；渠道成员的 OpenAPI（映射、回调）与事件；通知组件的配置与 OpenAPI 的偏好（渠道） | P1 | `make check`；`make authz-keys-check` | ⬜ |
-| P3 | SDK：流程内核签发动作授权、在消费者的事务里收下与执行动作（`FLOW_ACTION_SOURCES`；授权判断区分可重试与最终、用判断的截止时刻）；`extcmd` 的本地放弃时刻（P13.14）；意图的认收只核对认识的字段；渠道成员一侧的帮助（共享契约的服务器接口、动作事件的发出）；新的原因 `TOKEN_USED`；先接真实组件再发（C7 复盘 R1） | P2 | SDK 测试、改坏检查、发布；全系统换 SDK | ⬜ |
+| P2 | 契约：线协议（条款、schema、向量、能力、`be.channel.v1` 的 proto）；渠道成员的 OpenAPI（映射、回调）与事件；通知组件的配置与 OpenAPI 的偏好（渠道） | P1 | `make check`；`make authz-keys-check` | ✅ 2026-11-13：线协议第 20 章的契约（`be.channel.v1`、`schemas/channel/` 的动作与投递结果、意图的 `actions` 与 `action_channels`、认收方忽略不认识的字段）、向量 `channel-action`、路由向量加渠道、对外命令向量加放弃时刻、原因 `GRANT_USED`、`GRANT_STALE`、迁移 0026、0027；组件身份里的 `-` 推流名时换成 `_`。版本 alpha.129，与 SDK 一起发 |
+| P3 | SDK：流程内核签发动作授权、在消费者的事务里收下与执行动作（`FLOW_ACTION_SOURCES`；授权判断区分可重试与最终、用判断的截止时刻）；`extcmd` 的本地放弃时刻（P13.14）；意图的认收只核对认识的字段；渠道成员一侧的帮助（共享契约的服务器接口、动作事件的发出）；新的原因 `TOKEN_USED`；先接真实组件再发（C7 复盘 R1） | P2 | SDK 测试、改坏检查、发布；全系统换 SDK | 进行中：be-sdk-go 本地 alpha.132（未发）：`flow/actions.go`（签发、`ActionSubs`、在消费者的事务里核对与决定，可重试的不记、最终的记并告诉持有人）、`channel` 与 `channelpb`、`extcmd.RequestUntil` 与 `OnSettled`、决定里视图判断不了不再当成没有权限；集成测试 `TestInteractiveActions`、`TestTheLocalAbandonTimeAndTheSettleHook` 通过。等通知组件与钉钉渠道成员用本地 go.work 接通后发布 |
 | P4 | `infra/notification`：渠道路由（配置的渠道、默认渠道、偏好按“类别 × 渠道”）；外部投递的作业（按行认领、事务外调用、退避、断路）；取代时外部投递记 `superseded`；动作只交给 `action_channels` | P3 | 集成测试（假渠道成员）、改坏检查、发布 | ⬜ |
 | P5 | `integration/im-dingtalk` 3.0.0：本人绑定（OAuth）、投递的对外命令、钉钉客户端（互动卡片）、回调（验签、去重、`received` 与工作项、隔离区、发动作事件）、结果事实、能力声明 | P3 | 集成测试（进程内的假钉钉）、改坏检查、`make layout-check`、`seed-ops-check`、发布 | ⬜ |
 | P6 | 连锁与格：采购与收付款配 `FLOW_ACTION_SOURCES`；外壳 go-infra 加成员；套件的格放置、L3（本人绑定、投递到模拟钉钉的卡片、点同意后任务被批准、同一按钮再点只有一个决定、任务版本变了被拒并收到站内说明、伪造的回调被丢弃、没有绑定的人只有站内）；一致性考试；复盘 | P4、P5 | 格从空库到 L3；`make version-check`、`make gates` | ⬜ |
