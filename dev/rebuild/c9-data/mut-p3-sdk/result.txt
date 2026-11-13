@@ -1,0 +1,31 @@
+be-sdk-go alpha.130: the storage port and the attachment categories (C9 P3)
+mutants: 9
+red  P19.3 put only when absent
+       Error:      	Expected error with "storage: exists" in chain but got nil.
+       Messages:   	only when absent
+       Error:      	Not equal:
+red  P19.4 copy only when absent
+       Error:      	Should be empty, but was a7937b64b8caa58f03721bb6bacf5c78cb235febe0e70b1b84cd99541461a08e
+       Messages:   	the source's metadata is not carried over
+red  P19.4 the destination's metadata rewritten
+       Error:      	Should be empty, but was a7937b64b8caa58f03721bb6bacf5c78cb235febe0e70b1b84cd99541461a08e
+       Messages:   	the source's metadata is not carried over
+       Error:      	Not equal:
+red  P19.6 the length signed
+       Error:      	Should not be: 200
+       Messages:   	another length
+red  P19.7 a saved file is a plain stream of bytes
+       Error:      	Not equal:
+       Messages:   	an uploaded SVG does not run
+red  P19.9 a refused credential is denied
+       Error:      	Should be true
+       Messages:   	storage: unavailable: put x: 403
+red  P19.6 the browsers' address
+       Error:      	Should be true
+       Messages:   	http://localhost:9000/be-sdk-test/storage-it-1794529504253124223/staging/p?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=brickkit%2F20261113%2Fus-east-1%2Fs3%2Faws4_request&X-Amz-Date
+red  09a a category's field is the resource's
+       Error:      	An error is expected but got nil.
+       Messages:   	no such field
+red  P12 a download is never sniffed
+       Error:      	Not equal:
+done

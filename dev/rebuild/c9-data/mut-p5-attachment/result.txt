@@ -1,0 +1,49 @@
+infra/attachment 3.0.0 (C9 P5)
+mutants: 16
+red  AT02 the caller owns the resource type
+       Error:      	Not equal:
+       Messages:   	demo/other does not own demo.order
+       Error:      	Not equal:
+red  AT02 a type not yet known is retriable
+       Error:      	Not equal:
+       Messages:   	not in the catalog yet: retriable
+red  AT04 an upload not arrived leaves the credential
+       Error:      	Not equal:
+       Messages:   	map[detail:an internal error occurred; quote the trace id when reporting it domain:be reason:INTERNAL status:500 title:Internal error trace_id:32165f4389c98689cfb94f8a67ca3fe3 type:urn:be
+       Error:      	Not equal:
+GREEN (survived)  AT04 a credential is used once
+GREEN (survived)  AT04 the credential is the user's
+red  AT04 the type detected from the content
+       Error:      	Not equal:
+       Messages:   	detected text/html, not a PDF
+red  AT03 the category's size limit
+       Error:      	An error is expected but got nil.
+       Messages:   	beyond the category's limit
+GREEN (survived)  AT04 a failed copy is not passed over
+red  AT06 a strict category gets no presigned address
+       Error:      	Should be empty, but was http://localhost:9000/be-sdk-test/attachment-it-1794529607595529092/objects/01a1d24c-c1fe-7dab-ac67-b88f937379e4/1?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credenti
+       Messages:   	no presigned address for a strict category
+       Error:      	Should NOT be empty, but was
+red  AT06 a one-time credential, the user's
+       Error:      	Not equal:
+       Messages:   	bob's credential
+       Error:      	Not equal:
+red  AT06 a missing object is not reported absent
+       Error:      	Not equal:
+red  AT08 a detach ends the uploads in progress
+       Error:      	Not equal:
+       Messages:   	the detach used up the credential
+red  AT10 a hold keeps it from erasure
+       Error:      	Not equal:
+       Messages:   	the parent's hold keeps it
+       Error:      	Should be zero, but was 1
+red  AT10 an erased attachment's objects are deleted
+       Error:      	Should be true
+       Messages:   	the object is deleted: <nil>
+red  FA06 the replaced version is superseded
+       Error:      	Not equal:
+       Messages:   	kept, no longer current
+red  AT14 a refused owner's security record
+       Error:      	Not equal:
+       Messages:   	each refusal of a non-owner, and nothing for the pending one
+done

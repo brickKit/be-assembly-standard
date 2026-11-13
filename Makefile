@@ -239,6 +239,7 @@ seed-data:  ## 灌重建后组件的种子数据（测试账号、授权、主�
 	@$(MAKE) -C components/erp/credit seed
 	@$(MAKE) -C components/erp/sales seed
 	@$(MAKE) -C components/erp/billing seed
+	@$(MAKE) -C components/infra/attachment seed     # its routes granted before erp/purchase attaches contracts
 	@$(MAKE) -C components/erp/purchase seed
 	@$(MAKE) -C components/erp/finance seed
 	@$(MAKE) -C components/erp/payment seed

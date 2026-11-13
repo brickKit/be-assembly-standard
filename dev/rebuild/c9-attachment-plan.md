@@ -29,12 +29,12 @@
 | --- | --- | --- | --- | --- |
 | P0 | 读全依据，定首批范围 | — | 上面一节 | ✅ 2026-11-13（AI 定，待复核） |
 | P1 | 设计：线协议的条款（存储端口的行为、附件类别在定义里、属主与附件组件的系统面）、附件组件的设计（规则编号）、授权组件的类别目录方法、采购的附件；考设计 | P0 | 文档与考试记录（`c9-data/exam-p1/`） | ✅ 2026-11-13：第 19 章草稿、AT01–AT14、授权组件与采购的设计；考设计一份 25 条全部处理（`c9-data/exam-p1/result.md`），附件的设计整份重写 |
-| P2 | 契约：线协议（条款、向量、能力）；附件组件的 proto 与 OpenAPI、事件；授权组件契约加方法；采购的 OpenAPI | P1 | 校验；`make authz-keys-check` | 进行中：授权契约 `contract-infra-authz` alpha.7 已发（`CatalogService.AttachmentCategories`）；附件组件的 proto（`be.attachment.v3.AttachmentService`，9 个方法）写好、`make check` 通过，未发；线协议第 19 章草稿未发（与 SDK 一起发）；OpenAPI、事件 schema、采购的 OpenAPI 待写 |
-| P3 | SDK：`storage`（对 RustFS 的集成测试，实测条件写入与服务端复制）、资源定义的附件类别；先接真实组件再发（复盘 C7 的 R1）；全系统换 SDK | P2 | SDK 测试、改坏检查、发布 | 进行中（be-sdk-go 本地 alpha.130，未发）：`storage` 包与 `s3sig.Presign`，集成测试对 RustFS 全过——**实测 RustFS 遵守服务端复制的 `If-None-Match` 并按 `REPLACE` 重写元数据**；`authz.Resource.AttachmentCategories`（核对、编码、按 schema 封装）。原计划的 `attachments` 客户端不做（属主直接用附件组件的契约模块）。授权组件已用本地 SDK 接通 |
-| P4 | `infra/authz`：附件类别目录的系统方法 | P3 | 集成测试、发布 | 进行中：3.0.55 本地改好（`definitions.AttachmentCategories`、配置键 `ATTACHMENT_COMPONENT`、操作 `infra.authz.system.catalog_read`、集成测试 `TestTheAttachmentCategoryCatalog` 用本地 SDK 过），等 SDK 发布后换依赖再发；套件的格登记表与注册表要加 `infra.authz.system.catalog_read`，格的授权配置要给 `ATTACHMENT_COMPONENT` |
-| P5 | `infra/attachment`：状态表、凭证、上传确认（条件复制到最终键后检查）、扫描端口、下载、解除引用与保全、清理与对账、事件；先写红的测试 | P3、P4 | 集成测试（对 RustFS）、改坏检查、`make layout-check` | ⬜ |
-| P6 | `erp/purchase`：订单的附件（类别、用户面、作废时解除引用）；种子：几张订单带合同附件 | P5 | 集成测试、发布 | ⬜ |
-| P7 | 发布与连锁：外壳 `be/go-infra` 加成员；格的对象存储配置（浏览器可达的主机名）；L3（经预签名地址上传、确认、下载；凭证用错附件或别人用被拒；严格类别转发字节；作废后解除引用）；一致性考试 | P5、P6 | 格从空库到 L3；`make version-check`、`make gates` | ⬜ |
+| P2 | 契约：线协议（条款、向量、能力）；附件组件的 proto 与 OpenAPI、事件；授权组件契约加方法；采购的 OpenAPI | P1 | 校验；`make authz-keys-check` | ✅ 2026-11-13：线协议 alpha.127（第 19 章、`UPLOAD_INCOMPLETE`、`OBJECT_STORE_PUBLIC_URL`）；授权契约 alpha.7；附件契约 `contract/v3.0.0-alpha.1`（proto、OpenAPI、事件）；采购契约 alpha.8（四个附件路由） |
+| P3 | SDK：`storage`（对 RustFS 的集成测试，实测条件写入与服务端复制）、资源定义的附件类别；先接真实组件再发（复盘 C7 的 R1）；全系统换 SDK | P2 | SDK 测试、改坏检查、发布 | ✅ 2026-11-13：be-sdk-go alpha.130 已发（`storage`、`s3sig.Presign`、`AttachmentCategories`、`httpx.Context.Download`、`UPLOAD_INCOMPLETE`）；改坏检查 9/9 红（`c9-data/mut-p3-sdk/`）；全系统换 SDK 在后台跑（`sdk-unify.py`，17 个组件） |
+| P4 | `infra/authz`：附件类别目录的系统方法 | P3 | 集成测试、发布 | ✅ 2026-11-13：`infra/authz` 3.0.55 已发（集成测试 185 s 全过） |
+| P5 | `infra/attachment`：状态表、凭证、上传确认（条件复制到最终键后检查）、扫描端口、下载、解除引用与保全、清理与对账、事件；先写红的测试 | P3、P4 | 集成测试（对 RustFS）、改坏检查、`make layout-check` | ✅ 2026-11-13：`infra/attachment` 3.0.0 发布，3.0.1 补了布局检查要的每层文件表（3.0.0 发布前没跑 `make layout-check`，复盘记一条）；改坏检查 13/16 红，2 处两道守卫、1 处要故障注入（`c9-data/mut-p5-attachment/`） |
+| P6 | `erp/purchase`：订单的附件（类别、用户面、作废时解除引用）；种子：几张订单带合同附件 | P5 | 集成测试、发布 | ✅ 2026-11-13：`erp/purchase` 3.0.15（类别、操作 `read_invoice`、四个路由、订单结束的工作项；集成测试新步 `attachments` 用附件组件的替身，改坏检查 5/5 红）；3.0.16 补种子（`read_invoice` 授给维护与主管；CN01 六张订单各一份合同）——3.0.15 发布时漏了种子，复盘记一条 |
+| P7 | 发布与连锁：外壳 `be/go-infra` 加成员；格的对象存储配置（浏览器可达的主机名）；L3（经预签名地址上传、确认、下载；凭证用错附件或别人用被拒；严格类别转发字节；作废后解除引用）；一致性考试 | P5、P6 | 格从空库到 L3；`make version-check`、`make gates` | 进行中：全系统 be-sdk-go alpha.130（17 个组件；采购因为标了“已单独发布”没跟依赖，3.0.17 补上，财务 3.0.17、付款 3.0.21 连锁）；探针 3.2.59、套件 v1.0.94；外壳 go-infra 3.0.92（加附件成员）、go-core 3.0.111；be-ops alpha.26、be-edge alpha.12；`make version-check` 通过；格 C9-A 待跑 |
 
 ## P1 的设计（草稿，AI 定）
 
