@@ -16,7 +16,7 @@
   - **C8 `infra/notification` 完成**（2026-11-13，子计划 [c8-notification-plan.md](c8-notification-plan.md)，复盘 [retro-c8.md](retro-c8.md)）：通知意图（线协议第 18 章）、流程内核发审批待办的意图、通知组件 3.0.3、统一待办 3.0.7（发布者以流为准）；格 C8-N 两次从空库到 L3 38 全过。
   - C9 `infra/attachment` 进行中：子计划 [c9-attachment-plan.md](c9-attachment-plan.md)（每步的状态在那里）。
   - 顺带记下：`erp/sales` 的产品替身用裸 gRPC 状态答 `NO_CONVERSION`、它的测试没走到这条路：下次动 `erp/sales` 时改替身并补“单位不能换算被拒”。采购账号没有主数据的读取授予（主数据各组件的种子没给），前端要时去源头补。
-  - 每个组件开工先列出它需要、而已重建的源头组件还没做的能力，先回源头补；连锁发布用 `experiment-scripts/sdk-unify.py --moved <ID>`（正在做、还没发版的组件也以 `--moved` 传入，免得被连锁发布；它的依赖自己改）；外壳用 `c1-data/shells-e6.sh` 的写法（子 shell 单独执行再看退出码：`( … ) ||` 里 `set -e` 不生效）。
+  - 每个组件开工先列出它需要、而已重建的源头组件还没做的能力，先回源头补；连锁发布用 `experiment-scripts/sdk-unify.py --moved <ID>`（`--moved` 只给已经发布、依赖也都钉对了的组件；它依赖的组件本轮会升、或它钉着另一个 `--moved` 的旧版本时，脚本拒绝——C9 因此多发过一轮；正在做、还没发版的组件先别统一，发了再跑）；外壳用 `c1-data/shells-e6.sh` 的写法（子 shell 单独执行再看退出码：`( … ) ||` 里 `set -e` 不生效）。
   - 下次改到这些组件时一起做（结构问题登记里写着）：`erp/sales` 的 `Deref` 挪进 `core`、提交确认也审计；各组件的版本常量挪进 `internal/core`、删掉不序列化类型的 `json:"-"`。
 - **底层先行六项完成**（2026-11-02 至 11-10，维护者逐项确认门槛）。各项的经过、发布与验收在计划里，门槛核对在各自的 `foundations-0N-data/gate.md`，复盘的改进都已批准并落实：
 

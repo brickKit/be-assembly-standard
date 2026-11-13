@@ -10,6 +10,7 @@ Usage: sdk-unify.py --sdk v3.0.0-alpha.N --line "<design.md status line, Chinese
 --moved ID: a component already released with a change of its own (its new version committed): every component that
 depends on it moves for its pins, and theirs in turn. With --sdk the version they are all on, that is the cascade of
 one component's release alone (C1 E0b: mdm/org 3.0.34's positions moved partner, product and the ERP members).
+A --moved component keeps its committed pins, so the run refuses one whose dependencies move in it (C9).
 
 For each component: the last digit of its version up; its exact dependencies on the components moved before it set to
 their new versions (a component already released on the SDK still moves when something it depends on moves); `go get` the SDK, `go mod tidy`; `go vet`, the unit tests, the integration tests (`-p 1`, the
@@ -63,6 +64,17 @@ def deps(d: pathlib.Path) -> list[str]:
     for e in (m.get("dependencies") or {}).get("components") or []:
         ref = e["id"] if isinstance(e, dict) else e
         out.append(ref.split("@")[0])
+    return out
+
+
+def pins(d: pathlib.Path) -> dict[str, str]:
+    """A component's exact dependencies: id -> pinned version."""
+    m = yaml.safe_load((d / "component.yaml").read_text())
+    out = {}
+    for e in (m.get("dependencies") or {}).get("components") or []:
+        ref = e["id"] if isinstance(e, dict) else e
+        if "@" in ref:
+            out[ref.split("@")[0]] = ref.split("@")[1]
     return out
 
 
@@ -171,16 +183,37 @@ def main() -> int:
             on.remove(c)
         seq = [x for x in seq if x != c]
         done = done + [c]
-    moving = set(c for c in seq if c not in on) | set(o.moved)
+    moving = set(c for c in seq if c not in on)
+    released = {m: committed_version(cs[m]) for m in o.moved}
+
+    def needs(c: str) -> bool:
+        """c moves for its pins: something it depends on moves in this run, or it pins an older version of a component
+        released before the run (--moved; one that pins the released version already needs nothing)."""
+        p = pins(cs[c])
+        return any(d in moving for d in deps(cs[c])) or any(d in released and p.get(d) != released[d] for d in p)
     changed = True
     while changed:
         changed = False
         for c in list(on):
-            if any(d in moving for d in deps(cs[c])):
+            if needs(c):
                 on.remove(c)
                 moving.add(c)
                 changed = True
     done, seq = done + on, [c for c in seq if c not in on]
+    # a --moved component keeps its committed pins: if something it depends on moves in this run, those pins go stale
+    # (C9: erp/purchase 3.0.16 was --moved while mdm/*, erp/inventory and erp/costing moved; pin-check caught it after)
+    stale = {c: [d for d in deps(cs[c]) if d in seq] for c in o.moved}
+    # ... and a --moved component that pins another --moved one must pin its released version (C9: erp/sales 3.0.60
+    # pinned erp/inventory 3.0.48 while 3.0.49 was released beside it)
+    for c in o.moved:
+        stale[c] += [f"{d}@{v} (released {committed_version(cs[d])})" for d, v in pins(cs[c]).items()
+                     if d in o.moved and v != committed_version(cs[d])]
+    if any(stale.values()):
+        for c, ds in stale.items():
+            if ds:
+                print(f"UNIFY REFUSED --moved {c} depends on {', '.join(ds)}, which move in this run: run without "
+                      f"--moved {c} (it moves for its pins) or after its dependencies are released", flush=True)
+        return 2
     plan = {c: committed_version(cs[c]) for c in done} | {c: bump(committed_version(cs[c])) for c in seq}
     print(f"UNIFY plan to be-sdk-go {o.sdk}:", ", ".join(f"{c} {plan[c]}" for c in seq),
           f"(already on it: {', '.join(on) or 'none'})", flush=True)

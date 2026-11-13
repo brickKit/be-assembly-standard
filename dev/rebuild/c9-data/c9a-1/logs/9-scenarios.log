@@ -1,0 +1,130 @@
+FFFF......................................                               [100%]
+=================================== FAILURES ===================================
+____________________ test_attachment_a_contract_round_trip _____________________
+
+bob = User(name='test.bob', cell=Cell(dir=PosixPath('/home/zhijie/Desktop/github/be-assembly-standard/dev/rebuild/experiment...PDSsL-prckG7TBcUpLqCg', principal='01a1d284-3537-740e-a74d-6a9136969bd3', http=<httpx.Client object at 0x7bc84e0f4050>)
+world = World(le='01a1d284-6fe4-7750-8d5e-14d8f7b67962', shanghai='01a1d284-ff38-7a11-9984-38b8a97febb9', beijing='01a1d285-00...-ae17485284d5', 'CS-POST': '01a1d284-7130-763c-99a6-852c74528afe', 'PROJ-OLD': '01a1d284-713e-703a-8207-2769473c8fef'})
+supplier = '01a1d284-b490-767c-a548-098f67a15b9f'
+
+    def test_attachment_a_contract_round_trip(bob, world, supplier):  # noqa: F811
+        """AT03, AT04, AT06: the confirmation before the upload answers UPLOAD_INCOMPLETE and keeps the credential; after
+        it the attachment is available with the size and type infra/attachment read itself; the contract downloads from a
+        presigned address as the same bytes, saved as a file."""
+>       o = draft_order(bob, world, supplier)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+scenarios/test_attachment.py:65: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+scenarios/test_attachment.py:28: in draft_order
+    return bob.post("erp/purchase", "/api/purchase/orders", {
+scenarios/conftest.py:47: in post
+    return self.ok(self.call("POST", component, path, body))
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+r = <Response [409 Conflict]>
+
+    @staticmethod
+    def ok(r: httpx.Response) -> dict:
+        if r.status_code != 200:
+>           raise Refused(f"{r.request.method} {r.request.url.path}: {r.status_code} {r.text[:300]}")
+E           conftest.Refused: POST /api/purchase/orders: 409 {"type":"urn:be:erp/purchase:NOT_ELIGIBLE","title":"A supplier or product may not be used for a purchase in this legal entity now","status":409,"detail":"product 01a1d284-cf1f-75c6-b28d-d64a46ac594b is not eligible to purchase: not_purchasable","reason":"NOT_ELIGIBLE","domain":"erp/purchase","trace_
+
+scenarios/conftest.py:52: Refused
+______________ test_attachment_the_content_decides_not_the_claim _______________
+
+bob = User(name='test.bob', cell=Cell(dir=PosixPath('/home/zhijie/Desktop/github/be-assembly-standard/dev/rebuild/experiment...PDSsL-prckG7TBcUpLqCg', principal='01a1d284-3537-740e-a74d-6a9136969bd3', http=<httpx.Client object at 0x7bc84e0f4050>)
+world = World(le='01a1d284-6fe4-7750-8d5e-14d8f7b67962', shanghai='01a1d284-ff38-7a11-9984-38b8a97febb9', beijing='01a1d285-00...-ae17485284d5', 'CS-POST': '01a1d284-7130-763c-99a6-852c74528afe', 'PROJ-OLD': '01a1d284-713e-703a-8207-2769473c8fef'})
+supplier = '01a1d284-b490-767c-a548-098f67a15b9f'
+
+    def test_attachment_the_content_decides_not_the_claim(bob, world, supplier):  # noqa: F811
+        """AT04: an HTML page declared as a PDF is rejected by what infra/attachment detects in the final object."""
+>       o = draft_order(bob, world, supplier)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+scenarios/test_attachment.py:84: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+scenarios/test_attachment.py:28: in draft_order
+    return bob.post("erp/purchase", "/api/purchase/orders", {
+scenarios/conftest.py:47: in post
+    return self.ok(self.call("POST", component, path, body))
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+r = <Response [409 Conflict]>
+
+    @staticmethod
+    def ok(r: httpx.Response) -> dict:
+        if r.status_code != 200:
+>           raise Refused(f"{r.request.method} {r.request.url.path}: {r.status_code} {r.text[:300]}")
+E           conftest.Refused: POST /api/purchase/orders: 409 {"type":"urn:be:erp/purchase:NOT_ELIGIBLE","title":"A supplier or product may not be used for a purchase in this legal entity now","status":409,"detail":"product 01a1d284-cf1f-75c6-b28d-d64a46ac594b is not eligible to purchase: not_purchasable","reason":"NOT_ELIGIBLE","domain":"erp/purchase","trace_
+
+scenarios/conftest.py:52: Refused
+_________________ test_attachment_the_invoice_scans_are_strict _________________
+
+bob = User(name='test.bob', cell=Cell(dir=PosixPath('/home/zhijie/Desktop/github/be-assembly-standard/dev/rebuild/experiment...PDSsL-prckG7TBcUpLqCg', principal='01a1d284-3537-740e-a74d-6a9136969bd3', http=<httpx.Client object at 0x7bc84e0f4050>)
+login = <function login.<locals>.get at 0x7bc84dfbcb40>
+world = World(le='01a1d284-6fe4-7750-8d5e-14d8f7b67962', shanghai='01a1d284-ff38-7a11-9984-38b8a97febb9', beijing='01a1d285-00...-ae17485284d5', 'CS-POST': '01a1d284-7130-763c-99a6-852c74528afe', 'PROJ-OLD': '01a1d284-713e-703a-8207-2769473c8fef'})
+supplier = '01a1d284-b490-767c-a548-098f67a15b9f'
+
+    def test_attachment_the_invoice_scans_are_strict(bob, login, world, supplier):  # noqa: F811
+        """AT06, security 09a: the invoice scan is not listed for the buyer who lacks its field, nor downloadable; the lead
+        gets a one-time credential and infra/attachment answers the bytes with headers that only save them."""
+        buyer, lead = login("test.buyer.cn"), login("test.buyer.lead")
+>       o = draft_order(bob, world, supplier)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+scenarios/test_attachment.py:97: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+scenarios/test_attachment.py:28: in draft_order
+    return bob.post("erp/purchase", "/api/purchase/orders", {
+scenarios/conftest.py:47: in post
+    return self.ok(self.call("POST", component, path, body))
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+r = <Response [409 Conflict]>
+
+    @staticmethod
+    def ok(r: httpx.Response) -> dict:
+        if r.status_code != 200:
+>           raise Refused(f"{r.request.method} {r.request.url.path}: {r.status_code} {r.text[:300]}")
+E           conftest.Refused: POST /api/purchase/orders: 409 {"type":"urn:be:erp/purchase:NOT_ELIGIBLE","title":"A supplier or product may not be used for a purchase in this legal entity now","status":409,"detail":"product 01a1d284-cf1f-75c6-b28d-d64a46ac594b is not eligible to purchase: not_purchasable","reason":"NOT_ELIGIBLE","domain":"erp/purchase","trace_
+
+scenarios/conftest.py:52: Refused
+________________________ test_attachment_the_order_ends ________________________
+
+bob = User(name='test.bob', cell=Cell(dir=PosixPath('/home/zhijie/Desktop/github/be-assembly-standard/dev/rebuild/experiment...PDSsL-prckG7TBcUpLqCg', principal='01a1d284-3537-740e-a74d-6a9136969bd3', http=<httpx.Client object at 0x7bc84e0f4050>)
+world = World(le='01a1d284-6fe4-7750-8d5e-14d8f7b67962', shanghai='01a1d284-ff38-7a11-9984-38b8a97febb9', beijing='01a1d285-00...-ae17485284d5', 'CS-POST': '01a1d284-7130-763c-99a6-852c74528afe', 'PROJ-OLD': '01a1d284-713e-703a-8207-2769473c8fef'})
+supplier = '01a1d284-b490-767c-a548-098f67a15b9f'
+
+    def test_attachment_the_order_ends(bob, world, supplier):  # noqa: F811
+        """D68: a removed attachment is detached; the order's cancellation detaches the rest (erp/purchase commands it by
+        a work item after the cancellation commits) and the cancelled order takes no new attachment."""
+>       o = draft_order(bob, world, supplier)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+scenarios/test_attachment.py:121: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+scenarios/test_attachment.py:28: in draft_order
+    return bob.post("erp/purchase", "/api/purchase/orders", {
+scenarios/conftest.py:47: in post
+    return self.ok(self.call("POST", component, path, body))
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+r = <Response [409 Conflict]>
+
+    @staticmethod
+    def ok(r: httpx.Response) -> dict:
+        if r.status_code != 200:
+>           raise Refused(f"{r.request.method} {r.request.url.path}: {r.status_code} {r.text[:300]}")
+E           conftest.Refused: POST /api/purchase/orders: 409 {"type":"urn:be:erp/purchase:NOT_ELIGIBLE","title":"A supplier or product may not be used for a purchase in this legal entity now","status":409,"detail":"product 01a1d284-cf1f-75c6-b28d-d64a46ac594b is not eligible to purchase: not_purchasable","reason":"NOT_ELIGIBLE","domain":"erp/purchase","trace_
+
+scenarios/conftest.py:52: Refused
+=========================== short test summary info ============================
+FAILED scenarios/test_attachment.py::test_attachment_a_contract_round_trip - ...
+FAILED scenarios/test_attachment.py::test_attachment_the_content_decides_not_the_claim
+FAILED scenarios/test_attachment.py::test_attachment_the_invoice_scans_are_strict
+FAILED scenarios/test_attachment.py::test_attachment_the_order_ends - conftes...
+4 failed, 38 passed in 46.35s

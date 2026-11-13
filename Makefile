@@ -64,6 +64,9 @@ obs-down:     ; @bash $(S)/optional.sh obs down      ## 关闭可观测性 5 件
 registry-check: authz-keys-check  ## 校验端口册与 schema 册自洽；格的授权登记表与组件定义一致
 	@bash $(S)/registry-check.sh
 
+seed-ops-check:  ## 每个已重建组件的用户面操作都有种子授予（有意不授的写在脚本里，带理由）
+	@PYTHONDONTWRITEBYTECODE=1 python3 $(S)/seed-ops-check.py
+
 authz-keys-check:  ## 套件里格的授权登记表（cells/prepare.py）与每个已重建组件定义的资源、操作一致（两个方向）
 	@PYTHONDONTWRITEBYTECODE=1 python3 $(S)/authz-keys-check.py
 
@@ -189,7 +192,7 @@ teardown-down:  ## 停掉拆回验证的容器
 # The Go gates of the 0.x be-acceptance (import, SystemClient, bare-route, event and OpenAPI
 # breaking changes, data-scope tests, dependency versions, config keys) moved to its legacy/v0
 # branch with the old code (D59); conformance suites and gates return with the rebuilt tools.
-gates: docs-boundary docs-diagrams docs-mirror docs-links docs-ids docs-closure docs-index-check infra-images security-schemas no-binaries protocol-coverage-go layout-check scripts-test authz-keys-check integration-targets  ## Document gates (boundary, mirror, links, IDs, closure), infra image pins, security schemas, no build output in any repository, the components' layout, the scripts' own tests, the cells' authorization tables, every component's make test-integration reaching tests + brickkit up --dry-run
+gates: docs-boundary docs-diagrams docs-mirror docs-links docs-ids docs-closure docs-index-check infra-images security-schemas no-binaries protocol-coverage-go layout-check scripts-test authz-keys-check seed-ops-check integration-targets  ## Document gates (boundary, mirror, links, IDs, closure), infra image pins, security schemas, no build output in any repository, the components' layout, the scripts' own tests, the cells' authorization tables, every component's make test-integration reaching tests + brickkit up --dry-run
 	@echo "▸ brickkit up --dry-run"
 	@bash $(S)/lib/require-brickkit.sh
 	@brickkit up --dry-run

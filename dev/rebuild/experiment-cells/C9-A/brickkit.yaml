@@ -1,0 +1,80 @@
+# brickkit.yaml — what this project is made of: its sources and the exact component versions.
+# Shared and reviewed like code: commit it.
+project: c9-a
+
+# Install sources, tried in declaration order
+sources:
+  - name: local-dev
+    type: local
+    path: ./components # brickkit init already created this directory
+  - name: local-shells
+    type: local
+    path: ./shell # shells (kind: shell) are project code: brickkit new --shell writes here
+  - name: acceptance # the probes (one repository, tags test-probe-<variant>/<version>)
+    type: git
+    repo: https://github.com/brickKit/be-acceptance
+  - name: brickkit-github # one component per repository (the shells): be/go-core -> be-go-core
+    type: git
+    baseUrl: https://github.com/brickKit/
+# More sources: uncomment and fill in the address
+# - name: company-git
+#   type: git
+#   baseUrl: https://git.example.com/components/
+# - name: market
+#   type: market
+#   url: https://market.example.com/api/v1
+
+components:
+  - id: be/go-core
+    version: 3.0.111
+    kind: shell
+  - id: be/go-infra
+    version: 3.0.92
+    kind: shell
+  - id: be/py-render
+    version: 3.0.51
+    kind: shell
+  - id: crm/opportunity
+    version: 3.0.9
+  - id: erp/billing
+    version: 3.0.67
+  - id: erp/costing
+    version: 3.0.8
+  - id: erp/credit
+    version: 3.0.45
+  - id: erp/finance
+    version: 3.0.17
+  - id: erp/inventory
+    version: 3.0.47
+  - id: erp/payment
+    version: 3.0.21
+  - id: erp/purchase
+    version: 3.0.17
+  - id: erp/sales
+    version: 3.0.58
+  - id: infra/attachment
+    version: 3.0.1
+  - id: infra/audit
+    version: 3.0.45
+  - id: infra/authz
+    version: 3.0.55
+  - id: infra/iam-casdoor
+    version: 3.0.54
+  - id: infra/notification
+    version: 3.0.4
+  - id: infra/print
+    version: 3.0.24
+  - id: infra/workflow
+    version: 3.0.8
+  - id: mdm/currency
+    version: 3.0.40
+  - id: mdm/employee
+    version: 3.0.12
+  - id: mdm/org
+    version: 3.0.42
+  - id: mdm/partner
+    version: 3.0.47
+  - id: mdm/product
+    version: 3.0.45
+  - id: test/probe-py2
+    version: 3.2.51
