@@ -1,0 +1,130 @@
+🚀 Starting project c10-a (target: docker)
+📋 Component state calculation:
+   ✅ be/go-core@3.0.113             starting (top-level)
+   ✅ be/go-infra@3.0.94             starting (top-level)
+   ✅ be/py-render@3.0.51            starting (top-level)
+   ✅ mdm/currency@3.0.42            starting (crm/opportunity needs it)
+   ✅ mdm/org@3.0.44                 starting (crm/opportunity needs it)
+   ✅ mdm/partner@3.0.49             starting (crm/opportunity needs it)
+   ✅ crm/opportunity@3.0.11         starting (top-level)
+   ✅ mdm/product@3.0.47             starting (erp/inventory needs it)
+   ✅ erp/credit@3.0.47              starting (erp/sales needs it)
+   ✅ erp/inventory@3.0.50           starting (erp/costing needs it)
+   ✅ erp/sales@3.0.62               starting (erp/billing needs it)
+   ✅ infra/print@3.0.24             starting (erp/billing needs it)
+   ✅ erp/billing@3.0.71             starting (top-level)
+   ✅ erp/costing@3.0.11             starting (erp/purchase needs it)
+   ✅ infra/attachment@3.0.3         starting (erp/purchase needs it)
+   ✅ mdm/employee@3.0.14            starting (erp/payment needs it)
+   ✅ erp/purchase@3.0.22            starting (erp/finance needs it)
+   ✅ erp/finance@3.0.20             starting (erp/payment needs it)
+   ✅ erp/payment@3.0.26             starting (top-level)
+   ✅ infra/audit@3.0.47             starting (crm/opportunity needs it)
+   ✅ infra/authz@3.0.57             starting (crm/opportunity needs it)
+   ✅ infra/iam-casdoor@3.0.56       starting (crm/opportunity needs it)
+   ✅ integration/im-dingtalk@3.0.1  starting (infra/notification needs it)
+   ✅ infra/notification@3.0.7       starting (top-level)
+   ✅ infra/workflow@3.0.10          starting (top-level)
+   ✅ test/probe-py2@3.2.51          starting (top-level)
+
+⚠️ Files under config/ may contain plaintext secrets
+   Config items: infra/iam-casdoor@3.0.56 → IAM_TOKEN_ISSUER ($var:IAM_ISSUER)
+   Why it matters: config/*.yaml and config/vars.yaml are meant to be committed to Git, so a secret written there goes into version control with it and can't be removed from the history
+   Suggestions:
+   1. Change it to a reference such as ${MY_TOKEN} (real value in .env) or file://.secrets/token
+   2. .env must be listed in .gitignore
+   3. Items that declare secret: true are ones the component author identified as credentials; the ones that merely have a suspicious name are judged by name only, not by value, so you can ignore them if they really aren't secrets
+📋 Start order (topological sort):
+   1. be-go-infra-3-0-94   no dependencies  (hosts mdm/currency@3.0.42, mdm/org@3.0.44, mdm/partner@3.0.49, mdm/product@3.0.47, infra/attachment@3.0.3, mdm/employee@3.0.14, infra/audit@3.0.47, infra/authz@3.0.57, infra/iam-casdoor@3.0.56, integration/im-dingtalk@3.0.1, infra/notification@3.0.7, infra/workflow@3.0.10)
+   2. be-go-core-3-0-113   ← depends on 1  (hosts crm/opportunity@3.0.11, erp/credit@3.0.47, erp/inventory@3.0.50, erp/sales@3.0.62, erp/billing@3.0.71, erp/costing@3.0.11, erp/purchase@3.0.22, erp/finance@3.0.20, erp/payment@3.0.26)
+   3. be-py-render-3-0-51  no dependencies  (hosts infra/print@3.0.24, test/probe-py2@3.2.51)
+
+Can start on their own: be-go-infra-3-0-94, be-py-render-3-0-51 (no dependencies)
+Only referenced by optional dependencies (turning them off affects no one: mode: disable): erp/costing, erp/credit, erp/finance, erp/purchase, erp/sales, infra/attachment, infra/print, integration/im-dingtalk, mdm/employee
+Longest dependency chain (2 levels): be-go-infra-3-0-94 → be-go-core-3-0-113
+   Components not on this chain start in parallel with it
+
+Dependency graph:
+   erp/sales@3.0.62 → mdm/currency@3.0.42
+                    → mdm/org@3.0.44
+                    → mdm/partner@3.0.49
+                    → mdm/product@3.0.47
+                    → erp/credit@3.0.47 (optional)
+                    → erp/inventory@3.0.50 (optional)
+   erp/purchase@3.0.22 → mdm/currency@3.0.42
+                       → mdm/org@3.0.44
+                       → mdm/partner@3.0.49
+                       → mdm/product@3.0.47
+                       → erp/inventory@3.0.50 (optional)
+                       → erp/costing@3.0.11 (optional)
+                       → infra/attachment@3.0.3 (optional)
+                       → mdm/employee@3.0.14 (optional)
+   erp/costing@3.0.11 → mdm/currency@3.0.42
+                      → mdm/org@3.0.44
+                      → erp/inventory@3.0.50
+   erp/inventory@3.0.50 → mdm/org@3.0.44
+                        → mdm/product@3.0.47
+   mdm/product@3.0.47 → mdm/org@3.0.44
+   erp/payment@3.0.26 → mdm/currency@3.0.42
+                      → mdm/org@3.0.44
+                      → mdm/partner@3.0.49
+                      → erp/finance@3.0.20 (optional)
+                      → erp/sales@3.0.62 (optional)
+                      → mdm/employee@3.0.14 (optional)
+   erp/finance@3.0.20 → mdm/currency@3.0.42
+                      → mdm/org@3.0.44
+                      → mdm/partner@3.0.49
+                      → erp/purchase@3.0.22 (optional)
+   erp/credit@3.0.47 → mdm/currency@3.0.42
+                     → mdm/org@3.0.44
+                     → mdm/partner@3.0.49
+   erp/billing@3.0.71 → mdm/currency@3.0.42
+                      → mdm/org@3.0.44
+                      → mdm/partner@3.0.49
+                      → erp/sales@3.0.62 (optional)
+                      → infra/print@3.0.24 (optional)
+   crm/opportunity@3.0.11 → mdm/currency@3.0.42
+                          → mdm/org@3.0.44
+                          → mdm/partner@3.0.49
+   mdm/partner@3.0.49 → mdm/org@3.0.44
+   mdm/employee@3.0.14 → mdm/org@3.0.44
+   infra/notification@3.0.7 → mdm/employee@3.0.14 (optional)
+                            → integration/im-dingtalk@3.0.1 (optional)
+⚠️ infra/workflow@3.0.10: IMPLEMENTATION_INSTANCE is not declared in the component's configSchema, so it has no effect
+   File: config/infra-workflow.yaml
+   Declared keys: AUDIT_GRPC_URL, AUTHZ_GRPC_URL, BUS_SUBSCRIPTION_CONCURRENCY, BUS_URL, DEPLOYMENT_ID, IAM_ISSUER, IAM_JWKS_URL, LOG_LEVEL, OBJECT_STORE_ACCESS_KEY, OBJECT_STORE_BUCKET, OBJECT_STORE_PREFIX, OBJECT_STORE_REGION, OBJECT_STORE_SECRET_KEY, OBJECT_STORE_URL, OTEL_URL, PG_DATABASE, PG_HOST, PG_IDLE_IN_TX_TIMEOUT, PG_LOCK_TIMEOUT, PG_MIGRATION_HOST, PG_MIGRATION_PORT, PG_OWNER_PASSWORD, PG_OWNER_USER, PG_PASSWORD, PG_POOLER_PREPARED, PG_POOL_BACKGROUND, PG_POOL_FOREGROUND, PG_PORT, PG_SCHEMA, PG_STATEMENT_TIMEOUT, PG_USER, RECOVERY_PHASE, SERVICE_TLS_CA_FILE, SERVICE_TLS_CERT_FILE, SERVICE_TLS_KEY_FILE, STOP_DRAIN_DELAY, STOP_TIMEOUT, WORKFLOW_STALE_AFTER, WORKFLOW_TASK_SOURCES
+📄 Generated: .brickkit/generated/compose.yaml
+
+🔧 Database migrations that run before startup (on failure that component won't start):
+   infra/attachment@3.0.3  /infra-attachment migrate
+   infra/audit@3.0.47  /infra-audit migrate
+   infra/authz@3.0.57  /infra-authz migrate
+   infra/iam-casdoor@3.0.56  /infra-iam-casdoor migrate
+   infra/notification@3.0.7  /infra-notification migrate
+   infra/print@3.0.24  python -m infra_print migrate
+   infra/workflow@3.0.10  /infra-workflow migrate
+   integration/im-dingtalk@3.0.1  /integration-im-dingtalk migrate
+   mdm/currency@3.0.42  /mdm-currency migrate
+   mdm/org@3.0.44  /mdm-org migrate
+   mdm/employee@3.0.14  /mdm-employee migrate
+   mdm/partner@3.0.49  /mdm-partner migrate
+   crm/opportunity@3.0.11  /crm-opportunity migrate
+   erp/billing@3.0.71  /erp-billing migrate
+   erp/credit@3.0.47  /erp-credit migrate
+   erp/finance@3.0.20  /erp-finance migrate
+   erp/payment@3.0.26  /erp-payment migrate
+   mdm/product@3.0.47  /mdm-product migrate
+   erp/inventory@3.0.50  /erp-inventory migrate
+   erp/costing@3.0.11  /erp-costing migrate
+   erp/purchase@3.0.22  /erp-purchase migrate
+   erp/sales@3.0.62  /erp-sales migrate
+   test/probe-py2@3.2.51  python -m probe_py migrate
+
+🐳 Starting (docker)...
+   be-go-core-3-0-113           running (healthy)
+   be-go-infra-3-0-94           running (healthy)
+   be-py-render-3-0-51          running (healthy)
+✅ All components started (3)
+
+💡 View the status: brickkit status
+   View the logs: docker compose -p brickkit-c10-a logs -f

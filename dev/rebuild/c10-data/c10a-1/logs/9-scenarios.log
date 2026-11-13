@@ -1,0 +1,69 @@
+........F.................F....................                          [100%]
+=================================== FAILURES ===================================
+_____________________ test_dingtalk_approve_from_the_card ______________________
+
+bob = User(name='test.bob', cell=Cell(dir=PosixPath('/home/zhijie/Desktop/github/be-assembly-standard/dev/rebuild/experiment...6E29GOEliw0vQ3kCIzQCg', principal='01a1d66b-89e2-7236-a0fb-fdfdb6f08089', http=<httpx.Client object at 0x7079b21c0410>)
+login = <function login.<locals>.get at 0x7079b2112820>
+sim = Sim(app_key='be-cell-app', app_secret='4HSLp5ODCU2MP_XS8zmsGy6DOWawNX93', cards=[{'outTrackId': '01a1d679-2aed-73b3-96...ck=<unlocked _thread.lock object at 0x7079b207cc50>, server=<http.server.ThreadingHTTPServer object at 0x7079b20d6cf0>)
+keys = ('R0D6C-wr3YZ85JXnX41eNKsYrbmiVvGE', 'qwp60VbK9pWf+YBdp2QmmK0q2xPgFuYmBfS8cehboEE')
+world = World(le='01a1d66b-cfae-7aa4-b536-3944f919bc45', shanghai='01a1d66c-3418-759f-bcf5-42367fb02e00', beijing='01a1d66c-36...-fcc7ecf1f800', 'CS-POST': '01a1d66b-d06c-783a-baba-772b04e84ec5', 'PROJ-OLD': '01a1d66b-d06e-7d57-b37e-2762fae2e81c'})
+
+    def test_dingtalk_approve_from_the_card(bob, login, sim, keys, world):
+        """P17.19, P17.20, P20.6, P20.8: the requisition's approval is a card with approve and reject buttons and the link;
+        clicking approve approves the task; the same push again and a second click of approve make no second decision;
+        reject afterwards is refused as GRANT_USED and the lead is told in-app."""
+        lead = login("test.buyer.lead")
+        req = submitted_requisition(bob, world)
+        entry = worklist_entry(lead, TASK, req["id"])
+        card = card_of(sim, entry)
+        actions = {b.get("Action") for b in card["buttons"]}
+>       assert {"approve", "reject"} <= actions, card
+E       AssertionError: {'outTrackId': '01a1d679-2aed-73b3-96ba-934c3416bab3', 'userId': 'dt-buyer-lead', 'template': 'be-cell-card', 'title': 'Purchase requisition PR-CN01-2026-000049', ...}
+E       assert {'approve', 'reject'} <= {'', 'approve'}
+E         
+E         Extra items in the left set:
+E         'reject'
+
+scenarios/test_dingtalk.py:116: AssertionError
+_________________ test_notification_the_approvers_preferences __________________
+
+bob = User(name='test.bob', cell=Cell(dir=PosixPath('/home/zhijie/Desktop/github/be-assembly-standard/dev/rebuild/experiment...6E29GOEliw0vQ3kCIzQCg', principal='01a1d66b-89e2-7236-a0fb-fdfdb6f08089', http=<httpx.Client object at 0x7079b21c0410>)
+login = <function login.<locals>.get at 0x7079b2112820>
+world = World(le='01a1d66b-cfae-7aa4-b536-3944f919bc45', shanghai='01a1d66c-3418-759f-bcf5-42367fb02e00', beijing='01a1d66c-36...-fcc7ecf1f800', 'CS-POST': '01a1d66b-d06c-783a-baba-772b04e84ec5', 'PROJ-OLD': '01a1d66b-d06e-7d57-b37e-2762fae2e81c'})
+
+    def test_notification_the_approvers_preferences(bob, login, world):
+        """NT03, NT07, NT09: the lead turns approval tasks off: a requisition submitted then reaches the worklist but no
+        message; turned on again, the next one does; security alerts cannot be turned off."""
+        lead = login("test.buyer.lead")
+        path = "/api/notification/preferences/approval_task/in_app"
+    
+        def put(enabled: bool):
+            return lead.http.put(lead.url("infra/notification", path), json={"enabled": enabled},
+                                 headers={"Authorization": f"Bearer {lead.token}"})
+    
+        r = lead.http.put(lead.url("infra/notification", "/api/notification/preferences/security_alert/in_app"),
+                          json={"enabled": False}, headers={"Authorization": f"Bearer {lead.token}"})
+        assert r.status_code == 400 and r.json()["reason"] == "REQUEST_INVALID", r.text
+        assert put(False).status_code == 200
+        try:
+            off = submitted_requisition(bob, world)
+            off_entry = worklist_entry(lead, "erp.purchase.requisition.approval", off["id"])
+            # the intent went out with the task's projection; the notification component takes it in its own time (L3
+            # cannot read its delivery results): give it a moment before the preference turns back
+            time.sleep(5)
+        finally:
+            assert put(True).status_code == 200
+        on = submitted_requisition(bob, world)
+        on_entry = worklist_entry(lead, "erp.purchase.requisition.approval", on["id"])
+        eventually(lambda: message_of(lead, f"/workflow/tasks/{on_entry['task']['id']}"), seconds=60)
+        assert message_of(lead, f"/workflow/tasks/{off_entry['task']['id']}") is None, "turned off when it was delivered"
+        prefs = {p["category"]: p for p in lead.get("infra/notification", "/api/notification/preferences")["preferences"]}
+>       assert prefs["approval_task"]["enabled"] is True and prefs["security_alert"]["mandatory"] is True, prefs
+E       AssertionError: {'approval_task': {'category': 'approval_task', 'channel': 'dingtalk', 'enabled': True, 'mandatory': False, ...}, 'due... ...}, 'legal_notice': {'category': 'legal_notice', 'channel': 'in_app', 'enabled': True, 'mandatory': True, ...}, ...}
+E       assert (True is True and False is True)
+
+scenarios/test_notification.py:89: AssertionError
+=========================== short test summary info ============================
+FAILED scenarios/test_dingtalk.py::test_dingtalk_approve_from_the_card - Asse...
+FAILED scenarios/test_notification.py::test_notification_the_approvers_preferences
+2 failed, 45 passed in 60.81s (0:01:00)

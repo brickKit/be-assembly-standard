@@ -17,7 +17,7 @@
 | `infra/authz-static` | 授权的静态配置成员 | 远期 | — | — | — | — | — |
 | `infra/authz-openfga` | 授权的关系图成员（OpenFGA） | 远期 | — | — | — | — | — |
 | `infra/workflow` | 统一待办（不含流程引擎） | 当前重建 | 3.0.10 | [infra.md](../07-components/infra.md#infraworkflow) | [BRICKKIT](../../../components/infra/workflow/BRICKKIT.md) · [AGENTS](../../../components/infra/workflow/AGENTS.md) · [design](../../../components/infra/workflow/docs/design.md) | 身份（`infra/iam-*`）、`infra/authz` | — |
-| `infra/notification` | 通知意图、偏好与通道路由 | 当前重建 | 3.0.7 | [infra.md](../07-components/infra.md#infranotification) | [BRICKKIT](../../../components/infra/notification/BRICKKIT.md) · [AGENTS](../../../components/infra/notification/AGENTS.md) · [design](../../../components/infra/notification/docs/design.md) | 身份（`infra/iam-*`）、`infra/authz` | `integration/im-dingtalk` |
+| `infra/notification` | 通知意图、偏好与通道路由 | 当前重建 | 3.0.8 | [infra.md](../07-components/infra.md#infranotification) | [BRICKKIT](../../../components/infra/notification/BRICKKIT.md) · [AGENTS](../../../components/infra/notification/AGENTS.md) · [design](../../../components/infra/notification/docs/design.md) | 身份（`infra/iam-*`）、`infra/authz` | `integration/im-dingtalk` |
 | `infra/attachment` | 附件元数据、处理状态与授权协作 | 当前重建 | 3.0.3 | [infra.md](../07-components/infra.md#infraattachment) | [BRICKKIT](../../../components/infra/attachment/BRICKKIT.md) · [AGENTS](../../../components/infra/attachment/AGENTS.md) · [design](../../../components/infra/attachment/docs/design.md) | 身份（`infra/iam-*`）、`infra/authz` | `hrm/expense` |
 | `infra/print` | 单据与标签渲染 | 当前重建 | 3.0.24 | [infra.md](../07-components/infra.md#infraprint) | [BRICKKIT](../../../components/infra/print/BRICKKIT.md) · [AGENTS](../../../components/infra/print/AGENTS.md) · [design](../../../components/infra/print/docs/design.md) | 身份（`infra/iam-*`）、`infra/authz` | — |
 | `infra/audit` | 业务审计的集中保存与查询；兼任独立证据存储 | 当前重建 | 3.0.47 | [infra.md](../07-components/infra.md#infraaudit) | [BRICKKIT](../../../components/infra/audit/BRICKKIT.md) · [AGENTS](../../../components/infra/audit/AGENTS.md) · [design](../../../components/infra/audit/docs/design.md) | 身份（`infra/iam-*`）、`infra/authz` | — |
@@ -105,7 +105,7 @@
 
 | 组件 ID | 能力 | 范围 | 实现 | 边界卡 | 组件文档 | 必需依赖 | 被谁必需依赖 |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| `integration/im-dingtalk` | 钉钉消息与回调 | 当前重建 | 3.0.1 | [integration.md](../07-components/integration.md#im-渠道integrationim-dingtalkim-wechat-workim-feishuim-slackim-teams) | [BRICKKIT](../../../components/integration/im-dingtalk/BRICKKIT.md) · [AGENTS](../../../components/integration/im-dingtalk/AGENTS.md) · [design](../../../components/integration/im-dingtalk/docs/design.md) | `infra/notification`、身份（`infra/iam-*`） | — |
+| `integration/im-dingtalk` | 钉钉消息与回调 | 当前重建 | 3.0.2 | [integration.md](../07-components/integration.md#im-渠道integrationim-dingtalkim-wechat-workim-feishuim-slackim-teams) | [BRICKKIT](../../../components/integration/im-dingtalk/BRICKKIT.md) · [AGENTS](../../../components/integration/im-dingtalk/AGENTS.md) · [design](../../../components/integration/im-dingtalk/docs/design.md) | `infra/notification`、身份（`infra/iam-*`） | — |
 | `integration/edi` | 供应链数据交换 | 远期 | — | — | — | — | — |
 | `integration/print-agent` | 客户现场的打印代理 | 远期 | — | — | — | — | — |
 
@@ -125,7 +125,7 @@
 | 外壳 | 版本 | 编进的成员 | 文档 |
 | --- | --- | --- | --- |
 | `be/go-core` | 3.0.113 | `test/probe-go@3.2.61`、`test/probe-go2@3.2.61`、`test/probe-go3@3.2.61`、`test/probe-go4@3.2.61`、`erp/inventory@3.0.50`、`erp/credit@3.0.47`、`erp/sales@3.0.62`、`erp/billing@3.0.71`、`erp/purchase@3.0.22`、`erp/finance@3.0.20`、`erp/payment@3.0.26`、`erp/costing@3.0.11`、`crm/opportunity@3.0.11` | [BRICKKIT](../../../shell/be/go-core/BRICKKIT.md) · [AGENTS](../../../shell/be/go-core/AGENTS.md) |
-| `be/go-infra` | 3.0.94 | `test/probe-go@3.2.61`、`test/probe-go2@3.2.61`、`test/probe-go3@3.2.61`、`test/probe-go4@3.2.61`、`infra/iam-casdoor@3.0.56`、`infra/authz@3.0.57`、`infra/audit@3.0.47`、`mdm/org@3.0.44`、`mdm/employee@3.0.14`、`mdm/currency@3.0.42`、`mdm/partner@3.0.49`、`mdm/product@3.0.47`、`infra/workflow@3.0.10`、`infra/notification@3.0.7`、`infra/attachment@3.0.3`、`integration/im-dingtalk@3.0.1` | [BRICKKIT](../../../shell/be/go-infra/BRICKKIT.md) · [AGENTS](../../../shell/be/go-infra/AGENTS.md) |
+| `be/go-infra` | 3.0.95 | `test/probe-go@3.2.61`、`test/probe-go2@3.2.61`、`test/probe-go3@3.2.61`、`test/probe-go4@3.2.61`、`infra/iam-casdoor@3.0.56`、`infra/authz@3.0.57`、`infra/audit@3.0.47`、`mdm/org@3.0.44`、`mdm/employee@3.0.14`、`mdm/currency@3.0.42`、`mdm/partner@3.0.49`、`mdm/product@3.0.47`、`infra/workflow@3.0.10`、`infra/notification@3.0.8`、`infra/attachment@3.0.3`、`integration/im-dingtalk@3.0.2` | [BRICKKIT](../../../shell/be/go-infra/BRICKKIT.md) · [AGENTS](../../../shell/be/go-infra/AGENTS.md) |
 | `be/py-render` | 3.0.51 | `test/probe-py@3.2.51`、`test/probe-py2@3.2.51`、`infra/print@3.0.24` | [BRICKKIT](../../../shell/be/py-render/BRICKKIT.md) · [AGENTS](../../../shell/be/py-render/AGENTS.md) |
 
 ## 事件
