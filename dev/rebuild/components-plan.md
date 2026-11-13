@@ -40,7 +40,7 @@
 | C7 | `infra/workflow`：统一待办（不含流程引擎） | 边界卡 `infra.md`、支撑能力指南 | C0 | 同上；待办的数据范围（协议的安全 07） | ✅ 2026-11-12（子计划 [c7-workflow-plan.md](c7-workflow-plan.md)，复盘 [retro-c7.md](retro-c7.md)）：SDK 的流程内核（线协议第 17 章，alpha.118–122；be-sdk-go alpha.122–126）；采购 3.0.10、收付款 3.0.15 的审批走内核（政策的审批人：岗位或指定个人；以人为单位的职责分离；放行核对）；统一待办 `infra/workflow` 3.0.4（外壳 go-infra 3.0.88）；格 C7-W 从空库到 L3 36 全过 |
 | C8 | `infra/notification`：通知意图、偏好与通道路由 | 同上 | C0 | 同上 | ✅ 2026-11-13（子计划 [c8-notification-plan.md](c8-notification-plan.md)，复盘 [retro-c8.md](retro-c8.md)）：线协议第 18 章（alpha.124–126）、be-sdk-go alpha.128–129（`notify`、流程内核发审批待办的意图）；`infra/notification` 3.0.3（站内消息、偏好、岗位展开、按合并序号撤回）；统一待办 3.0.7 修了同一个发布者核对漏洞；格 C8-N 从空库到 L3 38 全过 |
 | C9 | `infra/attachment`：附件元数据、处理状态与授权协作 | 同上 | C0 | 同上 | ✅ 2026-11-13（子计划 [c9-attachment-plan.md](c9-attachment-plan.md)，复盘 [retro-c9.md](retro-c9.md)） |
-| C10 | `integration/im-dingtalk`：钉钉投递（外部系统用模拟器） | 边界卡 | C8 | 同上；外部调用走对外命令或幂等 | 进行中（子计划 [c10-dingtalk-plan.md](c10-dingtalk-plan.md)） |
+| C10 | `integration/im-dingtalk`：钉钉投递（外部系统用模拟器） | 边界卡 | C8 | 同上；外部调用走对外命令或幂等 | ✅ 2026-11-13（子计划 [c10-dingtalk-plan.md](c10-dingtalk-plan.md)，复盘 [retro-c10.md](retro-c10.md)）：钉钉渠道成员 3.0.3、线协议第 20 章（alpha.130）、SDK alpha.133；格 C10-A 从空库到 L3 47 全过 |
 | C11 | `infra/bff-mobile`：移动端展示聚合（Go，gqlgen 挂在 Gin 上，A108） | 边界卡、协议 20 | C1–C8 中它聚合的组件 | 同上 | ⬜ |
 | C12 | `frontend/pc` | 协议 20、前端技术栈 | 要显示的组件 | FE-1–FE-4 | ⬜ |
 | C13 | `frontend/mobile` | 同上 | C11 | FE-1–FE-4 | ⬜ |
