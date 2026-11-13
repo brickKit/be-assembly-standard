@@ -18,7 +18,7 @@
 | --- | --- |
 | ③ 契约 | `contract/openapi.yaml` 加路径，写 `x-operation`（权限键）、请求与响应、错误；有副作用的命令声明是否要求 `Idempotency-Key`。**资源定义**：在组件定义里登记操作（权限键、资源类型、用途、风险、副作用、是否审计）；新的权限键按[协议 19 的注册表](../06-protocols/19-config-secrets-registries-release.md#注册表)命名（[安全 06 的资源、动作与副作用声明](../06-protocols/security/06-security-contracts-and-capabilities.md#资源动作与副作用声明)） |
 | ④ 测试 | 契约测试核对路由与 OpenAPI 一致；授权的反例（没有权限答 403，看不见答 404）；**字段级的反例**：接口按字段决定给不给（附件类别、受限字段）时，要有一个能读记录、不能读那个字段的用户，受限字段再要一个有字段、没有读键的用户（采购的附件曾把“只看记录”写成了正确行为）；命令的业务规则 |
-| ⑤ 实现 | **路由**：在模块的路由注册里加一条，带上操作键；没有操作定义的路由没有授权检查（[组件实现约定的权限与资源](06-component-implementation.md#权限与资源)）。**处理函数的顺序**：校验参数 → 授权目标 → 认领幂等键 → 检查状态 → 在一个事务里写入、写发件表与审计（[原有决定 0507](../02-decisions/10-earlier-decisions.md#0507-幂等键按调用方划分命名空间并绑定到命令)）；事务里不发网络调用。**列表接口**：游标分页、白名单的排序与筛选、数据范围在 SQL 里（[协议 14 的列表](../06-protocols/14-data-foundations.md#列表游标排序与筛选)、[安全 07](../06-protocols/security/07-finite-expressions-containment-and-queries.md)） |
+| ⑤ 实现 | **路由**：在模块的路由注册里加一条，带上操作键；没有操作定义的路由没有授权检查（[组件实现约定的权限与资源](06-component-implementation.md#权限与资源)）。**处理函数的顺序**：校验参数 → 授权目标 → 认领幂等键 → 检查状态 → 在一个事务里写入、写发件表与审计（审计记录里“做了什么”写进 `Changes`；`TargetOf` 的第三个参数是写入后的对象、只取它的版本，写进去的东西审计不保留，`make audit-target-check` 拦字面量的写法）（[原有决定 0507](../02-decisions/10-earlier-decisions.md#0507-幂等键按调用方划分命名空间并绑定到命令)）；事务里不发网络调用。**列表接口**：游标分页、白名单的排序与筛选、数据范围在 SQL 里（[协议 14 的列表](../06-protocols/14-data-foundations.md#列表游标排序与筛选)、[安全 07](../06-protocols/security/07-finite-expressions-containment-and-queries.md)） |
 | ⑥ 核对 | `BRICKKIT.md` 的契约索引写上新接口与权限键。**种子**：新的权限键授给该用它的种子角色（`make seed-ops-check`，[种子与测试数据](07-seed-and-test-data.md)）；套件的格登记表加上它（`make authz-keys-check`） |
 
 ## 加或改一个事件
@@ -80,4 +80,4 @@
 | --- | --- |
 | ① 意图 | 先读[结构问题登记](12-structure-findings.md)的“待处理”，别把同一类问题带进新组件；走 `brickkit-component` 技能；布局按 [AI 导航的标准布局](05-ai-navigation.md#组件仓库的标准布局与代码地图)（入口包只组装、业务在 `internal/` 的模块里、集成测试在 `itest/`、每层一份说明），照一个已重建的同语言组件（`erp/sales` 最完整）；有生命周期或不变量的，按[状态与不变量集中一处](06-component-implementation.md#状态与不变量集中一处)；身份、端口、schema 先在 `registry/` 追加（[注册表](../../../registry/README.zh.md)）；开工前按边界卡写 `docs/design.md`（[组件的文档](03-documentation.md#组件的文档)）；上游缺的能力先列出来，先改上游 |
 | ② 考设计 | 不跳过 |
-| ⑥ 核对 | 重新生成组件索引（`make docs-index`）；要进外壳的，外壳的成员清单与依赖锁随它的第一个版本一起改 |
+| ⑥ 核对 | 重新生成组件索引（`make docs-index`）；要进外壳的，外壳的成员清单与依赖锁随它的第一个版本一起改；Go 组件的清单写 `release.goModule: true`（`make pin-check` 查）；种子在第一个格里第一次真正运行，等授予用对函数（读用 `UntilGranted`）。一致性考试固定问：设计“拥有的数据”写的保留期限有没有作业在删，写了“转义”“限速”“不写日志”的地方代码里有没有（C10：清理与转义写了没做，密钥经错误进了日志） |

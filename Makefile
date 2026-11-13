@@ -192,11 +192,15 @@ teardown-down:  ## 停掉拆回验证的容器
 # The Go gates of the 0.x be-acceptance (import, SystemClient, bare-route, event and OpenAPI
 # breaking changes, data-scope tests, dependency versions, config keys) moved to its legacy/v0
 # branch with the old code (D59); conformance suites and gates return with the rebuilt tools.
-gates: docs-boundary docs-diagrams docs-mirror docs-links docs-ids docs-closure docs-index-check infra-images security-schemas no-binaries protocol-coverage-go layout-check scripts-test authz-keys-check seed-ops-check integration-targets  ## Document gates (boundary, mirror, links, IDs, closure), infra image pins, security schemas, no build output in any repository, the components' layout, the scripts' own tests, the cells' authorization tables, every component's make test-integration reaching tests + brickkit up --dry-run
+gates: docs-boundary docs-diagrams docs-mirror docs-links docs-ids docs-closure docs-index-check infra-images security-schemas no-binaries protocol-coverage-go layout-check scripts-test authz-keys-check seed-ops-check audit-target-check integration-targets  ## Document gates (boundary, mirror, links, IDs, closure), infra image pins, security schemas, no build output in any repository, the components' layout, the scripts' own tests, the cells' authorization tables, every component's make test-integration reaching tests + brickkit up --dry-run
 	@echo "▸ brickkit up --dry-run"
 	@bash $(S)/lib/require-brickkit.sh
 	@brickkit up --dry-run
 .PHONY: gates
+
+audit-target-check:  ## 审计的目标不带“做了什么”：TargetOf 的第三个参数只取版本，写进去的内容审计不保留（C10 复盘 R6）
+	@PYTHONDONTWRITEBYTECODE=1 python3 $(S)/audit-target-check.py
+.PHONY: audit-target-check
 
 layout-check:  ## 已重建的组件（Go 与 Python）按业务模块分层、每层一份说明（docs/zh/01-conventions/05-ai-navigation.md 的布局检查）
 	@PYTHONDONTWRITEBYTECODE=1 python3 $(S)/layout-check.py

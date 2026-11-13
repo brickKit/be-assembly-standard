@@ -7,10 +7,13 @@
 # Usage: proxy-check.sh <cell directory>
 set -u
 D=$1; R=/home/zhijie/Desktop/github/be-assembly-standard; WAIT=${PROXY_WAIT:-45}
+# C10 retro R2: a shell whose build image has git falls back to the repository itself when the proxy answers 404,
+# so its modules need no wait; only the older shells (without that fallback) are checked
 mods=$(awk '/^  - id:/{id=$3} /^    version:/{v=$2} /^    kind: shell/{print id, v}' "$D/brickkit.yaml" | while read -r id v; do
+  git -C "$R/shell/$id" show "$v:Dockerfile" 2>/dev/null | grep -q 'apk add --no-cache git' && continue
   git -C "$R/shell/$id" show "$v:go.mod" 2>/dev/null | awk '$1 ~ /^github.com\/brickKit\// && $2 ~ /^v/ {print $1, $2}'
 done | sort -u)
-[ -n "$mods" ] || { echo "no Go shell in $D/brickkit.yaml (or its go.mod not found): nothing to check"; exit 0; }
+[ -n "$mods" ] || { echo "no Go shell without the git fallback in $D/brickkit.yaml: nothing to check"; exit 0; }
 echo "$(echo "$mods" | wc -l) pinned modules"
 deadline=$(( $(date +%s) + WAIT * 60 ))
 while true; do
