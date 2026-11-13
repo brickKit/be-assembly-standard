@@ -31,6 +31,7 @@ import re
 import subprocess
 import sys
 import tempfile
+import time
 
 import yaml
 
@@ -130,8 +131,14 @@ def release(d: pathlib.Path, subject: str, notes: str, log: pathlib.Path) -> Non
             tempfile.NamedTemporaryFile("w", suffix=".md", delete=False) as nf:
         msg.write(subject + "\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\n")
         nf.write(notes + "\n")
-    sh(f"brickkit lint && git add -A && git commit -q -F {msg.name} && git push -q && brickkit release --notes-file "
-       f"{nf.name}", d, log)
+    sh(f"brickkit lint && git add -A && git commit -q -F {msg.name} && git push -q", d, log)
+    try:
+        sh(f"brickkit release --notes-file {nf.name}", d, log)
+    except Exception:  # C8 retro R3: a moment's network failure (GitHub's publickey refusal) is tried once more
+        if "NETWORK_UNREACHABLE" not in log.read_text():
+            raise
+        time.sleep(30)
+        sh(f"brickkit release --notes-file {nf.name}", d, log)
     if "✅ Released" not in log.read_text():
         raise RuntimeError("brickkit release did not say Released")
 
