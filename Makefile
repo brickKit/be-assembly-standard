@@ -255,6 +255,7 @@ seed-data:  ## 灌重建后组件的种子数据（测试账号、授权、主�
 	@$(MAKE) -C components/integration/im-dingtalk seed   # the bindings granted (each user binds their own DingTalk)
 	@$(MAKE) -C components/erp/costing seed            # waits for the valuation of the movements above
 	@$(MAKE) -C components/crm/opportunity seed        # after erp/sales: its quote requests become sales' drafts
+	@$(MAKE) -C components/infra/bff-mobile seed        # the mobile entry; what it reads is the owners' seeds above
 .PHONY: seed-data
 
 seed-data-clean:  ## 主数据组件没有清除命令：说明怎样重置（docs/zh/03-seed-data.md）

@@ -21,7 +21,7 @@
 | `infra/attachment` | 附件元数据、处理状态与授权协作 | 当前重建 | 3.0.6 | [infra.md](../07-components/infra.md#infraattachment) | [BRICKKIT](../../../components/infra/attachment/BRICKKIT.md) · [AGENTS](../../../components/infra/attachment/AGENTS.md) · [design](../../../components/infra/attachment/docs/design.md) | 身份（`infra/iam-*`）、`infra/authz` | `hrm/expense` |
 | `infra/print` | 单据与标签渲染 | 当前重建 | 3.0.24 | [infra.md](../07-components/infra.md#infraprint) | [BRICKKIT](../../../components/infra/print/BRICKKIT.md) · [AGENTS](../../../components/infra/print/AGENTS.md) · [design](../../../components/infra/print/docs/design.md) | 身份（`infra/iam-*`）、`infra/authz` | — |
 | `infra/audit` | 业务审计的集中保存与查询；兼任独立证据存储 | 当前重建 | 3.0.49 | [infra.md](../07-components/infra.md#infraaudit) | [BRICKKIT](../../../components/infra/audit/BRICKKIT.md) · [AGENTS](../../../components/infra/audit/AGENTS.md) · [design](../../../components/infra/audit/docs/design.md) | 身份（`infra/iam-*`）、`infra/authz` | — |
-| `infra/bff-mobile` | 移动端展示聚合 | 当前重建 | 3.0.0 | [infra.md](../07-components/infra.md#infrabff-mobile) | [BRICKKIT](../../../components/infra/bff-mobile/BRICKKIT.md) · [AGENTS](../../../components/infra/bff-mobile/AGENTS.md) · [design](../../../components/infra/bff-mobile/docs/design.md) | 身份（`infra/iam-*`） | `frontend/mobile` |
+| `infra/bff-mobile` | 移动端展示聚合 | 当前重建 | 3.0.1 | [infra.md](../07-components/infra.md#infrabff-mobile) | [BRICKKIT](../../../components/infra/bff-mobile/BRICKKIT.md) · [AGENTS](../../../components/infra/bff-mobile/AGENTS.md) · [design](../../../components/infra/bff-mobile/docs/design.md) | 身份（`infra/iam-*`） | `frontend/mobile` |
 | `infra/dlq-monitor` | 死信观察、处理与审计 | 远期 | — | [infra.md](../07-components/infra.md#infradlq-monitor) | — | 身份（`infra/iam-*`）、`infra/authz` | — |
 
 ## 主数据
@@ -125,7 +125,7 @@
 | 外壳 | 版本 | 编进的成员 | 文档 |
 | --- | --- | --- | --- |
 | `be/go-core` | 3.0.115 | `test/probe-go@3.2.63`、`test/probe-go2@3.2.63`、`test/probe-go3@3.2.63`、`test/probe-go4@3.2.63`、`erp/inventory@3.0.52`、`erp/credit@3.0.49`、`erp/sales@3.0.65`、`erp/billing@3.0.73`、`erp/purchase@3.0.27`、`erp/finance@3.0.23`、`erp/payment@3.0.31`、`erp/costing@3.0.13`、`crm/opportunity@3.0.13` | [BRICKKIT](../../../shell/be/go-core/BRICKKIT.md) · [AGENTS](../../../shell/be/go-core/AGENTS.md) |
-| `be/go-infra` | 3.0.97 | `test/probe-go@3.2.63`、`test/probe-go2@3.2.63`、`test/probe-go3@3.2.63`、`test/probe-go4@3.2.63`、`infra/iam-casdoor@3.0.58`、`infra/authz@3.0.59`、`infra/audit@3.0.49`、`mdm/org@3.0.46`、`mdm/employee@3.0.16`、`mdm/currency@3.0.44`、`mdm/partner@3.0.52`、`mdm/product@3.0.49`、`infra/workflow@3.0.13`、`infra/notification@3.0.11`、`infra/attachment@3.0.6`、`integration/im-dingtalk@3.0.4` | [BRICKKIT](../../../shell/be/go-infra/BRICKKIT.md) · [AGENTS](../../../shell/be/go-infra/AGENTS.md) |
+| `be/go-infra` | 3.0.98 | `test/probe-go@3.2.63`、`test/probe-go2@3.2.63`、`test/probe-go3@3.2.63`、`test/probe-go4@3.2.63`、`infra/iam-casdoor@3.0.58`、`infra/authz@3.0.59`、`infra/audit@3.0.49`、`mdm/org@3.0.46`、`mdm/employee@3.0.16`、`mdm/currency@3.0.44`、`mdm/partner@3.0.52`、`mdm/product@3.0.49`、`infra/workflow@3.0.13`、`infra/notification@3.0.11`、`infra/attachment@3.0.6`、`integration/im-dingtalk@3.0.4`、`infra/bff-mobile@3.0.1` | [BRICKKIT](../../../shell/be/go-infra/BRICKKIT.md) · [AGENTS](../../../shell/be/go-infra/AGENTS.md) |
 | `be/py-render` | 3.0.51 | `test/probe-py@3.2.51`、`test/probe-py2@3.2.51`、`infra/print@3.0.24` | [BRICKKIT](../../../shell/be/py-render/BRICKKIT.md) · [AGENTS](../../../shell/be/py-render/AGENTS.md) |
 
 ## 事件
