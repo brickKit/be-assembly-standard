@@ -21,7 +21,7 @@
 | `infra/attachment` | 附件元数据、处理状态与授权协作 | 当前重建 | 3.0.6 | [infra.md](../07-components/infra.md#infraattachment) | [BRICKKIT](../../../components/infra/attachment/BRICKKIT.md) · [AGENTS](../../../components/infra/attachment/AGENTS.md) · [design](../../../components/infra/attachment/docs/design.md) | 身份（`infra/iam-*`）、`infra/authz` | `hrm/expense` |
 | `infra/print` | 单据与标签渲染 | 当前重建 | 3.0.24 | [infra.md](../07-components/infra.md#infraprint) | [BRICKKIT](../../../components/infra/print/BRICKKIT.md) · [AGENTS](../../../components/infra/print/AGENTS.md) · [design](../../../components/infra/print/docs/design.md) | 身份（`infra/iam-*`）、`infra/authz` | — |
 | `infra/audit` | 业务审计的集中保存与查询；兼任独立证据存储 | 当前重建 | 3.0.49 | [infra.md](../07-components/infra.md#infraaudit) | [BRICKKIT](../../../components/infra/audit/BRICKKIT.md) · [AGENTS](../../../components/infra/audit/AGENTS.md) · [design](../../../components/infra/audit/docs/design.md) | 身份（`infra/iam-*`）、`infra/authz` | — |
-| `infra/bff-mobile` | 移动端展示聚合 | 当前重建 | 设计中 | [infra.md](../07-components/infra.md#infrabff-mobile) | [design](../../../components/infra/bff-mobile/docs/design.md) | 身份（`infra/iam-*`） | `frontend/mobile` |
+| `infra/bff-mobile` | 移动端展示聚合 | 当前重建 | 3.0.0 | [infra.md](../07-components/infra.md#infrabff-mobile) | [BRICKKIT](../../../components/infra/bff-mobile/BRICKKIT.md) · [AGENTS](../../../components/infra/bff-mobile/AGENTS.md) · [design](../../../components/infra/bff-mobile/docs/design.md) | 身份（`infra/iam-*`） | `frontend/mobile` |
 | `infra/dlq-monitor` | 死信观察、处理与审计 | 远期 | — | [infra.md](../07-components/infra.md#infradlq-monitor) | — | 身份（`infra/iam-*`）、`infra/authz` | — |
 
 ## 主数据

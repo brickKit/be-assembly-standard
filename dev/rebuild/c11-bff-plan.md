@@ -40,8 +40,8 @@
 | P0 | 读全依据，定首批范围 | — | 上面一节 | ✅ 2026-11-13（AI 定，待复核） |
 | P1 | 设计 `docs/design.md`（规则编号）：schema 的形状、每个根字段对应的下游与读路径、批量加载、时限与缺件、持久化查询、权限键（2.x 的键怎样处理）、外壳里的放置；查各下游有没有本组件要的用户面批量读取，缺的先回源头补；考设计 | P0 | 文档与考试记录（`c11-data/exam-p1/`） | ✅ 2026-11-13：设计考试 12 条必须改、18 条建议改，全部处理（`c11-data/exam-p1/result.md`）；本组件改成**只读**（决定由前端经边缘直发属主）。源头补的：线协议 alpha.131 的 P11.11（组件的公网前缀，流程内核与冷热转层的标准路由挂到前缀下，原 `/be/flow/` 边缘分不出发给谁）、SDK alpha.134、统一待办的动作入口改由 `flow.DecisionPath` 推出；`mdm/partner` 列表按角色筛选（M9）；边界卡改为可选依赖、按需批量加载 |
 | P2 | 契约：GraphQL schema（`contract/schema.graphql`）与 OpenAPI（`/graphql` 一条）；源头组件补的接口 | P1 | `make check`、`make authz-keys-check` | ✅ 2026-11-13：`contract/schema.graphql`（只读的查询；产品详情的库存叫 `stock`，避开产品自己的 `availability`）与 `contract/openapi.yaml`（一条路由）；gqlgen v0.17.98 按 schema 生成通过（`stock` 是单独的解析函数）。源头：`mdm/partner` 3.0.51 按角色筛选；线协议 alpha.131、SDK alpha.134 全系统；路由变了的组件各自发布；探针 3.2.63、套件 1.0.99、外壳 go-infra 3.0.97 与 go-core 3.0.115、be-ops alpha.30、be-edge alpha.16 |
-| P3 | 先写红的测试：对假的下游（替身组件）测缺件、超时、权限转发、只转发到登记的组件 | P2 | 测试红 | ⬜ |
-| P4 | 实现 3.0.0（gqlgen + Gin，经 SDK 的运行时与出站调用） | P3 | 测试绿；改坏检查；`make layout-check` | ⬜ |
+| P3 | 先写红的测试：对假的下游（替身组件）测缺件、超时、权限转发、只转发到登记的组件 | P2 | 测试红 | ✅ 2026-11-19：骨架（`bffmobile/`、`internal/core`、入口与清单的桩、`main.go` 的 `check-manifest`）；模型挪到 `internal/model`（`reads` 用它不成环）；根字段改成可为空（非空的根字段失败会让整个 `data` 为空，违背 BM06）。集成测试四步（入口的拒绝、读与转发、缺件、清单），对七个属主的替身；在桩上红（403 处得到 500） |
+| P4 | 实现 3.0.0（gqlgen + Gin，经 SDK 的运行时与出站调用） | P3 | 测试绿；改坏检查；`make layout-check` | ✅ 2026-11-19：发布 3.0.0。集成测试绿（约 5 秒）、单元测试（清单与路由、合并安全、清单校验、代价与深度、`check-manifest`）；改坏检查 13 处全被抓住（`c11-data/mutation/`）；`brickkit lint`、`make layout-check` 通过。实现中改的设计（AI 定，待复核）：代价按下游调用计（原来的乘 `limit` 让一个待办页单独超 200）；“先查询再重试”的原因也带 `retry_after`；清单键是密钥类型的字符串，BrickKit 从 `file://` 读入（上限约 128 KiB，记为未决问题）。测试自己的错假设修过一处：替身答平台原因时领域写了空串（协议里是 `be`） |
 | P5 | 连锁与格：外壳放置、套件的格与 L3（经边缘的移动会话，待办同意、通知、产品与库存、缺件）；一致性考试；复盘 | P4 | 格从空库到 L3；`make version-check`、`make gates` | ⬜ |
 
 ## 全局约束
