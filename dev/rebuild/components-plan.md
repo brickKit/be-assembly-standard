@@ -42,7 +42,7 @@
 | C9 | `infra/attachment`：附件元数据、处理状态与授权协作 | 同上 | C0 | 同上 | ✅ 2026-11-13（子计划 [c9-attachment-plan.md](c9-attachment-plan.md)，复盘 [retro-c9.md](retro-c9.md)） |
 | C10 | `integration/im-dingtalk`：钉钉投递（外部系统用模拟器） | 边界卡 | C8 | 同上；外部调用走对外命令或幂等 | ✅ 2026-11-13（子计划 [c10-dingtalk-plan.md](c10-dingtalk-plan.md)，复盘 [retro-c10.md](retro-c10.md)）：钉钉渠道成员 3.0.3、线协议第 20 章（alpha.130）、SDK alpha.133；格 C10-A 从空库到 L3 47 全过 |
 | C11 | `infra/bff-mobile`：移动端展示聚合（Go，gqlgen 挂在 Gin 上，A108） | 边界卡、协议 20 | C1–C8 中它聚合的组件 | 同上 | ✅ 2026-11-20（子计划 [c11-bff-plan.md](c11-bff-plan.md)，复盘 [retro-c11.md](retro-c11.md)）：移动聚合 `infra/bff-mobile` 3.0.2（只读，线协议 alpha.131 的公网前缀 P11.11、SDK alpha.134）；外壳 go-infra 3.0.99；格 C11-A 从空库到 L3 53 全过（两次） |
-| C12 | `frontend/pc` | 协议 20、前端技术栈 | 要显示的组件 | FE-1–FE-4 | ⬜ |
+| C12 | `frontend/pc` | 协议 20、前端技术栈 | 要显示的组件 | FE-1–FE-4 | 进行中（子计划 [c12-pc-plan.md](c12-pc-plan.md)，P0 ✅） |
 | C13 | `frontend/mobile` | 同上 | C11 | FE-1–FE-4 | ⬜ |
 | C14 | 阶段收尾：全部组件的真机格（单跑与外壳两格）从空库到 L3、整套恢复演练、`make gates` 与 `make version-check`；复盘 | 实验计划的格 | 全部 | 两格与演练通过；复盘写好 | ⬜ |
 
