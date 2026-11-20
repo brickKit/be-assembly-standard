@@ -22,6 +22,7 @@ ON_PURPOSE = {
     "infra/audit": "no seed (docs/zh/03-seed-data.md); who reads the audit in the demo is still open (retro-c9 R6)",
     "infra/print": "no seed (docs/zh/03-seed-data.md); who edits the templates in the demo is still open (retro-c9 R6)",
     "infra.authz.security_record.relinquish": "a fixed segment every holder gets from infra/authz itself (D82)",
+    "infra.authz.security_record.own_operations": "a fixed segment every holder gets from infra/authz itself (A177)",
 }
 
 

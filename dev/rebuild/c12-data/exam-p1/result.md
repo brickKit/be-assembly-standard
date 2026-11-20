@@ -4,7 +4,7 @@
 
 ## 先核实的
 
-- **SDK 在视图里找不到调用者时答什么**（关系到 M4）：`guard.go` 的准入照常通过（`Lookup` 对不在分片里的主体给空段，安全版本 0 不算陈旧）；处理函数里 `authz.Subject.Check` 用空段求值，答 `PERMISSION_DENIED`（403）；视图过期答 `AUTHORIZATION_VIEW_EXPIRED`（503）。所以 D82 式的本人段走得通：没有任何授予的用户得到 403，前端当作空集（FP05）。授权组件的 `holders` 把每条授予的被授予者与管理持有人都算作持有者（`authz/internal/view/view.go:70-96`），所以有任何授予的用户都有这个段。
+- **SDK 在视图里找不到调用者时答什么**（关系到 M4）：`guard.go` 的准入照常通过（`Lookup` 对不在分片里的主体给空段，安全版本 0 不算陈旧）；处理函数里 `authz.Subject.Check` 用空段求值，答 `PERMISSION_DENIED`（403）；视图过期答 `AUTHORIZATION_VIEW_EXPIRED`（503）。所以 D82 式的本人段走得通。实现时发现：没有段时 `Check` 先判可见性，答的是 `NOT_FOUND`（404）而不是 403；授权组件的处理函数把这两种拒绝都答成 200 与空集（`infra/authz` 3.0.60），前端不用分辨（FP05）。授权组件的 `holders` 把每条授予的被授予者与管理持有人都算作持有者（`authz/internal/view/view.go:70-96`），所以有任何授予的用户都有这个段。
 - **M1**：读 `be-edge/edge.go` 的 `ServeHTTP`，带 Cookie 的请求先换令牌、`SESSION_ENDED` 就答 401、不转发，登录与回调路径没有例外；身份成员的登录不看旧 Cookie（`iam-casdoor/internal/login/login.go`）。成立。
 - **“按幂等键查询”用哪个接口**（M10）：SDK 的 `idem.Do` 对同一键、同一请求原样返回原结果（`replayed`），先到的还没提交时答 `IDEMPOTENCY_IN_PROGRESS`。查询就是用同一个键重发同一个请求，不需要另开读取。
 - **列表默认范围**：协议 11，“未关闭，或最近 N 天内创建”，N 起始 90 天，由属主套用。
@@ -17,7 +17,7 @@
 | M1 | FP06 写明边缘的布局（`/` 不挂中间件）；P2 给 be-edge 与线协议第 11 章补两条：答 `SESSION_ENDED` 时清掉会话 Cookie；身份成员的登录与回调路径带 Cookie 也照公开路由转发；P3 的 L3 加“带已结束的 Cookie 去登录” |
 | M2 | FP06：登录门槛（启动先取 `features`）；`TOKEN_INVALID` 与 `SESSION_ENDED` 都走“需要登录”；`BroadcastChannel` 广播登出；登出清掉的浏览器状态与例外 |
 | M3 | FP06 与边界表：登出后进“已登出”页；不被静默再登录是身份成员的义务，P2 给 `iam-casdoor` 补（先核实 Casdoor 支持结束会话还是 `prompt=login`） |
-| M4 | FP05 改成 D82 式本人段与一条普通的声明操作，不动线协议；进授权槽位族的标准契约；403 当空集、503 保留上次 |
+| M4 | FP05 改成 D82 式本人段与一条普通的声明操作，不动线协议；进授权槽位族的标准契约；没有任何授予的答空集、503 保留上次 |
 | M5 | FP05 写明计算口径与视图同源、不按法人筛、切换法人不重取；取失败保留上次；每 5 分钟与获得焦点时带 `BE-Polling` 重取，403 触发的重取 30 秒最多一次 |
 | M6 | FP02 加 `capabilities`、`contract` 的来源；FP04 查 `component` 加全部 `needs`，`features` 带能力后再查能力；`features` 不可用时的处理；be-ops 的能力列进未决问题（首批没有需要能力的模块，不放 P2） |
 | M7 | FP03 改成基线是源码的一部分（像外壳的成员清单），一个版本一个镜像；客户基线不同就 Fork；FP11、FP15 品牌改为运行时的 `/config.json`，补水印与灰度；取舍写理由。**AI 定，待复核** |
