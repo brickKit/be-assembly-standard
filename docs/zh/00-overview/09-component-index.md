@@ -113,7 +113,7 @@
 
 | 组件 ID | 能力 | 范围 | 实现 | 边界卡 | 组件文档 | 必需依赖 | 被谁必需依赖 |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| `frontend/pc` | PC 办公入口 | 当前重建 | — | [frontend.md](../07-components/frontend.md#frontendpc) | — | 身份（`infra/iam-*`） | — |
+| `frontend/pc` | PC 办公入口 | 当前重建 | 设计中 | [frontend.md](../07-components/frontend.md#frontendpc) | [design](../../../components/frontend/pc/docs/design.md) | 身份（`infra/iam-*`） | — |
 | `frontend/mobile` | 移动外勤入口 | 当前重建 | — | [frontend.md](../07-components/frontend.md#frontendmobile) | — | `infra/bff-mobile`、身份（`infra/iam-*`） | — |
 | `frontend/terminal` | 仓库终端入口 | 远期 | — | [frontend.md](../07-components/frontend.md#frontendterminal) | — | 身份（`infra/iam-*`） | — |
 | `frontend/advanced` | 行业或高级交互入口 | 远期 | — | [frontend.md](../07-components/frontend.md#frontendadvanced) | — | — | — |
