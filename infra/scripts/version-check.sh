@@ -65,6 +65,12 @@ for p in "${paths[@]}"; do
       echo "- $p：重启或新建，只有说明 README，3.0.0 还没有开工，不查"
       continue ;;
   esac
+  # under way to its first 3.x release (design, skeleton), only older tags: nothing released yet to drift from; its
+  # first release (3.0.0) is checked like any other
+  if [[ -z "$(git -C "$p" tag -l '3.*' 'v3.*')" && -n "$(git -C "$p" tag -l)" ]]; then
+    echo "- $p：3.0.0 开发中（只有旧版本的标签），还没有发布，不查"
+    continue
+  fi
   desc="$(git -C "$p" describe --tags 2>&1)"
   if [[ $? -ne 0 ]]; then
     echo "${C_RED}✗ $p：没有任何 tag（$desc）${C_OFF}"

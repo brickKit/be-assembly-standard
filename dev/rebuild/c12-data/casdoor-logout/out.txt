@@ -1,0 +1,25 @@
+id_token_hint | token answer keys: ['access_token', 'expires_in', 'id_token', 'refresh_token', 'scope', 'token_type'] | id_token == access_token: True
+id_token_hint | before: not signed in (Please login first) | silent login: refused (Unknown authentication type (not password or provider), form)
+id_token_hint | logout to http://localhost:8200/logged-out -> 302 http://localhost:8200/logged-out?state=st
+id_token_hint | after: not signed in (Please login first) | silent login: refused (Unknown authentication type (not password or provider), form)
+client_id | token answer keys: ['access_token', 'expires_in', 'id_token', 'refresh_token', 'scope', 'token_type'] | id_token == access_token: True
+client_id | before: not signed in (Please login first) | silent login: refused (Unknown authentication type (not password or provider), form)
+client_id | logout to http://localhost:8200/logged-out -> 200 {
+  "status": "ok",
+  "msg": "",
+  "sub": "",
+  "name": "",
+  "data": null,
+  "data2": null,
+  "data3": null
+}
+client_id | logout to http://localhost:8200/api/iam/callback -> 200 {
+  "status": "ok",
+  "msg": "",
+  "sub": "",
+  "name": "",
+  "data": null,
+  "data2": null,
+  "data3": null
+}
+client_id | after: not signed in (Please login first) | silent login: refused (Unknown authentication type (not password or provider), form)
