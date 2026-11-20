@@ -40,9 +40,9 @@
 | # | 要做到什么 | 依赖 | 验收 | 状态 |
 | --- | --- | --- | --- | --- |
 | P0 | 读全依据，定首批范围，写本计划 | — | 上面一节 | ✅ 2026-11-20 |
-| P1 | 设计 `frontend-pc/docs/design.md`（规则编号）。<br>内容：页面模块的声明格式与构建时的组合；`features` 与 `permissions` 的来源与过滤；会话与边缘的交互（登录、登出、需要重新登录、暂时无法确认、`BE-Polling`）；错误与缺件的显示（协议 20 的表）；令牌与主题；断网草稿；生成客户端；部署形态。<br>源头要补的，先查清再定：<br>（a）“我能做什么”：授权组件的用户面、或经身份成员；<br>（b）登录后回到入口的地址；<br>（c）Casdoor 登记边缘来源的回调；<br>（d）be-ops 为边缘产出路由与 `features`。<br>最后考设计 | P0 | 设计与考试记录（`c12-data/exam-p1/`） | ⬜ |
-| P2 | 源头补齐（按 P1 的结论；预计：授权组件的“我的操作”读取、身份成员的登录回跳、be-ops 的边缘配置）；每个源头照改动的循环、各自发布 | P1 | 各源头的测试与发布 | ⬜ |
-| P3 | 格前面放边缘：套件 `cells/edge.py`（Traefik v3.0.4 加 be-edge 插件，路由按各组件的公网前缀，边缘的服务身份证书，`features` 由 be-ops 生成），`cell-chain.sh` 加一个阶段；L3 补“经边缘”的场景：登录得到会话、`BE-Request` 缺失被拒、bff 经边缘、轮询不续期 | P2 | 格从空库到 L3 | ⬜ |
+| P1 | 设计 `frontend-pc/docs/design.md`（规则编号）。<br>内容：页面模块的声明格式与构建时的组合；`features` 与 `permissions` 的来源与过滤；会话与边缘的交互（登录、登出、需要重新登录、暂时无法确认、`BE-Polling`）；错误与缺件的显示（协议 20 的表）；令牌与主题；断网草稿；生成客户端；部署形态。<br>源头要补的，先查清再定：<br>（a）“我能做什么”：授权组件的用户面、或经身份成员；<br>（b）登录后回到入口的地址；<br>（c）Casdoor 登记边缘来源的回调；<br>（d）be-ops 为边缘产出路由与 `features`。<br>最后考设计 | P0 | 设计与考试记录（`c12-data/exam-p1/`） | ✅ 2026-11-20：考试 12 必须、10 建议，全部处理（`exam-p1/result.md`）；(a) 用 D82 式本人段（FP05），(b)(c) 写进设计的“部署的配置”，(d) features 已有、路由先由套件生成 |
+| P2 | 源头补齐，每个源头照改动的循环、各自发布：<br>P2a 线协议第 11 章与 be-edge：答 `SESSION_ENDED` 时清掉会话 Cookie；身份成员的登录与回调路径带 Cookie 也照公开路由转发（设计 FP06，考试 M1）；<br>P2b `infra/authz`：`GET /api/authz/me/operations`，D82 式本人段与一条声明的操作，算法与视图同源，进授权槽位族的标准契约（FP05，M4、M5）；<br>P2c `infra/iam-casdoor`：登出后不被 Casdoor 静默再登录（先核实 Casdoor 的结束会话或 `prompt=login`；FP06，M3）；<br>随后外壳 go-infra 升级与套件 | P1 | 各源头的测试与发布 | ⬜ |
+| P3 | 格前面放边缘：套件 `cells/edge.py`（Traefik v3.0.4 加 be-edge 插件，路由按各组件的公网前缀，边缘的服务身份证书，`features` 由 be-ops 生成），`cell-chain.sh` 加一个阶段；L3 补“经边缘”的场景：登录得到会话、`BE-Request` 缺失被拒、bff 经边缘、轮询不续期、带已结束的 Cookie 去登录（M1）、“我的操作”经边缘 | P2 | 格从空库到 L3 | ⬜ |
 | P4 | 仓库骨架：工作区、`ui-kit-pc`（令牌、四种页面模板、`<BeTable>`）、`api` 的生成、`shell`、页面模块格式与 `build`；lint、`vue-tsc`、FE-1、FE-2 | P1 | `pnpm lint`、`pnpm typecheck`、`pnpm test` | ⬜ |
 | P5 | 首批页面模块（P0 的表），FE-1、FE-2；断网草稿 | P4 | 同上；改坏检查 | ⬜ |
 | P6 | 部署：静态文件镜像、`component.yaml`、`BRICKKIT.md`、`AGENTS.md`；发布 3.0.0；格里放置并经边缘可打开 | P3、P5 | 格里页面可加载；`brickkit lint` | ⬜ |
