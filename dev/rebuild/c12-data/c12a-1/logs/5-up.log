@@ -1,0 +1,138 @@
+🚀 Starting project c12-a (target: docker)
+📋 Component state calculation:
+   ✅ be/go-core@3.0.115             starting (top-level)
+   ✅ be/go-infra@3.0.100            starting (top-level)
+   ✅ be/py-render@3.0.51            starting (top-level)
+   ✅ mdm/currency@3.0.44            starting (crm/opportunity needs it)
+   ✅ mdm/org@3.0.46                 starting (crm/opportunity needs it)
+   ✅ mdm/partner@3.0.52             starting (crm/opportunity needs it)
+   ✅ crm/opportunity@3.0.13         starting (infra/bff-mobile needs it)
+   ✅ mdm/product@3.0.49             starting (erp/inventory needs it)
+   ✅ erp/credit@3.0.49              starting (erp/sales needs it)
+   ✅ erp/inventory@3.0.52           starting (erp/costing needs it)
+   ✅ erp/sales@3.0.65               starting (erp/billing needs it)
+   ✅ infra/print@3.0.24             starting (erp/billing needs it)
+   ✅ erp/billing@3.0.73             starting (top-level)
+   ✅ erp/costing@3.0.13             starting (erp/purchase needs it)
+   ✅ infra/attachment@3.0.6         starting (erp/purchase needs it)
+   ✅ mdm/employee@3.0.16            starting (erp/payment needs it)
+   ✅ erp/purchase@3.0.27            starting (erp/finance needs it)
+   ✅ erp/finance@3.0.23             starting (erp/payment needs it)
+   ✅ erp/payment@3.0.31             starting (top-level)
+   ✅ infra/audit@3.0.49             starting (crm/opportunity needs it)
+   ✅ infra/authz@3.0.60             starting (crm/opportunity needs it)
+   ✅ infra/workflow@3.0.13          starting (infra/bff-mobile needs it)
+   ✅ integration/im-dingtalk@3.0.4  starting (infra/notification needs it)
+   ✅ infra/notification@3.0.11      starting (infra/bff-mobile needs it)
+   ✅ infra/bff-mobile@3.0.2         starting (top-level)
+   ✅ infra/iam-casdoor@3.0.59       starting (crm/opportunity needs it)
+   ✅ test/probe-py2@3.2.51          starting (top-level)
+
+⚠️ Files under config/ may contain plaintext secrets
+   Config items: infra/iam-casdoor@3.0.59 → IAM_TOKEN_ISSUER ($var:IAM_ISSUER)
+   Why it matters: config/*.yaml and config/vars.yaml are meant to be committed to Git, so a secret written there goes into version control with it and can't be removed from the history
+   Suggestions:
+   1. Change it to a reference such as ${MY_TOKEN} (real value in .env) or file://.secrets/token
+   2. .env must be listed in .gitignore
+   3. Items that declare secret: true are ones the component author identified as credentials; the ones that merely have a suspicious name are judged by name only, not by value, so you can ignore them if they really aren't secrets
+📋 Start order (topological sort):
+   1. be-go-infra-3-0-100  no dependencies  (hosts mdm/currency@3.0.44, mdm/org@3.0.46, mdm/partner@3.0.52, mdm/product@3.0.49, infra/attachment@3.0.6, mdm/employee@3.0.16, infra/audit@3.0.49, infra/authz@3.0.60, infra/workflow@3.0.13, integration/im-dingtalk@3.0.4, infra/notification@3.0.11, infra/bff-mobile@3.0.2, infra/iam-casdoor@3.0.59)
+   2. be-go-core-3-0-115   ← depends on 1  (hosts crm/opportunity@3.0.13, erp/credit@3.0.49, erp/inventory@3.0.52, erp/sales@3.0.65, erp/billing@3.0.73, erp/costing@3.0.13, erp/purchase@3.0.27, erp/finance@3.0.23, erp/payment@3.0.31)
+   3. be-py-render-3-0-51  no dependencies  (hosts infra/print@3.0.24, test/probe-py2@3.2.51)
+
+Can start on their own: be-go-infra-3-0-100, be-py-render-3-0-51 (no dependencies)
+Only referenced by optional dependencies (turning them off affects no one: mode: disable): crm/opportunity, erp/costing, erp/credit, erp/finance, erp/purchase, erp/sales, infra/attachment, infra/notification, infra/print, infra/workflow, integration/im-dingtalk, mdm/employee
+Longest dependency chain (2 levels): be-go-infra-3-0-100 → be-go-core-3-0-115
+   Components not on this chain start in parallel with it
+
+Dependency graph:
+   erp/sales@3.0.65 → mdm/currency@3.0.44
+                    → mdm/org@3.0.46
+                    → mdm/partner@3.0.52
+                    → mdm/product@3.0.49
+                    → erp/credit@3.0.49 (optional)
+                    → erp/inventory@3.0.52 (optional)
+   erp/purchase@3.0.27 → mdm/currency@3.0.44
+                       → mdm/org@3.0.46
+                       → mdm/partner@3.0.52
+                       → mdm/product@3.0.49
+                       → erp/inventory@3.0.52 (optional)
+                       → erp/costing@3.0.13 (optional)
+                       → infra/attachment@3.0.6 (optional)
+                       → mdm/employee@3.0.16 (optional)
+   erp/costing@3.0.13 → mdm/currency@3.0.44
+                      → mdm/org@3.0.46
+                      → erp/inventory@3.0.52
+   erp/inventory@3.0.52 → mdm/org@3.0.46
+                        → mdm/product@3.0.49
+   mdm/product@3.0.49 → mdm/org@3.0.46
+   erp/payment@3.0.31 → mdm/currency@3.0.44
+                      → mdm/org@3.0.46
+                      → mdm/partner@3.0.52
+                      → erp/finance@3.0.23 (optional)
+                      → erp/sales@3.0.65 (optional)
+                      → mdm/employee@3.0.16 (optional)
+   erp/finance@3.0.23 → mdm/currency@3.0.44
+                      → mdm/org@3.0.46
+                      → mdm/partner@3.0.52
+                      → erp/purchase@3.0.27 (optional)
+   erp/credit@3.0.49 → mdm/currency@3.0.44
+                     → mdm/org@3.0.46
+                     → mdm/partner@3.0.52
+   erp/billing@3.0.73 → mdm/currency@3.0.44
+                      → mdm/org@3.0.46
+                      → mdm/partner@3.0.52
+                      → erp/sales@3.0.65 (optional)
+                      → infra/print@3.0.24 (optional)
+   crm/opportunity@3.0.13 → mdm/currency@3.0.44
+                          → mdm/org@3.0.46
+                          → mdm/partner@3.0.52
+   mdm/partner@3.0.52 → mdm/org@3.0.46
+   mdm/employee@3.0.16 → mdm/org@3.0.46
+   infra/notification@3.0.11 → mdm/employee@3.0.16 (optional)
+                             → integration/im-dingtalk@3.0.4 (optional)
+   infra/bff-mobile@3.0.2 → infra/workflow@3.0.13 (optional)
+                          → infra/notification@3.0.11 (optional)
+                          → mdm/product@3.0.49 (optional)
+                          → erp/inventory@3.0.52 (optional)
+                          → mdm/partner@3.0.52 (optional)
+                          → erp/sales@3.0.65 (optional)
+                          → crm/opportunity@3.0.13 (optional)
+⚠️ infra/workflow@3.0.13: IMPLEMENTATION_INSTANCE is not declared in the component's configSchema, so it has no effect
+   File: config/infra-workflow.yaml
+   Declared keys: AUDIT_GRPC_URL, AUTHZ_GRPC_URL, BUS_SUBSCRIPTION_CONCURRENCY, BUS_URL, DEPLOYMENT_ID, IAM_ISSUER, IAM_JWKS_URL, LOG_LEVEL, OBJECT_STORE_ACCESS_KEY, OBJECT_STORE_BUCKET, OBJECT_STORE_PREFIX, OBJECT_STORE_REGION, OBJECT_STORE_SECRET_KEY, OBJECT_STORE_URL, OTEL_URL, PG_DATABASE, PG_HOST, PG_IDLE_IN_TX_TIMEOUT, PG_LOCK_TIMEOUT, PG_MIGRATION_HOST, PG_MIGRATION_PORT, PG_OWNER_PASSWORD, PG_OWNER_USER, PG_PASSWORD, PG_POOLER_PREPARED, PG_POOL_BACKGROUND, PG_POOL_FOREGROUND, PG_PORT, PG_SCHEMA, PG_STATEMENT_TIMEOUT, PG_USER, RECOVERY_PHASE, SERVICE_TLS_CA_FILE, SERVICE_TLS_CERT_FILE, SERVICE_TLS_KEY_FILE, STOP_DRAIN_DELAY, STOP_TIMEOUT, WORKFLOW_STALE_AFTER, WORKFLOW_TASK_SOURCES
+📄 Generated: .brickkit/generated/compose.yaml
+
+🔧 Database migrations that run before startup (on failure that component won't start):
+   infra/attachment@3.0.6  /infra-attachment migrate
+   infra/audit@3.0.49  /infra-audit migrate
+   infra/authz@3.0.60  /infra-authz migrate
+   infra/iam-casdoor@3.0.59  /infra-iam-casdoor migrate
+   infra/notification@3.0.11  /infra-notification migrate
+   infra/print@3.0.24  python -m infra_print migrate
+   infra/workflow@3.0.13  /infra-workflow migrate
+   integration/im-dingtalk@3.0.4  /integration-im-dingtalk migrate
+   mdm/currency@3.0.44  /mdm-currency migrate
+   mdm/org@3.0.46  /mdm-org migrate
+   mdm/employee@3.0.16  /mdm-employee migrate
+   mdm/partner@3.0.52  /mdm-partner migrate
+   crm/opportunity@3.0.13  /crm-opportunity migrate
+   erp/billing@3.0.73  /erp-billing migrate
+   erp/credit@3.0.49  /erp-credit migrate
+   erp/finance@3.0.23  /erp-finance migrate
+   erp/payment@3.0.31  /erp-payment migrate
+   mdm/product@3.0.49  /mdm-product migrate
+   erp/inventory@3.0.52  /erp-inventory migrate
+   erp/costing@3.0.13  /erp-costing migrate
+   erp/purchase@3.0.27  /erp-purchase migrate
+   erp/sales@3.0.65  /erp-sales migrate
+   test/probe-py2@3.2.51  python -m probe_py migrate
+
+🐳 Starting (docker)...
+   be-go-core-3-0-115           running (healthy)
+   be-go-infra-3-0-100          running (healthy)
+   be-py-render-3-0-51          running (healthy)
+✅ All components started (3)
+
+💡 View the status: brickkit status
+   View the logs: docker compose -p brickkit-c12-a logs -f

@@ -1,0 +1,87 @@
+..................FFF...................................                 [100%]
+=================================== FAILURES ===================================
+_______________________ test_a_session_through_the_edge ________________________
+
+cell = Cell(dir=PosixPath('/home/zhijie/Desktop/github/be-assembly-standard/dev/rebuild/experiment-cells/C12-A'), name='C12-A... pooler='', baseline_scale=1, base='', also=[], replicas={}, databases={}, settings={}, podman='', units='', edge=True)
+
+    def test_a_session_through_the_edge(cell):
+        c, cookie = browser_login("test.alice")
+>       with c:
+             ^
+
+scenarios/test_edge.py:61: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <httpx.Client object at 0x719efa6b4f50>
+
+    def __enter__(self: T) -> T:
+        if self._state != ClientState.UNOPENED:
+            msg = {
+                ClientState.OPENED: "Cannot open a client instance more than once.",
+                ClientState.CLOSED: (
+                    "Cannot reopen a client instance, once it has been closed."
+                ),
+            }[self._state]
+>           raise RuntimeError(msg)
+E           RuntimeError: Cannot open a client instance more than once.
+
+.venv/lib/python3.15/site-packages/httpx/_client.py:1283: RuntimeError
+_________________ test_the_mobile_aggregation_through_the_edge _________________
+
+cell = Cell(dir=PosixPath('/home/zhijie/Desktop/github/be-assembly-standard/dev/rebuild/experiment-cells/C12-A'), name='C12-A... pooler='', baseline_scale=1, base='', also=[], replicas={}, databases={}, settings={}, podman='', units='', edge=True)
+
+    def test_the_mobile_aggregation_through_the_edge(cell):
+        if "infra/bff-mobile" not in cell.placed:
+            pytest.skip("the cell has no infra/bff-mobile")
+        c, _ = browser_login("test.alice")
+>       with c:
+             ^
+
+scenarios/test_edge.py:90: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <httpx.Client object at 0x719efa6b5490>
+
+    def __enter__(self: T) -> T:
+        if self._state != ClientState.UNOPENED:
+            msg = {
+                ClientState.OPENED: "Cannot open a client instance more than once.",
+                ClientState.CLOSED: (
+                    "Cannot reopen a client instance, once it has been closed."
+                ),
+            }[self._state]
+>           raise RuntimeError(msg)
+E           RuntimeError: Cannot open a client instance more than once.
+
+.venv/lib/python3.15/site-packages/httpx/_client.py:1283: RuntimeError
+________________ test_an_ended_cookie_does_not_stop_a_new_login ________________
+
+cell = Cell(dir=PosixPath('/home/zhijie/Desktop/github/be-assembly-standard/dev/rebuild/experiment-cells/C12-A'), name='C12-A... pooler='', baseline_scale=1, base='', also=[], replicas={}, databases={}, settings={}, podman='', units='', edge=True)
+
+    def test_an_ended_cookie_does_not_stop_a_new_login(cell):
+        c, cookie = browser_login("test.bob")
+>       with c:
+             ^
+
+scenarios/test_edge.py:101: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <httpx.Client object at 0x719efa6b4710>
+
+    def __enter__(self: T) -> T:
+        if self._state != ClientState.UNOPENED:
+            msg = {
+                ClientState.OPENED: "Cannot open a client instance more than once.",
+                ClientState.CLOSED: (
+                    "Cannot reopen a client instance, once it has been closed."
+                ),
+            }[self._state]
+>           raise RuntimeError(msg)
+E           RuntimeError: Cannot open a client instance more than once.
+
+.venv/lib/python3.15/site-packages/httpx/_client.py:1283: RuntimeError
+=========================== short test summary info ============================
+FAILED scenarios/test_edge.py::test_a_session_through_the_edge - RuntimeError...
+FAILED scenarios/test_edge.py::test_the_mobile_aggregation_through_the_edge
+FAILED scenarios/test_edge.py::test_an_ended_cookie_does_not_stop_a_new_login
+3 failed, 53 passed in 69.12s (0:01:09)

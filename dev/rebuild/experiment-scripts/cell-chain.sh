@@ -39,7 +39,8 @@ pod_logs() {  # every row: the cell's logs kept beside the stage logs when a sta
 }
 down_cells() {  # every experiment cell on every engine (projects brickkit-<cell>, namespaces <cell> in minikube)
   # suite E's front doors first: a project network with a container still attached cannot be removed
-  for eng in docker podman; do $eng ps -a --format '{{.Names}}' 2>/dev/null | grep '^front-' | xargs -r $eng rm -f >/dev/null; done
+  # and C12's edges (cells/edge.py), on the same network
+  for eng in docker podman; do $eng ps -a --format '{{.Names}}' 2>/dev/null | grep -E '^(front|edge)-' | xargs -r $eng rm -f >/dev/null; done
   for p in $(docker ps -a --format '{{.Label "com.docker.compose.project"}}' | grep -E '^brickkit-([dplk]{1,2}[0-9]|c[0-9]+-)' | sort -u); do
     docker compose -p "$p" down --remove-orphans; done
   for p in $(podman ps -a --format '{{index .Labels "com.docker.compose.project"}}' 2>/dev/null | grep -E '^brickkit-([dplk]{1,2}[0-9]|c[0-9]+-)' | sort -u); do
@@ -144,6 +145,8 @@ else
   stage up bash -c "cd $D && brickkit up"
   # suite E: a replicated shell or component maps no host port on Docker and Podman; a front door takes it
   grep -q '^replicas:' "$D/cell.yaml" && [ "$ROW" != K ] && stage front bash -c "cd $CONF && uv run python -m cells front up $D"
+  # C12: the edge in front of the cell (Traefik with be-edge on host port 8200; cells/edge.py)
+  grep -q '^edge: *true' "$D/cell.yaml" && stage edge bash -c "cd $CONF && uv run python -m cells edge up $D"
 fi
 # then wait until every one answers: a Service just made is not routed at once (step 12, K12-V4's first call was reset)
 [ "$ROW" = K ] && stage nodeports bash -c "cd $CONF && uv run python -c 'import sys; from cells.spec import Cell; from cells.units import nodeports, host_ports_of, wait_answering; made = nodeports(Cell.load(sys.argv[1])); print(made); wait_answering(host_ports_of(made))' $D"
@@ -159,6 +162,6 @@ if [ "${SEED:-1}" != 0 ]; then
   fi
 fi
 # brickkit down does not reach a mode: local session's processes: cells/localrun.py stops the session by its PID
-[ "${KEEP_UP:-1}" = 0 ] && { stage down bash -c "cd $CONF && uv run python -m cells front down $D; cd $D && brickkit down && cd $CONF && uv run python -m cells.localrun down $D"
+[ "${KEEP_UP:-1}" = 0 ] && { stage down bash -c "cd $CONF && uv run python -m cells front down $D; uv run python -m cells edge down $D; cd $D && brickkit down && cd $CONF && uv run python -m cells.localrun down $D"
   stop_forward "$(forward_pid "$D")"; docker rm -f be-pgbouncer >/dev/null 2>&1; docker rm -fv be-postgres-2 >/dev/null 2>&1; }
 echo "ALL-DONE $(date -Is)" >> "$OUT/status.log"

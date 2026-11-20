@@ -1,0 +1,14 @@
+# Assembly phase "rebuild the remaining components" (components-plan.md), C12 P3: the edge in front of a cell for the
+# first time (cells/edge.py: Traefik v3.0.4 with be-edge alpha.17 on host port 8200, every component routed by its
+# public prefix, the features document from be-ops). The C11-A layout with be/go-infra 3.0.100 (infra/authz 3.0.60's
+# GET /api/authz/me/operations, infra/iam-casdoor 3.0.59), from an empty database to L3; test_edge.py logs in through
+# the edge as a browser does, and the other scenarios run as before on the host ports.
+cell: C12-A
+row: D
+deployment: 01a1c9f0-2c20-7a00-8c00-0000000c12a1
+edge: true
+shells:
+  be/go-infra@3.0.100: [infra/iam-casdoor, infra/authz, infra/audit, mdm/org, mdm/employee, mdm/currency, mdm/partner, mdm/product, infra/workflow, infra/notification, infra/attachment, integration/im-dingtalk, infra/bff-mobile]
+  be/go-core@3.0.115: [erp/inventory, erp/credit, erp/sales, erp/billing, erp/purchase, erp/finance, erp/payment, erp/costing, crm/opportunity]
+  be/py-render@3.0.51: [infra/print, test/probe-py2]
+chain: []
