@@ -40,9 +40,9 @@ pod_logs() {  # every row: the cell's logs kept beside the stage logs when a sta
 down_cells() {  # every experiment cell on every engine (projects brickkit-<cell>, namespaces <cell> in minikube)
   # suite E's front doors first: a project network with a container still attached cannot be removed
   for eng in docker podman; do $eng ps -a --format '{{.Names}}' 2>/dev/null | grep '^front-' | xargs -r $eng rm -f >/dev/null; done
-  for p in $(docker ps -a --format '{{.Label "com.docker.compose.project"}}' | grep -E '^brickkit-[dplk]{1,2}[0-9]' | sort -u); do
+  for p in $(docker ps -a --format '{{.Label "com.docker.compose.project"}}' | grep -E '^brickkit-([dplk]{1,2}[0-9]|c[0-9]+-)' | sort -u); do
     docker compose -p "$p" down --remove-orphans; done
-  for p in $(podman ps -a --format '{{index .Labels "com.docker.compose.project"}}' 2>/dev/null | grep -E '^brickkit-[dplk]{1,2}[0-9]' | sort -u); do
+  for p in $(podman ps -a --format '{{index .Labels "com.docker.compose.project"}}' 2>/dev/null | grep -E '^brickkit-([dplk]{1,2}[0-9]|c[0-9]+-)' | sort -u); do
     podman compose -p "$p" down --remove-orphans; done
   if minikube -p bek status >/dev/null 2>&1; then
     for n in $(minikube -p bek kubectl -- get ns -o name 2>/dev/null | sed 's|namespace/||' | grep -E '^[dplk]{1,2}[0-9]-'); do

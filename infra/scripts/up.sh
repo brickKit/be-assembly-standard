@@ -21,6 +21,16 @@ while IFS= read -r row; do
       echo "  ${C_RED}✗ ${name}：镜像不符${C_OFF}  期望 ${want_img} / 实际 ${got_img}"
       BLOCK=1
     fi
+    if [[ "$(docker inspect -f '{{.State.Running}}' "$cont")" != true ]]; then
+      # 停着的（例如机器重启后）：没有发布的端口、健康状态是旧的；只要端口没被别人占，阶段二照常把它启动
+      IFS=',' read -ra ps <<< "$want_ports"
+      for p in "${ps[@]}"; do
+        o="$(port_owner "$p" "$cont")"
+        [[ -n "$o" ]] && {
+          echo "  ${C_RED}✗ ${name}：停着，端口 ${p} 已被 ${o} 占用${C_OFF}"; BLOCK=1; }
+      done
+      continue
+    fi
     mapfile -t published < <(docker port "$cont" 2>/dev/null | sed 's/.*:\([0-9]\+\)$/\1/' | sort -u)
     IFS=',' read -ra ps <<< "$want_ports"
     for p in "${ps[@]}"; do
